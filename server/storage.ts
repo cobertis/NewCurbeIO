@@ -6780,8 +6780,8 @@ export class DbStorage implements IStorage {
   // ==================== UNIFIED CONTACTS ====================
   
   async getUnifiedContacts(params?: { companyId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]> {
-    // Load data in parallel from all sources
-    const [quoteMembersData, policyMembersData, usersData, bulkvsThreadsData, companiesData] = await Promise.all([
+    // Load data in parallel from all sources (EXCLUDING users/employees)
+    const [quoteMembersData, policyMembersData, bulkvsThreadsData, companiesData] = await Promise.all([
       // Quote members with quote info
       db.select({
         member: quoteMembers,
@@ -6800,12 +6800,7 @@ export class DbStorage implements IStorage {
         .innerJoin(policies, eq(policyMembers.policyId, policies.id))
         .where(params?.companyId ? eq(policyMembers.companyId, params.companyId) : sql`1=1`),
       
-      // Users
-      db.select()
-        .from(users)
-        .where(params?.companyId ? eq(users.companyId, params.companyId) : sql`1=1`),
-      
-      // BulkVS threads
+      // BulkVS threads (SMS contacts only)
       db.select()
         .from(bulkvsThreads)
         .where(params?.companyId ? eq(bulkvsThreads.companyId, params.companyId) : sql`1=1`),
@@ -6883,35 +6878,7 @@ export class DbStorage implements IStorage {
       });
     });
     
-    // Map users
-    usersData.forEach(user => {
-      rawContacts.push({
-        id: user.id,
-        firstName: user.firstName || null,
-        lastName: user.lastName || null,
-        email: user.email,
-        phone: normalizePhone(user.phone),
-        ssn: null, // Users don't have SSN
-        dateOfBirth: user.dateOfBirth || null,
-        status: [user.status],
-        productType: [],
-        origin: ['user'],
-        companyId: user.companyId || null,
-        companyName: user.companyId ? companyMap.get(user.companyId)?.name || null : null,
-        sourceMetadata: [{
-          type: 'user',
-          id: user.id,
-          details: {
-            userId: user.id,
-            role: user.role,
-            emailSubscribed: user.emailSubscribed,
-            smsSubscribed: user.smsSubscribed,
-          }
-        }]
-      });
-    });
-    
-    // Map BulkVS threads
+    // Map BulkVS threads (SMS contacts)
     bulkvsThreadsData.forEach(thread => {
       rawContacts.push({
         id: thread.id,

@@ -96,8 +96,8 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     -   **Interactive Google Maps:** Map blocks use Google Maps JavaScript API for interactive maps with markers, integrated with Google Places API.
     -   **Public Pages:** Accessible at `/:slug` and `/l/:slug` without authentication, featuring identical SmartBio layout, theme customization, SEO meta tags, and analytics tracking.
 -   **Unified Contacts Directory:** Comprehensive contact management system aggregating all contacts across the platform from multiple data sources.
-    -   **Data Sources:** Automatically aggregates contacts from Quote Members, Policy Members, System Users, and BulkVS SMS Threads into a single unified view.
-    -   **Intelligent Deduplication:** Hierarchical merge algorithm (SSN → phone+DOB → email → name+company) prevents duplicate contacts while preserving all statuses and product types from multiple sources.
+    -   **Data Sources:** Automatically aggregates contacts from Quote Members, Policy Members, and BulkVS SMS Threads into a single unified view (EXCLUDES system users/employees).
+    -   **Intelligent Deduplication:** Hierarchical merge algorithm (SSN+company → phone+DOB+company → email+company → name+company) prevents duplicate contacts while preserving all statuses and product types from multiple sources. All deduplication keys include companyId to prevent mixing contacts between companies.
     -   **Contact Information:** Full name, email, phone number, date of birth, SSN, status (multiple if from different sources), product type (health, dental, vision, etc.), origin (quote/policy/user/sms), and company association.
     -   **Advanced Filtering:** Filter contacts by status, product type, origin source, and company with real-time client-side filtering.
     -   **Search Functionality:** Full-text search across name, email, and phone number fields.
