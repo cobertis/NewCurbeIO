@@ -133,8 +133,16 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
   console.log(`[ensureUserSlug] Final slug to save: "${finalSlug}"`);
 
   if (finalSlug !== user.slug) {
-    await storage.updateUser(userId, { slug: finalSlug });
-    console.log(`[ensureUserSlug] ✓ User slug saved: ${finalSlug}`);
+    try {
+      await storage.updateUser(userId, { slug: finalSlug });
+      console.log(`[ensureUserSlug] ✓ User slug saved: ${finalSlug}`);
+    } catch (error: any) {
+      if (error.message === "No values to set") {
+        console.log(`[ensureUserSlug] ✓ Slug already correct in DB: ${finalSlug}`);
+      } else {
+        throw error;
+      }
+    }
   }
 
   return finalSlug;
