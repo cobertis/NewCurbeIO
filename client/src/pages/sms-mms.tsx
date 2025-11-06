@@ -97,6 +97,11 @@ export default function SmsMmsPage() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ message, mediaFile }: { message: string; mediaFile?: File }) => {
+      // Skip if this is a temporary thread (handled separately)
+      if (selectedThreadId?.startsWith('temp-')) {
+        return;
+      }
+      
       if (!selectedThread || activeNumbers.length === 0) {
         throw new Error("No phone number available");
       }
@@ -309,11 +314,11 @@ export default function SmsMmsPage() {
           ["/api/bulkvs/threads"],
           (old) => {
             if (!old) return [result.thread];
-            return [result.thread, ...old.filter(t => t.id !== selectedThreadId)];
+            return [result.thread, ...old.filter(t => !t.id.startsWith('temp-'))];
           }
         );
         
-        // Switch to real thread
+        // Switch to real thread and clear initial message
         setSelectedThreadId(result.thread.id);
         setInitialMessage("");
         
@@ -322,7 +327,8 @@ export default function SmsMmsPage() {
           description: "Conversation created successfully.",
         });
         
-        queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
+        // Invalidate queries to refresh data
+        await queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
       } catch (error) {
         toast({
           title: "Failed to send message",
