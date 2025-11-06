@@ -78,7 +78,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and BulkVS SMS Threads (excluding system users/employees). Features intelligent deduplication, advanced filtering, search functionality, CSV export (with SSN masking for non-superadmins), and role-based access control.
 
 ### System Design Choices
-Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities (`shared/phone.ts`) standardize phone number formatting across the application.
+Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities (`shared/phone.ts`) standardize phone number formatting across the application - ALL numbers stored in 11-digit format (with "1" prefix) for consistency with BulkVS API.
 
 ### Security Architecture
 - **Session Security:** `SESSION_SECRET` environment variable mandatory.
