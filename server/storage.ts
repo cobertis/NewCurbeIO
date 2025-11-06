@@ -6940,30 +6940,31 @@ export class DbStorage implements IStorage {
     });
     
     // Deduplicate contacts by priority: ssn → phone+dob → email → name+company
+    // IMPORTANT: All deduplication keys MUST include companyId to prevent mixing contacts between companies
     const deduplicationMap = new Map<string, UnifiedContact>();
     
     rawContacts.forEach(contact => {
       let key: string | null = null;
       
-      // Priority 1: SSN (if exists)
-      if (contact.ssn) {
-        key = `ssn:${contact.ssn}`;
+      // Priority 1: SSN + Company (if exists)
+      if (contact.ssn && contact.companyId) {
+        key = `ssn:${contact.ssn}:${contact.companyId}`;
       }
-      // Priority 2: Phone + DOB (if both exist)
-      else if (contact.phone && contact.dateOfBirth) {
-        key = `phone_dob:${contact.phone}:${contact.dateOfBirth}`;
+      // Priority 2: Phone + DOB + Company (if all exist)
+      else if (contact.phone && contact.dateOfBirth && contact.companyId) {
+        key = `phone_dob:${contact.phone}:${contact.dateOfBirth}:${contact.companyId}`;
       }
-      // Priority 3: Email (if exists)
-      else if (contact.email) {
-        key = `email:${contact.email.toLowerCase()}`;
+      // Priority 3: Email + Company (if both exist)
+      else if (contact.email && contact.companyId) {
+        key = `email:${contact.email.toLowerCase()}:${contact.companyId}`;
       }
-      // Priority 4: Name + Company (if both exist)
+      // Priority 4: Name + Company (if all exist)
       else if (contact.firstName && contact.lastName && contact.companyId) {
         key = `name_company:${contact.firstName.toLowerCase()}:${contact.lastName.toLowerCase()}:${contact.companyId}`;
       }
-      // Fallback: Use ID if no other key can be generated
+      // Fallback: Use ID + Company if no other key can be generated
       else {
-        key = `id:${contact.id}`;
+        key = `id:${contact.id}:${contact.companyId || 'no-company'}`;
       }
       
       // Merge if key exists, otherwise add new
