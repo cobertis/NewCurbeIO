@@ -19025,23 +19025,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       let userSlug = user.slug;
       if (!userSlug) {
         const { generateSlug } = await import("@shared/phone");
-        userSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
+        const baseSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
         
         // Ensure uniqueness by appending number if needed
         let counter = 1;
-        let finalSlug = userSlug;
-        while (true) {
-          const users = await storage.getUsersByCompany(user.companyId);
-          const slugExists = users.some(u => u.slug === finalSlug && u.id !== user.id);
-          if (!slugExists) break;
-          finalSlug = `${userSlug}-${counter}`;
+        let finalSlug = baseSlug;
+        const companyUsers = await storage.getUsersByCompany(user.companyId);
+        while (companyUsers.some(u => u.slug === finalSlug && u.id !== user.id)) {
+          finalSlug = `${baseSlug}-${counter}`;
           counter++;
         }
         
-        // Update user with slug
-        await storage.updateUser(user.id, { slug: finalSlug });
-        userSlug = finalSlug;
-        console.log(`[Webhook] Generated user slug: ${userSlug}`);
+        // Update user with unique slug
+        if (finalSlug) {
+          await storage.updateUser(user.id, { slug: finalSlug });
+          userSlug = finalSlug;
+          console.log(`[Webhook] Generated user slug: ${userSlug}`);
+        } else {
+          throw new Error("Failed to generate valid user slug");
+        }
       }
       
       // Generate secure webhook token
@@ -19363,8 +19365,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Cancel Stripe subscription if exists
       if (phoneNumber.stripeSubscriptionId) {
         try {
+          const { stripe } = await import("./stripe");
           console.log(`[STRIPE] Canceling subscription ${phoneNumber.stripeSubscriptionId} for phone number ${phoneNumber.did}`);
-          await stripeClient.subscriptions.cancel(phoneNumber.stripeSubscriptionId);
+          await stripe.subscriptions.cancel(phoneNumber.stripeSubscriptionId);
         } catch (stripeError: any) {
           console.error(`[STRIPE] Error canceling subscription:`, stripeError);
           // Continue with deactivation even if Stripe cancellation fails
@@ -19529,23 +19532,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         let userSlug = user.slug;
         if (!userSlug) {
           const { generateSlug } = await import("@shared/phone");
-          userSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
+          const baseSlug = generateSlug(`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0]);
           
           // Ensure uniqueness by appending number if needed
           let counter = 1;
-          let finalSlug = userSlug;
-          while (true) {
-            const users = await storage.getUsersByCompany(user.companyId);
-            const slugExists = users.some(u => u.slug === finalSlug && u.id !== user.id);
-            if (!slugExists) break;
-            finalSlug = `${userSlug}-${counter}`;
+          let finalSlug = baseSlug;
+          const companyUsers = await storage.getUsersByCompany(user.companyId);
+          while (companyUsers.some(u => u.slug === finalSlug && u.id !== user.id)) {
+            finalSlug = `${baseSlug}-${counter}`;
             counter++;
           }
           
-          // Update user with slug
-          await storage.updateUser(user.id, { slug: finalSlug });
-          userSlug = finalSlug;
-          console.log(`[Webhook] Generated user slug: ${userSlug}`);
+          // Update user with unique slug
+          if (finalSlug) {
+            await storage.updateUser(user.id, { slug: finalSlug });
+            userSlug = finalSlug;
+            console.log(`[Webhook] Generated user slug: ${userSlug}`);
+          } else {
+            throw new Error("Failed to generate valid user slug");
+          }
         }
         
         // Generate new webhook token and name (fresh for reactivation)
