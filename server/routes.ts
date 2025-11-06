@@ -19097,25 +19097,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log(`[BulkVS] Phone number ${did} created in database, starting activation...`);
       
-      // Activate number: SMS/MMS, webhook, CNAM, campaign, call forwarding
+      // Activate number: Single API call configures SMS/MMS, webhook, CNAM, campaign, call forwarding
       try {
         const activationResult = await bulkVSClient.activateNumber({
           did,
           companyName: company.name,
-          webhookUrl,
+          webhookName, // Webhook name (webhook already created above)
           callForwardNumber: null, // No call forwarding by default
         });
-        
-        // Assign webhook to the phone number
-        console.log(`[Webhook] Assigning webhook "${webhookName}" to phone number ${did}...`);
-        try {
-          await bulkVSClient.assignWebhookToNumber(did, webhookName);
-          console.log(`[Webhook] ✓ Webhook assigned to phone number successfully`);
-        } catch (assignError: any) {
-          console.error(`[Webhook] Failed to assign webhook to number:`, assignError.message);
-          // Log warning but don't fail the whole process
-          activationResult.warnings.push(`Webhook assignment failed: ${assignError.message}`);
-        }
         
         // Update database with activation results
         phoneNumber = await storage.updateBulkvsPhoneNumber(phoneNumber.id, {
@@ -19585,25 +19574,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           throw new Error(`Failed to create webhook in BulkVS: ${webhookError.message}`);
         }
 
-        // Activate number: SMS/MMS, webhook, CNAM, campaign, call forwarding
+        // Activate number: Single API call configures SMS/MMS, webhook, CNAM, campaign, call forwarding
         try {
           const activationResult = await bulkVSClient.activateNumber({
             did: phoneNumber.did,
             companyName: company.name,
-            webhookUrl,
+            webhookName, // Webhook name (webhook already created above)
             callForwardNumber: phoneNumber.callForwardEnabled ? phoneNumber.callForwardNumber : null,
           });
-
-          // Assign webhook to the phone number
-          console.log(`[Webhook] Assigning webhook "${webhookName}" to phone number ${phoneNumber.did}...`);
-          try {
-            await bulkVSClient.assignWebhookToNumber(phoneNumber.did, webhookName);
-            console.log(`[Webhook] ✓ Webhook assigned to phone number successfully`);
-          } catch (assignError: any) {
-            console.error(`[Webhook] Failed to assign webhook to number:`, assignError.message);
-            // Log warning but don't fail the whole process
-            activationResult.warnings.push(`Webhook assignment failed: ${assignError.message}`);
-          }
 
           // Update database with activation results
           updatedPhoneNumber = await storage.updateBulkvsPhoneNumber(id, {

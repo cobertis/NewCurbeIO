@@ -69,13 +69,13 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
         - **Chat Page:** Special empty state when user has no active number but has cancelled number, showing previously cancelled number with "Reactivate" (primary) and "Get a New Number" (secondary) buttons
         - Both methods create new Stripe subscription and restore service. One-number-per-user limit enforced.
     -   **Phone Settings:** View number, configuration, call forwarding, billing info, deactivation.
-    -   **Webhook System:** Automated webhook creation and assignment during number provisioning. Individual URLs per user: `{domain}/{company-slug}/{user-slug}/{webhook-token}`. Auto-generated secure tokens (32 chars). Domain auto-detection (dev: REPLIT_DOMAINS, prod: app.curbe.io). Webhooks created via BulkVS API (PUT /webHooks) and assigned to numbers (POST /tnRecord with Webhook field).
+    -   **Webhook System:** Automated webhook creation and assignment during number provisioning/reactivation. Individual URLs per user: `{domain}/{company-slug}/{user-slug}/{webhook-token}`. Auto-generated secure tokens (32 chars). Domain auto-detection (dev: REPLIT_DOMAINS, prod: app.curbe.io). Two-step process: (1) Create webhook via PUT /webHooks, (2) Configure number with single POST /tnRecord call that sets SMS, MMS, Webhook, CNAM, Campaign, and Call Forward all at once.
     -   **CNAM (Caller ID Name):** Manual configuration via Phone Settings UI with real-time validation (1-15 alphanumeric characters), auto-sanitization, and character counter. Updates pushed to BulkVS API via POST /tnRecord endpoint using "Lidb" field (Line Information Database).
     -   **Call Forwarding:** Configurable via BulkVS API.
     -   **BulkVS API Integration:** 
         - **messageSend endpoint:** POST /api/v1.0/messageSend with fields {From: "11-digit", To: ["11-digit"], Message: "text", MediaURLs: ["url"]}
         - **Campaign ID (10DLC):** Campaign ID "C3JXHXH" is configured ONCE on the phone number via POST /tnRecord during provisioning, NOT sent with each message
-        - **Phone Configuration:** All phone settings (Tcr, Lidb, Call Forward, Sms, Mms, Webhook) updated via POST /tnRecord endpoint
+        - **Phone Configuration:** Single POST /tnRecord call configures ALL settings at once: TN (number), Sms (true), Mms (true), Webhook (name), Lidb (CNAM), Tcr (campaign), Call Forward (optional). No separate calls needed - everything in one atomic operation.
     -   **Security:** User-scoped data isolation, webhook signature validation, E.164 phone number normalization.
 -   **Billing & Stripe Integration:** Automated customer/subscription management.
     -   **Phone Number in Invoices:** All Stripe invoices automatically include company phone numbers in E.164 format (+13054883848).
