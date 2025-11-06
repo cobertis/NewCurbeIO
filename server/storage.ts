@@ -6825,14 +6825,8 @@ export class DbStorage implements IStorage {
     if (params?.userId) policyConditions.push(eq(policies.agentId, params.userId));
     const policyWhere = policyConditions.length > 0 ? and(...policyConditions) : sql`1=1`;
 
-    // Build where conditions for threads
-    const threadConditions = [];
-    if (params?.companyId) threadConditions.push(eq(bulkvsThreads.companyId, params.companyId));
-    if (params?.userId) threadConditions.push(eq(bulkvsThreads.userId, params.userId));
-    const threadWhere = threadConditions.length > 0 ? and(...threadConditions) : sql`1=1`;
-
-    // Load data in parallel from all sources (EXCLUDING users/employees)
-    const [quoteMembersData, policyMembersData, bulkvsThreadsData, companiesData] = await Promise.all([
+    // Load data in parallel from all sources (EXCLUDING users/employees and SMS threads)
+    const [quoteMembersData, policyMembersData, companiesData] = await Promise.all([
       // Quote members with quote info
       db.select({
         member: quoteMembers,
@@ -6850,11 +6844,6 @@ export class DbStorage implements IStorage {
         .from(policyMembers)
         .innerJoin(policies, eq(policyMembers.policyId, policies.id))
         .where(policyWhere),
-      
-      // BulkVS threads (SMS contacts only)
-      db.select()
-        .from(bulkvsThreads)
-        .where(threadWhere),
       
       // Load all companies for mapping
       db.select().from(companies)
@@ -6963,38 +6952,8 @@ export class DbStorage implements IStorage {
       });
     });
     
-    // Map BulkVS threads (SMS contacts)
-    // For SMS-only contacts, thread.displayName is often just a phone number or caller ID
-    // We store it as firstName so the helper can process it consistently
-    bulkvsThreadsData.forEach(thread => {
-      const companyName = companyMap.get(thread.companyId)?.name || null;
-      
-      rawContacts.push({
-        id: thread.id,
-        firstName: thread.displayName || null,
-        lastName: null,
-        displayName: generateDisplayName(thread.displayName, null, companyName),
-        email: null,
-        phone: normalizePhone(thread.externalPhone),
-        ssn: null,
-        dateOfBirth: null,
-        status: thread.isArchived ? ['archived'] : ['active'],
-        productType: [],
-        origin: ['sms'],
-        companyId: thread.companyId,
-        companyName,
-        sourceMetadata: [{
-          type: 'sms',
-          id: thread.id,
-          details: {
-            threadId: thread.id,
-            labels: thread.labels,
-            isPinned: thread.isPinned,
-            unreadCount: thread.unreadCount,
-          }
-        }]
-      });
-    });
+    // NOTE: BulkVS threads (SMS contacts) are NOT included in unified contacts
+    // They are managed separately in the Chat interface only
     
     // Deduplicate contacts by priority: ssn → phone+dob → email → name+company
     // IMPORTANT: All deduplication keys MUST include companyId to prevent mixing contacts between companies
