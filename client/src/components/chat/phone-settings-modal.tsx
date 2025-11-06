@@ -238,49 +238,6 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-6">
-              {/* Configuration */}
-              <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Configuration</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">10DLC Campaign ID</span>
-                <Badge variant="secondary" data-testid="campaign-id">
-                  {phoneNumber.campaignId || "N/A"}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">SMS Enabled</span>
-                {phoneNumber.smsEnabled ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600" data-testid="sms-enabled" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" data-testid="sms-disabled" />
-                )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">MMS Enabled</span>
-                {phoneNumber.mmsEnabled ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600" data-testid="mms-enabled" />
-                ) : (
-                  <XCircle className="h-5 w-5 text-red-600" data-testid="mms-disabled" />
-                )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status</span>
-                <Badge 
-                  variant={phoneNumber.status === "active" ? "default" : "secondary"}
-                  data-testid="phone-status"
-                >
-                  {phoneNumber.status}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
               {/* CNAM (Caller ID Name) Configuration */}
               <Card>
                 <CardHeader>
@@ -465,6 +422,49 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
 
             {/* Right Column */}
             <div className="space-y-6">
+              {/* Configuration */}
+              <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Configuration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">10DLC Campaign ID</span>
+                <Badge variant="secondary" data-testid="campaign-id">
+                  {phoneNumber.campaignId || "N/A"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">SMS Enabled</span>
+                {phoneNumber.smsEnabled ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" data-testid="sms-enabled" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" data-testid="sms-disabled" />
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">MMS Enabled</span>
+                {phoneNumber.mmsEnabled ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600" data-testid="mms-enabled" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600" data-testid="mms-disabled" />
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Badge 
+                  variant={phoneNumber.status === "active" ? "default" : "secondary"}
+                  data-testid="phone-status"
+                >
+                  {phoneNumber.status}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
               {/* Billing Information */}
               <Card>
             <CardHeader>
