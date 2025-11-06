@@ -139,13 +139,12 @@ export function MessagePanel({
   };
 
   const groupedMessages = messages.reduce((groups, message) => {
-    // CRITICAL: Parse ISO timestamp explicitly as UTC, THEN convert to user's timezone
-    // This prevents double timezone conversion that causes "Yesterday" for today's messages
+    // Parse timestamptz (from database) and convert to user's timezone
     const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    // Parse as ISO UTC string explicitly to avoid browser local time interpretation
-    const utcDate = parseISO(new Date(message.createdAt).toISOString());
-    const zonedDate = toZonedTime(utcDate, tz);
+    // Convert Date to ISO string, then parse and convert to timezone
+    const dateStr = message.createdAt instanceof Date ? message.createdAt.toISOString() : message.createdAt;
+    const zonedDate = toZonedTime(parseISO(dateStr), tz);
     const dateKey = format(zonedDate, "yyyy-MM-dd");
     
     if (!groups[dateKey]) {

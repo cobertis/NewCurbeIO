@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, MessageSquarePlus, Pin, BellOff, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { formatForDisplay } from "@shared/phone";
 import type { BulkvsThread, UnifiedContact } from "@shared/schema";
@@ -95,10 +95,9 @@ export function ThreadList({
   const formatTimestamp = (date: Date | string | null | undefined) => {
     if (!date) return "";
     
-    // Convert UTC date to user's timezone
+    // Parse timestamptz (from database) and convert to user's timezone
     const tz = userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const utcDate = new Date(date);
-    const zonedDate = toZonedTime(utcDate, tz);
+    const zonedDate = toZonedTime(parseISO(date.toString()), tz);
     const now = toZonedTime(new Date(), tz);
     
     // Check if same day (in user's timezone)
