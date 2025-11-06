@@ -1,8 +1,9 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Check, CheckCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { BulkvsMessage } from "@shared/schema";
+import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b842ef.png";
 
 interface MessageBubbleProps {
   message: BulkvsMessage;
@@ -49,9 +50,13 @@ export function MessageBubble({ message, isOutbound, showAvatar = true, contactN
     >
       {!isOutbound && showAvatar && (
         <Avatar className="h-8 w-8 flex-shrink-0" data-testid="avatar-inbound">
-          <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-            {getInitials(contactName)}
-          </AvatarFallback>
+          {contactName ? (
+            <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+              {getInitials(contactName)}
+            </AvatarFallback>
+          ) : (
+            <AvatarImage src={defaultAvatar} alt="Contact" className="object-cover" />
+          )}
         </Avatar>
       )}
 

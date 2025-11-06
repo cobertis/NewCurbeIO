@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { UserPlus, Ban, Trash2, X, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BulkvsThread, BulkvsMessage } from "@shared/schema";
+import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b842ef.png";
 
 interface ContactDetailsProps {
   thread: BulkvsThread | null;
@@ -98,9 +99,13 @@ export function ContactDetails({
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 flex flex-col items-center text-center">
           <Avatar className="h-24 w-24 mb-3" data-testid="avatar-contact">
-            <AvatarFallback className="bg-muted text-muted-foreground text-2xl">
-              {getInitials(thread.displayName ?? undefined)}
-            </AvatarFallback>
+            {thread.displayName ? (
+              <AvatarFallback className="bg-muted text-muted-foreground text-2xl">
+                {getInitials(thread.displayName)}
+              </AvatarFallback>
+            ) : (
+              <AvatarImage src={defaultAvatar} alt="Contact" className="object-cover" />
+            )}
           </Avatar>
           <h3 className="font-semibold text-lg" data-testid="text-contact-name">
             {thread.displayName ?? "Unknown Contact"}

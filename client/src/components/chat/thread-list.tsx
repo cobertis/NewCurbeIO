@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
 import { formatForDisplay } from "@shared/phone";
 import type { BulkvsThread } from "@shared/schema";
+import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b842ef.png";
 
 interface ThreadListProps {
   threads: BulkvsThread[];
@@ -152,9 +153,13 @@ export function ThreadList({
                 data-testid={`thread-${thread.id}`}
               >
                 <Avatar className="h-12 w-12 flex-shrink-0">
-                  <AvatarFallback className="bg-muted text-muted-foreground">
-                    {getInitials(thread.displayName ?? undefined)}
-                  </AvatarFallback>
+                  {thread.displayName ? (
+                    <AvatarFallback className="bg-muted text-muted-foreground">
+                      {getInitials(thread.displayName)}
+                    </AvatarFallback>
+                  ) : (
+                    <AvatarImage src={defaultAvatar} alt="Contact" />
+                  )}
                 </Avatar>
 
                 <div className="flex-1 min-w-0">
