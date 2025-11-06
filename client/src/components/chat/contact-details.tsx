@@ -45,6 +45,13 @@ export function ContactDetails({
       .slice(0, 2);
   };
 
+  const isPhoneNumber = (text?: string) => {
+    if (!text) return false;
+    // Check if text is primarily digits (phone number)
+    const digitsOnly = text.replace(/\D/g, "");
+    return digitsOnly.length >= 10;
+  };
+
   const formatPhone = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
     if (cleaned.length === 11 && cleaned.startsWith("1")) {
@@ -99,7 +106,7 @@ export function ContactDetails({
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 flex flex-col items-center text-center">
           <Avatar className="h-24 w-24 mb-3" data-testid="avatar-contact">
-            {thread.displayName ? (
+            {thread.displayName && !isPhoneNumber(thread.displayName) ? (
               <AvatarFallback className="bg-muted text-muted-foreground text-2xl">
                 {getInitials(thread.displayName)}
               </AvatarFallback>

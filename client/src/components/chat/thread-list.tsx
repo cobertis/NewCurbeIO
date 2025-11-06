@@ -73,6 +73,13 @@ export function ThreadList({
       .slice(0, 2);
   };
 
+  const isPhoneNumber = (text?: string) => {
+    if (!text) return false;
+    // Check if text is primarily digits (phone number)
+    const digitsOnly = text.replace(/\D/g, "");
+    return digitsOnly.length >= 10;
+  };
+
   const formatTimestamp = (date: Date | string | null | undefined) => {
     if (!date) return "";
     const d = new Date(date);
@@ -153,7 +160,7 @@ export function ThreadList({
                 data-testid={`thread-${thread.id}`}
               >
                 <Avatar className="h-12 w-12 flex-shrink-0">
-                  {thread.displayName ? (
+                  {thread.displayName && !isPhoneNumber(thread.displayName) ? (
                     <AvatarFallback className="bg-muted text-muted-foreground">
                       {getInitials(thread.displayName)}
                     </AvatarFallback>

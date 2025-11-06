@@ -40,6 +40,13 @@ export function MessageBubble({ message, isOutbound, showAvatar = true, contactN
       .slice(0, 2);
   };
 
+  const isPhoneNumber = (text?: string) => {
+    if (!text) return false;
+    // Check if text is primarily digits (phone number)
+    const digitsOnly = text.replace(/\D/g, "");
+    return digitsOnly.length >= 10;
+  };
+
   return (
     <div
       className={cn(
@@ -50,7 +57,7 @@ export function MessageBubble({ message, isOutbound, showAvatar = true, contactN
     >
       {!isOutbound && showAvatar && (
         <Avatar className="h-8 w-8 flex-shrink-0" data-testid="avatar-inbound">
-          {contactName ? (
+          {contactName && !isPhoneNumber(contactName) ? (
             <AvatarFallback className="bg-muted text-muted-foreground text-xs">
               {getInitials(contactName)}
             </AvatarFallback>
