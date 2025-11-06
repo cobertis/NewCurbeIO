@@ -19721,6 +19721,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         to: thread!.externalPhone,
         body: body || undefined,
         mediaUrl: mediaUrl || undefined,
+        campaignId: phoneNumber.campaignId || undefined,
       });
       
       console.log("[BulkVS] Message sent:", sendResult);

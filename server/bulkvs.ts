@@ -189,6 +189,7 @@ class BulkVSClient {
     to: string;
     body?: string;
     mediaUrl?: string;
+    campaignId?: string;
   }) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
@@ -204,6 +205,7 @@ class BulkVSClient {
       // - To: ARRAY of 11-digit numbers (e.g., ["13105551212", "13125551213"])
       // - Message: text content
       // - MediaURLs: optional array of media URLs
+      // - Tcr: Campaign ID (required for A2P messaging)
       const bulkvsPayload: any = {
         From: normalizedFrom,
         To: [normalizedTo], // Must be an array
@@ -217,6 +219,12 @@ class BulkVSClient {
       // Add MediaURLs if mediaUrl is provided
       if (payload.mediaUrl) {
         bulkvsPayload.MediaURLs = [payload.mediaUrl];
+      }
+      
+      // Add Campaign ID if provided (required for compliance)
+      if (payload.campaignId) {
+        bulkvsPayload.Tcr = payload.campaignId;
+        console.log(`[BulkVS] Using campaign ID: ${payload.campaignId}`);
       }
       
       const response = await this.client.post("/messageSend", bulkvsPayload);
