@@ -19391,18 +19391,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Disassociate webhook and clear call forwarding from BulkVS
+      // NOTE: We keep the webhook in BulkVS for reactivation - just disassociate it
       try {
-        // Step 1: Disassociate webhook and clear call forwarding from number
         console.log(`[BulkVS] Clearing webhook and call forwarding from ${phoneNumber.did}`);
         await bulkVSClient.clearWebhook(phoneNumber.did);
         console.log(`[BulkVS] ✓ Webhook and call forwarding cleared from number`);
-        
-        // Step 2: Delete the webhook if exists
-        if (phoneNumber.webhookName) {
-          console.log(`[BulkVS] Deleting webhook ${phoneNumber.webhookName}`);
-          await bulkVSClient.deleteWebhook(phoneNumber.webhookName);
-          console.log(`[BulkVS] ✓ Webhook deleted successfully`);
-        }
+        console.log(`[BulkVS] Keeping webhook "${phoneNumber.webhookName}" for future reactivation`);
       } catch (webhookError: any) {
         console.error(`[BulkVS] Error managing webhook:`, webhookError.message);
         // Continue with deactivation even if webhook management fails
@@ -19461,44 +19455,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       
-      // ===== STEP 1: PREPARE WEBHOOK DATA =====
-      const { generateSecureToken, getBaseDomain } = await import("@shared/phone");
-      const webhookToken = generateSecureToken(32);
-      const baseDomain = getBaseDomain();
-      const webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
-      const webhookName = `webhook-${user.id}-${Date.now()}`;
+      // ===== STEP 1: REUSE EXISTING WEBHOOK (NO NEW WEBHOOK CREATION) =====
+      // The webhook already exists in the database and in BulkVS from previous activation
+      const webhookName = phoneNumber.webhookName;
+      const webhookToken = phoneNumber.webhookToken;
       
-      console.log(`[REACTIVATION] Creating webhook: ${webhookName}`);
-      console.log(`[REACTIVATION] Webhook URL: ${webhookUrl}`);
-      
-      try {
-        await bulkVSClient.createOrUpdateWebhook({
-          webhookName,
-          webhookUrl,
-          description: `${user.firstName} ${user.lastName} - ${company.name}`,
-        });
-        console.log(`[REACTIVATION] ✓ Webhook created successfully`);
-      } catch (webhookError: any) {
-        console.error(`[REACTIVATION] Webhook creation failed:`, webhookError.message);
+      if (!webhookName || !webhookToken) {
+        console.error(`[REACTIVATION] Missing webhook data in database`);
         return res.status(500).json({ 
-          message: "Failed to create webhook in BulkVS. No charge made.", 
-          error: webhookError.message 
+          message: "Invalid phone number data. Missing webhook information.", 
         });
       }
+      
+      console.log(`[REACTIVATION] Reusing existing webhook: ${webhookName}`);
+      console.log(`[REACTIVATION] Webhook token: ${webhookToken}`);
+      console.log(`[REACTIVATION] No need to create new webhook - using existing one from BulkVS`);
+      
+      // Wait 1 second before activating
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Wait 2 seconds for BulkVS to propagate the webhook
-      console.log(`[REACTIVATION] Waiting 2s for webhook propagation...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // List webhooks to verify it was created
-      try {
-        console.log(`[REACTIVATION] Verifying webhook exists in BulkVS...`);
-        await bulkVSClient.listWebhooks();
-      } catch (listError: any) {
-        console.error(`[REACTIVATION] Warning: Could not list webhooks:`, listError.message);
-      }
-
-      // ===== STEP 3: ACTIVATE NUMBER IN BULKVS (NO CHARGE YET) =====
+      // ===== STEP 2: ACTIVATE NUMBER IN BULKVS (NO CHARGE YET) =====
       console.log(`[REACTIVATION] Activating number ${phoneNumber.did} in BulkVS...`);
       let activationResult;
       
