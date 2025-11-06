@@ -806,6 +806,7 @@ export interface IStorage {
   getBulkvsPhoneNumber(id: string): Promise<BulkvsPhoneNumber | undefined>;
   getBulkvsPhoneNumberByDid(did: string): Promise<BulkvsPhoneNumber | undefined>;
   getBulkvsPhoneNumbersByUser(userId: string): Promise<BulkvsPhoneNumber[]>;
+  getBulkvsPhoneNumbersByCompany(companyId: string): Promise<BulkvsPhoneNumber[]>;
   createBulkvsPhoneNumber(data: InsertBulkvsPhoneNumber): Promise<BulkvsPhoneNumber>;
   updateBulkvsPhoneNumber(id: string, data: Partial<InsertBulkvsPhoneNumber>): Promise<BulkvsPhoneNumber | undefined>;
   
@@ -6582,6 +6583,14 @@ export class DbStorage implements IStorage {
       .select()
       .from(bulkvsPhoneNumbers)
       .where(eq(bulkvsPhoneNumbers.userId, userId))
+      .orderBy(desc(bulkvsPhoneNumbers.createdAt));
+  }
+  
+  async getBulkvsPhoneNumbersByCompany(companyId: string): Promise<BulkvsPhoneNumber[]> {
+    return db
+      .select()
+      .from(bulkvsPhoneNumbers)
+      .where(eq(bulkvsPhoneNumbers.companyId, companyId))
       .orderBy(desc(bulkvsPhoneNumbers.createdAt));
   }
   
