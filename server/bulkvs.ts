@@ -290,23 +290,34 @@ class BulkVSClient {
     
     try {
       // Normalize DID to 11-digit format (1NXXNXXXXXX) for BulkVS API
-      const tn = formatForBulkVS(did);
-      const callForward = forwardNumber ? formatForBulkVS(forwardNumber) : "";
+      const normalizedDid = formatForBulkVS(did);
+      const normalizedForwardNumber = forwardNumber ? formatForBulkVS(forwardNumber) : null;
       
-      console.log(`[BulkVS] Updating call forwarding for ${tn}...`);
-      console.log(`[BulkVS] Forward to: ${callForward || "DISABLED"}`);
+      console.log(`[BulkVS] Updating call forwarding for ${normalizedDid}...`);
+      console.log(`[BulkVS] Forward to: ${normalizedForwardNumber || "DISABLED"}`);
       
-      // BulkVS API: POST /tnRecord to update telephone number record
-      const response = await this.client.post("/tnRecord", {
-        TN: tn,
-        "Call Forward": callForward, // Empty string disables call forwarding
-      });
+      // Use /tnRecord endpoint to update call forwarding
+      // According to BulkVS API docs, the field is "Call Forward"
+      const requestBody: any = {
+        TN: normalizedDid,
+      };
       
-      console.log("[BulkVS] Call forwarding updated successfully:", response.data);
+      // Set "Call Forward" field - null or empty string disables forwarding
+      if (normalizedForwardNumber) {
+        requestBody["Call Forward"] = normalizedForwardNumber;
+      } else {
+        requestBody["Call Forward"] = null; // Explicitly disable
+      }
+      
+      console.log(`[BulkVS] Request body:`, JSON.stringify(requestBody));
+      
+      const response = await this.client.post("/tnRecord", requestBody);
+      
+      console.log("[BulkVS] ✓ Call forwarding updated successfully");
       return { 
         success: true, 
-        forwardNumber: callForward,
-        message: callForward 
+        forwardNumber: normalizedForwardNumber,
+        message: normalizedForwardNumber 
           ? `Call forwarding enabled to ${forwardNumber}` 
           : "Call forwarding disabled"
       };
