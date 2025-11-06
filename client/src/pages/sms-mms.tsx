@@ -333,12 +333,51 @@ export default function SmsMmsPage() {
         // This prevents UI from getting stuck on the temporary thread
         const realThreadId = sentMessage.threadId;
         
-        // Invalidate queries to fetch the full thread details (non-blocking)
+        // CRITICAL: Update cache SYNCHRONOUSLY before changing selectedThreadId
+        // This prevents the "Select a conversation" flash when switching threads
+        queryClient.setQueryData<BulkvsThread[]>(
+          ["/api/bulkvs/threads"],
+          (old) => {
+            if (!old) return old;
+            
+            // Remove temporary thread and add the real thread with proper displayName
+            const withoutTemp = old.filter(t => !t.id.startsWith('temp-'));
+            
+            // Create the real thread object with displayName from temp thread
+            const realThread: BulkvsThread = {
+              id: realThreadId,
+              userId: currentThread.userId,
+              companyId: currentThread.companyId,
+              phoneNumberId: currentThread.phoneNumberId,
+              externalPhone: currentThread.externalPhone,
+              displayName: currentThread.displayName, // Preserve displayName from temp thread
+              lastMessageAt: new Date(),
+              lastMessagePreview: message.substring(0, 100),
+              unreadCount: 0,
+              isPinned: false,
+              isMuted: false,
+              isArchived: false,
+              labels: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+            
+            return [realThread, ...withoutTemp];
+          }
+        );
+        
+        // Add the sent message to the messages cache
+        queryClient.setQueryData<BulkvsMessage[]>(
+          ["/api/bulkvs/threads", realThreadId, "messages"],
+          [sentMessage]
+        );
+        
+        // NOW switch to real thread (cache is already updated)
+        setSelectedThreadId(realThreadId);
+        
+        // Invalidate queries to fetch the latest data from server (non-blocking)
         queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
         queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads", realThreadId, "messages"] });
-        
-        // Switch to real thread NOW (deterministic, no waiting)
-        setSelectedThreadId(realThreadId);
         
         toast({
           title: "Message sent",
