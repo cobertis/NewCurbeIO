@@ -19793,9 +19793,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         providerMsgId = payload.RefId || payload.id || null;
         
         // Handle MediaURL(s) - BulkVS can send as singular or plural, string or array
+        // According to official docs, MMS can contain:
+        // 1. .smil file (not useful - should be filtered out)
+        // 2. .jpg/.png file (the actual image)
+        // 3. .txt file (message text as attachment)
         if (payload.MediaURLs && Array.isArray(payload.MediaURLs) && payload.MediaURLs.length > 0) {
-          mediaUrl = payload.MediaURLs[0];
           console.log("[BulkVS Webhook] OLD FORMAT - MediaURLs array:", payload.MediaURLs);
+          
+          // Filter and prioritize media files
+          const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+          const videoExtensions = ['.mp4', '.mov', '.avi', '.quicktime'];
+          
+          // Find image files (highest priority)
+          const imageFile = payload.MediaURLs.find(url => 
+            imageExtensions.some(ext => url.toLowerCase().endsWith(ext))
+          );
+          
+          // Find video files (second priority)
+          const videoFile = payload.MediaURLs.find(url => 
+            videoExtensions.some(ext => url.toLowerCase().endsWith(ext))
+          );
+          
+          // Find text files (for extracting message body)
+          const textFile = payload.MediaURLs.find(url => url.toLowerCase().endsWith('.txt'));
+          
+          // Set mediaUrl to image or video (ignore .smil files)
+          mediaUrl = imageFile || videoFile || null;
+          
+          // If there's a .txt file, we should download it to get the message body
+          // For now, we'll just note it in the logs
+          if (textFile) {
+            console.log("[BulkVS Webhook] Text file detected:", textFile);
+            // TODO: Download .txt file and set as body if Message field is empty
+          }
+          
+          // Filter out .smil files from the list
+          const filteredMediaUrls = payload.MediaURLs.filter(url => 
+            !url.toLowerCase().endsWith('.smil')
+          );
+          
+          console.log("[BulkVS Webhook] Filtered media (excluding .smil):", filteredMediaUrls);
+          
         } else if (payload.MediaUrl) {
           mediaUrl = payload.MediaUrl;
           console.log("[BulkVS Webhook] OLD FORMAT - MediaUrl singular:", payload.MediaUrl);
