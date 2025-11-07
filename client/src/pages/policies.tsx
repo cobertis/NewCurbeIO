@@ -109,6 +109,21 @@ const formatSSN = (value: string) => {
   }
 };
 
+// Format Phone Number with automatic formatting (XXX) XXX-XXXX
+const formatPhoneNumber = (value: string) => {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, "");
+  
+  // Format as (XXX) XXX-XXXX
+  if (digits.length <= 3) {
+    return digits;
+  } else if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  } else {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
+};
+
 // Helper to format date for input fields - just returns the yyyy-MM-dd string as-is
 const formatDateForInput = (date: string | null | undefined): string => {
   if (!date) return '';
