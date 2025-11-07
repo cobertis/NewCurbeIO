@@ -3721,7 +3721,6 @@ export default function PoliciesPage() {
 
   // Determine if we're viewing a specific quote
   const isViewingQuote = params?.id && params.id !== 'new';
-  console.log('[DEBUG] isViewingQuote:', isViewingQuote, 'params:', params);
   
   // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data in one request
   const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
@@ -3741,18 +3740,10 @@ export default function PoliciesPage() {
     queryKey: ['/api/policies', params?.id, 'detail'],
     enabled: !!params?.id && params?.id !== 'new',
   });
-  
-  // DEBUG: Log quoteDetail
-  if (params?.id && params.id !== 'new') {
-    console.log('[POLICY QUERY DEBUG] params.id:', params.id);
-    console.log('[POLICY QUERY DEBUG] query enabled:', !!params?.id && params?.id !== 'new');
-    console.log('[POLICY QUERY DEBUG] isLoadingQuoteDetail:', isLoadingQuoteDetail);
-    console.log('[POLICY QUERY DEBUG] quoteDetail:', quoteDetail);
-  }
 
-  // Use the quote from unified detail if available, otherwise fallback to list (for backward compatibility)
-  const viewingQuote = quoteDetail?.policy || quotesData?.policies?.find(q => q.id === params?.id);
-  const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
+  // CRITICAL: Only use detail query data - never fall back to list (list doesn't have income/immigration)
+  const viewingQuote = quoteDetail?.policy;
+  const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods || [] } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
   
   // Initialize policyInfo when viewingQuote changes
