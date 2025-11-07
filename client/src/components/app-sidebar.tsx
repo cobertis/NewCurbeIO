@@ -223,6 +223,11 @@ const marketingMenuItems = [
     url: "/email-marketing",
     icon: Inbox,
   },
+  {
+    title: "Firmas de Email",
+    url: "/email-signatures",
+    icon: Mail,
+  },
 ];
 
 const configurationMenuItems = [

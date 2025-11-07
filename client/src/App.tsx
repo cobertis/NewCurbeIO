@@ -68,6 +68,7 @@ import IntegrationsPage from "@/pages/integrations";
 import Leads from "@/pages/leads";
 import Tasks from "@/pages/tasks";
 import NotFound from "@/pages/not-found";
+import EmailSignatures from "@/pages/email-signatures";
 
 // Helper function to get page title from route
 const getPageTitle = (path: string): string => {
@@ -102,6 +103,7 @@ const getPageTitle = (path: string): string => {
     '/tickets': 'Support Tickets',
     '/email-configuration': 'Email Configuration',
     '/sms': 'SMS',
+    '/email-signatures': 'Generador de Firmas de Email',
   };
   
   if (path.startsWith('/campaigns/') && path.includes('/stats')) {
@@ -1286,6 +1288,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <EmailConfiguration />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/email-signatures">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <EmailSignatures />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
