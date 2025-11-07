@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { Check, CheckCheck } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import type { BulkvsMessage } from "@shared/schema";
 import defaultAvatar from "@assets/generated_images/Generic_user_avatar_icon_55b842ef.png";
 
@@ -13,6 +13,12 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, isOutbound, showAvatar = true, contactName }: MessageBubbleProps) {
+  // Format time in 12-hour format with client timezone
+  const formatTime = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return format(dateObj, 'h:mm a'); // e.g., "10:43 p.m."
+  };
+
   const getStatusIcon = () => {
     if (message.direction === "inbound") return null;
     
@@ -89,12 +95,12 @@ export function MessageBubble({ message, isOutbound, showAvatar = true, contactN
 
         <div
           className={cn(
-            "flex items-center gap-1 mt-1 text-xs",
+            "flex items-center justify-end gap-1 mt-1 text-xs",
             isOutbound ? "text-primary-foreground/70" : "text-muted-foreground"
           )}
         >
           <span data-testid="message-timestamp">
-            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: false })}
+            {formatTime(message.createdAt)}
           </span>
           {getStatusIcon()}
         </div>
