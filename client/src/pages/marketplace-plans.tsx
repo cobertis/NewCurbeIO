@@ -520,20 +520,22 @@ export default function MarketplacePlansPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-4 sm:gap-6">
           {/* Left Sidebar: Household Information */}
           <div className="space-y-4">
+            {/* Back to Policy/Quote Button - ALWAYS VISIBLE */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setLocation(`/${basePath}/${quoteId}`)}
+              data-testid="button-back-to-quote"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to {isPolicy ? 'Policy' : 'Quote'}
+            </Button>
+
             {/* APTC Tax Credit Card */}
             {marketplacePlans && marketplacePlans.household_aptc > 0 && (
               <Card>
                 <CardContent className="p-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mb-3"
-                    onClick={() => setLocation(`/${basePath}/${quoteId}`)}
-                    data-testid="button-back-to-quote"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to {isPolicy ? 'Policy' : 'Quote'}
-                  </Button>
                   <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/40 dark:to-emerald-950/40 rounded-lg border-2 border-green-200 dark:border-green-800">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="h-8 w-8 rounded-full bg-green-600 dark:bg-green-700 flex items-center justify-center">
