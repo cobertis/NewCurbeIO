@@ -1010,12 +1010,14 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   });
 
   // Reset form whenever memberData changes (including when income/immigration data loads)
+  // Only reset form when sheet opens, not when data changes while editing
   useEffect(() => {
     if (open && memberData) {
       console.log('[EditMemberSheet] Resetting form with complete data:', memberData);
       editForm.reset(memberData);
     }
-  }, [open, memberData, editForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]); // Only depend on 'open', not memberData - prevents reset while editing
 
   // Reset tab to "basic" whenever member changes
   useEffect(() => {
@@ -3745,6 +3747,12 @@ export default function PoliciesPage() {
     totalHouseholdIncome: number;
   }>({
     queryKey: ['/api/policies', selectedPolicyId, 'detail'],
+    queryFn: async () => {
+      if (!selectedPolicyId) throw new Error('No policy selected');
+      const response = await fetch(`/api/policies/${selectedPolicyId}/detail`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch policy details');
+      return response.json();
+    },
     enabled: !!selectedPolicyId,
   });
 
