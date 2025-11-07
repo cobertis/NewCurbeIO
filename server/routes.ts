@@ -11980,6 +11980,64 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // GET /api/standalone-reminders - List standalone reminders
+  app.get("/api/standalone-reminders", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { status, priority, search } = req.query;
+
+      // Build company filter
+      const companyId = user.role === "superadmin" && req.query.companyId 
+        ? String(req.query.companyId) 
+        : user.companyId!;
+
+      // Get all reminders for the company
+      let reminders = await storage.getStandaloneRemindersByCompany(companyId);
+
+      // Apply filters
+      if (status && typeof status === 'string') {
+        reminders = reminders.filter(r => r.status === status);
+      }
+
+      if (priority && typeof priority === 'string') {
+        reminders = reminders.filter(r => r.priority === priority);
+      }
+
+      if (search && typeof search === 'string') {
+        const searchLower = search.toLowerCase();
+        reminders = reminders.filter(r => 
+          r.title.toLowerCase().includes(searchLower) ||
+          (r.description && r.description.toLowerCase().includes(searchLower))
+        );
+      }
+
+      // Enrich with creator data
+      const enrichedReminders = await Promise.all(
+        reminders.map(async (reminder) => {
+          const creator = await storage.getUser(reminder.createdBy);
+          return {
+            ...reminder,
+            creator: creator ? {
+              id: creator.id,
+              firstName: creator.firstName,
+              lastName: creator.lastName,
+              email: creator.email,
+            } : null,
+          };
+        })
+      );
+
+      res.json({ reminders: enrichedReminders });
+    } catch (error: any) {
+      console.error("Error fetching standalone reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
   // POST /api/calendar/events/reminder - Create standalone reminder event
   app.post("/api/calendar/events/reminder", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
