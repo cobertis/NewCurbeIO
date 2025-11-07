@@ -48,6 +48,13 @@ Implemented proper data readiness gating to prevent blank forms on first open:
 - Second and subsequent opens are instant due to React Query cache
 - Implementation in `client/src/pages/policies.tsx` lines 784, 879, 1019-1040, 1320
 
+**Policy Notes Query Fix (CRITICAL):**
+Fixed notes not displaying in policies detail page due to missing explicit queryFn:
+- **Problem:** Default fetcher only reads first element of queryKey, causing 404 errors
+- **Solution:** Added explicit queryFn for multi-segment URL `/api/policies/${policyId}/notes`
+- **Pattern:** ALWAYS use explicit queryFn for URLs with multiple segments (not just first queryKey element)
+- Implementation in `client/src/pages/policies.tsx` lines 3841-3852
+
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 
 ## System Architecture

@@ -3838,6 +3838,13 @@ export default function PoliciesPage() {
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
     queryKey: ['/api/policies', selectedPolicyId, 'notes'],
+    queryFn: async () => {
+      const response = await fetch(`/api/policies/${selectedPolicyId}/notes`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch notes');
+      return response.json();
+    },
     enabled: !!selectedPolicyId && selectedPolicyId !== 'new',
   });
 
