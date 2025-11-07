@@ -2858,7 +2858,12 @@ export const standaloneReminders = pgTable("standalone_reminders", {
   title: text("title").notNull(),
   description: text("description"),
   dueDate: date("due_date").notNull(),
-  dueTime: text("due_time"), // HH:mm format (24-hour), optional
+  dueTime: text("due_time").notNull(), // HH:mm format (24-hour)
+  timezone: text("timezone").notNull().default("America/New_York"),
+  setReminderBefore: text("set_reminder_before"), // "1 hour before", "30 minutes before", etc.
+  reminderType: text("reminder_type").notNull(), // Income Verification, Follow up call, etc.
+  notifyUserIds: text("notify_user_ids").array(), // Array of user IDs to notify
+  isPrivate: boolean("is_private").notNull().default(false),
   priority: text("priority").notNull().default("medium"), // low, medium, high, urgent
   status: text("status").notNull().default("pending"), // pending, completed, snoozed
   
@@ -2911,11 +2916,17 @@ export const insertStandaloneReminderSchema = createInsertSchema(standaloneRemin
   updatedAt: true,
   completedAt: true,
   completedBy: true,
+  snoozedUntil: true,
 }).extend({
   title: z.string().min(1).max(200),
-  description: z.string().max(1000).optional(),
+  description: z.string().min(1).max(1000),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
-  dueTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be in HH:mm format (24-hour)").optional(),
+  dueTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be in HH:mm format (24-hour)"),
+  timezone: z.string().default("America/New_York"),
+  setReminderBefore: z.string().optional(),
+  reminderType: z.string().min(1).max(200),
+  notifyUserIds: z.array(z.string()).optional(),
+  isPrivate: z.boolean().default(false),
   priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
   status: z.enum(["pending", "completed", "snoozed"]).default("pending"),
   quoteId: z.string().optional(),
