@@ -28,7 +28,9 @@ import {
   Send,
   Inbox,
   Workflow,
-  Contact
+  Contact,
+  CheckSquare,
+  Bell
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
@@ -187,6 +189,11 @@ const myAgencyMenuItems = [
     title: "Leads",
     url: "/leads",
     icon: Contact,
+  },
+  {
+    title: "Tasks / Reminders",
+    url: "/tasks",
+    icon: CheckSquare,
   },
 ];
 

@@ -66,6 +66,7 @@ import SmsMmsPage from "@/pages/sms-mms";
 import EmailMarketingPage from "@/pages/email-marketing";
 import IntegrationsPage from "@/pages/integrations";
 import Leads from "@/pages/leads";
+import Tasks from "@/pages/tasks";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -85,6 +86,7 @@ const getPageTitle = (path: string): string => {
     '/calendar': 'Calendar',
     '/calendar/settings': 'Appointment Settings',
     '/leads': 'Leads',
+    '/tasks': 'Tasks',
     '/invoices': 'Invoices',
     '/settings': 'Settings',
     '/settings/profile': 'Settings - Profile',
@@ -1083,6 +1085,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Leads />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/tasks">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Tasks />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

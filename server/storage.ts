@@ -151,7 +151,10 @@ import {
   type InsertBulkvsMessage,
   type ManualContact,
   type InsertManualContact,
-  type UnifiedContact
+  type UnifiedContact,
+  type Task,
+  type InsertTask,
+  type UpdateTask
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -225,7 +228,8 @@ import {
   bulkvsPhoneNumbers,
   bulkvsThreads,
   bulkvsMessages,
-  manualContacts
+  manualContacts,
+  tasks
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -838,6 +842,19 @@ export interface IStorage {
   
   // Unified Contacts
   getUnifiedContacts(params?: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]>;
+  
+  // Tasks
+  createTask(task: InsertTask & { companyId: string; creatorId: string }): Promise<Task>;
+  getTaskById(id: string, companyId?: string): Promise<Task | undefined>;
+  updateTask(id: string, updates: UpdateTask, companyId?: string): Promise<Task | undefined>;
+  deleteTask(id: string, companyId?: string): Promise<boolean>;
+  listTasks(filters: {
+    companyId?: string;
+    assigneeId?: string;
+    status?: string;
+    hideCompleted?: boolean;
+    search?: string;
+  }): Promise<Task[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -7145,6 +7162,122 @@ export class DbStorage implements IStorage {
     }
     
     return unifiedContacts;
+  }
+
+  // ==================== TASKS ====================
+  
+  async createTask(taskData: InsertTask & { companyId: string; creatorId: string }): Promise<Task> {
+    const result = await db.insert(tasks).values({
+      ...taskData,
+      updatedAt: new Date(),
+    }).returning();
+    return result[0];
+  }
+
+  async getTaskById(id: string, companyId?: string): Promise<Task | undefined> {
+    const conditions = [eq(tasks.id, id)];
+    if (companyId) {
+      conditions.push(eq(tasks.companyId, companyId));
+    }
+    const result = await db
+      .select()
+      .from(tasks)
+      .where(and(...conditions));
+    return result[0];
+  }
+
+  async updateTask(id: string, updates: UpdateTask, companyId?: string): Promise<Task | undefined> {
+    // Handle completedAt timestamp based on status changes
+    const updateData: any = {
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    // If status is being set to "completed", set completedAt
+    if (updates.status === "completed") {
+      updateData.completedAt = new Date();
+    }
+    
+    // If status is being changed from "completed" to something else, clear completedAt
+    if (updates.status && updates.status !== "completed") {
+      updateData.completedAt = null;
+    }
+
+    const conditions = [eq(tasks.id, id)];
+    if (companyId) {
+      conditions.push(eq(tasks.companyId, companyId));
+    }
+
+    const result = await db
+      .update(tasks)
+      .set(updateData)
+      .where(and(...conditions))
+      .returning();
+    
+    return result[0];
+  }
+
+  async deleteTask(id: string, companyId?: string): Promise<boolean> {
+    const conditions = [eq(tasks.id, id)];
+    if (companyId) {
+      conditions.push(eq(tasks.companyId, companyId));
+    }
+    const result = await db
+      .delete(tasks)
+      .where(and(...conditions))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  async listTasks(filters: {
+    companyId?: string;
+    assigneeId?: string;
+    status?: string;
+    hideCompleted?: boolean;
+    search?: string;
+  }): Promise<Task[]> {
+    const conditions = [];
+
+    // Only filter by company if provided (superadmins don't filter)
+    if (filters.companyId) {
+      conditions.push(eq(tasks.companyId, filters.companyId));
+    }
+
+    // Filter by assigneeId
+    if (filters.assigneeId) {
+      conditions.push(eq(tasks.assigneeId, filters.assigneeId));
+    }
+
+    // Filter by status
+    if (filters.status) {
+      conditions.push(eq(tasks.status, filters.status));
+    }
+
+    // Hide completed tasks
+    if (filters.hideCompleted) {
+      conditions.push(sql`${tasks.status} != 'completed'`);
+    }
+
+    // Search by title or description
+    if (filters.search && filters.search.trim()) {
+      const searchTerm = `%${filters.search.trim()}%`;
+      conditions.push(
+        or(
+          sql`${tasks.title} ILIKE ${searchTerm}`,
+          sql`${tasks.description} ILIKE ${searchTerm}`
+        )!
+      );
+    }
+
+    let query = db.select().from(tasks).orderBy(desc(tasks.createdAt));
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    const result = await query;
+    return result;
   }
 }
 

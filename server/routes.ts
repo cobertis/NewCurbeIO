@@ -68,7 +68,9 @@ import {
   insertBulkvsPhoneNumberSchema,
   insertBulkvsThreadSchema,
   insertBulkvsMessageSchema,
-  insertManualContactSchema
+  insertManualContactSchema,
+  insertTaskSchema,
+  updateTaskSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
@@ -20301,6 +20303,283 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error searching messages:", error);
       res.status(500).json({ message: "Failed to search messages" });
+    }
+  });
+
+  // ==================== TASKS API ====================
+
+  // GET /api/tasks - List tasks with filters
+  app.get("/api/tasks", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { assigneeId, status, hideCompleted, search } = req.query;
+
+      // Build filters
+      const filters: any = {};
+      
+      // Regular users only see their company's tasks
+      // Superadmins see all tasks (no company filter)
+      if (user.role !== "superadmin" && user.companyId) {
+        filters.companyId = user.companyId;
+      }
+
+      if (assigneeId) {
+        filters.assigneeId = assigneeId as string;
+      }
+
+      if (status) {
+        filters.status = status as string;
+      }
+
+      if (hideCompleted === "true") {
+        filters.hideCompleted = true;
+      }
+
+      if (search) {
+        filters.search = search as string;
+      }
+
+      // Get tasks
+      const tasks = await storage.listTasks(filters);
+
+      // Enrich with assignee data
+      const enrichedTasks = await Promise.all(
+        tasks.map(async (task) => {
+          if (task.assigneeId) {
+            const assignee = await storage.getUser(task.assigneeId);
+            return {
+              ...task,
+              assignee: assignee ? {
+                id: assignee.id,
+                firstName: assignee.firstName,
+                lastName: assignee.lastName,
+                email: assignee.email,
+                avatar: assignee.avatar,
+              } : null,
+            };
+          }
+          return {
+            ...task,
+            assignee: null,
+          };
+        })
+      );
+
+      res.json({ tasks: enrichedTasks });
+    } catch (error: any) {
+      console.error("Error listing tasks:", error);
+      res.status(500).json({ message: "Failed to list tasks" });
+    }
+  });
+
+  // POST /api/tasks - Create a new task
+  app.post("/api/tasks", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Validate request body
+      const validationResult = insertTaskSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid task data",
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const taskData = validationResult.data;
+
+      // Create task with auto-injected companyId and creatorId
+      const newTask = await storage.createTask({
+        ...taskData,
+        companyId: user.companyId,
+        creatorId: user.id,
+      });
+
+      // Log the action
+      await logger.logCrud({
+        userId: user.id,
+        companyId: user.companyId,
+        action: "create",
+        entityType: "task",
+        entityId: newTask.id,
+        details: `Created task: ${newTask.title}`,
+      });
+
+      // Enrich with assignee data
+      let enrichedTask: any = { ...newTask, assignee: null };
+      if (newTask.assigneeId) {
+        const assignee = await storage.getUser(newTask.assigneeId);
+        if (assignee) {
+          enrichedTask.assignee = {
+            id: assignee.id,
+            firstName: assignee.firstName,
+            lastName: assignee.lastName,
+            email: assignee.email,
+            avatar: assignee.avatar,
+          };
+        }
+      }
+
+      res.status(201).json(enrichedTask);
+    } catch (error: any) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task" });
+    }
+  });
+
+  // GET /api/tasks/:id - Get a single task
+  app.get("/api/tasks/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+
+      // Superadmins can access any task, others only their company's tasks
+      const task = await storage.getTaskById(
+        id, 
+        user.role === "superadmin" ? undefined : user.companyId
+      );
+
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Enrich with assignee data
+      let enrichedTask: any = { ...task, assignee: null };
+      if (task.assigneeId) {
+        const assignee = await storage.getUser(task.assigneeId);
+        if (assignee) {
+          enrichedTask.assignee = {
+            id: assignee.id,
+            firstName: assignee.firstName,
+            lastName: assignee.lastName,
+            email: assignee.email,
+            avatar: assignee.avatar,
+          };
+        }
+      }
+
+      res.json(enrichedTask);
+    } catch (error: any) {
+      console.error("Error getting task:", error);
+      res.status(500).json({ message: "Failed to get task" });
+    }
+  });
+
+  // PATCH /api/tasks/:id - Update a task
+  app.patch("/api/tasks/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+
+      // Validate request body
+      const validationResult = updateTaskSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Invalid task data",
+          errors: validationResult.error.errors 
+        });
+      }
+
+      const updates = validationResult.data;
+
+      // Update task
+      const updatedTask = await storage.updateTask(
+        id,
+        updates,
+        user.role === "superadmin" ? undefined : user.companyId
+      );
+      
+      if (!updatedTask) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Log the action
+      await logger.logCrud({
+        userId: user.id,
+        companyId: user.companyId,
+        action: "update",
+        entityType: "task",
+        entityId: updatedTask.id,
+        details: `Updated task: ${updatedTask.title}`,
+      });
+
+      // Enrich with assignee data
+      let enrichedTask: any = { ...updatedTask, assignee: null };
+      if (updatedTask.assigneeId) {
+        const assignee = await storage.getUser(updatedTask.assigneeId);
+        if (assignee) {
+          enrichedTask.assignee = {
+            id: assignee.id,
+            firstName: assignee.firstName,
+            lastName: assignee.lastName,
+            email: assignee.email,
+            avatar: assignee.avatar,
+          };
+        }
+      }
+
+      res.json(enrichedTask);
+    } catch (error: any) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
+  // DELETE /api/tasks/:id - Delete a task
+  app.delete("/api/tasks/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+
+      // Get task before deletion for logging
+      const existingTask = await storage.getTaskById(
+        id,
+        user.role === "superadmin" ? undefined : user.companyId
+      );
+
+      // Delete task
+      const deleted = await storage.deleteTask(
+        id,
+        user.role === "superadmin" ? undefined : user.companyId
+      );
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Log the action
+      await logger.logCrud({
+        userId: user.id,
+        companyId: user.companyId,
+        action: "delete",
+        entityType: "task",
+        entityId: id,
+        details: existingTask ? `Deleted task: ${existingTask.title}` : "Deleted task",
+      });
+
+      res.json({ success: true, message: "Task deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: "Failed to delete task" });
     }
   });
 

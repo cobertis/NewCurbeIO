@@ -3213,7 +3213,52 @@ export const insertManualContactSchema = createInsertSchema(manualContacts).omit
   notes: z.string().max(500).optional(),
 });
 
+// =====================================================
+// TASKS (Task Management System)
+// =====================================================
+
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  creatorId: varchar("creator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assigneeId: varchar("assignee_id").references(() => users.id, { onDelete: "set null" }),
+  
+  title: text("title").notNull(),
+  description: text("description"),
+  
+  status: text("status").notNull().default("pending"), // pending, in_progress, completed, cancelled
+  priority: text("priority").notNull().default("medium"), // low, medium, high, critical
+  
+  dueDate: text("due_date").notNull(), // yyyy-MM-dd format
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  companyId: true,
+  creatorId: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+}).extend({
+  assigneeId: z.string().uuid("Invalid user ID").optional().nullable(),
+  title: z.string().min(1, "Title is required").max(200),
+  description: z.string().max(2000).optional().nullable(),
+  status: z.enum(["pending", "in_progress", "completed", "cancelled"]).default("pending"),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+});
+
+export const updateTaskSchema = insertTaskSchema.partial();
+
 // Types
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+
 export type ManualContact = typeof manualContacts.$inferSelect;
 export type InsertManualContact = z.infer<typeof insertManualContactSchema>;
 
