@@ -9,13 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { CreateTaskDialog } from "@/components/tasks/create-task-dialog";
+import { CreateReminderDialog } from "@/components/tasks/create-reminder-dialog";
 import { TasksSidebar } from "@/components/tasks/tasks-sidebar";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Filter, MoreHorizontal, Pencil, CheckCircle, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import type { Task, InsertTask, User, StandaloneReminder } from "@shared/schema";
+import type { Task, InsertTask, User, StandaloneReminder, InsertStandaloneReminder } from "@shared/schema";
 
 export default function Tasks() {
   const { toast } = useToast();
@@ -133,6 +134,30 @@ export default function Tasks() {
       toast({
         title: "Error",
         description: error.message || "Failed to create task",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create reminder mutation
+  const createReminderMutation = useMutation({
+    mutationFn: async (data: InsertStandaloneReminder) => {
+      return await apiRequest("POST", "/api/standalone-reminders", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0] === "/api/standalone-reminders"
+      });
+      setCreateDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Reminder created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create reminder",
         variant: "destructive",
       });
     },
@@ -711,13 +736,22 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Create Task Dialog */}
-      <CreateTaskDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onSubmit={(data) => createTaskMutation.mutate(data)}
-        isPending={createTaskMutation.isPending}
-      />
+      {/* Create Dialog - Task or Reminder */}
+      {activeTab === "tasks" ? (
+        <CreateTaskDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onSubmit={(data) => createTaskMutation.mutate(data)}
+          isPending={createTaskMutation.isPending}
+        />
+      ) : (
+        <CreateReminderDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onSubmit={(data) => createReminderMutation.mutate(data)}
+          isPending={createReminderMutation.isPending}
+        />
+      )}
     </div>
   );
 }

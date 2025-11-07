@@ -12038,6 +12038,44 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/standalone-reminders - Create standalone reminder
+  app.post("/api/standalone-reminders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId!;
+    
+    try {
+      // Validate request body using Zod schema
+      const validatedData = insertStandaloneReminderSchema.parse({
+        ...req.body,
+        companyId,
+        createdBy: currentUser.id,
+      });
+      
+      const reminder = await storage.createStandaloneReminder(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "standalone_reminder",
+        entityId: reminder.id,
+        companyId,
+        metadata: {
+          title: reminder.title,
+          dueDate: reminder.dueDate,
+          priority: reminder.priority,
+        },
+      });
+      
+      res.json(reminder);
+    } catch (error: any) {
+      console.error("Error creating standalone reminder:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid input data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create reminder" });
+    }
+  });
+
   // POST /api/calendar/events/reminder - Create standalone reminder event
   app.post("/api/calendar/events/reminder", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
