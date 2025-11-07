@@ -3725,7 +3725,7 @@ export default function PoliciesPage() {
   
   // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data in one request
   const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
-    quote: Quote & {
+    policy: Quote & {
       agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
       creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
     };
@@ -3743,7 +3743,7 @@ export default function PoliciesPage() {
   });
 
   // Use the quote from unified detail if available, otherwise fallback to list (for backward compatibility)
-  const viewingQuote = quoteDetail?.quote || quotesData?.policies?.find(q => q.id === params?.id);
+  const viewingQuote = quoteDetail?.policy || quotesData?.policies?.find(q => q.id === params?.id);
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
   
@@ -6265,7 +6265,7 @@ export default function PoliciesPage() {
     
     const product = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType);
     // Use agent from quoteDetail if available, otherwise fallback to agents list
-    const agent = quoteDetail?.quote?.agent || agents.find(a => a.id === viewingQuote.agentId);
+    const agent = quoteDetail?.policy?.agent || agents.find(a => a.id === viewingQuote.agentId);
     const totalApplicants = 1 + 
       (viewingQuoteWithMembers.spouses?.filter((s: any) => s.isApplicant).length || 0) + 
       (viewingQuoteWithMembers.dependents?.filter((d: any) => d.isApplicant).length || 0);
@@ -7555,9 +7555,6 @@ export default function PoliciesPage() {
                             <Badge variant="default" className="text-xs h-4 px-1.5">Self</Badge>
                             {viewingQuote.clientIsApplicant && (
                               <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
-                            )}
-                            {viewingQuote.isPrimaryDependent && (
-                              <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
                             )}
                           </div>
                         </div>
