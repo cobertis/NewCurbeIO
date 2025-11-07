@@ -99,20 +99,18 @@ export function ContactDetails({
 
   return (
     <Card className="h-full flex flex-col border-l overflow-hidden" data-testid="contact-details">
-      <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
-        <h3 className="font-semibold">Contact Info</h3>
-        {onClose && (
+      {onClose && (
+        <div className="p-2 flex justify-end md:hidden">
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="md:hidden"
             data-testid="button-close-details"
           >
             <X className="h-4 w-4" />
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 flex flex-col items-center text-center">
