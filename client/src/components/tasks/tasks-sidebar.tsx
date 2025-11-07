@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckSquare, Bell, Clock, ListTodo, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "wouter";
 import type { Task } from "@shared/schema";
 
 interface TasksSidebarProps {
@@ -38,12 +37,10 @@ export function TasksSidebar({ tasks }: TasksSidebarProps) {
                 <CheckSquare className="h-4 w-4" />
                 Tasks
               </TabsTrigger>
-              <Link href="/reminders">
-                <TabsTrigger value="reminders" data-testid="tab-reminders" className="flex items-center gap-2 w-full">
-                  <Bell className="h-4 w-4" />
-                  Reminders
-                </TabsTrigger>
-              </Link>
+              <TabsTrigger value="reminders" data-testid="tab-reminders" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Reminders
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
