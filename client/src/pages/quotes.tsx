@@ -3628,6 +3628,14 @@ export default function QuotesPage() {
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
     queryKey: ['/api/quotes', params?.id, 'notes'],
+    queryFn: async () => {
+      if (!params?.id) throw new Error("Quote ID not found");
+      const response = await fetch(`/api/quotes/${params.id}/notes`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch notes');
+      return response.json();
+    },
     enabled: !!params?.id && params?.id !== 'new',
   });
 
