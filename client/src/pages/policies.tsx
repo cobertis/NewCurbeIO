@@ -14004,13 +14004,66 @@ function StatusBadgeEditor({
       
       return await apiRequest("PATCH", endpoint, data);
     },
+    onMutate: async (newValue) => {
+      // OPTIMISTIC UPDATE: Change UI immediately before server responds
+      const listQueryKey = type === "quote" ? ["/api/quotes"] : ["/api/policies"];
+      const detailQueryKey = type === "quote" 
+        ? ["/api/quotes", id]
+        : ["/api/policies", id, "detail"];
+      
+      // Cancel outgoing refetches to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: listQueryKey });
+      await queryClient.cancelQueries({ queryKey: detailQueryKey });
+      
+      // Snapshot previous values for rollback
+      const previousList = queryClient.getQueryData(listQueryKey);
+      const previousDetail = queryClient.getQueryData(detailQueryKey);
+      
+      // 1. Optimistically update the LIST query (main table/cards)
+      queryClient.setQueryData(listQueryKey, (old: any) => {
+        if (!old) return old;
+        
+        const itemsKey = type === "quote" ? "quotes" : "policies";
+        const items = old[itemsKey];
+        if (!Array.isArray(items)) return old;
+        
+        return {
+          ...old,
+          [itemsKey]: items.map((item: any) => 
+            item.id === id 
+              ? { ...item, [statusType]: newValue }
+              : item
+          )
+        };
+      });
+      
+      // 2. Optimistically update the DETAIL query (sidebar/detail view)
+      queryClient.setQueryData(detailQueryKey, (old: any) => {
+        if (!old) return old;
+        
+        const target = type === "quote" ? old.quote : old.policy;
+        if (!target) return old;
+        
+        return {
+          ...old,
+          [type === "quote" ? "quote" : "policy"]: {
+            ...target,
+            [statusType]: newValue
+          }
+        };
+      });
+      
+      // Close dropdown immediately for instant UX
+      setIsOpen(false);
+      
+      return { previousList, previousDetail };
+    },
     onSuccess: () => {
+      // Background refresh (no blocking wait)
       if (type === "quote") {
         queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes", id] });
       } else {
         queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/policies", id, "detail"] });
       }
       
       toast({
@@ -14018,15 +14071,35 @@ function StatusBadgeEditor({
         description: "Status updated successfully",
         duration: 3000,
       });
-      setIsOpen(false);
     },
-    onError: (error: Error) => {
+    onError: (error: Error, newValue, context: any) => {
+      // Rollback BOTH queries on error
+      const listQueryKey = type === "quote" ? ["/api/quotes"] : ["/api/policies"];
+      const detailQueryKey = type === "quote" 
+        ? ["/api/quotes", id]
+        : ["/api/policies", id, "detail"];
+      
+      if (context?.previousList) {
+        queryClient.setQueryData(listQueryKey, context.previousList);
+      }
+      if (context?.previousDetail) {
+        queryClient.setQueryData(detailQueryKey, context.previousDetail);
+      }
+      
       toast({
         title: "Error",
         description: error.message || "Failed to update status",
         variant: "destructive",
         duration: 3000,
       });
+    },
+    onSettled: () => {
+      // After mutation completes (success or error), resync with server to catch derived fields
+      const detailQueryKey = type === "quote" 
+        ? ["/api/quotes", id]
+        : ["/api/policies", id, "detail"];
+      
+      queryClient.invalidateQueries({ queryKey: detailQueryKey });
     },
   });
 
