@@ -6260,10 +6260,11 @@ export default function PoliciesPage() {
     const spousesFromMembers = allFamilyMembers.filter(m => m.role === 'spouse');
     const dependentsFromMembers = allFamilyMembers.filter(m => m.role !== 'spouse'); // Everyone else is a dependent
     
+    // CRITICAL: Ensure spouses and dependents are always arrays, never undefined
     const viewingQuoteWithMembers = {
       ...viewingQuote,
-      spouses: spousesFromMembers.length > 0 ? spousesFromMembers : (viewingQuote.spouses || []),
-      dependents: dependentsFromMembers.length > 0 ? dependentsFromMembers : (viewingQuote.dependents || []),
+      spouses: spousesFromMembers.length > 0 ? spousesFromMembers : (viewingQuote?.spouses ?? []),
+      dependents: dependentsFromMembers.length > 0 ? dependentsFromMembers : (viewingQuote?.dependents ?? []),
     };
     
     const product = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType);
