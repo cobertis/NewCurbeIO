@@ -27,7 +27,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema, type QuoteMember, type QuoteMemberIncome, type QuoteMemberImmigration, type QuoteMemberDocument, type QuoteReminder, type InsertQuoteReminder, insertQuoteReminderSchema } from "@shared/schema";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
-import { useLocation, useRoute } from "wouter";
+import { useLocation } from "wouter";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -3407,8 +3407,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
 
 export default function PoliciesPage() {
   const [location, setLocation] = useLocation();
-  const [, params] = useRoute("/policies/:id");
-  const { toast } = useToast();
+  const { toast} = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -3719,11 +3718,15 @@ export default function PoliciesPage() {
     queryKey: ["/api/policies"],
   });
 
-  // Determine if we're viewing a specific quote
-  const isViewingQuote = params?.id && params.id !== 'new';
+  // CRITICAL FIX: Extract policy ID directly from location path instead of useRoute
+  // useRoute('/policies/:id') doesn't re-match when component stays mounted during navigation
+  // Remove query params first, then extract ID (works with /policies/ID, /policies/ID/sub-route, /policies/ID?params)
+  const pathWithoutQuery = location.split('?')[0].split('#')[0];
+  const policyIdFromPath = pathWithoutQuery.match(/^\/policies\/([^/]+)/)?.[1];
+  const selectedPolicyId = policyIdFromPath && policyIdFromPath !== 'new' ? policyIdFromPath : null;
   
-  // Get selected policy ID from route or list
-  const selectedPolicyId = params?.id;
+  // Determine if we're viewing a specific quote
+  const isViewingQuote = !!selectedPolicyId;
   
   // Find the basic policy from list first (lightweight data without income/immigration)
   const basicPolicy = quotesData?.policies?.find(q => q.id === selectedPolicyId);
@@ -3789,8 +3792,8 @@ export default function PoliciesPage() {
 
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
-    queryKey: ['/api/policies', params?.id, 'notes'],
-    enabled: !!params?.id && params?.id !== 'new',
+    queryKey: ['/api/policies', selectedPolicyId, 'notes'],
+    enabled: !!selectedPolicyId && selectedPolicyId !== 'new',
   });
 
   const quoteNotes = quoteNotesData?.notes || [];
@@ -3834,8 +3837,8 @@ export default function PoliciesPage() {
       });
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'notes'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'notes'] });
       }
       setNewNoteText("");
       setIsImportant(false);
@@ -3877,8 +3880,8 @@ export default function PoliciesPage() {
       });
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'notes'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'notes'] });
       }
       setEditingNoteId(null);
       setNewNoteText("");
@@ -3913,8 +3916,8 @@ export default function PoliciesPage() {
     },
     onSuccess: () => {
       console.log('[DELETE MUTATION] onSuccess triggered');
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'notes'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'notes'] });
       }
       setNoteToDelete(null);
       setShowDeleteDialog(false);
@@ -3935,9 +3938,9 @@ export default function PoliciesPage() {
 
   // Fetch quote documents
   const { data: quoteDocumentsData, isLoading: isLoadingDocuments } = useQuery<{ documents: any[] }>({
-    queryKey: ['/api/policies', params?.id, 'documents', selectedCategory, searchDocuments],
+    queryKey: ['/api/policies', selectedPolicyId, 'documents', selectedCategory, searchDocuments],
     queryFn: async () => {
-      if (!params?.id) throw new Error("Quote ID not found");
+      if (!selectedPolicyId) throw new Error("Quote ID not found");
       const params_obj = new URLSearchParams();
       if (selectedCategory && selectedCategory !== 'all') {
         params_obj.append('category', selectedCategory);
@@ -3945,12 +3948,12 @@ export default function PoliciesPage() {
       if (searchDocuments) {
         params_obj.append('q', searchDocuments);
       }
-      const url = `/api/policies/${params.id}/documents${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
+      const url = `/api/policies/${selectedPolicyId}/documents${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch documents');
       return response.json();
     },
-    enabled: !!params?.id && params?.id !== 'new',
+    enabled: !!selectedPolicyId && selectedPolicyId !== 'new',
   });
 
   const quoteDocuments = quoteDocumentsData?.documents || [];
@@ -3972,8 +3975,8 @@ export default function PoliciesPage() {
       return response.json();
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'documents'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'documents'] });
       }
       setUploadDialogOpen(false);
       toast({
@@ -3997,8 +4000,8 @@ export default function PoliciesPage() {
       return apiRequest('DELETE', `/api/policies/${viewingQuote.id}/documents/${documentId}`);
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'documents'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'documents'] });
       }
       setDocumentToDelete(null);
       toast({
@@ -4017,24 +4020,24 @@ export default function PoliciesPage() {
 
   // Fetch quote reminders count (always enabled for badge)
   const { data: remindersCountData } = useQuery<{ reminders: QuoteReminder[] }>({
-    queryKey: ['/api/policies', params?.id, 'reminders', 'pending'],
+    queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'],
     queryFn: async () => {
-      if (!params?.id) throw new Error("Quote ID not found");
-      const url = `/api/policies/${params.id}/reminders?status=pending`;
+      if (!selectedPolicyId) throw new Error("Quote ID not found");
+      const url = `/api/policies/${selectedPolicyId}/reminders?status=pending`;
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch reminders count');
       return response.json();
     },
-    enabled: !!params?.id && params?.id !== 'new',
+    enabled: !!selectedPolicyId && selectedPolicyId !== 'new',
   });
 
   const pendingRemindersCount = remindersCountData?.reminders?.length || 0;
 
   // Fetch quote reminders (only when sheet is open)
   const { data: quoteRemindersData, isLoading: isLoadingReminders } = useQuery<{ reminders: QuoteReminder[] }>({
-    queryKey: ['/api/policies', params?.id, 'reminders', filterReminderStatus, filterReminderPriority, searchReminders],
+    queryKey: ['/api/policies', selectedPolicyId, 'reminders', filterReminderStatus, filterReminderPriority, searchReminders],
     queryFn: async () => {
-      if (!params?.id) throw new Error("Quote ID not found");
+      if (!selectedPolicyId) throw new Error("Quote ID not found");
       const params_obj = new URLSearchParams();
       if (filterReminderStatus && filterReminderStatus !== 'all') {
         params_obj.append('status', filterReminderStatus);
@@ -4045,26 +4048,26 @@ export default function PoliciesPage() {
       if (searchReminders.trim()) {
         params_obj.append('q', searchReminders);
       }
-      const url = `/api/policies/${params.id}/reminders${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
+      const url = `/api/policies/${selectedPolicyId}/reminders${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch reminders');
       return response.json();
     },
-    enabled: !!params?.id && params?.id !== 'new' && remindersSheetOpen,
+    enabled: !!selectedPolicyId && selectedPolicyId !== 'new' && remindersSheetOpen,
   });
 
   const quoteReminders = quoteRemindersData?.reminders || [];
 
   // Fetch consent documents for quote (with real-time polling when sheet is open)
   const { data: consentsData, isLoading: isLoadingConsents } = useQuery<{ consents: any[] }>({
-    queryKey: ['/api/policies', params?.id, 'consents'],
+    queryKey: ['/api/policies', selectedPolicyId, 'consents'],
     queryFn: async () => {
-      if (!params?.id) throw new Error("Quote ID not found");
-      const response = await fetch(`/api/policies/${params.id}/consents`, { credentials: 'include' });
+      if (!selectedPolicyId) throw new Error("Quote ID not found");
+      const response = await fetch(`/api/policies/${selectedPolicyId}/consents`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch consents');
       return response.json();
     },
-    enabled: !!params?.id && params?.id !== 'new',
+    enabled: !!selectedPolicyId && selectedPolicyId !== 'new',
     refetchInterval: consentsSheetOpen ? 5000 : false, // Refetch every 5 seconds when sheet is open
     refetchOnWindowFocus: true, // Also refetch when window regains focus
   });
@@ -4079,9 +4082,9 @@ export default function PoliciesPage() {
       return apiRequest('POST', `/api/policies/${viewingQuote.id}/reminders`, data);
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders', 'pending'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setReminderFormOpen(false);
       setSelectedReminder(null);
@@ -4108,9 +4111,9 @@ export default function PoliciesPage() {
       return apiRequest('PUT', `/api/policies/${viewingQuote.id}/reminders/${reminderId}`, data);
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders', 'pending'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setReminderFormOpen(false);
       setSelectedReminder(null);
@@ -4137,9 +4140,9 @@ export default function PoliciesPage() {
       return apiRequest('PUT', `/api/policies/${viewingQuote.id}/reminders/${reminderId}/complete`, {});
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders', 'pending'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       toast({
         title: "Reminder completed",
@@ -4164,9 +4167,9 @@ export default function PoliciesPage() {
       return apiRequest('PUT', `/api/policies/${viewingQuote.id}/reminders/${reminderId}/snooze`, { duration });
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders', 'pending'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setSnoozeDialogOpen(false);
       setSnoozeReminderId(null);
@@ -4193,9 +4196,9 @@ export default function PoliciesPage() {
       return apiRequest('DELETE', `/api/policies/${viewingQuote.id}/reminders/${reminderId}`);
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'reminders', 'pending'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setReminderToDelete(null);
       toast({
@@ -4220,8 +4223,8 @@ export default function PoliciesPage() {
       return apiRequest('POST', `/api/consents/${consentId}/send`, {});
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'consents'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'consents'] });
       }
       toast({
         title: "Consent resent",
@@ -4245,8 +4248,8 @@ export default function PoliciesPage() {
       return apiRequest('DELETE', `/api/policy-consents/${consentId}`);
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'consents'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'consents'] });
       }
       toast({
         title: "Consent deleted",
@@ -4352,8 +4355,8 @@ export default function PoliciesPage() {
       return apiRequest('DELETE', `/api/policies/${viewingQuote.id}/payment-methods/${paymentMethodId}`);
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'detail'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
       }
       toast({
         title: "Payment method deleted",
@@ -4378,8 +4381,8 @@ export default function PoliciesPage() {
       });
     },
     onSuccess: () => {
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'detail'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
       }
       toast({
         title: "Default payment method updated",
@@ -4784,13 +4787,13 @@ export default function PoliciesPage() {
   // Change agent mutation
   const changeAgentMutation = useMutation({
     mutationFn: async (newAgentId: string) => {
-      if (!params?.id) throw new Error("Policy ID not found");
-      return apiRequest("PATCH", `/api/policies/${params.id}`, {
+      if (!selectedPolicyId) throw new Error("Policy ID not found");
+      return apiRequest("PATCH", `/api/policies/${selectedPolicyId}`, {
         agentId: newAgentId || null,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/policies', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
       queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
       toast({
         title: "Agent Updated",
@@ -4813,13 +4816,13 @@ export default function PoliciesPage() {
   // Change status mutation
   const changeStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
-      if (!params?.id) throw new Error("Policy ID not found");
-      return apiRequest("PATCH", `/api/policies/${params.id}`, {
+      if (!selectedPolicyId) throw new Error("Policy ID not found");
+      return apiRequest("PATCH", `/api/policies/${selectedPolicyId}`, {
         status: newStatus,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/policies', params?.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
       queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
       queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
       toast({
@@ -4841,13 +4844,13 @@ export default function PoliciesPage() {
 
   const deleteMemberMutation = useMutation({
     mutationFn: async (memberId: string) => {
-      if (!params?.id) throw new Error("Quote ID not found");
-      return apiRequest("DELETE", `/api/policies/${params.id}/members/${memberId}`);
+      if (!selectedPolicyId) throw new Error("Quote ID not found");
+      return apiRequest("DELETE", `/api/policies/${selectedPolicyId}/members/${memberId}`);
     },
     onSuccess: () => {
       // Invalidate UNIFIED query to refresh ALL data
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'detail'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
       }
       setDeletingMember(null);
       toast({
@@ -4866,7 +4869,7 @@ export default function PoliciesPage() {
 
   const addMemberMutation = useMutation({
     mutationFn: async (data: any) => {
-      if (!params?.id) throw new Error("Quote ID not found");
+      if (!selectedPolicyId) throw new Error("Quote ID not found");
       
       const warnings: string[] = [];
       
@@ -4876,7 +4879,7 @@ export default function PoliciesPage() {
       const memberRole = data.relation === 'spouse' ? 'spouse' : 'dependent';
       
       // Step 1: Create member
-      const ensureResponse = await fetch(`/api/policies/${params.id}/ensure-member`, {
+      const ensureResponse = await fetch(`/api/policies/${selectedPolicyId}/ensure-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -4977,8 +4980,8 @@ export default function PoliciesPage() {
     },
     onSuccess: (result) => {
       // Invalidate UNIFIED query to refresh ALL data immediately
-      if (params?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', params.id, 'detail'] });
+      if (selectedPolicyId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
         queryClient.invalidateQueries({ queryKey: ["/api/policies"] }); // Also refresh the list
       }
       
@@ -5170,7 +5173,7 @@ export default function PoliciesPage() {
   // Fetch total household income from all family members
   // REPLACED WITH UNIFIED QUERY - householdIncomeData now comes from quoteDetail
   // const { data: householdIncomeData } = useQuery({
-  //   queryKey: ['/api/policies', params?.id, 'household-income'],
+  //   queryKey: ['/api/policies', selectedPolicyId, 'household-income'],
   //   enabled: isViewingQuote && !!viewingQuote?.id,
   // });
   const householdIncomeData = quoteDetail ? { totalIncome: quoteDetail.totalHouseholdIncome } : undefined;
