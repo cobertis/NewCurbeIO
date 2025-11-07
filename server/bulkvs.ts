@@ -276,13 +276,18 @@ class BulkVSClient {
       }
       
       // Add Media if mediaUrl is provided (MMS)
-      // Note: BulkVS API docs don't explicitly document this field,
-      // but it's supported for MMS messages
+      // According to BulkVS API documentation: use "MediaURLs" (plural) as array
       if (payload.mediaUrl) {
         bulkvsPayload.MediaURLs = [payload.mediaUrl];
+        console.log("[BulkVS] MMS detected - MediaURLs:", bulkvsPayload.MediaURLs);
       }
       
+      console.log("[BulkVS] Complete payload being sent to BulkVS:", JSON.stringify(bulkvsPayload, null, 2));
+      
       const response = await this.client.post("/messageSend", bulkvsPayload);
+      
+      console.log("[BulkVS] BulkVS API response:", JSON.stringify(response.data, null, 2));
+      
       return response.data;
     } catch (error: any) {
       console.error("[BulkVS] messageSend error:", error.response?.data || error.message);
