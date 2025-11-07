@@ -262,6 +262,10 @@ export default function Tasks() {
 
   const getUserDisplayName = (user: User | undefined): string => {
     if (!user) return "Unassigned";
+    // Check if this is the current user
+    if (currentUser && user.id === currentUser.id) {
+      return "Myself";
+    }
     return `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email;
   };
 
