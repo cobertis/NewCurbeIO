@@ -14161,7 +14161,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         saleType: "renewal",
         renewalStatus: "draft",
         renewedFromPolicyId: policyId,
-        status: "new",
+        // DEFAULT STATUS for renewed policies (as per user requirement)
+        status: "waiting_on_agent",
+        documentsStatus: "pending",
+        paymentStatus: "pending",
         // Clear renewal tracking fields for the new policy
         renewedToPolicyId: null,
         renewedAt: null,
