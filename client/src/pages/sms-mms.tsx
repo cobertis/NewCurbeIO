@@ -159,7 +159,7 @@ export default function SmsMmsPage() {
         }
 
         const uploadData = await uploadResponse.json();
-        mediaUrl = uploadData.url;
+        mediaUrl = uploadData.mediaUrl;
       }
 
       return apiRequest("POST", "/api/bulkvs/messages/send", {
@@ -363,7 +363,7 @@ export default function SmsMmsPage() {
             throw new Error("Failed to upload media");
           }
           const uploadData = await uploadResponse.json();
-          mediaUrl = uploadData.url;
+          mediaUrl = uploadData.mediaUrl;
         }
 
         // Send message - backend will create thread if needed
