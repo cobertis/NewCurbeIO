@@ -400,7 +400,7 @@ export function AppSidebar() {
                       >
                         <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
                           <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">{item.title}</span>
+                          <span className="flex-1 whitespace-nowrap overflow-visible">{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
