@@ -4927,81 +4927,15 @@ export class DbStorage implements IStorage {
   // ==================== POLICY PAYMENT METHODS ====================
   
   async getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]> {
-    // Get the current policy to identify the client
-    const [policy] = await db
-      .select({ clientSsn: policies.clientSsn, clientEmail: policies.clientEmail })
-      .from(policies)
-      .where(
-        and(
-          eq(policies.id, policyId),
-          eq(policies.companyId, companyId)
-        )
-      );
-    
-    if (!policy) {
-      return [];
-    }
-    
-    // Resolve canonical identity
-    const identityKey = this.resolveApplicantIdentity(policy);
-    
-    // If no identity, return only this policy's payment methods (isolated)
-    if (!identityKey) {
-      return db
-        .select()
-        .from(policyPaymentMethods)
-        .where(
-          and(
-            eq(policyPaymentMethods.policyId, policyId),
-            eq(policyPaymentMethods.companyId, companyId)
-          )
-        )
-        .orderBy(desc(policyPaymentMethods.isDefault), desc(policyPaymentMethods.createdAt));
-    }
-    
-    // Find all policies with the same identity (same client)
-    let clientPolicies: any[];
-    
-    if (identityKey.startsWith('ssn:')) {
-      const ssnValue = identityKey.substring(4);
-      // Match by normalized SSN
-      clientPolicies = await db
-        .select({ id: policies.id })
-        .from(policies)
-        .where(
-          and(
-            eq(policies.companyId, companyId),
-            sql`REPLACE(REPLACE(REPLACE(${policies.clientSsn}, '-', ''), ' ', ''), '.', '') = ${ssnValue}`
-          )
-        );
-    } else {
-      // identityKey starts with 'email:'
-      const emailValue = identityKey.substring(6);
-      // Match by normalized email
-      clientPolicies = await db
-        .select({ id: policies.id })
-        .from(policies)
-        .where(
-          and(
-            eq(policies.companyId, companyId),
-            sql`LOWER(${policies.clientEmail}) = ${emailValue}`
-          )
-        );
-    }
-    
-    const policyIds = clientPolicies.map(p => p.id);
-    
-    if (policyIds.length === 0) {
-      return [];
-    }
-    
-    // Get all payment methods from all policies of this client
+    // CRITICAL FIX: Only return payment methods for THIS specific policy
+    // Do NOT share payment methods across policies of the same client
+    // Each policy maintains its own isolated payment methods
     return db
       .select()
       .from(policyPaymentMethods)
       .where(
         and(
-          inArray(policyPaymentMethods.policyId, policyIds),
+          eq(policyPaymentMethods.policyId, policyId),
           eq(policyPaymentMethods.companyId, companyId)
         )
       )
