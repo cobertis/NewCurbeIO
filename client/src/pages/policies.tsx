@@ -3718,20 +3718,14 @@ export default function PoliciesPage() {
     queryKey: ["/api/policies"],
   });
 
-  // CRITICAL FIX: Extract policy ID directly from location path instead of useRoute
-  // useRoute('/policies/:id') doesn't re-match when component stays mounted during navigation
-  // Remove query params first, then extract ID (works with /policies/ID, /policies/ID/sub-route, /policies/ID?params)
-  const pathWithoutQuery = location.split('?')[0].split('#')[0];
-  const policyIdFromPath = pathWithoutQuery.match(/^\/policies\/([^/]+)/)?.[1];
-  const selectedPolicyId = policyIdFromPath && policyIdFromPath !== 'new' ? policyIdFromPath : null;
+  // SIMPLE SOLUTION: Extract ID from URL path
+  const pathParts = location.split('/');
+  const selectedPolicyId = pathParts[2] && pathParts[2] !== 'new' ? pathParts[2].split('?')[0] : null;
   
-  // Determine if we're viewing a specific quote
-  const isViewingQuote = !!selectedPolicyId;
-  
-  // Find the basic policy from list first (lightweight data without income/immigration)
+  // Find the basic policy from list
   const basicPolicy = quotesData?.policies?.find(q => q.id === selectedPolicyId);
   
-  // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data including income/immigration
+  // Fetch full details (with income/immigration) when we have a policy selected
   const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
     policy: Quote & {
       agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
@@ -3747,11 +3741,12 @@ export default function PoliciesPage() {
     totalHouseholdIncome: number;
   }>({
     queryKey: ['/api/policies', selectedPolicyId, 'detail'],
-    enabled: !!selectedPolicyId && selectedPolicyId !== 'new',
+    enabled: !!selectedPolicyId,
   });
 
-  // CRITICAL: Always prefer detail query data (has income/immigration), fallback to basic policy only if detail not loaded
+  // Use detail data if available (has income/immigration), otherwise use basic policy
   const viewingQuote = quoteDetail?.policy || basicPolicy;
+  const isViewingQuote = !!viewingQuote;
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods || [] } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
   
