@@ -19759,31 +19759,60 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const payload = req.body;
       console.log("[BulkVS Webhook] Payload:", JSON.stringify(payload, null, 2));
       
-      // Handle incoming message
-      // BulkVS sends: { From, To, Message, RefId, FragmentCount, DeliveryReceipt }
-      if (payload.From || payload.from) {
-        const rawFrom = payload.From || payload.from;
-        const rawTo = (payload.To || payload.to)?.[0] || phoneNumber.did;
-        let body = payload.Message || payload.body;
+      // Detect webhook format: NEW (structured JSON) vs OLD (legacy flat structure)
+      const isNewFormat = payload.data && payload.data.event_type === 'message.received';
+      
+      if (isNewFormat) {
+        console.log("[BulkVS Webhook] Detected NEW format with structured data");
+      } else {
+        console.log("[BulkVS Webhook] Detected OLD/legacy format");
+      }
+      
+      // Handle incoming message - Support BOTH webhook formats
+      let rawFrom, rawTo, body, mediaUrl, mediaType, providerMsgId;
+      
+      if (isNewFormat) {
+        // NEW FORMAT: { data: { event_type, type, payload: { from, to, text }, media: [{url}] } }
+        const data = payload.data;
+        rawFrom = data.payload?.from?.phone_number;
+        rawTo = data.payload?.to?.[0]?.phone_number || phoneNumber.did;
+        body = data.payload?.text || "";
+        providerMsgId = data.id || null;
+        
+        // Handle media array for MMS
+        if (data.media && Array.isArray(data.media) && data.media.length > 0) {
+          mediaUrl = data.media[0].url; // Take first media URL
+          console.log("[BulkVS Webhook] NEW FORMAT - MMS detected with media:", data.media);
+        }
+        mediaType = data.type; // "SMS" or "MMS"
+      } else {
+        // OLD FORMAT: { From, To, Message, RefId, MediaUrl, DeliveryReceipt }
+        rawFrom = payload.From || payload.from;
+        rawTo = (payload.To || payload.to)?.[0] || phoneNumber.did;
+        body = payload.Message || payload.body;
+        providerMsgId = payload.RefId || payload.id || null;
         
         // Handle MediaURL(s) - BulkVS can send as singular or plural, string or array
-        let mediaUrl = null;
         if (payload.MediaURLs && Array.isArray(payload.MediaURLs) && payload.MediaURLs.length > 0) {
-          mediaUrl = payload.MediaURLs[0]; // Take first media URL from array
-          console.log("[BulkVS Webhook] MMS detected - MediaURLs array:", payload.MediaURLs);
+          mediaUrl = payload.MediaURLs[0];
+          console.log("[BulkVS Webhook] OLD FORMAT - MediaURLs array:", payload.MediaURLs);
         } else if (payload.MediaUrl) {
           mediaUrl = payload.MediaUrl;
-          console.log("[BulkVS Webhook] MMS detected - MediaUrl singular:", payload.MediaUrl);
+          console.log("[BulkVS Webhook] OLD FORMAT - MediaUrl singular:", payload.MediaUrl);
         } else if (payload.mediaUrl) {
           mediaUrl = payload.mediaUrl;
-          console.log("[BulkVS Webhook] MMS detected - mediaUrl lowercase:", payload.mediaUrl);
+          console.log("[BulkVS Webhook] OLD FORMAT - mediaUrl lowercase:", payload.mediaUrl);
+        } else {
+          mediaUrl = null;
         }
         
-        const mediaType = payload.MediaType || payload.mediaType || null;
-        const providerMsgId = payload.RefId || payload.id || null;
-        
-        // PRIORITY 1: Check if payload explicitly marks this as a delivery receipt
-        if (payload.DeliveryReceipt === true || payload.deliveryReceipt === true) {
+        mediaType = payload.MediaType || payload.mediaType || null;
+      }
+      
+      // Proceed only if we have valid message data
+      if (rawFrom && rawTo) {
+        // PRIORITY 1: Check if payload explicitly marks this as a delivery receipt (OLD format only)
+        if (!isNewFormat && (payload.DeliveryReceipt === true || payload.deliveryReceipt === true)) {
           console.log('[BulkVS Webhook] Ignoring delivery receipt (flagged by payload)');
           return res.status(200).json({ message: "Delivery receipt acknowledged" });
         }
@@ -19868,6 +19897,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         broadcastBulkvsMessage(thread.id, message, thread.userId);
         broadcastBulkvsThreadUpdate(thread.userId, updatedThread);
         console.log(`[BulkVS Webhook] Message saved: ${message.id}`);
+      } else {
+        console.log("[BulkVS Webhook] Skipping - no valid message data");
       }
       
       // Handle DLR (Delivery Receipt)
@@ -19972,6 +20003,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         broadcastBulkvsMessage(thread.id, message, thread.userId);
         broadcastBulkvsThreadUpdate(thread.userId, updatedThread);
         console.log(`[BulkVS Webhook] Message saved: ${message.id}`);
+      } else {
+        console.log("[BulkVS Webhook] Skipping - no valid message data");
       }
       
       // Handle DLR (Delivery Receipt)
