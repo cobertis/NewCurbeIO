@@ -26,6 +26,7 @@ interface CreateTaskDialogProps {
 
 export function CreateTaskDialog({ open, onOpenChange, onSubmit, isPending }: CreateTaskDialogProps) {
   const [assignmentType, setAssignmentType] = useState<"myself" | "user">("myself");
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const { data: sessionData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -229,7 +230,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSubmit, isPending }: Cr
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Due Date</FormLabel>
-                  <Popover>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
@@ -252,6 +253,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSubmit, isPending }: Cr
                             const month = String(date.getMonth() + 1).padStart(2, '0');
                             const day = String(date.getDate()).padStart(2, '0');
                             field.onChange(`${year}-${month}-${day}`);
+                            setCalendarOpen(false);
                           }
                         }}
                         disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
