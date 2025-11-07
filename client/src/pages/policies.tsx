@@ -3741,8 +3741,8 @@ export default function PoliciesPage() {
     enabled: !!params?.id && params?.id !== 'new',
   });
 
-  // CRITICAL: Only use detail query data - never fall back to list (list doesn't have income/immigration)
-  const viewingQuote = quoteDetail?.policy;
+  // Use detail query if available (has income/immigration), otherwise fallback to list
+  const viewingQuote = quoteDetail?.policy || quotesData?.policies?.find(q => q.id === params?.id);
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods || [] } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
   
