@@ -41,11 +41,26 @@ interface AppointmentDetails {
   status?: string;
 }
 
+interface ReminderDetails {
+  id?: string;
+  type: 'reminder' | 'task';
+  title: string;
+  description: string;
+  date: string;
+  time?: string;
+  priority?: string;
+  status?: string;
+  quoteId?: string;
+  policyId?: string;
+}
+
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [, setLocation] = useLocation();
   const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDetails | null>(null);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [selectedReminder, setSelectedReminder] = useState<ReminderDetails | null>(null);
   const [newEventDialogOpen, setNewEventDialogOpen] = useState(false);
 
   // Fetch calendar events
@@ -114,6 +129,23 @@ export default function Calendar() {
       status: event.status,
     });
     setAppointmentDialogOpen(true);
+  };
+
+  // Handle reminder/task click
+  const handleReminderClick = (event: CalendarEvent) => {
+    setSelectedReminder({
+      id: event.reminderId,
+      type: event.type === 'reminder' ? 'reminder' : 'task',
+      title: event.title,
+      description: event.description,
+      date: event.date,
+      time: event.dueTime,
+      priority: event.priority,
+      status: event.status,
+      quoteId: event.quoteId,
+      policyId: event.policyId,
+    });
+    setReminderDialogOpen(true);
   };
 
   // Group events by date
@@ -346,13 +378,7 @@ export default function Calendar() {
                           key={`${event.reminderId}-${eventIndex}`}
                           className={`flex items-start gap-1 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors ${colorClass}`}
                           title={tooltipText}
-                          onClick={() => {
-                            if (event.policyId) {
-                              setLocation(`/policies/${event.policyId}`);
-                            } else if (event.quoteId) {
-                              setLocation(`/quotes/${event.quoteId}`);
-                            }
-                          }}
+                          onClick={() => handleReminderClick(event)}
                           data-testid={`event-reminder-${eventIndex}`}
                         >
                           <Bell className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -430,6 +456,82 @@ export default function Calendar() {
                   variant="outline"
                   onClick={() => setAppointmentDialogOpen(false)}
                   data-testid="button-close-appointment"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reminder/Task Details Dialog */}
+      <Dialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-reminder-details">
+          <DialogHeader>
+            <DialogTitle>Reminder Details</DialogTitle>
+            <DialogDescription>
+              View reminder information
+            </DialogDescription>
+          </DialogHeader>
+          {selectedReminder && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg" data-testid="text-reminder-title">
+                    {selectedReminder.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {format(new Date(selectedReminder.date), "MMMM d, yyyy")}
+                    {selectedReminder.time && ` at ${selectedReminder.time}`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {selectedReminder.status && (
+                  <Badge variant={getStatusVariant(selectedReminder.status)} data-testid="badge-reminder-status">
+                    {getStatusLabel(selectedReminder.status)}
+                  </Badge>
+                )}
+                {selectedReminder.priority && (
+                  <Badge variant="outline" data-testid="badge-reminder-priority">
+                    {selectedReminder.priority} priority
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {selectedReminder.description && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Description</label>
+                    <p className="text-sm" data-testid="text-reminder-description">{selectedReminder.description}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between pt-4">
+                {(selectedReminder.quoteId || selectedReminder.policyId) && (
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      if (selectedReminder.policyId) {
+                        setLocation(`/policies/${selectedReminder.policyId}`);
+                      } else if (selectedReminder.quoteId) {
+                        setLocation(`/quotes/${selectedReminder.quoteId}`);
+                      }
+                      setReminderDialogOpen(false);
+                    }}
+                    data-testid="button-view-related"
+                  >
+                    View {selectedReminder.policyId ? 'Policy' : 'Quote'}
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => setReminderDialogOpen(false)}
+                  className={!selectedReminder.quoteId && !selectedReminder.policyId ? 'ml-auto' : ''}
+                  data-testid="button-close-reminder"
                 >
                   Close
                 </Button>

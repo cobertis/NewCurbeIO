@@ -30,16 +30,8 @@ export default function Tasks() {
     queryKey: ["/api/session"],
   });
 
-  const tasksQueryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    if (hideCompleted) params.append("hideCompleted", "true");
-    if (showMyTasksOnly) params.append("showMyTasksOnly", "true");
-    const paramString = params.toString();
-    return paramString ? `?${paramString}` : "";
-  }, [hideCompleted, showMyTasksOnly]);
-
   const { data: tasksData, isLoading: isLoadingTasks } = useQuery<{ tasks: Task[] }>({
-    queryKey: [`/api/tasks${tasksQueryParams}`],
+    queryKey: ["/api/tasks", { hideCompleted, showMyTasksOnly }],
   });
 
   const { data: remindersData, isLoading: isLoadingReminders } = useQuery<{ reminders: StandaloneReminder[] }>({
