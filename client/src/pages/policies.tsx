@@ -11091,10 +11091,27 @@ export default function PoliciesPage() {
 
                     // Check if we're editing an existing plan or creating a new one
                     if (editingPlanId) {
-                      // Update existing plan
+                      // CRITICAL FIX: When editing, merge with original planData to preserve benefits/deductibles/moops
                       console.log('[EDIT PLAN] Updating plan:', editingPlanId);
+                      
+                      // Get original plan data
+                      const originalPlan = quoteDetail?.plans?.find((p: any) => p.id === editingPlanId);
+                      const originalPlanData = originalPlan?.planData 
+                        ? (typeof originalPlan.planData === 'string' ? JSON.parse(originalPlan.planData) : originalPlan.planData)
+                        : {};
+                      
+                      // Merge: Keep original benefits/deductibles/moops, update only edited fields
+                      const mergedPlanData = {
+                        ...originalPlanData,  // Keep all original data (benefits, deductibles, moops, etc.)
+                        ...planObject,        // Overwrite only the fields from the form
+                        // Preserve complex arrays that might not be in the form
+                        benefits: originalPlanData.benefits || planObject.benefits,
+                        deductibles: planObject.deductibles || originalPlanData.deductibles,
+                        moops: planObject.moops || originalPlanData.moops,
+                      };
+                      
                       await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
-                        planData: planObject,
+                        planData: mergedPlanData,
                         source: 'manual'
                       });
                     } else {
