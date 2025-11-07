@@ -19765,7 +19765,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const rawFrom = payload.From || payload.from;
         const rawTo = (payload.To || payload.to)?.[0] || phoneNumber.did;
         let body = payload.Message || payload.body;
-        const mediaUrl = payload.MediaUrl || payload.mediaUrl || null;
+        
+        // Handle MediaURL(s) - BulkVS can send as singular or plural, string or array
+        let mediaUrl = null;
+        if (payload.MediaURLs && Array.isArray(payload.MediaURLs) && payload.MediaURLs.length > 0) {
+          mediaUrl = payload.MediaURLs[0]; // Take first media URL from array
+          console.log("[BulkVS Webhook] MMS detected - MediaURLs array:", payload.MediaURLs);
+        } else if (payload.MediaUrl) {
+          mediaUrl = payload.MediaUrl;
+          console.log("[BulkVS Webhook] MMS detected - MediaUrl singular:", payload.MediaUrl);
+        } else if (payload.mediaUrl) {
+          mediaUrl = payload.mediaUrl;
+          console.log("[BulkVS Webhook] MMS detected - mediaUrl lowercase:", payload.mediaUrl);
+        }
+        
         const mediaType = payload.MediaType || payload.mediaType || null;
         const providerMsgId = payload.RefId || payload.id || null;
         
