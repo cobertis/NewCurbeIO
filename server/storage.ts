@@ -149,6 +149,8 @@ import {
   type InsertBulkvsThread,
   type BulkvsMessage,
   type InsertBulkvsMessage,
+  type ManualContact,
+  type InsertManualContact,
   type UnifiedContact
 } from "@shared/schema";
 import { db } from "./db";
@@ -222,7 +224,8 @@ import {
   appointments,
   bulkvsPhoneNumbers,
   bulkvsThreads,
-  bulkvsMessages
+  bulkvsMessages,
+  manualContacts
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -826,6 +829,12 @@ export interface IStorage {
   createBulkvsMessage(data: InsertBulkvsMessage): Promise<BulkvsMessage>;
   updateBulkvsMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void>;
   searchBulkvsMessages(userId: string, query: string): Promise<BulkvsMessage[]>;
+  
+  // Manual Contacts
+  createManualContact(data: InsertManualContact): Promise<ManualContact>;
+  getManualContacts(companyId: string): Promise<ManualContact[]>;
+  getManualContact(id: string): Promise<ManualContact | undefined>;
+  deleteManualContact(id: string): Promise<void>;
   
   // Unified Contacts
   getUnifiedContacts(params?: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]>;
@@ -6810,6 +6819,44 @@ export class DbStorage implements IStorage {
       .then(results => results.map(r => r.message));
   }
   
+  // ==================== MANUAL CONTACTS ====================
+  
+  async createManualContact(data: InsertManualContact): Promise<ManualContact> {
+    // Normalize phone number to 11-digit format before storage
+    const normalizedData = {
+      ...data,
+      phone: formatForStorage(data.phone),
+    };
+    
+    const result = await db
+      .insert(manualContacts)
+      .values(normalizedData as any)
+      .returning();
+    return result[0];
+  }
+  
+  async getManualContacts(companyId: string): Promise<ManualContact[]> {
+    return db
+      .select()
+      .from(manualContacts)
+      .where(eq(manualContacts.companyId, companyId))
+      .orderBy(desc(manualContacts.createdAt));
+  }
+  
+  async getManualContact(id: string): Promise<ManualContact | undefined> {
+    const result = await db
+      .select()
+      .from(manualContacts)
+      .where(eq(manualContacts.id, id));
+    return result[0];
+  }
+  
+  async deleteManualContact(id: string): Promise<void> {
+    await db
+      .delete(manualContacts)
+      .where(eq(manualContacts.id, id));
+  }
+  
   // ==================== UNIFIED CONTACTS ====================
   
   async getUnifiedContacts(params?: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]> {
@@ -6825,8 +6872,14 @@ export class DbStorage implements IStorage {
     if (params?.userId) policyConditions.push(eq(policies.agentId, params.userId));
     const policyWhere = policyConditions.length > 0 ? and(...policyConditions) : sql`1=1`;
 
+    // Build where conditions for manual contacts
+    const manualContactConditions = [];
+    if (params?.companyId) manualContactConditions.push(eq(manualContacts.companyId, params.companyId));
+    if (params?.userId) manualContactConditions.push(eq(manualContacts.userId, params.userId));
+    const manualContactWhere = manualContactConditions.length > 0 ? and(...manualContactConditions) : sql`1=1`;
+
     // Load data in parallel from all sources (EXCLUDING users/employees and SMS threads)
-    const [quoteMembersData, policyMembersData, companiesData] = await Promise.all([
+    const [quoteMembersData, policyMembersData, manualContactsData, companiesData] = await Promise.all([
       // Quote members with quote info
       db.select({
         member: quoteMembers,
@@ -6844,6 +6897,11 @@ export class DbStorage implements IStorage {
         .from(policyMembers)
         .innerJoin(policies, eq(policyMembers.policyId, policies.id))
         .where(policyWhere),
+      
+      // Manual contacts
+      db.select()
+        .from(manualContacts)
+        .where(manualContactWhere),
       
       // Load all companies for mapping
       db.select().from(companies)
@@ -6947,6 +7005,37 @@ export class DbStorage implements IStorage {
             memberId: member.id,
             role: member.role,
             effectiveDate: policy.effectiveDate,
+          }
+        }]
+      });
+    });
+    
+    // Map manual contacts
+    manualContactsData.forEach(contact => {
+      const companyName = companyMap.get(contact.companyId)?.name || null;
+      
+      rawContacts.push({
+        id: contact.id,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        displayName: generateDisplayName(contact.firstName, contact.lastName, companyName),
+        email: contact.email || null,
+        phone: normalizePhone(contact.phone),
+        ssn: null,
+        dateOfBirth: null,
+        status: [],
+        productType: [],
+        origin: ['manual'],
+        companyId: contact.companyId,
+        companyName,
+        sourceMetadata: [{
+          type: 'manual',
+          id: contact.id,
+          details: {
+            contactId: contact.id,
+            userId: contact.userId,
+            notes: contact.notes,
+            createdAt: contact.createdAt,
           }
         }]
       });

@@ -3134,6 +3134,27 @@ export const bulkvsThreadsIndex = unique("bulkvs_threads_unique_idx").on(
   bulkvsThreads.externalPhone
 );
 
+// =====================================================
+// MANUAL CONTACTS (Standalone contacts added from SMS/Chat)
+// =====================================================
+
+// Manual Contacts - contactos agregados manualmente desde el chat
+export const manualContacts = pgTable("manual_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Who created this contact
+  
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  phone: text("phone").notNull(), // E.164 or 11-digit format
+  
+  notes: text("notes"), // Optional notes about contact
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Insert schemas
 export const insertBulkvsPhoneNumberSchema = createInsertSchema(bulkvsPhoneNumbers).omit({
   id: true,
@@ -3178,7 +3199,24 @@ export const insertBulkvsMessageSchema = createInsertSchema(bulkvsMessages).omit
   body: z.string().max(1600).optional(), // SMS limit
 });
 
+export const insertManualContactSchema = createInsertSchema(manualContacts).omit({
+  id: true,
+  companyId: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  phone: z.string().min(10, "Phone number is required"),
+  notes: z.string().max(500).optional(),
+});
+
 // Types
+export type ManualContact = typeof manualContacts.$inferSelect;
+export type InsertManualContact = z.infer<typeof insertManualContactSchema>;
+
 export type BulkvsPhoneNumber = typeof bulkvsPhoneNumbers.$inferSelect;
 export type InsertBulkvsPhoneNumber = z.infer<typeof insertBulkvsPhoneNumberSchema>;
 
@@ -3206,11 +3244,11 @@ export type UnifiedContact = {
   dateOfBirth: string | null;
   status: string[];
   productType: (string | null)[];
-  origin: ('quote' | 'policy' | 'user' | 'sms')[];
+  origin: ('quote' | 'policy' | 'user' | 'sms' | 'manual')[];
   companyId: string | null;
   companyName: string | null;
   sourceMetadata: {
-    type: 'quote' | 'policy' | 'user' | 'sms';
+    type: 'quote' | 'policy' | 'user' | 'sms' | 'manual';
     id: string;
     details: any;
   }[];

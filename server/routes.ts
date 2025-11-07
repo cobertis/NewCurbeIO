@@ -67,7 +67,8 @@ import {
   insertAppointmentSchema,
   insertBulkvsPhoneNumberSchema,
   insertBulkvsThreadSchema,
-  insertBulkvsMessageSchema
+  insertBulkvsMessageSchema,
+  insertManualContactSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq } from "drizzle-orm";
@@ -7468,6 +7469,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error("Error fetching unified contacts:", error);
       res.status(500).json({ message: "Failed to fetch unified contacts" });
+    }
+  });
+
+  // Create manual contact from SMS chat
+  app.post("/api/contacts/manual", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Validate request body
+    const validation = insertManualContactSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        message: "Validation error", 
+        errors: validation.error.errors 
+      });
+    }
+    
+    const data = validation.data;
+    
+    try {
+      // Normalize phone number to 11-digit format
+      const normalizedPhone = formatForStorage(data.phone);
+      
+      // Create manual contact with current user and company
+      const manualContact = await storage.createManualContact({
+        ...data,
+        phone: normalizedPhone,
+        companyId: currentUser.companyId!,
+        userId: currentUser.id,
+      });
+      
+      console.log(`[MANUAL CONTACT] Created: ${manualContact.id} by user ${currentUser.email}`);
+      res.status(201).json(manualContact);
+    } catch (error: any) {
+      console.error("[MANUAL CONTACT] Error creating contact:", error);
+      
+      // Handle phone normalization errors
+      if (error.message?.includes("Invalid phone number")) {
+        return res.status(400).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "Failed to create manual contact" });
     }
   });
 

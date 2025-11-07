@@ -11,6 +11,7 @@ import { ContactDetails } from "@/components/chat/contact-details";
 import { NumberProvisionModal } from "@/components/chat/number-provision-modal";
 import { PhoneSettingsModal } from "@/components/chat/phone-settings-modal";
 import { NewMessageSheet } from "@/components/chat/new-message-sheet";
+import { AddContactDialog } from "@/components/chat/add-contact-dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Phone, Settings, RefreshCw, Plus } from "lucide-react";
 import type { BulkvsThread, BulkvsMessage, BulkvsPhoneNumber, User, UnifiedContact } from "@shared/schema";
@@ -37,6 +38,7 @@ export default function SmsMmsPage() {
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
   const [showNewMessageView, setShowNewMessageView] = useState(false);
   const [initialMessage, setInitialMessage] = useState<string>("");
+  const [addContactDialogOpen, setAddContactDialogOpen] = useState(false);
 
   // Get user's timezone
   const { data: userData } = useQuery<{ user: User }>({
@@ -344,6 +346,27 @@ export default function SmsMmsPage() {
     onError: (error: Error) => {
       toast({
         title: "Reactivation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addContactMutation = useMutation({
+    mutationFn: async (data: { firstName: string; lastName: string; email?: string; phone: string; notes?: string }) => {
+      return apiRequest("POST", "/api/contacts/manual", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts/unified"] });
+      toast({
+        title: "Contact added",
+        description: "Contact has been successfully added to your contacts list.",
+      });
+      setAddContactDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add contact",
         description: error.message,
         variant: "destructive",
       });
@@ -679,15 +702,15 @@ export default function SmsMmsPage() {
     ? contacts.some(c => c.phone === selectedThread.externalPhone)
     : false;
 
-  // Handle adding SMS contact to contacts (creates a basic quote member)
+  // Handle adding SMS contact to contacts (opens add contact dialog)
   const handleAddToContacts = () => {
     if (!selectedThread) return;
-    
-    // TODO: Implement dialog to collect basic contact info and create quote member
-    toast({
-      title: "Add to Contacts",
-      description: "This feature will be implemented soon",
-    });
+    setAddContactDialogOpen(true);
+  };
+
+  // Handle submit from add contact dialog
+  const handleAddContactSubmit = async (values: { firstName: string; lastName: string; email?: string; phone: string; notes?: string }) => {
+    await addContactMutation.mutateAsync(values);
   };
 
   return (
@@ -784,6 +807,16 @@ export default function SmsMmsPage() {
         open={settingsModalOpen}
         onOpenChange={setSettingsModalOpen}
         phoneNumber={activeNumbers[0]}
+      />
+    )}
+
+    {selectedThread && (
+      <AddContactDialog
+        open={addContactDialogOpen}
+        onOpenChange={setAddContactDialogOpen}
+        onSubmit={handleAddContactSubmit}
+        defaultPhone={formatForDisplay(selectedThread.externalPhone)}
+        isPending={addContactMutation.isPending}
       />
     )}
 
