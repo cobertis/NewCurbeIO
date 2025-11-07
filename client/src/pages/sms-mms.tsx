@@ -296,7 +296,35 @@ export default function SmsMmsPage() {
     mutationFn: async (threadId: string) => {
       return apiRequest("POST", `/api/bulkvs/threads/${threadId}/read`);
     },
+    onMutate: async (threadId: string) => {
+      // OPTIMISTIC UPDATE: Mark as read IMMEDIATELY
+      await queryClient.cancelQueries({ queryKey: ["/api/bulkvs/threads"] });
+      
+      const previousThreads = queryClient.getQueryData<BulkvsThread[]>(["/api/bulkvs/threads"]);
+      
+      // Update thread list cache immediately
+      queryClient.setQueryData<BulkvsThread[]>(
+        ["/api/bulkvs/threads"],
+        (old) => {
+          if (!old) return old;
+          return old.map(thread => 
+            thread.id === threadId 
+              ? { ...thread, unreadCount: 0 }
+              : thread
+          );
+        }
+      );
+      
+      return { previousThreads };
+    },
+    onError: (_err, _threadId, context) => {
+      // Rollback on error
+      if (context?.previousThreads) {
+        queryClient.setQueryData(["/api/bulkvs/threads"], context.previousThreads);
+      }
+    },
     onSuccess: () => {
+      // Reconcile with server truth
       queryClient.invalidateQueries({ queryKey: ["/api/bulkvs/threads"] });
     },
   });
