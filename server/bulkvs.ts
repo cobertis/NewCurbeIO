@@ -133,28 +133,6 @@ class BulkVSClient {
     }
   }
 
-  async createOrUpdateWebhook(webhookName: string, webhookUrl: string) {
-    if (!this.isConfigured()) throw new Error("BulkVS not configured");
-    
-    try {
-      console.log(`[BulkVS] Creating/updating webhook "${webhookName}" with URL: ${webhookUrl}`);
-      
-      // Use PUT /webHooks endpoint to create or update webhook
-      const response = await this.client.put("/webHooks", {
-        "Trunk Group": webhookName, // Webhook identifier (company slug)
-        "Message URL": webhookUrl,   // URL to receive webhook POST requests
-        "Method": "POST",             // HTTP method
-        "Delivery Receipt": true,     // Enable delivery receipts
-      });
-      
-      console.log("[BulkVS] ✓ Webhook created/updated successfully");
-      return response.data;
-    } catch (error: any) {
-      console.error("[BulkVS] createOrUpdateWebhook error:", error.response?.data || error.message);
-      throw error;
-    }
-  }
-
   async clearWebhook(did: string) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     

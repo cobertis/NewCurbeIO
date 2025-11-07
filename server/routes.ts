@@ -20352,6 +20352,40 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // 11. GET /api/bulkvs/messages/:refId/status - Check message delivery status
+  app.get("/api/bulkvs/messages/:refId/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (!bulkVSClient.isConfigured()) {
+        return res.status(503).json({ message: "BulkVS service is not configured" });
+      }
+      
+      const { refId } = req.params;
+      
+      if (!refId) {
+        return res.status(400).json({ message: "RefId is required" });
+      }
+      
+      console.log(`[BulkVS Status] Checking status for RefId: ${refId}`);
+      
+      const status = await bulkVSClient.messageStatus(refId);
+      
+      console.log(`[BulkVS Status] Status response:`, JSON.stringify(status, null, 2));
+      
+      res.json(status);
+    } catch (error: any) {
+      console.error("Error checking message status:", error);
+      res.status(500).json({ 
+        message: "Failed to check message status", 
+        error: error.message 
+      });
+    }
+  });
+
   // ==================== TASKS API ====================
 
   // GET /api/tasks - List tasks with filters
