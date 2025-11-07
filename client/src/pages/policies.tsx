@@ -3718,9 +3718,13 @@ export default function PoliciesPage() {
     queryKey: ["/api/policies"],
   });
 
-  // SIMPLE SOLUTION: Extract ID from URL path
+  // CORRECT SOLUTION: Extract policy ID from query string OR path
+  // Common navigation uses ?policyId=XXX, fallback to /policies/XXX format
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const policyIdFromQuery = urlParams.get('policyId');
   const pathParts = location.split('/');
-  const selectedPolicyId = pathParts[2] && pathParts[2] !== 'new' ? pathParts[2].split('?')[0] : null;
+  const policyIdFromPath = pathParts[2] && pathParts[2] !== 'new' ? pathParts[2].split('?')[0] : null;
+  const selectedPolicyId = policyIdFromQuery || policyIdFromPath;
   
   // Find the basic policy from list
   const basicPolicy = quotesData?.policies?.find(q => q.id === selectedPolicyId);
