@@ -149,7 +149,7 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
           onKeyDown={handleKeyDown}
           onFocus={() => onMarkAsRead?.()}
           placeholder="Escribe un mensaje"
-          className="flex-1 min-h-[20px] max-h-[100px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm placeholder:text-muted-foreground"
+          className="flex-1 min-h-[24px] max-h-[100px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 py-1 px-0 text-sm placeholder:text-muted-foreground leading-normal"
           disabled={disabled}
           data-testid="input-message"
         />
