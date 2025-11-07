@@ -116,6 +116,21 @@ export default function Calendar() {
     }
   };
 
+  // Helper function to format time with AM/PM
+  const formatTimeWithAMPM = (time: string): string => {
+    // Parse time in format "HH:mm" or "HH:mm:ss"
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    if (isNaN(hours) || isNaN(minutes)) {
+      return time; // Return original if parsing fails
+    }
+    
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+
   // Handle appointment click
   const handleAppointmentClick = (event: CalendarEvent) => {
     setSelectedAppointment({
@@ -331,7 +346,7 @@ export default function Calendar() {
                               <div className="font-medium truncate">{event.title}</div>
                               {event.appointmentTime && (
                                 <div className="text-[10px] mt-0.5 flex items-center gap-1">
-                                  <span className="font-semibold">{event.appointmentTime}</span>
+                                  <span className="font-semibold">{formatTimeWithAMPM(event.appointmentTime)}</span>
                                   {event.appointmentPhone && (
                                     <>
                                       <span>•</span>
@@ -412,7 +427,7 @@ export default function Calendar() {
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {format(new Date(selectedAppointment.date), "MMMM d, yyyy")}
-                    {selectedAppointment.time && ` at ${selectedAppointment.time}`}
+                    {selectedAppointment.time && ` at ${formatTimeWithAMPM(selectedAppointment.time)}`}
                   </p>
                 </div>
                 <Badge variant={getStatusVariant(selectedAppointment.status)} data-testid="badge-appointment-status">
