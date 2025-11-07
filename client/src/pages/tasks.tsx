@@ -84,7 +84,9 @@ export default function Tasks() {
       return await apiRequest("POST", "/api/tasks", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0] === "/api/tasks"
+      });
       setCreateDialogOpen(false);
       toast({
         title: "Success",
@@ -106,7 +108,9 @@ export default function Tasks() {
       return await apiRequest("DELETE", `/api/tasks/${taskId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0] === "/api/tasks"
+      });
       toast({
         title: "Success",
         description: "Task deleted successfully",
@@ -127,7 +131,9 @@ export default function Tasks() {
       return await apiRequest("PATCH", `/api/tasks/${taskId}`, { status: "completed" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => query.queryKey[0] === "/api/tasks"
+      });
       toast({
         title: "Success",
         description: "Task marked as complete",

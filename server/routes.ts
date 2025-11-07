@@ -11898,6 +11898,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching manual appointments for calendar:", error);
       }
+      
+      // ============== TASKS ==============
+      try {
+        // Build filters for tasks
+        const taskFilters: any = {};
+        if (currentUser.role !== "superadmin" && currentUser.companyId) {
+          taskFilters.companyId = currentUser.companyId;
+        }
+        
+        const tasks = await storage.listTasks(taskFilters);
+        for (const task of tasks) {
+          if (task.dueDate && task.status !== 'completed' && task.status !== 'cancelled') {
+            // Get assignee info if available
+            let assigneeName = '';
+            if (task.assigneeId) {
+              const assignee = await storage.getUser(task.assigneeId);
+              if (assignee) {
+                assigneeName = `${assignee.firstName} ${assignee.lastName}`;
+              }
+            }
+            
+            events.push({
+              type: 'task',
+              date: task.dueDate,
+              title: task.title,
+              description: task.description || '',
+              taskId: task.id,
+              priority: task.priority,
+              status: task.status,
+              assigneeName: assigneeName || undefined,
+            });
+          }
+        }
+      } catch (error: any) {
+        console.error("Error fetching tasks for calendar:", error);
+      }
 
       res.json({ events });
     } catch (error: any) {
