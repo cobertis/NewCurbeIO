@@ -30,6 +30,7 @@ import {
   Workflow,
   Contact
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -50,7 +51,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { User } from "@shared/schema";
+import type { User, BulkvsThread } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
 // Menu items for superadmin (COMPLETE LIST)
@@ -245,6 +246,16 @@ export function AppSidebar() {
     enabled: !!userData?.user?.companyId,
   });
 
+  // Get BulkVS threads to count unread messages
+  const { data: threadsData } = useQuery<BulkvsThread[]>({
+    queryKey: ["/api/bulkvs/threads"],
+    enabled: !!userData?.user,
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+
+  // Calculate total unread messages
+  const totalUnread = threadsData?.reduce((sum, thread) => sum + (thread.unreadCount || 0), 0) || 0;
+
   // Determine which menu to show based on user role
   const isSuperadmin = userData?.user?.role === "superadmin";
   
@@ -420,6 +431,15 @@ export function AppSidebar() {
                         <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
+                          {item.title === "SMS" && totalUnread > 0 && (
+                            <Badge 
+                              variant="destructive" 
+                              className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
+                              data-testid="badge-unread-count"
+                            >
+                              {totalUnread > 99 ? "99+" : totalUnread}
+                            </Badge>
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
