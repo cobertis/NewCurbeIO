@@ -12208,6 +12208,7 @@ export default function PoliciesPage() {
                           <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Client</TableHead>
                           <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Policy</TableHead>
                           <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Status</TableHead>
+                          <TableHead className="sticky top-0 z-30 text-center py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Year</TableHead>
                           <TableHead className="sticky top-0 z-30 text-right py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -12376,6 +12377,13 @@ export default function PoliciesPage() {
                                 <div className="text-xs text-muted-foreground">
                                   Payments: <span className={getPaymentStatusColor(quote.paymentStatus || '')}>{formatPaymentStatusDisplay(quote.paymentStatus)}</span>
                                 </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center py-3 px-4">
+                              <div className="inline-flex items-center justify-center border-2 border-foreground px-4 py-1.5 bg-background rounded-sm">
+                                <span className="text-2xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
+                                  {quote.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+                                </span>
                               </div>
                             </TableCell>
                             <TableCell className="text-right py-3 px-4">
