@@ -3722,7 +3722,13 @@ export default function PoliciesPage() {
   // Determine if we're viewing a specific quote
   const isViewingQuote = params?.id && params.id !== 'new';
   
-  // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data in one request
+  // Get selected policy ID from route or list
+  const selectedPolicyId = params?.id;
+  
+  // Find the basic policy from list first (lightweight data without income/immigration)
+  const basicPolicy = quotesData?.policies?.find(q => q.id === selectedPolicyId);
+  
+  // UNIFIED QUOTE DETAIL QUERY - Fetches ALL related data including income/immigration
   const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
     policy: Quote & {
       agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
@@ -3737,12 +3743,12 @@ export default function PoliciesPage() {
     paymentMethods: QuotePaymentMethod[];
     totalHouseholdIncome: number;
   }>({
-    queryKey: ['/api/policies', params?.id, 'detail'],
-    enabled: !!params?.id && params?.id !== 'new',
+    queryKey: ['/api/policies', selectedPolicyId, 'detail'],
+    enabled: !!selectedPolicyId && selectedPolicyId !== 'new',
   });
 
-  // Use detail query if available (has income/immigration), otherwise fallback to list
-  const viewingQuote = quoteDetail?.policy || quotesData?.policies?.find(q => q.id === params?.id);
+  // CRITICAL: Always prefer detail query data (has income/immigration), fallback to basic policy only if detail not loaded
+  const viewingQuote = quoteDetail?.policy || basicPolicy;
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods || [] } : undefined;
   const isLoadingPaymentMethods = isLoadingQuoteDetail;
   
