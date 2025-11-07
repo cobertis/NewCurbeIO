@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Paperclip, Send, X } from "lucide-react";
+import { Plus, Send, X } from "lucide-react";
 import { EmojiPicker } from "./emoji-picker";
 import { cn } from "@/lib/utils";
 
@@ -97,7 +97,7 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
   };
 
   return (
-    <div className="bg-background p-3 flex-shrink-0" data-testid="message-input-container">
+    <div className="bg-background p-4 flex-shrink-0" data-testid="message-input-container">
       {mediaPreview && (
         <div className="mb-3 relative inline-block" data-testid="media-preview">
           <img
@@ -118,56 +118,55 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
         </div>
       )}
 
-      <div className="flex items-end gap-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          className="hidden"
-          onChange={handleFileSelect}
-          data-testid="input-file"
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={handleFileSelect}
+        data-testid="input-file"
+      />
+
+      <div className="flex items-center gap-2 bg-card dark:bg-card/50 border border-border rounded-full px-3 py-2 shadow-sm">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-muted"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled}
+          data-testid="button-attach"
+        >
+          <Plus className="h-5 w-5 text-muted-foreground" />
+        </Button>
+
+        <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+
+        <Textarea
+          ref={textareaRef}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => onMarkAsRead?.()}
+          placeholder="Escribe un mensaje"
+          className="flex-1 min-h-[24px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm placeholder:text-muted-foreground"
+          disabled={disabled}
+          data-testid="input-message"
         />
 
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-10 w-10 flex-shrink-0 rounded-full hover:bg-muted"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled}
-          data-testid="button-attach"
-        >
-          <Paperclip className="h-5 w-5 text-muted-foreground" />
-        </Button>
-
-        <div className="flex-1 flex items-end gap-2 bg-muted/50 dark:bg-muted/30 rounded-3xl px-4 py-2">
-          <Textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => onMarkAsRead?.()}
-            placeholder="Type a message..."
-            className="flex-1 min-h-[24px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm placeholder:text-muted-foreground"
-            disabled={disabled}
-            data-testid="input-message"
-          />
-
-          <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-        </div>
-
-        <Button
-          type="button"
-          size="icon"
           className={cn(
-            "h-10 w-10 flex-shrink-0 rounded-full",
+            "h-8 w-8 flex-shrink-0 rounded-full hover:bg-muted",
             (!message.trim() && !mediaFile) && "opacity-50"
           )}
           onClick={handleSend}
           disabled={(!message.trim() && !mediaFile) || disabled}
           data-testid="button-send"
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-5 w-5 text-primary" />
         </Button>
       </div>
     </div>
