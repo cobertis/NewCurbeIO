@@ -19726,9 +19726,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // 4a. POST /:companySlug/:webhookToken - Dynamic webhook endpoint for incoming messages
+  // 4a. POST /api/webhooks/bulkvs/:companySlug/:webhookToken - Dynamic webhook endpoint for incoming messages
   // This endpoint receives BulkVS webhooks for each individual user
-  app.post("/:companySlug/:webhookToken", async (req: Request, res: Response) => {
+  app.post("/api/webhooks/bulkvs/:companySlug/:webhookToken", async (req: Request, res: Response) => {
     try {
       const { companySlug, webhookToken } = req.params;
       
