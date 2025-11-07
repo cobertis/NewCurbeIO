@@ -3741,6 +3741,14 @@ export default function PoliciesPage() {
     queryKey: ['/api/policies', params?.id, 'detail'],
     enabled: !!params?.id && params?.id !== 'new',
   });
+  
+  // DEBUG: Log quoteDetail
+  if (params?.id && params.id !== 'new') {
+    console.log('[POLICY QUERY DEBUG] params.id:', params.id);
+    console.log('[POLICY QUERY DEBUG] query enabled:', !!params?.id && params?.id !== 'new');
+    console.log('[POLICY QUERY DEBUG] isLoadingQuoteDetail:', isLoadingQuoteDetail);
+    console.log('[POLICY QUERY DEBUG] quoteDetail:', quoteDetail);
+  }
 
   // Use the quote from unified detail if available, otherwise fallback to list (for backward compatibility)
   const viewingQuote = quoteDetail?.policy || quotesData?.policies?.find(q => q.id === params?.id);
@@ -5085,13 +5093,17 @@ export default function PoliciesPage() {
   const agents = agentsData?.users || [];
   const allQuotes = quotesData?.policies || [];
   
-  // Fetch members with income and immigration details
-  // REPLACED WITH UNIFIED QUERY - membersDetailsData now comes from quoteDetail
-  // const { data: membersDetailsData } = useQuery<{ members: Array<any> }>({
-  //   queryKey: ['/api/policies', params?.id, 'members-details'],
-  //   enabled: isViewingQuote && !!viewingQuote?.id,
-  // });
-  const membersDetailsData = quoteDetail ? { members: (quoteDetail.members || []).map(m => ({ ...m.member, income: m.income, immigration: m.immigration })) } : undefined;
+  // Fetch members with income and immigration details from UNIFIED QUERY
+  // The API returns { member, income, immigration, documents } for each member
+  // We need to flatten this structure so income/immigration are accessible
+  const membersDetailsData = quoteDetail && quoteDetail.members ? { 
+    members: quoteDetail.members.map(m => ({
+      ...m.member,
+      income: m.income,
+      immigration: m.immigration,
+      documents: m.documents || []
+    }))
+  } : undefined;
 
   // Helper function to get member details by role and index
   const getMemberDetails = (role: 'client' | 'spouse' | 'dependent', index?: number) => {
