@@ -80,7 +80,8 @@ export function MessagePanel({
     if (thread && thread.unreadCount > 0 && onMarkAsRead) {
       onMarkAsRead();
     }
-  }, [thread?.id, messages.length, onMarkAsRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread?.id, messages.length]);
 
   if (!thread) {
     return (
