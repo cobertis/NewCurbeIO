@@ -778,6 +778,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   const { toast } = useToast();
   const [memberTab, setMemberTab] = useTabsState(["basic", "income", "immigration", "documents"], "basic");
   const [isSaving, setIsSaving] = useState(false); // Internal loading state
+  const hasInitializedRef = useRef(false); // Track if form has been initialized for current open cycle
   const editMemberSchema = memberType === 'dependent'
     ? dependentSchema
     : familyMemberSchema;
@@ -870,6 +871,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   
   // Check if we're still loading ANY data - must wait for ALL queries to complete
   const isLoadingMemberData = isLoadingMembers || isLoadingIncome || isLoadingImmigration;
+  
+  // Gate: Member data is ready when sheet is open, we have currentMemberId, and all queries have settled
+  const isMemberDataReady = open && currentMemberId && !isLoadingMembers && !isLoadingIncome && !isLoadingImmigration;
 
   // Use useMemo to prevent unnecessary recalculation and form resets
   const memberData = useMemo(() => {
@@ -1009,15 +1013,28 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     defaultValues: memberData || {},
   });
 
-  // Reset form whenever memberData changes (including when income/immigration data loads)
-  // Only reset form when sheet opens, not when data changes while editing
+  // Reset the initialization flag when sheet closes OR when member changes
   useEffect(() => {
-    if (open && memberData) {
+    if (!open) {
+      hasInitializedRef.current = false;
+    }
+  }, [open]);
+  
+  // CRITICAL: Reset initialization flag when switching between members (prev/next navigation)
+  useEffect(() => {
+    hasInitializedRef.current = false;
+  }, [currentMemberId, memberType, memberIndex]);
+
+  // Reset form ONCE when data is ready (income + immigration loaded)
+  // This prevents blank form on first open while avoiding mid-edit resets
+  useEffect(() => {
+    if (isMemberDataReady && memberData && !hasInitializedRef.current) {
       console.log('[EditMemberSheet] Resetting form with complete data:', memberData);
       editForm.reset(memberData);
+      hasInitializedRef.current = true; // Mark as initialized for this open cycle
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]); // Only depend on 'open', not memberData - prevents reset while editing
+  }, [isMemberDataReady]); // Only trigger when data readiness changes
 
   // Reset tab to "basic" whenever member changes
   useEffect(() => {
@@ -1301,8 +1318,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   const memberName = memberData ? `${memberData.firstName || ''} ${memberData.lastName || ''}`.trim() || 'Unnamed' : 'Loading...';
 
-  // Show loading screen if data is still being fetched
-  if (isLoadingMemberData || !memberData) {
+  // Show loading screen until ALL data is ready (members + income + immigration)
+  if (!isMemberDataReady || !memberData) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:max-w-2xl flex items-center justify-center" side="right">

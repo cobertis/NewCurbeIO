@@ -38,6 +38,16 @@ if (isLoading) {
 - Apply consistently across ALL pages, sheets, dialogs, and async components
 - This ensures a uniform user experience throughout the entire application
 
+**EditMemberSheet Data Loading Fix (CRITICAL):**
+Implemented proper data readiness gating to prevent blank forms on first open:
+- Added `isMemberDataReady` guard checking all queries are settled (members + income + immigration)
+- Form displays LoadingSpinner until ALL data is ready, preventing empty fields
+- Used `useRef` to track initialization state per open cycle
+- Form resets ONCE when data is ready, avoiding mid-edit resets
+- Resets initialization flag when navigating between members (prev/next) or closing sheet
+- Second and subsequent opens are instant due to React Query cache
+- Implementation in `client/src/pages/policies.tsx` lines 784, 879, 1019-1040, 1320
+
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 
 ## System Architecture
