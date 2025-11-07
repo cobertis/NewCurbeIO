@@ -270,10 +270,9 @@ class BulkVSClient {
         To: [normalizedTo], // Must be an array
       };
       
-      // Add Message if body is provided
-      if (payload.body) {
-        bulkvsPayload.Message = payload.body;
-      }
+      // CRITICAL: Message field is REQUIRED by BulkVS API, even for MMS-only
+      // Without Message field, the API accepts the request but doesn't deliver the media
+      bulkvsPayload.Message = payload.body || "";
       
       // Add Media if mediaUrl is provided (MMS)
       // According to BulkVS API documentation: use "MediaURLs" (plural) as array
