@@ -1036,6 +1036,13 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     // Activate loading state
     setIsSaving(true);
     
+    // Show loading toast to indicate save is in progress
+    toast({
+      title: "Saving...",
+      description: "Please wait while we save the member information.",
+      duration: 10000, // Will be dismissed manually when save completes
+    });
+    
     // Step 1: Save basic data to normalized table quote_members
     try {
       console.log('[EditMemberSheet] Starting to save member basic data...');
@@ -1345,9 +1352,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
               disabled={isSaving || isPending}
               data-testid="button-save"
               onClick={editForm.handleSubmit(handleSave)}
-              className="mr-10"
+              className="mr-10 min-w-[120px]"
             >
-              {(isSaving || isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {(isSaving || isPending) && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               {(isSaving || isPending) ? 'Saving...' : 'Save'}
             </Button>
           </div>
@@ -2637,6 +2644,13 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     setCountryPopoverOpen(false);
     setIsSaving(true);
     
+    // Show loading toast
+    toast({
+      title: "Saving...",
+      description: "Please wait while we save the member information.",
+      duration: 10000,
+    });
+    
     try {
       const result: any = await onSave(data);
       
@@ -2646,12 +2660,19 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
         toast({
           title: "Member created",
           description: "You can now add income and immigration details",
+          duration: 3000,
         });
       }
       
       // NO resetear el formulario, mantener los datos
     } catch (error) {
       console.error('[AddMemberSheet] Error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save member information. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -2677,11 +2698,11 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
               disabled={isSaving || isPending}
               data-testid="button-save-member"
               onClick={addMemberForm.handleSubmit(handleSave)}
-              className="mr-10"
+              className="mr-10 min-w-[120px]"
             >
               {(isSaving || isPending) ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                   Saving...
                 </>
               ) : (
