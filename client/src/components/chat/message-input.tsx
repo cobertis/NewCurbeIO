@@ -97,9 +97,9 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
   };
 
   return (
-    <div className="bg-background p-4 flex-shrink-0" data-testid="message-input-container">
+    <div className="p-3 flex-shrink-0" data-testid="message-input-container">
       {mediaPreview && (
-        <div className="mb-3 relative inline-block" data-testid="media-preview">
+        <div className="mb-2 relative inline-block" data-testid="media-preview">
           <img
             src={mediaPreview}
             alt="Preview"
@@ -127,17 +127,17 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
         data-testid="input-file"
       />
 
-      <div className="flex items-center gap-2 bg-card dark:bg-card/50 border border-border rounded-full px-3 py-2 shadow-sm">
+      <div className="flex items-center gap-2 bg-muted/40 dark:bg-muted/20 rounded-full px-3 py-1.5">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-8 w-8 flex-shrink-0 rounded-full hover:bg-muted"
+          className="h-7 w-7 flex-shrink-0 rounded-full hover:bg-muted/60"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
           data-testid="button-attach"
         >
-          <Plus className="h-5 w-5 text-muted-foreground" />
+          <Plus className="h-4 w-4 text-muted-foreground" />
         </Button>
 
         <EmojiPicker onEmojiSelect={handleEmojiSelect} />
@@ -149,7 +149,7 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
           onKeyDown={handleKeyDown}
           onFocus={() => onMarkAsRead?.()}
           placeholder="Escribe un mensaje"
-          className="flex-1 min-h-[24px] max-h-[120px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm placeholder:text-muted-foreground"
+          className="flex-1 min-h-[20px] max-h-[100px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-sm placeholder:text-muted-foreground"
           disabled={disabled}
           data-testid="input-message"
         />
@@ -159,14 +159,14 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
           variant="ghost"
           size="icon"
           className={cn(
-            "h-8 w-8 flex-shrink-0 rounded-full hover:bg-muted",
+            "h-7 w-7 flex-shrink-0 rounded-full hover:bg-muted/60",
             (!message.trim() && !mediaFile) && "opacity-50"
           )}
           onClick={handleSend}
           disabled={(!message.trim() && !mediaFile) || disabled}
           data-testid="button-send"
         >
-          <Send className="h-5 w-5 text-primary" />
+          <Send className="h-4 w-4 text-primary" />
         </Button>
       </div>
     </div>
