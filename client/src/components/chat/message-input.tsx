@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Plus, Send, X } from "lucide-react";
 import { EmojiPicker } from "./emoji-picker";
 import { cn } from "@/lib/utils";
@@ -16,16 +16,16 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
   const [message, setMessage] = useState(initialMessage || "");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update message when initialMessage changes
   useEffect(() => {
     if (initialMessage) {
       setMessage(initialMessage);
-      // Focus the textarea after a short delay
+      // Focus the input after a short delay
       setTimeout(() => {
-        textareaRef.current?.focus();
+        inputRef.current?.focus();
       }, 100);
     }
   }, [initialMessage]);
@@ -37,14 +37,10 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
     setMessage("");
     setMediaFile(null);
     setMediaPreview(null);
-
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSend();
     }
@@ -81,18 +77,18 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+    const input = inputRef.current;
+    if (!input) return;
 
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
     const newMessage = message.slice(0, start) + emoji + message.slice(end);
     
     setMessage(newMessage);
     
     setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-      textarea.focus();
+      input.selectionStart = input.selectionEnd = start + emoji.length;
+      input.focus();
     }, 0);
   };
 
@@ -142,14 +138,14 @@ export function MessageInput({ onSendMessage, disabled = false, onMarkAsRead, in
 
         <EmojiPicker onEmojiSelect={handleEmojiSelect} />
 
-        <Textarea
-          ref={textareaRef}
+        <Input
+          ref={inputRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => onMarkAsRead?.()}
           placeholder="Escribe un mensaje"
-          className="flex-1 min-h-[24px] max-h-[100px] resize-none bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 py-1 px-0 text-sm placeholder:text-muted-foreground leading-normal"
+          className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto p-0 text-sm placeholder:text-muted-foreground"
           disabled={disabled}
           data-testid="input-message"
         />
