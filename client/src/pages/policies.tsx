@@ -5091,7 +5091,7 @@ export default function PoliciesPage() {
   //   queryKey: ['/api/policies', params?.id, 'members-details'],
   //   enabled: isViewingQuote && !!viewingQuote?.id,
   // });
-  const membersDetailsData = quoteDetail ? { members: quoteDetail.members.map(m => ({ ...m.member, income: m.income, immigration: m.immigration })) } : undefined;
+  const membersDetailsData = quoteDetail ? { members: (quoteDetail.members || []).map(m => ({ ...m.member, income: m.income, immigration: m.immigration })) } : undefined;
 
   // Helper function to get member details by role and index
   const getMemberDetails = (role: 'client' | 'spouse' | 'dependent', index?: number) => {
