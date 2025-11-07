@@ -81,7 +81,7 @@ export function MessagePanel({
       onMarkAsRead();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thread?.id, messages.length]);
+  }, [thread?.id, thread?.unreadCount, messages.length]);
 
   if (!thread) {
     return (
