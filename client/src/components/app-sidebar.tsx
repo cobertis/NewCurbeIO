@@ -192,6 +192,11 @@ const myAgencyMenuItems = [
 
 const marketingMenuItems = [
   {
+    title: "SMS",
+    url: "/sms",
+    icon: MessageSquare,
+  },
+  {
     title: "Contacts",
     url: "/contacts",
     icon: Mail,
@@ -207,19 +212,9 @@ const marketingMenuItems = [
     icon: Globe,
   },
   {
-    title: "SMS",
-    url: "/sms",
-    icon: MessageSquare,
-  },
-  {
     title: "Email",
     url: "/email-marketing",
     icon: Inbox,
-  },
-  {
-    title: "Integrations",
-    url: "/integrations",
-    icon: Workflow,
   },
 ];
 
