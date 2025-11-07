@@ -253,8 +253,8 @@ export function AppSidebar() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  // Calculate total unread messages
-  const totalUnread = threadsData?.reduce((sum, thread) => sum + (thread.unreadCount || 0), 0) || 0;
+  // Count conversations with unread messages (not total messages)
+  const unreadThreadCount = (threadsData?.filter(thread => thread.unreadCount > 0) ?? []).length;
 
   // Determine which menu to show based on user role
   const isSuperadmin = userData?.user?.role === "superadmin";
@@ -431,13 +431,13 @@ export function AppSidebar() {
                         <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
-                          {item.title === "SMS" && totalUnread > 0 && (
+                          {item.title === "SMS" && unreadThreadCount > 0 && (
                             <Badge 
                               variant="destructive" 
                               className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
                               data-testid="badge-unread-count"
                             >
-                              {totalUnread > 99 ? "99+" : totalUnread}
+                              {unreadThreadCount > 99 ? "99+" : unreadThreadCount}
                             </Badge>
                           )}
                         </Link>
