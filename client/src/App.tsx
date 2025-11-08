@@ -151,14 +151,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     ? `${user.firstName} ${user.lastName}` 
     : user?.email || "User";
   
-  // Show role for all users
-  const userSubtitle = user?.role === "superadmin" 
+  // Show role + company name for non-superadmin users
+  const roleText = user?.role === "superadmin" 
     ? "Super Admin" 
     : user?.role === "admin" 
       ? "Admin"
       : user?.role === "member"
         ? "Member"
         : "User";
+  
+  const userSubtitle = user?.role === "superadmin" 
+    ? roleText 
+    : companyData?.company?.name 
+      ? `${roleText} • ${companyData.company.name}`
+      : roleText;
   
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
