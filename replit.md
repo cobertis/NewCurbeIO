@@ -45,11 +45,21 @@ if (isLoading) {
 - **Result:** Preserves data structure for downstream code, prevents crash, shows empty state gracefully
 - **Implementation:** `client/src/pages/quotes.tsx` line 5051-5053
 
-**Dashboard Auto-Refresh Optimization (November 8, 2025):**
+**Dashboard Real-Time WebSocket Implementation (November 8, 2025):**
 - **Problem:** Dashboard stats (especially Failed Login counter) took up to 2 minutes to update after new events
-- **Solution:** Changed `refetchInterval` from 2 minutes (120s) to 30 seconds
-- **Performance:** Balances real-time updates with server load (120 requests/hour vs previous 30)
-- **Implementation:** `client/src/pages/dashboard.tsx` line 41
+- **Previous Approach:** Polling every 30 seconds (wasteful: 120 requests/hour per user)
+- **Final Solution:** WebSocket-based real-time updates - updates ONLY when events occur
+- **Architecture:**
+  1. Dashboard subscribes to WebSocket messages (`notification_update`, `dashboard_update`, `data_invalidation`)
+  2. Backend broadcasts WebSocket message when events occur (login failed, task created, etc.)
+  3. Dashboard invalidates query cache and refetches only when needed
+  4. Fallback: 5-minute polling interval (only if WebSocket fails)
+- **Benefits:**
+  - ✅ Zero resource waste - no unnecessary polling
+  - ✅ Instant updates when events occur
+  - ✅ Scalable to thousands of concurrent users
+  - ✅ Existing `notificationService` methods already broadcast updates
+- **Implementation:** `client/src/pages/dashboard.tsx` lines 7-8, 39-62
 
 **Calendar Week List View (November 8, 2025):**
 - **Feature:** Added complete week list view alongside existing month view

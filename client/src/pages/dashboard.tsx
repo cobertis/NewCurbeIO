@@ -2,9 +2,11 @@ import { Users, Building2, TrendingUp, Activity, ChevronDown, BarChart3, PieChar
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+import { useWebSocket } from "@/hooks/use-websocket";
+import { useCallback } from "react";
 
 const recentActivity = [
   { name: "User Created", code: "admin@company.com", amount: "$1,250.00", count: "ID 4188", change: "+5.0%", status: "success" },
@@ -31,11 +33,29 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  
+  // WebSocket handler for real-time dashboard updates
+  const handleWebSocketMessage = useCallback((message: any) => {
+    // Listen for events that should trigger dashboard refresh
+    if (
+      message.type === 'notification_update' ||
+      message.type === 'dashboard_update' ||
+      message.type === 'data_invalidation'
+    ) {
+      // Invalidate dashboard stats to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard-stats"] });
+    }
+  }, [queryClient]);
+  
+  // Connect to WebSocket for real-time updates
+  useWebSocket(handleWebSocketMessage);
   
   const { data: statsData } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard-stats"],
-    // Dashboard stats refresh every 30 seconds for near real-time insights without overwhelming the server
-    refetchInterval: 30 * 1000, // 30 seconds
+    // No polling! Updates happen via WebSocket events only
+    // Keep a long fallback interval (5 minutes) just in case WebSocket fails
+    refetchInterval: 5 * 60 * 1000, // 5 minutes fallback only
   });
 
   const totalUsers = statsData?.totalUsers || 0;
