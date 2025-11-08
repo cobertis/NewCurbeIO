@@ -58,19 +58,13 @@ export default function SystemAlerts() {
 
   const broadcastMutation = useMutation({
     mutationFn: async (data: BroadcastForm) => {
-      const response = await apiRequest("POST", "/api/notifications/broadcast", data);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Failed to send broadcast" }));
-        throw new Error(errorData.message || "Failed to send broadcast notification");
-      }
-      
-      return response.json() as Promise<{ success: boolean; count: number; message: string }>;
+      return await apiRequest("POST", "/api/notifications/broadcast", data) as Promise<{ success: boolean; count: number; message: string }>;
     },
     onSuccess: (data) => {
       toast({
         title: "Broadcast Sent Successfully",
         description: data.message,
+        duration: 3000,
       });
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/broadcast/history"] });
@@ -80,25 +74,20 @@ export default function SystemAlerts() {
         title: "Broadcast Failed",
         description: error.message || "Failed to send broadcast notification",
         variant: "destructive",
+        duration: 3000,
       });
     },
   });
 
   const resendMutation = useMutation({
     mutationFn: async (broadcastId: string) => {
-      const response = await apiRequest("POST", `/api/notifications/broadcast/${broadcastId}/resend`, {});
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Failed to resend broadcast" }));
-        throw new Error(errorData.message || "Failed to resend broadcast notification");
-      }
-      
-      return response.json() as Promise<{ success: boolean; count: number; message: string }>;
+      return await apiRequest("POST", `/api/notifications/broadcast/${broadcastId}/resend`, {}) as Promise<{ success: boolean; count: number; message: string }>;
     },
     onSuccess: (data) => {
       toast({
         title: "Broadcast Resent Successfully",
         description: data.message,
+        duration: 3000,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/broadcast/history"] });
     },
@@ -107,25 +96,20 @@ export default function SystemAlerts() {
         title: "Resend Failed",
         description: error.message || "Failed to resend broadcast notification",
         variant: "destructive",
+        duration: 3000,
       });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (broadcastId: string) => {
-      const response = await apiRequest("DELETE", `/api/notifications/broadcast/${broadcastId}`, {});
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Failed to delete broadcast" }));
-        throw new Error(errorData.message || "Failed to delete broadcast");
-      }
-      
-      return response.json() as Promise<{ success: boolean; message: string }>;
+      return await apiRequest("DELETE", `/api/notifications/broadcast/${broadcastId}`, {}) as Promise<{ success: boolean; message: string }>;
     },
     onSuccess: (data) => {
       toast({
         title: "Broadcast Deleted",
         description: data.message,
+        duration: 3000,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/broadcast/history"] });
     },
@@ -134,6 +118,7 @@ export default function SystemAlerts() {
         title: "Delete Failed",
         description: error.message || "Failed to delete broadcast",
         variant: "destructive",
+        duration: 3000,
       });
     },
   });
