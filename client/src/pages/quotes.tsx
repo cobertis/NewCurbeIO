@@ -5045,7 +5045,9 @@ export default function QuotesPage() {
   //   queryKey: ['/api/quotes', params?.id, 'members-details'],
   //   enabled: isViewingQuote && !!viewingQuote?.id,
   // });
-  const membersDetailsData = quoteDetail ? { members: quoteDetail.members.map(m => ({ ...m.member, income: m.income, immigration: m.immigration })) } : undefined;
+  const membersDetailsData = quoteDetail && quoteDetail.members 
+    ? { members: quoteDetail.members.map(m => ({ ...m.member, income: m.income, immigration: m.immigration })) } 
+    : { members: [] };
 
   // Helper function to get member details by role and index
   const getMemberDetails = (role: 'client' | 'spouse' | 'dependent', index?: number) => {

@@ -37,6 +37,28 @@ if (isLoading) {
 
 ## Recent Critical Fixes (November 2025)
 
+**Quotes Page Crash Fix (November 8, 2025):**
+- **Problem:** Quotes page showed blank screen when opening a quote
+- **Root Cause:** Line 5048 attempted `.map()` on `quoteDetail.members` when it was `undefined`
+- **Error:** "Cannot read properties of undefined (reading 'map')"
+- **Solution:** Added guard `quoteDetail && quoteDetail.members` and return empty array `{ members: [] }` instead of `undefined`
+- **Result:** Preserves data structure for downstream code, prevents crash, shows empty state gracefully
+- **Implementation:** `client/src/pages/quotes.tsx` line 5051-5053
+
+**Dashboard Auto-Refresh Optimization (November 8, 2025):**
+- **Problem:** Dashboard stats (especially Failed Login counter) took up to 2 minutes to update after new events
+- **Solution:** Changed `refetchInterval` from 2 minutes (120s) to 30 seconds
+- **Performance:** Balances real-time updates with server load (120 requests/hour vs previous 30)
+- **Implementation:** `client/src/pages/dashboard.tsx` line 41
+
+**Calendar Week List View (November 8, 2025):**
+- **Feature:** Added complete week list view alongside existing month view
+- **URL Parameter:** `?initialView=listWeek` to open directly in week view
+- **UI Components:** Month/Week toggle buttons, day-by-day event cards with full details
+- **Navigation:** Adaptive prev/next buttons (months for month view, weeks for week view)
+- **Integration:** Dashboard "Birthdays this week" card now links to week view
+- **Implementation:** `client/src/pages/calendar.tsx`
+
 **Dashboard Failed Login Counter Fix:**
 - **Problem:** Dashboard "Failed Login Attempts" card always showed "0" despite failed login notifications
 - **Root Causes:** 
