@@ -4145,7 +4145,7 @@ function AutomationsTab() {
                   Custom Birthday Message
                 </label>
                 <p className="text-sm text-muted-foreground">
-                  Personalize the birthday greeting message sent to contacts
+                  Use {"{CLIENT_NAME}"} and {"{AGENT_NAME}"} for personalization
                 </p>
                 <Textarea
                   id="custom-message"
@@ -4154,7 +4154,7 @@ function AutomationsTab() {
                     setFormData({ ...formData, customMessage: e.target.value });
                     if (!isEditing) setIsEditing(true);
                   }}
-                  placeholder="Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"
+                  placeholder="¡Feliz Cumpleaños {CLIENT_NAME}!&#10;&#10;Te deseamos el mejor de los éxitos en este nuevo año de vida.&#10;&#10;Te saluda {AGENT_NAME}, tu agente de seguros."
                   rows={6}
                   className="resize-none"
                   data-testid="textarea-birthday-message"
@@ -4221,7 +4221,10 @@ function AutomationsTab() {
                   
                   {/* Message Text */}
                   <div className="text-sm text-foreground whitespace-pre-wrap break-words">
-                    {formData.customMessage || "Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"}
+                    {(formData.customMessage || "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.")
+                      .replace('{CLIENT_NAME}', 'Juan')
+                      .replace('{AGENT_NAME}', currentUser?.firstName || 'María')
+                    }
                   </div>
                   
                   <div className="text-xs text-muted-foreground text-right">

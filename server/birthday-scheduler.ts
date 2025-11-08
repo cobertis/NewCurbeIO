@@ -125,30 +125,6 @@ async function getTodaysBirthdaysForCompany(companyId: string, todayMonthDay: st
     console.error("[BIRTHDAY SCHEDULER] Error fetching team birthdays:", error);
   }
 
-  // ============== MANUAL CONTACTS BIRTHDAYS ==============
-  try {
-    const manualContactsData = await storage.getManualContactsByCompany(companyId);
-    for (const contact of manualContactsData) {
-      if (contact.dateOfBirth) {
-        const monthDay = contact.dateOfBirth.slice(5); // MM-DD
-        if (monthDay === todayMonthDay) {
-          const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase().trim();
-          const birthdayKey = `${fullName}-${contact.dateOfBirth}`;
-          if (!birthdaySet.has(birthdayKey)) {
-            birthdaySet.add(birthdayKey);
-            birthdays.push({
-              name: `${contact.firstName} ${contact.lastName}`,
-              phone: contact.phone || null,
-              dateOfBirth: contact.dateOfBirth,
-            });
-          }
-        }
-      }
-    }
-  } catch (error: any) {
-    console.error("[BIRTHDAY SCHEDULER] Error fetching manual contacts birthdays:", error);
-  }
-
   // ============== MANUAL BIRTHDAYS ==============
   try {
     const manualBirthdaysData = await storage.getManualBirthdaysByCompany(companyId);
@@ -305,8 +281,18 @@ export function startBirthdayScheduler() {
                 }
               }
 
-              // Prepare SMS message
-              const messageBody = senderSettings.customMessage || "Happy Birthday! Wishing you a wonderful day filled with joy and happiness!";
+              // Prepare SMS message with personalization (first name only)
+              const defaultMessage = "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.";
+              
+              // Extract first name from client's full name
+              const clientFirstName = birthday.name.split(' ')[0];
+              
+              // Use agent's first name only
+              const agentFirstName = senderUser.firstName || senderUser.email.split('@')[0];
+              
+              const messageBody = (senderSettings.customMessage || defaultMessage)
+                .replace('{CLIENT_NAME}', clientFirstName)
+                .replace('{AGENT_NAME}', agentFirstName);
 
               console.log(`[BIRTHDAY SCHEDULER] Sending birthday greeting to ${birthday.name} (${birthday.phone})...`);
 
