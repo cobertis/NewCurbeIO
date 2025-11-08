@@ -4061,119 +4061,176 @@ function AutomationsTab() {
             Configure automated birthday SMS greetings for contacts in your company
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Enable/Disable Switch */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <label className="text-sm font-medium">Enable Birthday Greetings</label>
-              <p className="text-sm text-muted-foreground">
-                Automatically send birthday SMS messages to contacts
-              </p>
-            </div>
-            <Switch
-              checked={formData.isEnabled}
-              onCheckedChange={(checked) => {
-                setFormData({ ...formData, isEnabled: checked });
-                if (!isEditing) setIsEditing(true);
-              }}
-              data-testid="switch-birthday-enabled"
-            />
-          </div>
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column: Configuration */}
+            <div className="space-y-6">
+              {/* Enable/Disable Switch */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium">Enable Birthday Greetings</label>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically send birthday SMS messages to contacts
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.isEnabled}
+                  onCheckedChange={(checked) => {
+                    setFormData({ ...formData, isEnabled: checked });
+                    if (!isEditing) setIsEditing(true);
+                  }}
+                  data-testid="switch-birthday-enabled"
+                />
+              </div>
 
-          {/* Image Selector */}
-          {images.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Birthday Image</label>
-              <p className="text-sm text-muted-foreground mb-2">
-                Select an image to include in birthday SMS messages
-              </p>
-              <Select
-                value={formData.selectedImageId || "none"}
-                onValueChange={(value) => {
-                  setFormData({ ...formData, selectedImageId: value === "none" ? null : value });
-                  if (!isEditing) setIsEditing(true);
-                }}
-              >
-                <SelectTrigger data-testid="select-birthday-image">
-                  <SelectValue placeholder="Select an image" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No Image</SelectItem>
-                  {images.map((image) => (
-                    <SelectItem key={image.id} value={image.id}>
-                      {image.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* Image Preview */}
-              {formData.selectedImageId && (
-                <div className="mt-2">
-                  {(() => {
-                    const selectedImage = images.find(img => img.id === formData.selectedImageId);
-                    if (selectedImage) {
-                      return (
-                        <div className="border rounded-lg p-2 inline-block">
-                          <img 
-                            src={selectedImage.imageUrl} 
-                            alt={selectedImage.name}
-                            className="max-w-xs max-h-48 rounded"
-                            data-testid="img-preview-birthday"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">{selectedImage.name}</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
+              {/* Image Selector */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Birthday Image</label>
+                <p className="text-sm text-muted-foreground">
+                  Choose from available images or upload your own
+                </p>
+                
+                {/* Select from available images */}
+                {images.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Select from gallery</label>
+                    <Select
+                      value={formData.selectedImageId || "none"}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, selectedImageId: value === "none" ? null : value });
+                        if (!isEditing) setIsEditing(true);
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-birthday-image">
+                        <SelectValue placeholder="Select an image" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Image</SelectItem>
+                        {images.map((image) => (
+                          <SelectItem key={image.id} value={image.id}>
+                            {image.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                
+                {/* Upload custom image */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">Or upload your own</label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          const base64 = reader.result as string;
+                          setFormData({ ...formData, selectedImageId: base64 });
+                          if (!isEditing) setIsEditing(true);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    data-testid="input-custom-image"
+                  />
+                </div>
+              </div>
+
+              {/* Custom Message */}
+              <div className="space-y-2">
+                <label htmlFor="custom-message" className="text-sm font-medium">
+                  Custom Birthday Message
+                </label>
+                <p className="text-sm text-muted-foreground">
+                  Personalize the birthday greeting message sent to contacts
+                </p>
+                <Textarea
+                  id="custom-message"
+                  value={formData.customMessage}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                    setFormData({ ...formData, customMessage: e.target.value });
+                    if (!isEditing) setIsEditing(true);
+                  }}
+                  placeholder="Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"
+                  rows={6}
+                  className="resize-none"
+                  data-testid="textarea-birthday-message"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              {isEditing && (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saveSettingsMutation.isPending}
+                    data-testid="button-save-birthday-settings"
+                  >
+                    {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={saveSettingsMutation.isPending}
+                    data-testid="button-cancel-birthday-settings"
+                  >
+                    Cancel
+                  </Button>
                 </div>
               )}
             </div>
-          )}
 
-          {/* Custom Message */}
-          <div className="space-y-2">
-            <label htmlFor="custom-message" className="text-sm font-medium">
-              Custom Birthday Message
-            </label>
-            <p className="text-sm text-muted-foreground">
-              Personalize the birthday greeting message sent to contacts
-            </p>
-            <Textarea
-              id="custom-message"
-              value={formData.customMessage}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                setFormData({ ...formData, customMessage: e.target.value });
-                if (!isEditing) setIsEditing(true);
-              }}
-              placeholder="Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"
-              rows={4}
-              className="resize-none"
-              data-testid="textarea-birthday-message"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          {isEditing && (
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSave}
-                disabled={saveSettingsMutation.isPending}
-                data-testid="button-save-birthday-settings"
-              >
-                {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={saveSettingsMutation.isPending}
-                data-testid="button-cancel-birthday-settings"
-              >
-                Cancel
-              </Button>
+            {/* Right Column: Message Preview */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Message Preview</label>
+              <p className="text-sm text-muted-foreground">
+                This is how your birthday greeting will appear
+              </p>
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 space-y-3">
+                  {/* Image Preview */}
+                  {formData.selectedImageId && (() => {
+                    // Check if it's a base64 image (custom upload) or an ID from gallery
+                    if (formData.selectedImageId.startsWith('data:image')) {
+                      return (
+                        <img 
+                          src={formData.selectedImageId} 
+                          alt="Birthday greeting"
+                          className="w-full rounded-lg"
+                          data-testid="img-preview-birthday"
+                        />
+                      );
+                    } else {
+                      const selectedImage = images.find(img => img.id === formData.selectedImageId);
+                      if (selectedImage) {
+                        return (
+                          <img 
+                            src={selectedImage.imageUrl} 
+                            alt={selectedImage.name}
+                            className="w-full rounded-lg"
+                            data-testid="img-preview-birthday"
+                          />
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
+                  
+                  {/* Message Text */}
+                  <div className="text-sm text-foreground whitespace-pre-wrap break-words">
+                    {formData.customMessage || "Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"}
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground text-right">
+                    {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
