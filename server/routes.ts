@@ -12137,16 +12137,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       try {
         const manualBirthdays = await storage.getManualBirthdaysByCompany(companyId);
         for (const birthday of manualBirthdays) {
-          events.push({
-            type: 'birthday',
-            date: birthday.dateOfBirth,
-            title: birthday.clientName,
-            description: 'Birthday',
-            personName: birthday.clientName,
-            role: birthday.role,
-            quoteId: birthday.quoteId || undefined,
-            policyId: birthday.policyId || undefined,
-          });
+          // Use clientName + dateOfBirth as unique key for deduplication
+          const birthdayKey = `${birthday.clientName.toLowerCase().trim()}-${birthday.dateOfBirth}`;
+          if (!birthdaySet.has(birthdayKey)) {
+            birthdaySet.add(birthdayKey);
+            events.push({
+              type: 'birthday',
+              date: birthday.dateOfBirth,
+              title: birthday.clientName,
+              description: 'Birthday',
+              personName: birthday.clientName,
+              role: birthday.role,
+              quoteId: birthday.quoteId || undefined,
+              policyId: birthday.policyId || undefined,
+            });
+          }
         }
       } catch (error: any) {
         console.error("Error fetching manual birthdays for calendar:", error);
