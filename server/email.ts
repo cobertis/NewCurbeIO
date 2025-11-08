@@ -42,6 +42,12 @@ class EmailService {
         },
         // For port 587, use STARTTLS
         requireTLS: port === 587,
+        // Connection timeout (10 seconds)
+        connectionTimeout: 10000,
+        // Socket timeout (15 seconds)
+        socketTimeout: 15000,
+        // Greeting timeout (5 seconds)
+        greetingTimeout: 5000,
       });
 
       this.initialized = true;
