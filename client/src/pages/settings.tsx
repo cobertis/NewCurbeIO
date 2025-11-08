@@ -4080,8 +4080,8 @@ function AutomationsTab() {
             />
           </div>
 
-          {/* Image Selector (only for superadmin) */}
-          {currentUser?.role === "superadmin" && images.length > 0 && (
+          {/* Image Selector */}
+          {images.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Birthday Image</label>
               <p className="text-sm text-muted-foreground mb-2">
