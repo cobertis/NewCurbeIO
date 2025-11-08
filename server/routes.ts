@@ -928,6 +928,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "login_failed",
           userId: user.id,
           email,
+          companyId: user.companyId || undefined,
           metadata: { reason: "Account pending activation" },
         });
         
@@ -945,6 +946,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "login_failed",
           userId: user.id,
           email,
+          companyId: user.companyId || undefined,
           metadata: { reason: "Account deactivated" },
         });
         return res.status(401).json({ message: "Your account has been deactivated. Please contact support for assistance." });
@@ -957,6 +959,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "login_failed",
           userId: user.id,
           email,
+          companyId: user.companyId || undefined,
           metadata: { reason: "Missing password" },
         });
         return res.status(401).json({ message: "Account error. Please contact support." });
@@ -971,6 +974,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "login_failed",
           userId: user.id,
           email,
+          companyId: user.companyId || undefined,
           metadata: { reason: "Account deactivated (isActive=false)" },
         });
         return res.status(401).json({ message: "Your account has been deactivated. Please contact support for assistance." });
@@ -985,6 +989,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             action: "login_failed",
             userId: user.id,
             email,
+            companyId: user.companyId || undefined,
             metadata: { reason: "Company deactivated", companyId: user.companyId },
           });
           return res.status(401).json({ 
@@ -1002,6 +1007,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           action: "login_failed",
           userId: user.id,
           email,
+          companyId: user.companyId || undefined,
           metadata: { reason: "Invalid password" },
         });
         
@@ -2828,7 +2834,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ? await storage.getActivityLogsByCompany(companyId, 500)
           : [];
         failedLoginAttempts = activityLogs.filter(log => 
-          log.action === "login_failed" &&
+          log.action === "auth_login_failed" &&
           new Date(log.createdAt) >= fourteenDaysAgo
         ).length;
       } catch (error) {

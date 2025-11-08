@@ -37,6 +37,19 @@ if (isLoading) {
 
 ## Recent Critical Fixes (November 2025)
 
+**Dashboard Failed Login Counter Fix:**
+- **Problem:** Dashboard "Failed Login Attempts" card always showed "0" despite failed login notifications
+- **Root Causes:** 
+  1. Dashboard searched for `login_failed` but logs stored as `auth_login_failed` (with `auth_` prefix)
+  2. Activity logs had `company_id = NULL` for authentication events, preventing company-filtered queries
+- **Solution:** 
+  1. Updated dashboard query to search for `auth_login_failed` action
+  2. Added `companyId` parameter to `logAuth()` method in `logging-service.ts`
+  3. Updated all `logger.logAuth()` calls to pass user's `companyId`
+  4. Migrated 5,327 historical records to populate `company_id` using `user_id` and `entity_id`
+- **Implementation:** `server/routes.ts` lines 2834, 934, 952, 965, 980, 995, 1012; `server/logging-service.ts` line 77
+- **Pattern:** All authentication actions stored with `auth_` prefix (e.g., `auth_login`, `auth_login_failed`, `auth_logout`)
+
 **Settings Page Race Condition Fix:**
 - **Problem:** Intermittent blank company data (Business Profile, Company Logo) in Settings page
 - **Root Cause:** Page rendered before company data finished loading (race condition)

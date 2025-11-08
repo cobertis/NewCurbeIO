@@ -71,6 +71,7 @@ export class LoggingService {
       | "pii_reveal";
     userId?: string;
     email: string;
+    companyId?: string;
     metadata?: Record<string, any>;
   }): Promise<void> {
     await this.log({
@@ -78,6 +79,7 @@ export class LoggingService {
       action: `auth_${params.action}`,
       entity: "authentication",
       entityId: params.userId,
+      companyId: params.companyId,
       metadata: {
         email: params.email,
         ...params.metadata,
