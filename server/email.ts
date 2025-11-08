@@ -33,14 +33,13 @@ class EmailService {
         port,
         secure: port === 465, // true for 465, false for other ports
         auth: {
+          type: 'login', // Force LOGIN authentication method
           user,
           pass: password,
         },
-        authMethod: 'LOGIN', // Explicitly use LOGIN authentication
         tls: {
           // Do not fail on invalid certs (for self-signed certificates)
           rejectUnauthorized: false,
-          ciphers: 'SSLv3', // Support older SSL versions if needed
         },
         // For port 587, use STARTTLS
         requireTLS: port === 587,
