@@ -1,0 +1,331 @@
+📝 PASO 8: INSTALAR DEPENDENCIAS Y BUILD
+cd /var/www/curbe
+# Instalar dependencias del proyecto
+npm install --production
+# Hacer push de la base de datos (crear tablas)
+npm run db:push --force
+# Verificar que no haya errores
+
+📝 PASO 9: CONFIGURAR PM2
+cd /var/www/curbe
+# Crear archivo de configuración de PM2
+nano ecosystem.config.js
+
+Pega este contenido:
+
+module.exports = {
+  apps: [{
+    name: 'curbe-admin',
+    script: 'npm',
+    args: 'start',
+    instances: 'max',
+    exec_mode: 'cluster',
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 5000,
+    },
+    error_file: './logs/pm2-err.log',
+    out_file: './logs/pm2-out.log',
+    log_file: './logs/pm2-combined.log',
+    time: true,
+    merge_logs: true,
+  }]
+};
+
+Guardar (Ctrl+O, Enter, Ctrl+X)
+
+# Crear directorio de logs
+mkdir -p logs
+# Iniciar aplicación con PM2
+pm2 start ecosystem.config.js
+# Verificar que esté corriendo
+pm2 list
+pm2 logs
+# Configurar PM2 para iniciar al bootear el servidor
+pm2 startup systemd
+# COPIA Y EJECUTA el comando que PM2 te muestra
+# Guardar la lista de procesos
+pm2 save
+
+📝 PASO 10: CONFIGURAR NGINX COMO REVERSE PROXY
+# Crear configuración de Nginx
+nano /etc/nginx/sites-available/curbe
+
+Pega este contenido:
+
+# Upstream para la aplicación Node.js
+upstream curbe_backend {
+    server 127.0.0.1:5000;
+    keepalive 64;
+}
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.curbe.io;
+    
+    # Allow Let's Encrypt validation
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root /var/www/html;
+    }
+    
+    # Redirect all other HTTP requests to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+# HTTPS Server Block (will be configured by Certbot)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name app.curbe.io;
+    
+    # SSL certificates (will be added by Certbot)
+    # ssl_certificate /etc/letsencrypt/live/app.curbe.io/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/app.curbe.io/privkey.pem;
+    # include /etc/letsencrypt/options-ssl-nginx.conf;
+    # ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    
+    # Client upload size
+    client_max_body_size 100M;
+    client_body_timeout 300s;
+    
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript 
+               application/x-javascript application/xml+rss 
+               application/javascript application/json image/svg+xml;
+    
+    # Proxy to Node.js application
+    location / {
+        proxy_pass http://curbe_backend;
+        proxy_http_version 1.1;
+        
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        proxy_cache_bypass $http_upgrade;
+        proxy_redirect off;
+        
+        # Timeouts
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+    
+    # WebSocket support
+    location /ws {
+        proxy_pass http://curbe_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # Cache static assets
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        proxy_pass http://curbe_backend;
+    }
+}
+
+Guardar (Ctrl+O, Enter, Ctrl+X)
+
+# Habilitar el sitio
+ln -s /etc/nginx/sites-available/curbe /etc/nginx/sites-enabled/
+# Eliminar sitio default (opcional)
+rm /etc/nginx/sites-enabled/default
+# Probar configuración
+nginx -t
+# Si todo está OK, recargar Nginx
+systemctl reload nginx
+
+📝 PASO 11: INSTALAR CERTIFICADO SSL (LET'S ENCRYPT)
+# Instalar Certbot
+apt install -y certbot python3-certbot-nginx
+# IMPORTANTE: Asegúrate que app.curbe.io apunte a tu IP
+# Verifica con: dig app.curbe.io
+# Obtener certificado SSL
+certbot --nginx -d app.curbe.io --non-interactive --agree-tos --email tu@email.com --redirect
+# Verificar auto-renovación
+certbot renew --dry-run
+# El certificado se renovará automáticamente cada 60 días
+
+📝 PASO 12: VERIFICAR QUE TODO FUNCIONE
+# 1. Verificar PostgreSQL
+systemctl status postgresql
+# 2. Verificar que la app esté corriendo
+pm2 list
+pm2 logs curbe-admin --lines 50
+# 3. Verificar Nginx
+systemctl status nginx
+nginx -t
+# 4. Probar conexión local
+curl http://localhost:5000/api/session
+# 5. Probar desde el navegador
+# Ve a: https://app.curbe.io
+
+📝 PASO 13: SCRIPTS DE DEPLOYMENT (PARA ACTUALIZACIONES)
+# Crear script de deployment
+nano /var/www/curbe/deploy.sh
+
+Pega:
+
+#!/bin/bash
+set -e
+echo "🚀 Starting deployment..."
+# Navigate to project
+cd /var/www/curbe
+# Pull latest code
+echo "📥 Pulling latest code from GitHub..."
+git pull origin main
+# Install dependencies
+echo "📦 Installing dependencies..."
+npm install --production
+# Push database changes
+echo "🗄️ Pushing database schema..."
+npm run db:push --force
+# Reload PM2
+echo "♻️ Reloading application..."
+pm2 reload ecosystem.config.js --update-env
+# Reload Nginx
+echo "🔄 Reloading Nginx..."
+systemctl reload nginx
+echo "✅ Deployment complete!"
+pm2 logs curbe-admin --lines 20
+
+Guardar y hacer ejecutable:
+
+chmod +x /var/www/curbe/deploy.sh
+# Para futuras actualizaciones, solo ejecuta:
+# ./deploy.sh
+
+📝 PASO 14: MONITOREO Y MANTENIMIENTO
+# Ver logs en tiempo real
+pm2 logs curbe-admin
+# Ver solo errores
+pm2 logs curbe-admin --err
+# Monitorear recursos
+pm2 monit
+# Ver estado de la aplicación
+pm2 list
+# Reiniciar la aplicación
+pm2 restart curbe-admin
+# Reload sin downtime
+pm2 reload curbe-admin
+# Ver logs de Nginx
+tail -f /var/log/nginx/access.log
+tail -f /var/log/nginx/error.log
+# Ver uso de disco
+df -h
+# Ver uso de memoria
+free -h
+# Ver procesos
+htop
+
+📝 PASO 15: BACKUP AUTOMÁTICO DE BASE DE DATOS
+# Crear directorio de backups
+mkdir -p /var/backups/postgresql
+# Crear script de backup
+nano /usr/local/bin/backup-curbe-db.sh
+
+Pega:
+
+#!/bin/bash
+BACKUP_DIR="/var/backups/postgresql"
+DATE=$(date +%Y%m%d_%H%M%S)
+PGPASSWORD="CurbeApp2024Secure!" pg_dump -h localhost -U curbeapp curbe | gzip > $BACKUP_DIR/curbe_$DATE.sql.gz
+find $BACKUP_DIR -name "*.sql.gz" -mtime +7 -delete  # Mantener últimos 7 días
+echo "Backup completed: curbe_$DATE.sql.gz"
+
+# Hacer ejecutable
+chmod +x /usr/local/bin/backup-curbe-db.sh
+# Probar el backup
+/usr/local/bin/backup-curbe-db.sh
+# Programar backup diario a las 3 AM
+crontab -e
+# Agregar esta línea:
+0 3 * * * /usr/local/bin/backup-curbe-db.sh >> /var/log/curbe-backup.log 2>&1
+
+🎯 RESUMEN DE COMANDOS IMPORTANTES
+# APLICACIÓN
+pm2 list              # Ver aplicaciones corriendo
+pm2 logs curbe-admin  # Ver logs
+pm2 restart curbe-admin  # Reiniciar
+pm2 reload curbe-admin   # Reload sin downtime
+# NGINX
+systemctl status nginx
+systemctl reload nginx
+nginx -t  # Probar configuración
+# POSTGRESQL
+systemctl status postgresql
+sudo -u postgres psql  # Acceder
+# DEPLOYMENT
+cd /var/www/curbe && ./deploy.sh
+# BACKUP
+/usr/local/bin/backup-curbe-db.sh
+# MONITOREO
+htop  # Recursos del sistema
+pm2 monit  # Monitor PM2
+tail -f /var/log/nginx/access.log  # Logs de Nginx
+
+✅ CHECKLIST FINAL
+[ ] ✅ Node.js 20 instalado
+[ ] ✅ PostgreSQL instalado y configurado
+[ ] ✅ Nginx instalado
+[ ] ✅ PM2 instalado
+[ ] ✅ Proyecto clonado desde GitHub
+[ ] ✅ Archivo .env configurado
+[ ] ✅ Dependencias instaladas
+[ ] ✅ Base de datos migrada (npm run db:push)
+[ ] ✅ PM2 configurado y corriendo
+[ ] ✅ Nginx configurado como reverse proxy
+[ ] ✅ SSL instalado con Let's Encrypt
+[ ] ✅ Firewall configurado
+[ ] ✅ Backups automáticos configurados
+[ ] ✅ Aplicación accesible en https://app.curbe.io
+🆘 TROUBLESHOOTING
+Problema: La app no arranca
+
+pm2 logs curbe-admin --err
+# Revisa errores en logs
+
+Problema: No puedo conectar a PostgreSQL
+
+sudo -u postgres psql
+\l  # Listar bases de datos
+\du  # Listar usuarios
+
+Problema: Nginx da error 502
+
+# Verifica que la app esté corriendo
+pm2 list
+curl http://localhost:5000
+# Revisa logs de Nginx
+tail -f /var/log/nginx/error.log
+
+Problema: SSL no funciona
+
+certbot certificates  # Ver certificados
+certbot renew --dry-run  # Probar renovación
+
+¿Estás listo para comenzar? ¡Puedo ayudarte paso a paso con cada comando! 🚀
