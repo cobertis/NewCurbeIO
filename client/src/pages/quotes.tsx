@@ -3602,6 +3602,15 @@ export default function QuotesPage() {
     totalHouseholdIncome: number;
   }>({
     queryKey: ['/api/quotes', params?.id, 'detail'],
+    queryFn: async () => {
+      const response = await fetch(`/api/quotes/${params?.id}/detail`, {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch quote detail');
+      }
+      return response.json();
+    },
     enabled: !!params?.id && params?.id !== 'new',
   });
 
