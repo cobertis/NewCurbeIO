@@ -1404,8 +1404,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Must be auth action
         if (!actions.includes(log.action)) return false;
         
-        // Must be for current user
-        if (log.userId !== currentUser.id) return false;
+        // For failed logins, userId is null, so match by email in metadata
+        // For successful logins, match by userId
+        const isForCurrentUser = 
+          (log.userId === currentUser.id) || 
+          (log.metadata?.email === currentUser.email);
+        
+        if (!isForCurrentUser) return false;
         
         // Search by IP if query provided
         if (searchQuery && log.ipAddress) {
