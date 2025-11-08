@@ -1396,8 +1396,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         actions.push("auth_login", "auth_login_failed");
       }
 
-      // Get all activity logs matching criteria
-      const allLogs = await storage.getActivityLogs();
+      // Get all activity logs matching criteria (last 1000)
+      const allLogs = await storage.getAllActivityLogs(1000);
       
       // Filter logs
       let filteredLogs = allLogs.filter(log => {
@@ -2986,12 +2986,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const activityLogs = companyId 
           ? await storage.getActivityLogsByCompany(companyId, 500)
           : [];
+        
+        console.log('[DASHBOARD] Activity logs count:', activityLogs.length);
+        console.log('[DASHBOARD] Auth actions found:', activityLogs.filter(log => log.action.startsWith('auth_')).map(l => ({ action: l.action, date: l.createdAt })));
+        
         failedLoginAttempts = activityLogs.filter(log => 
           log.action === "auth_login_failed" &&
           new Date(log.createdAt) >= fourteenDaysAgo
         ).length;
+        
+        console.log('[DASHBOARD] Failed login attempts count:', failedLoginAttempts);
       } catch (error) {
         // Activity logs might not exist, ignore error
+        console.error('[DASHBOARD] Error getting activity logs:', error);
         failedLoginAttempts = 0;
       }
 
