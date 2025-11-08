@@ -52,6 +52,7 @@ import Billing from "@/pages/billing";
 import PlanSelection from "@/pages/plan-selection";
 import Tickets from "@/pages/tickets";
 import EmailConfiguration from "@/pages/email-configuration";
+import BirthdayImages from "@/pages/birthday-images";
 import Quotes from "@/pages/quotes";
 import Policies from "@/pages/policies";
 import MarketplacePlans from "@/pages/marketplace-plans";
@@ -101,6 +102,7 @@ const getPageTitle = (path: string): string => {
     '/incoming-sms': 'Incoming SMS',
     '/tickets': 'Support Tickets',
     '/email-configuration': 'Email Configuration',
+    '/birthday-images': 'Birthday Images',
     '/sms': 'SMS',
   };
   
@@ -1303,6 +1305,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <EmailConfiguration />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/birthday-images">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <BirthdayImages />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import "./stripe"; // Force Stripe initialization to show which mode we're using
 import { startReminderScheduler } from "./reminder-scheduler";
+import { startBirthdayScheduler } from "./birthday-scheduler";
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('CRITICAL: SESSION_SECRET environment variable must be set for production security');
@@ -131,5 +132,8 @@ app.use((req, res, next) => {
     
     // Start the reminder scheduler for snoozed reminders
     startReminderScheduler();
+    
+    // Start the birthday scheduler for automated birthday greetings
+    startBirthdayScheduler();
   });
 })();

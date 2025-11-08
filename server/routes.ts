@@ -21138,6 +21138,237 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== BIRTHDAY AUTOMATION ROUTES ====================
+  
+  // GET /api/birthday-images/active - List active birthday images (all authenticated users)
+  app.get("/api/birthday-images/active", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const allImages = await storage.getAllBirthdayImages();
+      const activeImages = allImages.filter(img => img.isActive);
+      res.json({ images: activeImages });
+    } catch (error: any) {
+      console.error("Error fetching active birthday images:", error);
+      res.status(500).json({ message: "Failed to fetch birthday images" });
+    }
+  });
+  
+  // GET /api/admin/birthday-images - List all birthday images (superadmin only)
+  app.get("/api/admin/birthday-images", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden - Superadmin only" });
+      }
+
+      const images = await storage.getAllBirthdayImages();
+      res.json({ images });
+    } catch (error: any) {
+      console.error("Error fetching birthday images:", error);
+      res.status(500).json({ message: "Failed to fetch birthday images" });
+    }
+  });
+
+  // POST /api/admin/birthday-images - Create new birthday image (superadmin only)
+  app.post("/api/admin/birthday-images", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden - Superadmin only" });
+      }
+
+      const { name, imageUrl, isActive } = req.body;
+      
+      if (!name || !imageUrl) {
+        return res.status(400).json({ message: "Name and imageUrl are required" });
+      }
+
+      const image = await storage.createBirthdayImage(
+        { name, imageUrl, isActive: isActive ?? true },
+        user.id
+      );
+
+      await logger.logCrud({
+        userId: user.id,
+        companyId: user.companyId,
+        action: "create",
+        entityType: "birthdayImage",
+        entityId: image.id,
+        details: `Created birthday image: ${name}`,
+      });
+
+      res.json(image);
+    } catch (error: any) {
+      console.error("Error creating birthday image:", error);
+      res.status(500).json({ message: "Failed to create birthday image" });
+    }
+  });
+
+  // PATCH /api/admin/birthday-images/:id - Update birthday image (superadmin only)
+  app.patch("/api/admin/birthday-images/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden - Superadmin only" });
+      }
+
+      const { id } = req.params;
+      const updates = req.body;
+
+      const image = await storage.updateBirthdayImage(id, updates);
+      
+      if (!image) {
+        return res.status(404).json({ message: "Birthday image not found" });
+      }
+
+      await logger.logCrud({
+        userId: user.id,
+        companyId: user.companyId,
+        action: "update",
+        entityType: "birthdayImage",
+        entityId: id,
+        details: `Updated birthday image: ${image.name}`,
+      });
+
+      res.json(image);
+    } catch (error: any) {
+      console.error("Error updating birthday image:", error);
+      res.status(500).json({ message: "Failed to update birthday image" });
+    }
+  });
+
+  // DELETE /api/admin/birthday-images/:id - Delete birthday image (superadmin only)
+  app.delete("/api/admin/birthday-images/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden - Superadmin only" });
+      }
+
+      const { id } = req.params;
+      
+      const image = await storage.getBirthdayImage(id);
+      const deleted = await storage.deleteBirthdayImage(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Birthday image not found" });
+      }
+
+      await logger.logCrud({
+        userId: user.id,
+        companyId: user.companyId,
+        action: "delete",
+        entityType: "birthdayImage",
+        entityId: id,
+        details: image ? `Deleted birthday image: ${image.name}` : "Deleted birthday image",
+      });
+
+      res.json({ success: true, message: "Birthday image deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting birthday image:", error);
+      res.status(500).json({ message: "Failed to delete birthday image" });
+    }
+  });
+
+  // GET /api/user/birthday-settings - Get current user's birthday settings
+  app.get("/api/user/birthday-settings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      let settings = await storage.getUserBirthdaySettings(user.id);
+      
+      // Auto-create with defaults if doesn't exist
+      if (!settings) {
+        settings = await storage.createUserBirthdaySettings({
+          userId: user.id,
+          isEnabled: true,
+          customMessage: "Happy Birthday! Wishing you a wonderful day filled with joy and happiness!",
+          selectedImageId: null,
+        });
+      }
+
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Error fetching birthday settings:", error);
+      res.status(500).json({ message: "Failed to fetch birthday settings" });
+    }
+  });
+
+  // PUT /api/user/birthday-settings - Update user's birthday settings
+  app.put("/api/user/birthday-settings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { isEnabled, selectedImageId, customMessage } = req.body;
+
+      // Check if settings exist
+      let settings = await storage.getUserBirthdaySettings(user.id);
+      
+      if (!settings) {
+        // Create new settings
+        settings = await storage.createUserBirthdaySettings({
+          userId: user.id,
+          isEnabled: isEnabled ?? true,
+          selectedImageId: selectedImageId ?? null,
+          customMessage: customMessage ?? "Happy Birthday! Wishing you a wonderful day filled with joy and happiness!",
+        });
+      } else {
+        // Update existing settings
+        settings = await storage.updateUserBirthdaySettings(user.id, {
+          isEnabled,
+          selectedImageId,
+          customMessage,
+        });
+      }
+
+      res.json(settings);
+    } catch (error: any) {
+      console.error("Error updating birthday settings:", error);
+      res.status(500).json({ message: "Failed to update birthday settings" });
+    }
+  });
+
+  // GET /api/birthday-greetings/history - Get birthday greeting history
+  app.get("/api/birthday-greetings/history", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Superadmins can see all, others see only their company's history
+      const history = user.role === "superadmin" 
+        ? await storage.getBirthdayGreetingHistory(user.companyId)
+        : await storage.getBirthdayGreetingHistory(user.companyId, user.id);
+
+      res.json({ history });
+    } catch (error: any) {
+      console.error("Error fetching birthday greeting history:", error);
+      res.status(500).json({ message: "Failed to fetch birthday greeting history" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time chat updates with session validation

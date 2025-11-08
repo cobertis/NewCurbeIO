@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight, Zap } from "lucide-react";
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -1422,6 +1422,10 @@ export default function Settings() {
                 <Bell className="h-4 w-4" />
                 Notifications
               </TabsTrigger>
+              <TabsTrigger value="automations" className="gap-2" data-testid="tab-automations">
+                <Zap className="h-4 w-4" />
+                Automations
+              </TabsTrigger>
             </TabsList>
 
             {/* Profile Tab */}
@@ -2675,6 +2679,11 @@ export default function Settings() {
               </Dialog>
             </TabsContent>
 
+            {/* Automations Tab */}
+            <TabsContent value="automations" className="space-y-4">
+              <AutomationsTab />
+            </TabsContent>
+
             {/* Team Tab */}
             <TabsContent value="team" className="space-y-4">
               <Card>
@@ -3912,5 +3921,336 @@ function SessionActivityTab() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function AutomationsTab() {
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const { data: sessionData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+
+  const currentUser = sessionData?.user;
+
+  // Fetch birthday settings
+  const { data: settingsData, isLoading: settingsLoading } = useQuery<{
+    id: string;
+    userId: string;
+    isEnabled: boolean;
+    selectedImageId: string | null;
+    customMessage: string;
+  }>({
+    queryKey: ["/api/user/birthday-settings"],
+    enabled: !!currentUser,
+  });
+
+  // Fetch active birthday images
+  const { data: imagesData, isLoading: imagesLoading } = useQuery<{
+    images: Array<{
+      id: string;
+      name: string;
+      imageUrl: string;
+      isActive: boolean;
+    }>;
+  }>({
+    queryKey: ["/api/birthday-images/active"],
+    enabled: !!currentUser,
+  });
+
+  // Fetch birthday greeting history
+  const { data: historyData, isLoading: historyLoading } = useQuery<{
+    history: Array<{
+      id: string;
+      recipientName: string;
+      recipientPhone: string;
+      recipientDateOfBirth: string;
+      message: string;
+      imageUrl: string | null;
+      status: string;
+      sentAt: Date;
+      deliveredAt: Date | null;
+      errorMessage: string | null;
+    }>;
+  }>({
+    queryKey: ["/api/birthday-greetings/history"],
+    enabled: !!currentUser,
+  });
+
+  const settings = settingsData;
+  const images = imagesData?.images || [];
+  const history = historyData?.history || [];
+
+  // Form for editing settings
+  const [formData, setFormData] = useState({
+    isEnabled: true,
+    selectedImageId: null as string | null,
+    customMessage: "Happy Birthday! Wishing you a wonderful day filled with joy and happiness!",
+  });
+
+  // Update form data when settings load
+  useEffect(() => {
+    if (settings) {
+      setFormData({
+        isEnabled: settings.isEnabled,
+        selectedImageId: settings.selectedImageId,
+        customMessage: settings.customMessage,
+      });
+    }
+  }, [settings]);
+
+  // Save settings mutation
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      return apiRequest("/api/user/birthday-settings", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Saved",
+        description: "Your birthday automation settings have been updated successfully.",
+        duration: 3000,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/birthday-settings"] });
+      setIsEditing(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save settings",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  const handleSave = () => {
+    saveSettingsMutation.mutate(formData);
+  };
+
+  const handleCancel = () => {
+    if (settings) {
+      setFormData({
+        isEnabled: settings.isEnabled,
+        selectedImageId: settings.selectedImageId,
+        customMessage: settings.customMessage,
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const isLoading = settingsLoading || imagesLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Birthday Settings Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Birthday Automation Settings</CardTitle>
+          <CardDescription>
+            Configure automated birthday SMS greetings for contacts in your company
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Enable/Disable Switch */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <label className="text-sm font-medium">Enable Birthday Greetings</label>
+              <p className="text-sm text-muted-foreground">
+                Automatically send birthday SMS messages to contacts
+              </p>
+            </div>
+            <Switch
+              checked={formData.isEnabled}
+              onCheckedChange={(checked) => {
+                setFormData({ ...formData, isEnabled: checked });
+                if (!isEditing) setIsEditing(true);
+              }}
+              data-testid="switch-birthday-enabled"
+            />
+          </div>
+
+          {/* Image Selector (only for superadmin) */}
+          {currentUser?.role === "superadmin" && images.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Birthday Image</label>
+              <p className="text-sm text-muted-foreground mb-2">
+                Select an image to include in birthday SMS messages
+              </p>
+              <Select
+                value={formData.selectedImageId || "none"}
+                onValueChange={(value) => {
+                  setFormData({ ...formData, selectedImageId: value === "none" ? null : value });
+                  if (!isEditing) setIsEditing(true);
+                }}
+              >
+                <SelectTrigger data-testid="select-birthday-image">
+                  <SelectValue placeholder="Select an image" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Image</SelectItem>
+                  {images.map((image) => (
+                    <SelectItem key={image.id} value={image.id}>
+                      {image.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Image Preview */}
+              {formData.selectedImageId && (
+                <div className="mt-2">
+                  {(() => {
+                    const selectedImage = images.find(img => img.id === formData.selectedImageId);
+                    if (selectedImage) {
+                      return (
+                        <div className="border rounded-lg p-2 inline-block">
+                          <img 
+                            src={selectedImage.imageUrl} 
+                            alt={selectedImage.name}
+                            className="max-w-xs max-h-48 rounded"
+                            data-testid="img-preview-birthday"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">{selectedImage.name}</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Custom Message */}
+          <div className="space-y-2">
+            <label htmlFor="custom-message" className="text-sm font-medium">
+              Custom Birthday Message
+            </label>
+            <p className="text-sm text-muted-foreground">
+              Personalize the birthday greeting message sent to contacts
+            </p>
+            <Textarea
+              id="custom-message"
+              value={formData.customMessage}
+              onChange={(e) => {
+                setFormData({ ...formData, customMessage: e.target.value });
+                if (!isEditing) setIsEditing(true);
+              }}
+              placeholder="Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"
+              rows={4}
+              className="resize-none"
+              data-testid="textarea-birthday-message"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          {isEditing && (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSave}
+                disabled={saveSettingsMutation.isPending}
+                data-testid="button-save-birthday-settings"
+              >
+                {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={saveSettingsMutation.isPending}
+                data-testid="button-cancel-birthday-settings"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Birthday Greeting History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Birthday Greeting History</CardTitle>
+          <CardDescription>
+            View all birthday greetings sent automatically
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {historyLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No birthday greetings have been sent yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2 font-medium">Recipient</th>
+                      <th className="text-left p-2 font-medium">Phone</th>
+                      <th className="text-left p-2 font-medium">Date Sent</th>
+                      <th className="text-left p-2 font-medium">Status</th>
+                      <th className="text-left p-2 font-medium">Message</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((greeting) => (
+                      <tr key={greeting.id} className="border-b hover:bg-muted/50">
+                        <td className="p-2" data-testid={`text-recipient-${greeting.id}`}>
+                          {greeting.recipientName}
+                        </td>
+                        <td className="p-2" data-testid={`text-phone-${greeting.id}`}>
+                          {greeting.recipientPhone}
+                        </td>
+                        <td className="p-2" data-testid={`text-sent-${greeting.id}`}>
+                          {new Date(greeting.sentAt).toLocaleString()}
+                        </td>
+                        <td className="p-2">
+                          <Badge
+                            variant={
+                              greeting.status === "delivered" || greeting.status === "sent"
+                                ? "default"
+                                : greeting.status === "failed"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                            data-testid={`badge-status-${greeting.id}`}
+                          >
+                            {greeting.status}
+                          </Badge>
+                          {greeting.errorMessage && (
+                            <p className="text-xs text-destructive mt-1">
+                              {greeting.errorMessage}
+                            </p>
+                          )}
+                        </td>
+                        <td className="p-2 max-w-md truncate" data-testid={`text-message-${greeting.id}`}>
+                          {greeting.message}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

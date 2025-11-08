@@ -30,7 +30,8 @@ import {
   Workflow,
   Contact,
   CheckSquare,
-  Bell
+  Bell,
+  ImagePlus
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
@@ -123,6 +124,11 @@ const superadminMenuItems = [
     title: "Email Config",
     url: "/email-configuration",
     icon: AtSign,
+  },
+  {
+    title: "Birthday Images",
+    url: "/birthday-images",
+    icon: ImagePlus,
   },
   {
     title: "Settings",

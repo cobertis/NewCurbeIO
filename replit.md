@@ -66,6 +66,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Landing Page Builder System:** SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes.
 - **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and Manual Contacts (excludes BulkVS SMS contacts). Features intelligent deduplication, advanced filtering, search, CSV export (with SSN masking for non-superadmins), and role-based access control. Manual contacts can be added from SMS chat.
 - **Tasks & Reminders Management System:** Unified task management with assignment, priority levels, status tracking, due dates, descriptions, search, and advanced filtering. Superadmins have cross-company visibility.
+- **Birthday Automation System:** Automated birthday greeting system with superadmin-managed image library, per-user customizable messages and settings, Twilio SMS/MMS delivery at 9 AM local time, and comprehensive sending history tracking. Sends birthday greetings to all contacts from quotes, policies, manual contacts, and team members using the same deduplication logic as the calendar system. Configurable via Settings > Automations tab.
 - **Navigation Prefetch System**: System that preloads page data before navigation to improve user experience.
 
 ### System Design Choices

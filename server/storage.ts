@@ -143,6 +143,12 @@ import {
   type InsertStandaloneReminder,
   type Appointment,
   type InsertAppointment,
+  type BirthdayImage,
+  type InsertBirthdayImage,
+  type UserBirthdaySettings,
+  type InsertUserBirthdaySettings,
+  type BirthdayGreetingHistory,
+  type InsertBirthdayGreetingHistory,
   type BulkvsPhoneNumber,
   type InsertBulkvsPhoneNumber,
   type BulkvsThread,
@@ -225,6 +231,9 @@ import {
   manualBirthdays,
   standaloneReminders,
   appointments,
+  birthdayImages,
+  userBirthdaySettings,
+  birthdayGreetingHistory,
   bulkvsPhoneNumbers,
   bulkvsThreads,
   bulkvsMessages,
@@ -808,6 +817,25 @@ export interface IStorage {
   createAppointment(data: InsertAppointment): Promise<Appointment>;
   getAppointmentsByCompany(companyId: string): Promise<Appointment[]>;
   deleteAppointment(id: string, companyId: string): Promise<boolean>;
+  
+  // Birthday Automation - Images
+  getAllBirthdayImages(): Promise<BirthdayImage[]>;
+  getActiveBirthdayImages(): Promise<BirthdayImage[]>;
+  getBirthdayImage(id: string): Promise<BirthdayImage | undefined>;
+  createBirthdayImage(data: InsertBirthdayImage, uploadedBy: string): Promise<BirthdayImage>;
+  updateBirthdayImage(id: string, data: Partial<InsertBirthdayImage>): Promise<BirthdayImage | undefined>;
+  deleteBirthdayImage(id: string): Promise<boolean>;
+  
+  // Birthday Automation - User Settings
+  getUserBirthdaySettings(userId: string): Promise<UserBirthdaySettings | undefined>;
+  createUserBirthdaySettings(data: InsertUserBirthdaySettings & { userId: string }): Promise<UserBirthdaySettings>;
+  updateUserBirthdaySettings(userId: string, data: Partial<InsertUserBirthdaySettings>): Promise<UserBirthdaySettings | undefined>;
+  
+  // Birthday Automation - Greeting History
+  createBirthdayGreetingHistory(data: InsertBirthdayGreetingHistory & { userId: string; companyId: string }): Promise<BirthdayGreetingHistory>;
+  getBirthdayGreetingHistory(companyId: string, userId?: string): Promise<BirthdayGreetingHistory[]>;
+  updateBirthdayGreetingStatus(id: string, status: string, errorMessage?: string): Promise<void>;
+  checkIfBirthdayGreetingSentToday(recipientPhone: string, recipientDateOfBirth: string): Promise<boolean>;
   
   // BulkVS Phone Numbers
   getBulkvsPhoneNumber(id: string): Promise<BulkvsPhoneNumber | undefined>;
@@ -6518,6 +6546,152 @@ export class DbStorage implements IStorage {
       .delete(appointments)
       .where(and(eq(appointments.id, id), eq(appointments.companyId, companyId)))
       .returning();
+    return result.length > 0;
+  }
+  
+  // ==================== BIRTHDAY AUTOMATION ====================
+  
+  async getAllBirthdayImages(): Promise<BirthdayImage[]> {
+    return db
+      .select()
+      .from(birthdayImages)
+      .orderBy(desc(birthdayImages.createdAt));
+  }
+  
+  async getActiveBirthdayImages(): Promise<BirthdayImage[]> {
+    return db
+      .select()
+      .from(birthdayImages)
+      .where(eq(birthdayImages.isActive, true))
+      .orderBy(desc(birthdayImages.createdAt));
+  }
+  
+  async getBirthdayImage(id: string): Promise<BirthdayImage | undefined> {
+    const result = await db
+      .select()
+      .from(birthdayImages)
+      .where(eq(birthdayImages.id, id));
+    return result[0];
+  }
+  
+  async createBirthdayImage(data: InsertBirthdayImage, uploadedBy: string): Promise<BirthdayImage> {
+    const result = await db
+      .insert(birthdayImages)
+      .values({
+        ...data,
+        uploadedBy,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async updateBirthdayImage(id: string, data: Partial<InsertBirthdayImage>): Promise<BirthdayImage | undefined> {
+    const result = await db
+      .update(birthdayImages)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(birthdayImages.id, id))
+      .returning();
+    return result[0];
+  }
+  
+  async deleteBirthdayImage(id: string): Promise<boolean> {
+    const result = await db
+      .delete(birthdayImages)
+      .where(eq(birthdayImages.id, id))
+      .returning();
+    return result.length > 0;
+  }
+  
+  async getUserBirthdaySettings(userId: string): Promise<UserBirthdaySettings | undefined> {
+    const result = await db
+      .select()
+      .from(userBirthdaySettings)
+      .where(eq(userBirthdaySettings.userId, userId));
+    return result[0];
+  }
+  
+  async createUserBirthdaySettings(data: InsertUserBirthdaySettings & { userId: string }): Promise<UserBirthdaySettings> {
+    const result = await db
+      .insert(userBirthdaySettings)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async updateUserBirthdaySettings(userId: string, data: Partial<InsertUserBirthdaySettings>): Promise<UserBirthdaySettings | undefined> {
+    const result = await db
+      .update(userBirthdaySettings)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(userBirthdaySettings.userId, userId))
+      .returning();
+    return result[0];
+  }
+  
+  async createBirthdayGreetingHistory(data: InsertBirthdayGreetingHistory & { userId: string; companyId: string }): Promise<BirthdayGreetingHistory> {
+    const result = await db
+      .insert(birthdayGreetingHistory)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async getBirthdayGreetingHistory(companyId: string, userId?: string): Promise<BirthdayGreetingHistory[]> {
+    const conditions = [eq(birthdayGreetingHistory.companyId, companyId)];
+    if (userId) {
+      conditions.push(eq(birthdayGreetingHistory.userId, userId));
+    }
+    return db
+      .select()
+      .from(birthdayGreetingHistory)
+      .where(and(...conditions))
+      .orderBy(desc(birthdayGreetingHistory.sentAt));
+  }
+  
+  async updateBirthdayGreetingStatus(id: string, status: string, errorMessage?: string): Promise<void> {
+    const updateData: any = {
+      status,
+      updatedAt: new Date(),
+    };
+    if (errorMessage) {
+      updateData.errorMessage = errorMessage;
+    }
+    if (status === 'delivered') {
+      updateData.deliveredAt = new Date();
+    }
+    await db
+      .update(birthdayGreetingHistory)
+      .set(updateData)
+      .where(eq(birthdayGreetingHistory.id, id));
+  }
+  
+  async checkIfBirthdayGreetingSentToday(recipientPhone: string, recipientDateOfBirth: string): Promise<boolean> {
+    const today = new Date().toISOString().split('T')[0];
+    const result = await db
+      .select()
+      .from(birthdayGreetingHistory)
+      .where(
+        and(
+          eq(birthdayGreetingHistory.recipientPhone, recipientPhone),
+          eq(birthdayGreetingHistory.recipientDateOfBirth, recipientDateOfBirth),
+          sql`DATE(${birthdayGreetingHistory.sentAt}) = ${today}`
+        )
+      );
     return result.length > 0;
   }
   
