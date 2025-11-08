@@ -1,0 +1,81 @@
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+Email service initialized successfully
+Twilio service initialized successfully
+==========================================
+🔑 STRIPE INITIALIZED: TEST MODE
+🔑 Key prefix: sk_test_51Rg...
+==========================================
+[WebSocket] Server initialized on path /ws/chat
+1:05:38 AM [express] serving on port 5000
+[REMINDER SCHEDULER] Starting scheduler...
+[REMINDER SCHEDULER] Scheduler started successfully
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+[replit-cartographer] Error processing /home/runner/workspace/client/src/pages/email-signatures.tsx: SyntaxError: Expected corresponding JSX closing tag for <form>. (1622:6)
+    at toParseError (/home/runner/workspace/node_modules/@babel/parser/src/parse-error.ts:95:45)
+    at raise (/home/runner/workspace/node_modules/@babel/parser/src/tokenizer/index.ts:1503:19)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:527:18)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:483:34)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:483:34)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:483:34)
+    at jsxParseElementAt (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:483:34)
+    at jsxParseElement (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:559:19)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:573:21)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:734:23)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:713:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:675:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3855:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:409:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:421:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:376:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at fn (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3708:23)
+    at tryParse (/home/runner/workspace/node_modules/@babel/parser/src/parser/util.ts:174:20)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3707:20)
+    at callback (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:257:12)
+    at allowInAnd (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3192:12)
+    at parseMaybeAssignAllowIn (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:256:17)
+    at parseMaybeAssignAllowInOrVoidPattern (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3306:17)
+    at parseParenAndDistinguishExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:1813:16)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:1162:21)
+    at parseExprAtom (/home/runner/workspace/node_modules/@babel/parser/src/plugins/jsx/index.ts:583:22)
+    at parseExprSubscripts (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:734:23)
+    at parseUpdate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:713:21)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:675:23)
+    at parseMaybeUnary (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3855:20)
+    at parseMaybeUnaryOrPrivate (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:409:14)
+    at parseExprOps (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:421:23)
+    at parseMaybeConditional (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:376:23)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+    at parseMaybeAssign (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3727:22)
+    at parseExpressionBase (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:226:23)
+    at callback (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:39)
+    at allowInAnd (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:3187:16)
+    at parseExpression (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:217:17)
+    at parseReturnStatement (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1110:28)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:538:21)
+    at parseStatementContent (/home/runner/workspace/node_modules/@babel/parser/src/plugins/typescript/index.ts:3185:20)
+    at parseStatementLike (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:477:17)
+    at parseStatementListItem (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:426:17)
+    at parseBlockOrModuleBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1439:16)
+    at parseBlockBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1412:10)
+    at parseBlock (/home/runner/workspace/node_modules/@babel/parser/src/parser/statement.ts:1380:10)
+    at parseFunctionBody (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:2616:24)
+    at parseFunctionBodyAndFinish (/home/runner/workspace/node_modules/@babel/parser/src/parser/expression.ts:2585:10) {
+  code: 'BABEL_PARSER_SYNTAX_ERROR',
+  reasonCode: 'MissingClosingTagElement',
+  loc: Position { line: 1622, column: 6, index: 100685 },
+  pos: 100685,
+  syntaxPlugin: 'jsx'
+}
+1:05:44 AM [vite] Pre-transform error: /home/runner/workspace/client/src/pages/email-signatures.tsx: Expected corresponding JSX closing tag for <form>. (1622:6)
+
+  1620 |                 </CardContent>
+  1621 |               </Card>
+> 1622 |       </table>
+       |       ^
+  1623 |       
+  1624 |       ${data.specializations || data.carriers ? `
+  1625 |       <div style="margin-top: 15px; padding: 12px; background: linear-gradient(90deg, ${colorScheme.primaryColor}10, ${colorScheme.secondaryColor}10); border-radius: 6px;">
