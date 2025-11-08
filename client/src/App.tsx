@@ -95,6 +95,7 @@ const getPageTitle = (path: string): string => {
     '/settings/company': 'Settings - Company',
     '/settings/system': 'Settings - Email',
     '/settings/security': 'Settings - Security',
+    '/settings/automations': 'Settings - Automations',
     '/audit-logs': 'Audit Logs',
     '/support': 'Support',
     '/contacts': 'Email Contacts',
@@ -1196,6 +1197,15 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      
+      <Route path="/settings/automations">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      
       <Route path="/audit-logs">
         <ProtectedRoute>
           <DashboardLayout>

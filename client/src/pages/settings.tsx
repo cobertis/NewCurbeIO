@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -447,6 +448,7 @@ export default function Settings() {
     if (location === "/settings/sessions") return "sessions";
     if (location === "/settings/notifications") return "notifications";
     if (location === "/settings/team") return "team";
+    if (location === "/settings/automations") return "automations";
     return "profile"; // default
   };
 
@@ -465,9 +467,9 @@ export default function Settings() {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["profile", "security", "sessions", "preferences", "notifications"];
+    const baseTabs = ["profile", "security", "sessions", "preferences", "notifications", "automations"];
     if (isAdmin) {
-      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications"];
+      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications", "automations"];
     }
     return baseTabs;
   }, [isAdmin]);
@@ -4003,10 +4005,7 @@ function AutomationsTab() {
   // Save settings mutation
   const saveSettingsMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return apiRequest("/api/user/birthday-settings", {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", "/api/user/birthday-settings", data);
     },
     onSuccess: () => {
       toast({
@@ -4144,7 +4143,7 @@ function AutomationsTab() {
             <Textarea
               id="custom-message"
               value={formData.customMessage}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 setFormData({ ...formData, customMessage: e.target.value });
                 if (!isEditing) setIsEditing(true);
               }}
