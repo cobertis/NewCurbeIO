@@ -1356,7 +1356,7 @@ export default function Settings() {
                         PNG, JPG or GIF (max. 2.5MB)
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Recommended: 544px × 96px
+                        Recommended: 516px × 142px
                       </p>
                     </div>
                   )}
