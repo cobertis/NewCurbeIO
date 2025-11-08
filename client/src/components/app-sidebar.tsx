@@ -64,11 +64,6 @@ const superadminMenuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Analytics",
-    url: "/analytics",
-    icon: BarChart3,
-  },
-  {
     title: "Users",
     url: "/users",
     icon: Users,
