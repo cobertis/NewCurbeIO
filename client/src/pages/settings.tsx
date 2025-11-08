@@ -4079,7 +4079,7 @@ function AutomationsTab() {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium">Birthday Image</label>
-                <div className="flex flex-col gap-1.5">
+                <div className="flex gap-1.5">
                   {images.length > 0 && (
                     <Select
                       value={formData.selectedImageId || "none"}
@@ -4088,7 +4088,7 @@ function AutomationsTab() {
                         if (!isEditing) setIsEditing(true);
                       }}
                     >
-                      <SelectTrigger data-testid="select-birthday-image" className="h-8 text-xs">
+                      <SelectTrigger data-testid="select-birthday-image" className="h-8 text-xs flex-1">
                         <SelectValue placeholder="Choose from gallery" />
                       </SelectTrigger>
                       <SelectContent>
@@ -4101,7 +4101,7 @@ function AutomationsTab() {
                       </SelectContent>
                     </Select>
                   )}
-                  <div className="relative">
+                  <div className="relative flex-1">
                     <Input
                       type="file"
                       accept="image/*"
