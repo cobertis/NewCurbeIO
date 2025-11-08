@@ -11909,8 +11909,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const events: any[] = [];
 
-      // Track unique birthdays to avoid duplicates across renewed policies
-      // Use SSN+DOB or email+DOB as the unique identifier, not quote/policy ID
+      // Track unique birthdays to avoid duplicates across ALL sources
+      // Use name+DOB as the unique identifier (consistent across all sources)
       const birthdaySet = new Set<string>();
 
       // ============== QUOTES BIRTHDAYS ==============
@@ -11921,9 +11921,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const primaryClientInMembers = members.find(m => m.role === 'client');
         
         if (quote.clientDateOfBirth && !primaryClientInMembers) {
-          // Use SSN or email as unique identifier (same person across all quotes/policies)
-          const personId = quote.clientSsn || quote.clientEmail || quote.id;
-          const birthdayKey = `${personId}-${quote.clientDateOfBirth}`;
+          // Use name+DOB for deduplication (consistent across all sources)
+          const fullName = `${quote.clientFirstName} ${quote.clientLastName}`.toLowerCase().trim();
+          const birthdayKey = `${fullName}-${quote.clientDateOfBirth}`;
           if (!birthdaySet.has(birthdayKey)) {
             birthdaySet.add(birthdayKey);
             events.push({
@@ -11940,9 +11940,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         for (const member of members) {
           if (member.dateOfBirth) {
-            // Use SSN or email as unique identifier (same person across all quotes/policies)
-            const personId = member.ssn || member.email || member.id;
-            const birthdayKey = `${personId}-${member.dateOfBirth}`;
+            // Use name+DOB for deduplication (consistent across all sources)
+            const fullName = `${member.firstName} ${member.lastName}`.toLowerCase().trim();
+            const birthdayKey = `${fullName}-${member.dateOfBirth}`;
             if (!birthdaySet.has(birthdayKey)) {
               birthdaySet.add(birthdayKey);
               const roleDisplay = member.role === 'client' ? 'Client' : 
@@ -11970,9 +11970,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const primaryClientInMembers = members.find(m => m.role === 'client');
         
         if (policy.clientDateOfBirth && !primaryClientInMembers) {
-          // Use SSN or email as unique identifier (same person across all quotes/policies)
-          const personId = policy.clientSsn || policy.clientEmail || policy.id;
-          const birthdayKey = `${personId}-${policy.clientDateOfBirth}`;
+          // Use name+DOB for deduplication (consistent across all sources)
+          const fullName = `${policy.clientFirstName} ${policy.clientLastName}`.toLowerCase().trim();
+          const birthdayKey = `${fullName}-${policy.clientDateOfBirth}`;
           if (!birthdaySet.has(birthdayKey)) {
             birthdaySet.add(birthdayKey);
             events.push({
@@ -11989,9 +11989,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         for (const member of members) {
           if (member.dateOfBirth) {
-            // Use SSN or email as unique identifier (same person across all quotes/policies)
-            const personId = member.ssn || member.email || member.id;
-            const birthdayKey = `${personId}-${member.dateOfBirth}`;
+            // Use name+DOB for deduplication (consistent across all sources)
+            const fullName = `${member.firstName} ${member.lastName}`.toLowerCase().trim();
+            const birthdayKey = `${fullName}-${member.dateOfBirth}`;
             if (!birthdaySet.has(birthdayKey)) {
               birthdaySet.add(birthdayKey);
               const roleDisplay = member.role === 'client' ? 'Client' : 
@@ -12092,15 +12092,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const users = await storage.getUsersByCompany(companyId);
         for (const user of users) {
           if (user.dateOfBirth) {
-            const birthdayKey = `${user.id}-${user.dateOfBirth}`;
+            // Use name+DOB for deduplication (consistent across all sources)
+            const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+            const birthdayKey = `${fullName.toLowerCase().trim()}-${user.dateOfBirth}`;
             if (!birthdaySet.has(birthdayKey)) {
               birthdaySet.add(birthdayKey);
               events.push({
                 type: 'birthday',
                 date: user.dateOfBirth,
-                title: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+                title: fullName,
                 description: 'Birthday',
-                personName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+                personName: fullName,
                 role: 'Team Member',
               });
             }
@@ -12115,7 +12117,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const manualContacts = await storage.getManualContactsByCompany(companyId);
         for (const contact of manualContacts) {
           if (contact.dateOfBirth) {
-            const birthdayKey = `${contact.id}-${contact.dateOfBirth}`;
+            // Use name+DOB for deduplication (consistent across all sources)
+            const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase().trim();
+            const birthdayKey = `${fullName}-${contact.dateOfBirth}`;
             if (!birthdaySet.has(birthdayKey)) {
               birthdaySet.add(birthdayKey);
               events.push({
