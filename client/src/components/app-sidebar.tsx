@@ -213,7 +213,7 @@ export function AppSidebar() {
     queryKey: ["/api/session"],
   });
 
-  // Prefetch route data on hover/focus
+  // Prefetch route data on hover/focus/touch/click
   const handlePrefetch = (url: string) => {
     const queries = getQueriesForRoute(url);
     queries.forEach((queryDescriptor) => {
@@ -355,6 +355,8 @@ export function AppSidebar() {
                         className="flex items-center gap-3 px-3 w-full"
                         onMouseEnter={() => handlePrefetch(item.url)}
                         onFocus={() => handlePrefetch(item.url)}
+                        onTouchStart={() => handlePrefetch(item.url)}
+                        onClick={() => handlePrefetch(item.url)}
                       >
                         <item.icon className="h-5 w-5 shrink-0" />
                         <span className="flex-1">{item.title}</span>
@@ -402,6 +404,8 @@ export function AppSidebar() {
                           className="flex items-center gap-3 px-3 w-full"
                           onMouseEnter={() => handlePrefetch(item.url)}
                           onFocus={() => handlePrefetch(item.url)}
+                          onTouchStart={() => handlePrefetch(item.url)}
+                          onClick={() => handlePrefetch(item.url)}
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
@@ -439,6 +443,8 @@ export function AppSidebar() {
                           className="flex items-center gap-3 px-3 w-full"
                           onMouseEnter={() => handlePrefetch(item.url)}
                           onFocus={() => handlePrefetch(item.url)}
+                          onTouchStart={() => handlePrefetch(item.url)}
+                          onClick={() => handlePrefetch(item.url)}
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1 whitespace-nowrap overflow-visible">{item.title}</span>
@@ -476,6 +482,8 @@ export function AppSidebar() {
                           className="flex items-center gap-3 px-3 w-full"
                           onMouseEnter={() => handlePrefetch(item.url)}
                           onFocus={() => handlePrefetch(item.url)}
+                          onTouchStart={() => handlePrefetch(item.url)}
+                          onClick={() => handlePrefetch(item.url)}
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
@@ -522,6 +530,8 @@ export function AppSidebar() {
                           className="flex items-center gap-3 px-3 w-full"
                           onMouseEnter={() => handlePrefetch(item.url)}
                           onFocus={() => handlePrefetch(item.url)}
+                          onTouchStart={() => handlePrefetch(item.url)}
+                          onClick={() => handlePrefetch(item.url)}
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>

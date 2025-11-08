@@ -100,9 +100,9 @@ export const queryClient = new QueryClient({
       staleTime: 60 * 1000, // Data is fresh for 60 seconds
       refetchOnWindowFocus: true, // Refetch when user returns to tab
       refetchOnReconnect: true, // Refetch when connection is restored
-      // Changed from "always" to false to prevent loading state when data is in cache
-      // This allows prefetched data to show immediately without loading spinner
-      refetchOnMount: false, // Use cached data if fresh, refetch only if stale
+      // Keep refetchOnMount true so stale data refreshes on mount
+      // Prefetch helps reduce initial loading time, but doesn't prevent background refetch
+      refetchOnMount: true, // Always refetch stale data when component mounts
       refetchIntervalInBackground: false, // Don't poll when tab is not visible
       retry: false,
     },
