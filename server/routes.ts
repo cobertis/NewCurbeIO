@@ -2809,7 +2809,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      // Get birthdays this week (from users)
+      // Get birthdays this week (from all sources: users, quote members, manual contacts)
       let birthdaysThisWeek = 0;
       const today = new Date();
       const startOfWeek = new Date(today);
@@ -2817,13 +2817,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
       
-      // Check user birthdays
-      birthdaysThisWeek = users.filter(u => {
-        if (!u.dateOfBirth) return false;
-        const birthDate = new Date(u.dateOfBirth);
+      const isBirthdayThisWeek = (dateOfBirth: string | Date | null) => {
+        if (!dateOfBirth) return false;
+        const birthDate = new Date(dateOfBirth);
         const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
         return thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
-      }).length;
+      };
+      
+      // Count user birthdays
+      birthdaysThisWeek = users.filter(u => isBirthdayThisWeek(u.dateOfBirth)).length;
+      
+      // Count quote member birthdays
+      if (companyId) {
+        try {
+          const quoteMembers = await db.select()
+            .from(quoteMembersTable)
+            .where(eq(quoteMembersTable.companyId, companyId));
+          birthdaysThisWeek += quoteMembers.filter(m => isBirthdayThisWeek(m.dateOfBirth)).length;
+        } catch (error) {
+          // Ignore errors
+        }
+        
+        // Count manual contact birthdays
+        try {
+          const manualContacts = await db.select()
+            .from(manualContactsTable)
+            .where(eq(manualContactsTable.companyId, companyId));
+          birthdaysThisWeek += manualContacts.filter(c => isBirthdayThisWeek(c.dateOfBirth)).length;
+        } catch (error) {
+          // Ignore errors
+        }
+      }
 
       // Get failed login attempts (last 14 days) - based on activity logs
       let failedLoginAttempts = 0;
@@ -11920,6 +11944,52 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching landing appointments for calendar:", error);
         // Continue without appointments - don't break the entire calendar
+      }
+      
+      // ============== USERS/TEAM BIRTHDAYS ==============
+      try {
+        const users = await storage.getUsersByCompany(companyId);
+        for (const user of users) {
+          if (user.dateOfBirth) {
+            const birthdayKey = `${user.id}-${user.dateOfBirth}`;
+            if (!birthdaySet.has(birthdayKey)) {
+              birthdaySet.add(birthdayKey);
+              events.push({
+                type: 'birthday',
+                date: user.dateOfBirth,
+                title: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+                description: 'Birthday',
+                personName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+                role: 'Team Member',
+              });
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error("Error fetching team birthdays for calendar:", error);
+      }
+      
+      // ============== MANUAL CONTACTS BIRTHDAYS ==============
+      try {
+        const manualContacts = await storage.getManualContactsByCompany(companyId);
+        for (const contact of manualContacts) {
+          if (contact.dateOfBirth) {
+            const birthdayKey = `${contact.id}-${contact.dateOfBirth}`;
+            if (!birthdaySet.has(birthdayKey)) {
+              birthdaySet.add(birthdayKey);
+              events.push({
+                type: 'birthday',
+                date: contact.dateOfBirth,
+                title: `${contact.firstName} ${contact.lastName}`,
+                description: 'Birthday',
+                personName: `${contact.firstName} ${contact.lastName}`,
+                role: 'Manual Contact',
+              });
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error("Error fetching manual contacts birthdays for calendar:", error);
       }
       
       // ============== MANUAL BIRTHDAYS ==============

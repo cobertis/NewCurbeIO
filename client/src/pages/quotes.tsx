@@ -682,12 +682,10 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     : familyMemberSchema;
 
   // Fetch quote members to get member IDs
-  console.log('[MEMBERS QUERY] quote.id:', quote?.id, 'open:', open, 'enabled:', !!quote?.id && open);
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
     queryKey: [`/api/quotes/${quote?.id}/members`],
     enabled: !!quote?.id && open,
   });
-  console.log('[MEMBERS QUERY] membersData:', membersData, 'isLoading:', isLoadingMembers);
 
   // Find the current member ID based on memberType and memberIndex
   const currentMemberId = useMemo(() => {
