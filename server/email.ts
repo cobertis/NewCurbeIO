@@ -36,9 +36,11 @@ class EmailService {
           user,
           pass: password,
         },
+        authMethod: 'LOGIN', // Explicitly use LOGIN authentication
         tls: {
           // Do not fail on invalid certs (for self-signed certificates)
           rejectUnauthorized: false,
+          ciphers: 'SSLv3', // Support older SSL versions if needed
         },
         // For port 587, use STARTTLS
         requireTLS: port === 587,
@@ -48,6 +50,9 @@ class EmailService {
         socketTimeout: 15000,
         // Greeting timeout (5 seconds)
         greetingTimeout: 5000,
+        // Enable debug to see what's happening
+        debug: true,
+        logger: true,
       });
 
       this.initialized = true;
