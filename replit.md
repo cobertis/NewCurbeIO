@@ -35,6 +35,29 @@ if (isLoading) {
 
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 
+## Recent Critical Fixes (November 2025)
+
+**Settings Page Race Condition Fix:**
+- **Problem:** Intermittent blank company data (Business Profile, Company Logo) in Settings page
+- **Root Cause:** Page rendered before company data finished loading (race condition)
+- **Solution:** Added robust data readiness gate: `isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany)`
+- **Implementation:** `client/src/pages/settings.tsx` lines 444-449
+- **Pattern:** ALWAYS verify data exists, not just loading state
+
+**Database Connection Fix:**
+- **Problem:** Production errors "Failed to parse URL from https://api.208.158.174/sql"
+- **Root Cause:** Used Neon HTTP driver (`@neondatabase/serverless`) for regular PostgreSQL
+- **Solution:** Replaced with `postgres` package in `/api/user/sessions`, `/api/logout-all-sessions`, `/api/password-reset`
+- **Added:** try/finally blocks to prevent connection leaks
+- **Implementation:** `server/routes.ts`
+
+**Method Name Conflict Fix:**
+- **Problem:** Duplicate `updatePolicyPlan` methods causing build warnings
+- **Solution:** Renamed to distinguish purposes:
+  - `updatePolicySelectedPlan` - Updates Policy's selectedPlan field
+  - `updatePolicyPlan` - CRUD operations for PolicyPlan table
+- **Implementation:** `server/storage.ts` lines 653, 4313, 5697; `server/routes.ts` line 14522
+
 ## System Architecture
 
 ### UI/UX Decisions

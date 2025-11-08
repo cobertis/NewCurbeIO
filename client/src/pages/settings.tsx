@@ -438,8 +438,12 @@ export default function Settings() {
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
+  // CRITICAL: Ensure company data is loaded before rendering (prevents race conditions)
+  // For users with companyId, we MUST wait for companyData to be available
+  const isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany);
+  
   // Check if critical data is still loading
-  const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || (user?.companyId && isLoadingCompany);
+  const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || !isCompanyDataReady;
 
   // Determine active tab from URL
   const getCurrentTab = () => {
