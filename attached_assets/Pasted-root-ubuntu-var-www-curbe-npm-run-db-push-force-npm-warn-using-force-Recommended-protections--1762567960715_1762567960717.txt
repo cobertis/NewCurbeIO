@@ -1,0 +1,1752 @@
+root@ubuntu:/var/www/curbe# npm run db:push --force
+
+npm warn using --force Recommended protections disabled.
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/var/www/curbe/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+[✓] Changes applied
+root@ubuntu:/var/www/curbe# pm2 delete all
+[PM2] Spawning PM2 daemon with pm2_home=/root/.pm2
+[PM2] PM2 Successfully daemonized
+[PM2][WARN] No process found
+root@ubuntu:/var/www/curbe# pm2 start ecosystem.config.cjs
+[PM2][WARN] Applications curbe-admin not running, starting...
+[PM2] App [curbe-admin] launched (12 instances)
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ cluster │ 20418    │ 0s     │ 0    │ online    │ 0%       │ 60.9mb   │ root     │ disabled │
+│ 1  │ curbe-admin    │ default     │ N/A     │ cluster │ 20425    │ 0s     │ 0    │ online    │ 0%       │ 60.9mb   │ root     │ disabled │
+│ 2  │ curbe-admin    │ default     │ N/A     │ cluster │ 20432    │ 0s     │ 0    │ online    │ 0%       │ 61.3mb   │ root     │ disabled │
+│ 3  │ curbe-admin    │ default     │ N/A     │ cluster │ 20439    │ 0s     │ 0    │ online    │ 0%       │ 62.4mb   │ root     │ disabled │
+│ 4  │ curbe-admin    │ default     │ N/A     │ cluster │ 20450    │ 0s     │ 0    │ online    │ 0%       │ 61.5mb   │ root     │ disabled │
+│ 5  │ curbe-admin    │ default     │ N/A     │ cluster │ 20461    │ 0s     │ 0    │ online    │ 0%       │ 60.2mb   │ root     │ disabled │
+│ 6  │ curbe-admin    │ default     │ N/A     │ cluster │ 20472    │ 0s     │ 0    │ online    │ 0%       │ 58.6mb   │ root     │ disabled │
+│ 7  │ curbe-admin    │ default     │ N/A     │ cluster │ 20479    │ 0s     │ 0    │ online    │ 0%       │ 55.9mb   │ root     │ disabled │
+│ 8  │ curbe-admin    │ default     │ N/A     │ cluster │ 20494    │ 0s     │ 0    │ online    │ 0%       │ 55.2mb   │ root     │ disabled │
+│ 9  │ curbe-admin    │ default     │ N/A     │ cluster │ 20512    │ 0s     │ 0    │ online    │ 0%       │ 49.1mb   │ root     │ disabled │
+│ 10 │ curbe-admin    │ default     │ N/A     │ cluster │ 20531    │ 0s     │ 0    │ online    │ 0%       │ 49.2mb   │ root     │ disabled │
+│ 11 │ curbe-admin    │ default     │ N/A     │ cluster │ 20555    │ 0s     │ 0    │ online    │ 0%       │ 46.9mb   │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@ubuntu:/var/www/curbe# pm2 list
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ cluster │ 21311    │ 0s     │ 3    │ online    │ 0%       │ 61.3mb   │ root     │ disabled │
+│ 1  │ curbe-admin    │ default     │ N/A     │ cluster │ 21250    │ 0s     │ 3    │ online    │ 0%       │ 61.6mb   │ root     │ disabled │
+│ 2  │ curbe-admin    │ default     │ N/A     │ cluster │ 21264    │ 0s     │ 3    │ online    │ 0%       │ 62.6mb   │ root     │ disabled │
+│ 3  │ curbe-admin    │ default     │ N/A     │ cluster │ 21251    │ 0s     │ 3    │ online    │ 0%       │ 60.9mb   │ root     │ disabled │
+│ 4  │ curbe-admin    │ default     │ N/A     │ cluster │ 21340    │ 0s     │ 3    │ online    │ 0%       │ 60.7mb   │ root     │ disabled │
+│ 5  │ curbe-admin    │ default     │ N/A     │ cluster │ 21278    │ 0s     │ 3    │ online    │ 0%       │ 60.4mb   │ root     │ disabled │
+│ 6  │ curbe-admin    │ default     │ N/A     │ cluster │ 21339    │ 0s     │ 3    │ online    │ 0%       │ 57.8mb   │ root     │ disabled │
+│ 7  │ curbe-admin    │ default     │ N/A     │ cluster │ 21286    │ 0s     │ 3    │ online    │ 0%       │ 61.2mb   │ root     │ disabled │
+│ 8  │ curbe-admin    │ default     │ N/A     │ cluster │ 21309    │ 0s     │ 3    │ online    │ 0%       │ 60.8mb   │ root     │ disabled │
+│ 9  │ curbe-admin    │ default     │ N/A     │ cluster │ 21346    │ 0s     │ 3    │ online    │ 0%       │ 58.5mb   │ root     │ disabled │
+│ 10 │ curbe-admin    │ default     │ N/A     │ cluster │ 21364    │ 0s     │ 3    │ online    │ 0%       │ 57.2mb   │ root     │ disabled │
+│ 11 │ curbe-admin    │ default     │ N/A     │ cluster │ 21413    │ 0s     │ 3    │ online    │ 0%       │ 52.5mb   │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@ubuntu:/var/www/curbe# pm2 logs curbe-admin --lines 50
+
+[TAILING] Tailing last 50 lines for [curbe-admin] process (change the value with --lines option)
+/var/www/curbe/logs/pm2-err.log last 50 lines:
+/var/www/curbe/logs/pm2-out.log last 50 lines:
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:03: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 2025-11-08T02:12:04: 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+
+3|curbe-admin  | 2025-11-08T02:12:05: 
+3|curbe-admin  | 2025-11-08T02:12:05: 
+3|curbe-admin  | 2025-11-08T02:12:05: 
+2|curbe-admin  | 2025-11-08T02:12:05: 
+2|curbe-admin  | 2025-11-08T02:12:05: 
+2|curbe-admin  | 2025-11-08T02:12:05: 
+4|curbe-admin  | 2025-11-08T02:12:05: 
+4|curbe-admin  | 2025-11-08T02:12:05: 
+4|curbe-admin  | 2025-11-08T02:12:05: 
+10|curbe-admin | 2025-11-08T02:12:05: 
+10|curbe-admin | 2025-11-08T02:12:05: 
+10|curbe-admin | 2025-11-08T02:12:05: 
+5|curbe-admin  | 2025-11-08T02:12:05: 
+5|curbe-admin  | 2025-11-08T02:12:05: 
+5|curbe-admin  | 2025-11-08T02:12:05: 
+1|curbe-admin  | 2025-11-08T02:12:05: 
+1|curbe-admin  | 2025-11-08T02:12:05: 
+1|curbe-admin  | 2025-11-08T02:12:05: 
+7|curbe-admin  | 2025-11-08T02:12:05: 
+7|curbe-admin  | 2025-11-08T02:12:05: 
+7|curbe-admin  | 2025-11-08T02:12:05: 
+3|curbe-admin  | 2025-11-08T02:12:05: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:05: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:05: 
+9|curbe-admin  | 2025-11-08T02:12:05: 
+9|curbe-admin  | 2025-11-08T02:12:05: 
+8|curbe-admin  | 2025-11-08T02:12:05: 
+4|curbe-admin  | 2025-11-08T02:12:05: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:05: 
+8|curbe-admin  | 2025-11-08T02:12:05: 
+1|curbe-admin  | 2025-11-08T02:12:05: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:05: 
+0|curbe-admin  | 2025-11-08T02:12:05: 
+0|curbe-admin  | 2025-11-08T02:12:05: 
+10|curbe-admin | 2025-11-08T02:12:05: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:05: 
+11|curbe-admin | 2025-11-08T02:12:05: 
+11|curbe-admin | 2025-11-08T02:12:05: 
+5|curbe-admin  | 2025-11-08T02:12:05: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:05: 
+6|curbe-admin  | 2025-11-08T02:12:05: 
+6|curbe-admin  | 2025-11-08T02:12:05: 
+7|curbe-admin  | 2025-11-08T02:12:05: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:06: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:06: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:06: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:06: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:06: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:06: 
+3|curbe-admin  | 2025-11-08T02:12:06: 
+3|curbe-admin  | 2025-11-08T02:12:06: 
+1|curbe-admin  | 2025-11-08T02:12:06: 
+1|curbe-admin  | 2025-11-08T02:12:06: 
+1|curbe-admin  | 2025-11-08T02:12:06: 
+10|curbe-admin | 2025-11-08T02:12:06: 
+10|curbe-admin | 2025-11-08T02:12:06: 
+10|curbe-admin | 2025-11-08T02:12:06: 
+2|curbe-admin  | 2025-11-08T02:12:06: 
+2|curbe-admin  | 2025-11-08T02:12:06: 
+2|curbe-admin  | 2025-11-08T02:12:06: 
+4|curbe-admin  | 2025-11-08T02:12:07: 
+4|curbe-admin  | 2025-11-08T02:12:07: 
+4|curbe-admin  | 2025-11-08T02:12:07: 
+5|curbe-admin  | 2025-11-08T02:12:07: 
+5|curbe-admin  | 2025-11-08T02:12:07: 
+5|curbe-admin  | 2025-11-08T02:12:07: 
+7|curbe-admin  | 2025-11-08T02:12:07: 
+7|curbe-admin  | 2025-11-08T02:12:07: 
+7|curbe-admin  | 2025-11-08T02:12:07: 
+3|curbe-admin  | 2025-11-08T02:12:07: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:07: 
+9|curbe-admin  | 2025-11-08T02:12:07: 
+9|curbe-admin  | 2025-11-08T02:12:07: 
+0|curbe-admin  | 2025-11-08T02:12:07: 
+0|curbe-admin  | 2025-11-08T02:12:07: 
+0|curbe-admin  | 2025-11-08T02:12:07: 
+1|curbe-admin  | 2025-11-08T02:12:07: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:07: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:07: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:07: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:07: 
+8|curbe-admin  | 2025-11-08T02:12:07: 
+8|curbe-admin  | 2025-11-08T02:12:07: 
+7|curbe-admin  | 2025-11-08T02:12:07: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:07: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:07: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:07: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:07: 
+11|curbe-admin | 2025-11-08T02:12:07: 
+11|curbe-admin | 2025-11-08T02:12:07: 
+6|curbe-admin  | 2025-11-08T02:12:07: 
+6|curbe-admin  | 2025-11-08T02:12:07: 
+6|curbe-admin  | 2025-11-08T02:12:07: 
+8|curbe-admin  | 2025-11-08T02:12:07: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:07: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:07: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:08: 
+3|curbe-admin  | 2025-11-08T02:12:08: 
+3|curbe-admin  | 2025-11-08T02:12:08: 
+1|curbe-admin  | 2025-11-08T02:12:08: 
+1|curbe-admin  | 2025-11-08T02:12:08: 
+1|curbe-admin  | 2025-11-08T02:12:08: 
+10|curbe-admin | 2025-11-08T02:12:08: 
+10|curbe-admin | 2025-11-08T02:12:08: 
+10|curbe-admin | 2025-11-08T02:12:08: 
+2|curbe-admin  | 2025-11-08T02:12:08: 
+2|curbe-admin  | 2025-11-08T02:12:08: 
+2|curbe-admin  | 2025-11-08T02:12:08: 
+4|curbe-admin  | 2025-11-08T02:12:08: 
+4|curbe-admin  | 2025-11-08T02:12:08: 
+4|curbe-admin  | 2025-11-08T02:12:08: 
+7|curbe-admin  | 2025-11-08T02:12:08: 
+7|curbe-admin  | 2025-11-08T02:12:08: 
+7|curbe-admin  | 2025-11-08T02:12:08: 
+5|curbe-admin  | 2025-11-08T02:12:08: 
+5|curbe-admin  | 2025-11-08T02:12:08: 
+5|curbe-admin  | 2025-11-08T02:12:08: 
+0|curbe-admin  | 2025-11-08T02:12:08: 
+0|curbe-admin  | 2025-11-08T02:12:08: 
+0|curbe-admin  | 2025-11-08T02:12:08: 
+3|curbe-admin  | 2025-11-08T02:12:08: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:08: 
+9|curbe-admin  | 2025-11-08T02:12:08: 
+9|curbe-admin  | 2025-11-08T02:12:08: 
+10|curbe-admin | 2025-11-08T02:12:08: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:08: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:08: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:08: 
+8|curbe-admin  | 2025-11-08T02:12:08: 
+8|curbe-admin  | 2025-11-08T02:12:08: 
+5|curbe-admin  | 2025-11-08T02:12:08: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:08: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:08: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:08: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:08: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:08: 
+11|curbe-admin | 2025-11-08T02:12:08: 
+11|curbe-admin | 2025-11-08T02:12:08: 
+6|curbe-admin  | 2025-11-08T02:12:08: 
+6|curbe-admin  | 2025-11-08T02:12:08: 
+6|curbe-admin  | 2025-11-08T02:12:08: 
+8|curbe-admin  | 2025-11-08T02:12:09: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:09: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:09: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:09: 
+10|curbe-admin | 2025-11-08T02:12:09: 
+10|curbe-admin | 2025-11-08T02:12:09: 
+2|curbe-admin  | 2025-11-08T02:12:09: 
+2|curbe-admin  | 2025-11-08T02:12:09: 
+2|curbe-admin  | 2025-11-08T02:12:09: 
+1|curbe-admin  | 2025-11-08T02:12:09: 
+1|curbe-admin  | 2025-11-08T02:12:09: 
+1|curbe-admin  | 2025-11-08T02:12:09: 
+4|curbe-admin  | 2025-11-08T02:12:09: 
+4|curbe-admin  | 2025-11-08T02:12:09: 
+4|curbe-admin  | 2025-11-08T02:12:09: 
+5|curbe-admin  | 2025-11-08T02:12:10: 
+5|curbe-admin  | 2025-11-08T02:12:10: 
+5|curbe-admin  | 2025-11-08T02:12:10: 
+3|curbe-admin  | 2025-11-08T02:12:10: 
+3|curbe-admin  | 2025-11-08T02:12:10: 
+3|curbe-admin  | 2025-11-08T02:12:10: 
+10|curbe-admin | 2025-11-08T02:12:10: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:10: 
+0|curbe-admin  | 2025-11-08T02:12:10: 
+9|curbe-admin  | 2025-11-08T02:12:10: 
+9|curbe-admin  | 2025-11-08T02:12:10: 
+0|curbe-admin  | 2025-11-08T02:12:10: 
+0|curbe-admin  | 2025-11-08T02:12:10: 
+7|curbe-admin  | 2025-11-08T02:12:10: 
+7|curbe-admin  | 2025-11-08T02:12:10: 
+7|curbe-admin  | 2025-11-08T02:12:10: 
+2|curbe-admin  | 2025-11-08T02:12:10: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:10: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:10: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:10: 
+8|curbe-admin  | 2025-11-08T02:12:10: 
+8|curbe-admin  | 2025-11-08T02:12:10: 
+3|curbe-admin  | 2025-11-08T02:12:10: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:10: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:10: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:10: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:10: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:10: 
+11|curbe-admin | 2025-11-08T02:12:10: 
+11|curbe-admin | 2025-11-08T02:12:10: 
+8|curbe-admin  | 2025-11-08T02:12:10: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:10: 
+6|curbe-admin  | 2025-11-08T02:12:10: 
+6|curbe-admin  | 2025-11-08T02:12:10: 
+11|curbe-admin | 2025-11-08T02:12:10: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:10: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:11: 
+10|curbe-admin | 2025-11-08T02:12:11: 
+10|curbe-admin | 2025-11-08T02:12:11: 
+2|curbe-admin  | 2025-11-08T02:12:11: 
+2|curbe-admin  | 2025-11-08T02:12:11: 
+2|curbe-admin  | 2025-11-08T02:12:11: 
+5|curbe-admin  | 2025-11-08T02:12:11: 
+5|curbe-admin  | 2025-11-08T02:12:11: 
+5|curbe-admin  | 2025-11-08T02:12:11: 
+9|curbe-admin  | 2025-11-08T02:12:11: 
+9|curbe-admin  | 2025-11-08T02:12:11: 
+9|curbe-admin  | 2025-11-08T02:12:11: 
+3|curbe-admin  | 2025-11-08T02:12:11: 
+3|curbe-admin  | 2025-11-08T02:12:11: 
+3|curbe-admin  | 2025-11-08T02:12:11: 
+4|curbe-admin  | 2025-11-08T02:12:11: 
+4|curbe-admin  | 2025-11-08T02:12:11: 
+4|curbe-admin  | 2025-11-08T02:12:11: 
+10|curbe-admin | 2025-11-08T02:12:11: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:11: 
+1|curbe-admin  | 2025-11-08T02:12:11: 
+1|curbe-admin  | 2025-11-08T02:12:11: 
+0|curbe-admin  | 2025-11-08T02:12:11: 
+0|curbe-admin  | 2025-11-08T02:12:11: 
+0|curbe-admin  | 2025-11-08T02:12:11: 
+7|curbe-admin  | 2025-11-08T02:12:11: 
+7|curbe-admin  | 2025-11-08T02:12:11: 
+7|curbe-admin  | 2025-11-08T02:12:11: 
+2|curbe-admin  | 2025-11-08T02:12:11: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:11: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:11: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:11: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:11: 
+8|curbe-admin  | 2025-11-08T02:12:11: 
+8|curbe-admin  | 2025-11-08T02:12:11: 
+1|curbe-admin  | 2025-11-08T02:12:11: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:11: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:11: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:11: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:11: 
+11|curbe-admin | 2025-11-08T02:12:11: 
+11|curbe-admin | 2025-11-08T02:12:11: 
+8|curbe-admin  | 2025-11-08T02:12:11: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:12: 
+6|curbe-admin  | 2025-11-08T02:12:12: 
+6|curbe-admin  | 2025-11-08T02:12:12: 
+11|curbe-admin | 2025-11-08T02:12:12: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:12: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:12: 
+10|curbe-admin | 2025-11-08T02:12:12: 
+10|curbe-admin | 2025-11-08T02:12:12: 
+3|curbe-admin  | 2025-11-08T02:12:12: 
+3|curbe-admin  | 2025-11-08T02:12:12: 
+3|curbe-admin  | 2025-11-08T02:12:12: 
+2|curbe-admin  | 2025-11-08T02:12:12: 
+2|curbe-admin  | 2025-11-08T02:12:12: 
+2|curbe-admin  | 2025-11-08T02:12:12: 
+9|curbe-admin  | 2025-11-08T02:12:12: 
+9|curbe-admin  | 2025-11-08T02:12:12: 
+9|curbe-admin  | 2025-11-08T02:12:12: 
+10|curbe-admin | 2025-11-08T02:12:12: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:12: 
+5|curbe-admin  | 2025-11-08T02:12:12: 
+5|curbe-admin  | 2025-11-08T02:12:12: 
+1|curbe-admin  | 2025-11-08T02:12:12: 
+1|curbe-admin  | 2025-11-08T02:12:12: 
+1|curbe-admin  | 2025-11-08T02:12:12: 
+7|curbe-admin  | 2025-11-08T02:12:12: 
+7|curbe-admin  | 2025-11-08T02:12:12: 
+7|curbe-admin  | 2025-11-08T02:12:12: 
+0|curbe-admin  | 2025-11-08T02:12:12: 
+0|curbe-admin  | 2025-11-08T02:12:12: 
+0|curbe-admin  | 2025-11-08T02:12:12: 
+3|curbe-admin  | 2025-11-08T02:12:12: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:12: 
+4|curbe-admin  | 2025-11-08T02:12:12: 
+4|curbe-admin  | 2025-11-08T02:12:12: 
+2|curbe-admin  | 2025-11-08T02:12:13: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:13: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:13: 
+8|curbe-admin  | 2025-11-08T02:12:13: 
+8|curbe-admin  | 2025-11-08T02:12:13: 
+1|curbe-admin  | 2025-11-08T02:12:13: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:13: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:13: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:13: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:13: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:13: 
+11|curbe-admin | 2025-11-08T02:12:13: 
+11|curbe-admin | 2025-11-08T02:12:13: 
+8|curbe-admin  | 2025-11-08T02:12:13: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:13: 
+6|curbe-admin  | 2025-11-08T02:12:13: 
+6|curbe-admin  | 2025-11-08T02:12:13: 
+11|curbe-admin | 2025-11-08T02:12:13: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:13: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:14: 
+10|curbe-admin | 2025-11-08T02:12:14: 
+10|curbe-admin | 2025-11-08T02:12:14: 
+3|curbe-admin  | 2025-11-08T02:12:14: 
+3|curbe-admin  | 2025-11-08T02:12:14: 
+3|curbe-admin  | 2025-11-08T02:12:14: 
+9|curbe-admin  | 2025-11-08T02:12:14: 
+9|curbe-admin  | 2025-11-08T02:12:14: 
+9|curbe-admin  | 2025-11-08T02:12:14: 
+2|curbe-admin  | 2025-11-08T02:12:14: 
+2|curbe-admin  | 2025-11-08T02:12:14: 
+2|curbe-admin  | 2025-11-08T02:12:14: 
+4|curbe-admin  | 2025-11-08T02:12:14: 
+4|curbe-admin  | 2025-11-08T02:12:14: 
+4|curbe-admin  | 2025-11-08T02:12:14: 
+7|curbe-admin  | 2025-11-08T02:12:14: 
+7|curbe-admin  | 2025-11-08T02:12:14: 
+7|curbe-admin  | 2025-11-08T02:12:14: 
+10|curbe-admin | 2025-11-08T02:12:14: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:14: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:14: 
+0|curbe-admin  | 2025-11-08T02:12:14: 
+0|curbe-admin  | 2025-11-08T02:12:14: 
+1|curbe-admin  | 2025-11-08T02:12:14: 
+1|curbe-admin  | 2025-11-08T02:12:14: 
+1|curbe-admin  | 2025-11-08T02:12:14: 
+5|curbe-admin  | 2025-11-08T02:12:14: 
+5|curbe-admin  | 2025-11-08T02:12:14: 
+5|curbe-admin  | 2025-11-08T02:12:14: 
+8|curbe-admin  | 2025-11-08T02:12:14: 
+8|curbe-admin  | 2025-11-08T02:12:14: 
+8|curbe-admin  | 2025-11-08T02:12:14: 
+9|curbe-admin  | 2025-11-08T02:12:14: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:14: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:14: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:14: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:14: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:14: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:14: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:14: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:14: 
+11|curbe-admin | 2025-11-08T02:12:14: 
+11|curbe-admin | 2025-11-08T02:12:14: 
+6|curbe-admin  | 2025-11-08T02:12:14: 
+6|curbe-admin  | 2025-11-08T02:12:14: 
+6|curbe-admin  | 2025-11-08T02:12:14: 
+11|curbe-admin | 2025-11-08T02:12:14: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:15: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:15: 
+3|curbe-admin  | 2025-11-08T02:12:15: 
+3|curbe-admin  | 2025-11-08T02:12:15: 
+10|curbe-admin | 2025-11-08T02:12:15: 
+10|curbe-admin | 2025-11-08T02:12:15: 
+10|curbe-admin | 2025-11-08T02:12:15: 
+4|curbe-admin  | 2025-11-08T02:12:15: 
+4|curbe-admin  | 2025-11-08T02:12:15: 
+4|curbe-admin  | 2025-11-08T02:12:15: 
+2|curbe-admin  | 2025-11-08T02:12:15: 
+2|curbe-admin  | 2025-11-08T02:12:15: 
+9|curbe-admin  | 2025-11-08T02:12:15: 
+2|curbe-admin  | 2025-11-08T02:12:15: 
+9|curbe-admin  | 2025-11-08T02:12:15: 
+9|curbe-admin  | 2025-11-08T02:12:15: 
+3|curbe-admin  | 2025-11-08T02:12:15: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:15: 
+7|curbe-admin  | 2025-11-08T02:12:15: 
+7|curbe-admin  | 2025-11-08T02:12:15: 
+8|curbe-admin  | 2025-11-08T02:12:15: 
+8|curbe-admin  | 2025-11-08T02:12:15: 
+8|curbe-admin  | 2025-11-08T02:12:15: 
+10|curbe-admin | 2025-11-08T02:12:15: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:15: 
+5|curbe-admin  | 2025-11-08T02:12:15: 
+5|curbe-admin  | 2025-11-08T02:12:15: 
+1|curbe-admin  | 2025-11-08T02:12:15: 
+1|curbe-admin  | 2025-11-08T02:12:15: 
+1|curbe-admin  | 2025-11-08T02:12:15: 
+0|curbe-admin  | 2025-11-08T02:12:15: 
+0|curbe-admin  | 2025-11-08T02:12:15: 
+0|curbe-admin  | 2025-11-08T02:12:15: 
+4|curbe-admin  | 2025-11-08T02:12:15: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:16: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:16: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:16: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:16: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:16: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:16: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:16: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:16: 
+11|curbe-admin | 2025-11-08T02:12:16: 
+11|curbe-admin | 2025-11-08T02:12:16: 
+6|curbe-admin  | 2025-11-08T02:12:16: 
+6|curbe-admin  | 2025-11-08T02:12:16: 
+6|curbe-admin  | 2025-11-08T02:12:16: 
+11|curbe-admin | 2025-11-08T02:12:16: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:16: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:16: 
+3|curbe-admin  | 2025-11-08T02:12:16: 
+3|curbe-admin  | 2025-11-08T02:12:16: 
+2|curbe-admin  | 2025-11-08T02:12:16: 
+2|curbe-admin  | 2025-11-08T02:12:16: 
+2|curbe-admin  | 2025-11-08T02:12:16: 
+4|curbe-admin  | 2025-11-08T02:12:17: 
+4|curbe-admin  | 2025-11-08T02:12:17: 
+4|curbe-admin  | 2025-11-08T02:12:17: 
+10|curbe-admin | 2025-11-08T02:12:17: 
+10|curbe-admin | 2025-11-08T02:12:17: 
+10|curbe-admin | 2025-11-08T02:12:17: 
+9|curbe-admin  | 2025-11-08T02:12:17: 
+9|curbe-admin  | 2025-11-08T02:12:17: 
+9|curbe-admin  | 2025-11-08T02:12:17: 
+5|curbe-admin  | 2025-11-08T02:12:17: 
+5|curbe-admin  | 2025-11-08T02:12:17: 
+5|curbe-admin  | 2025-11-08T02:12:17: 
+8|curbe-admin  | 2025-11-08T02:12:17: 
+8|curbe-admin  | 2025-11-08T02:12:17: 
+8|curbe-admin  | 2025-11-08T02:12:17: 
+3|curbe-admin  | 2025-11-08T02:12:17: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:17: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:17: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:17: 
+7|curbe-admin  | 2025-11-08T02:12:17: 
+7|curbe-admin  | 2025-11-08T02:12:17: 
+10|curbe-admin | 2025-11-08T02:12:17: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:17: 
+1|curbe-admin  | 2025-11-08T02:12:17: 
+1|curbe-admin  | 2025-11-08T02:12:17: 
+9|curbe-admin  | 2025-11-08T02:12:17: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:17: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:17: 
+0|curbe-admin  | 2025-11-08T02:12:17: 
+0|curbe-admin  | 2025-11-08T02:12:17: 
+8|curbe-admin  | 2025-11-08T02:12:17: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:17: 
+11|curbe-admin | 2025-11-08T02:12:17: 
+11|curbe-admin | 2025-11-08T02:12:17: 
+7|curbe-admin  | 2025-11-08T02:12:17: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:17: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:17: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:17: 
+6|curbe-admin  | 2025-11-08T02:12:17: 
+6|curbe-admin  | 2025-11-08T02:12:17: 
+11|curbe-admin | 2025-11-08T02:12:17: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:18: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:18: 
+3|curbe-admin  | 2025-11-08T02:12:18: 
+3|curbe-admin  | 2025-11-08T02:12:18: 
+4|curbe-admin  | 2025-11-08T02:12:18: 
+4|curbe-admin  | 2025-11-08T02:12:18: 
+4|curbe-admin  | 2025-11-08T02:12:18: 
+2|curbe-admin  | 2025-11-08T02:12:18: 
+2|curbe-admin  | 2025-11-08T02:12:18: 
+2|curbe-admin  | 2025-11-08T02:12:18: 
+10|curbe-admin | 2025-11-08T02:12:18: 
+10|curbe-admin | 2025-11-08T02:12:18: 
+10|curbe-admin | 2025-11-08T02:12:18: 
+5|curbe-admin  | 2025-11-08T02:12:18: 
+5|curbe-admin  | 2025-11-08T02:12:18: 
+5|curbe-admin  | 2025-11-08T02:12:18: 
+9|curbe-admin  | 2025-11-08T02:12:18: 
+9|curbe-admin  | 2025-11-08T02:12:18: 
+9|curbe-admin  | 2025-11-08T02:12:18: 
+3|curbe-admin  | 2025-11-08T02:12:18: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:18: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:18: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:18: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:18: 
+8|curbe-admin  | 2025-11-08T02:12:18: 
+8|curbe-admin  | 2025-11-08T02:12:18: 
+1|curbe-admin  | 2025-11-08T02:12:18: 
+1|curbe-admin  | 2025-11-08T02:12:18: 
+1|curbe-admin  | 2025-11-08T02:12:18: 
+5|curbe-admin  | 2025-11-08T02:12:18: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:18: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:18: 
+7|curbe-admin  | 2025-11-08T02:12:18: 
+7|curbe-admin  | 2025-11-08T02:12:18: 
+8|curbe-admin  | 2025-11-08T02:12:18: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:18: 
+0|curbe-admin  | 2025-11-08T02:12:18: 
+0|curbe-admin  | 2025-11-08T02:12:18: 
+1|curbe-admin  | 2025-11-08T02:12:18: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:19: 
+11|curbe-admin | 2025-11-08T02:12:19: 
+11|curbe-admin | 2025-11-08T02:12:19: 
+7|curbe-admin  | 2025-11-08T02:12:19: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:19: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:19: 
+6|curbe-admin  | 2025-11-08T02:12:19: 
+6|curbe-admin  | 2025-11-08T02:12:19: 
+11|curbe-admin | 2025-11-08T02:12:19: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:19: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:19: 
+3|curbe-admin  | 2025-11-08T02:12:19: 
+3|curbe-admin  | 2025-11-08T02:12:19: 
+5|curbe-admin  | 2025-11-08T02:12:19: 
+4|curbe-admin  | 2025-11-08T02:12:19: 
+5|curbe-admin  | 2025-11-08T02:12:19: 
+5|curbe-admin  | 2025-11-08T02:12:19: 
+4|curbe-admin  | 2025-11-08T02:12:19: 
+4|curbe-admin  | 2025-11-08T02:12:19: 
+10|curbe-admin | 2025-11-08T02:12:19: 
+10|curbe-admin | 2025-11-08T02:12:19: 
+10|curbe-admin | 2025-11-08T02:12:19: 
+2|curbe-admin  | 2025-11-08T02:12:19: 
+2|curbe-admin  | 2025-11-08T02:12:19: 
+2|curbe-admin  | 2025-11-08T02:12:19: 
+9|curbe-admin  | 2025-11-08T02:12:19: 
+9|curbe-admin  | 2025-11-08T02:12:19: 
+9|curbe-admin  | 2025-11-08T02:12:19: 
+3|curbe-admin  | 2025-11-08T02:12:19: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:19: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:20: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:20: 
+8|curbe-admin  | 2025-11-08T02:12:20: 
+8|curbe-admin  | 2025-11-08T02:12:20: 
+2|curbe-admin  | 2025-11-08T02:12:20: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:20: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:20: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:20: 
+1|curbe-admin  | 2025-11-08T02:12:20: 
+1|curbe-admin  | 2025-11-08T02:12:20: 
+7|curbe-admin  | 2025-11-08T02:12:20: 
+7|curbe-admin  | 2025-11-08T02:12:20: 
+7|curbe-admin  | 2025-11-08T02:12:20: 
+8|curbe-admin  | 2025-11-08T02:12:20: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:20: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:20: 
+11|curbe-admin | 2025-11-08T02:12:20: 
+11|curbe-admin | 2025-11-08T02:12:20: 
+0|curbe-admin  | 2025-11-08T02:12:20: 
+0|curbe-admin  | 2025-11-08T02:12:20: 
+0|curbe-admin  | 2025-11-08T02:12:20: 
+7|curbe-admin  | 2025-11-08T02:12:20: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:20: 
+6|curbe-admin  | 2025-11-08T02:12:20: 
+6|curbe-admin  | 2025-11-08T02:12:20: 
+11|curbe-admin | 2025-11-08T02:12:20: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:20: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:20: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:21: 
+4|curbe-admin  | 2025-11-08T02:12:21: 
+4|curbe-admin  | 2025-11-08T02:12:21: 
+3|curbe-admin  | 2025-11-08T02:12:21: 
+3|curbe-admin  | 2025-11-08T02:12:21: 
+3|curbe-admin  | 2025-11-08T02:12:21: 
+2|curbe-admin  | 2025-11-08T02:12:21: 
+2|curbe-admin  | 2025-11-08T02:12:21: 
+2|curbe-admin  | 2025-11-08T02:12:21: 
+5|curbe-admin  | 2025-11-08T02:12:21: 
+5|curbe-admin  | 2025-11-08T02:12:21: 
+5|curbe-admin  | 2025-11-08T02:12:21: 
+10|curbe-admin | 2025-11-08T02:12:21: 
+10|curbe-admin | 2025-11-08T02:12:21: 
+10|curbe-admin | 2025-11-08T02:12:21: 
+9|curbe-admin  | 2025-11-08T02:12:21: 
+9|curbe-admin  | 2025-11-08T02:12:21: 
+9|curbe-admin  | 2025-11-08T02:12:21: 
+4|curbe-admin  | 2025-11-08T02:12:21: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:21: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:21: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:21: 
+1|curbe-admin  | 2025-11-08T02:12:21: 
+1|curbe-admin  | 2025-11-08T02:12:21: 
+8|curbe-admin  | 2025-11-08T02:12:21: 
+8|curbe-admin  | 2025-11-08T02:12:21: 
+8|curbe-admin  | 2025-11-08T02:12:21: 
+5|curbe-admin  | 2025-11-08T02:12:21: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:21: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:21: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:21: 
+7|curbe-admin  | 2025-11-08T02:12:21: 
+7|curbe-admin  | 2025-11-08T02:12:21: 
+8|curbe-admin  | 2025-11-08T02:12:21: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:21: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:21: 
+11|curbe-admin | 2025-11-08T02:12:21: 
+11|curbe-admin | 2025-11-08T02:12:21: 
+7|curbe-admin  | 2025-11-08T02:12:21: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:22: 
+6|curbe-admin  | 2025-11-08T02:12:22: 
+6|curbe-admin  | 2025-11-08T02:12:22: 
+0|curbe-admin  | 2025-11-08T02:12:22: 
+0|curbe-admin  | 2025-11-08T02:12:22: 
+0|curbe-admin  | 2025-11-08T02:12:22: 
+11|curbe-admin | 2025-11-08T02:12:22: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:22: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:22: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:22: 
+4|curbe-admin  | 2025-11-08T02:12:22: 
+4|curbe-admin  | 2025-11-08T02:12:22: 
+3|curbe-admin  | 2025-11-08T02:12:22: 
+3|curbe-admin  | 2025-11-08T02:12:22: 
+3|curbe-admin  | 2025-11-08T02:12:22: 
+2|curbe-admin  | 2025-11-08T02:12:22: 
+2|curbe-admin  | 2025-11-08T02:12:22: 
+2|curbe-admin  | 2025-11-08T02:12:22: 
+5|curbe-admin  | 2025-11-08T02:12:22: 
+5|curbe-admin  | 2025-11-08T02:12:22: 
+5|curbe-admin  | 2025-11-08T02:12:22: 
+10|curbe-admin | 2025-11-08T02:12:22: 
+10|curbe-admin | 2025-11-08T02:12:22: 
+10|curbe-admin | 2025-11-08T02:12:22: 
+9|curbe-admin  | 2025-11-08T02:12:22: 
+9|curbe-admin  | 2025-11-08T02:12:22: 
+9|curbe-admin  | 2025-11-08T02:12:22: 
+4|curbe-admin  | 2025-11-08T02:12:22: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:22: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:22: 
+8|curbe-admin  | 2025-11-08T02:12:22: 
+8|curbe-admin  | 2025-11-08T02:12:22: 
+2|curbe-admin  | 2025-11-08T02:12:22: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:22: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:22: 
+1|curbe-admin  | 2025-11-08T02:12:22: 
+1|curbe-admin  | 2025-11-08T02:12:22: 
+9|curbe-admin  | 2025-11-08T02:12:23: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:23: 
+7|curbe-admin  | 2025-11-08T02:12:23: 
+7|curbe-admin  | 2025-11-08T02:12:23: 
+10|curbe-admin | 2025-11-08T02:12:23: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:23: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:23: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:23: 
+11|curbe-admin | 2025-11-08T02:12:23: 
+11|curbe-admin | 2025-11-08T02:12:23: 
+7|curbe-admin  | 2025-11-08T02:12:23: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:23: 
+0|curbe-admin  | 2025-11-08T02:12:23: 
+0|curbe-admin  | 2025-11-08T02:12:23: 
+6|curbe-admin  | 2025-11-08T02:12:23: 
+6|curbe-admin  | 2025-11-08T02:12:23: 
+6|curbe-admin  | 2025-11-08T02:12:23: 
+11|curbe-admin | 2025-11-08T02:12:23: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:23: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:23: 
+4|curbe-admin  | 2025-11-08T02:12:23: 
+4|curbe-admin  | 2025-11-08T02:12:23: 
+6|curbe-admin  | 2025-11-08T02:12:23: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:23: 
+5|curbe-admin  | 2025-11-08T02:12:23: 
+5|curbe-admin  | 2025-11-08T02:12:23: 
+3|curbe-admin  | 2025-11-08T02:12:23: 
+3|curbe-admin  | 2025-11-08T02:12:23: 
+3|curbe-admin  | 2025-11-08T02:12:23: 
+2|curbe-admin  | 2025-11-08T02:12:24: 
+2|curbe-admin  | 2025-11-08T02:12:24: 
+2|curbe-admin  | 2025-11-08T02:12:24: 
+9|curbe-admin  | 2025-11-08T02:12:24: 
+9|curbe-admin  | 2025-11-08T02:12:24: 
+9|curbe-admin  | 2025-11-08T02:12:24: 
+10|curbe-admin | 2025-11-08T02:12:24: 
+10|curbe-admin | 2025-11-08T02:12:24: 
+10|curbe-admin | 2025-11-08T02:12:24: 
+4|curbe-admin  | 2025-11-08T02:12:24: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:24: 
+8|curbe-admin  | 2025-11-08T02:12:24: 
+8|curbe-admin  | 2025-11-08T02:12:24: 
+5|curbe-admin  | 2025-11-08T02:12:24: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:24: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:24: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:24: 
+1|curbe-admin  | 2025-11-08T02:12:24: 
+1|curbe-admin  | 2025-11-08T02:12:24: 
+10|curbe-admin | 2025-11-08T02:12:24: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:24: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:24: 
+7|curbe-admin  | 2025-11-08T02:12:24: 
+7|curbe-admin  | 2025-11-08T02:12:24: 
+8|curbe-admin  | 2025-11-08T02:12:24: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:24: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:24: 
+11|curbe-admin | 2025-11-08T02:12:24: 
+11|curbe-admin | 2025-11-08T02:12:24: 
+7|curbe-admin  | 2025-11-08T02:12:24: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:24: 
+0|curbe-admin  | 2025-11-08T02:12:24: 
+0|curbe-admin  | 2025-11-08T02:12:24: 
+11|curbe-admin | 2025-11-08T02:12:24: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:24: 
+6|curbe-admin  | 2025-11-08T02:12:24: 
+6|curbe-admin  | 2025-11-08T02:12:24: 
+0|curbe-admin  | 2025-11-08T02:12:25: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:25: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:25: 
+4|curbe-admin  | 2025-11-08T02:12:25: 
+4|curbe-admin  | 2025-11-08T02:12:25: 
+5|curbe-admin  | 2025-11-08T02:12:25: 
+5|curbe-admin  | 2025-11-08T02:12:25: 
+5|curbe-admin  | 2025-11-08T02:12:25: 
+3|curbe-admin  | 2025-11-08T02:12:25: 
+3|curbe-admin  | 2025-11-08T02:12:25: 
+3|curbe-admin  | 2025-11-08T02:12:25: 
+2|curbe-admin  | 2025-11-08T02:12:25: 
+2|curbe-admin  | 2025-11-08T02:12:25: 
+2|curbe-admin  | 2025-11-08T02:12:25: 
+9|curbe-admin  | 2025-11-08T02:12:25: 
+9|curbe-admin  | 2025-11-08T02:12:25: 
+9|curbe-admin  | 2025-11-08T02:12:25: 
+10|curbe-admin | 2025-11-08T02:12:25: 
+10|curbe-admin | 2025-11-08T02:12:25: 
+10|curbe-admin | 2025-11-08T02:12:25: 
+4|curbe-admin  | 2025-11-08T02:12:25: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:25: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:25: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:25: 
+1|curbe-admin  | 2025-11-08T02:12:25: 
+1|curbe-admin  | 2025-11-08T02:12:25: 
+2|curbe-admin  | 2025-11-08T02:12:25: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:25: 
+7|curbe-admin  | 2025-11-08T02:12:25: 
+7|curbe-admin  | 2025-11-08T02:12:25: 
+8|curbe-admin  | 2025-11-08T02:12:25: 
+8|curbe-admin  | 2025-11-08T02:12:25: 
+8|curbe-admin  | 2025-11-08T02:12:25: 
+9|curbe-admin  | 2025-11-08T02:12:25: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:25: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:25: 
+11|curbe-admin | 2025-11-08T02:12:25: 
+11|curbe-admin | 2025-11-08T02:12:25: 
+7|curbe-admin  | 2025-11-08T02:12:26: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:26: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:26: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:26: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:26: 
+6|curbe-admin  | 2025-11-08T02:12:26: 
+6|curbe-admin  | 2025-11-08T02:12:26: 
+0|curbe-admin  | 2025-11-08T02:12:26: 
+0|curbe-admin  | 2025-11-08T02:12:26: 
+0|curbe-admin  | 2025-11-08T02:12:26: 
+6|curbe-admin  | 2025-11-08T02:12:26: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:26: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:26: 
+4|curbe-admin  | 2025-11-08T02:12:26: 
+4|curbe-admin  | 2025-11-08T02:12:26: 
+3|curbe-admin  | 2025-11-08T02:12:26: 
+3|curbe-admin  | 2025-11-08T02:12:26: 
+3|curbe-admin  | 2025-11-08T02:12:26: 
+5|curbe-admin  | 2025-11-08T02:12:26: 
+5|curbe-admin  | 2025-11-08T02:12:26: 
+5|curbe-admin  | 2025-11-08T02:12:26: 
+10|curbe-admin | 2025-11-08T02:12:26: 
+10|curbe-admin | 2025-11-08T02:12:26: 
+10|curbe-admin | 2025-11-08T02:12:26: 
+2|curbe-admin  | 2025-11-08T02:12:26: 
+2|curbe-admin  | 2025-11-08T02:12:26: 
+2|curbe-admin  | 2025-11-08T02:12:26: 
+9|curbe-admin  | 2025-11-08T02:12:26: 
+9|curbe-admin  | 2025-11-08T02:12:26: 
+9|curbe-admin  | 2025-11-08T02:12:26: 
+4|curbe-admin  | 2025-11-08T02:12:27: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:27: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:27: 
+7|curbe-admin  | 2025-11-08T02:12:27: 
+7|curbe-admin  | 2025-11-08T02:12:27: 
+5|curbe-admin  | 2025-11-08T02:12:27: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:27: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:27: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:27: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:27: 
+8|curbe-admin  | 2025-11-08T02:12:27: 
+8|curbe-admin  | 2025-11-08T02:12:27: 
+1|curbe-admin  | 2025-11-08T02:12:27: 
+1|curbe-admin  | 2025-11-08T02:12:27: 
+1|curbe-admin  | 2025-11-08T02:12:27: 
+11|curbe-admin | 2025-11-08T02:12:27: 
+11|curbe-admin | 2025-11-08T02:12:27: 
+11|curbe-admin | 2025-11-08T02:12:27: 
+7|curbe-admin  | 2025-11-08T02:12:27: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:27: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:27: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:27: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:27: 
+6|curbe-admin  | 2025-11-08T02:12:27: 
+6|curbe-admin  | 2025-11-08T02:12:27: 
+0|curbe-admin  | 2025-11-08T02:12:27: 
+0|curbe-admin  | 2025-11-08T02:12:27: 
+0|curbe-admin  | 2025-11-08T02:12:27: 
+6|curbe-admin  | 2025-11-08T02:12:27: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:28: 
+4|curbe-admin  | 2025-11-08T02:12:28: 
+4|curbe-admin  | 2025-11-08T02:12:28: 
+0|curbe-admin  | 2025-11-08T02:12:28: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:28: 
+3|curbe-admin  | 2025-11-08T02:12:28: 
+3|curbe-admin  | 2025-11-08T02:12:28: 
+5|curbe-admin  | 2025-11-08T02:12:28: 
+5|curbe-admin  | 2025-11-08T02:12:28: 
+5|curbe-admin  | 2025-11-08T02:12:28: 
+9|curbe-admin  | 2025-11-08T02:12:28: 
+9|curbe-admin  | 2025-11-08T02:12:28: 
+9|curbe-admin  | 2025-11-08T02:12:28: 
+2|curbe-admin  | 2025-11-08T02:12:28: 
+10|curbe-admin | 2025-11-08T02:12:28: 
+2|curbe-admin  | 2025-11-08T02:12:28: 
+2|curbe-admin  | 2025-11-08T02:12:28: 
+10|curbe-admin | 2025-11-08T02:12:28: 
+10|curbe-admin | 2025-11-08T02:12:28: 
+4|curbe-admin  | 2025-11-08T02:12:28: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:28: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:28: 
+7|curbe-admin  | 2025-11-08T02:12:28: 
+7|curbe-admin  | 2025-11-08T02:12:28: 
+5|curbe-admin  | 2025-11-08T02:12:28: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:28: 
+8|curbe-admin  | 2025-11-08T02:12:28: 
+8|curbe-admin  | 2025-11-08T02:12:28: 
+9|curbe-admin  | 2025-11-08T02:12:28: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:28: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:28: 
+1|curbe-admin  | 2025-11-08T02:12:28: 
+1|curbe-admin  | 2025-11-08T02:12:28: 
+10|curbe-admin | 2025-11-08T02:12:28: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:28: 
+11|curbe-admin | 2025-11-08T02:12:28: 
+11|curbe-admin | 2025-11-08T02:12:28: 
+7|curbe-admin  | 2025-11-08T02:12:28: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:28: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:28: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:29: 
+6|curbe-admin  | 2025-11-08T02:12:29: 
+6|curbe-admin  | 2025-11-08T02:12:29: 
+11|curbe-admin | 2025-11-08T02:12:29: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:29: 
+0|curbe-admin  | 2025-11-08T02:12:29: 
+0|curbe-admin  | 2025-11-08T02:12:29: 
+6|curbe-admin  | 2025-11-08T02:12:29: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:29: 
+4|curbe-admin  | 2025-11-08T02:12:29: 
+4|curbe-admin  | 2025-11-08T02:12:29: 
+0|curbe-admin  | 2025-11-08T02:12:29: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:29: 
+3|curbe-admin  | 2025-11-08T02:12:29: 
+3|curbe-admin  | 2025-11-08T02:12:29: 
+10|curbe-admin | 2025-11-08T02:12:29: 
+10|curbe-admin | 2025-11-08T02:12:29: 
+10|curbe-admin | 2025-11-08T02:12:29: 
+5|curbe-admin  | 2025-11-08T02:12:29: 
+5|curbe-admin  | 2025-11-08T02:12:29: 
+5|curbe-admin  | 2025-11-08T02:12:29: 
+4|curbe-admin  | 2025-11-08T02:12:29: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:29: 
+9|curbe-admin  | 2025-11-08T02:12:29: 
+9|curbe-admin  | 2025-11-08T02:12:29: 
+2|curbe-admin  | 2025-11-08T02:12:29: 
+2|curbe-admin  | 2025-11-08T02:12:29: 
+2|curbe-admin  | 2025-11-08T02:12:29: 
+7|curbe-admin  | 2025-11-08T02:12:29: 
+7|curbe-admin  | 2025-11-08T02:12:29: 
+7|curbe-admin  | 2025-11-08T02:12:29: 
+8|curbe-admin  | 2025-11-08T02:12:30: 
+8|curbe-admin  | 2025-11-08T02:12:30: 
+8|curbe-admin  | 2025-11-08T02:12:30: 
+3|curbe-admin  | 2025-11-08T02:12:30: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:30: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:30: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:30: 
+1|curbe-admin  | 2025-11-08T02:12:30: 
+1|curbe-admin  | 2025-11-08T02:12:30: 
+9|curbe-admin  | 2025-11-08T02:12:30: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:30: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:30: 
+11|curbe-admin | 2025-11-08T02:12:30: 
+11|curbe-admin | 2025-11-08T02:12:30: 
+2|curbe-admin  | 2025-11-08T02:12:30: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:30: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:30: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:30: 
+6|curbe-admin  | 2025-11-08T02:12:30: 
+6|curbe-admin  | 2025-11-08T02:12:30: 
+11|curbe-admin | 2025-11-08T02:12:30: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:30: 
+0|curbe-admin  | 2025-11-08T02:12:30: 
+0|curbe-admin  | 2025-11-08T02:12:30: 
+6|curbe-admin  | 2025-11-08T02:12:30: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:31: 
+4|curbe-admin  | 2025-11-08T02:12:31: 
+4|curbe-admin  | 2025-11-08T02:12:31: 
+0|curbe-admin  | 2025-11-08T02:12:31: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:31: 
+3|curbe-admin  | 2025-11-08T02:12:31: 
+3|curbe-admin  | 2025-11-08T02:12:31: 
+10|curbe-admin | 2025-11-08T02:12:31: 
+10|curbe-admin | 2025-11-08T02:12:31: 
+10|curbe-admin | 2025-11-08T02:12:31: 
+5|curbe-admin  | 2025-11-08T02:12:31: 
+5|curbe-admin  | 2025-11-08T02:12:31: 
+5|curbe-admin  | 2025-11-08T02:12:31: 
+7|curbe-admin  | 2025-11-08T02:12:31: 
+7|curbe-admin  | 2025-11-08T02:12:31: 
+7|curbe-admin  | 2025-11-08T02:12:31: 
+9|curbe-admin  | 2025-11-08T02:12:31: 
+9|curbe-admin  | 2025-11-08T02:12:31: 
+9|curbe-admin  | 2025-11-08T02:12:31: 
+4|curbe-admin  | 2025-11-08T02:12:31: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:31: 
+8|curbe-admin  | 2025-11-08T02:12:31: 
+8|curbe-admin  | 2025-11-08T02:12:31: 
+3|curbe-admin  | 2025-11-08T02:12:31: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:31: 
+2|curbe-admin  | 2025-11-08T02:12:31: 
+2|curbe-admin  | 2025-11-08T02:12:31: 
+7|curbe-admin  | 2025-11-08T02:12:31: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:31: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:31: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:31: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:31: 
+1|curbe-admin  | 2025-11-08T02:12:31: 
+1|curbe-admin  | 2025-11-08T02:12:31: 
+11|curbe-admin | 2025-11-08T02:12:31: 
+11|curbe-admin | 2025-11-08T02:12:31: 
+11|curbe-admin | 2025-11-08T02:12:31: 
+8|curbe-admin  | 2025-11-08T02:12:31: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:31: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:31: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:31: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:32: 
+6|curbe-admin  | 2025-11-08T02:12:32: 
+6|curbe-admin  | 2025-11-08T02:12:32: 
+0|curbe-admin  | 2025-11-08T02:12:32: 
+0|curbe-admin  | 2025-11-08T02:12:32: 
+0|curbe-admin  | 2025-11-08T02:12:32: 
+6|curbe-admin  | 2025-11-08T02:12:32: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:32: 
+4|curbe-admin  | 2025-11-08T02:12:32: 
+4|curbe-admin  | 2025-11-08T02:12:32: 
+0|curbe-admin  | 2025-11-08T02:12:32: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:32: 
+10|curbe-admin | 2025-11-08T02:12:32: 
+10|curbe-admin | 2025-11-08T02:12:32: 
+3|curbe-admin  | 2025-11-08T02:12:32: 
+3|curbe-admin  | 2025-11-08T02:12:32: 
+3|curbe-admin  | 2025-11-08T02:12:32: 
+5|curbe-admin  | 2025-11-08T02:12:32: 
+9|curbe-admin  | 2025-11-08T02:12:32: 
+9|curbe-admin  | 2025-11-08T02:12:32: 
+9|curbe-admin  | 2025-11-08T02:12:32: 
+5|curbe-admin  | 2025-11-08T02:12:32: 
+5|curbe-admin  | 2025-11-08T02:12:32: 
+4|curbe-admin  | 2025-11-08T02:12:32: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:32: 
+7|curbe-admin  | 2025-11-08T02:12:32: 
+7|curbe-admin  | 2025-11-08T02:12:32: 
+8|curbe-admin  | 2025-11-08T02:12:32: 
+8|curbe-admin  | 2025-11-08T02:12:32: 
+8|curbe-admin  | 2025-11-08T02:12:32: 
+2|curbe-admin  | 2025-11-08T02:12:32: 
+2|curbe-admin  | 2025-11-08T02:12:32: 
+2|curbe-admin  | 2025-11-08T02:12:32: 
+10|curbe-admin | 2025-11-08T02:12:32: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:32: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:32: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:32: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:33: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:33: 
+11|curbe-admin | 2025-11-08T02:12:33: 
+11|curbe-admin | 2025-11-08T02:12:33: 
+8|curbe-admin  | 2025-11-08T02:12:33: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:33: 
+1|curbe-admin  | 2025-11-08T02:12:33: 
+1|curbe-admin  | 2025-11-08T02:12:33: 
+2|curbe-admin  | 2025-11-08T02:12:33: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:33: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:33: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:33: 
+6|curbe-admin  | 2025-11-08T02:12:33: 
+6|curbe-admin  | 2025-11-08T02:12:33: 
+0|curbe-admin  | 2025-11-08T02:12:33: 
+0|curbe-admin  | 2025-11-08T02:12:33: 
+0|curbe-admin  | 2025-11-08T02:12:33: 
+6|curbe-admin  | 2025-11-08T02:12:33: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:33: 
+4|curbe-admin  | 2025-11-08T02:12:33: 
+4|curbe-admin  | 2025-11-08T02:12:33: 
+0|curbe-admin  | 2025-11-08T02:12:34: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:34: 
+3|curbe-admin  | 2025-11-08T02:12:34: 
+3|curbe-admin  | 2025-11-08T02:12:34: 
+10|curbe-admin | 2025-11-08T02:12:34: 
+10|curbe-admin | 2025-11-08T02:12:34: 
+10|curbe-admin | 2025-11-08T02:12:34: 
+5|curbe-admin  | 2025-11-08T02:12:34: 
+5|curbe-admin  | 2025-11-08T02:12:34: 
+5|curbe-admin  | 2025-11-08T02:12:34: 
+9|curbe-admin  | 2025-11-08T02:12:34: 
+9|curbe-admin  | 2025-11-08T02:12:34: 
+9|curbe-admin  | 2025-11-08T02:12:34: 
+7|curbe-admin  | 2025-11-08T02:12:34: 
+7|curbe-admin  | 2025-11-08T02:12:34: 
+7|curbe-admin  | 2025-11-08T02:12:34: 
+2|curbe-admin  | 2025-11-08T02:12:34: 
+2|curbe-admin  | 2025-11-08T02:12:34: 
+2|curbe-admin  | 2025-11-08T02:12:34: 
+8|curbe-admin  | 2025-11-08T02:12:34: 
+8|curbe-admin  | 2025-11-08T02:12:34: 
+8|curbe-admin  | 2025-11-08T02:12:34: 
+4|curbe-admin  | 2025-11-08T02:12:34: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+3|curbe-admin  | 2025-11-08T02:12:34: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:34: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:34: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:34: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:34: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:34: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:34: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:34: 
+1|curbe-admin  | 2025-11-08T02:12:34: 
+1|curbe-admin  | 2025-11-08T02:12:34: 
+11|curbe-admin | 2025-11-08T02:12:34: 
+11|curbe-admin | 2025-11-08T02:12:34: 
+11|curbe-admin | 2025-11-08T02:12:34: 
+1|curbe-admin  | 2025-11-08T02:12:34: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:34: 
+6|curbe-admin  | 2025-11-08T02:12:34: 
+6|curbe-admin  | 2025-11-08T02:12:34: 
+11|curbe-admin | 2025-11-08T02:12:34: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T02:12:35: 
+0|curbe-admin  | 2025-11-08T02:12:35: 
+0|curbe-admin  | 2025-11-08T02:12:35: 
+6|curbe-admin  | 2025-11-08T02:12:35: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:35: 
+4|curbe-admin  | 2025-11-08T02:12:35: 
+4|curbe-admin  | 2025-11-08T02:12:35: 
+3|curbe-admin  | 2025-11-08T02:12:35: 
+3|curbe-admin  | 2025-11-08T02:12:35: 
+3|curbe-admin  | 2025-11-08T02:12:35: 
+0|curbe-admin  | 2025-11-08T02:12:35: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:35: 
+5|curbe-admin  | 2025-11-08T02:12:35: 
+5|curbe-admin  | 2025-11-08T02:12:35: 
+7|curbe-admin  | 2025-11-08T02:12:35: 
+7|curbe-admin  | 2025-11-08T02:12:35: 
+7|curbe-admin  | 2025-11-08T02:12:35: 
+9|curbe-admin  | 2025-11-08T02:12:35: 
+9|curbe-admin  | 2025-11-08T02:12:35: 
+9|curbe-admin  | 2025-11-08T02:12:35: 
+4|curbe-admin  | 2025-11-08T02:12:35: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:35: 
+10|curbe-admin | 2025-11-08T02:12:35: 
+10|curbe-admin | 2025-11-08T02:12:35: 
+3|curbe-admin  | 2025-11-08T02:12:35: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+2|curbe-admin  | 2025-11-08T02:12:35: 
+2|curbe-admin  | 2025-11-08T02:12:35: 
+2|curbe-admin  | 2025-11-08T02:12:35: 
+8|curbe-admin  | 2025-11-08T02:12:35: 
+8|curbe-admin  | 2025-11-08T02:12:35: 
+8|curbe-admin  | 2025-11-08T02:12:35: 
+5|curbe-admin  | 2025-11-08T02:12:35: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+pm2 logs curbe-admin --lines 50
+
+7|curbe-admin  | 2025-11-08T02:12:35: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:35: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:35: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:35: 
+11|curbe-admin | 2025-11-08T02:12:35: 
+11|curbe-admin | 2025-11-08T02:12:35: 
+2|curbe-admin  | 2025-11-08T02:12:35: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:35: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:36: 
+1|curbe-admin  | 2025-11-08T02:12:36: 
+1|curbe-admin  | 2025-11-08T02:12:36: 
+1|curbe-admin  | 2025-11-08T02:12:36: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:36: 
+11|curbe-admin | > rest-express@1.0.0 start
+11|curbe-admin | > NODE_ENV=production node dist/index.js
+6|curbe-admin  | 2025-11-08T02:12:36: 
+6|curbe-admin  | 2025-11-08T02:12:36: 
+6|curbe-admin  | 2025-11-08T02:12:36: 
+0|curbe-admin  | 2025-11-08T02:12:36: 
+0|curbe-admin  | 2025-11-08T02:12:36: 
+0|curbe-admin  | 2025-11-08T02:12:36: 
+6|curbe-admin  | 2025-11-08T02:12:36: 
+6|curbe-admin  | > rest-express@1.0.0 start
+6|curbe-admin  | > NODE_ENV=production node dist/index.js
+4|curbe-admin  | 2025-11-08T02:12:36: 
+4|curbe-admin  | 2025-11-08T02:12:36: 
+4|curbe-admin  | 2025-11-08T02:12:36: 
+3|curbe-admin  | 2025-11-08T02:12:36: 
+3|curbe-admin  | 2025-11-08T02:12:36: 
+3|curbe-admin  | 2025-11-08T02:12:36: 
+0|curbe-admin  | 2025-11-08T02:12:36: 
+0|curbe-admin  | > rest-express@1.0.0 start
+0|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:36: 
+7|curbe-admin  | 2025-11-08T02:12:36: 
+7|curbe-admin  | 2025-11-08T02:12:36: 
+5|curbe-admin  | 2025-11-08T02:12:36: 
+5|curbe-admin  | 2025-11-08T02:12:36: 
+5|curbe-admin  | 2025-11-08T02:12:36: 
+9|curbe-admin  | 2025-11-08T02:12:37: 
+9|curbe-admin  | 2025-11-08T02:12:37: 
+9|curbe-admin  | 2025-11-08T02:12:37: 
+4|curbe-admin  | 2025-11-08T02:12:37: 
+4|curbe-admin  | > rest-express@1.0.0 start
+4|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:37: 
+10|curbe-admin | 2025-11-08T02:12:37: 
+10|curbe-admin | 2025-11-08T02:12:37: 
+2|curbe-admin  | 2025-11-08T02:12:37: 
+2|curbe-admin  | 2025-11-08T02:12:37: 
+2|curbe-admin  | 2025-11-08T02:12:37: 
+8|curbe-admin  | 2025-11-08T02:12:37: 
+8|curbe-admin  | 2025-11-08T02:12:37: 
+8|curbe-admin  | 2025-11-08T02:12:37: 
+3|curbe-admin  | 2025-11-08T02:12:37: 
+3|curbe-admin  | > rest-express@1.0.0 start
+3|curbe-admin  | > NODE_ENV=production node dist/index.js
+7|curbe-admin  | 2025-11-08T02:12:37: 
+7|curbe-admin  | > rest-express@1.0.0 start
+7|curbe-admin  | > NODE_ENV=production node dist/index.js
+5|curbe-admin  | 2025-11-08T02:12:37: 
+5|curbe-admin  | > rest-express@1.0.0 start
+5|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | 2025-11-08T02:12:37: 
+1|curbe-admin  | 2025-11-08T02:12:37: 
+1|curbe-admin  | 2025-11-08T02:12:37: 
+2|curbe-admin  | 2025-11-08T02:12:37: 
+2|curbe-admin  | > rest-express@1.0.0 start
+2|curbe-admin  | > NODE_ENV=production node dist/index.js
+10|curbe-admin | 2025-11-08T02:12:37: 
+10|curbe-admin | > rest-express@1.0.0 start
+10|curbe-admin | > NODE_ENV=production node dist/index.js
+9|curbe-admin  | 2025-11-08T02:12:37: 
+9|curbe-admin  | > rest-express@1.0.0 start
+9|curbe-admin  | > NODE_ENV=production node dist/index.js
+8|curbe-admin  | 2025-11-08T02:12:37: 
+8|curbe-admin  | > rest-express@1.0.0 start
+8|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:37: 
+11|curbe-admin | 2025-11-08T02:12:37: 
+11|curbe-admin | 2025-11-08T02:12:37: 
+1|curbe-admin  | 2025-11-08T02:12:37: 
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+11|curbe-admin | 2025-11-08T02:12:37: 
