@@ -2733,7 +2733,7 @@ function TeamMembersTable() {
       const dataToSend = {
         ...data,
         companyId: currentUserCompanyId, // Automatically set to current user's company
-        phone: data.phone ? formatE164(data.phone) : undefined,
+        phone: data.phone && data.phone.trim() ? formatE164(data.phone) : null,
       };
       
       console.log("[CREATE USER] Data to send:", dataToSend);

@@ -58,6 +58,14 @@ if (isLoading) {
   - `updatePolicyPlan` - CRUD operations for PolicyPlan table
 - **Implementation:** `server/storage.ts` lines 653, 4313, 5697; `server/routes.ts` line 14522
 
+**User Phone Number Creation Fix:**
+- **Problem:** Phone numbers not saved when creating new users in Team Settings
+- **Root Cause:** Frontend converted empty string to `undefined`: `phone: data.phone ? formatE164(data.phone) : undefined`
+- **Impact:** When phone field left empty, `undefined` value caused backend to skip field entirely
+- **Solution:** Changed to `phone: data.phone && data.phone.trim() ? formatE164(data.phone) : null`
+- **Result:** Empty phone fields now save as `null`, and filled fields save correctly in E.164 format
+- **Implementation:** `client/src/pages/settings.tsx` line 2739
+
 ## System Architecture
 
 ### UI/UX Decisions
