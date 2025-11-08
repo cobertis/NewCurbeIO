@@ -240,24 +240,24 @@ export default function BirthdayImagesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground dark:text-foreground">Birthday Images</h1>
-          <p className="text-muted-foreground mt-1">Manage birthday greeting images for automated birthday messages</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Birthday Images</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage birthday greeting images for automated birthday messages</p>
         </div>
-        <Button onClick={openCreateDialog} data-testid="button-add-image">
+        <Button onClick={openCreateDialog} data-testid="button-add-image" className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Add Image
         </Button>
       </div>
 
       {images.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ImagePlus className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-1">No birthday images yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Get started by adding your first birthday image</p>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <ImagePlus className="h-16 w-16 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No birthday images yet</h3>
+            <p className="text-sm text-muted-foreground mb-6 text-center max-w-sm">Get started by adding your first birthday image for automated birthday greetings</p>
             <Button onClick={openCreateDialog} data-testid="button-add-first-image">
               <Plus className="mr-2 h-4 w-4" />
               Add Image
@@ -265,55 +265,55 @@ export default function BirthdayImagesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {images.map((image) => (
-            <Card key={image.id} data-testid={`card-image-${image.id}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{image.name}</CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                      Uploaded {new Date(image.createdAt).toLocaleDateString()}
-                    </CardDescription>
+            <Card key={image.id} data-testid={`card-image-${image.id}`} className="overflow-hidden">
+              <div className="relative aspect-video bg-muted">
+                {image.imageUrl ? (
+                  <img 
+                    src={image.imageUrl} 
+                    alt={image.name}
+                    className="w-full h-full object-cover"
+                    data-testid={`img-preview-${image.id}`}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
                   </div>
-                  <Badge variant={image.isActive ? "default" : "secondary"} data-testid={`badge-status-${image.id}`}>
+                )}
+                <div className="absolute top-2 right-2">
+                  <Badge variant={image.isActive ? "default" : "secondary"} data-testid={`badge-status-${image.id}`} className="shadow-sm">
                     {image.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border">
-                  {image.imageUrl ? (
-                    <img 
-                      src={image.imageUrl} 
-                      alt={image.name}
-                      className="w-full h-full object-cover"
-                      data-testid={`img-preview-${image.id}`}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  )}
+              </div>
+              
+              <CardContent className="p-4 space-y-3">
+                <div>
+                  <h3 className="font-semibold text-base leading-tight">{image.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Uploaded {new Date(image.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2">
                     <Switch
                       checked={image.isActive}
                       onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: image.id, isActive: checked })}
                       disabled={toggleActiveMutation.isPending}
                       data-testid={`switch-active-${image.id}`}
                     />
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {image.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="h-8 w-8"
                       onClick={() => openEditDialog(image)}
                       data-testid={`button-edit-${image.id}`}
                     >
@@ -321,7 +321,8 @@ export default function BirthdayImagesPage() {
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="h-8 w-8"
                       onClick={() => setDeleteConfirm(image)}
                       data-testid={`button-delete-${image.id}`}
                     >

@@ -441,11 +441,7 @@ export default function Settings() {
 
   // Determine active tab from URL (must be defined before use)
   const getCurrentTab = () => {
-    console.log("[SETTINGS] Current location:", location);
-    if (location === "/settings/automations") {
-      console.log("[SETTINGS] Detected automations tab");
-      return "automations";
-    }
+    if (location === "/settings/automations") return "automations";
     if (location === "/settings" || location === "/settings/profile") return "profile";
     if (location === "/settings/preferences") return "preferences";
     if (location === "/settings/company") return "company";
