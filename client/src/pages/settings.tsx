@@ -4073,47 +4073,51 @@ function AutomationsTab() {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Image</label>
-                {images.length > 0 && (
-                  <Select
-                    value={formData.selectedImageId || "none"}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, selectedImageId: value === "none" ? null : value });
-                      if (!isEditing) setIsEditing(true);
-                    }}
-                  >
-                    <SelectTrigger data-testid="select-birthday-image" className="h-8 text-xs">
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Image</SelectItem>
-                      {images.map((image) => (
-                        <SelectItem key={image.id} value={image.id}>
-                          {image.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        const base64 = reader.result as string;
-                        setFormData({ ...formData, selectedImageId: base64 });
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Birthday Image</label>
+                <div className="flex flex-col gap-1.5">
+                  {images.length > 0 && (
+                    <Select
+                      value={formData.selectedImageId || "none"}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, selectedImageId: value === "none" ? null : value });
                         if (!isEditing) setIsEditing(true);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  className="h-8 text-xs"
-                  data-testid="input-custom-image"
-                />
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-birthday-image" className="h-8 text-xs">
+                        <SelectValue placeholder="Choose from gallery" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Image</SelectItem>
+                        {images.map((image) => (
+                          <SelectItem key={image.id} value={image.id}>
+                            {image.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <div className="relative">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const base64 = reader.result as string;
+                            setFormData({ ...formData, selectedImageId: base64 });
+                            if (!isEditing) setIsEditing(true);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="h-8 text-xs file:mr-2 file:h-7 file:px-2 file:rounded file:border-0 file:bg-primary file:text-primary-foreground file:text-xs hover:file:bg-primary/90"
+                      data-testid="input-custom-image"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-1">
