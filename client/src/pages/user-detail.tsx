@@ -435,72 +435,50 @@ export default function UserDetail() {
           <CardContent>
             <Form {...personalForm}>
               <form onSubmit={personalForm.handleSubmit((data) => updatePersonalMutation.mutate(data))} className="space-y-4">
-                <div className="flex items-center gap-4 pb-4">
-                  <Avatar className="h-20 w-20">
+                <div className="flex justify-center pb-4">
+                  <Avatar className="h-24 w-24">
                     <AvatarImage src={personalForm.watch("avatar") || undefined} />
-                    <AvatarFallback className="text-lg">
+                    <AvatarFallback className="text-2xl">
                       {personalForm.watch("firstName") && personalForm.watch("lastName")
                         ? `${personalForm.watch("firstName")[0]}${personalForm.watch("lastName")[0]}`
                         : user.email[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <FormField
-                      control={personalForm.control}
-                      name="avatar"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Avatar URL</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="https://example.com/avatar.jpg"
-                              {...field}
-                              value={field.value || ""}
-                              data-testid="input-avatar"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={personalForm.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-firstName"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={personalForm.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ""}
-                            data-testid="input-lastName"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={personalForm.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-firstName"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={personalForm.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-lastName"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={personalForm.control}
                   name="email"

@@ -1,0 +1,42 @@
+0|curbe-admin  | 2025-11-08T03:58:20: Error fetching user sessions: NeonDbError: Error connecting to database: fetch failed
+0|curbe-admin  | 2025-11-08T03:58:20:     at execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1549:24)
+0|curbe-admin  | 2025-11-08T03:58:20:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T03:58:20:     at async file:///var/www/curbe/dist/index.js:12140:24 {
+0|curbe-admin  | 2025-11-08T03:58:20:   severity: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   code: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   detail: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   hint: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   position: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   internalPosition: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   internalQuery: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   where: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   schema: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   table: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   column: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   dataType: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   constraint: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   file: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   line: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   routine: undefined,
+0|curbe-admin  | 2025-11-08T03:58:20:   sourceError: TypeError: fetch failed
+0|curbe-admin  | 2025-11-08T03:58:20:       at node:internal/deps/undici/undici:13510:13
+0|curbe-admin  | 2025-11-08T03:58:20:       at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T03:58:20:       at async execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1548:15)
+0|curbe-admin  | 2025-11-08T03:58:20:       at async file:///var/www/curbe/dist/index.js:12140:24 {
+0|curbe-admin  | 2025-11-08T03:58:20:     [cause]: Error [ERR_TLS_CERT_ALTNAME_INVALID]: Hostname/IP does not match certificate's altnames: Host: localhost. is not in the cert's altnames: DNS:app.curbe.io
+0|curbe-admin  | 2025-11-08T03:58:20:         at Object.checkServerIdentity (node:tls:316:12)
+0|curbe-admin  | 2025-11-08T03:58:20:         at TLSSocket.onConnectSecure (node:_tls_wrap:1687:27)
+0|curbe-admin  | 2025-11-08T03:58:20:         at TLSSocket.emit (node:events:524:28)
+0|curbe-admin  | 2025-11-08T03:58:20:         at TLSSocket._finishInit (node:_tls_wrap:1076:8)
+0|curbe-admin  | 2025-11-08T03:58:20:         at ssl.onhandshakedone (node:_tls_wrap:862:12) {
+0|curbe-admin  | 2025-11-08T03:58:20:       code: 'ERR_TLS_CERT_ALTNAME_INVALID',
+0|curbe-admin  | 2025-11-08T03:58:20:       reason: "Host: localhost. is not in the cert's altnames: DNS:app.curbe.io",
+0|curbe-admin  | 2025-11-08T03:58:20:       host: 'localhost',
+0|curbe-admin  | 2025-11-08T03:58:20:       cert: [Object]
+0|curbe-admin  | 2025-11-08T03:58:20:     }
+0|curbe-admin  | 2025-11-08T03:58:20:   }
+0|curbe-admin  | 2025-11-08T03:58:20: }
+0|curbe-admin  | 2025-11-08T03:58:20: 3:58:20 AM [express] GET /api/user/sessions 500 in 16ms :: {"message":"Failed to fetch sessions"}
+0|curbe-admin  | 2025-11-08T03:58:24: 3:58:24 AM [express] GET /api/bulkvs/threads 304 in 9ms :: []
+0|curbe-admin  | 2025-11-08T03:58:29: 3:58:29 AM [express] GET /api/bulkvs/threads 304 in 10ms :: []
+
