@@ -103,7 +103,7 @@ export default function Dashboard() {
       icon: AlertTriangle,
       iconBg: "bg-orange-100",
       iconColor: "text-orange-600",
-      link: "/settings/security",
+      link: "/settings/sessions",
     },
     {
       count: newLeads,
