@@ -1420,10 +1420,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return true;
       });
 
-      // Sort by timestamp DESC (newest first)
+      // Sort by createdAt DESC (newest first)
       filteredLogs.sort((a, b) => {
-        const timeA = new Date(a.timestamp).getTime();
-        const timeB = new Date(b.timestamp).getTime();
+        const timeA = new Date(a.createdAt).getTime();
+        const timeB = new Date(b.createdAt).getTime();
         return timeB - timeA;
       });
 
@@ -1436,7 +1436,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Format the response
       const formattedLogs = paginatedLogs.map(log => ({
         id: log.id,
-        timestamp: log.timestamp,
+        timestamp: log.createdAt.toISOString(),
         action: log.action,
         ipAddress: log.ipAddress,
         userAgent: log.userAgent,

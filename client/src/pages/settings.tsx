@@ -27,7 +27,7 @@ import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import { useMemo } from "react";
 
@@ -3804,7 +3804,7 @@ function SessionActivityTab() {
                   {logs.map((log) => (
                     <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30" data-testid={`row-activity-${log.id}`}>
                       <td className="px-4 py-3 text-sm" data-testid="text-datetime">
-                        {format(new Date(log.timestamp), "MMM dd, yyyy h:mm a")}
+                        {format(parseISO(log.timestamp), "MMM dd, yyyy h:mm a")}
                       </td>
                       <td className="px-4 py-3 text-sm" data-testid="text-ip">
                         {log.ipAddress || "Unknown"}
