@@ -1398,7 +1398,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                       <Input 
                         {...field}
                         value={field.value || ''}
-                        onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                        onChange={(e) => field.onChange(formatPhoneInput(e.target.value))}
                         data-testid="input-phone"
                       />
                     </FormControl>
@@ -1724,7 +1724,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                           <Input 
                             {...field}
                             value={field.value || ''}
-                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                            onChange={(e) => field.onChange(formatPhoneInput(e.target.value))}
                             placeholder="(999) 999-9999"
                             data-testid="input-employer-phone"
                             className="bg-background"
@@ -2769,7 +2769,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                           <Input 
                             {...field}
                             value={field.value || ''}
-                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                            onChange={(e) => field.onChange(formatPhoneInput(e.target.value))}
                             data-testid="input-phone"
                           />
                         </FormControl>
@@ -3031,7 +3031,7 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                           <Input 
                             {...field}
                             value={field.value || ''}
-                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                            onChange={(e) => field.onChange(formatPhoneInput(e.target.value))}
                             placeholder="(999) 999-9999"
                             data-testid="input-employer-phone"
                             className="bg-background"
@@ -11052,7 +11052,7 @@ export default function QuotesPage() {
                                   placeholder="(555) 123-4567"
                                   maxLength={14}
                                   onChange={(e) => {
-                                    const formatted = formatPhoneNumber(e.target.value);
+                                    const formatted = formatPhoneInput(e.target.value);
                                     field.onChange(formatted);
                                   }}
                                 />
@@ -11492,7 +11492,7 @@ export default function QuotesPage() {
                                       data-testid={`input-spouse-phone-${index}`}
                                       maxLength={14}
                                       onChange={(e) => {
-                                        const formatted = formatPhoneNumber(e.target.value);
+                                        const formatted = formatPhoneInput(e.target.value);
                                         field.onChange(formatted);
                                       }}
                                     />
@@ -11821,7 +11821,7 @@ export default function QuotesPage() {
                                       data-testid={`input-dependent-phone-${index}`}
                                       maxLength={14}
                                       onChange={(e) => {
-                                        const formatted = formatPhoneNumber(e.target.value);
+                                        const formatted = formatPhoneInput(e.target.value);
                                         field.onChange(formatted);
                                       }}
                                     />
