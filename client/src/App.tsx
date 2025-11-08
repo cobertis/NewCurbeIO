@@ -151,10 +151,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     ? `${user.firstName} ${user.lastName}` 
     : user?.email || "User";
   
-  // Show company name for non-superadmin users, role for superadmin
+  // Show role for all users
   const userSubtitle = user?.role === "superadmin" 
     ? "Super Admin" 
-    : companyData?.company?.name || "Loading...";
+    : user?.role === "admin" 
+      ? "Admin"
+      : user?.role === "member"
+        ? "Member"
+        : "User";
   
   const notifications = notificationsData?.notifications || [];
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
