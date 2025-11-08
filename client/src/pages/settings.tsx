@@ -4055,19 +4055,14 @@ function AutomationsTab() {
     <div className="space-y-4">
       {/* Birthday Settings Card */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Birthday Automation</CardTitle>
-          <CardDescription className="text-xs">
-            Automated birthday greetings via SMS
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left Column: Configuration */}
-            <div className="space-y-3">
-              {/* Enable/Disable Switch */}
-              <div className="flex items-center justify-between py-1">
-                <label className="text-sm font-medium">Enable</label>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,300px] gap-3">
+            {/* Left: Configuration */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold mb-2">Birthday Automation</h3>
+              
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium">Enable</label>
                 <Switch
                   checked={formData.isEnabled}
                   onCheckedChange={(checked) => {
@@ -4078,10 +4073,8 @@ function AutomationsTab() {
                 />
               </div>
 
-              {/* Image Selector */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Image</label>
-                
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Image</label>
                 {images.length > 0 && (
                   <Select
                     value={formData.selectedImageId || "none"}
@@ -4090,8 +4083,8 @@ function AutomationsTab() {
                       if (!isEditing) setIsEditing(true);
                     }}
                   >
-                    <SelectTrigger data-testid="select-birthday-image" className="h-9">
-                      <SelectValue placeholder="Select image" />
+                    <SelectTrigger data-testid="select-birthday-image" className="h-8 text-xs">
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No Image</SelectItem>
@@ -4103,7 +4096,6 @@ function AutomationsTab() {
                     </SelectContent>
                   </Select>
                 )}
-                
                 <Input
                   type="file"
                   accept="image/*"
@@ -4119,15 +4111,14 @@ function AutomationsTab() {
                       reader.readAsDataURL(file);
                     }
                   }}
-                  className="h-9"
+                  className="h-8 text-xs"
                   data-testid="input-custom-image"
                 />
               </div>
 
-              {/* Custom Message */}
-              <div className="space-y-2">
-                <label htmlFor="custom-message" className="text-sm font-medium">
-                  Message <span className="text-xs text-muted-foreground">({"{CLIENT_NAME}"}, {"{AGENT_NAME}"})</span>
+              <div className="space-y-1">
+                <label htmlFor="custom-message" className="text-xs font-medium">
+                  Message <span className="text-muted-foreground">({"{CLIENT_NAME}"}, {"{AGENT_NAME}"})</span>
                 </label>
                 <Textarea
                   id="custom-message"
@@ -4137,62 +4128,36 @@ function AutomationsTab() {
                     if (!isEditing) setIsEditing(true);
                   }}
                   placeholder="¡Feliz Cumpleaños {CLIENT_NAME}!&#10;&#10;Te deseamos el mejor de los éxitos en este nuevo año de vida.&#10;&#10;Te saluda {AGENT_NAME}, tu agente de seguros."
-                  rows={4}
-                  className="resize-none text-sm"
+                  rows={3}
+                  className="resize-none text-xs"
                   data-testid="textarea-birthday-message"
                 />
               </div>
 
-              {/* Action Buttons */}
               {isEditing && (
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    onClick={handleSave}
-                    disabled={saveSettingsMutation.isPending}
-                    size="sm"
-                    data-testid="button-save-birthday-settings"
-                  >
+                <div className="flex gap-2">
+                  <Button onClick={handleSave} disabled={saveSettingsMutation.isPending} size="sm" data-testid="button-save-birthday-settings">
                     {saveSettingsMutation.isPending ? "Saving..." : "Save"}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleCancel}
-                    disabled={saveSettingsMutation.isPending}
-                    size="sm"
-                    data-testid="button-cancel-birthday-settings"
-                  >
+                  <Button variant="outline" onClick={handleCancel} disabled={saveSettingsMutation.isPending} size="sm" data-testid="button-cancel-birthday-settings">
                     Cancel
                   </Button>
                 </div>
               )}
             </div>
 
-            {/* Right Column: Message Preview */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Preview</label>
-              <div className="border rounded-lg p-3 bg-muted/30">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-2 space-y-2">
+            {/* Right: Preview */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Preview</label>
+              <div className="border rounded p-2 bg-muted/20">
+                <div className="bg-white dark:bg-gray-800 rounded shadow-sm p-2 space-y-1.5">
                   {formData.selectedImageId && (() => {
                     if (formData.selectedImageId.startsWith('data:image')) {
-                      return (
-                        <img 
-                          src={formData.selectedImageId} 
-                          alt="Birthday greeting"
-                          className="w-full rounded-lg"
-                          data-testid="img-preview-birthday"
-                        />
-                      );
+                      return <img src={formData.selectedImageId} alt="Birthday" className="w-full rounded" data-testid="img-preview-birthday" />;
                     } else {
                       const selectedImage = images.find(img => img.id === formData.selectedImageId);
                       if (selectedImage) {
-                        return (
-                          <img 
-                            src={selectedImage.imageUrl} 
-                            alt={selectedImage.name}
-                            className="w-full rounded-lg"
-                            data-testid="img-preview-birthday"
-                          />
-                        );
+                        return <img src={selectedImage.imageUrl} alt={selectedImage.name} className="w-full rounded" data-testid="img-preview-birthday" />;
                       }
                     }
                     return null;
@@ -4205,7 +4170,7 @@ function AutomationsTab() {
                     }
                   </div>
                   
-                  <div className="text-xs text-muted-foreground text-right">
+                  <div className="text-[10px] text-muted-foreground text-right">
                     {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                   </div>
                 </div>
