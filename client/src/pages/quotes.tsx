@@ -1119,7 +1119,12 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       console.log('[EditMemberSheet] All data saved successfully!');
       
       // FORCE refetch of UNIFIED query to immediately refresh ALL data (income, immigration, members, household total)
-      await queryClient.refetchQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
+      console.log('[EditMemberSheet] Invalidating query for quoteId:', quote.id);
+      await queryClient.invalidateQueries({ 
+        queryKey: ['/api/quotes', quote.id, 'detail'],
+        refetchType: 'active'
+      });
+      console.log('[EditMemberSheet] Query invalidated, data should refresh now');
       
       toast({
         title: "Success",
