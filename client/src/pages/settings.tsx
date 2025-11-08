@@ -3111,7 +3111,6 @@ function TeamMembersTable() {
                         }}
                       />
                     </FormControl>
-                    <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671</p>
                     <FormMessage />
                   </FormItem>
                 )}
