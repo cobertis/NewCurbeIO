@@ -58,7 +58,7 @@ class TwilioService {
   }
 
   async sendOTPSMS(phoneNumber: string, otpCode: string): Promise<boolean> {
-    const message = `Your Curbe verification code is: ${otpCode}\n\nThis code will expire in 5 minutes.\n\nIf you did not request this code, please ignore this message.`;
+    const message = `Your Curbe verification code is: ${otpCode}\n\nTu código de verificación Curbe es: ${otpCode}`;
     
     try {
       await this.sendSMS(phoneNumber, message);
