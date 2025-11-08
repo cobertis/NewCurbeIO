@@ -515,4 +515,69 @@
     height: 0 !important;
     border: 0 !important;
   }
+
+  /* ULTRA SPECIFIC: Target the profile name heading directly */
+  .landing-profile-name-heading,
+  h1.landing-profile-name-heading,
+  .landing-profile-name-heading.text-2xl,
+  .landing-profile-name-heading.text-2xl.font-bold {
+    border: 0 !important;
+    border-top: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+    text-decoration: none !important;
+    background: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .landing-profile-name-heading::before,
+  .landing-profile-name-heading::after {
+    display: none !important;
+    content: none !important;
+    border: 0 !important;
+    background: none !important;
+    height: 0 !important;
+    width: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* NUCLEAR: Override @tailwindcss/typography completely for landing pages */
+  body .landing-profile-name-heading,
+  html body .landing-profile-name-heading,
+  div .landing-profile-name-heading,
+  div div .landing-profile-name-heading {
+    border: none !important;
+    border-bottom: none !important;
+    border-bottom-width: 0 !important;
+    border-bottom-style: none !important;
+    border-bottom-color: transparent !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  body .landing-profile-name-heading::after,
+  html body .landing-profile-name-heading::after,
+  div .landing-profile-name-heading::after,
+  div div .landing-profile-name-heading::after {
+    content: "" !important;
+    display: none !important;
+    border: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    background: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
+  }
 }

@@ -385,16 +385,20 @@ export default function PublicLandingPage() {
                 }}
               >
                 <h1
-                  className="text-2xl font-bold"
+                  className="text-2xl font-bold landing-profile-name-heading"
                   style={{ 
                     color: "#000000",
                     margin: 0,
                     padding: 0,
-                    border: "none",
-                    borderBottom: "none",
-                    boxShadow: "none",
-                    outline: "none",
-                    textDecoration: "none",
+                    border: "none !important",
+                    borderBottom: "none !important",
+                    borderTop: "none !important",
+                    borderLeft: "none !important",
+                    borderRight: "none !important",
+                    boxShadow: "none !important",
+                    outline: "none !important",
+                    textDecoration: "none !important",
+                    backgroundImage: "none !important",
                   }}
                   data-testid="profile-name"
                 >
