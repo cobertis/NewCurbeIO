@@ -1,0 +1,138 @@
+● nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/lib/systemd/system/nginx.service; enabled; vendor preset: enabled)
+     Active: active (running) since Sat 2025-11-08 01:48:02 UTC; 4s ago
+       Docs: man:nginx(8)
+    Process: 9196 ExecStartPre=/usr/sbin/nginx -t -q -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+    Process: 9197 ExecStart=/usr/sbin/nginx -g daemon on; master_process on; (code=exited, status=0/SUCCESS)
+   Main PID: 9298 (nginx)
+      Tasks: 13 (limit: 28743)
+     Memory: 11.3M
+        CPU: 79ms
+     CGroup: /system.slice/nginx.service
+             ├─9298 "nginx: master process /usr/sbin/nginx -g daemon on; master_process on;"
+             ├─9300 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9301 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9302 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9303 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9304 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9305 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9306 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9307 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9308 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9309 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─9310 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             └─9311 "nginx: worker process" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+
+Nov 08 01:48:02 ubuntu systemd[1]: Starting A high performance web server and a reverse proxy server...
+Nov 08 01:48:02 ubuntu systemd[1]: Started A high performance web server and a reverse proxy server.
+root@ubuntu:~# npm install -g pm2
+
+added 133 packages in 4s
+
+13 packages are looking for funding
+  run `npm fund` for details
+npm notice
+npm notice New major version of npm available! 10.8.2 -> 11.6.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.6.2
+npm notice To update run: npm install -g npm@11.6.2
+npm notice
+root@ubuntu:~# pm2 -v
+
+
+                        -------------
+
+__/\\\\\\\\\\\\\____/\\\\____________/\\\\____/\\\\\\\\\_____
+ _\/\\\/////////\\\_\/\\\\\\________/\\\\\\__/\\\///////\\\___
+  _\/\\\_______\/\\\_\/\\\//\\\____/\\\//\\\_\///______\//\\\__
+   _\/\\\\\\\\\\\\\/__\/\\\\///\\\/\\\/_\/\\\___________/\\\/___
+    _\/\\\/////////____\/\\\__\///\\\/___\/\\\________/\\\//_____
+     _\/\\\_____________\/\\\____\///_____\/\\\_____/\\\//________
+      _\/\\\_____________\/\\\_____________\/\\\___/\\\/___________
+       _\/\\\_____________\/\\\_____________\/\\\__/\\\\\\\\\\\\\\\_
+        _\///______________\///______________\///__\///////////////__
+
+
+                          Runtime Edition
+
+        PM2 is a Production Process Manager for Node.js applications
+                     with a built-in Load Balancer.
+
+                Start and Daemonize any application:
+                $ pm2 start app.js
+
+                Load Balance 4 instances of api.js:
+                $ pm2 start api.js -i 4
+
+                Monitor in production:
+                $ pm2 monitor
+
+                Make pm2 auto-boot at server restart:
+                $ pm2 startup
+
+                To go further checkout:
+                http://pm2.io/
+
+
+                        -------------
+
+[PM2] Spawning PM2 daemon with pm2_home=/root/.pm2
+[PM2] PM2 Successfully daemonized
+6.0.13
+root@ubuntu:~# mkdir -p /var/www
+cd /var/www
+root@ubuntu:/var/www# git clone https://github.com/cobertis/NewCurbeIO.git curbe
+cd curbe
+Cloning into 'curbe'...
+Username for 'https://github.com': cobertis
+Password for 'https://cobertis@github.com': 
+remote: Enumerating objects: 16047, done.
+remote: Counting objects: 100% (1998/1998), done.
+remote: Compressing objects: 100% (567/567), done.
+remote: Total 16047 (delta 1485), reused 1923 (delta 1431), pack-reused 14049 (from 1)
+Receiving objects: 100% (16047/16047), 197.00 MiB | 61.22 MiB/s, done.
+Resolving deltas: 100% (12175/12175), done.
+Updating files: 100% (939/939), done.
+root@ubuntu:/var/www/curbe# ls -la
+
+total 1744
+drwxr-xr-x 9 root root   4096 Nov  8 01:50 .
+drwxr-xr-x 4 root root   4096 Nov  8 01:49 ..
+-rw-r--r-- 1 root root    342 Nov  8 01:50 .env
+-rw-r--r-- 1 root root   3201 Nov  8 01:50 .env.example
+drwxr-xr-x 8 root root   4096 Nov  8 01:50 .git
+-rw-r--r-- 1 root root     95 Nov  8 01:50 .gitignore
+-rw-r--r-- 1 root root   1502 Nov  8 01:50 .replit
+-rw-r--r-- 1 root root   9436 Nov  8 01:50 INSTALLATION.md
+-rw-r--r-- 1 root root  15623 Nov  8 01:50 LANDING_PAGE_SECURITY_REVIEW.md
+-rw-r--r-- 1 root root  17638 Nov  8 01:50 README.md
+-rw-r--r-- 1 root root   5629 Nov  8 01:50 VERIFICATION_REPORT.md
+-rw-r--r-- 1 root root 154746 Nov  8 01:50 after_load.png
+-rw-r--r-- 1 root root 154746 Nov  8 01:50 after_reload.png
+-rw-r--r-- 1 root root 154562 Nov  8 01:50 after_send_code.png
+drwxr-xr-x 3 root root  69632 Nov  8 01:50 attached_assets
+drwxr-xr-x 3 root root   4096 Nov  8 01:50 client
+-rw-r--r-- 1 root root    459 Nov  8 01:50 components.json
+-rw-r--r-- 1 root root  85929 Nov  8 01:50 dashboard_verify.png
+-rw-r--r-- 1 root root   7064 Nov  8 01:50 design_guidelines.md
+-rw-r--r-- 1 root root    325 Nov  8 01:50 drizzle.config.ts
+-rw-r--r-- 1 root root   3817 Nov  8 01:50 generated-icon.png
+drwxr-xr-x 3 root root   4096 Nov  8 01:50 migrations
+-rw-r--r-- 1 root root 408153 Nov  8 01:50 package-lock.json
+-rw-r--r-- 1 root root   4643 Nov  8 01:50 package.json
+-rw-r--r-- 1 root root 155184 Nov  8 01:50 post_signin_wait.png
+-rw-r--r-- 1 root root     80 Nov  8 01:50 postcss.config.js
+-rw-r--r-- 1 root root  11998 Nov  8 01:50 replit.md
+-rw-r--r-- 1 root root 154746 Nov  8 01:50 root_after_nav.png
+drwxr-xr-x 4 root root   4096 Nov  8 01:50 server
+-rw-r--r-- 1 root root  76583 Nov  8 01:50 settings_after_reload.png
+-rw-r--r-- 1 root root  76531 Nov  8 01:50 settings_verify.png
+drwxr-xr-x 2 root root   4096 Nov  8 01:50 shared
+-rw-r--r-- 1 root root   4050 Nov  8 01:50 tailwind.config.ts
+-rw-r--r-- 1 root root   2053 Nov  8 01:50 test-marketplace.js
+-rw-r--r-- 1 root root    657 Nov  8 01:50 tsconfig.json
+drwxr-xr-x 5 root root   4096 Nov  8 01:50 uploads
+-rw-r--r-- 1 root root  56267 Nov  8 01:50 users_after_reload.png
+-rw-r--r-- 1 root root  56267 Nov  8 01:50 users_page.png
+-rw-r--r-- 1 root root   3012 Nov  8 01:50 verify-stripe-mode.js
+-rw-r--r-- 1 root root   1080 Nov  8 01:50 vite.config.ts
+root@ubuntu:/var/www/curbe# 
