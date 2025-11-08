@@ -1,0 +1,63 @@
+2025-11-08T04:00:21: 4:00:21 AM [express] GET /api/notifications 304 in 123ms :: {"notifications":[{"id":"914c73de-7e09-4…
+0|curbe-admin  | 2025-11-08T04:00:21: Error fetching user sessions: NeonDbError: Error connecting to database: fetch failed
+0|curbe-admin  | 2025-11-08T04:00:21:     at execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1549:24)
+0|curbe-admin  | 2025-11-08T04:00:21:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T04:00:21:     at async file:///var/www/curbe/dist/index.js:12140:24 {
+0|curbe-admin  | 2025-11-08T04:00:21:   severity: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   code: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   detail: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   hint: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   position: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   internalPosition: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   internalQuery: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   where: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   schema: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   table: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   column: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   dataType: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   constraint: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   file: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   line: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   routine: undefined,
+0|curbe-admin  | 2025-11-08T04:00:21:   sourceError: TypeError: fetch failed
+0|curbe-admin  | 2025-11-08T04:00:21:       at node:internal/deps/undici/undici:13510:13
+0|curbe-admin  | 2025-11-08T04:00:21:       at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T04:00:21:       at async execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1548:15)
+0|curbe-admin  | 2025-11-08T04:00:21:       at async file:///var/www/curbe/dist/index.js:12140:24 {
+0|curbe-admin  | 2025-11-08T04:00:21:     [cause]: Error [ERR_TLS_CERT_ALTNAME_INVALID]: Hostname/IP does not match certificate's altnames: Host: localhost. is not in the cert's altnames: DNS:app.curbe.io
+0|curbe-admin  | 2025-11-08T04:00:21:         at Object.checkServerIdentity (node:tls:316:12)
+0|curbe-admin  | 2025-11-08T04:00:21:         at TLSSocket.onConnectSecure (node:_tls_wrap:1687:27)
+0|curbe-admin  | 2025-11-08T04:00:21:         at TLSSocket.emit (node:events:524:28)
+0|curbe-admin  | 2025-11-08T04:00:21:         at TLSSocket._finishInit (node:_tls_wrap:1076:8)
+0|curbe-admin  | 2025-11-08T04:00:21:         at ssl.onhandshakedone (node:_tls_wrap:862:12) {
+0|curbe-admin  | 2025-11-08T04:00:21:       code: 'ERR_TLS_CERT_ALTNAME_INVALID',
+0|curbe-admin  | 2025-11-08T04:00:21:       reason: "Host: localhost. is not in the cert's altnames: DNS:app.curbe.io",
+0|curbe-admin  | 2025-11-08T04:00:21:       host: 'localhost',
+0|curbe-admin  | 2025-11-08T04:00:21:       cert: [Object]
+0|curbe-admin  | 2025-11-08T04:00:21:     }
+0|curbe-admin  | 2025-11-08T04:00:21:   }
+0|curbe-admin  | 2025-11-08T04:00:21: }
+0|curbe-admin  | 2025-11-08T04:00:21: 4:00:21 AM [express] GET /api/user/sessions 500 in 145ms :: {"message":"Failed to fetch sessions"}
+0|curbe-admin  | 2025-11-08T04:00:21: 4:00:21 AM [express] GET /api/companies 403 in 26ms :: {"message":"Forbidden"}
+0|curbe-admin  | 2025-11-08T04:00:21: [BILLING] Subscription query for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 Result: {
+0|curbe-admin  | 2025-11-08T04:00:21:   id: '4a138836-cc88-455e-be1f-ac82cd2a4a6f',
+0|curbe-admin  | 2025-11-08T04:00:21:   companyId: 'b5325600-9bf9-4eae-b34a-87d6ab2f5fb2',
+0|curbe-admin  | 2025-11-08T04:00:21:   planId: '76a608c5-9ca9-4603-afd3-313bf434bc54',
+0|curbe-admin  | 2025-11-08T04:00:21:   status: 'active',
+0|curbe-admin  | 2025-11-08T04:00:21:   billingCycle: 'monthly',
+0|curbe-admin  | 2025-11-08T04:00:21:   trialStart: 2025-10-30T19:17:17.000Z,
+0|curbe-admin  | 2025-11-08T04:00:21:   trialEnd: 2025-11-13T19:17:17.000Z,
+0|curbe-admin  | 2025-11-08T04:00:21:   currentPeriodStart: 2025-10-30T19:17:18.246Z,
+0|curbe-admin  | 2025-11-08T04:00:21:   currentPeriodEnd: 2025-11-29T19:17:18.246Z,
+0|curbe-admin  | 2025-11-08T04:00:21:   stripeCustomerId: 'cus_TGYFr69muMH69R',
+0|curbe-admin  | 2025-11-08T04:00:21:   stripeSubscriptionId: 'sub_1SO1LVQ3NUDhn1pZzN2pUkVZ',
+0|curbe-admin  | 2025-11-08T04:00:21:   stripeLatestInvoiceId: 'in_1SO1LVQ3NUDhn1pZWnqxWGn8',
+0|curbe-admin  | 2025-11-08T04:00:21:   createdAt: 2025-10-19T18:16:29.776Z,
+0|curbe-admin  | 2025-11-08T04:00:21:   updatedAt: 2025-10-19T18:16:30.294Z,
+0|curbe-admin  | 2025-11-08T04:00:21:   cancelledAt: null,
+0|curbe-admin  | 2025-11-08T04:00:21:   cancelAtPeriodEnd: false
+0|curbe-admin  | 2025-11-08T04:00:21: }
+0|curbe-admin  | 2025-11-08T04:00:21: 4:00:21 AM [express] GET /api/billing/subscription 200 in 310ms :: {"subscription":{"id":"4a138836-c…
+0|curbe-admin  | 2025-11-08T04:00:22: 4:00:22 AM [express] GET /api/bulkvs/threads 304 in 14ms :: []
+0|curbe-admin  | 2025-11-08T04:00:27: 4:00:27 AM [express] GET /api/bulkvs/threads 304 in 20ms :: []
+0|curbe-admin  | 2025-11-08T04:00:27: 4:00:27 AM [express] PATCH /api/settings/profile 200 in 77ms :: {"user":{"id":"6599401a-bff8-4f2b-bf…
