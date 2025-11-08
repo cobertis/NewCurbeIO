@@ -73,8 +73,8 @@ import {
   updateTaskSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq } from "drizzle-orm";
-import { landingBlocks } from "@shared/schema";
+import { and, eq, ne, gte } from "drizzle-orm";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -2787,6 +2787,73 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
+      // Get pending tasks/reminders (incomplete tasks with due dates)
+      let pendingTasks = 0;
+      if (companyId) {
+        try {
+          const tasks = await db.select()
+            .from(tasksTable)
+            .where(and(
+              eq(tasksTable.companyId, companyId),
+              ne(tasksTable.status, "completed")
+            ));
+          pendingTasks = tasks.length;
+        } catch (error) {
+          pendingTasks = 0;
+        }
+      }
+
+      // Get birthdays this week (from users)
+      let birthdaysThisWeek = 0;
+      const today = new Date();
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+      
+      // Check user birthdays
+      birthdaysThisWeek = users.filter(u => {
+        if (!u.dateOfBirth) return false;
+        const birthDate = new Date(u.dateOfBirth);
+        const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+        return thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
+      }).length;
+
+      // Get failed login attempts (last 14 days) - based on activity logs
+      let failedLoginAttempts = 0;
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      try {
+        const activityLogs = companyId 
+          ? await storage.getActivityLogsByCompany(companyId, 500)
+          : [];
+        failedLoginAttempts = activityLogs.filter(log => 
+          log.action === "login_failed" &&
+          new Date(log.createdAt) >= fourteenDaysAgo
+        ).length;
+      } catch (error) {
+        // Activity logs might not exist, ignore error
+        failedLoginAttempts = 0;
+      }
+
+      // Get new leads (last 7 days)
+      let newLeads = 0;
+      if (companyId) {
+        try {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          const leads = await db.select()
+            .from(leadsTable)
+            .where(and(
+              eq(leadsTable.companyId, companyId),
+              gte(leadsTable.createdAt, sevenDaysAgo)
+            ));
+          newLeads = leads.length;
+        } catch (error) {
+          newLeads = 0;
+        }
+      }
+
       const stats = {
         totalUsers: users.length,
         adminCount: users.filter((u) => u.role === "superadmin" || u.role === "admin").length,
@@ -2797,6 +2864,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         growthRate: Math.round(growthRate * 10) / 10, // Round to 1 decimal
         invoiceCount,
         paidInvoices,
+        pendingTasks,
+        birthdaysThisWeek,
+        failedLoginAttempts,
+        newLeads,
       };
 
       res.json(stats);

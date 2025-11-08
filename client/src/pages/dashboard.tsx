@@ -1,9 +1,10 @@
-import { Users, Building2, TrendingUp, Activity, ChevronDown, BarChart3, PieChart } from "lucide-react";
+import { Users, Building2, TrendingUp, Activity, ChevronDown, BarChart3, PieChart, Bell, Cake, AlertTriangle, UserPlus, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { format } from "date-fns";
 
 const recentActivity = [
   { name: "User Created", code: "admin@company.com", amount: "$1,250.00", count: "ID 4188", change: "+5.0%", status: "success" },
@@ -22,6 +23,10 @@ interface DashboardStats {
   growthRate: number;
   invoiceCount: number;
   paidInvoices: number;
+  pendingTasks: number;
+  birthdaysThisWeek: number;
+  failedLoginAttempts: number;
+  newLeads: number;
 }
 
 export default function Dashboard() {
@@ -40,45 +45,54 @@ export default function Dashboard() {
   const companyCount = statsData?.companyCount || 0;
   const revenue = statsData?.revenue || 0;
   const growthRate = statsData?.growthRate || 0;
+  const pendingTasks = statsData?.pendingTasks || 0;
+  const birthdaysThisWeek = statsData?.birthdaysThisWeek || 0;
+  const failedLoginAttempts = statsData?.failedLoginAttempts || 0;
+  const newLeads = statsData?.newLeads || 0;
+
+  // Get week date range for birthdays card
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
 
   const quickStats = [
     {
-      title: "Total Users",
-      subtitle: `${totalUsers} active users`,
-      icon: Users,
-      color: "bg-blue-500",
-      link: "/users",
+      count: pendingTasks,
+      title: "Pending reminders",
+      subtitle: "Click here for more details",
+      icon: Bell,
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
+      link: "/tasks",
     },
     {
-      title: "Admins",
-      subtitle: `${adminCount} administrators`,
-      icon: Activity,
-      color: "bg-cyan-500",
+      count: birthdaysThisWeek,
+      title: "Birthdays this week",
+      subtitle: `${format(startOfWeek, 'MMM dd, yyyy')} - ${format(endOfWeek, 'MMM dd, yyyy')}`,
+      icon: Cake,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+      link: "/calendar",
     },
     {
-      title: "Revenue",
-      subtitle: `$${revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} this month`,
-      icon: TrendingUp,
-      color: "bg-blue-600",
+      count: failedLoginAttempts,
+      title: "Failed login",
+      subtitle: "Last 14 days",
+      icon: AlertTriangle,
+      iconBg: "bg-orange-100",
+      iconColor: "text-orange-600",
+      link: "/settings/security",
     },
     {
-      title: "Growth",
-      subtitle: `${growthRate > 0 ? '+' : ''}${growthRate}% vs last month`,
-      icon: PieChart,
-      color: "bg-gray-400",
-    },
-    ...(companyCount > 0 ? [{
-      title: "Companies",
-      subtitle: `${companyCount} active companies`,
-      icon: Building2,
-      color: "bg-blue-400",
-      link: "/companies",
-    }] : []),
-    {
-      title: "Members",
-      subtitle: `${memberCount + viewerCount} members`,
-      icon: Users,
-      color: "bg-blue-500",
+      count: newLeads,
+      title: "New leads",
+      subtitle: "Click here for more details",
+      icon: UserPlus,
+      iconBg: "bg-cyan-100",
+      iconColor: "text-cyan-600",
+      link: "/leads",
     },
   ];
 
@@ -99,25 +113,29 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {quickStats.map((stat, index) => (
           <Card 
             key={index} 
-            className={`bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow ${
-              stat.link ? 'cursor-pointer hover-elevate active-elevate-2' : ''
-            }`}
-            onClick={stat.link ? () => setLocation(stat.link) : undefined}
+            className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
+            onClick={() => setLocation(stat.link)}
             data-testid={`card-quick-stat-${index}`}
           >
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-full ${stat.color} flex items-center justify-center flex-shrink-0`}>
-                  <stat.icon className="h-5 w-5 text-white" />
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className={`w-11 h-11 rounded-lg ${stat.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <h3 className="text-3xl font-bold text-gray-900 dark:text-white">{stat.count}</h3>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">{stat.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.subtitle}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{stat.title}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.subtitle}</p>
-                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-1" />
               </div>
             </CardContent>
           </Card>
