@@ -3640,21 +3640,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
     try {
       // Only allow updating own profile fields (not role, companyId, password, etc.)
-      // Convert empty strings to "" for Zod validation (schema expects "" not null)
-      const allowedFields = {
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
-        email: req.body.email,
-        phone: req.body.phone?.trim() || "",
-        avatar: req.body.avatar,
-        dateOfBirth: req.body.dateOfBirth,
-        preferredLanguage: req.body.preferredLanguage,
-        agentInternalCode: req.body.agentInternalCode?.trim() || "",
-        instructionLevel: req.body.instructionLevel,
-        nationalProducerNumber: req.body.nationalProducerNumber?.trim() || "",
-        federallyFacilitatedMarketplace: req.body.federallyFacilitatedMarketplace,
-        referredBy: req.body.referredBy?.trim() || "",
-      };
+      // Build allowed fields object, explicitly including avatar even if empty string
+      const allowedFields: any = {};
+      
+      if (req.body.firstName !== undefined) allowedFields.firstName = req.body.firstName;
+      if (req.body.lastName !== undefined) allowedFields.lastName = req.body.lastName;
+      if (req.body.email !== undefined) allowedFields.email = req.body.email;
+      if (req.body.phone !== undefined) allowedFields.phone = req.body.phone?.trim() || "";
+      if (req.body.avatar !== undefined) allowedFields.avatar = req.body.avatar; // Accept empty string explicitly
+      if (req.body.dateOfBirth !== undefined) allowedFields.dateOfBirth = req.body.dateOfBirth;
+      if (req.body.preferredLanguage !== undefined) allowedFields.preferredLanguage = req.body.preferredLanguage;
+      if (req.body.agentInternalCode !== undefined) allowedFields.agentInternalCode = req.body.agentInternalCode?.trim() || "";
+      if (req.body.instructionLevel !== undefined) allowedFields.instructionLevel = req.body.instructionLevel;
+      if (req.body.nationalProducerNumber !== undefined) allowedFields.nationalProducerNumber = req.body.nationalProducerNumber?.trim() || "";
+      if (req.body.federallyFacilitatedMarketplace !== undefined) allowedFields.federallyFacilitatedMarketplace = req.body.federallyFacilitatedMarketplace;
+      if (req.body.referredBy !== undefined) allowedFields.referredBy = req.body.referredBy?.trim() || "";
 
       // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
       const validatedData = updateUserSchema.parse(allowedFields);

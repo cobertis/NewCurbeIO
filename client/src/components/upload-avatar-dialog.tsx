@@ -31,14 +31,15 @@ export function UploadAvatarDialog({ open, onOpenChange, currentAvatar, userInit
 
   const updateAvatarMutation = useMutation({
     mutationFn: async (avatar: string) => {
-      const response = await apiRequest("PATCH", "/api/settings/profile", { avatar });
-      return response.json();
+      const result = await apiRequest("PATCH", "/api/settings/profile", { avatar });
+      return result;
     },
     onSuccess: (_, avatar) => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       toast({
         title: "Success",
         description: avatar ? "Profile photo updated successfully" : "Profile photo removed successfully",
+        duration: 3000,
       });
       onOpenChange(false);
     },
@@ -47,6 +48,7 @@ export function UploadAvatarDialog({ open, onOpenChange, currentAvatar, userInit
         variant: "destructive",
         title: "Error",
         description: "Failed to update profile photo",
+        duration: 3000,
       });
     },
   });
