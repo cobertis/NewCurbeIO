@@ -1,0 +1,157 @@
+root@ubuntu:/var/www/curbe# bash /usr/local/bin/update-curbe-admin.sh
+--------------------------------------------
+🚀 Iniciando actualización de Curbe Admin...
+--------------------------------------------
+📥 Ejecutando git pull...
+From https://github.com/cobertis/NewCurbeIO
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+📦 Instalando dependencias...
+
+added 1 package, and audited 602 packages in 2s
+
+91 packages are looking for funding
+  run `npm fund` for details
+
+1 low severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+🏗️ Compilando la aplicación...
+⚙️ Instalando vite y esbuild...
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+
+added 95 packages, and audited 697 packages in 3s
+
+103 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (1 low, 5 moderate)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+vite v5.4.21 building for production...
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 2883 modules transformed.
+../dist/public/index.html                                                 2.10 kB │ gzip:   0.82 kB
+../dist/public/assets/logo no fondo_1760450756816-BR-LiXG_.png           45.10 kB
+../dist/public/assets/Generic_user_avatar_icon_55b842ef-BGsZDgwn.png    456.74 kB
+../dist/public/assets/index-Bw_m-ZCj.css                                148.41 kB │ gzip:  22.51 kB
+../dist/public/assets/module-CmPHdlnM.js                                 77.13 kB │ gzip:  27.74 kB
+../dist/public/assets/native-B5Vb9Oiz.js                                380.35 kB │ gzip:  82.06 kB
+../dist/public/assets/index-C1Yz4KLK.js                               2,727.47 kB │ gzip: 666.33 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.62s
+
+  dist/index.js  1.1mb ⚠️
+
+⚡ Done in 64ms
+🚀 Reiniciando proceso PM2 (curbe-admin)...
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ fork    │ 63854    │ 0s     │ 3    │ online    │ 0%       │ 16.9mb   │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+📜 Últimos 30 logs:
+[TAILING] Tailing last 30 lines for [curbe-admin] process (change the value with --lines option)
+/var/www/curbe/logs/pm2-err.log last 30 lines:
+0|curbe-ad | 2025-11-08T15:23:10:   position: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   internalPosition: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   internalQuery: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   where: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   schema: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   table: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   column: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   dataType: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   constraint: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   file: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   line: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   routine: undefined,
+0|curbe-ad | 2025-11-08T15:23:10:   sourceError: TypeError: Failed to parse URL from https://api.208.158.174/sql
+0|curbe-ad | 2025-11-08T15:23:10:       at node:internal/deps/undici/undici:13510:13
+0|curbe-ad | 2025-11-08T15:23:10:       at async execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1548:15)
+0|curbe-ad | 2025-11-08T15:23:10:       at async file:///var/www/curbe/dist/index.js:12151:24 {
+0|curbe-ad | 2025-11-08T15:23:10:     [cause]: TypeError: Invalid URL
+0|curbe-ad | 2025-11-08T15:23:10:         at new URL (node:internal/url:806:29)
+0|curbe-ad | 2025-11-08T15:23:10:         at new Request (node:internal/deps/undici/undici:9586:25)
+0|curbe-ad | 2025-11-08T15:23:10:         at fetch (node:internal/deps/undici/undici:10315:25)
+0|curbe-ad | 2025-11-08T15:23:10:         at fetch (node:internal/deps/undici/undici:13508:10)
+0|curbe-ad | 2025-11-08T15:23:10:         at fetch (node:internal/bootstrap/web/exposed-window-or-worker:72:12)
+0|curbe-ad | 2025-11-08T15:23:10:         at execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1548:30)
+0|curbe-ad | 2025-11-08T15:23:10:         at async file:///var/www/curbe/dist/index.js:12151:24 {
+0|curbe-ad | 2025-11-08T15:23:10:       code: 'ERR_INVALID_URL',
+0|curbe-ad | 2025-11-08T15:23:10:       input: 'https://api.208.158.174/sql'
+0|curbe-ad | 2025-11-08T15:23:10:     }
+0|curbe-ad | 2025-11-08T15:23:10:   }
+0|curbe-ad | 2025-11-08T15:23:10: }
+0|curbe-ad | 2025-11-08T15:30:12: Error: ENOENT: no such file or directory, stat '/var/www/curbe/dist/public/index.html'
+
+/var/www/curbe/logs/pm2-out.log last 30 lines:
+0|curbe-ad | 2025-11-08T15:38:53: 3:38:53 PM [express] GET /api/bulkvs/threads 304 in 23ms :: []
+0|curbe-ad | 2025-11-08T15:38:58: 3:38:58 PM [express] GET /api/chat/unread-count 304 in 16ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:38:58: 3:38:58 PM [express] GET /api/bulkvs/threads 304 in 21ms :: []
+0|curbe-ad | 2025-11-08T15:39:03: 3:39:03 PM [express] GET /api/chat/unread-count 304 in 15ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:04: 3:39:04 PM [express] GET /api/bulkvs/threads 304 in 16ms :: []
+0|curbe-ad | 2025-11-08T15:39:09: 3:39:09 PM [express] GET /api/chat/unread-count 304 in 23ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:09: 3:39:09 PM [express] GET /api/bulkvs/threads 304 in 16ms :: []
+0|curbe-ad | 2025-11-08T15:39:14: 3:39:14 PM [express] GET /api/chat/unread-count 304 in 13ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:14: 3:39:14 PM [express] GET /api/bulkvs/threads 304 in 20ms :: []
+0|curbe-ad | 2025-11-08T15:39:19: 3:39:19 PM [express] GET /api/chat/unread-count 304 in 22ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:19: 3:39:19 PM [express] GET /api/bulkvs/threads 304 in 12ms :: []
+0|curbe-ad | 2025-11-08T15:39:22: 3:39:22 PM [express] GET /api/dashboard-stats 304 in 40ms :: {"totalUsers":5,"adminCount":5,"memberC…
+0|curbe-ad | 2025-11-08T15:39:24: 3:39:24 PM [express] GET /api/chat/unread-count 304 in 16ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:24: 3:39:24 PM [express] GET /api/bulkvs/threads 304 in 15ms :: []
+0|curbe-ad | 2025-11-08T15:39:26: [WebSocket] Accepting authenticated connection
+0|curbe-ad | 2025-11-08T15:39:26: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-ad | 2025-11-08T15:39:29: 3:39:29 PM [express] GET /api/chat/unread-count 304 in 12ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:29: 3:39:29 PM [express] GET /api/bulkvs/threads 304 in 18ms :: []
+0|curbe-ad | 2025-11-08T15:39:34: [WebSocket] Client disconnected
+0|curbe-ad | 2025-11-08T15:39:34: 3:39:34 PM [express] GET /api/chat/unread-count 304 in 13ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:34: 3:39:34 PM [express] GET /api/bulkvs/threads 304 in 20ms :: []
+0|curbe-ad | 2025-11-08T15:39:35: [WebSocket] Accepting authenticated connection
+0|curbe-ad | 2025-11-08T15:39:35: [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-ad | 2025-11-08T15:39:39: 3:39:39 PM [express] GET /api/chat/unread-count 304 in 13ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:39: 3:39:39 PM [express] GET /api/bulkvs/threads 304 in 19ms :: []
+0|curbe-ad | 2025-11-08T15:39:40: [WebSocket] Client disconnected
+0|curbe-ad | 2025-11-08T15:39:42: [WebSocket] Accepting authenticated connection
+0|curbe-ad | 2025-11-08T15:39:42: [WebSocket] Authenticated: userId=6599401a-bff8-4f2b-bf06-f5aac82906b4, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-ad | 2025-11-08T15:39:44: 3:39:44 PM [express] GET /api/chat/unread-count 304 in 13ms :: {"unreadCount":0}
+0|curbe-ad | 2025-11-08T15:39:44: 3:39:44 PM [express] GET /api/bulkvs/threads 304 in 16ms :: []
+
+0|curbe-admin  | 2025-11-08T15:39:49: 
+0|curbe-admin  | 2025-11-08T15:39:49: > rest-express@1.0.0 start
+0|curbe-admin  | 2025-11-08T15:39:49: > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-11-08T15:39:49: 
+0|curbe-admin  | 2025-11-08T15:39:50: [2025-11-08 15:39:50] DEBUG Creating transport: nodemailer (7.0.9; +https://nodemailer.com/; SMTP/7.0.9[client:7.0.9])
+0|curbe-admin  | 2025-11-08T15:39:50: Email service initialized successfully
+0|curbe-admin  | 2025-11-08T15:39:50: Twilio service initialized successfully
+0|curbe-admin  | 2025-11-08T15:39:50: ==========================================
+0|curbe-admin  | 2025-11-08T15:39:50: 🔑 STRIPE INITIALIZED: TEST MODE
+0|curbe-admin  | 2025-11-08T15:39:50: 🔑 Key prefix: sk_test_51Rg...
+0|curbe-admin  | 2025-11-08T15:39:50: ==========================================
+0|curbe-admin  | 2025-11-08T15:39:50: [WebSocket] Server initialized on path /ws/chat
+0|curbe-admin  | 2025-11-08T15:39:50: 3:39:50 PM [express] serving on port 5000
+0|curbe-admin  | 2025-11-08T15:39:50: [REMINDER SCHEDULER] Starting scheduler...
+0|curbe-admin  | 2025-11-08T15:39:50: [REMINDER SCHEDULER] Scheduler started successfully
+0|curbe-admin  | 2025-11-08T15:39:50: [WebSocket] Accepting authenticated connection
+0|curbe-admin  | 2025-11-08T15:39:50: [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | 2025-11-08T15:39:51: [WebSocket] Accepting authenticated connection
+0|curbe-admin  | 2025-11-08T15:39:51: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-admin  | 2025-11-08T15:39:51: [WebSocket] Accepting authenticated connection
+0|curbe-admin  | 2025-11-08T15:39:51: [WebSocket] Authenticated: userId=6599401a-bff8-4f2b-bf06-f5aac82906b4, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
