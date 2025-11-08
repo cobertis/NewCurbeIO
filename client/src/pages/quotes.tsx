@@ -8723,11 +8723,19 @@ export default function QuotesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
+                        {/* Primary Client */}
+                        {viewingQuote && (
+                          <SelectItem value="primary" data-testid="select-member-primary">
+                            {viewingQuote.clientFirstName} {viewingQuote.clientLastName} (Primary)
+                          </SelectItem>
+                        )}
+                        {/* All Family Members from normalized table */}
                         {(quoteDetail?.members || []).map((item: any) => {
                           const member = item.member || item;
+                          const roleLabel = member.role === 'spouse' ? 'Spouse' : member.role === 'dependent' ? 'Dependent' : member.role;
                           return (
-                            <SelectItem key={member.id} value={member.id}>
-                              {member.firstName} {member.lastName} ({member.role})
+                            <SelectItem key={member.id} value={member.id} data-testid={`select-member-${member.id}`}>
+                              {member.firstName} {member.lastName} ({roleLabel})
                             </SelectItem>
                           );
                         })}
