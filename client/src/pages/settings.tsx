@@ -417,7 +417,7 @@ export default function Settings() {
 
   // Fetch company data if user has a companyId
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: any }>({
-    queryKey: user?.companyId ? [`/api/companies/${user.companyId}`] : [],
+    queryKey: ["/api/companies", user?.companyId],
     enabled: !!user?.companyId,
   });
 

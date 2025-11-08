@@ -1,49 +1,6 @@
-# Curbe.io - Admin Dashboard
+# Admin Dashboard - Curbe
 
-> Multi-tenant CRM system with integrated SMS/MMS chat, Stripe billing, and comprehensive business management tools.
-
----
-
-## 📚 Deployment Documentation
-
-| Document | Purpose |
-|----------|---------|
-| **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** | **START HERE** - Complete workflow: Replit → GitHub → Production |
-| **[GITHUB_SETUP.md](./GITHUB_SETUP.md)** | One-time Git credentials setup (persistent - never enter credentials again!) |
-| **[SERVER_DEPLOYMENT.md](./SERVER_DEPLOYMENT.md)** | Server operations, monitoring, troubleshooting |
-
----
-
-## ⚡ Quick Start
-
-### 1. Development (Replit)
-
-```bash
-# One-time Git setup (see GITHUB_SETUP.md for details)
-# Add GIT_URL secret in Replit Secrets panel
-
-# Push code to GitHub
-./git-commit-push.sh "Your commit message"
-
-# Start development server
-npm run dev
-```
-
-### 2. Production (Ubuntu Server)
-
-```bash
-# SSH to server
-ssh root@app.curbe.io
-
-# Full deployment (with migrations, build)
-cd /var/www/curbe
-./deploy.sh
-
-# OR quick update (code only, faster)
-./quick-update.sh
-```
-
----
+A modern, full-stack multi-tenant admin dashboard application built with React, TypeScript, Express.js, and PostgreSQL. This application features comprehensive user and company management with role-based access control, real-time statistics, and a clean, intuitive interface inspired by leading SaaS platforms like Linear and Vercel.
 
 ## 🚀 Features
 
