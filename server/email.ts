@@ -31,11 +31,17 @@ class EmailService {
       this.transporter = nodemailer.createTransport({
         host,
         port,
-        secure: port === 465,
+        secure: port === 465, // true for 465, false for other ports
         auth: {
           user,
           pass: password,
         },
+        tls: {
+          // Do not fail on invalid certs (for self-signed certificates)
+          rejectUnauthorized: false,
+        },
+        // For port 587, use STARTTLS
+        requireTLS: port === 587,
       });
 
       this.initialized = true;

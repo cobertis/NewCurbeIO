@@ -1,0 +1,59 @@
+  GNU nano 6.2                                                                              /var/www/curbe/.env                                                                                        
+# ===========================================
+# ENVIRONMENT
+# ===========================================
+NODE_ENV=production
+# ===========================================
+# APPLICATION URL
+# ===========================================
+APP_URL=https://app.curbe.io
+# ===========================================
+# DATABASE (PostgreSQL Local) ✅
+# ===========================================
+DATABASE_URL=postgresql://curbeapp:CurbeApp2024Secure!@localhost:5432/curbe
+PGHOST=localhost
+PGPORT=5432
+PGUSER=curbeapp
+PGPASSWORD=CurbeApp2024Secure!
+PGDATABASE=curbe
+# ===========================================
+# SESSION SECRET (CRITICAL)             
+# ===========================================
+SESSION_SECRET=7hHH7uhM7kyo8eoDMr0tzT9EiNcHhTjNolgNHbgYpjpg9i7ALgeGKT4vr3oEr+hxL+/3+HyJRRzQZd5+1hORAw==
+# ===========================================
+# EMAIL (SMTP)             
+# ===========================================
+SMTP_HOST=mail.auth.curbe.io
+SMTP_PORT=587
+SMTP_USER=no-reply@auth.curbe.io
+SMTP_PASSWORD=l6#i16c2E
+SMTP_FROM_EMAIL=no-reply@auth.curbe.io
+SMTP_FROM_NAME=Curbe.io
+# ===========================================
+# TWILIO (SMS) 
+# ===========================================
+TWILIO_ACCOUNT_SID=ACf51f0438532f333b1c3b08b3eda39260
+TWILIO_AUTH_TOKEN=68757322a46adfc93e6067f2231ae1ef
+TWILIO_PHONE_NUMBER=+17864605252
+# ===========================================
+# STRIPE (PAYMENTS)             
+# ===========================================
+STRIPE_SECRET_KEY=sk_test_51RgQqrQ3NUDhn1pZYONfKC8SeZxHU2YPgApHFBmZE6E1bQ60iOO9ntC7Fx75ETA4fZ9wXh9eQLZlV0dMKS2vY4w300KurwXqr2
+STRIPE_WEBHOOK_SECRET=whsec_zoynIDbZeV2LV2SYR5pUdOJSsEPEEOmY
+VITE_STRIPE_PUBLIC_KEY=pk_test_51RgQqrQ3NUDhn1pZv94zGOCwRCiFM1SpV5qAMsnVZSGBw5UfUC68RtQxgi9WTRtgrqAdgfDbwJqPcgeWMsFHUG1O00weBc6x7Z
+# ===========================================
+# BULKVS (SMS/MMS CHAT)             
+# ===========================================
+BULKVS_API_KEY=support@cuidadodesaludflorida.com
+BULKVS_API_SECRET=b18f4ca5808e22a526abda292a240f06
+BULKVS_WEBHOOK_SECRET=ihg oiwruhgcwiuefhmoiqwughmq
+BULKVS_ACCOUNT_ID=tu_bulkvs_account_id
+# ===========================================
+# CMS MARKETPLACE API             
+# ===========================================
+CMS_MARKETPLACE_API_KEY=HE0YePDoI9Gdm1m3XrmKJ630xbuVgZzN
+# ===========================================
+# GOOGLE PLACES API  
+# ===========================================
+GOOGLE_PLACES_API_KEY=AIzaSyADuvfXh4LT3m6hQqG_P4giX6jQyMITJzo
+VITE_GOOGLE_PLACES_API_KEY=tu_google_api_key
