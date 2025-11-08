@@ -99,21 +99,6 @@ const superadminMenuItems = [
     icon: CreditCard,
   },
   {
-    title: "Calendar",
-    url: "/calendar",
-    icon: Calendar,
-  },
-  {
-    title: "Policies",
-    url: "/policies",
-    icon: FileCheck,
-  },
-  {
-    title: "Quotes",
-    url: "/quotes",
-    icon: ClipboardList,
-  },
-  {
     title: "Settings",
     url: "/settings",
     icon: Settings,
@@ -127,16 +112,6 @@ const superadminMenuItems = [
     title: "Tickets",
     url: "/tickets",
     icon: Ticket,
-  },
-  {
-    title: "Support",
-    url: "/support",
-    icon: LifeBuoy,
-  },
-  {
-    title: "Contacts",
-    url: "/contacts",
-    icon: Mail,
   },
   {
     title: "Campaigns",
@@ -270,13 +245,13 @@ export function AppSidebar() {
 
   const incomingSmsUnreadCount = incomingSmsData?.unreadCount ?? 0;
   
-  // For superadmin, use old logic (split at Calendar)
+  // For superadmin, use old logic (split at Billing)
   const menuItems = isSuperadmin ? superadminMenuItems : regularUserMenuItems;
   
-  // Split menu items into sections (before and after "My Agency") - only for superadmin
-  const calendarIndex = menuItems.findIndex(item => item.title === "Calendar");
-  const topMenuItems = isSuperadmin ? menuItems.slice(0, calendarIndex + 1) : regularUserMenuItems;
-  const superadminRestItems = isSuperadmin ? menuItems.slice(calendarIndex + 1) : [];
+  // Split menu items into sections - only for superadmin
+  const billingIndex = menuItems.findIndex(item => item.title === "Billing");
+  const topMenuItems = isSuperadmin ? menuItems.slice(0, billingIndex + 1) : regularUserMenuItems;
+  const superadminRestItems = isSuperadmin ? menuItems.slice(billingIndex + 1) : [];
 
   // Load cached logo from localStorage on mount
   useEffect(() => {
