@@ -1243,23 +1243,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Get all active sessions for the current user
   app.get("/api/user/sessions", requireAuth, async (req: Request, res: Response) => {
+    const userId = req.session.userId;
+    const currentSessionId = req.sessionID;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    if (!process.env.DATABASE_URL) {
+      console.error("DATABASE_URL not configured");
+      return res.status(500).json({ message: "Database not configured" });
+    }
+
+    // Use regular PostgreSQL driver instead of Neon HTTP driver
+    const postgres = await import("postgres");
+    const sql = postgres.default(process.env.DATABASE_URL);
+    
     try {
-      const userId = req.session.userId;
-      const currentSessionId = req.sessionID;
-      
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      if (!process.env.DATABASE_URL) {
-        console.error("DATABASE_URL not configured");
-        return res.status(500).json({ message: "Database not configured" });
-      }
-
-      // Import neon client for raw SQL query
-      const { neon } = await import("@neondatabase/serverless");
-      const sql = neon(process.env.DATABASE_URL);
-      
       // Get all sessions for this user from the session table
       const sessions = await sql`
         SELECT sid, sess, expire 
@@ -1292,23 +1292,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error("Error fetching user sessions:", error);
       res.status(500).json({ message: "Failed to fetch sessions" });
+    } finally {
+      await sql.end();
     }
   });
 
   // Logout from all sessions and clear all security data (sessions + trusted devices)
   app.post("/api/logout-all-sessions", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
 
-      const user = await storage.getUser(userId);
-      
-      // Import neon client for raw SQL query
-      const { neon } = await import("@neondatabase/serverless");
-      const sql = neon(process.env.DATABASE_URL!);
-      
+    const user = await storage.getUser(userId);
+    
+    // Use regular PostgreSQL driver instead of Neon HTTP driver
+    const postgres = await import("postgres");
+    const sql = postgres.default(process.env.DATABASE_URL!);
+    
+    try {
       // 1. Delete all sessions for this user
       await sql`
         DELETE FROM session 
@@ -1320,6 +1322,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         DELETE FROM trusted_devices 
         WHERE user_id = ${userId}
       `;
+
 
       await logger.logAuth({
         req,
@@ -1355,6 +1358,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error("Error clearing security data:", error);
       res.status(500).json({ message: "Failed to clear security data" });
+    } finally {
+      await sql.end();
     }
   });
 
@@ -2595,20 +2600,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // For security: After password change, clear ALL sessions and trusted devices
       // This forces the user to login again with 2FA on all devices
-      const { neon } = await import("@neondatabase/serverless");
-      const sql = neon(process.env.DATABASE_URL!);
+      const postgres = await import("postgres");
+      const sql = postgres.default(process.env.DATABASE_URL!);
       
-      // 1. Delete all sessions for this user
-      await sql`
-        DELETE FROM session 
-        WHERE sess->>'userId' = ${userId}
-      `;
+      try {
+        // 1. Delete all sessions for this user
+        await sql`
+          DELETE FROM session 
+          WHERE sess->>'userId' = ${userId}
+        `;
 
-      // 2. Delete all trusted devices for this user
-      await sql`
-        DELETE FROM trusted_devices 
-        WHERE user_id = ${userId}
-      `;
+        // 2. Delete all trusted devices for this user
+        await sql`
+          DELETE FROM trusted_devices 
+          WHERE user_id = ${userId}
+        `;
+      } finally {
+        await sql.end();
+      }
 
       await logger.logAuth({
         req,
@@ -14511,7 +14520,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Update the policy's selected plan
-      const updatedPolicy = await storage.updatePolicyPlan(id, selectedPlan);
+      const updatedPolicy = await storage.updatePolicySelectedPlan(id, selectedPlan);
       
       if (!updatedPolicy) {
         return res.status(404).json({ message: "Failed to update policy plan" });

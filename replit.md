@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system designed to streamline customer relationship management and communication for businesses. It provides an admin dashboard for superadmins to manage companies and users, offering integrated iMessage/SMS/RCS capabilities, role-based access, Stripe billing, and custom SMTP notifications. Key modules include Quotes, Policies, Campaigns, and a real-time SMS Chat application, all built on a scalable full-stack architecture.
+Curbe is a multi-tenant CRM system designed for businesses, offering customer relationship management, communication, and an admin dashboard for superadmins. It integrates iMessage/SMS/RCS, role-based access, Stripe billing, and custom SMTP notifications. Key modules include Quotes, Policies, Campaigns, and a real-time SMS Chat application, all built on a scalable full-stack architecture. The project aims to streamline operations and enhance communication capabilities for its users.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -10,11 +10,6 @@ Design style: Extremely professional corporate design - NO bright colors, NO emo
 **Toast Notifications:**
 - All toast notifications auto-dismiss after 3 seconds
 - Users can still manually dismiss toasts before the timeout
-
-**SMS Notifications:**
-- Landing page appointment bookings send SMS confirmations to customers
-- Message format in Spanish includes agent name, company name, date/time of appointment
-- SMS sent via Twilio after successful appointment creation
 
 **Loading State Pattern (MANDATORY):**
 ALWAYS use the standardized `LoadingSpinner` component for all loading states across the application:
@@ -38,23 +33,6 @@ if (isLoading) {
 - Apply consistently across ALL pages, sheets, dialogs, and async components
 - This ensures a uniform user experience throughout the entire application
 
-**EditMemberSheet Data Loading Fix (CRITICAL):**
-Implemented proper data readiness gating to prevent blank forms on first open:
-- Added `isMemberDataReady` guard checking all queries are settled (members + income + immigration)
-- Form displays LoadingSpinner until ALL data is ready, preventing empty fields
-- Used `useRef` to track initialization state per open cycle
-- Form resets ONCE when data is ready, avoiding mid-edit resets
-- Resets initialization flag when navigating between members (prev/next) or closing sheet
-- Second and subsequent opens are instant due to React Query cache
-- Implementation in `client/src/pages/policies.tsx` lines 784, 879, 1019-1040, 1320
-
-**Policy Notes Query Fix (CRITICAL):**
-Fixed notes not displaying in policies detail page due to missing explicit queryFn:
-- **Problem:** Default fetcher only reads first element of queryKey, causing 404 errors
-- **Solution:** Added explicit queryFn for multi-segment URL `/api/policies/${policyId}/notes`
-- **Pattern:** ALWAYS use explicit queryFn for URLs with multiple segments (not just first queryKey element)
-- Implementation in `client/src/pages/policies.tsx` lines 3841-3852
-
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 
 ## System Architecture
@@ -66,7 +44,7 @@ The frontend uses React 18, TypeScript, Vite, Shadcn/ui (New York style), Radix 
 The frontend uses Wouter for routing and TanStack Query for state management. The backend is Express.js with TypeScript, providing a RESTful API with session-based authentication and role-based access control.
 
 **Key Features:**
-- **User & Company Management:** CRUD, RBAC, 2FA, team features.
+- **User & Company Management:** CRUD, RBAC, 2FA.
 - **Authentication & Security:** Bcrypt hashing, email activation, OTP 2FA, session management.
 - **Multi-tenancy:** Strict data isolation.
 - **Email System:** Global SMTP and database-driven templates.
@@ -74,34 +52,23 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Audit Logging:** Centralized action tracking.
 - **Campaign System:** Unified Email/SMS Campaign and Contact List management.
 - **Real-Time Notifications:** WebSocket-based updates.
-- **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging platform with dedicated phone numbers per user, real-time updates, full privacy isolation, and automated webhook management. Features include SMS/MMS with file upload, emoji picker, message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, real-time updates via WebSocket, WhatsApp-style chronological message ordering, thread deletion with confirmation dialog, and professional default avatars for contacts without names.
-    - **New Message Feature:** WhatsApp-style modal with phone number formatting, validation, and automatic thread creation.
-    - **Delete Thread:** Complete thread deletion removes thread and all associated messages with CASCADE cleanup. Includes confirmation dialog to prevent accidental deletions. Authorization ensures users can only delete their own threads.
-    - **Default Avatars:** Professional generic user avatar icon displayed for contacts without display names across thread list, message bubbles, and contact details. Contacts with names show initials in colored circles.
-    - **Number Provisioning:** Simplified area code search, 3-step wizard. Each user can only provision one phone number (toll-free numbers prohibited).
-    - **Billing System:** Automatic Stripe subscription creation ($10/month per number), recurring every 30 days, allows reactivation of cancelled numbers.
-    - **Phone Number Reactivation:** Cancelled numbers can be reactivated via Billing or Chat page interfaces.
-    - **Phone Settings:** View number, configuration, call forwarding, billing info, deactivation, CNAM configuration.
-    - **Webhook System:** Automated webhook creation and assignment during number provisioning/reactivation, with secure token-based URLs. Incoming messages process BulkVS payload, create/update threads, save messages, and broadcast via WebSocket.
-- **Billing & Stripe Integration:** Automated customer/subscription management with phone numbers included in invoices.
-- **Quotes Management System:** 3-step wizard for 11 product types, Google Places Autocomplete, CMS Marketplace API integration, plan comparison, credit card validation, notes, document management, universal search.
-- **Policies Management System:** Converts quotes to policies, includes status management, agent assignment, universal search, and canonical client identification.
-- **Consent Document System:** Generates legal consent documents, supports multi-channel delivery, and captures e-signatures.
-- **Calendar System:** Full-screen, multi-tenant calendar displaying company-wide events.
-- **Reminder System:** Background scheduler for notifications, snooze functionality, and duplicate prevention.
-- **Manual Event Creation:** Comprehensive event creation for Birthday, Reminder, and Appointment events.
-- **Appointment Availability Configuration:** User-specific scheduling preferences.
-- **Agent Assignment System:** Flexible reassignment for quotes and policies with filtering and real-time notifications.
-- **Policy Renewal System:** Automated renewal period activation with dynamic year calculation and OEP filter management.
-- **Landing Page Builder System:** SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes. Each user gets one automatically created landing page. Supports 14 block types including interactive Google Maps and direct image uploads. Public pages accessible without authentication.
-- **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and Manual Contacts (excludes BulkVS SMS contacts and system users/employees). SMS contacts are managed separately in the Chat interface but can be promoted to unified contacts via "Add to Contacts" feature. Features intelligent deduplication with centralized displayName generation (priority: firstName+lastName > companyName > null), advanced filtering, search functionality, CSV export (with SSN masking for non-superadmins), and role-based access control. The system uses a helper function to ensure consistent name formatting across all contact sources, with empty string normalization and recalculation during deduplication merges.
-    - **Manual Contacts (Add to Contacts):** Dedicated `manual_contacts` table stores manually created contacts from SMS chat. Users can promote SMS contacts to unified contacts via AddContactDialog with fields: firstName, lastName, email (optional), phone (auto-filled from thread), and notes (optional). Server auto-injects companyId/userId for multi-tenant isolation. Contacts appear in unified directory with source='manual' tracking.
-- **Tasks & Reminders Management System:** Comprehensive task management system with unified "Tasks / Reminders" menu item. Features include task creation with assignment (self/team members), priority levels (low, medium, high, critical), status tracking (pending, in_progress, completed, cancelled), due dates, descriptions, search functionality, and advanced filtering (hide completed, show my tasks only). Superadmins have cross-company visibility for all CRUD operations (list, view, edit, delete), while regular users maintain strict multi-tenant isolation. Backend implements optional companyId filtering across all storage methods and API routes. Frontend features professional table view with assignee data enrichment, responsive design, status/priority badges, action dropdowns, empty states, and LoadingSpinner integration.
+- **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with dedicated phone numbers, real-time updates, privacy isolation, and automated webhook management. Includes message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, and default avatars. Supports new message creation, thread deletion, number provisioning, billing, and number reactivation.
+- **Billing & Stripe Integration:** Automated customer/subscription management.
+- **Quotes Management System:** 3-step wizard for 11 product types, Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
+- **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification.
+- **Consent Document System:** Generates legal consent documents, multi-channel delivery, e-signatures.
+- **Calendar System:** Full-screen, multi-tenant display of company-wide events.
+- **Reminder System:** Background scheduler for notifications.
+- **Manual Event Creation:** For Birthday, Reminder, and Appointment events.
+- **Appointment Availability Configuration:** User-specific scheduling.
+- **Agent Assignment System:** Flexible reassignment for quotes and policies.
+- **Policy Renewal System:** Automated renewal period activation.
+- **Landing Page Builder System:** SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes.
+- **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and Manual Contacts (excludes BulkVS SMS contacts). Features intelligent deduplication, advanced filtering, search, CSV export (with SSN masking for non-superadmins), and role-based access control. Manual contacts can be added from SMS chat.
+- **Tasks & Reminders Management System:** Unified task management with assignment, priority levels, status tracking, due dates, descriptions, search, and advanced filtering. Superadmins have cross-company visibility.
 
 ### System Design Choices
-Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities (`shared/phone.ts`) standardize phone number formatting across the application - ALL numbers stored in 11-digit format (with "1" prefix) for consistency with BulkVS API.
-
-**Timezone Handling**: All message timestamps are normalized using `parseISO()` to explicitly parse as UTC before converting to user's local timezone with `toZonedTime()`. This prevents double timezone shifts that would cause today's messages to incorrectly show as "Yesterday".
+Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities (`shared/phone.ts`) standardize phone number formatting to 11-digit (with "1" prefix) for consistency with BulkVS API. All message timestamps are normalized using `parseISO()` to explicitly parse as UTC before converting to user's local timezone with `toZonedTime()`.
 
 ### Security Architecture
 - **Session Security:** `SESSION_SECRET` environment variable mandatory.
@@ -113,7 +80,7 @@ Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security inclu
 
 ## External Dependencies
 
-- **Database:** Neon PostgreSQL, Drizzle ORM.
+- **Database:** PostgreSQL (local production server), Drizzle ORM, `postgres` package for raw SQL queries.
 - **Email:** Nodemailer.
 - **SMS/MMS:** Twilio (system notifications), BulkVS (individual user chat).
 - **Payments:** Stripe.
