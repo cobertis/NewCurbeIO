@@ -438,14 +438,7 @@ export default function Settings() {
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
 
-  // CRITICAL: Ensure company data is loaded before rendering (prevents race conditions)
-  // For users with companyId, we MUST wait for companyData to be available
-  const isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany);
-  
-  // Check if critical data is still loading
-  const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || !isCompanyDataReady;
-
-  // Determine active tab from URL
+  // Determine active tab from URL (must be defined before use)
   const getCurrentTab = () => {
     if (location === "/settings" || location === "/settings/profile") return "profile";
     if (location === "/settings/preferences") return "preferences";
@@ -456,6 +449,19 @@ export default function Settings() {
     if (location === "/settings/team") return "team";
     return "profile"; // default
   };
+
+  // CRITICAL: Ensure company data is loaded before rendering (prevents race conditions)
+  // For users with companyId, we MUST wait for companyData to be available
+  const isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany);
+  
+  // Determine current tab
+  const currentTab = getCurrentTab();
+  
+  // Only wait for company data if we're on a tab that needs it
+  const needsCompanyData = currentTab === "company" || currentTab === "team";
+  
+  // Check if critical data is still loading
+  const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || (needsCompanyData && !isCompanyDataReady);
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
