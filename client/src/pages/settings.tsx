@@ -418,6 +418,14 @@ export default function Settings() {
   // Fetch company data if user has a companyId
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: any }>({
     queryKey: ["/api/companies", user?.companyId],
+    queryFn: async () => {
+      if (!user?.companyId) throw new Error("No company ID");
+      const response = await fetch(`/api/companies/${user.companyId}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch company');
+      return response.json();
+    },
     enabled: !!user?.companyId,
   });
 
