@@ -255,11 +255,20 @@ export function AppSidebar() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
+  // Determine which menu to show based on user role
+  const isSuperadmin = userData?.user?.role === "superadmin";
+
   // Count conversations with unread messages (not total messages)
   const unreadThreadCount = (threadsData?.filter(thread => thread.unreadCount > 0) ?? []).length;
 
-  // Determine which menu to show based on user role
-  const isSuperadmin = userData?.user?.role === "superadmin";
+  // Fetch unread Incoming SMS count (Twilio)
+  const { data: incomingSmsData } = useQuery<{ unreadCount: number }>({
+    queryKey: ["/api/chat/unread-count"],
+    enabled: isSuperadmin,
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+
+  const incomingSmsUnreadCount = incomingSmsData?.unreadCount ?? 0;
   
   // For superadmin, use old logic (split at Calendar)
   const menuItems = isSuperadmin ? superadminMenuItems : regularUserMenuItems;
@@ -509,6 +518,15 @@ export function AppSidebar() {
                       <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
                         <item.icon className="h-5 w-5 shrink-0" />
                         <span className="flex-1">{item.title}</span>
+                        {item.title === "Incoming SMS" && incomingSmsUnreadCount > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
+                            data-testid="badge-incoming-sms-unread"
+                          >
+                            {incomingSmsUnreadCount > 99 ? "99+" : incomingSmsUnreadCount}
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
