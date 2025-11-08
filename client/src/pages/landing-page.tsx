@@ -1671,8 +1671,12 @@ export default function LandingPageBuilder() {
     [selectedPageId, blocks.length, companyData]
   );
 
-  if (isPagesLoading) {
+  if (isPagesLoading || isPageLoading) {
     return <LoadingSpinner message="Loading landing page builder..." />;
+  }
+
+  if (!selectedPage || !selectedPage.landingPage) {
+    return <LoadingSpinner message="Loading page data..." />;
   }
 
   const filteredThemes = THEMES.filter(
