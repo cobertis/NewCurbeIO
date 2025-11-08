@@ -872,8 +872,10 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   // Check if we're still loading ANY data - must wait for ALL queries to complete
   const isLoadingMemberData = isLoadingMembers || isLoadingIncome || isLoadingImmigration;
   
-  // Gate: Member data is ready when sheet is open, we have currentMemberId, and all queries have settled
-  const isMemberDataReady = open && currentMemberId && !isLoadingMembers && !isLoadingIncome && !isLoadingImmigration;
+  // Gate: Member data is ready when sheet is open and members have loaded
+  // For new policies with no members, allow rendering with blank data
+  // For existing members, wait for income/immigration to load
+  const isMemberDataReady = open && !isLoadingMembers && (!currentMemberId || (!isLoadingIncome && !isLoadingImmigration));
 
   // Use useMemo to prevent unnecessary recalculation and form resets
   const memberData = useMemo(() => {
