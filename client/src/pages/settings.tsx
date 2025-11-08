@@ -451,6 +451,7 @@ export default function Settings() {
     if (location === "/settings/preferences") return "preferences";
     if (location === "/settings/company") return "company";
     if (location === "/settings/security") return "security";
+    if (location === "/settings/sessions") return "sessions";
     if (location === "/settings/notifications") return "notifications";
     if (location === "/settings/team") return "team";
     return "profile"; // default
@@ -458,9 +459,9 @@ export default function Settings() {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["profile", "security", "preferences", "notifications"];
+    const baseTabs = ["profile", "security", "sessions", "preferences", "notifications"];
     if (isAdmin) {
-      return ["profile", "company", "team", "security", "preferences", "notifications"];
+      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications"];
     }
     return baseTabs;
   }, [isAdmin]);
@@ -3641,6 +3642,9 @@ function SessionActivityTab() {
   const [pageSize, setPageSize] = useState(50);
   const [resultFilter, setResultFilter] = useState<"all" | "success" | "failed">("all");
 
+  // Build query URL with parameters
+  const queryUrl = `/api/session-activity?page=${currentPage}&pageSize=${pageSize}&searchQuery=${encodeURIComponent(searchQuery)}&resultFilter=${resultFilter}`;
+  
   // Fetch session activity logs
   const { data: activityData, isLoading } = useQuery<{
     logs: Array<{
@@ -3654,7 +3658,7 @@ function SessionActivityTab() {
     }>;
     total: number;
   }>({
-    queryKey: ['/api/session-activity', { page: currentPage, pageSize, searchQuery, resultFilter }],
+    queryKey: [queryUrl],
   });
 
   const logs = activityData?.logs || [];
