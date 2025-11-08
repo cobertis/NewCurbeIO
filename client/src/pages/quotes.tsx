@@ -3590,6 +3590,19 @@ export default function QuotesPage() {
     enabled: !!params?.id && params?.id !== 'new',
   });
 
+  // DEBUG: Log when quoteDetail changes
+  useEffect(() => {
+    if (quoteDetail) {
+      console.log('[QUOTE DETAIL UPDATED] totalHouseholdIncome:', quoteDetail.totalHouseholdIncome);
+      console.log('[QUOTE DETAIL UPDATED] members count:', quoteDetail.members?.length);
+      if (quoteDetail.members?.length > 0) {
+        const primaryMember = quoteDetail.members.find(m => m.member.role === 'client');
+        console.log('[QUOTE DETAIL UPDATED] Primary member income:', primaryMember?.income?.totalAnnualIncome);
+        console.log('[QUOTE DETAIL UPDATED] Primary member immigration:', primaryMember?.immigration?.immigrationStatus);
+      }
+    }
+  }, [quoteDetail]);
+
   // Use the quote from unified detail if available, otherwise fallback to list (for backward compatibility)
   const viewingQuote = quoteDetail?.quote || quotesData?.quotes?.find(q => q.id === params?.id);
   const paymentMethodsData = quoteDetail ? { paymentMethods: quoteDetail.paymentMethods } : undefined;
