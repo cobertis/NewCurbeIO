@@ -1,0 +1,65 @@
+
+/var/www/curbe/logs/pm2-err.log last 50 lines:
+0|curbe-ad | 2025-11-08T04:00:21:       cert: [Object]
+0|curbe-ad | 2025-11-08T04:00:21:     }
+0|curbe-ad | 2025-11-08T04:00:21:   }
+0|curbe-ad | 2025-11-08T04:00:21: }
+0|curbe-ad | 2025-11-08T04:00:53: Error fetching user sessions: NeonDbError: Error connecting to database: fetch failed
+0|curbe-ad | 2025-11-08T04:00:53:     at execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1549:24)
+0|curbe-ad | 2025-11-08T04:00:53:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-ad | 2025-11-08T04:00:53:     at async file:///var/www/curbe/dist/index.js:12140:24 {
+0|curbe-ad | 2025-11-08T04:00:53:   severity: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   code: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   detail: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   hint: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   position: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   internalPosition: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   internalQuery: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   where: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   schema: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   table: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   column: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   dataType: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   constraint: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   file: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   line: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   routine: undefined,
+0|curbe-ad | 2025-11-08T04:00:53:   sourceError: TypeError: fetch failed
+0|curbe-ad | 2025-11-08T04:00:53:       at node:internal/deps/undici/undici:13510:13
+0|curbe-ad | 2025-11-08T04:00:53:       at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-ad | 2025-11-08T04:00:53:       at async execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1548:15)
+0|curbe-ad | 2025-11-08T04:00:53:       at async file:///var/www/curbe/dist/index.js:12140:24 {
+0|curbe-ad | 2025-11-08T04:00:53:     [cause]: Error [ERR_TLS_CERT_ALTNAME_INVALID]: Hostname/IP does not match certificate's altnames: Host: localhost. is not in the cert's altnames: DNS:app.curbe.io
+0|curbe-ad | 2025-11-08T04:00:53:         at Object.checkServerIdentity (node:tls:316:12)
+0|curbe-ad | 2025-11-08T04:00:53:         at TLSSocket.onConnectSecure (node:_tls_wrap:1687:27)
+0|curbe-ad | 2025-11-08T04:00:53:         at TLSSocket.emit (node:events:524:28)
+0|curbe-ad | 2025-11-08T04:00:53:         at TLSSocket._finishInit (node:_tls_wrap:1076:8)
+0|curbe-ad | 2025-11-08T04:00:53:         at ssl.onhandshakedone (node:_tls_wrap:862:12) {
+0|curbe-ad | 2025-11-08T04:00:53:       code: 'ERR_TLS_CERT_ALTNAME_INVALID',
+0|curbe-ad | 2025-11-08T04:00:53:       reason: "Host: localhost. is not in the cert's altnames: DNS:app.curbe.io",
+0|curbe-ad | 2025-11-08T04:00:53:       host: 'localhost',
+0|curbe-ad | 2025-11-08T04:00:53:       cert: [Object]
+0|curbe-ad | 2025-11-08T04:00:53:     }
+0|curbe-ad | 2025-11-08T04:00:53:   }
+0|curbe-ad | 2025-11-08T04:00:53: }
+0|curbe-ad | 2025-11-08T04:03:00: [REMINDER SCHEDULER] Error in scheduler: Error: self-signed certificate
+0|curbe-ad | 2025-11-08T04:03:00:     at /var/www/curbe/node_modules/pg-pool/index.js:45:11
+0|curbe-ad | 2025-11-08T04:03:00:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-ad | 2025-11-08T04:03:00:     at async file:///var/www/curbe/node_modules/drizzle-orm/node-postgres/session.js:83:22
+0|curbe-ad | 2025-11-08T04:03:00:     at async file:///var/www/curbe/dist/index.js:26844:30
+0|curbe-ad | 2025-11-08T04:03:00:     at async Timeout._onTimeout (/var/www/curbe/node_modules/node-cron/dist/esm/scheduler/runner.js:70:44) {
+0|curbe-ad | 2025-11-08T04:03:00:   code: 'DEPTH_ZERO_SELF_SIGNED_CERT'
+0|curbe-ad | 2025-11-08T04:03:00: }
+
+0|curbe-admin  | 2025-11-08T04:03:07: Error: self-signed certificate
+0|curbe-admin  | 2025-11-08T04:03:07:     at /var/www/curbe/node_modules/pg-pool/index.js:45:11
+0|curbe-admin  | 2025-11-08T04:03:07:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T04:03:07:     at async PGStore._asyncQuery (/var/www/curbe/node_modules/connect-pg-simple/index.js:322:21)
+0|curbe-admin  | 2025-11-08T04:03:07:     at async PGStore._rawEnsureSessionStoreTable (/var/www/curbe/node_modules/connect-pg-simple/index.js:177:19)
+0|curbe-admin  | 2025-11-08T04:03:07:     at async PGStore._asyncQuery (/var/www/curbe/node_modules/connect-pg-simple/index.js:315:7)
+0|curbe-admin  | 2025-11-08T04:03:07: Error: self-signed certificate
+0|curbe-admin  | 2025-11-08T04:03:07:     at /var/www/curbe/node_modules/pg-pool/index.js:45:11
+0|curbe-admin  | 2025-11-08T04:03:07:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T04:03:07:     at async PGStore._asyncQuery (/var/www/curbe/node_modules/connect-pg-simple/index.js:322:21)
+0|curbe-admin  | 2025-11-08T04:03:07:     at async PGStore._rawEnsureSessionStoreTable (/var/www/curbe/node_modules/connect-pg-simple/index.js:177:19)
+0|curbe-admin  | 2025-11-08T04:03:07:     at async PGStore._asyncQuery (/var/www/curbe/node_modules/connect-pg-simple/index.js:315:7)
