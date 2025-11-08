@@ -1118,28 +1118,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // FORCE refetch of ALL related queries to immediately refresh data
-      console.log('[EditMemberSheet] Force refetching queries for quoteId:', quote.id, 'memberId:', memberId);
-      
-      // Refetch in parallel for performance
-      await Promise.all([
-        // Refetch unified detail query (for sidebar, cards, totals)
-        queryClient.refetchQueries({ 
-          queryKey: ['/api/quotes', quote.id, 'detail'],
-          exact: true
-        }),
-        // Refetch individual member queries (for EditMemberSheet form)
-        queryClient.refetchQueries({ 
-          queryKey: ['/api/quotes/members', memberId, 'income'],
-          exact: true
-        }),
-        queryClient.refetchQueries({ 
-          queryKey: ['/api/quotes/members', memberId, 'immigration'],
-          exact: true
-        }),
-      ]);
-      
-      console.log('[EditMemberSheet] All queries refetched successfully, data should be fresh now');
+      // Invalidate UNIFIED query to refresh ALL data
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
       
       toast({
         title: "Success",
