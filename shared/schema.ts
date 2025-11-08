@@ -3270,6 +3270,106 @@ export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;
 
+// =====================================================
+// BIRTHDAY AUTOMATION SYSTEM
+// =====================================================
+
+// Birthday Images - Admin uploads images for users to select
+export const birthdayImages = pgTable("birthday_images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Display name for the image
+  imageUrl: text("image_url").notNull(), // URL to the uploaded image
+  isActive: boolean("is_active").notNull().default(true), // Can be disabled without deleting
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id), // Superadmin who uploaded
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// User Birthday Settings - Each user's personalized birthday greeting configuration
+export const userBirthdaySettings = pgTable("user_birthday_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  
+  isEnabled: boolean("is_enabled").notNull().default(true), // Master on/off switch
+  selectedImageId: varchar("selected_image_id").references(() => birthdayImages.id, { onDelete: "set null" }), // Selected birthday image
+  customMessage: text("custom_message").default("Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"), // Personalized message
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Birthday Greeting History - Track all sent birthday greetings
+export const birthdayGreetingHistory = pgTable("birthday_greeting_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // User who sent (or system sent on behalf of)
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  recipientName: text("recipient_name").notNull(), // Name of birthday person
+  recipientPhone: text("recipient_phone").notNull(), // Phone number sent to
+  recipientDateOfBirth: text("recipient_date_of_birth").notNull(), // DOB of recipient
+  
+  message: text("message").notNull(), // The actual message sent
+  imageUrl: text("image_url"), // Image URL that was sent (snapshot for history)
+  
+  status: text("status").notNull().default("pending"), // pending, sent, delivered, failed
+  twilioMessageSid: text("twilio_message_sid"), // Twilio message ID for tracking
+  errorMessage: text("error_message"), // Error details if failed
+  
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Zod Schemas
+export const insertBirthdayImageSchema = createInsertSchema(birthdayImages).omit({
+  id: true,
+  uploadedBy: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(1, "Image name is required").max(200),
+  imageUrl: z.string().url("Invalid image URL"),
+  isActive: z.boolean().default(true),
+});
+
+export const insertUserBirthdaySettingsSchema = createInsertSchema(userBirthdaySettings).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  isEnabled: z.boolean().default(true),
+  selectedImageId: z.string().uuid().optional().nullable(),
+  customMessage: z.string().max(500).default("Happy Birthday! Wishing you a wonderful day filled with joy and happiness!"),
+});
+
+export const insertBirthdayGreetingHistorySchema = createInsertSchema(birthdayGreetingHistory).omit({
+  id: true,
+  userId: true,
+  companyId: true,
+  createdAt: true,
+  updatedAt: true,
+  deliveredAt: true,
+}).extend({
+  recipientName: z.string().min(1, "Recipient name is required"),
+  recipientPhone: z.string().min(10, "Valid phone number is required"),
+  recipientDateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
+  message: z.string().min(1, "Message is required"),
+  status: z.enum(["pending", "sent", "delivered", "failed"]).default("pending"),
+});
+
+// Types
+export type BirthdayImage = typeof birthdayImages.$inferSelect;
+export type InsertBirthdayImage = z.infer<typeof insertBirthdayImageSchema>;
+
+export type UserBirthdaySettings = typeof userBirthdaySettings.$inferSelect;
+export type InsertUserBirthdaySettings = z.infer<typeof insertUserBirthdaySettingsSchema>;
+
+export type BirthdayGreetingHistory = typeof birthdayGreetingHistory.$inferSelect;
+export type InsertBirthdayGreetingHistory = z.infer<typeof insertBirthdayGreetingHistorySchema>;
+
 export type ManualContact = typeof manualContacts.$inferSelect;
 export type InsertManualContact = z.infer<typeof insertManualContactSchema>;
 
