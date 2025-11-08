@@ -3988,7 +3988,7 @@ function AutomationsTab() {
   const [formData, setFormData] = useState({
     isEnabled: true,
     selectedImageId: null as string | null,
-    customMessage: "Happy Birthday! Wishing you a wonderful day filled with joy and happiness!",
+    customMessage: "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.",
   });
 
   // Update form data when settings load
