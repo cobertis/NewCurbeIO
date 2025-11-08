@@ -99,11 +99,6 @@ const superadminMenuItems = [
     icon: CreditCard,
   },
   {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-  {
     title: "Audit Logs",
     url: "/audit-logs",
     icon: Shield,
@@ -132,6 +127,11 @@ const superadminMenuItems = [
     title: "Email Config",
     url: "/email-configuration",
     icon: AtSign,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
   },
 ];
 
