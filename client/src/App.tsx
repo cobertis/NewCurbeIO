@@ -1166,6 +1166,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings/sessions">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/settings/notifications">
         <ProtectedRoute>
           <DashboardLayout>

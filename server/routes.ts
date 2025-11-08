@@ -1369,6 +1369,89 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Get session activity (login attempts - success and failed)
+  app.get("/api/session-activity", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 50;
+    const searchQuery = (req.query.searchQuery as string) || "";
+    const resultFilter = (req.query.resultFilter as string) || "all";
+
+    try {
+      // Build the query
+      const offset = (page - 1) * pageSize;
+      
+      // Base query filters
+      const filters: any = {
+        userId: currentUser.id,
+      };
+
+      // Filter by action (auth_login or auth_login_failed)
+      const actions: string[] = [];
+      if (resultFilter === "success") {
+        actions.push("auth_login");
+      } else if (resultFilter === "failed") {
+        actions.push("auth_login_failed");
+      } else {
+        actions.push("auth_login", "auth_login_failed");
+      }
+
+      // Get all activity logs matching criteria
+      const allLogs = await storage.getActivityLogs();
+      
+      // Filter logs
+      let filteredLogs = allLogs.filter(log => {
+        // Must be auth action
+        if (!actions.includes(log.action)) return false;
+        
+        // Must be for current user
+        if (log.userId !== currentUser.id) return false;
+        
+        // Search by IP if query provided
+        if (searchQuery && log.ipAddress) {
+          if (!log.ipAddress.includes(searchQuery)) return false;
+        }
+        
+        return true;
+      });
+
+      // Sort by timestamp DESC (newest first)
+      filteredLogs.sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return timeB - timeA;
+      });
+
+      // Get total count
+      const total = filteredLogs.length;
+
+      // Apply pagination
+      const paginatedLogs = filteredLogs.slice(offset, offset + pageSize);
+
+      // Format the response
+      const formattedLogs = paginatedLogs.map(log => ({
+        id: log.id,
+        timestamp: log.timestamp,
+        action: log.action,
+        ipAddress: log.ipAddress,
+        userAgent: log.userAgent,
+        metadata: log.metadata,
+        success: log.action === "auth_login",
+      }));
+
+      res.json({
+        logs: formattedLogs,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      });
+    } catch (error: any) {
+      console.error("Error fetching session activity:", error);
+      res.status(500).json({ message: "Failed to fetch session activity" });
+    }
+  });
+
   // Public registration endpoint - no auth required
   app.post("/api/register", async (req: Request, res: Response) => {
     try {

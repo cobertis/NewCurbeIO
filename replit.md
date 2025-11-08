@@ -111,6 +111,22 @@ if (isLoading) {
 - **Result:** Empty phone fields now save as `null`, and filled fields save correctly in E.164 format
 - **Implementation:** `client/src/pages/settings.tsx` line 2739
 
+**Session Activity Page (November 8, 2025):**
+- **Feature:** New Settings tab showing complete login history (successful and failed authentication attempts)
+- **Location:** `/settings/sessions` - tab after "Security" in Settings page
+- **Display Fields:** Datetime, IP Address, Browser/OS, Country/City, Result (Success/Failed)
+- **Functionality:** Search by IP, filter by result (all/success/failed), pagination (25/50/100 per page)
+- **Data Source:** `activity_logs` table filtered by `auth_login` and `auth_login_failed` actions
+- **User Agent Parsing:** Detects Chrome, Safari, Firefox, Edge and Windows, MacOS, Linux, Android, iOS
+- **Visual Design:** Color-coded badges (green for success, red for failed), clean table layout
+- **Implementation:** `client/src/pages/settings.tsx` lines 1409-1412, 3639-3909; `server/routes.ts` lines 1375-1456
+
+**Birthday Display System Complete (November 8, 2025):**
+- **Calendar:** Shows ALL birthdays year-round from users, quote_members, policy_members, manual_contacts, manual_birthdays
+- **Dashboard:** Shows weekly birthdays (Sunday-Saturday) from users, quote_members, manual_contacts
+- **Deduplication:** Uses SSN or email+DOB to prevent duplicate birthday entries across renewed policies
+- **Implementation:** `server/routes.ts` calendar endpoint lines 11952-11996, dashboard endpoint updated
+
 ## System Architecture
 
 ### UI/UX Decisions

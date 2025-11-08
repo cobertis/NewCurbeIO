@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -1403,6 +1403,10 @@ export default function Settings() {
                 <Shield className="h-4 w-4" />
                 Security
               </TabsTrigger>
+              <TabsTrigger value="sessions" className="gap-2" data-testid="tab-sessions">
+                <Activity className="h-4 w-4" />
+                Sessions
+              </TabsTrigger>
               <TabsTrigger value="preferences" className="gap-2" data-testid="tab-preferences">
                 <SettingsIcon className="h-4 w-4" />
                 Preferences
@@ -1846,6 +1850,11 @@ export default function Settings() {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Session Activity Tab */}
+            <TabsContent value="sessions" className="space-y-4">
+              <SessionActivityTab />
             </TabsContent>
 
             {/* Preferences Tab */}
@@ -3621,5 +3630,277 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Session Activity Tab Component
+function SessionActivityTab() {
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [resultFilter, setResultFilter] = useState<"all" | "success" | "failed">("all");
+
+  // Fetch session activity logs
+  const { data: activityData, isLoading } = useQuery<{
+    logs: Array<{
+      id: number;
+      timestamp: string;
+      action: string;
+      ipAddress: string | null;
+      userAgent: string | null;
+      metadata: any;
+      success: boolean;
+    }>;
+    total: number;
+  }>({
+    queryKey: ['/api/session-activity', { page: currentPage, pageSize, searchQuery, resultFilter }],
+  });
+
+  const logs = activityData?.logs || [];
+  const total = activityData?.total || 0;
+  const totalPages = Math.ceil(total / pageSize);
+
+  // Parse user agent to extract browser and OS
+  const parseUserAgent = (userAgent: string | null) => {
+    if (!userAgent) return "Unknown";
+    
+    let browser = "Unknown Browser";
+    let os = "Unknown OS";
+
+    // Detect browser
+    if (userAgent.includes("Chrome") && !userAgent.includes("Edg")) {
+      browser = "Google Chrome";
+    } else if (userAgent.includes("Safari") && !userAgent.includes("Chrome")) {
+      browser = "Safari";
+    } else if (userAgent.includes("Firefox")) {
+      browser = "Firefox";
+    } else if (userAgent.includes("Edg")) {
+      browser = "Microsoft Edge";
+    }
+
+    // Detect OS
+    if (userAgent.includes("Windows")) {
+      os = "Windows";
+    } else if (userAgent.includes("Mac")) {
+      os = "MacOS";
+    } else if (userAgent.includes("Linux")) {
+      os = "Linux";
+    } else if (userAgent.includes("Android")) {
+      os = "Android";
+    } else if (userAgent.includes("iOS") || userAgent.includes("iPhone")) {
+      os = "iOS";
+    }
+
+    return `${browser}\n${os}`;
+  };
+
+  // Get country from metadata
+  const getCountry = (metadata: any) => {
+    // This is a placeholder - you could integrate with a geolocation API
+    // For now, extract from metadata if available
+    return metadata?.country || "United States";
+  };
+
+  // Get city from metadata
+  const getCity = (metadata: any) => {
+    return metadata?.city || "Miami";
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setResultFilter("all");
+    setCurrentPage(1);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Session Activity</CardTitle>
+        <CardDescription>
+          View all login attempts including successful and failed authentication events
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 flex gap-2">
+            <Input
+              placeholder="Search by IP"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              data-testid="input-search-ip"
+              className="max-w-sm"
+            />
+            <Button onClick={handleSearch} data-testid="button-search">
+              <Search className="h-4 w-4 mr-2" />
+              Search
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Select value={resultFilter} onValueChange={(value: any) => { setResultFilter(value); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[140px]" data-testid="select-result-filter">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Results</SelectItem>
+                <SelectItem value="success">Success Only</SelectItem>
+                <SelectItem value="failed">Failed Only</SelectItem>
+              </SelectContent>
+            </Select>
+            {(searchQuery || resultFilter !== "all") && (
+              <Button variant="outline" onClick={handleResetFilters} data-testid="button-reset-filters">
+                Reset filters
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Page Size Selector */}
+        <div className="flex items-center gap-2 text-sm">
+          <span>Show</span>
+          <Select value={String(pageSize)} onValueChange={(value) => { setPageSize(Number(value)); setCurrentPage(1); }}>
+            <SelectTrigger className="w-[80px]" data-testid="select-page-size">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-muted-foreground">
+            Showing {logs.length > 0 ? ((currentPage - 1) * pageSize) + 1 : 0} to {Math.min(currentPage * pageSize, total)} of {total} Entries
+          </span>
+        </div>
+
+        {/* Table */}
+        {isLoading ? (
+          <LoadingSpinner message="Loading session activity..." fullScreen={false} />
+        ) : logs.length > 0 ? (
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Datetime</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">IP</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Browser</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Country</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log) => (
+                    <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30" data-testid={`row-activity-${log.id}`}>
+                      <td className="px-4 py-3 text-sm" data-testid="text-datetime">
+                        {format(new Date(log.timestamp), "MMM dd, yyyy h:mm a")}
+                      </td>
+                      <td className="px-4 py-3 text-sm" data-testid="text-ip">
+                        {log.ipAddress || "Unknown"}
+                      </td>
+                      <td className="px-4 py-3 text-sm whitespace-pre-line" data-testid="text-browser">
+                        {parseUserAgent(log.userAgent)}
+                      </td>
+                      <td className="px-4 py-3 text-sm" data-testid="text-country">
+                        {getCountry(log.metadata)}
+                        <br />
+                        <span className="text-muted-foreground text-xs">{getCity(log.metadata)}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm" data-testid="text-result">
+                        {log.action === "auth_login" ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                            Successfully signed in.
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+                            User password invalid.
+                          </Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No session activity found
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              data-testid="button-prev-page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="flex gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setCurrentPage(pageNum)}
+                    data-testid={`button-page-${pageNum}`}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              {totalPages > 5 && currentPage < totalPages - 2 && (
+                <>
+                  <span className="px-2 py-2">...</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(totalPages)}
+                    data-testid={`button-page-${totalPages}`}
+                  >
+                    {totalPages}
+                  </Button>
+                </>
+              )}
+            </div>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              data-testid="button-next-page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
