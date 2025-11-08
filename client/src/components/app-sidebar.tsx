@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { getQueriesForRoute } from "@/lib/route-queries";
 import {
   Sidebar,
   SidebarContent,
@@ -212,6 +213,17 @@ export function AppSidebar() {
     queryKey: ["/api/session"],
   });
 
+  // Prefetch route data on hover/focus
+  const handlePrefetch = (url: string) => {
+    const queries = getQueriesForRoute(url);
+    queries.forEach((queryDescriptor) => {
+      queryClient.prefetchQuery({
+        queryKey: queryDescriptor.queryKey,
+        staleTime: queryDescriptor.staleTime,
+      });
+    });
+  };
+
   // Get company data to access the logo
   const { data: companyData, isSuccess: companyDataLoaded } = useQuery<{ company: { logo?: string } }>({
     queryKey: ["/api/companies", userData?.user?.companyId],
@@ -338,7 +350,12 @@ export function AppSidebar() {
                         }
                       `}
                     >
-                      <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                      <Link 
+                        href={item.url} 
+                        className="flex items-center gap-3 px-3 w-full"
+                        onMouseEnter={() => handlePrefetch(item.url)}
+                        onFocus={() => handlePrefetch(item.url)}
+                      >
                         <item.icon className="h-5 w-5 shrink-0" />
                         <span className="flex-1">{item.title}</span>
                         {item.title === "Incoming SMS" && incomingSmsUnreadCount > 0 && (
@@ -380,7 +397,12 @@ export function AppSidebar() {
                           }
                         `}
                       >
-                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                        <Link 
+                          href={item.url} 
+                          className="flex items-center gap-3 px-3 w-full"
+                          onMouseEnter={() => handlePrefetch(item.url)}
+                          onFocus={() => handlePrefetch(item.url)}
+                        >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
                         </Link>
@@ -412,7 +434,12 @@ export function AppSidebar() {
                           }
                         `}
                       >
-                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                        <Link 
+                          href={item.url} 
+                          className="flex items-center gap-3 px-3 w-full"
+                          onMouseEnter={() => handlePrefetch(item.url)}
+                          onFocus={() => handlePrefetch(item.url)}
+                        >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1 whitespace-nowrap overflow-visible">{item.title}</span>
                         </Link>
@@ -444,7 +471,12 @@ export function AppSidebar() {
                           }
                         `}
                       >
-                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                        <Link 
+                          href={item.url} 
+                          className="flex items-center gap-3 px-3 w-full"
+                          onMouseEnter={() => handlePrefetch(item.url)}
+                          onFocus={() => handlePrefetch(item.url)}
+                        >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
                           {item.title === "SMS" && unreadThreadCount > 0 && (
@@ -485,7 +517,12 @@ export function AppSidebar() {
                           }
                         `}
                       >
-                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                        <Link 
+                          href={item.url} 
+                          className="flex items-center gap-3 px-3 w-full"
+                          onMouseEnter={() => handlePrefetch(item.url)}
+                          onFocus={() => handlePrefetch(item.url)}
+                        >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
                         </Link>
