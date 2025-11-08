@@ -2897,36 +2897,82 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const today = new Date();
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+      startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+      endOfWeek.setHours(23, 59, 59, 999);
       
       const isBirthdayThisWeek = (dateOfBirth: string | Date | null) => {
         if (!dateOfBirth) return false;
-        const birthDate = new Date(dateOfBirth);
-        const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+        
+        // Extract month and day directly from string to avoid timezone issues
+        let month: number, day: number;
+        if (typeof dateOfBirth === 'string') {
+          const parts = dateOfBirth.split('-');
+          if (parts.length !== 3) return false;
+          month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in JS
+          day = parseInt(parts[2], 10);
+        } else {
+          // If it's a Date object
+          month = dateOfBirth.getMonth();
+          day = dateOfBirth.getDate();
+        }
+        
+        // Create birthday in current year
+        const thisYearBirthday = new Date(today.getFullYear(), month, day, 0, 0, 0, 0);
         return thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
       };
       
-      // Count user birthdays
-      birthdaysThisWeek = users.filter(u => isBirthdayThisWeek(u.dateOfBirth)).length;
+      // Track unique birthdays to avoid duplicates
+      const birthdaySet = new Set<string>();
       
-      // Count quote member birthdays
+      // Count user birthdays (with deduplication)
+      for (const user of users) {
+        if (isBirthdayThisWeek(user.dateOfBirth)) {
+          const key = user.dateOfBirth || user.id;
+          if (!birthdaySet.has(key)) {
+            birthdaySet.add(key);
+            birthdaysThisWeek++;
+          }
+        }
+      }
+      
+      // Count quote member birthdays (with deduplication)
       if (companyId) {
         try {
           const quoteMembers = await db.select()
             .from(quoteMembersTable)
             .where(eq(quoteMembersTable.companyId, companyId));
-          birthdaysThisWeek += quoteMembers.filter(m => isBirthdayThisWeek(m.dateOfBirth)).length;
+          
+          for (const member of quoteMembers) {
+            if (isBirthdayThisWeek(member.dateOfBirth)) {
+              // Use SSN or email as unique identifier to avoid duplicate counting across quotes
+              const key = member.ssn || member.email || member.id;
+              if (!birthdaySet.has(key)) {
+                birthdaySet.add(key);
+                birthdaysThisWeek++;
+              }
+            }
+          }
         } catch (error) {
           // Ignore errors
         }
         
-        // Count manual contact birthdays
+        // Count manual contact birthdays (with deduplication)
         try {
           const manualContacts = await db.select()
             .from(manualContactsTable)
             .where(eq(manualContactsTable.companyId, companyId));
-          birthdaysThisWeek += manualContacts.filter(c => isBirthdayThisWeek(c.dateOfBirth)).length;
+          
+          for (const contact of manualContacts) {
+            if (isBirthdayThisWeek(contact.dateOfBirth)) {
+              const key = contact.dateOfBirth || contact.id;
+              if (!birthdaySet.has(key)) {
+                birthdaySet.add(key);
+                birthdaysThisWeek++;
+              }
+            }
+          }
         } catch (error) {
           // Ignore errors
         }
