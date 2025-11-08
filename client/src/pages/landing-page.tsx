@@ -961,6 +961,14 @@ export default function LandingPageBuilder() {
     blocks: LandingBlock[];
   }>({
     queryKey: ["/api/landing-pages", selectedPageId],
+    queryFn: async () => {
+      if (!selectedPageId) throw new Error("Landing page ID not found");
+      const response = await fetch(`/api/landing-pages/${selectedPageId}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch landing page');
+      return response.json();
+    },
     enabled: !!selectedPageId,
   });
 
