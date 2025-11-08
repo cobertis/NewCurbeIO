@@ -1118,8 +1118,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // Invalidate UNIFIED query to refresh ALL data (income, immigration, members, household total)
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
+      // FORCE refetch of UNIFIED query to immediately refresh ALL data (income, immigration, members, household total)
+      await queryClient.refetchQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
       
       toast({
         title: "Success",
