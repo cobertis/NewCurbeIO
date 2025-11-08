@@ -161,7 +161,7 @@ const myAgencyMenuItems = [
     icon: Contact,
   },
   {
-    title: "Tasks / Reminders",
+    title: "Tasks",
     url: "/tasks",
     icon: CheckSquare,
   },
