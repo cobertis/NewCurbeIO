@@ -1,0 +1,55 @@
+    merge_logs: true,
+  }]
+};
+root@ubuntu:/var/www/curbe# pm2 logs curbe-admin --lines 200 --nostream | grep -B 2 -A 10 "EMAIL DEBUG"
+
+0|curbe-ad | 2025-11-08T03:07:54: [CONSENT EMAIL] Sending notification email to: javierlazo2004@gmail.com
+0|curbe-ad | 2025-11-08T03:07:54: [CONSENT EMAIL] Language: English
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] Starting email send...
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] From: "Curbe.io" <no-reply@auth.curbe.io>
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] To: javierlazo2004@gmail.com
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] Subject: Sign Your Health Insurance Consent Form
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] SMTP Config: {
+0|curbe-ad | 2025-11-08T03:07:54:   host: 'mail.curbe.io',
+0|curbe-ad | 2025-11-08T03:07:54:   port: '587',
+0|curbe-ad | 2025-11-08T03:07:54:   user: 'no-reply@auth.curbe.io',
+0|curbe-ad | 2025-11-08T03:07:54:   secure: false
+0|curbe-ad | 2025-11-08T03:07:54: }
+0|curbe-ad | 2025-11-08T03:07:55: 3:07:55 AM [express] GET /api/policies/6QFY5NUR/consents 200 in 16ms :: {"consents":[{"id":"2cc66a10…
+0|curbe-ad | 2025-11-08T03:07:59: 3:07:59 AM [express] GET /api/bulkvs/threads 304 in 8ms :: [{"id":"dbdf3c53-b769-4cfd-9aae-899ea2307…
+0|curbe-ad | 2025-11-08T03:08:00: 3:08:00 AM [express] GET /api/policies/6QFY5NUR/consents 304 in 13ms :: {"consents":[{"id":"2cc66a10…
+0|curbe-ad | 2025-11-08T03:08:04: 3:08:04 AM [express] GET /api/bulkvs/threads 304 in 7ms :: [{"id":"dbdf3c53-b769-4cfd-9aae-899ea2307…
+0|curbe-ad | 2025-11-08T03:08:05: 3:08:05 AM [express] GET /api/policies/6QFY5NUR/consents 304 in 14ms :: {"consents":[{"id":"2cc66a10…
+root@ubuntu:/var/www/curbe# pm2 logs curbe-admin --lines 200 --nostream | grep -B 2 -A 10 "EMAIL DEBUG"
+
+0|curbe-ad | 2025-11-08T03:07:54: [CONSENT EMAIL] Sending notification email to: javierlazo2004@gmail.com
+0|curbe-ad | 2025-11-08T03:07:54: [CONSENT EMAIL] Language: English
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] Starting email send...
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] From: "Curbe.io" <no-reply@auth.curbe.io>
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] To: javierlazo2004@gmail.com
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] Subject: Sign Your Health Insurance Consent Form
+0|curbe-ad | 2025-11-08T03:07:54: [EMAIL DEBUG] SMTP Config: {
+0|curbe-ad | 2025-11-08T03:07:54:   host: 'mail.curbe.io',
+0|curbe-ad | 2025-11-08T03:07:54:   port: '587',
+0|curbe-ad | 2025-11-08T03:07:54:   user: 'no-reply@auth.curbe.io',
+0|curbe-ad | 2025-11-08T03:07:54:   secure: false
+0|curbe-ad | 2025-11-08T03:07:54: }
+0|curbe-ad | 2025-11-08T03:07:55: 3:07:55 AM [express] GET /api/policies/6QFY5NUR/consents 200 in 16ms :: {"consents":[{"id":"2cc66a10…
+0|curbe-ad | 2025-11-08T03:07:59: 3:07:59 AM [express] GET /api/bulkvs/threads 304 in 8ms :: [{"id":"dbdf3c53-b769-4cfd-9aae-899ea2307…
+0|curbe-ad | 2025-11-08T03:08:00: 3:08:00 AM [express] GET /api/policies/6QFY5NUR/consents 304 in 13ms :: {"consents":[{"id":"2cc66a10…
+0|curbe-ad | 2025-11-08T03:08:04: 3:08:04 AM [express] GET /api/bulkvs/threads 304 in 7ms :: [{"id":"dbdf3c53-b769-4cfd-9aae-899ea2307…
+0|curbe-ad | 2025-11-08T03:08:05: 3:08:05 AM [express] GET /api/policies/6QFY5NUR/consents 304 in 14ms :: {"consents":[{"id":"2cc66a10…
+--
+0|curbe-ad | 2025-11-08T03:13:26: [SEND-OTP] Session ID from cookie: s:qzdOQvFHFtorgIMeZPriiC2tcTs1dP_e.qM81Q8ubc/g1AS4bWBZoGQWbd2Wlpoms66i6LmGg2lQ
+0|curbe-ad | 2025-11-08T03:13:26: [SEND-OTP] Session check - pendingUserId: 5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, sessionID: qzdOQvFHFtorgIMeZPriiC2tcTs1dP_e
+0|curbe-ad | 2025-11-08T03:13:26: [EMAIL DEBUG] Starting email send...
+0|curbe-ad | 2025-11-08T03:13:26: [EMAIL DEBUG] From: "Curbe.io" <no-reply@auth.curbe.io>
+0|curbe-ad | 2025-11-08T03:13:26: [EMAIL DEBUG] To: claudia@cobertisinsurance.com
+0|curbe-ad | 2025-11-08T03:13:26: [EMAIL DEBUG] Subject: Your Login Verification Code - Curbe.io
+0|curbe-ad | 2025-11-08T03:13:26: [EMAIL DEBUG] SMTP Config: {
+0|curbe-ad | 2025-11-08T03:13:26:   host: 'mail.curbe.io',
+0|curbe-ad | 2025-11-08T03:13:26:   port: '587',
+0|curbe-ad | 2025-11-08T03:13:26:   user: 'no-reply@auth.curbe.io',
+0|curbe-ad | 2025-11-08T03:13:26:   secure: false
+0|curbe-ad | 2025-11-08T03:13:26: }
+
