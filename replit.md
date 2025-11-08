@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system designed for businesses, offering customer relationship management, communication, and an admin dashboard for superadmins. It integrates iMessage/SMS/RCS, role-based access, Stripe billing, and custom SMTP notifications. Key modules include Quotes, Policies, Campaigns, and a real-time SMS Chat application, all built on a scalable full-stack architecture. The project aims to streamline operations and enhance communication capabilities for its users.
+Curbe is a multi-tenant CRM system designed for businesses, offering customer relationship management, communication, and an admin dashboard for superadmins. It integrates iMessage/SMS/RCS, role-based access, Stripe billing, and custom SMTP notifications. Key modules include Quotes, Policies, Campaigns, and a real-time SMS Chat application, all built on a scalable full-stack architecture. The project aims to streamline operations and enhance communication capabilities for its users with a business vision to provide a comprehensive, multi-tenant CRM that enhances operational efficiency and communication for businesses across various sectors.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -29,103 +29,11 @@ if (isLoading) {
 - User strongly prefers consistent loading indicators across all pages
 - Shows large, centered spinner (h-12 w-12) with descriptive text
 - `fullScreen={true}` (default) for pages, `fullScreen={false}` for sheets/dialogs
-- NO prefetching - let queries load naturally and show loading state
+- Navigation prefetch enabled to improve UX (see Navigation Prefetch System below)
 - Apply consistently across ALL pages, sheets, dialogs, and async components
 - This ensures a uniform user experience throughout the entire application
 
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
-
-## Recent Critical Fixes (November 2025)
-
-**Quotes Page Crash Fix (November 8, 2025):**
-- **Problem:** Quotes page showed blank screen when opening a quote
-- **Root Cause:** Line 5048 attempted `.map()` on `quoteDetail.members` when it was `undefined`
-- **Error:** "Cannot read properties of undefined (reading 'map')"
-- **Solution:** Added guard `quoteDetail && quoteDetail.members` and return empty array `{ members: [] }` instead of `undefined`
-- **Result:** Preserves data structure for downstream code, prevents crash, shows empty state gracefully
-- **Implementation:** `client/src/pages/quotes.tsx` line 5051-5053
-
-**Dashboard Real-Time WebSocket Implementation (November 8, 2025):**
-- **Problem:** Dashboard stats (especially Failed Login counter) took up to 2 minutes to update after new events
-- **Previous Approach:** Polling every 30 seconds (wasteful: 120 requests/hour per user)
-- **Final Solution:** WebSocket-based real-time updates - updates ONLY when events occur
-- **Architecture:**
-  1. Dashboard subscribes to WebSocket messages (`notification_update`, `dashboard_update`, `data_invalidation`)
-  2. Backend broadcasts WebSocket message when events occur (login failed, task created, etc.)
-  3. Dashboard invalidates query cache and refetches only when needed
-  4. Fallback: 5-minute polling interval (only if WebSocket fails)
-- **Benefits:**
-  - ✅ Zero resource waste - no unnecessary polling
-  - ✅ Instant updates when events occur
-  - ✅ Scalable to thousands of concurrent users
-  - ✅ Existing `notificationService` methods already broadcast updates
-- **Implementation:** `client/src/pages/dashboard.tsx` lines 7-8, 39-62
-
-**Calendar Week List View (November 8, 2025):**
-- **Feature:** Added complete week list view alongside existing month view
-- **URL Parameter:** `?initialView=listWeek` to open directly in week view
-- **UI Components:** Month/Week toggle buttons, day-by-day event cards with full details
-- **Navigation:** Adaptive prev/next buttons (months for month view, weeks for week view)
-- **Integration:** Dashboard "Birthdays this week" card now links to week view
-- **Implementation:** `client/src/pages/calendar.tsx`
-
-**Dashboard Failed Login Counter Fix:**
-- **Problem:** Dashboard "Failed Login Attempts" card always showed "0" despite failed login notifications
-- **Root Causes:** 
-  1. Dashboard searched for `login_failed` but logs stored as `auth_login_failed` (with `auth_` prefix)
-  2. Activity logs had `company_id = NULL` for authentication events, preventing company-filtered queries
-- **Solution:** 
-  1. Updated dashboard query to search for `auth_login_failed` action
-  2. Added `companyId` parameter to `logAuth()` method in `logging-service.ts`
-  3. Updated all `logger.logAuth()` calls to pass user's `companyId`
-  4. Migrated 5,327 historical records to populate `company_id` using `user_id` and `entity_id`
-- **Implementation:** `server/routes.ts` lines 2834, 934, 952, 965, 980, 995, 1012; `server/logging-service.ts` line 77
-- **Pattern:** All authentication actions stored with `auth_` prefix (e.g., `auth_login`, `auth_login_failed`, `auth_logout`)
-
-**Settings Page Race Condition Fix:**
-- **Problem:** Intermittent blank company data (Business Profile, Company Logo) in Settings page
-- **Root Cause:** Page rendered before company data finished loading (race condition)
-- **Solution:** Added robust data readiness gate: `isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany)`
-- **Implementation:** `client/src/pages/settings.tsx` lines 444-449
-- **Pattern:** ALWAYS verify data exists, not just loading state
-
-**Database Connection Fix:**
-- **Problem:** Production errors "Failed to parse URL from https://api.208.158.174/sql"
-- **Root Cause:** Used Neon HTTP driver (`@neondatabase/serverless`) for regular PostgreSQL
-- **Solution:** Replaced with `postgres` package in `/api/user/sessions`, `/api/logout-all-sessions`, `/api/password-reset`
-- **Added:** try/finally blocks to prevent connection leaks
-- **Implementation:** `server/routes.ts`
-
-**Method Name Conflict Fix:**
-- **Problem:** Duplicate `updatePolicyPlan` methods causing build warnings
-- **Solution:** Renamed to distinguish purposes:
-  - `updatePolicySelectedPlan` - Updates Policy's selectedPlan field
-  - `updatePolicyPlan` - CRUD operations for PolicyPlan table
-- **Implementation:** `server/storage.ts` lines 653, 4313, 5697; `server/routes.ts` line 14522
-
-**User Phone Number Creation Fix:**
-- **Problem:** Phone numbers not saved when creating new users in Team Settings
-- **Root Cause:** Frontend converted empty string to `undefined`: `phone: data.phone ? formatE164(data.phone) : undefined`
-- **Impact:** When phone field left empty, `undefined` value caused backend to skip field entirely
-- **Solution:** Changed to `phone: data.phone && data.phone.trim() ? formatE164(data.phone) : null`
-- **Result:** Empty phone fields now save as `null`, and filled fields save correctly in E.164 format
-- **Implementation:** `client/src/pages/settings.tsx` line 2739
-
-**Session Activity Page (November 8, 2025):**
-- **Feature:** New Settings tab showing complete login history (successful and failed authentication attempts)
-- **Location:** `/settings/sessions` - tab after "Security" in Settings page
-- **Display Fields:** Datetime, IP Address, Browser/OS, Country/City, Result (Success/Failed)
-- **Functionality:** Search by IP, filter by result (all/success/failed), pagination (25/50/100 per page)
-- **Data Source:** `activity_logs` table filtered by `auth_login` and `auth_login_failed` actions
-- **User Agent Parsing:** Detects Chrome, Safari, Firefox, Edge and Windows, MacOS, Linux, Android, iOS
-- **Visual Design:** Color-coded badges (green for success, red for failed), clean table layout
-- **Implementation:** `client/src/pages/settings.tsx` lines 1409-1412, 3639-3909; `server/routes.ts` lines 1375-1456
-
-**Birthday Display System Complete (November 8, 2025):**
-- **Calendar:** Shows ALL birthdays year-round from users, quote_members, policy_members, manual_contacts, manual_birthdays
-- **Dashboard:** Shows weekly birthdays (Sunday-Saturday) from users, quote_members, manual_contacts
-- **Deduplication:** Uses SSN or email+DOB to prevent duplicate birthday entries across renewed policies
-- **Implementation:** `server/routes.ts` calendar endpoint lines 11952-11996, dashboard endpoint updated
 
 ## System Architecture
 
@@ -158,6 +66,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Landing Page Builder System:** SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes.
 - **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and Manual Contacts (excludes BulkVS SMS contacts). Features intelligent deduplication, advanced filtering, search, CSV export (with SSN masking for non-superadmins), and role-based access control. Manual contacts can be added from SMS chat.
 - **Tasks & Reminders Management System:** Unified task management with assignment, priority levels, status tracking, due dates, descriptions, search, and advanced filtering. Superadmins have cross-company visibility.
+- **Navigation Prefetch System**: System that preloads page data before navigation to improve user experience.
 
 ### System Design Choices
 Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities (`shared/phone.ts`) standardize phone number formatting to 11-digit (with "1" prefix) for consistency with BulkVS API. All message timestamps are normalized using `parseISO()` to explicitly parse as UTC before converting to user's local timezone with `toZonedTime()`.
