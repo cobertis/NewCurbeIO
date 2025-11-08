@@ -245,13 +245,8 @@ export function AppSidebar() {
 
   const incomingSmsUnreadCount = incomingSmsData?.unreadCount ?? 0;
   
-  // For superadmin, use old logic (split at Billing)
+  // For superadmin and regular users
   const menuItems = isSuperadmin ? superadminMenuItems : regularUserMenuItems;
-  
-  // Split menu items into sections - only for superadmin
-  const billingIndex = menuItems.findIndex(item => item.title === "Billing");
-  const topMenuItems = isSuperadmin ? menuItems.slice(0, billingIndex + 1) : regularUserMenuItems;
-  const superadminRestItems = isSuperadmin ? menuItems.slice(billingIndex + 1) : [];
 
   // Load cached logo from localStorage on mount
   useEffect(() => {
@@ -329,38 +324,78 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-3 pt-2 pb-4">
-        {/* Top Menu Items */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {topMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`link-${item.title.toLowerCase()}`}
-                    className={`
-                      h-11 rounded-md transition-colors
-                      ${location === item.url 
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                      }
-                    `}
-                  >
-                    <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      <span className="flex-1">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Superadmin Menu - Single list without separators */}
+        {isSuperadmin && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {menuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location === item.url}
+                      data-testid={`link-${item.title.toLowerCase()}`}
+                      className={`
+                        h-11 rounded-md transition-colors
+                        ${location === item.url 
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                        }
+                      `}
+                    >
+                      <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span className="flex-1">{item.title}</span>
+                        {item.title === "Incoming SMS" && incomingSmsUnreadCount > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
+                            data-testid="badge-incoming-sms-unread"
+                          >
+                            {incomingSmsUnreadCount > 99 ? "99+" : incomingSmsUnreadCount}
+                          </Badge>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* For regular users: My Agency, Marketing, Configuration */}
+        {/* For regular users: Dashboard, Calendar, My Agency, Marketing, Configuration */}
         {!isSuperadmin && (
           <>
+            {/* Dashboard and Calendar */}
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === item.url}
+                        data-testid={`link-${item.title.toLowerCase()}`}
+                        className={`
+                          h-11 rounded-md transition-colors
+                          ${location === item.url 
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          }
+                        `}
+                      >
+                        <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
             {/* My Agency Section */}
             <SidebarGroup>
               <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -466,49 +501,6 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           </>
-        )}
-
-        {/* For superadmin: rest of items after Calendar */}
-        {isSuperadmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Administration
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {superadminRestItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`link-${item.title.toLowerCase()}`}
-                      className={`
-                        h-11 rounded-md transition-colors
-                        ${location === item.url 
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                        }
-                      `}
-                    >
-                      <Link href={item.url} className="flex items-center gap-3 px-3 w-full">
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="flex-1">{item.title}</span>
-                        {item.title === "Incoming SMS" && incomingSmsUnreadCount > 0 && (
-                          <Badge 
-                            variant="destructive" 
-                            className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
-                            data-testid="badge-incoming-sms-unread"
-                          >
-                            {incomingSmsUnreadCount > 99 ? "99+" : incomingSmsUnreadCount}
-                          </Badge>
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
         )}
       </SidebarContent>
 
