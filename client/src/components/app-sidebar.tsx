@@ -219,11 +219,6 @@ const marketingMenuItems = [
     icon: Globe,
   },
   {
-    title: "Email Signatures",
-    url: "/email-signatures",
-    icon: Mail,
-  },
-  {
     title: "Email",
     url: "/email-marketing",
     icon: Inbox,
