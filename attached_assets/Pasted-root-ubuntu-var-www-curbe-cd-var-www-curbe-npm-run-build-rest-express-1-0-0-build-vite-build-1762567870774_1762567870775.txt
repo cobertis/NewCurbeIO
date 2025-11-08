@@ -1,0 +1,41 @@
+root@ubuntu:/var/www/curbe# cd /var/www/curbe
+npm run build
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.20 building for production...
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 2883 modules transformed.
+../dist/public/index.html                                                 2.10 kB │ gzip:   0.82 kB
+../dist/public/assets/logo no fondo_1760450756816-BR-LiXG_.png           45.10 kB
+../dist/public/assets/Generic_user_avatar_icon_55b842ef-BGsZDgwn.png    456.74 kB
+../dist/public/assets/index-Bw_m-ZCj.css                                148.41 kB │ gzip:  22.51 kB
+../dist/public/assets/module-CzQsGpmH.js                                 77.13 kB │ gzip:  27.74 kB
+../dist/public/assets/native-B5Vb9Oiz.js                                380.35 kB │ gzip:  82.06 kB
+../dist/public/assets/index-DA35ZJp7.js                               2,728.48 kB │ gzip: 666.48 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.27s
+▲ [WARNING] Duplicate member "updatePolicyPlan" in class body [duplicate-class-member]
+
+    server/storage.ts:5697:8:
+      5697 │   async updatePolicyPlan(planId: string, companyId: string, data: Partial<InsertPolicyPlan>): Promise<PolicyPlan | null> {
+           ╵         ~~~~~~~~~~~~~~~~
+
+  The original member "updatePolicyPlan" is here:
+
+    server/storage.ts:4310:8:
+      4310 │   async updatePolicyPlan(id: string, selectedPlan: any): Promise<Policy | undefined> {
+           ╵         ~~~~~~~~~~~~~~~~
+
+1 warning
+
+  dist/index.js  1.1mb ⚠️
+
+⚡ Done in 60ms
+root@ubuntu:/var/www/curbe# 
