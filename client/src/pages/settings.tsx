@@ -21,7 +21,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight, Zap, Smile } from "lucide-react";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
@@ -3988,8 +3990,10 @@ function AutomationsTab() {
   const [formData, setFormData] = useState({
     isEnabled: true,
     selectedImageId: null as string | null,
-    customMessage: "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.",
+    customMessage: "🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros. 🎊",
   });
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Update form data when settings load
   useEffect(() => {
@@ -4121,18 +4125,52 @@ function AutomationsTab() {
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="custom-message" className="text-xs font-medium">
-                  Message <span className="text-muted-foreground">({"{CLIENT_NAME}"}, {"{AGENT_NAME}"})</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="custom-message" className="text-xs font-medium">
+                    Message <span className="text-muted-foreground">({"{CLIENT_NAME}"}, {"{AGENT_NAME}"})</span>
+                  </label>
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="button-emoji-picker">
+                        <Smile className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <Picker
+                        data={data}
+                        onEmojiSelect={(emoji: any) => {
+                          const textarea = textareaRef.current;
+                          if (textarea) {
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const text = formData.customMessage;
+                            const newText = text.substring(0, start) + emoji.native + text.substring(end);
+                            setFormData({ ...formData, customMessage: newText });
+                            if (!isEditing) setIsEditing(true);
+                            setTimeout(() => {
+                              textarea.focus();
+                              textarea.setSelectionRange(start + emoji.native.length, start + emoji.native.length);
+                            }, 0);
+                          }
+                          setShowEmojiPicker(false);
+                        }}
+                        theme="light"
+                        previewPosition="none"
+                        skinTonePosition="none"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <Textarea
+                  ref={textareaRef}
                   id="custom-message"
                   value={formData.customMessage}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                     setFormData({ ...formData, customMessage: e.target.value });
                     if (!isEditing) setIsEditing(true);
                   }}
-                  placeholder="¡Feliz Cumpleaños {CLIENT_NAME}!&#10;&#10;Te deseamos el mejor de los éxitos en este nuevo año de vida.&#10;&#10;Te saluda {AGENT_NAME}, tu agente de seguros."
-                  rows={3}
+                  placeholder="🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂&#10;&#10;Te deseamos el mejor de los éxitos en este nuevo año de vida.&#10;&#10;Te saluda {AGENT_NAME}, tu agente de seguros. 🎊"
+                  rows={5}
                   className="resize-none text-xs"
                   data-testid="textarea-birthday-message"
                 />
@@ -4168,7 +4206,7 @@ function AutomationsTab() {
                   })()}
                   
                   <div className="text-xs text-foreground whitespace-pre-wrap break-words">
-                    {(formData.customMessage || "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.")
+                    {(formData.customMessage || "🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros. 🎊")
                       .replace('{CLIENT_NAME}', 'Juan')
                       .replace('{AGENT_NAME}', currentUser?.firstName || 'María')
                     }

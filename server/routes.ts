@@ -21300,7 +21300,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         settings = await storage.createUserBirthdaySettings({
           userId: user.id,
           isEnabled: true,
-          customMessage: "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.",
+          customMessage: "🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros. 🎊",
           selectedImageId: null,
         });
       }
@@ -21331,7 +21331,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           userId: user.id,
           isEnabled: isEnabled ?? true,
           selectedImageId: selectedImageId ?? null,
-          customMessage: customMessage ?? "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.",
+          customMessage: customMessage ?? "🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros. 🎊",
         });
       } else {
         // Update existing settings
