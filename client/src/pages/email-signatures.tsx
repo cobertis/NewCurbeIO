@@ -45,10 +45,10 @@ import { formatPhoneInput } from "@shared/phone";
 
 // Form schema for email signature data
 const signatureFormSchema = z.object({
-  fullName: z.string().min(1, "El nombre es requerido"),
-  jobTitle: z.string().min(1, "El cargo es requerido"),
-  company: z.string().min(1, "La empresa es requerida"),
-  email: z.string().email("Email inválido"),
+  fullName: z.string().min(1, "Name is required"),
+  jobTitle: z.string().min(1, "Job title is required"),
+  company: z.string().min(1, "Company is required"),
+  email: z.string().email("Invalid email"),
   phone: z.string().optional(),
   mobile: z.string().optional(),
   website: z.string().optional(),
@@ -104,13 +104,13 @@ const emailTemplates: EmailTemplate[] = [
   // 1. Minimal Professional
   {
     id: "minimal",
-    name: "Mínimo Profesional",
-    description: "Simple y elegante para profesionales modernos",
+    name: "Minimal Professional",
+    description: "Simple and elegant for modern professionals",
     thumbnail: "📧",
     colorSchemes: [
-      { id: "blue", name: "Azul", primaryColor: "#2563eb", secondaryColor: "#64748b" },
-      { id: "black", name: "Negro", primaryColor: "#000000", secondaryColor: "#6b7280" },
-      { id: "green", name: "Verde", primaryColor: "#16a34a", secondaryColor: "#64748b" },
+      { id: "blue", name: "Blue", primaryColor: "#2563eb", secondaryColor: "#64748b" },
+      { id: "black", name: "Black", primaryColor: "#000000", secondaryColor: "#6b7280" },
+      { id: "green", name: "Green", primaryColor: "#16a34a", secondaryColor: "#64748b" },
     ],
     fonts: [
       { id: "arial", name: "Arial", family: "Arial, sans-serif" },
@@ -142,13 +142,13 @@ const emailTemplates: EmailTemplate[] = [
   // 2. Corporate Executive
   {
     id: "corporate",
-    name: "Ejecutivo Corporativo",
-    description: "Estilo tradicional de negocios con logo",
+    name: "Corporate Executive",
+    description: "Traditional business style with logo",
     thumbnail: "🏢",
     colorSchemes: [
-      { id: "navy", name: "Azul Marino", primaryColor: "#1e3a8a", secondaryColor: "#475569" },
-      { id: "burgundy", name: "Borgoña", primaryColor: "#881337", secondaryColor: "#6b7280" },
-      { id: "forest", name: "Verde Bosque", primaryColor: "#14532d", secondaryColor: "#64748b" },
+      { id: "navy", name: "Navy Blue", primaryColor: "#1e3a8a", secondaryColor: "#475569" },
+      { id: "burgundy", name: "Burgundy", primaryColor: "#881337", secondaryColor: "#6b7280" },
+      { id: "forest", name: "Forest Green", primaryColor: "#14532d", secondaryColor: "#64748b" },
     ],
     fonts: [
       { id: "times", name: "Times New Roman", family: "Times New Roman, serif" },
@@ -167,7 +167,7 @@ const emailTemplates: EmailTemplate[] = [
         ${data.companyTagline ? `<div style="font-size: 12px; font-style: italic; color: ${colorScheme.secondaryColor}; margin-bottom: 12px;">"${data.companyTagline}"</div>` : ''}
         <table cellpadding="0" cellspacing="0">
           <tr>
-            <td style="font-size: 13px; color: #666666; width: 80px;">Teléfono:</td>
+            <td style="font-size: 13px; color: #666666; width: 80px;">Phone:</td>
             <td style="font-size: 13px; color: #333333;">${data.phone || 'N/A'}</td>
           </tr>
           <tr>
@@ -181,7 +181,7 @@ const emailTemplates: EmailTemplate[] = [
           </tr>` : ''}
           ${data.address ? `
           <tr>
-            <td style="font-size: 13px; color: #666666; padding-top: 4px;">Dirección:</td>
+            <td style="font-size: 13px; color: #666666; padding-top: 4px;">Address:</td>
             <td style="font-size: 13px; color: #333333; padding-top: 4px;">${data.address}</td>
           </tr>` : ''}
         </table>
@@ -194,8 +194,8 @@ const emailTemplates: EmailTemplate[] = [
   // 3. Creative Designer
   {
     id: "creative",
-    name: "Diseñador Creativo",
-    description: "Moderno y colorido para creativos",
+    name: "Creative Designer",
+    description: "Modern and colorful for creatives",
     thumbnail: "🎨",
     colorSchemes: [
       { id: "gradient1", name: "Sunset", primaryColor: "#f97316", secondaryColor: "#ec4899" },
@@ -243,7 +243,7 @@ const emailTemplates: EmailTemplate[] = [
         <tr>
           <td style="background: linear-gradient(90deg, ${colorScheme.primaryColor}, ${colorScheme.secondaryColor}); color: white; padding: 12px 20px; border-radius: 8px; text-align: center;">
             <div style="font-size: 14px; font-weight: bold;">${data.bannerText}</div>
-            ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: white; font-size: 12px;">Más información →</a>` : ''}
+            ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: white; font-size: 12px;">Learn more →</a>` : ''}
           </td>
         </tr>
       </table>` : ''}
@@ -255,13 +255,13 @@ const emailTemplates: EmailTemplate[] = [
   // 4. Real Estate Agent
   {
     id: "realestate",
-    name: "Agente Inmobiliario",
-    description: "Profesional con enfoque en propiedades",
+    name: "Real Estate Agent",
+    description: "Professional with property focus",
     thumbnail: "🏠",
     colorSchemes: [
-      { id: "luxury", name: "Lujo", primaryColor: "#b8860b", secondaryColor: "#4a5568" },
-      { id: "modern", name: "Moderno", primaryColor: "#047857", secondaryColor: "#6b7280" },
-      { id: "classic", name: "Clásico", primaryColor: "#7c3aed", secondaryColor: "#64748b" },
+      { id: "luxury", name: "Luxury", primaryColor: "#b8860b", secondaryColor: "#4a5568" },
+      { id: "modern", name: "Modern", primaryColor: "#047857", secondaryColor: "#6b7280" },
+      { id: "classic", name: "Classic", primaryColor: "#7c3aed", secondaryColor: "#64748b" },
     ],
     fonts: [
       { id: "playfair", name: "Playfair", family: "Georgia, serif" },
@@ -312,7 +312,7 @@ const emailTemplates: EmailTemplate[] = [
               <tr>
                 <td style="text-align: center; color: white;">
                   <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">🏡 ${data.bannerText}</div>
-                  ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: white; font-size: 14px;">Ver Propiedades Disponibles →</a>` : ''}
+                  ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: white; font-size: 14px;">View Available Properties →</a>` : ''}
                 </td>
               </tr>
             </table>
@@ -327,12 +327,12 @@ const emailTemplates: EmailTemplate[] = [
   // 5. Tech Startup
   {
     id: "tech",
-    name: "Startup Tecnológica",
-    description: "Moderno estilo tech con código y minimalismo",
+    name: "Tech Startup",
+    description: "Modern tech style with code and minimalism",
     thumbnail: "💻",
     colorSchemes: [
-      { id: "dark", name: "Modo Oscuro", primaryColor: "#000000", secondaryColor: "#4ade80" },
-      { id: "electric", name: "Eléctrico", primaryColor: "#3b82f6", secondaryColor: "#a855f7" },
+      { id: "dark", name: "Dark Mode", primaryColor: "#000000", secondaryColor: "#4ade80" },
+      { id: "electric", name: "Electric", primaryColor: "#3b82f6", secondaryColor: "#a855f7" },
       { id: "terminal", name: "Terminal", primaryColor: "#10b981", secondaryColor: "#f59e0b" },
     ],
     fonts: [
@@ -370,13 +370,13 @@ const emailTemplates: EmailTemplate[] = [
   // 6. Healthcare Professional
   {
     id: "healthcare",
-    name: "Profesional de Salud",
-    description: "Limpio y profesional para médicos y enfermeros",
+    name: "Healthcare Professional",
+    description: "Clean and professional for doctors and nurses",
     thumbnail: "⚕️",
     colorSchemes: [
-      { id: "medical", name: "Médico", primaryColor: "#0891b2", secondaryColor: "#0e7490" },
-      { id: "health", name: "Salud", primaryColor: "#059669", secondaryColor: "#10b981" },
-      { id: "care", name: "Cuidado", primaryColor: "#7c3aed", secondaryColor: "#8b5cf6" },
+      { id: "medical", name: "Medical", primaryColor: "#0891b2", secondaryColor: "#0e7490" },
+      { id: "health", name: "Health", primaryColor: "#059669", secondaryColor: "#10b981" },
+      { id: "care", name: "Care", primaryColor: "#7c3aed", secondaryColor: "#8b5cf6" },
     ],
     fonts: [
       { id: "helvetica", name: "Helvetica", family: "Helvetica Neue, Helvetica, Arial, sans-serif" },
@@ -431,13 +431,13 @@ const emailTemplates: EmailTemplate[] = [
   // 7. Legal Professional
   {
     id: "legal",
-    name: "Profesional Legal",
-    description: "Formal y elegante para abogados",
+    name: "Legal Professional",
+    description: "Formal and elegant for lawyers",
     thumbnail: "⚖️",
     colorSchemes: [
-      { id: "classic", name: "Clásico", primaryColor: "#1e293b", secondaryColor: "#475569" },
-      { id: "burgundy", name: "Borgoña", primaryColor: "#7f1d1d", secondaryColor: "#991b1b" },
-      { id: "navy", name: "Azul Marino", primaryColor: "#1e3a8a", secondaryColor: "#1e40af" },
+      { id: "classic", name: "Classic", primaryColor: "#1e293b", secondaryColor: "#475569" },
+      { id: "burgundy", name: "Burgundy", primaryColor: "#7f1d1d", secondaryColor: "#991b1b" },
+      { id: "navy", name: "Navy Blue", primaryColor: "#1e3a8a", secondaryColor: "#1e40af" },
     ],
     fonts: [
       { id: "times", name: "Times New Roman", family: "Times New Roman, serif" },
@@ -484,13 +484,13 @@ const emailTemplates: EmailTemplate[] = [
   // 8. Marketing Expert
   {
     id: "marketing",
-    name: "Experto en Marketing",
-    description: "Vibrante y llamativo para marketing digital",
+    name: "Marketing Expert",
+    description: "Vibrant and eye-catching for digital marketing",
     thumbnail: "📈",
     colorSchemes: [
-      { id: "vibrant", name: "Vibrante", primaryColor: "#ec4899", secondaryColor: "#f97316" },
-      { id: "energy", name: "Energía", primaryColor: "#f59e0b", secondaryColor: "#ef4444" },
-      { id: "fresh", name: "Fresco", primaryColor: "#10b981", secondaryColor: "#06b6d4" },
+      { id: "vibrant", name: "Vibrant", primaryColor: "#ec4899", secondaryColor: "#f97316" },
+      { id: "energy", name: "Energy", primaryColor: "#f59e0b", secondaryColor: "#ef4444" },
+      { id: "fresh", name: "Fresh", primaryColor: "#10b981", secondaryColor: "#06b6d4" },
     ],
     fonts: [
       { id: "poppins", name: "Poppins", family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
@@ -538,7 +538,7 @@ const emailTemplates: EmailTemplate[] = [
         <tr>
           <td style="background: #f3f4f6; padding: 15px; border-left: 4px solid ${colorScheme.primaryColor}; border-radius: 4px;">
             <div style="font-size: 16px; font-weight: bold; color: #111827; margin-bottom: 5px;">✨ ${data.bannerText}</div>
-            ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: ${colorScheme.primaryColor}; font-size: 14px; text-decoration: none; font-weight: bold;">Descubre más →</a>` : ''}
+            ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: ${colorScheme.primaryColor}; font-size: 14px; text-decoration: none; font-weight: bold;">Discover more →</a>` : ''}
           </td>
         </tr>
       </table>` : ''}
@@ -557,12 +557,12 @@ const emailTemplates: EmailTemplate[] = [
   // 9. Consultant
   {
     id: "consultant",
-    name: "Consultor",
-    description: "Profesional para consultoría empresarial",
+    name: "Consultant",
+    description: "Professional for business consulting",
     thumbnail: "💼",
     colorSchemes: [
-      { id: "professional", name: "Profesional", primaryColor: "#2563eb", secondaryColor: "#1e40af" },
-      { id: "executive", name: "Ejecutivo", primaryColor: "#dc2626", secondaryColor: "#991b1b" },
+      { id: "professional", name: "Professional", primaryColor: "#2563eb", secondaryColor: "#1e40af" },
+      { id: "executive", name: "Executive", primaryColor: "#dc2626", secondaryColor: "#991b1b" },
       { id: "premium", name: "Premium", primaryColor: "#a855f7", secondaryColor: "#7c3aed" },
     ],
     fonts: [
@@ -615,7 +615,7 @@ const emailTemplates: EmailTemplate[] = [
       ${data.bannerText ? `
       <div style="margin-top: 20px; padding: 12px; background: #f9fafb; border-radius: 6px;">
         <div style="font-size: 14px; color: #111827; font-weight: bold; margin-bottom: 4px;">💡 ${data.bannerText}</div>
-        ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: ${colorScheme.primaryColor}; font-size: 13px; text-decoration: none;">Agenda una consulta →</a>` : ''}
+        ${data.bannerUrl ? `<a href="${data.bannerUrl}" style="color: ${colorScheme.primaryColor}; font-size: 13px; text-decoration: none;">Schedule a consultation →</a>` : ''}
       </div>` : ''}
     </td>
   </tr>
@@ -625,13 +625,13 @@ const emailTemplates: EmailTemplate[] = [
   // 10. Academic/Professor
   {
     id: "academic",
-    name: "Académico/Profesor",
-    description: "Estilo educativo y profesional",
+    name: "Academic/Professor",
+    description: "Educational and professional style",
     thumbnail: "🎓",
     colorSchemes: [
-      { id: "university", name: "Universidad", primaryColor: "#0c4a6e", secondaryColor: "#0369a1" },
+      { id: "university", name: "University", primaryColor: "#0c4a6e", secondaryColor: "#0369a1" },
       { id: "scholar", name: "Scholar", primaryColor: "#166534", secondaryColor: "#15803d" },
-      { id: "classic", name: "Clásico", primaryColor: "#713f12", secondaryColor: "#a16207" },
+      { id: "classic", name: "Classic", primaryColor: "#713f12", secondaryColor: "#a16207" },
     ],
     fonts: [
       { id: "georgia", name: "Georgia", family: "Georgia, serif" },
@@ -652,12 +652,12 @@ const emailTemplates: EmailTemplate[] = [
       <table cellpadding="0" cellspacing="0">
         <tr>
           <td style="font-size: 13px; color: #4b5563; padding: 3px 0;">
-            <strong>Oficina:</strong> ${data.address || 'N/A'}
+            <strong>Office:</strong> ${data.address || 'N/A'}
           </td>
         </tr>
         <tr>
           <td style="font-size: 13px; color: #4b5563; padding: 3px 0;">
-            <strong>Teléfono:</strong> ${data.phone || 'N/A'}
+            <strong>Phone:</strong> ${data.phone || 'N/A'}
           </td>
         </tr>
         <tr>
@@ -675,7 +675,7 @@ const emailTemplates: EmailTemplate[] = [
       
       <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
         <div style="font-size: 12px; color: #6b7280; font-style: italic;">
-          "La educación es el arma más poderosa para cambiar el mundo" - Nelson Mandela
+          "Education is the most powerful weapon which you can use to change the world" - Nelson Mandela
         </div>
       </div>
     </td>
@@ -686,13 +686,13 @@ const emailTemplates: EmailTemplate[] = [
   // 11. Sales Professional
   {
     id: "sales",
-    name: "Profesional de Ventas",
-    description: "Enfocado en llamadas a la acción",
+    name: "Sales Professional",
+    description: "Focused on calls to action",
     thumbnail: "💰",
     colorSchemes: [
-      { id: "action", name: "Acción", primaryColor: "#ef4444", secondaryColor: "#dc2626" },
-      { id: "success", name: "Éxito", primaryColor: "#16a34a", secondaryColor: "#15803d" },
-      { id: "energy", name: "Energía", primaryColor: "#f97316", secondaryColor: "#ea580c" },
+      { id: "action", name: "Action", primaryColor: "#ef4444", secondaryColor: "#dc2626" },
+      { id: "success", name: "Success", primaryColor: "#16a34a", secondaryColor: "#15803d" },
+      { id: "energy", name: "Energy", primaryColor: "#f97316", secondaryColor: "#ea580c" },
     ],
     fonts: [
       { id: "impact", name: "Impact", family: "Impact, Arial Black, sans-serif" },
@@ -716,7 +716,7 @@ const emailTemplates: EmailTemplate[] = [
         <tr>
           <td>
             <div style="font-size: 14px; color: #374151; margin: 5px 0;">
-              📱 <strong><a href="tel:${data.phone}" style="color: ${colorScheme.primaryColor}; text-decoration: none;">${data.phone || 'Llámame'}</a></strong>
+              📱 <strong><a href="tel:${data.phone}" style="color: ${colorScheme.primaryColor}; text-decoration: none;">${data.phone || 'Call Me'}</a></strong>
             </div>
             <div style="font-size: 14px; color: #374151; margin: 5px 0;">
               ✉️ <a href="mailto:${data.email}" style="color: #374151; text-decoration: none;">${data.email}</a>
@@ -736,7 +736,7 @@ const emailTemplates: EmailTemplate[] = [
             <div style="font-size: 18px; font-weight: bold; margin-bottom: 8px;">🎯 ${data.bannerText}</div>
             ${data.bannerUrl ? `
             <a href="${data.bannerUrl}" style="display: inline-block; background: white; color: ${colorScheme.primaryColor}; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 14px;">
-              ¡Contactar Ahora!
+              Contact Now!
             </a>` : ''}
           </td>
         </tr>
@@ -756,17 +756,17 @@ const emailTemplates: EmailTemplate[] = [
   {
     id: "freelancer",
     name: "Freelancer",
-    description: "Personal y creativo para trabajadores independientes",
+    description: "Personal and creative for independent workers",
     thumbnail: "🚀",
     colorSchemes: [
-      { id: "creative", name: "Creativo", primaryColor: "#8b5cf6", secondaryColor: "#a78bfa" },
-      { id: "bold", name: "Atrevido", primaryColor: "#e11d48", secondaryColor: "#f43f5e" },
+      { id: "creative", name: "Creative", primaryColor: "#8b5cf6", secondaryColor: "#a78bfa" },
+      { id: "bold", name: "Bold", primaryColor: "#e11d48", secondaryColor: "#f43f5e" },
       { id: "nature", name: "Natural", primaryColor: "#059669", secondaryColor: "#10b981" },
     ],
     fonts: [
-      { id: "modern", name: "Moderno", family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
-      { id: "playful", name: "Divertido", family: "Comic Sans MS, cursive" },
-      { id: "clean", name: "Limpio", family: "Helvetica Neue, Helvetica, Arial, sans-serif" },
+      { id: "modern", name: "Modern", family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
+      { id: "playful", name: "Playful", family: "Comic Sans MS, cursive" },
+      { id: "clean", name: "Clean", family: "Helvetica Neue, Helvetica, Arial, sans-serif" },
     ],
     generateHtml: (data, colorScheme, font) => `
 <table cellpadding="0" cellspacing="0" style="font-family: ${font.family}; max-width: 500px;">
@@ -888,7 +888,7 @@ export default function EmailSignaturesPage() {
     if (!generatedHtml) {
       toast({
         title: "Error",
-        description: "Por favor completa los campos requeridos primero",
+        description: "Please complete the required fields first",
         variant: "destructive",
       });
       return;
@@ -898,13 +898,13 @@ export default function EmailSignaturesPage() {
     try {
       await navigator.clipboard.writeText(generatedHtml);
       toast({
-        title: "¡Copiado!",
-        description: "El código HTML ha sido copiado al portapapeles",
+        title: "Copied!",
+        description: "HTML code has been copied to clipboard",
       });
     } catch (err) {
       toast({
         title: "Error",
-        description: "No se pudo copiar el código",
+        description: "Failed to copy code",
         variant: "destructive",
       });
     } finally {
@@ -917,7 +917,7 @@ export default function EmailSignaturesPage() {
     if (!generatedHtml) {
       toast({
         title: "Error",
-        description: "Por favor completa los campos requeridos primero",
+        description: "Please complete the required fields first",
         variant: "destructive",
       });
       return;
@@ -934,26 +934,26 @@ export default function EmailSignaturesPage() {
     URL.revokeObjectURL(url);
     
     toast({
-      title: "¡Descargado!",
-      description: "El archivo HTML ha sido descargado",
+      title: "Downloaded!",
+      description: "The HTML file has been downloaded",
     });
   };
 
   // Load sample data for testing
   const loadSampleData = () => {
-    form.setValue("fullName", "María García López");
-    form.setValue("jobTitle", "Directora de Marketing Digital");
+    form.setValue("fullName", "John Smith");
+    form.setValue("jobTitle", "Digital Marketing Director");
     form.setValue("company", "InnovaTech Solutions");
-    form.setValue("email", "maria.garcia@innovatech.com");
-    form.setValue("phone", "+34 91 123 4567");
-    form.setValue("mobile", "+34 600 123 456");
+    form.setValue("email", "john.smith@innovatech.com");
+    form.setValue("phone", "+1 (555) 123-4567");
+    form.setValue("mobile", "+1 (555) 987-6543");
     form.setValue("website", "https://www.innovatech.com");
-    form.setValue("linkedinUrl", "https://linkedin.com/in/mariagarcia");
-    form.setValue("twitterUrl", "https://twitter.com/mgarcia");
-    form.setValue("address", "Calle Gran Vía 123, Madrid 28013");
-    form.setValue("companyTagline", "Innovación que transforma");
-    form.setValue("bannerText", "¡Descubre nuestras soluciones digitales!");
-    form.setValue("bannerUrl", "https://www.innovatech.com/soluciones");
+    form.setValue("linkedinUrl", "https://linkedin.com/in/johnsmith");
+    form.setValue("twitterUrl", "https://twitter.com/jsmith");
+    form.setValue("address", "123 Main Street, New York, NY 10001");
+    form.setValue("companyTagline", "Innovation that transforms");
+    form.setValue("bannerText", "Discover our digital solutions!");
+    form.setValue("bannerUrl", "https://www.innovatech.com/solutions");
   };
 
   return (
@@ -962,9 +962,9 @@ export default function EmailSignaturesPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Generador de Firmas de Email</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Email Signature Generator</h1>
             <p className="text-muted-foreground">
-              Crea firmas profesionales para tu correo electrónico con diseños modernos y personalizables
+              Create professional signatures for your email with modern and customizable designs
             </p>
           </div>
           <Button
@@ -973,7 +973,7 @@ export default function EmailSignaturesPage() {
             data-testid="button-load-sample"
           >
             <Sparkles className="h-4 w-4 mr-2" />
-            Cargar Ejemplo
+            Load Example
           </Button>
         </div>
       </div>
@@ -984,17 +984,17 @@ export default function EmailSignaturesPage() {
         <div className="lg:col-span-7">
           <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="templates" data-testid="tab-templates">Plantillas</TabsTrigger>
-              <TabsTrigger value="data" data-testid="tab-data">Datos</TabsTrigger>
-              <TabsTrigger value="customize" data-testid="tab-customize">Personalizar</TabsTrigger>
+              <TabsTrigger value="templates" data-testid="tab-templates">Templates</TabsTrigger>
+              <TabsTrigger value="data" data-testid="tab-data">Data</TabsTrigger>
+              <TabsTrigger value="customize" data-testid="tab-customize">Customize</TabsTrigger>
             </TabsList>
 
             <TabsContent value="templates" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Selecciona una Plantilla</CardTitle>
+                  <CardTitle>Select a Template</CardTitle>
                   <CardDescription>
-                    Elige entre más de 12 diseños profesionales
+                    Choose from over 12 professional designs
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1027,9 +1027,9 @@ export default function EmailSignaturesPage() {
             <TabsContent value="data" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Información Personal</CardTitle>
+                  <CardTitle>Personal Information</CardTitle>
                   <CardDescription>
-                    Completa tus datos para generar la firma
+                    Complete your details to generate the signature
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1038,11 +1038,11 @@ export default function EmailSignaturesPage() {
                       {/* Basic Info */}
                       <div className="space-y-4">
                         <div className="text-sm font-semibold text-muted-foreground mb-2">
-                          Información Básica
+                          Basic Information
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="fullName">Nombre Completo *</Label>
+                            <Label htmlFor="fullName">Full Name *</Label>
                             <Input
                               id="fullName"
                               placeholder="Juan Pérez"
@@ -1051,10 +1051,10 @@ export default function EmailSignaturesPage() {
                             />
                           </div>
                           <div>
-                            <Label htmlFor="jobTitle">Cargo *</Label>
+                            <Label htmlFor="jobTitle">Job Title *</Label>
                             <Input
                               id="jobTitle"
-                              placeholder="Director de Ventas"
+                              placeholder="Sales Director"
                               {...form.register("jobTitle")}
                               data-testid="input-jobtitle"
                             />
@@ -1062,10 +1062,10 @@ export default function EmailSignaturesPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="company">Empresa *</Label>
+                            <Label htmlFor="company">Company *</Label>
                             <Input
                               id="company"
-                              placeholder="Mi Empresa S.L."
+                              placeholder="My Company Ltd."
                               {...form.register("company")}
                               data-testid="input-company"
                             />
@@ -1075,7 +1075,7 @@ export default function EmailSignaturesPage() {
                             <Input
                               id="email"
                               type="email"
-                              placeholder="juan@empresa.com"
+                              placeholder="john@company.com"
                               {...form.register("email")}
                               data-testid="input-email"
                             />
@@ -1088,11 +1088,11 @@ export default function EmailSignaturesPage() {
                       {/* Contact Info */}
                       <div className="space-y-4">
                         <div className="text-sm font-semibold text-muted-foreground mb-2">
-                          Información de Contacto
+                          Contact Information
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="phone">Teléfono</Label>
+                            <Label htmlFor="phone">Phone</Label>
                             <Input
                               id="phone"
                               placeholder="+34 91 123 4567"
@@ -1105,7 +1105,7 @@ export default function EmailSignaturesPage() {
                             />
                           </div>
                           <div>
-                            <Label htmlFor="mobile">Móvil</Label>
+                            <Label htmlFor="mobile">Mobile</Label>
                             <Input
                               id="mobile"
                               placeholder="+34 600 123 456"
@@ -1119,19 +1119,19 @@ export default function EmailSignaturesPage() {
                           </div>
                         </div>
                         <div>
-                          <Label htmlFor="website">Sitio Web</Label>
+                          <Label htmlFor="website">Website</Label>
                           <Input
                             id="website"
-                            placeholder="https://www.miempresa.com"
+                            placeholder="https://www.mycompany.com"
                             {...form.register("website")}
                             data-testid="input-website"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="address">Dirección</Label>
+                          <Label htmlFor="address">Address</Label>
                           <Input
                             id="address"
-                            placeholder="Calle Mayor 123, Madrid 28001"
+                            placeholder="123 Main Street, New York 10001"
                             {...form.register("address")}
                             data-testid="input-address"
                           />
@@ -1143,7 +1143,7 @@ export default function EmailSignaturesPage() {
                       {/* Social Media */}
                       <div className="space-y-4">
                         <div className="text-sm font-semibold text-muted-foreground mb-2">
-                          Redes Sociales
+                          Social Media
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
@@ -1208,60 +1208,60 @@ export default function EmailSignaturesPage() {
                       {/* Additional Info */}
                       <div className="space-y-4">
                         <div className="text-sm font-semibold text-muted-foreground mb-2">
-                          Información Adicional
+                          Additional Information
                         </div>
                         <div>
-                          <Label htmlFor="logoUrl">URL del Logo</Label>
+                          <Label htmlFor="logoUrl">Logo URL</Label>
                           <Input
                             id="logoUrl"
-                            placeholder="https://miempresa.com/logo.png"
+                            placeholder="https://mycompany.com/logo.png"
                             {...form.register("logoUrl")}
                             data-testid="input-logo"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="profilePhotoUrl">URL de Foto de Perfil</Label>
+                          <Label htmlFor="profilePhotoUrl">Profile Photo URL</Label>
                           <Input
                             id="profilePhotoUrl"
-                            placeholder="https://miempresa.com/foto.jpg"
+                            placeholder="https://mycompany.com/photo.jpg"
                             {...form.register("profilePhotoUrl")}
                             data-testid="input-photo"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="companyTagline">Eslogan de la Empresa</Label>
+                          <Label htmlFor="companyTagline">Company Tagline</Label>
                           <Input
                             id="companyTagline"
-                            placeholder="Innovación que transforma"
+                            placeholder="Innovation that transforms"
                             {...form.register("companyTagline")}
                             data-testid="input-tagline"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label htmlFor="bannerText">Texto del Banner/CTA</Label>
+                            <Label htmlFor="bannerText">Banner/CTA Text</Label>
                             <Input
                               id="bannerText"
-                              placeholder="¡Agenda una reunión!"
+                              placeholder="Schedule a meeting!"
                               {...form.register("bannerText")}
                               data-testid="input-banner-text"
                             />
                           </div>
                           <div>
-                            <Label htmlFor="bannerUrl">URL del Banner</Label>
+                            <Label htmlFor="bannerUrl">Banner URL</Label>
                             <Input
                               id="bannerUrl"
-                              placeholder="https://calendly.com/juanperez"
+                              placeholder="https://calendly.com/johnsmith"
                               {...form.register("bannerUrl")}
                               data-testid="input-banner-url"
                             />
                           </div>
                         </div>
                         <div>
-                          <Label htmlFor="disclaimerText">Texto de Descargo</Label>
+                          <Label htmlFor="disclaimerText">Disclaimer Text</Label>
                           <Textarea
                             id="disclaimerText"
-                            placeholder="Este mensaje es confidencial..."
+                            placeholder="This message is confidential..."
                             rows={3}
                             {...form.register("disclaimerText")}
                             data-testid="input-disclaimer"
@@ -1277,15 +1277,15 @@ export default function EmailSignaturesPage() {
             <TabsContent value="customize" className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Personalización</CardTitle>
+                  <CardTitle>Customization</CardTitle>
                   <CardDescription>
-                    Ajusta los colores y fuentes de tu firma
+                    Adjust the colors and fonts of your signature
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Color Scheme Selection */}
                   <div>
-                    <Label className="mb-3 block">Esquema de Color</Label>
+                    <Label className="mb-3 block">Color Scheme</Label>
                     <RadioGroup
                       value={selectedColorScheme.id}
                       onValueChange={(value) => {
@@ -1318,7 +1318,7 @@ export default function EmailSignaturesPage() {
 
                   {/* Font Selection */}
                   <div>
-                    <Label className="mb-3 block">Fuente</Label>
+                    <Label className="mb-3 block">Font</Label>
                     <RadioGroup
                       value={selectedFont.id}
                       onValueChange={(value) => {
@@ -1346,7 +1346,7 @@ export default function EmailSignaturesPage() {
                   {/* Preview Options */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="preview-mode">Modo Vista Previa</Label>
+                      <Label htmlFor="preview-mode">Preview Mode</Label>
                       <Switch
                         id="preview-mode"
                         checked={isPreviewMode}
@@ -1354,7 +1354,7 @@ export default function EmailSignaturesPage() {
                       />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Activa para ver cómo se verá la firma en un email real
+                      Enable to see how the signature will look in a real email
                     </p>
                   </div>
                 </CardContent>
@@ -1369,9 +1369,9 @@ export default function EmailSignaturesPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Vista Previa en Vivo</CardTitle>
+                <CardTitle>Live Preview</CardTitle>
                 <Badge variant={generatedHtml ? "default" : "secondary"}>
-                  {generatedHtml ? "Activa" : "Completa los campos"}
+                  {generatedHtml ? "Active" : "Complete the fields"}
                 </Badge>
               </div>
             </CardHeader>
@@ -1387,7 +1387,7 @@ export default function EmailSignaturesPage() {
                   <div className="flex items-center justify-center h-[250px] text-muted-foreground">
                     <div className="text-center">
                       <Mail className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Completa los campos requeridos para ver la vista previa</p>
+                      <p>Complete the required fields to see the preview</p>
                     </div>
                   </div>
                 )}
@@ -1399,7 +1399,7 @@ export default function EmailSignaturesPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Código HTML Generado</CardTitle>
+                <CardTitle>Generated HTML Code</CardTitle>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -1413,7 +1413,7 @@ export default function EmailSignaturesPage() {
                     ) : (
                       <Copy className="h-4 w-4" />
                     )}
-                    <span className="ml-2">Copiar</span>
+                    <span className="ml-2">Copy</span>
                   </Button>
                   <Button
                     size="sm"
@@ -1423,7 +1423,7 @@ export default function EmailSignaturesPage() {
                     data-testid="button-download"
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Descargar
+                    Download
                   </Button>
                 </div>
               </div>
@@ -1433,20 +1433,20 @@ export default function EmailSignaturesPage() {
                 <ScrollArea className="h-[300px] w-full rounded-md border">
                   <pre className="p-4 text-xs">
                     <code className="language-html">
-                      {generatedHtml || "// El código HTML aparecerá aquí"}
+                      {generatedHtml || "// HTML code will appear here"}
                     </code>
                   </pre>
                 </ScrollArea>
               </div>
               <div className="mt-4 space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Cómo usar tu firma:</strong>
+                  <strong>How to use your signature:</strong>
                 </p>
                 <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Copia el código HTML generado</li>
-                  <li>Abre la configuración de firma en tu cliente de email</li>
-                  <li>Pega el código en el editor HTML</li>
-                  <li>Guarda los cambios</li>
+                  <li>Copy the generated HTML code</li>
+                  <li>Open signature settings in your email client</li>
+                  <li>Paste the code in the HTML editor</li>
+                  <li>Save your changes</li>
                 </ol>
               </div>
             </CardContent>
@@ -1455,7 +1455,7 @@ export default function EmailSignaturesPage() {
           {/* Instructions */}
           <Card>
             <CardHeader>
-              <CardTitle>Compatibilidad</CardTitle>
+              <CardTitle>Compatibility</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
