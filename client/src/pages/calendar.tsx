@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Cake, Bell, Calendar as CalendarIcon, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Plus, Cake, Bell, Calendar as CalendarIcon, Settings, List, Grid3x3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -62,6 +62,16 @@ export default function Calendar() {
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState<ReminderDetails | null>(null);
   const [newEventDialogOpen, setNewEventDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'month' | 'listWeek'>('month');
+
+  // Read initialView from URL params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialView = params.get('initialView');
+    if (initialView === 'listWeek') {
+      setViewMode('listWeek');
+    }
+  }, []);
 
   // Fetch calendar events
   const { data: eventsData, isLoading } = useQuery<{ events: CalendarEvent[] }>({
@@ -79,14 +89,27 @@ export default function Calendar() {
   // Get all days to display in the calendar
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  // Navigate to previous month
-  const goToPreviousMonth = () => {
-    setCurrentDate(subMonths(currentDate, 1));
+  // Get week range for list view
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 }); // Sunday
+  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 }); // Saturday
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  // Navigate to previous month/week
+  const goToPrevious = () => {
+    if (viewMode === 'month') {
+      setCurrentDate(subMonths(currentDate, 1));
+    } else {
+      setCurrentDate(addWeeks(currentDate, -1));
+    }
   };
 
-  // Navigate to next month
-  const goToNextMonth = () => {
-    setCurrentDate(addMonths(currentDate, 1));
+  // Navigate to next month/week
+  const goToNext = () => {
+    if (viewMode === 'month') {
+      setCurrentDate(addMonths(currentDate, 1));
+    } else {
+      setCurrentDate(addWeeks(currentDate, 1));
+    }
   };
 
   // Navigate to today
@@ -218,16 +241,16 @@ export default function Calendar() {
             <Button
               variant="outline"
               size="icon"
-              onClick={goToPreviousMonth}
-              data-testid="button-previous-month"
+              onClick={goToPrevious}
+              data-testid="button-previous"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={goToNextMonth}
-              data-testid="button-next-month"
+              onClick={goToNext}
+              data-testid="button-next"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -242,8 +265,33 @@ export default function Calendar() {
         </div>
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-medium">
-            {format(currentDate, "MMMM yyyy")}
+            {viewMode === 'month' 
+              ? format(currentDate, "MMMM yyyy")
+              : `${format(weekStart, "MMM dd")} - ${format(weekEnd, "MMM dd, yyyy")}`
+            }
           </h2>
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            <Button
+              variant={viewMode === 'month' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('month')}
+              data-testid="button-view-month"
+              className="h-8"
+            >
+              <Grid3x3 className="h-4 w-4 mr-1" />
+              Month
+            </Button>
+            <Button
+              variant={viewMode === 'listWeek' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('listWeek')}
+              data-testid="button-view-list-week"
+              className="h-8"
+            >
+              <List className="h-4 w-4 mr-1" />
+              Week
+            </Button>
+          </div>
           <Button
             variant="outline"
             onClick={() => setLocation("/calendar/settings")}
@@ -259,23 +307,25 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* Calendar Grid */}
+      {/* Calendar Views */}
       <div className="flex-1 flex flex-col p-6 overflow-hidden">
-        {/* Days of week header */}
-        <div className="grid grid-cols-7 gap-px bg-border mb-px">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div
-              key={day}
-              className="bg-muted px-4 py-3 text-center text-sm font-medium text-muted-foreground"
-            >
-              {day}
+        {viewMode === 'month' ? (
+          <>
+            {/* Days of week header */}
+            <div className="grid grid-cols-7 gap-px bg-border mb-px">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div
+                  key={day}
+                  className="bg-muted px-4 py-3 text-center text-sm font-medium text-muted-foreground"
+                >
+                  {day}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Calendar days grid */}
-        <div className="flex-1 grid grid-cols-7 gap-px bg-border overflow-hidden">
-          {calendarDays.map((day, index) => {
+            {/* Calendar days grid */}
+            <div className="flex-1 grid grid-cols-7 gap-px bg-border overflow-hidden">
+              {calendarDays.map((day, index) => {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isTodayDate = isToday(day);
             const dayEvents = getEventsForDay(day);
@@ -407,6 +457,156 @@ export default function Calendar() {
             );
           })}
         </div>
+          </>
+        ) : (
+          // Week List View
+          <div className="flex-1 overflow-auto">
+            <div className="space-y-2">
+              {weekDays.map((day, dayIndex) => {
+                const isTodayDate = isToday(day);
+                const dayEvents = getEventsForDay(day);
+
+                return (
+                  <div
+                    key={dayIndex}
+                    className={`bg-card border rounded-lg p-4 ${isTodayDate ? 'ring-2 ring-primary' : ''}`}
+                    data-testid={`list-day-${format(day, 'yyyy-MM-dd')}`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`text-center ${isTodayDate ? 'text-primary' : 'text-muted-foreground'}`}>
+                          <div className="text-xs font-medium uppercase">{format(day, 'EEE')}</div>
+                          <div className="text-2xl font-bold">{format(day, 'd')}</div>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">{format(day, 'MMMM d, yyyy')}</h3>
+                          <p className="text-sm text-muted-foreground">{dayEvents.length} event{dayEvents.length !== 1 ? 's' : ''}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {dayEvents.length > 0 ? (
+                      <div className="space-y-2">
+                        {dayEvents.map((event, eventIndex) => {
+                          if (event.type === 'birthday') {
+                            return (
+                              <div
+                                key={`${event.personName}-${eventIndex}`}
+                                className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                onClick={() => {
+                                  if (event.policyId) {
+                                    setLocation(`/policies/${event.policyId}`);
+                                  } else if (event.quoteId) {
+                                    setLocation(`/quotes/${event.quoteId}`);
+                                  }
+                                }}
+                                data-testid={`list-event-birthday-${eventIndex}`}
+                              >
+                                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
+                                  <Cake className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-blue-900 dark:text-blue-100">{event.title}</h4>
+                                  <p className="text-sm text-blue-700 dark:text-blue-300">{event.role}</p>
+                                </div>
+                              </div>
+                            );
+                          } else if (event.type === 'appointment') {
+                            const statusColors = {
+                              pending: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/30',
+                              confirmed: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30',
+                              cancelled: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30',
+                              completed: 'bg-gray-50 dark:bg-gray-800/20 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/30',
+                            };
+                            const bgClass = statusColors[event.status as keyof typeof statusColors] || statusColors.pending;
+
+                            return (
+                              <div
+                                key={`${event.appointmentId}-${eventIndex}`}
+                                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${bgClass}`}
+                                onClick={() => handleAppointmentClick(event)}
+                                data-testid={`list-event-appointment-${eventIndex}`}
+                              >
+                                <div className="flex-shrink-0 w-10 h-10 bg-white/50 dark:bg-black/20 rounded-full flex items-center justify-center">
+                                  <CalendarIcon className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-medium">{event.title}</h4>
+                                    <Badge variant={getStatusVariant(event.status)}>
+                                      {getStatusLabel(event.status)}
+                                    </Badge>
+                                  </div>
+                                  {event.appointmentTime && (
+                                    <p className="text-sm font-medium mb-1">{formatTimeWithAMPM(event.appointmentTime)}</p>
+                                  )}
+                                  {event.appointmentPhone && (
+                                    <p className="text-sm text-muted-foreground">
+                                      {(() => {
+                                        const cleaned = event.appointmentPhone.replace(/\D/g, "");
+                                        if (cleaned.length === 10) {
+                                          return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+                                        }
+                                        return event.appointmentPhone;
+                                      })()}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            const priorityColors = {
+                              urgent: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30',
+                              high: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/30',
+                              medium: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-100 dark:hover:bg-yellow-900/30',
+                              low: 'bg-gray-50 dark:bg-gray-800/20 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/30',
+                            };
+                            const bgClass = priorityColors[event.priority as keyof typeof priorityColors] || priorityColors.medium;
+
+                            return (
+                              <div
+                                key={`${event.reminderId}-${eventIndex}`}
+                                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${bgClass}`}
+                                onClick={() => handleReminderClick(event)}
+                                data-testid={`list-event-reminder-${eventIndex}`}
+                              >
+                                <div className="flex-shrink-0 w-10 h-10 bg-white/50 dark:bg-black/20 rounded-full flex items-center justify-center">
+                                  <Bell className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium">
+                                    {event.title || event.description || event.reminderType?.replace(/_/g, ' ') || 'Reminder'}
+                                    {event.clientName && ` - ${event.clientName}`}
+                                  </h4>
+                                  {event.dueTime && (
+                                    <p className="text-sm font-medium mb-1">{event.dueTime}</p>
+                                  )}
+                                  {event.description && event.title !== event.description && (
+                                    <p className="text-sm text-muted-foreground">{event.description}</p>
+                                  )}
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="outline" className="text-xs">
+                                      {event.priority || 'medium'} priority
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <CalendarIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No events for this day</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Appointment Details Dialog */}

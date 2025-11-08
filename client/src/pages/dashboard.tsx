@@ -74,7 +74,7 @@ export default function Dashboard() {
       icon: Cake,
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
-      link: "/calendar",
+      link: "/calendar?initialView=listWeek",
     },
     {
       count: failedLoginAttempts,
