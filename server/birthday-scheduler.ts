@@ -1,11 +1,12 @@
 import cron from 'node-cron';
 import { db } from './db.js';
-import { users, birthdayImages, userBirthdaySettings, birthdayGreetingHistory, companies, quotes, quoteMembers, policies, policyMembers, manualContacts, manualBirthdays } from '../shared/schema.js';
+import { users, birthdayImages, userBirthdaySettings, birthdayGreetingHistory, companies, quotes, quoteMembers, policies, policyMembers, manualContacts, manualBirthdays, notifications } from '../shared/schema.js';
 import { eq, and, sql, isNotNull } from 'drizzle-orm';
 import twilio from 'twilio';
-import { formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone, format } from 'date-fns-tz';
 import { formatForDisplay } from '../shared/phone.js';
 import { storage } from './storage.js';
+import { broadcastNotificationUpdate } from './websocket.js';
 
 let schedulerRunning = false;
 
@@ -242,6 +243,10 @@ export function startBirthdayScheduler() {
 
           console.log(`[BIRTHDAY SCHEDULER] Found ${todaysBirthdays.length} birthday(s) today in company ${company.name}`);
 
+          // Track successfully sent greetings for notification
+          let sentCount = 0;
+          const sentNames: string[] = [];
+
           // Process each birthday
           for (const birthday of todaysBirthdays) {
             try {
@@ -343,8 +348,41 @@ export function startBirthdayScheduler() {
 
               console.log(`[BIRTHDAY SCHEDULER] Birthday greeting recorded for ${birthday.name}`);
 
+              // Track successful sends
+              if (status === 'sent' || status === 'queued' || status === 'pending') {
+                sentCount++;
+                sentNames.push(birthday.name.split(' ')[0]); // First name only
+              }
+
             } catch (error) {
               console.error(`[BIRTHDAY SCHEDULER] Error processing birthday for ${birthday.name}:`, error);
+            }
+          }
+
+          // Create notification if any greetings were sent
+          if (sentCount > 0) {
+            try {
+              const formattedDate = format(now, 'MMMM d, yyyy', { timeZone: companyTimezone });
+              const notificationMessage = sentCount === 1 
+                ? `Birthday greeting sent to ${sentNames[0]} on ${formattedDate}`
+                : `Birthday greetings sent to all ${sentCount} birthday contacts on ${formattedDate}`;
+
+              await db.insert(notifications).values({
+                userId: senderUser.id,
+                type: 'success',
+                title: 'Birthday Greetings Sent',
+                message: notificationMessage,
+                link: '/settings?tab=automations',
+                isRead: false,
+                createdAt: new Date(),
+              });
+
+              console.log(`[BIRTHDAY SCHEDULER] Notification created for user ${senderUser.email}: ${sentCount} greetings sent`);
+              
+              // Broadcast notification update
+              broadcastNotificationUpdate();
+            } catch (notificationError) {
+              console.error('[BIRTHDAY SCHEDULER] Error creating notification:', notificationError);
             }
           }
 
