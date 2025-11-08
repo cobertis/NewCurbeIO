@@ -4055,24 +4055,19 @@ function AutomationsTab() {
     <div className="space-y-4">
       {/* Birthday Settings Card */}
       <Card>
-        <CardHeader>
-          <CardTitle>Birthday Automation Settings</CardTitle>
-          <CardDescription>
-            Configure automated birthday SMS greetings for contacts in your company
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Birthday Automation</CardTitle>
+          <CardDescription className="text-xs">
+            Automated birthday greetings via SMS
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left Column: Configuration */}
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* Enable/Disable Switch */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <label className="text-sm font-medium">Enable Birthday Greetings</label>
-                  <p className="text-sm text-muted-foreground">
-                    Automatically send birthday SMS messages to contacts
-                  </p>
-                </div>
+              <div className="flex items-center justify-between py-1">
+                <label className="text-sm font-medium">Enable</label>
                 <Switch
                   checked={formData.isEnabled}
                   onCheckedChange={(checked) => {
@@ -4084,69 +4079,56 @@ function AutomationsTab() {
               </div>
 
               {/* Image Selector */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium">Birthday Image</label>
-                <p className="text-sm text-muted-foreground">
-                  Choose from available images or upload your own
-                </p>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Image</label>
                 
-                {/* Select from available images */}
                 {images.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground">Select from gallery</label>
-                    <Select
-                      value={formData.selectedImageId || "none"}
-                      onValueChange={(value) => {
-                        setFormData({ ...formData, selectedImageId: value === "none" ? null : value });
-                        if (!isEditing) setIsEditing(true);
-                      }}
-                    >
-                      <SelectTrigger data-testid="select-birthday-image">
-                        <SelectValue placeholder="Select an image" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Image</SelectItem>
-                        {images.map((image) => (
-                          <SelectItem key={image.id} value={image.id}>
-                            {image.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select
+                    value={formData.selectedImageId || "none"}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, selectedImageId: value === "none" ? null : value });
+                      if (!isEditing) setIsEditing(true);
+                    }}
+                  >
+                    <SelectTrigger data-testid="select-birthday-image" className="h-9">
+                      <SelectValue placeholder="Select image" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Image</SelectItem>
+                      {images.map((image) => (
+                        <SelectItem key={image.id} value={image.id}>
+                          {image.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 
-                {/* Upload custom image */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">Or upload your own</label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          const base64 = reader.result as string;
-                          setFormData({ ...formData, selectedImageId: base64 });
-                          if (!isEditing) setIsEditing(true);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    data-testid="input-custom-image"
-                  />
-                </div>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const base64 = reader.result as string;
+                        setFormData({ ...formData, selectedImageId: base64 });
+                        if (!isEditing) setIsEditing(true);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="h-9"
+                  data-testid="input-custom-image"
+                />
               </div>
 
               {/* Custom Message */}
               <div className="space-y-2">
                 <label htmlFor="custom-message" className="text-sm font-medium">
-                  Custom Birthday Message
+                  Message <span className="text-xs text-muted-foreground">({"{CLIENT_NAME}"}, {"{AGENT_NAME}"})</span>
                 </label>
-                <p className="text-sm text-muted-foreground">
-                  Use {"{CLIENT_NAME}"} and {"{AGENT_NAME}"} for personalization
-                </p>
                 <Textarea
                   id="custom-message"
                   value={formData.customMessage}
@@ -4155,26 +4137,28 @@ function AutomationsTab() {
                     if (!isEditing) setIsEditing(true);
                   }}
                   placeholder="¡Feliz Cumpleaños {CLIENT_NAME}!&#10;&#10;Te deseamos el mejor de los éxitos en este nuevo año de vida.&#10;&#10;Te saluda {AGENT_NAME}, tu agente de seguros."
-                  rows={6}
-                  className="resize-none"
+                  rows={4}
+                  className="resize-none text-sm"
                   data-testid="textarea-birthday-message"
                 />
               </div>
 
               {/* Action Buttons */}
               {isEditing && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <Button
                     onClick={handleSave}
                     disabled={saveSettingsMutation.isPending}
+                    size="sm"
                     data-testid="button-save-birthday-settings"
                   >
-                    {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+                    {saveSettingsMutation.isPending ? "Saving..." : "Save"}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={handleCancel}
                     disabled={saveSettingsMutation.isPending}
+                    size="sm"
                     data-testid="button-cancel-birthday-settings"
                   >
                     Cancel
@@ -4184,16 +4168,11 @@ function AutomationsTab() {
             </div>
 
             {/* Right Column: Message Preview */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Message Preview</label>
-              <p className="text-sm text-muted-foreground">
-                This is how your birthday greeting will appear
-              </p>
-              <div className="border rounded-lg p-4 bg-muted/30">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 space-y-3">
-                  {/* Image Preview */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Preview</label>
+              <div className="border rounded-lg p-3 bg-muted/30">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-2 space-y-2">
                   {formData.selectedImageId && (() => {
-                    // Check if it's a base64 image (custom upload) or an ID from gallery
                     if (formData.selectedImageId.startsWith('data:image')) {
                       return (
                         <img 
@@ -4219,8 +4198,7 @@ function AutomationsTab() {
                     return null;
                   })()}
                   
-                  {/* Message Text */}
-                  <div className="text-sm text-foreground whitespace-pre-wrap break-words">
+                  <div className="text-xs text-foreground whitespace-pre-wrap break-words">
                     {(formData.customMessage || "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.")
                       .replace('{CLIENT_NAME}', 'Juan')
                       .replace('{AGENT_NAME}', currentUser?.firstName || 'María')
