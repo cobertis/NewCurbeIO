@@ -12398,9 +12398,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Generate consent URL
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : process.env.APP_URL || 'http://localhost:5000';
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const consentUrl = `${baseUrl}/consent/${consent.token}`;
       
       let deliveryTarget = target;
@@ -17455,9 +17453,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Generate consent URL
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : process.env.APP_URL || 'http://localhost:5000';
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const consentUrl = `${baseUrl}/consent/${consent.token}`;
       
       let deliveryTarget = target;

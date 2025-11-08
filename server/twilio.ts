@@ -38,10 +38,8 @@ class TwilioService {
     }
 
     try {
-      // Build status callback URL
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-        : 'http://localhost:5000';
+      // Build status callback URL using APP_URL from environment
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const statusCallbackUrl = `${baseUrl}/api/webhooks/twilio/status`;
       
       const result = await this.client.messages.create({

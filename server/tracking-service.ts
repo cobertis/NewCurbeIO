@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 
-const APP_URL = process.env.REPLIT_DEV_DOMAIN 
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-  : 'http://localhost:5000';
+const APP_URL = process.env.APP_URL || 'http://localhost:5000';
 
 export class TrackingService {
   private secret: string;
