@@ -683,7 +683,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   // Fetch quote members to get member IDs
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
-    queryKey: ['/api/quotes', quote?.id, 'members'],
+    queryKey: [`/api/quotes/${quote?.id}/members`],
     enabled: !!quote?.id && open,
   });
 
