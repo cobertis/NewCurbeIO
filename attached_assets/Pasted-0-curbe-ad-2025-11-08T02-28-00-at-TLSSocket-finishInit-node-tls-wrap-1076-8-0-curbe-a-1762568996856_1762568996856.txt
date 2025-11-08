@@ -1,0 +1,62 @@
+0|curbe-ad | 2025-11-08T02:28:00:         at TLSSocket._finishInit (node:_tls_wrap:1076:8)
+0|curbe-ad | 2025-11-08T02:28:00:         at ssl.onhandshakedone (node:_tls_wrap:862:12) {
+0|curbe-ad | 2025-11-08T02:28:00:       code: 'ERR_TLS_CERT_ALTNAME_INVALID',
+0|curbe-ad | 2025-11-08T02:28:00:       reason: "Host: localhost. is not in the cert's altnames: DNS:app.curbe.io",
+0|curbe-ad | 2025-11-08T02:28:00:       host: 'localhost',
+0|curbe-ad | 2025-11-08T02:28:00:       cert: [Object]
+0|curbe-ad | 2025-11-08T02:28:00:     }
+0|curbe-ad | 2025-11-08T02:28:00:   }
+0|curbe-ad | 2025-11-08T02:28:00: }
+
+0|curbe-admin  | 2025-11-08T02:29:00: [REMINDER SCHEDULER] Error in scheduler: NeonDbError: Error connecting to database: fetch failed
+0|curbe-admin  | 2025-11-08T02:29:00:     at execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1549:24)
+0|curbe-admin  | 2025-11-08T02:29:00:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T02:29:00:     at async NeonHttpPreparedQuery.execute (file:///var/www/curbe/node_modules/drizzle-orm/neon-http/session.js:40:20)
+0|curbe-admin  | 2025-11-08T02:29:00:     at async file:///var/www/curbe/dist/index.js:26834:30
+0|curbe-admin  | 2025-11-08T02:29:00:     at async Timeout._onTimeout (/var/www/curbe/node_modules/node-cron/dist/esm/scheduler/runner.js:70:44) {
+0|curbe-admin  | 2025-11-08T02:29:00:   severity: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   code: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   detail: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   hint: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   position: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   internalPosition: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   internalQuery: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   where: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   schema: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   table: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   column: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   dataType: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   constraint: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   file: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   line: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   routine: undefined,
+0|curbe-admin  | 2025-11-08T02:29:00:   sourceError: TypeError: fetch failed
+0|curbe-admin  | 2025-11-08T02:29:00:       at node:internal/deps/undici/undici:13510:13
+0|curbe-admin  | 2025-11-08T02:29:00:       at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-admin  | 2025-11-08T02:29:00:       at async execute (file:///var/www/curbe/node_modules/@neondatabase/serverless/index.mjs:1548:15)
+0|curbe-admin  | 2025-11-08T02:29:00:       at async NeonHttpPreparedQuery.execute (file:///var/www/curbe/node_modules/drizzle-orm/neon-http/session.js:40:20)
+0|curbe-admin  | 2025-11-08T02:29:00:       at async file:///var/www/curbe/dist/index.js:26834:30
+0|curbe-admin  | 2025-11-08T02:29:00:       at async Timeout._onTimeout (/var/www/curbe/node_modules/node-cron/dist/esm/scheduler/runner.js:70:44) {
+0|curbe-admin  | 2025-11-08T02:29:00:     [cause]: Error [ERR_TLS_CERT_ALTNAME_INVALID]: Hostname/IP does not match certificate's altnames: Host: localhost. is not in the cert's altnames: DNS:app.curbe.io
+0|curbe-admin  | 2025-11-08T02:29:00:         at Object.checkServerIdentity (node:tls:316:12)
+0|curbe-admin  | 2025-11-08T02:29:00:         at TLSSocket.onConnectSecure (node:_tls_wrap:1687:27)
+0|curbe-admin  | 2025-11-08T02:29:00:         at TLSSocket.emit (node:events:524:28)
+0|curbe-admin  | 2025-11-08T02:29:00:         at TLSSocket._finishInit (node:_tls_wrap:1076:8)
+0|curbe-admin  | 2025-11-08T02:29:00:         at ssl.onhandshakedone (node:_tls_wrap:862:12) {
+0|curbe-admin  | 2025-11-08T02:29:00:       code: 'ERR_TLS_CERT_ALTNAME_INVALID',
+0|curbe-admin  | 2025-11-08T02:29:00:       reason: "Host: localhost. is not in the cert's altnames: DNS:app.curbe.io",
+0|curbe-admin  | 2025-11-08T02:29:00:       host: 'localhost',
+0|curbe-admin  | 2025-11-08T02:29:00:       cert: [Object]
+0|curbe-admin  | 2025-11-08T02:29:00:     }
+0|curbe-admin  | 2025-11-08T02:29:00:   }
+0|curbe-admin  | 2025-11-08T02:29:00: }
+0|curbe-admin  | 2025-11-08T02:29:03: [LOGIN-DEBUG] Login attempt for email: claudia@cobertisinsurance.com
+0|curbe-admin  | 2025-11-08T02:29:03: 2:29:03 AM [express] POST /api/login 400 in 8ms :: {"message":"Invalid request"}
+^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OB^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[OA^[Ol^[Ov^[Ov^[Ov0|curbe-admin  | 2025-11-08T02:29:24: 2:29:24 AM [express] GET /api/session 401 in 1ms :: {"message":"Not authenticated"}
+0|curbe-admin  | 2025-11-08T02:29:24: 2:29:24 AM [express] GET /api/session 401 in 1ms :: {"message":"Not authenticated"}
+0|curbe-admin  | 2025-11-08T02:29:24: 2:29:24 AM [express] GET /api/session 401 in 0ms :: {"message":"Not authenticated"}
+0|curbe-admin  | 2025-11-08T02:29:24: 2:29:24 AM [express] GET /api/session 401 in 1ms :: {"message":"Not authenticated"}
+0|curbe-admin  | 2025-11-08T02:29:37: [LOGIN-DEBUG] Login attempt for email: claudia@cobertisinsurance.com
+0|curbe-admin  | 2025-11-08T02:29:37: 2:29:37 AM [express] POST /api/login 400 in 7ms :: {"message":"Invalid request"}
+^[OA^[OA^[OA^[OA^[OA^[OA^[OB^[OB^C
+root@ubuntu:/var/www/curbe# 
