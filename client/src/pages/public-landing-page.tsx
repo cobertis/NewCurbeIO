@@ -364,15 +364,37 @@ export default function PublicLandingPage() {
       >
         {/* Profile Info - COMPACT and CLEAN */}
         {(landingPage.profileName || landingPage.profileBio) && (
-          <div className="relative z-50 text-center mb-4 -mt-2 landing-profile-name">
+          <div 
+            className="relative z-50 text-center mb-4 -mt-2 landing-profile-name"
+            style={{ 
+              marginBottom: "16px",
+              border: "none",
+              borderBottom: "none",
+              boxShadow: "none",
+              outline: "none",
+            }}
+          >
             {landingPage.profileName && (
-              <div className="flex items-center justify-center gap-1.5 mb-1">
+              <div 
+                className="flex items-center justify-center gap-1.5 mb-1"
+                style={{
+                  border: "none",
+                  borderBottom: "none",
+                  boxShadow: "none",
+                  outline: "none",
+                }}
+              >
                 <h1
                   className="text-2xl font-bold"
                   style={{ 
                     color: "#000000",
                     margin: 0,
                     padding: 0,
+                    border: "none",
+                    borderBottom: "none",
+                    boxShadow: "none",
+                    outline: "none",
+                    textDecoration: "none",
                   }}
                   data-testid="profile-name"
                 >
@@ -386,6 +408,7 @@ export default function PublicLandingPage() {
             {landingPage.profileBio && (
               <p
                 className="text-sm leading-relaxed text-gray-600"
+                style={{ margin: 0, padding: 0, border: "none" }}
                 data-testid="profile-bio"
               >
                 {landingPage.profileBio}

@@ -426,48 +426,93 @@
     animation: pulse-glow 3s ease-in-out infinite;
   }
 
-  /* Remove any borders from landing page profile section - Override @tailwindcss/typography */
+  /* CRITICAL: Remove ALL borders/lines from landing page profile section - Override @tailwindcss/typography */
+  .landing-profile-name,
+  .landing-profile-name *,
   .landing-profile-name h1,
   .landing-profile-name h2,
   .landing-profile-name h3,
   .landing-profile-name h4,
   .landing-profile-name h5,
   .landing-profile-name h6,
-  .landing-profile-name,
-  .landing-profile-name *,
   .landing-profile-name div,
   .landing-profile-name > *,
-  .landing-profile-name > div > * {
-    border: none !important;
-    border-top: none !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    border-left: none !important;
+  .landing-profile-name > div > *,
+  .landing-profile-name p,
+  .landing-profile-name span,
+  .landing-profile-name a {
+    border: 0 !important;
+    border-top: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
     text-decoration: none !important;
+    text-decoration-line: none !important;
+    text-decoration-style: none !important;
+    text-decoration-color: transparent !important;
     box-shadow: none !important;
     outline: none !important;
+    outline-width: 0 !important;
+    outline-style: none !important;
+    outline-color: transparent !important;
   }
   
-  /* Remove all pseudo-elements that could create lines */
+  /* Remove ALL pseudo-elements that could create lines */
   .landing-profile-name::before,
   .landing-profile-name::after,
+  .landing-profile-name *::before,
+  .landing-profile-name *::after,
   .landing-profile-name h1::before,
   .landing-profile-name h1::after,
+  .landing-profile-name h2::before,
+  .landing-profile-name h2::after,
   .landing-profile-name div::before,
   .landing-profile-name div::after,
-  .landing-profile-name *::before,
-  .landing-profile-name *::after {
+  .landing-profile-name p::before,
+  .landing-profile-name p::after,
+  .landing-profile-name span::before,
+  .landing-profile-name span::after {
     display: none !important;
     content: none !important;
-    border: none !important;
+    content: "" !important;
+    border: 0 !important;
+    border-width: 0 !important;
+    border-style: none !important;
     background: none !important;
+    background-color: transparent !important;
+    background-image: none !important;
     height: 0 !important;
     width: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
   }
   
-  /* Extra specific override for Typography plugin */
+  /* Nuclear option: Target typography plugin styles directly */
+  .prose .landing-profile-name h1,
+  .prose .landing-profile-name h2,
+  .prose .landing-profile-name h3,
+  article .landing-profile-name h1,
+  article .landing-profile-name h2,
+  .landing-profile-name h1.text-2xl,
   .landing-profile-name h1.text-2xl.font-bold {
     border: 0 !important;
     border-bottom: 0 !important;
+    border-width: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  
+  /* Override any possible hr or separator elements */
+  .landing-profile-name hr,
+  .landing-profile-name + hr,
+  .landing-profile-name ~ hr {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    border: 0 !important;
   }
 }
