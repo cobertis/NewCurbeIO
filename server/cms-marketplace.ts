@@ -325,10 +325,13 @@ async function fetchSinglePage(
   const offset = (currentPage - 1) * limit;
 
   // Build request body following the EXACT structure from documentation
-  // IMPORTANTE: limit y offset van en el body, no en la URL
+  // CRITICAL: CMS API expects MONTHLY income, not annual
+  // We receive annual income from the database, so we divide by 12
+  const monthlyIncome = quoteData.householdIncome / 12;
+  
   const requestBody: any = {
     household: {
-      income: quoteData.householdIncome, // Ingreso anual del hogar
+      income: monthlyIncome, // MONTHLY household income (annual / 12)
       people: people, // Array de personas
       has_married_couple: hasMarriedCouple, // CRITICAL: Required for accurate APTC calculation for couples
     },
@@ -357,6 +360,7 @@ async function fetchSinglePage(
 
   if (page === 1) {
     console.log(`[CMS_MARKETPLACE] 📊 Página ${currentPage}: Solicitando hasta ${limit} planes, offset: ${offset}`);
+    console.log(`[CMS_MARKETPLACE] 💰 Income: $${quoteData.householdIncome}/year = $${monthlyIncome.toFixed(2)}/month`);
     console.log('[CMS_MARKETPLACE] Request body:', JSON.stringify(requestBody, null, 2));
   }
 
