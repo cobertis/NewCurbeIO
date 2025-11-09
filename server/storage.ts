@@ -4392,7 +4392,7 @@ export class DbStorage implements IStorage {
     // Create agent alias for join
     const agent = alias(users, 'agent');
     
-    // Execute single optimized query with agent JOIN
+    // Execute single optimized query with agent and primary plan JOINs
     const results = await db
       .select({
         id: policies.id,
@@ -4416,6 +4416,7 @@ export class DbStorage implements IStorage {
         physical_state: policies.physical_state,
         physical_postal_code: policies.physical_postal_code,
         selectedPlan: policies.selectedPlan,
+        primaryPlanData: policyPlans.planData,
         agentId: policies.agentId,
         agentFirstName: agent.firstName,
         agentLastName: agent.lastName,
@@ -4423,6 +4424,10 @@ export class DbStorage implements IStorage {
       })
       .from(policies)
       .leftJoin(agent, eq(policies.agentId, agent.id))
+      .leftJoin(policyPlans, and(
+        eq(policyPlans.policyId, policies.id),
+        eq(policyPlans.isPrimary, true)
+      ))
       .where(and(...conditions))
       .orderBy(desc(policies.effectiveDate), desc(policies.id))
       .limit(limit + 1); // Fetch one extra to determine if there's a next page
@@ -4460,7 +4465,8 @@ export class DbStorage implements IStorage {
       physical_city: item.physical_city,
       physical_state: item.physical_state,
       physical_postal_code: item.physical_postal_code,
-      selectedPlan: item.selectedPlan,
+      // Use primaryPlanData from policy_plans if selectedPlan is null (legacy field)
+      selectedPlan: item.selectedPlan || item.primaryPlanData || null,
       agentId: item.agentId,
       agentName: item.agentFirstName && item.agentLastName 
         ? `${item.agentFirstName} ${item.agentLastName}`.trim()
