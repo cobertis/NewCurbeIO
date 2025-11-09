@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { formatPhoneInput } from "@shared/phone";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
 import {
   DndContext,
   closestCenter,
@@ -935,8 +935,7 @@ export default function LandingPageBuilder() {
 
   // Fetch company data to get logo
   const { data: companyData } = useQuery<{ company: any }>({
-    queryKey: ["/api/companies", currentUser?.companyId],
-    enabled: !!currentUser?.companyId,
+    ...getCompanyQueryOptions(currentUser?.companyId),
   });
 
   // Sensors for drag and drop

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { queryClient, getCompanyQueryOptions } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -143,10 +143,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const user = userData?.user;
 
-  // Fetch company data for non-superadmin users
+  // Fetch company data for all users with a companyId
   const { data: companyData } = useQuery<{ company: any }>({
-    queryKey: ["/api/companies", user?.companyId],
-    enabled: !!user?.companyId && user?.role !== "superadmin",
+    ...getCompanyQueryOptions(user?.companyId),
   });
 
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";

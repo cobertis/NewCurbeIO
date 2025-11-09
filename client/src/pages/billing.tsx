@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -308,8 +308,7 @@ export default function Billing() {
 
   // Fetch company data
   const { data: companyData } = useQuery<{ company?: any }>({
-    queryKey: ['/api/companies', user?.companyId],
-    enabled: !!user?.companyId,
+    ...getCompanyQueryOptions(user?.companyId),
   });
 
   const company = companyData?.company;

@@ -6,12 +6,19 @@
 
 import { useLocation } from "wouter";
 import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { getQueriesForRoute } from "@/lib/route-queries";
+import { getRoleAwareQueries } from "@/lib/route-queries";
+import type { User } from "@shared/schema";
 
 export function usePrefetchedNavigation() {
   const [, setLocation] = useLocation();
   const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Get current user session to access role
+  const { data: userData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
 
   const navigateWithPrefetch = useCallback(async (url: string) => {
     // Don't navigate if already navigating
@@ -20,8 +27,8 @@ export function usePrefetchedNavigation() {
     setIsNavigating(true);
 
     try {
-      // Get queries needed for the target route
-      const queries = getQueriesForRoute(url);
+      // Get role-aware queries needed for the target route
+      const queries = getRoleAwareQueries(url, userData?.user?.role);
 
       // Ensure all queries have data before navigating
       // This will fetch if not in cache, or use cached data if available
@@ -43,7 +50,7 @@ export function usePrefetchedNavigation() {
     } finally {
       setIsNavigating(false);
     }
-  }, [isNavigating, setLocation]);
+  }, [isNavigating, setLocation, userData?.user?.role]);
 
   return {
     navigateWithPrefetch,

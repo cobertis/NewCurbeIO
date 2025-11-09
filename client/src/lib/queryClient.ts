@@ -111,3 +111,16 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export const getCompanyQueryOptions = (companyId: string | undefined) => ({
+  queryKey: ["/api/companies", companyId],
+  queryFn: async () => {
+    if (!companyId) throw new Error("No company ID");
+    const res = await fetch(`/api/companies/${companyId}`, {
+      credentials: 'include',
+    });
+    await throwIfResNotOk(res);
+    return await res.json();
+  },
+  enabled: !!companyId,
+});

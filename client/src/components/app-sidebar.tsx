@@ -36,8 +36,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import { getQueriesForRoute } from "@/lib/route-queries";
+import { queryClient, getCompanyQueryOptions } from "@/lib/queryClient";
+import { getRoleAwareQueries } from "@/lib/route-queries";
 import {
   Sidebar,
   SidebarContent,
@@ -221,7 +221,7 @@ export function AppSidebar() {
 
   // Prefetch route data on hover/focus/touch/click
   const handlePrefetch = (url: string) => {
-    const queries = getQueriesForRoute(url);
+    const queries = getRoleAwareQueries(url, userData?.user?.role);
     queries.forEach((queryDescriptor) => {
       queryClient.prefetchQuery({
         queryKey: queryDescriptor.queryKey,
@@ -232,8 +232,7 @@ export function AppSidebar() {
 
   // Get company data to access the logo
   const { data: companyData, isSuccess: companyDataLoaded } = useQuery<{ company: { logo?: string } }>({
-    queryKey: ["/api/companies", userData?.user?.companyId],
-    enabled: !!userData?.user?.companyId,
+    ...getCompanyQueryOptions(userData?.user?.companyId),
   });
 
   // Get BulkVS threads to count unread messages

@@ -6,6 +6,7 @@
 export type RouteQueryDescriptor = {
   queryKey: unknown[];
   staleTime?: number;
+  roles?: string[];
 };
 
 /**
@@ -35,10 +36,10 @@ export const routeQueries: Record<string, RouteQueryDescriptor[]> = {
     { queryKey: ["/api/policies"], staleTime: 300000 },
   ],
   
-  // Contacts - stable data
+  // Contacts - stable data (Superadmin only)
   "/contacts": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/contacts"], staleTime: 600000 },
+    { queryKey: ["/api/contacts"], staleTime: 600000, roles: ["superadmin"] },
   ],
   
   // Tasks - frequently updated
@@ -92,27 +93,27 @@ export const routeQueries: Record<string, RouteQueryDescriptor[]> = {
   // Superadmin routes
   "/users": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/users"], staleTime: 300000 },
+    { queryKey: ["/api/users"], staleTime: 300000, roles: ["superadmin"] },
   ],
   
   "/companies": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/companies"], staleTime: 300000 },
+    { queryKey: ["/api/companies"], staleTime: 300000, roles: ["superadmin"] },
   ],
   
   "/plans": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/plans"], staleTime: 600000 },
+    { queryKey: ["/api/plans"], staleTime: 600000, roles: ["superadmin"] },
   ],
   
   "/features": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/features"], staleTime: 600000 },
+    { queryKey: ["/api/features"], staleTime: 600000, roles: ["superadmin"] },
   ],
   
   "/invoices": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/invoices"], staleTime: 300000 },
+    { queryKey: ["/api/invoices"], staleTime: 300000, roles: ["superadmin"] },
   ],
   
   "/billing": [
@@ -122,32 +123,32 @@ export const routeQueries: Record<string, RouteQueryDescriptor[]> = {
   
   "/audit-logs": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/activity-logs"], staleTime: 300000 },
+    { queryKey: ["/api/activity-logs"], staleTime: 300000, roles: ["superadmin"] },
   ],
   
   "/tickets": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/tickets"], staleTime: 300000 },
+    { queryKey: ["/api/tickets"], staleTime: 300000, roles: ["superadmin"] },
   ],
   
   "/campaigns": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/campaigns"], staleTime: 300000 },
+    { queryKey: ["/api/campaigns"], staleTime: 300000, roles: ["superadmin"] },
   ],
   
   "/incoming-sms": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/incoming-sms"], staleTime: 60000 },
+    { queryKey: ["/api/incoming-sms"], staleTime: 60000, roles: ["superadmin"] },
   ],
   
   "/system-alerts": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/system-alerts"], staleTime: 60000 },
+    { queryKey: ["/api/system-alerts"], staleTime: 60000, roles: ["superadmin"] },
   ],
   
   "/email-configuration": [
     { queryKey: ["/api/session"], staleTime: 60000 },
-    { queryKey: ["/api/email-templates"], staleTime: 600000 },
+    { queryKey: ["/api/email-templates"], staleTime: 600000, roles: ["superadmin"] },
   ],
 };
 
@@ -156,6 +157,18 @@ export const routeQueries: Record<string, RouteQueryDescriptor[]> = {
  */
 export function getQueriesForRoute(route: string): RouteQueryDescriptor[] {
   return routeQueries[route] || [];
+}
+
+/**
+ * Get role-aware query descriptors for a given route
+ * Filters out queries that require roles the user doesn't have
+ */
+export function getRoleAwareQueries(route: string, userRole?: string): RouteQueryDescriptor[] {
+  const queries = routeQueries[route] || [];
+  return queries.filter(q => {
+    if (!q.roles) return true; // Public query - no role required
+    return q.roles.includes(userRole || "");
+  });
 }
 
 /**
