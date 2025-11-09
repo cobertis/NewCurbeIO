@@ -7,6 +7,7 @@ import { formatForDisplay } from '../shared/phone.js';
 import { storage } from './storage.js';
 import { broadcastNotificationUpdate } from './websocket.js';
 import { twilioService } from './twilio.js';
+import { buildBirthdayMessage } from '../shared/birthday-message.js';
 
 let schedulerRunning = false;
 
@@ -309,17 +310,11 @@ export function startBirthdayScheduler() {
               }
 
               // Prepare SMS message with personalization (first name only)
-              const defaultMessage = "🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros. 🎊";
-              
-              // Extract first name from client's full name
-              const clientFirstName = birthday.name.split(' ')[0];
-              
-              // Use agent's first name only
-              const agentFirstName = senderUser.firstName || senderUser.email.split('@')[0];
-              
-              const messageBody = (senderSettings.customMessage || defaultMessage)
-                .replace('{CLIENT_NAME}', clientFirstName)
-                .replace('{AGENT_NAME}', agentFirstName);
+              const messageBody = buildBirthdayMessage({
+                clientFullName: birthday.name,
+                agentFirstName: senderUser.firstName || senderUser.email.split('@')[0],
+                customMessage: senderSettings.customMessage,
+              });
 
               console.log(`[BIRTHDAY SCHEDULER] Processing birthday for ${birthday.name} (${birthday.phone})...`);
               console.log(`[BIRTHDAY SCHEDULER] Image URL: ${imageUrl || 'none'}`);
