@@ -139,6 +139,7 @@ export async function fetchHouseholdEligibility(
     county: string;
     state: string;
     householdIncome: number;
+    effectiveDate?: string;
     client: {
       dateOfBirth: string;
       gender?: string;
@@ -167,11 +168,14 @@ export async function fetchHouseholdEligibility(
 
   const year = yearOverride || new Date().getFullYear();
   
+  // CRITICAL FIX: Use effective date for age calculation (same as fetchSinglePage)
+  const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
+  
   // Build people array using ONLY the minimal required fields
   const people = [];
   
-  // Add client
-  const clientAge = calculateAge(quoteData.client.dateOfBirth);
+  // Add client - calculate age against effective date
+  const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
     age: clientAge,
     aptc_eligible: true,
@@ -179,11 +183,11 @@ export async function fetchHouseholdEligibility(
     uses_tobacco: quoteData.client.usesTobacco || false,
   });
   
-  // Add spouses
+  // Add spouses - calculate age against effective date
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const isApplicant = spouse.aptc_eligible !== false;
-      const spouseAge = calculateAge(spouse.dateOfBirth);
+      const spouseAge = calculateAge(spouse.dateOfBirth, effectiveDateForAge);
       people.push({
         age: spouseAge,
         aptc_eligible: isApplicant,
@@ -193,11 +197,11 @@ export async function fetchHouseholdEligibility(
     });
   }
   
-  // Add dependents
+  // Add dependents - calculate age against effective date
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
-      const dependentAge = calculateAge(dependent.dateOfBirth);
+      const dependentAge = calculateAge(dependent.dateOfBirth, effectiveDateForAge);
       people.push({
         age: dependentAge,
         aptc_eligible: needsInsurance,

@@ -20,6 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   Shield,
   Loader2,
   ChevronLeft,
@@ -184,32 +193,16 @@ export default function MarketplacePlansPage() {
     },
   });
 
-  // State for marketplace plans and pagination
-  const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
-  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
-  const [isLoadingMorePlans, setIsLoadingMorePlans] = useState(false);
-  const [serverPage, setServerPage] = useState(1); // Track current server-side page
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(100); // 100 plans per page (CMS API maximum)
+  const pageSize = 10; // Show 10 plans per page
 
-  // Auto-fetch marketplace plans when component mounts
-  useEffect(() => {
-    if (quoteId && !marketplacePlans && !isLoadingPlans) {
-      fetchMarketplacePlans();
-    }
-  }, [quoteId]);
-
-  const fetchMarketplacePlans = async () => {
-    if (!quoteId) return;
-    
-    setIsLoadingPlans(true);
-    try {
-      console.log(`🚀 Loading marketplace plans for ${isPolicy ? 'Policy' : 'Quote'}: ${quoteId}`);
-
-      // Fetch first page - backend returns EXACTLY what CMS API returns (no modifications)
-      // Using pageSize=100 (CMS API maximum) to load more plans per request
+  // Fetch marketplace plans with useQuery (with pagination)
+  const { data: marketplacePlans, isLoading: isLoadingPlans } = useQuery({
+    queryKey: ['/api/', basePath, quoteId, 'marketplace-plans', { page: currentPage }],
+    queryFn: async () => {
       const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=100`,
+        `/api/${basePath}/${quoteId}/marketplace-plans?page=${currentPage}&pageSize=${pageSize}`,
         {
           method: 'GET',
           headers: {
@@ -227,148 +220,20 @@ export default function MarketplacePlansPage() {
 
       const data = await response.json();
       
-      // Display EXACTLY what the CMS API returned - NO modifications
-      const totalPlansAvailable = data.total || 0;
-      const plansInResponse = data.plans?.length || 0;
-      
-      console.log(`📊 CMS API Response - Page 1:`);
-      console.log(`  - Total plans available: ${totalPlansAvailable}`);
-      console.log(`  - Plans in this page: ${plansInResponse}`);
+      console.log(`📊 CMS API Response - Page ${currentPage}:`);
+      console.log(`  - Total plans available: ${data.total || 0}`);
+      console.log(`  - Plans in this page: ${data.plans?.length || 0}`);
       console.log(`  - household_aptc (from API): ${data.household_aptc || 'Not provided'}`);
-      console.log(`  - household_csr (from API): ${data.household_csr || 'Not provided'}`);
       
-      // Calculate and log APTC for each plan
-      if (data.plans && data.plans.length > 0) {
-        console.log(`💰 APTC breakdown per plan:`);
-        data.plans.forEach((plan: any, idx: number) => {
-          const aptcAmount = plan.premium - (plan.premium_w_credit || plan.premium);
-          if (aptcAmount > 0) {
-            console.log(`  Plan ${idx + 1}: APTC = $${aptcAmount.toFixed(2)}/month (${plan.issuer?.name || 'Unknown'})`);
-          }
-        });
-      }
-      
-      // Store the API response exactly as received
-      const apiRequestData = data.request_data || {
-        household_income: (quoteData as any)?.totalHouseholdIncome || quote?.householdIncome || 0,
-        people_count: totalApplicants,
-        location: {
-          zip: quote?.zipCode,
-          state: quote?.state,
-          county: quote?.county
-        }
-      };
-      
-      const marketplaceMetadata = {
-        year: data.year,
-        household_aptc: data.household_aptc,
-        household_csr: data.household_csr,
-        household_slcsp_premium: data.household_slcsp_premium,
-        household_lcbp_premium: data.household_lcbp_premium,
-        request_data: apiRequestData,
-      };
-      
-      console.log(`💰 Total household APTC from CMS API: ${data.household_aptc}`);
+      return data;
+    },
+    enabled: !!quoteId,
+  });
 
-      // Set plans EXACTLY as returned by the API - NO modifications
-      const exactApiData = {
-        ...marketplaceMetadata,
-        plans: data.plans || [],
-        total: totalPlansAvailable, // EXACT total from API
-      };
-
-      setMarketplacePlans(exactApiData);
-      setServerPage(1); // Reset server page to 1
-      setCurrentPage(1);
-      
-      console.log(`✅ Initial load: Showing ${plansInResponse} of ${totalPlansAvailable} plans`);
-      
-      toast({
-        title: "Plans loaded",
-        description: `Loaded first ${plansInResponse} of ${totalPlansAvailable} available plans. Use "Load More" to see additional plans.`,
-      });
-    } catch (error: any) {
-      console.error('Error fetching marketplace plans:', error);
-      toast({
-        variant: "destructive",
-        title: "Error fetching plans",
-        description: error.message || "Failed to fetch marketplace plans",
-      });
-    } finally {
-      setIsLoadingPlans(false);
-    }
-  };
-
-  // Load more plans from server (next page)
-  const loadMorePlans = async () => {
-    if (!quoteId || !marketplacePlans) return;
-    
-    const nextPage = serverPage + 1;
-    setIsLoadingMorePlans(true);
-    
-    try {
-      console.log(`📄 Loading page ${nextPage} of marketplace plans...`);
-
-      const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?page=${nextPage}&pageSize=100`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          credentials: 'include',
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to fetch more plans');
-      }
-
-      const data = await response.json();
-      const newPlans = data.plans || [];
-      
-      console.log(`📊 CMS API Response - Page ${nextPage}:`);
-      console.log(`  - Plans in this page: ${newPlans.length}`);
-      
-      // Calculate and log APTC for new plans
-      if (newPlans.length > 0) {
-        console.log(`💰 APTC breakdown for new plans:`);
-        newPlans.forEach((plan: any, idx: number) => {
-          const aptcAmount = plan.premium - (plan.premium_w_credit || plan.premium);
-          if (aptcAmount > 0) {
-            console.log(`  Plan ${idx + 1}: APTC = $${aptcAmount.toFixed(2)}/month (${plan.issuer?.name || 'Unknown'})`);
-          }
-        });
-      }
-      
-      // Append new plans to existing plans
-      setMarketplacePlans((prev: any) => ({
-        ...prev,
-        plans: [...prev.plans, ...newPlans],
-      }));
-      
-      setServerPage(nextPage);
-      
-      const totalLoaded = marketplacePlans.plans.length + newPlans.length;
-      console.log(`✅ Loaded page ${nextPage}: Now showing ${totalLoaded} of ${marketplacePlans.total} plans`);
-      
-      toast({
-        title: "More plans loaded",
-        description: `Now showing ${totalLoaded} of ${marketplacePlans.total} available plans`,
-      });
-    } catch (error: any) {
-      console.error('Error loading more plans:', error);
-      toast({
-        variant: "destructive",
-        title: "Error loading more plans",
-        description: error.message || "Failed to load additional plans",
-      });
-    } finally {
-      setIsLoadingMorePlans(false);
-    }
-  };
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   // Helper functions
   const formatCurrency = (amount: number) => {
@@ -402,140 +267,12 @@ export default function MarketplacePlansPage() {
     .map(([name, count]) => ({ name, count: count as number }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Filter and sort all plans
-  const allFilteredPlans = marketplacePlans?.plans?.filter((plan: any) => {
-    // Legacy filters (for backwards compatibility)
-    if (metalLevelFilter !== "all" && !plan.metal_level?.toLowerCase().includes(metalLevelFilter)) {
-      return false;
-    }
-    if (planTypeFilter !== "all" && plan.type !== planTypeFilter) {
-      return false;
-    }
-    
-    // Premium filter - compare against the actual price the user sees (with APTC if available)
-    if (maxPremium < 3000) { // Only filter if slider moved from max
-      const actualPremium = plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
-        ? plan.premium_w_credit 
-        : plan.premium;
-      if (actualPremium > maxPremium) {
-        return false;
-      }
-    }
-    
-    // Deductible filter - use SAME logic as UI display
-    if (maxDeductible < 10000) { // Only filter if slider moved from max
-      const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
-      const familyDeductible = plan.deductibles?.find((d: any) => d.family);
-      const mainDeductible = individualDeductible || familyDeductible || plan.deductibles?.[0];
-      
-      if (mainDeductible && mainDeductible.amount > maxDeductible) {
-        return false;
-      }
-    }
-    
-    // Carrier filter
-    if (selectedCarriers.size > 0) {
-      const carrierName = plan.issuer?.name || 'Unknown';
-      if (!selectedCarriers.has(carrierName)) {
-        return false;
-      }
-    }
-    
-    // Metal level filter (checkbox)
-    if (selectedMetals.size > 0) {
-      const metalLevel = plan.metal_level?.toLowerCase();
-      const hasMatch = Array.from(selectedMetals).some(m => metalLevel?.includes(m.toLowerCase()));
-      if (!hasMatch) {
-        return false;
-      }
-    }
-    
-    // Network filter (checkbox)
-    if (selectedNetworks.size > 0) {
-      if (!selectedNetworks.has(plan.type)) {
-        return false;
-      }
-    }
-    
-    // Plan features filter - show ONLY plans that have ALL selected features
-    if (selectedPlanFeatures.size > 0) {
-      // Check dental child coverage
-      if (selectedPlanFeatures.has('dental_child')) {
-        if (!plan.has_dental_child_coverage) {
-          return false;
-        }
-      }
-      // Check dental adult coverage
-      if (selectedPlanFeatures.has('dental_adult')) {
-        if (!plan.has_dental_adult_coverage) {
-          return false;
-        }
-      }
-      // Check HSA eligible
-      if (selectedPlanFeatures.has('hsa_eligible')) {
-        if (!plan.hsa_eligible) {
-          return false;
-        }
-      }
-      // Check simple choice
-      if (selectedPlanFeatures.has('simple_choice')) {
-        if (!plan.simple_choice) {
-          return false;
-        }
-      }
-    }
-    
-    // Disease programs filter
-    if (selectedDiseasePrograms.size > 0) {
-      const planPrograms = plan.disease_mgmt_programs || [];
-      const hasMatch = Array.from(selectedDiseasePrograms).some(program => 
-        planPrograms.some((p: string) => p.toLowerCase().includes(program.toLowerCase()))
-      );
-      if (!hasMatch) {
-        return false;
-      }
-    }
-    
-    return true;
-  }).sort((a: any, b: any) => {
-    switch (sortBy) {
-      case "premium_asc":
-        return a.premium - b.premium;
-      case "premium_desc":
-        return b.premium - a.premium;
-      case "deductible_asc":
-        return (a.deductibles?.[0]?.amount || 0) - (b.deductibles?.[0]?.amount || 0);
-      case "deductible_desc":
-        return (b.deductibles?.[0]?.amount || 0) - (a.deductibles?.[0]?.amount || 0);
-      case "out_of_pocket_asc":
-        return (a.out_of_pocket_limit || 0) - (b.out_of_pocket_limit || 0);
-      case "out_of_pocket_desc":
-        return (b.out_of_pocket_limit || 0) - (a.out_of_pocket_limit || 0);
-      case "total_cost_asc":
-        const totalA = a.premium * 12 + (a.deductibles?.[0]?.amount || 0);
-        const totalB = b.premium * 12 + (b.deductibles?.[0]?.amount || 0);
-        return totalA - totalB;
-      case "total_cost_desc":
-        const totalDescA = a.premium * 12 + (a.deductibles?.[0]?.amount || 0);
-        const totalDescB = b.premium * 12 + (b.deductibles?.[0]?.amount || 0);
-        return totalDescB - totalDescA;
-      case "rating_asc":
-        return (a.quality_rating?.global_rating || 0) - (b.quality_rating?.global_rating || 0);
-      case "rating_desc":
-        return (b.quality_rating?.global_rating || 0) - (a.quality_rating?.global_rating || 0);
-      default:
-        return 0;
-    }
-  }) || [];
-
-  // Calculate pagination for client-side
-  const totalFilteredPlans = allFilteredPlans.length;
-  const totalPages = Math.ceil(totalFilteredPlans / pageSize);
+  // Display plans from current page (server-side pagination, no client-side slicing)
+  const filteredPlans = marketplacePlans?.plans || [];
   
-  // Get plans for current page
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const filteredPlans = allFilteredPlans.slice(startIndex, endIndex);
+  // Calculate total pages based on server's total count
+  const totalPlans = marketplacePlans?.total || 0;
+  const totalPages = Math.ceil(totalPlans / pageSize);
   
   // Helper functions for plan comparison
   const togglePlanForComparison = (planId: string) => {
@@ -834,20 +571,6 @@ export default function MarketplacePlansPage() {
 
           {/* Center: Plans List */}
           <div className="space-y-4">
-          {!marketplacePlans && !isLoadingPlans && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Shield className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="text-lg font-medium mb-2">No plans loaded</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Click the button below to fetch available health insurance plans
-                </p>
-                <Button onClick={fetchMarketplacePlans} data-testid="button-load-plans">
-                  Load Marketplace Plans
-                </Button>
-              </CardContent>
-            </Card>
-          )}
 
           {marketplacePlans && filteredPlans && (
             <div className="grid gap-4">
@@ -1238,31 +961,116 @@ export default function MarketplacePlansPage() {
               );
               })}
 
-              {/* Load More button for server-side pagination */}
-              {marketplacePlans && marketplacePlans.plans && marketplacePlans.plans.length < marketplacePlans.total && (
-                <div className="flex justify-center pt-6">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={loadMorePlans}
-                    disabled={isLoadingMorePlans}
-                    data-testid="button-load-more-plans"
-                    className="min-w-[200px]"
-                  >
-                    {isLoadingMorePlans ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        Load More Plans
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (Showing {marketplacePlans.plans.length} of {marketplacePlans.total})
-                        </span>
-                      </>
-                    )}
-                  </Button>
+              {/* Traditional Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col items-center gap-4 pt-8">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => {
+                            if (currentPage > 1) {
+                              setCurrentPage(currentPage - 1);
+                            }
+                          }}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          data-testid="button-previous-page"
+                        />
+                      </PaginationItem>
+                      
+                      {/* Page numbers */}
+                      {(() => {
+                        const pages = [];
+                        const maxVisiblePages = 5;
+                        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                        
+                        if (endPage - startPage < maxVisiblePages - 1) {
+                          startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                        }
+                        
+                        // First page
+                        if (startPage > 1) {
+                          pages.push(
+                            <PaginationItem key={1}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(1)}
+                                isActive={currentPage === 1}
+                                className="cursor-pointer"
+                                data-testid="button-page-1"
+                              >
+                                1
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                          if (startPage > 2) {
+                            pages.push(
+                              <PaginationItem key="ellipsis-start">
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                        }
+                        
+                        // Middle pages
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(i)}
+                                isActive={currentPage === i}
+                                className="cursor-pointer"
+                                data-testid={`button-page-${i}`}
+                              >
+                                {i}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        }
+                        
+                        // Last page
+                        if (endPage < totalPages) {
+                          if (endPage < totalPages - 1) {
+                            pages.push(
+                              <PaginationItem key="ellipsis-end">
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          pages.push(
+                            <PaginationItem key={totalPages}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(totalPages)}
+                                isActive={currentPage === totalPages}
+                                className="cursor-pointer"
+                                data-testid={`button-page-${totalPages}`}
+                              >
+                                {totalPages}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                      
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => {
+                            if (currentPage < totalPages) {
+                              setCurrentPage(currentPage + 1);
+                            }
+                          }}
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          data-testid="button-next-page"
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages} ({totalPlans} total plans)
+                  </p>
                 </div>
               )}
 
