@@ -559,8 +559,8 @@ async function fetchSinglePage(
 
 /**
  * Build CMS Marketplace API payload from policy data
- * CRITICAL: This function ensures EXACTLY 1 applicant (the client/policy owner)
- * Spouses and dependents are mapped correctly to avoid "household tiene dos applicant" error
+ * CRITICAL: This function respects the isApplicant field for all members
+ * Client is always an applicant; spouses and dependents use their isApplicant field
  */
 export function buildCMSPayloadFromPolicy(policyData: {
   members: Array<{
@@ -603,22 +603,28 @@ export function buildCMSPayloadFromPolicy(policyData: {
     isApplicant?: boolean;
   }>;
 } {
-  // Find the client (policy owner) - ONLY they are the applicant
+  // Find the client (policy owner) - always the primary applicant
   const clientMember = policyData.members.find(m => m.role === 'client');
   if (!clientMember || !clientMember.dateOfBirth) {
     throw new Error('Policy must have a client member with date of birth');
   }
 
-  // Find spouses - they are NOT applicants, regardless of isApplicant field
+  // Find spouses - respect their isApplicant field
   const spouseMembers = policyData.members.filter(m => m.role === 'spouse');
 
   // Find dependents - use isApplicant field to determine if they need insurance
   const dependentMembers = policyData.members.filter(m => m.role === 'dependent');
 
+  // Count actual applicants for logging
+  const spouseApplicants = spouseMembers.filter(s => s.isApplicant !== false).length;
+  const dependentApplicants = dependentMembers.filter(d => d.isApplicant !== false).length;
+  const totalApplicants = 1 + spouseApplicants + dependentApplicants;
+
   console.log('[buildCMSPayloadFromPolicy] Building payload with:');
   console.log(`  - Client: 1 (role=client, applicant=TRUE)`);
-  console.log(`  - Spouses: ${spouseMembers.length} (role=spouse, aptc_eligible=FALSE)`);
-  console.log(`  - Dependents: ${dependentMembers.length}`);
+  console.log(`  - Spouses: ${spouseMembers.length} (${spouseApplicants} applicants, ${spouseMembers.length - spouseApplicants} with MEC)`);
+  console.log(`  - Dependents: ${dependentMembers.length} (${dependentApplicants} applicants, ${dependentMembers.length - dependentApplicants} with MEC)`);
+  console.log(`  - Total applicants: ${totalApplicants}`);
 
   // Build the payload with correct mapping
   return {
@@ -638,7 +644,7 @@ export function buildCMSPayloadFromPolicy(policyData: {
       gender: s.gender,
       pregnant: s.pregnant || false,
       usesTobacco: s.tobaccoUser || false,
-      aptc_eligible: false, // CRITICAL: Spouses are NEVER applicants, even if they need insurance
+      aptc_eligible: s.isApplicant !== false, // CRITICAL: Respect isApplicant field - default TRUE unless explicitly false
     })),
     dependents: dependentMembers.map(d => ({
       dateOfBirth: d.dateOfBirth,

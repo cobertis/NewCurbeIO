@@ -17684,8 +17684,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Policy address information incomplete" });
       }
       
-      // Use buildCMSPayloadFromPolicy to construct the payload with EXACTLY 1 applicant
-      // This ensures the client is the only applicant, spouses are NOT applicants
+      // Use buildCMSPayloadFromPolicy to construct the payload respecting isApplicant flags
+      // This ensures accurate APTC/CSR calculations by sending the correct number of applicants
       const policyData = buildCMSPayloadFromPolicy({
         members: members.map(m => ({
           role: m.role || 'dependent',
