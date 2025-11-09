@@ -3263,6 +3263,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
         nationalProducerNumber: user.nationalProducerNumber || "",
         federallyFacilitatedMarketplace: user.federallyFacilitatedMarketplace || "",
         referredBy: user.referredBy || "",
+        viewAllCompanyData: user.viewAllCompanyData || false,
       });
       setIsEditing(false);
     }
@@ -3286,6 +3287,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
       if (data.nationalProducerNumber !== user.nationalProducerNumber) updateData.nationalProducerNumber = data.nationalProducerNumber;
       if (data.federallyFacilitatedMarketplace !== user.federallyFacilitatedMarketplace) updateData.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
       if (data.referredBy !== user.referredBy) updateData.referredBy = data.referredBy;
+      if (data.viewAllCompanyData !== user.viewAllCompanyData) updateData.viewAllCompanyData = data.viewAllCompanyData;
 
       return apiRequest("PATCH", `/api/users/${user.id}`, updateData);
     },
@@ -3483,6 +3485,31 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
               </div>
             </div>
           </div>
+
+          {/* Data Visibility Controls */}
+          {isEditing && (
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Data Visibility
+              </h3>
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">
+                    Share Full Company Data
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow this user to view all policies, quotes, contacts, tasks, and calendar events from the entire company (not just their own data)
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.viewAllCompanyData || false}
+                  onCheckedChange={(checked) => setFormData({ ...formData, viewAllCompanyData: checked })}
+                  data-testid="switch-view-all-company-data"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Timezone */}
           <div>
