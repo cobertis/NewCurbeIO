@@ -1004,6 +1004,8 @@ export class DbStorage implements IStorage {
     if (data.nationalProducerNumber !== undefined) mappedData.nationalProducerNumber = data.nationalProducerNumber;
     if (data.federallyFacilitatedMarketplace !== undefined) mappedData.federallyFacilitatedMarketplace = data.federallyFacilitatedMarketplace;
     if (data.referredBy !== undefined) mappedData.referredBy = data.referredBy;
+    // Data visibility permission
+    if (data.viewAllCompanyData !== undefined) mappedData.viewAllCompanyData = data.viewAllCompanyData;
     // Last login tracking
     if (data.lastLoginAt !== undefined) mappedData.lastLoginAt = data.lastLoginAt;
     
