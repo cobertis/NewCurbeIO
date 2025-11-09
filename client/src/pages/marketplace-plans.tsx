@@ -187,6 +187,8 @@ export default function MarketplacePlansPage() {
   // State for marketplace plans and pagination
   const [marketplacePlans, setMarketplacePlans] = useState<any>(null);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const [isLoadingMorePlans, setIsLoadingMorePlans] = useState(false);
+  const [serverPage, setServerPage] = useState(1); // Track current server-side page
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10); // 10 planes por página
 
@@ -205,8 +207,9 @@ export default function MarketplacePlansPage() {
       console.log(`🚀 Loading marketplace plans for ${isPolicy ? 'Policy' : 'Quote'}: ${quoteId}`);
 
       // Fetch first page - backend returns EXACTLY what CMS API returns (no modifications)
+      // Using smaller page size (10) for on-demand loading
       const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=100`,
+        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=10`,
         {
           method: 'GET',
           headers: {
@@ -228,11 +231,22 @@ export default function MarketplacePlansPage() {
       const totalPlansAvailable = data.total || 0;
       const plansInResponse = data.plans?.length || 0;
       
-      console.log(`📊 EXACT CMS API Response:`);
+      console.log(`📊 CMS API Response - Page 1:`);
       console.log(`  - Total plans available: ${totalPlansAvailable}`);
       console.log(`  - Plans in this page: ${plansInResponse}`);
       console.log(`  - household_aptc (from API): ${data.household_aptc || 'Not provided'}`);
       console.log(`  - household_csr (from API): ${data.household_csr || 'Not provided'}`);
+      
+      // Calculate and log APTC for each plan
+      if (data.plans && data.plans.length > 0) {
+        console.log(`💰 APTC breakdown per plan:`);
+        data.plans.forEach((plan: any, idx: number) => {
+          const aptcAmount = plan.premium - (plan.premium_w_credit || plan.premium);
+          if (aptcAmount > 0) {
+            console.log(`  Plan ${idx + 1}: APTC = $${aptcAmount.toFixed(2)}/month (${plan.issuer?.name || 'Unknown'})`);
+          }
+        });
+      }
       
       // Store the API response exactly as received
       const apiRequestData = data.request_data || {
@@ -254,7 +268,7 @@ export default function MarketplacePlansPage() {
         request_data: apiRequestData,
       };
       
-      console.log(`💰 Displaying EXACT household_aptc from CMS API: ${data.household_aptc}`);
+      console.log(`💰 Total household APTC from CMS API: ${data.household_aptc}`);
 
       // Set plans EXACTLY as returned by the API - NO modifications
       const exactApiData = {
@@ -264,13 +278,14 @@ export default function MarketplacePlansPage() {
       };
 
       setMarketplacePlans(exactApiData);
+      setServerPage(1); // Reset server page to 1
       setCurrentPage(1);
       
-      console.log(`✅ Showing ${plansInResponse} of ${totalPlansAvailable} plans - EXACT CMS API response (no modifications)`);
+      console.log(`✅ Initial load: Showing ${plansInResponse} of ${totalPlansAvailable} plans`);
       
       toast({
-        title: "Plans loaded successfully",
-        description: `Showing ${plansInResponse} of ${totalPlansAvailable} available plans from CMS API`,
+        title: "Plans loaded",
+        description: `Loaded first ${plansInResponse} of ${totalPlansAvailable} available plans. Use "Load More" to see additional plans.`,
       });
     } catch (error: any) {
       console.error('Error fetching marketplace plans:', error);
@@ -281,6 +296,77 @@ export default function MarketplacePlansPage() {
       });
     } finally {
       setIsLoadingPlans(false);
+    }
+  };
+
+  // Load more plans from server (next page)
+  const loadMorePlans = async () => {
+    if (!quoteId || !marketplacePlans) return;
+    
+    const nextPage = serverPage + 1;
+    setIsLoadingMorePlans(true);
+    
+    try {
+      console.log(`📄 Loading page ${nextPage} of marketplace plans...`);
+
+      const response = await fetch(
+        `/api/${basePath}/${quoteId}/marketplace-plans?page=${nextPage}&pageSize=10`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          credentials: 'include',
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to fetch more plans');
+      }
+
+      const data = await response.json();
+      const newPlans = data.plans || [];
+      
+      console.log(`📊 CMS API Response - Page ${nextPage}:`);
+      console.log(`  - Plans in this page: ${newPlans.length}`);
+      
+      // Calculate and log APTC for new plans
+      if (newPlans.length > 0) {
+        console.log(`💰 APTC breakdown for new plans:`);
+        newPlans.forEach((plan: any, idx: number) => {
+          const aptcAmount = plan.premium - (plan.premium_w_credit || plan.premium);
+          if (aptcAmount > 0) {
+            console.log(`  Plan ${idx + 1}: APTC = $${aptcAmount.toFixed(2)}/month (${plan.issuer?.name || 'Unknown'})`);
+          }
+        });
+      }
+      
+      // Append new plans to existing plans
+      setMarketplacePlans((prev: any) => ({
+        ...prev,
+        plans: [...prev.plans, ...newPlans],
+      }));
+      
+      setServerPage(nextPage);
+      
+      const totalLoaded = marketplacePlans.plans.length + newPlans.length;
+      console.log(`✅ Loaded page ${nextPage}: Now showing ${totalLoaded} of ${marketplacePlans.total} plans`);
+      
+      toast({
+        title: "More plans loaded",
+        description: `Now showing ${totalLoaded} of ${marketplacePlans.total} available plans`,
+      });
+    } catch (error: any) {
+      console.error('Error loading more plans:', error);
+      toast({
+        variant: "destructive",
+        title: "Error loading more plans",
+        description: error.message || "Failed to load additional plans",
+      });
+    } finally {
+      setIsLoadingMorePlans(false);
     }
   };
 
@@ -883,6 +969,9 @@ export default function MarketplacePlansPage() {
               </div>
 
               {filteredPlans.map((plan: any, index: number) => {
+                // Calculate APTC (tax credit) for this plan
+                const aptcAmount = plan.premium - (plan.premium_w_credit || plan.premium);
+                
                 // Extract all deductible info
                 const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
                 const familyDeductible = plan.deductibles?.find((d: any) => d.family);
@@ -974,19 +1063,29 @@ export default function MarketplacePlansPage() {
                     <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6 mb-6">
                       {/* Left: Prima mensual */}
                       <div>
-                        <p className="text-sm font-semibold mb-2">Premium</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          <p className="text-sm font-semibold">Premium</p>
+                          {aptcAmount > 0 && (
+                            <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                              Tax Credit
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-4xl font-bold mb-1">
                           {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
                             ? formatCurrency(plan.premium_w_credit)
                             : formatCurrency(plan.premium)}
                         </p>
-                        {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
+                        {aptcAmount > 0 && (
                           <>
-                            <p className="text-xs text-green-600 dark:text-green-500">
-                              Savings total {formatCurrency(plan.premium - plan.premium_w_credit)}
-                            </p>
+                            <div className="flex items-center gap-1 mb-1">
+                              <DollarSign className="h-3.5 w-3.5 text-green-600 dark:text-green-500" />
+                              <p className="text-sm font-medium text-green-600 dark:text-green-500">
+                                {formatCurrency(aptcAmount)}/month tax credit
+                              </p>
+                            </div>
                             <p className="text-xs text-muted-foreground line-through">
-                              Plan was {formatCurrency(plan.premium)}
+                              Original price: {formatCurrency(plan.premium)}
                             </p>
                           </>
                         )}
