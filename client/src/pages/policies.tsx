@@ -3764,22 +3764,18 @@ export default function PoliciesPage() {
     isFetchingNextPage,
   } = useInfiniteQuery({
     queryKey: ["/api/policies"],
-    initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+    initialPageParam: null,
+    queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
-      if (pageParam) params.append('cursor', pageParam);
+      if (pageParam) params.append('cursor', String(pageParam));
       params.append('limit', '100'); // Fetch 100 policies per page
       const response = await fetch(`/api/policies?${params.toString()}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch policies');
-      const data = await response.json();
-      return data as { items: Quote[]; nextCursor: string | null };
+      return response.json();
     },
-    getNextPageParam: (lastPage) => {
-      if (!lastPage) return undefined;
-      if (!lastPage.items || !Array.isArray(lastPage.items)) return undefined;
-      return lastPage.nextCursor ?? undefined;
-    },
-    staleTime: 30000, // 30 seconds
+    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+    getPreviousPageParam: () => undefined,
+    staleTime: 30000,
     refetchOnWindowFocus: false,
   });
 
