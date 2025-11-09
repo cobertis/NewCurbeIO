@@ -681,7 +681,6 @@ export interface IStorage {
       clientIsApplicant: boolean | null;
       physical_city: string | null;
       physical_state: string | null;
-      physical_state_abbreviation: string | null;
       physical_postal_code: string | null;
       selectedPlan: any;
       agentId: string | null;
@@ -4415,7 +4414,6 @@ export class DbStorage implements IStorage {
         clientIsApplicant: policies.clientIsApplicant,
         physical_city: policies.physical_city,
         physical_state: policies.physical_state,
-        physical_state_abbreviation: policies.physical_state_abbreviation,
         physical_postal_code: policies.physical_postal_code,
         selectedPlan: policies.selectedPlan,
         agentId: policies.agentId,
@@ -4461,7 +4459,6 @@ export class DbStorage implements IStorage {
       clientIsApplicant: item.clientIsApplicant,
       physical_city: item.physical_city,
       physical_state: item.physical_state,
-      physical_state_abbreviation: item.physical_state_abbreviation,
       physical_postal_code: item.physical_postal_code,
       selectedPlan: item.selectedPlan,
       agentId: item.agentId,
