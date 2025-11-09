@@ -3313,10 +3313,30 @@ export const birthdayGreetingHistory = pgTable("birthday_greeting_history", {
   
   status: text("status").notNull().default("pending"), // pending, sent, delivered, failed
   twilioMessageSid: text("twilio_message_sid"), // Twilio message ID for tracking
+  twilioImageSid: text("twilio_image_sid"), // Twilio MMS image message ID
   errorMessage: text("error_message"), // Error details if failed
   
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Birthday Pending Messages - Track MMS awaiting delivery confirmation before sending SMS
+export const birthdayPendingMessages = pgTable("birthday_pending_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  greetingHistoryId: varchar("greeting_history_id").notNull().references(() => birthdayGreetingHistory.id, { onDelete: "cascade" }),
+  
+  mmsSid: text("mms_sid").notNull().unique(), // Twilio MMS message SID
+  smsBody: text("sms_body").notNull(), // Text message to send after MMS delivery
+  recipientPhone: text("recipient_phone").notNull(),
+  recipientName: text("recipient_name").notNull(),
+  imageUrl: text("image_url"),
+  
+  status: text("status").notNull().default("pending"), // pending, delivered, failed, completed
+  attemptCount: integer("attempt_count").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -3360,6 +3380,21 @@ export const insertBirthdayGreetingHistorySchema = createInsertSchema(birthdayGr
   status: z.enum(["pending", "sent", "delivered", "failed"]).default("pending"),
 });
 
+export const insertBirthdayPendingMessageSchema = createInsertSchema(birthdayPendingMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  attemptCount: true,
+  lastAttemptAt: true,
+}).extend({
+  greetingHistoryId: z.string().uuid(),
+  mmsSid: z.string().min(1, "MMS SID is required"),
+  smsBody: z.string().min(1, "SMS body is required"),
+  recipientPhone: z.string().min(10, "Valid phone number is required"),
+  recipientName: z.string().min(1, "Recipient name is required"),
+  status: z.enum(["pending", "delivered", "failed", "completed"]).default("pending"),
+});
+
 // Types
 export type BirthdayImage = typeof birthdayImages.$inferSelect;
 export type InsertBirthdayImage = z.infer<typeof insertBirthdayImageSchema>;
@@ -3369,6 +3404,9 @@ export type InsertUserBirthdaySettings = z.infer<typeof insertUserBirthdaySettin
 
 export type BirthdayGreetingHistory = typeof birthdayGreetingHistory.$inferSelect;
 export type InsertBirthdayGreetingHistory = z.infer<typeof insertBirthdayGreetingHistorySchema>;
+
+export type BirthdayPendingMessage = typeof birthdayPendingMessages.$inferSelect;
+export type InsertBirthdayPendingMessage = z.infer<typeof insertBirthdayPendingMessageSchema>;
 
 export type ManualContact = typeof manualContacts.$inferSelect;
 export type InsertManualContact = z.infer<typeof insertManualContactSchema>;
