@@ -725,8 +725,11 @@ export interface IStorage {
   createPolicyMemberDocument(data: InsertPolicyMemberDocument): Promise<PolicyMemberDocument>;
   deletePolicyMemberDocument(documentId: string, companyId: string): Promise<boolean>;
   
+  // Policy Client Identity Helper
+  getCanonicalPolicyIds(policyId: string, limit?: number): Promise<string[]>;
+  
   // Policy Payment Methods
-  getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]>;
+  getPolicyPaymentMethods(policyIds: string | string[], companyId: string): Promise<PolicyPaymentMethod[]>;
   getPolicyPaymentMethodById(paymentMethodId: string, companyId: string): Promise<PolicyPaymentMethod | null>;
   createPolicyPaymentMethod(data: InsertPolicyPaymentMethod): Promise<PolicyPaymentMethod>;
   updatePolicyPaymentMethod(paymentMethodId: string, data: UpdatePolicyPaymentMethod, companyId: string): Promise<PolicyPaymentMethod | null>;
@@ -734,7 +737,7 @@ export interface IStorage {
   setDefaultPolicyPaymentMethod(paymentMethodId: string, policyId: string, companyId: string): Promise<void>;
   
   // Policy Documents
-  listPolicyDocuments(policyId: string, companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<PolicyDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null; belongsToMember: { firstName: string; lastName: string; role: string } | null }>>;
+  listPolicyDocuments(policyIds: string | string[], companyId: string, filters?: { category?: string, search?: string }): Promise<Array<Omit<PolicyDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null; belongsToMember: { firstName: string; lastName: string; role: string } | null }>>;
   createPolicyDocument(document: InsertPolicyDocument): Promise<PolicyDocument>;
   getPolicyDocument(id: string, companyId: string): Promise<PolicyDocument | null>;
   deletePolicyDocument(id: string, companyId: string): Promise<boolean>;
@@ -756,7 +759,7 @@ export interface IStorage {
   }>;
   
   // Policy Reminders
-  listPolicyReminders(policyId: string, companyId: string, filters?: { status?: string; priority?: string; userId?: string }): Promise<Array<PolicyReminder & { creator: { firstName: string | null; lastName: string | null } }>>;
+  listPolicyReminders(policyIds: string | string[], companyId: string, filters?: { status?: string; priority?: string; userId?: string }): Promise<Array<PolicyReminder & { creator: { firstName: string | null; lastName: string | null } }>>;
   getPolicyReminder(id: string, companyId: string): Promise<PolicyReminder | null>;
   getPolicyRemindersByCompany(companyId: string): Promise<PolicyReminder[]>;
   createPolicyReminder(data: InsertPolicyReminder): Promise<PolicyReminder>;
@@ -767,14 +770,14 @@ export interface IStorage {
   
   // Policy Notes
   createPolicyNote(note: InsertPolicyNote): Promise<PolicyNote>;
-  getPolicyNotes(policyId: string, companyId: string): Promise<PolicyNote[]>;
+  getPolicyNotes(policyIds: string | string[], companyId: string): Promise<PolicyNote[]>;
   deletePolicyNote(id: string, companyId?: string): Promise<void>;
   
   // Policy Consent Documents
   createPolicyConsentDocument(policyId: string, companyId: string, userId: string): Promise<PolicyConsentDocument>;
   getPolicyConsentById(id: string, companyId: string): Promise<PolicyConsentDocument | null>;
   getPolicyConsentByToken(token: string): Promise<PolicyConsentDocument | null>;
-  listPolicyConsents(policyId: string, companyId: string): Promise<PolicyConsentDocument[]>;
+  listPolicyConsents(policyIds: string | string[], companyId: string): Promise<PolicyConsentDocument[]>;
   updatePolicyConsentDocument(id: string, data: Partial<InsertPolicyConsentDocument>): Promise<PolicyConsentDocument | null>;
   deletePolicyConsentDocument(id: string, companyId: string): Promise<boolean>;
   signPolicyConsent(token: string, signatureData: {
@@ -5214,18 +5217,84 @@ export class DbStorage implements IStorage {
     return null;
   }
   
+  async getCanonicalPolicyIds(policyId: string, limit: number = 20): Promise<string[]> {
+    // Get the current policy
+    const [policy] = await db
+      .select()
+      .from(policies)
+      .where(eq(policies.id, policyId));
+    
+    if (!policy) {
+      return [policyId];
+    }
+    
+    // Use same logic as getPoliciesByApplicant to find all policies of the same client
+    const normalizedSsn = policy.clientSsn?.replace(/\D/g, '') || '';
+    const normalizedEmail = policy.clientEmail?.toLowerCase() || '';
+    
+    let identityConditions: any[] = [];
+    
+    // SSN matching - REQUIRE EXACTLY 9 DIGITS (full SSN only)
+    if (normalizedSsn.length === 9) {
+      identityConditions.push(
+        sql`REPLACE(REPLACE(REPLACE(${policies.clientSsn}, '-', ''), ' ', ''), '.', '') = ${normalizedSsn}`
+      );
+    } else if (normalizedEmail) {
+      // Email fallback if SSN is not complete
+      identityConditions.push(
+        sql`LOWER(${policies.clientEmail}) = ${normalizedEmail}`
+      );
+    }
+    
+    // If no valid identifier, return only current policy
+    if (identityConditions.length === 0) {
+      return [policyId];
+    }
+    
+    const conditions: any[] = [
+      eq(policies.companyId, policy.companyId),
+      or(...identityConditions)
+    ];
+    
+    // Filter by primary applicant name and DOB to ensure only policies 
+    // where this person is the primary applicant (not a dependent)
+    if (policy.clientFirstName) {
+      conditions.push(eq(policies.clientFirstName, policy.clientFirstName));
+    }
+    if (policy.clientLastName) {
+      conditions.push(eq(policies.clientLastName, policy.clientLastName));
+    }
+    if (policy.clientDateOfBirth) {
+      conditions.push(eq(policies.clientDateOfBirth, policy.clientDateOfBirth));
+    }
+    
+    // Get all policies ordered by effectiveDate DESC, with soft limit
+    const clientPolicies = await db
+      .select({ id: policies.id })
+      .from(policies)
+      .where(and(...conditions))
+      .orderBy(desc(policies.effectiveDate), desc(policies.createdAt))
+      .limit(limit);
+    
+    return clientPolicies.map(p => p.id);
+  }
+  
   // ==================== POLICY PAYMENT METHODS ====================
   
-  async getPolicyPaymentMethods(policyId: string, companyId: string): Promise<PolicyPaymentMethod[]> {
-    // CRITICAL FIX: Only return payment methods for THIS specific policy
-    // Do NOT share payment methods across policies of the same client
-    // Each policy maintains its own isolated payment methods
+  async getPolicyPaymentMethods(policyIds: string | string[], companyId: string): Promise<PolicyPaymentMethod[]> {
+    // Support both single policyId and array of policyIds for cross-policy sharing
+    const idsArray = Array.isArray(policyIds) ? policyIds : [policyIds];
+    
+    if (idsArray.length === 0) {
+      return [];
+    }
+    
     return db
       .select()
       .from(policyPaymentMethods)
       .where(
         and(
-          eq(policyPaymentMethods.policyId, policyId),
+          inArray(policyPaymentMethods.policyId, idsArray),
           eq(policyPaymentMethods.companyId, companyId)
         )
       )
@@ -5406,10 +5475,17 @@ export class DbStorage implements IStorage {
   // ==================== POLICY DOCUMENTS ====================
   
   async listPolicyDocuments(
-    policyId: string,
+    policyIds: string | string[],
     companyId: string,
     filters?: { category?: string; search?: string }
   ): Promise<Array<Omit<PolicyDocument, 'uploadedBy'> & { uploadedBy: { firstName: string | null; lastName: string | null } | null; belongsToMember: { firstName: string; lastName: string; role: string } | null }>> {
+    // Support both single policyId and array of policyIds for cross-policy sharing
+    const idsArray = Array.isArray(policyIds) ? policyIds : [policyIds];
+    
+    if (idsArray.length === 0) {
+      return [];
+    }
+    
     let query = db
       .select({
         document: policyDocuments,
@@ -5422,7 +5498,7 @@ export class DbStorage implements IStorage {
       .leftJoin(users, eq(policyDocuments.uploadedBy, users.id))
       .where(
         and(
-          eq(policyDocuments.policyId, policyId),
+          inArray(policyDocuments.policyId, idsArray),
           eq(policyDocuments.companyId, companyId)
         )
       )
@@ -5597,12 +5673,19 @@ export class DbStorage implements IStorage {
   // ==================== POLICY REMINDERS ====================
   
   async listPolicyReminders(
-    policyId: string,
+    policyIds: string | string[],
     companyId: string,
     filters?: { status?: string; priority?: string; userId?: string }
   ): Promise<Array<PolicyReminder & { creator: { firstName: string | null; lastName: string | null } }>> {
+    // Support both single policyId and array of policyIds for cross-policy sharing
+    const idsArray = Array.isArray(policyIds) ? policyIds : [policyIds];
+    
+    if (idsArray.length === 0) {
+      return [];
+    }
+    
     let conditions = [
-      eq(policyReminders.policyId, policyId),
+      inArray(policyReminders.policyId, idsArray),
       eq(policyReminders.companyId, companyId),
     ];
     
@@ -5741,13 +5824,20 @@ export class DbStorage implements IStorage {
     return created;
   }
   
-  async getPolicyNotes(policyId: string, companyId: string): Promise<PolicyNote[]> {
+  async getPolicyNotes(policyIds: string | string[], companyId: string): Promise<PolicyNote[]> {
+    // Support both single policyId and array of policyIds for cross-policy sharing
+    const idsArray = Array.isArray(policyIds) ? policyIds : [policyIds];
+    
+    if (idsArray.length === 0) {
+      return [];
+    }
+    
     const notes = await db
       .select()
       .from(policyNotes)
       .where(
         and(
-          eq(policyNotes.policyId, policyId),
+          inArray(policyNotes.policyId, idsArray),
           eq(policyNotes.companyId, companyId)
         )
       )
@@ -5844,13 +5934,20 @@ export class DbStorage implements IStorage {
     return consent || null;
   }
   
-  async listPolicyConsents(policyId: string, companyId: string): Promise<PolicyConsentDocument[]> {
+  async listPolicyConsents(policyIds: string | string[], companyId: string): Promise<PolicyConsentDocument[]> {
+    // Support both single policyId and array of policyIds for cross-policy sharing
+    const idsArray = Array.isArray(policyIds) ? policyIds : [policyIds];
+    
+    if (idsArray.length === 0) {
+      return [];
+    }
+    
     return db
       .select()
       .from(policyConsentDocuments)
       .where(
         and(
-          eq(policyConsentDocuments.policyId, policyId),
+          inArray(policyConsentDocuments.policyId, idsArray),
           eq(policyConsentDocuments.companyId, companyId)
         )
       )
