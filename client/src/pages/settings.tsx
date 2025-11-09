@@ -4101,26 +4101,35 @@ function AutomationsTab() {
                       </SelectContent>
                     </Select>
                   )}
-                  <div className="relative flex-1">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            const base64 = reader.result as string;
-                            setFormData({ ...formData, selectedImageId: base64 });
-                            if (!isEditing) setIsEditing(true);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="h-8 text-xs file:mr-2 file:h-7 file:px-2 file:rounded file:border-0 file:bg-primary file:text-primary-foreground file:text-xs hover:file:bg-primary/90"
-                      data-testid="input-custom-image"
-                    />
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs flex-1"
+                    onClick={() => document.getElementById('birthday-image-upload')?.click()}
+                    data-testid="button-upload-custom-image"
+                  >
+                    <Upload className="h-3 w-3 mr-1" />
+                    Upload Custom
+                  </Button>
+                  <input
+                    id="birthday-image-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          const base64 = reader.result as string;
+                          setFormData({ ...formData, selectedImageId: base64 });
+                          if (!isEditing) setIsEditing(true);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                    data-testid="input-custom-image"
+                  />
                 </div>
               </div>
 
