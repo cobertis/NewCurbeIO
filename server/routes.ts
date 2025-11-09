@@ -21509,7 +21509,27 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const imageUrl = `/uploads/birthday_images/${file.filename}`;
       
-      res.json({ imageUrl });
+      // Automatically create database record with public URL
+      const imageName = req.body.name || `Birthday Image ${new Date().toLocaleDateString()}`;
+      const image = await storage.createBirthdayImage(
+        { 
+          name: imageName, 
+          imageUrl, 
+          isActive: true 
+        },
+        user.id
+      );
+
+      await logger.logCrud({
+        userId: user.id,
+        companyId: user.companyId,
+        action: "create",
+        entityType: "birthdayImage",
+        entityId: image.id,
+        details: `Uploaded birthday image: ${imageName}`,
+      });
+      
+      res.json(image);
     } catch (error: any) {
       console.error("Error uploading birthday image:", error);
       res.status(500).json({ message: error.message || "Failed to upload image" });
