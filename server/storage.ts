@@ -844,6 +844,7 @@ export interface IStorage {
   // Birthday Automation - Pending Messages
   createBirthdayPendingMessage(data: InsertBirthdayPendingMessage): Promise<BirthdayPendingMessage>;
   getBirthdayPendingMessageByMmsSid(mmsSid: string): Promise<BirthdayPendingMessage | undefined>;
+  updateBirthdayPendingMessageMmsSid(id: string, mmsSid: string): Promise<void>;
   updateBirthdayPendingMessageStatus(id: string, status: string): Promise<void>;
   deleteBirthdayPendingMessage(id: string): Promise<void>;
   
@@ -6735,6 +6736,16 @@ export class DbStorage implements IStorage {
       .from(birthdayPendingMessages)
       .where(eq(birthdayPendingMessages.mmsSid, mmsSid));
     return result[0];
+  }
+  
+  async updateBirthdayPendingMessageMmsSid(id: string, mmsSid: string): Promise<void> {
+    await db
+      .update(birthdayPendingMessages)
+      .set({
+        mmsSid,
+        updatedAt: new Date(),
+      })
+      .where(eq(birthdayPendingMessages.id, id));
   }
   
   async updateBirthdayPendingMessageStatus(id: string, status: string): Promise<void> {
