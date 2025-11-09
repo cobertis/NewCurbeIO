@@ -57,6 +57,35 @@ class TwilioService {
     }
   }
 
+  async sendMMS(to: string, imageUrl: string, pendingMessageId?: string): Promise<{ sid: string; status: string } | null> {
+    if (!this.initialized || !this.client) {
+      console.error("Twilio service not initialized. Cannot send MMS.");
+      throw new Error("Twilio service not initialized");
+    }
+
+    try {
+      // Build status callback URL with correlation ID
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
+      let statusCallbackUrl = `${baseUrl}/api/webhooks/twilio/status`;
+      if (pendingMessageId) {
+        statusCallbackUrl += `?pendingMessageId=${pendingMessageId}`;
+      }
+      
+      const result = await this.client.messages.create({
+        from: this.fromNumber,
+        to: to,
+        mediaUrl: [imageUrl],
+        statusCallback: statusCallbackUrl,
+      });
+
+      console.log(`MMS sent successfully to ${to}. SID: ${result.sid}, Image: ${imageUrl}, StatusCallback: ${statusCallbackUrl}`);
+      return { sid: result.sid, status: result.status };
+    } catch (error) {
+      console.error("Failed to send MMS:", error);
+      throw error;
+    }
+  }
+
   async sendOTPSMS(phoneNumber: string, otpCode: string): Promise<boolean> {
     const message = `Your Curbe verification code is: ${otpCode}\n\nTu código de verificación Curbe es: ${otpCode}`;
     
