@@ -1085,6 +1085,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           clientSecondLastName: data.secondLastName,
           clientEmail: data.email,
           clientPhone: data.phone,
+          clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null, // Normalize to YYYY-MM-DD
           clientSsn: normalizeSSN(data.ssn),
           clientGender: data.gender,
           clientIsApplicant: data.isApplicant,
