@@ -1404,6 +1404,10 @@ export default function Settings() {
                   Company
                 </TabsTrigger>
               )}
+              <TabsTrigger value="automations" className="gap-2" data-testid="tab-automations">
+                <Zap className="h-4 w-4" />
+                Automations
+              </TabsTrigger>
               {isAdmin && (
                 <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
                   <Users className="h-4 w-4" />
@@ -1425,10 +1429,6 @@ export default function Settings() {
               <TabsTrigger value="notifications" className="gap-2" data-testid="tab-notifications">
                 <Bell className="h-4 w-4" />
                 Notifications
-              </TabsTrigger>
-              <TabsTrigger value="automations" className="gap-2" data-testid="tab-automations">
-                <Zap className="h-4 w-4" />
-                Automations
               </TabsTrigger>
             </TabsList>
 
