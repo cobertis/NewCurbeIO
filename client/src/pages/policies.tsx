@@ -1267,12 +1267,12 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // Invalidate ALL related queries to refresh ALL data
+      // Invalidate ALL related queries and FORCE refetch to update UI immediately
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/policies'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/policies/stats'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] })
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/policies'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/stats'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'], refetchType: 'active' })
       ]);
       
       toast({
