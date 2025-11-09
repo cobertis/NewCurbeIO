@@ -351,7 +351,7 @@ export function startBirthdayScheduler() {
                   console.log(`[BIRTHDAY SCHEDULER] Image sent successfully, SID: ${imageMessage.sid}`);
                   
                   // Small delay to ensure proper message ordering
-                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  await new Promise(resolve => setTimeout(resolve, 3000));
                 }
 
                 // STEP 2: Send TEXT message

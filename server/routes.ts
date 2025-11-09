@@ -19996,7 +19996,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Reconstruct webhookUrl from existing token
         webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
         // Wait 1 second before activating
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
       // ===== STEP 2: ACTIVATE NUMBER IN BULKVS (NO CHARGE YET) =====
@@ -21299,7 +21299,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               to: birthday.phone,
             });
             console.log(`[TEST] Image sent, SID: ${imageMessage.sid}`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
           }
 
           // Send TEXT
