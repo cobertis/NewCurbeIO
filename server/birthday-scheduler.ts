@@ -276,24 +276,40 @@ export function startBirthdayScheduler() {
               // Get selected birthday image if any
               let imageUrl: string | null = null;
               if (senderSettings.selectedImageId) {
-                const image = await db
-                  .select()
-                  .from(birthdayImages)
-                  .where(eq(birthdayImages.id, senderSettings.selectedImageId));
-                
-                if (image.length > 0 && image[0].isActive) {
-                  let rawUrl = image[0].imageUrl;
+                // Check if selectedImageId is a direct URL (custom uploaded image)
+                if (senderSettings.selectedImageId.startsWith('/uploads/') || 
+                    senderSettings.selectedImageId.startsWith('http://') || 
+                    senderSettings.selectedImageId.startsWith('https://')) {
+                  let rawUrl = senderSettings.selectedImageId;
                   
                   // Convert local paths to public URLs
                   if (rawUrl.startsWith('/uploads/')) {
                     const appUrl = process.env.APP_URL || 'https://app.curbe.io';
                     imageUrl = `${appUrl}${rawUrl}`;
-                  } else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-                    imageUrl = rawUrl;
                   } else {
-                    // Skip invalid URLs (base64, relative paths, etc.)
-                    console.log(`[BIRTHDAY SCHEDULER] Skipping invalid image URL format: ${rawUrl.substring(0, 50)}...`);
-                    imageUrl = null;
+                    imageUrl = rawUrl;
+                  }
+                } else {
+                  // Otherwise, it's a UUID - look up in birthday_images table
+                  const image = await db
+                    .select()
+                    .from(birthdayImages)
+                    .where(eq(birthdayImages.id, senderSettings.selectedImageId));
+                  
+                  if (image.length > 0 && image[0].isActive) {
+                    let rawUrl = image[0].imageUrl;
+                    
+                    // Convert local paths to public URLs
+                    if (rawUrl.startsWith('/uploads/')) {
+                      const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+                      imageUrl = `${appUrl}${rawUrl}`;
+                    } else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+                      imageUrl = rawUrl;
+                    } else {
+                      // Skip invalid URLs (base64, relative paths, etc.)
+                      console.log(`[BIRTHDAY SCHEDULER] Skipping invalid image URL format: ${rawUrl.substring(0, 50)}...`);
+                      imageUrl = null;
+                    }
                   }
                 }
               }
