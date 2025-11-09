@@ -3328,13 +3328,13 @@ export const birthdayPendingMessages = pgTable("birthday_pending_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   greetingHistoryId: varchar("greeting_history_id").notNull().references(() => birthdayGreetingHistory.id, { onDelete: "cascade" }),
   
-  mmsSid: text("mms_sid").notNull().unique(), // Twilio MMS message SID
+  mmsSid: text("mms_sid").unique(), // Twilio MMS message SID (nullable, set after MMS is sent)
   smsBody: text("sms_body").notNull(), // Text message to send after MMS delivery
   recipientPhone: text("recipient_phone").notNull(),
   recipientName: text("recipient_name").notNull(),
   imageUrl: text("image_url"),
   
-  status: text("status").notNull().default("pending"), // pending, delivered, failed, completed
+  status: text("status").notNull().default("pending_mms"), // pending_mms, delivered, failed, completed
   attemptCount: integer("attempt_count").notNull().default(0),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   
