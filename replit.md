@@ -80,6 +80,13 @@ The policies system uses cursor-based pagination to efficiently handle large dat
 - **Frontend:** TanStack Query's `useInfiniteQuery` with page flattening: `policiesData?.pages.flatMap(page => page.items)`
 - **Performance:** Initial load fetches 100 policies, additional pages loaded on demand via nextCursor
 
+**Policies Page Performance Optimization (Nov 2025):**
+The policies page implements aggressive caching to prevent repeated expensive queries:
+- **Stats Queries Caching:** Both `/api/policies/stats` and `/api/policies/oep-stats` queries cache results for 5 minutes (`staleTime: 5 * 60 * 1000`) and disable refetch on window focus
+- **Impact:** First load may take ~5-6 seconds for stats calculation, but subsequent navigations to /policies are instant (data served from cache)
+- **Known Issue:** Backend stats endpoints load ALL policies into memory for aggregation (inefficient for 10k+ policies). Future optimization: implement SQL-native aggregation queries with proper indexes.
+- **User Experience:** After initial page load, navigating away and back to /policies is nearly instantaneous due to caching
+
 ### Security Architecture
 - **Session Security:** `SESSION_SECRET` environment variable mandatory.
 - **Webhook Validation:** Twilio and BulkVS webhook signature validation.

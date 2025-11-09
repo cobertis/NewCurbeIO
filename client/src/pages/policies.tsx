@@ -3688,6 +3688,8 @@ export default function PoliciesPage() {
   }>({
     queryKey: ['/api/policies/stats'],
     enabled: !showWizard,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch on tab switch
   });
   
   // Fetch OEP 2026 statistics
@@ -3697,6 +3699,8 @@ export default function PoliciesPage() {
   }>({
     queryKey: ['/api/policies/oep-stats'],
     enabled: !showWizard,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    refetchOnWindowFocus: false, // Don't refetch on tab switch
   });
   
   // Renewal mutation
