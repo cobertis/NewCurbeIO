@@ -239,16 +239,18 @@ async function fetchSinglePage(
   // Determine effective date for age calculation (use provided date or default to Jan 1 of target year)
   const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
   
-  // Add client - BASIC fields only per official CMS API example
+  // Add client - Required fields: age, dob, aptc_eligible, gender, relationship, uses_tobacco
   const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
     age: clientAge,
+    dob: quoteData.client.dateOfBirth,
     aptc_eligible: true,
     gender: formatGenderForCMS(quoteData.client.gender),
+    relationship: "Self",
     uses_tobacco: quoteData.client.usesTobacco || false,
   });
   
-  // Add spouses - BASIC fields only per official CMS API example
+  // Add spouses - Required fields: age, dob, aptc_eligible, gender, relationship, uses_tobacco
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const isApplicant = spouse.aptc_eligible !== false;
@@ -256,14 +258,16 @@ async function fetchSinglePage(
       
       people.push({
         age: spouseAge,
+        dob: spouse.dateOfBirth,
         aptc_eligible: isApplicant,
         gender: formatGenderForCMS(spouse.gender),
+        relationship: "Spouse",
         uses_tobacco: spouse.usesTobacco || false,
       });
     });
   }
   
-  // Add dependents - BASIC fields only per official CMS API example
+  // Add dependents - Required fields: age, dob, aptc_eligible, gender, relationship, uses_tobacco
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
@@ -271,8 +275,10 @@ async function fetchSinglePage(
       
       people.push({
         age: dependentAge,
+        dob: dependent.dateOfBirth,
         aptc_eligible: needsInsurance,
         gender: formatGenderForCMS(dependent.gender),
+        relationship: "Child",
         uses_tobacco: dependent.usesTobacco || false,
       });
     });
