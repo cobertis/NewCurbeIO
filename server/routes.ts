@@ -21346,56 +21346,76 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[TEST] Message: ${messageBody}`);
 
         let twilioMessageSid: string | null = null;
+        let twilioImageSid: string | null = null;
         let status = 'pending';
         let errorMessage: string | null = null;
 
         try {
-          // Send IMAGE first if exists
-          if (imageUrl) {
-            console.log(`[TEST] Sending image: ${imageUrl}`);
-            const imageMessage = await twilioClient.messages.create({
-              mediaUrl: [imageUrl],
-              body: '🎂',
-              from: twilioPhoneNumber,
-              to: birthday.phone,
-            });
-            console.log(`[TEST] Image sent, SID: ${imageMessage.sid}`);
-            await new Promise(resolve => setTimeout(resolve, 3000));
-          }
-
-          // Send TEXT
-          console.log(`[TEST] Sending text message`);
-          const textMessage = await twilioClient.messages.create({
-            body: messageBody,
-            from: twilioPhoneNumber,
-            to: birthday.phone,
+          // Create greeting history record first
+          const greetingHistory = await storage.createBirthdayGreetingHistory({
+            userId: user.id,
+            companyId: user.companyId,
+            recipientName: birthday.name,
+            recipientPhone: birthday.phone,
+            recipientDateOfBirth: birthday.dateOfBirth,
+            message: messageBody,
+            imageUrl: imageUrl,
+            status: 'pending',
           });
-          
-          twilioMessageSid = textMessage.sid;
-          status = textMessage.status || 'sent';
-          console.log(`[TEST] Text sent, SID: ${twilioMessageSid}`);
+
+          if (imageUrl) {
+            console.log(`[TEST] Sending MMS with image: ${imageUrl}`);
+            
+            // Create pending message record
+            const pendingMessage = await storage.createBirthdayPendingMessage({
+              greetingHistoryId: greetingHistory.id,
+              mmsSid: 'temp', // Will be updated
+              smsBody: messageBody,
+              recipientPhone: birthday.phone,
+              recipientName: birthday.name,
+              imageUrl: imageUrl,
+              status: 'pending',
+            });
+            
+            // Send MMS with status callback
+            const mmsResult = await twilioService.sendMMS(
+              birthday.phone,
+              imageUrl,
+              pendingMessage.id
+            );
+            
+            if (mmsResult) {
+              twilioImageSid = mmsResult.sid;
+              
+              // Update pending message with actual MMS SID
+              await db.update(birthdayPendingMessages)
+                .set({ mmsSid: mmsResult.sid })
+                .where(eq(birthdayPendingMessages.id, pendingMessage.id));
+              
+              // Update greeting history with image SID
+              await storage.updateBirthdayGreetingImageSid(greetingHistory.id, mmsResult.sid);
+              
+              status = 'sent';
+              console.log(`[TEST] MMS sent, SID: ${mmsResult.sid}. Waiting for delivery webhook...`);
+              console.log(`[TEST] SMS will be sent automatically when MMS is delivered`);
+            }
+          } else {
+            // No image, send SMS directly
+            console.log(`[TEST] Sending SMS (no image)`);
+            const smsResult = await twilioService.sendSMS(birthday.phone, messageBody);
+            
+            if (smsResult) {
+              twilioMessageSid = smsResult.sid;
+              status = 'sent';
+              await storage.updateBirthdayGreetingStatus(greetingHistory.id, 'sent');
+              console.log(`[TEST] SMS sent, SID: ${smsResult.sid}`);
+            }
+          }
         } catch (twilioError: any) {
           console.error(`[TEST] Twilio error:`, twilioError);
           status = 'failed';
-          errorMessage = twilioError.message || 'Failed to send SMS';
+          errorMessage = twilioError.message || 'Failed to send message';
         }
-
-        // Save to history
-        await db.insert(birthdayGreetingHistory).values({
-          userId: user.id,
-          companyId: user.companyId,
-          recipientName: birthday.name,
-          recipientPhone: birthday.phone,
-          recipientDateOfBirth: birthday.dateOfBirth,
-          message: messageBody,
-          imageUrl: imageUrl,
-          status: status,
-          twilioMessageSid: twilioMessageSid,
-          errorMessage: errorMessage,
-          sentAt: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
 
         results.push({
           name: birthday.name,
@@ -21404,6 +21424,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           imageUrl: imageUrl,
           message: messageBody,
           twilioMessageSid: twilioMessageSid,
+          twilioImageSid: twilioImageSid,
           errorMessage: errorMessage,
         });
       }
