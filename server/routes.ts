@@ -85,7 +85,7 @@ import "./types";
 import { initializeStripe, getStripeClient, type AuditAction } from "./types";
 import type Stripe from "stripe";
 import { stripe } from "./stripe";
-import { fetchMarketplacePlans } from "./cms-marketplace";
+import { fetchMarketplacePlans, buildCMSPayloadFromPolicy } from "./cms-marketplace";
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 import { bulkVSClient } from "./bulkvs";
@@ -13031,10 +13031,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== CMS MARKETPLACE API ====================
   
-  // Import CMS Marketplace service
-  const cmsMarketplace = await import('./cms-marketplace.js');
-  const { fetchMarketplacePlans, getCountyFips } = cmsMarketplace;
-  
   // Get health insurance plans from CMS Marketplace API
   app.post("/api/cms-marketplace/plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13229,12 +13225,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })),
       };
       
-      // Dynamic import of CMS Marketplace service (same as other endpoints)
-      const cmsMarketplace = await import('./cms-marketplace.js');
-      const { fetchMarketplacePlans: fetchPlans } = cmsMarketplace;
-      
-      // Fetch plans from CMS Marketplace with pagination
-      const marketplaceData = await fetchPlans(quoteData, page, pageSize);
+      // Fetch plans from CMS Marketplace with pagination (using static import from top of file)
+      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize);
       
       // Enrich plans with dental coverage information from benefits
       if (marketplaceData.plans) {
@@ -16814,9 +16806,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Note not found" });
       }
       
-      // Permission check: only creator can delete (unless superadmin)
-      if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
-        return res.status(403).json({ message: "Forbidden - only the note creator can delete this note" });
+      // Permission check: only creator, company admin, or superadmin can delete
+      const isCreator = existingNote.createdBy === currentUser.id;
+      const isCompanyAdmin = currentUser.role === 'admin' && currentUser.companyId === policy.companyId;
+      const isSuperAdmin = currentUser.role === 'superadmin';
+      
+      if (!isCreator && !isCompanyAdmin && !isSuperAdmin) {
+        return res.status(403).json({ message: "Forbidden - only the note creator or company admin can delete this note" });
       }
       
       // Delete the note (storage method handles company ID filtering)
@@ -17683,64 +17679,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[MARKETPLACE_PLANS] Calculated income from ${members.length} members: $${totalIncome}`);
       }
       
-      // Prepare data for CMS API
-      console.log(`[MARKETPLACE_PLANS] Total members found: ${members.length}`);
-      console.log(`[MARKETPLACE_PLANS] Members roles:`, members.map(m => ({ id: m.id, role: m.role, dob: m.dateOfBirth })));
-      
-      const client = members.find(m => m.role === 'client');
-      const spouses = members.filter(m => m.role === 'spouse');
-      const dependents = members.filter(m => m.role === 'dependent');
-      
-      console.log(`[MARKETPLACE_PLANS] Breakdown - Client: ${client ? 'YES' : 'NO'}, Spouses: ${spouses.length}, Dependents: ${dependents.length}`);
-      
-      // If no client in members, check the policy's client fields
-      const clientData = client || {
-        dateOfBirth: policy.clientDateOfBirth,
-        gender: policy.clientGender,
-        tobaccoUser: policy.clientTobaccoUser,
-        pregnant: false,
-      };
-      
-      console.log(`[MARKETPLACE_PLANS] Using ${client ? 'member' : 'policy'} data for client with DOB: ${clientData.dateOfBirth}`);
-      
-      if (!clientData || !clientData.dateOfBirth) {
-        return res.status(400).json({ message: "Client information incomplete - date of birth required" });
-      }
-      
+      // Validate address information
       if (!policy.physical_postal_code || !policy.physical_county || !policy.physical_state) {
         return res.status(400).json({ message: "Policy address information incomplete" });
       }
       
-      const policyData = {
+      // Use buildCMSPayloadFromPolicy to construct the payload with EXACTLY 1 applicant
+      // This ensures the client is the only applicant, spouses are NOT applicants
+      const policyData = buildCMSPayloadFromPolicy({
+        members: members.map(m => ({
+          role: m.role || 'dependent',
+          dateOfBirth: m.dateOfBirth!,
+          gender: m.gender,
+          pregnant: m.pregnant,
+          tobaccoUser: m.tobaccoUser,
+          isApplicant: m.isApplicant,
+        })),
         zipCode: policy.physical_postal_code,
         county: policy.physical_county,
         state: policy.physical_state,
         householdIncome: totalIncome,
-        effectiveDate: policy.effectiveDate || undefined, // CRITICAL: Required for APTC/CSR
-        client: {
-          dateOfBirth: clientData.dateOfBirth,
-          gender: clientData.gender || undefined,
-          pregnant: clientData.pregnant || false,
-          usesTobacco: clientData.tobaccoUser || false,
-        },
-        spouses: spouses.map(s => ({
-          dateOfBirth: s.dateOfBirth!,
-          gender: s.gender || undefined,
-          pregnant: s.pregnant || false,
-          usesTobacco: s.tobaccoUser || false,
-        })),
-        dependents: dependents.map(d => ({
-          dateOfBirth: d.dateOfBirth!,
-          gender: d.gender || undefined,
-          pregnant: d.pregnant || false,
-          usesTobacco: d.tobaccoUser || false,
-          isApplicant: d.isApplicant !== false, // CRITICAL: Default TRUE (needs insurance) unless explicitly false (has Medicaid/CHIP)
-        })),
-      };
-      
-      // Dynamic import of CMS Marketplace service
-      const cmsMarketplace = await import('./cms-marketplace.js');
-      const { fetchMarketplacePlans: fetchPlans } = cmsMarketplace;
+        effectiveDate: policy.effectiveDate || undefined,
+      });
       
       // CRITICAL: Determine the correct year based on policy's effectiveDate
       let targetYear = new Date().getFullYear(); // Default to current year
@@ -17753,8 +17713,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log(`[MARKETPLACE_PLANS] Fetching plans for policy ${policyId} - Effective Date: ${policy.effectiveDate}, Target Year: ${targetYear}`);
       
-      // Fetch plans from CMS Marketplace with pagination and correct year
-      const marketplaceData = await fetchPlans(policyData, page, pageSize, targetYear);
+      // Fetch plans from CMS Marketplace with pagination and correct year (using static import from top of file)
+      const marketplaceData = await fetchMarketplacePlans(policyData, page, pageSize, targetYear);
       
       // Enrich plans with dental coverage information from benefits
       if (marketplaceData.plans) {

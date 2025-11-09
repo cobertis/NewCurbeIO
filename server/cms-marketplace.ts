@@ -150,6 +150,7 @@ export async function fetchMarketplacePlans(
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
+      aptc_eligible?: boolean; // CRITICAL: If false, spouse is NOT an applicant (no APTC eligibility)
     }>;
     dependents?: Array<{
       dateOfBirth: string;
@@ -278,6 +279,7 @@ async function fetchSinglePage(
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
+      aptc_eligible?: boolean; // CRITICAL: If false, spouse is NOT an applicant (no APTC eligibility)
     }>;
     dependents?: Array<{
       dateOfBirth: string;
@@ -322,11 +324,15 @@ async function fetchSinglePage(
   // Add spouses - Relationship "Spouse" is CRITICAL for APTC calculation
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
+      // CRITICAL FIX: Respect aptc_eligible flag from buildCMSPayloadFromPolicy()
+      // If spouse.aptc_eligible is explicitly set to false, they should NOT be an applicant
+      const isApplicant = spouse.aptc_eligible !== false; // Default to true unless explicitly false
+      
       people.push({
         dob: spouse.dateOfBirth, // CRITICAL: Send ONLY dob (not age) to let API apply "plan specific rating-age adjustments"
-        aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
+        aptc_eligible: isApplicant, // RESPECT the flag - don't hardcode to true
         does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
-        has_mec: false, // No Minimal Essential Coverage (spouse needs insurance)
+        has_mec: !isApplicant, // If NOT applicant, they have Minimal Essential Coverage
         gender: formatGenderForCMS(spouse.gender),
         is_parent: false, // Per CMS docs: optional field for parent status
         is_pregnant: spouse.pregnant || false,
@@ -549,6 +555,99 @@ async function fetchSinglePage(
     console.error('[CMS_MARKETPLACE] Error fetching plans:', error);
     throw error;
   }
+}
+
+/**
+ * Build CMS Marketplace API payload from policy data
+ * CRITICAL: This function ensures EXACTLY 1 applicant (the client/policy owner)
+ * Spouses and dependents are mapped correctly to avoid "household tiene dos applicant" error
+ */
+export function buildCMSPayloadFromPolicy(policyData: {
+  members: Array<{
+    role: string;
+    dateOfBirth: string;
+    gender?: string;
+    pregnant?: boolean;
+    tobaccoUser?: boolean;
+    isApplicant?: boolean;
+  }>;
+  zipCode: string;
+  county: string;
+  state: string;
+  householdIncome: number;
+  effectiveDate?: string;
+}): {
+  zipCode: string;
+  county: string;
+  state: string;
+  householdIncome: number;
+  effectiveDate?: string;
+  client: {
+    dateOfBirth: string;
+    gender?: string;
+    pregnant?: boolean;
+    usesTobacco?: boolean;
+  };
+  spouses?: Array<{
+    dateOfBirth: string;
+    gender?: string;
+    pregnant?: boolean;
+    usesTobacco?: boolean;
+    aptc_eligible?: boolean; // CRITICAL: false means spouse is NOT an applicant
+  }>;
+  dependents?: Array<{
+    dateOfBirth: string;
+    gender?: string;
+    pregnant?: boolean;
+    usesTobacco?: boolean;
+    isApplicant?: boolean;
+  }>;
+} {
+  // Find the client (policy owner) - ONLY they are the applicant
+  const clientMember = policyData.members.find(m => m.role === 'client');
+  if (!clientMember || !clientMember.dateOfBirth) {
+    throw new Error('Policy must have a client member with date of birth');
+  }
+
+  // Find spouses - they are NOT applicants, regardless of isApplicant field
+  const spouseMembers = policyData.members.filter(m => m.role === 'spouse');
+
+  // Find dependents - use isApplicant field to determine if they need insurance
+  const dependentMembers = policyData.members.filter(m => m.role === 'dependent');
+
+  console.log('[buildCMSPayloadFromPolicy] Building payload with:');
+  console.log(`  - Client: 1 (role=client, applicant=TRUE)`);
+  console.log(`  - Spouses: ${spouseMembers.length} (role=spouse, aptc_eligible=FALSE)`);
+  console.log(`  - Dependents: ${dependentMembers.length}`);
+
+  // Build the payload with correct mapping
+  return {
+    zipCode: policyData.zipCode,
+    county: policyData.county,
+    state: policyData.state,
+    householdIncome: policyData.householdIncome,
+    effectiveDate: policyData.effectiveDate,
+    client: {
+      dateOfBirth: clientMember.dateOfBirth,
+      gender: clientMember.gender,
+      pregnant: clientMember.pregnant || false,
+      usesTobacco: clientMember.tobaccoUser || false,
+    },
+    spouses: spouseMembers.map(s => ({
+      dateOfBirth: s.dateOfBirth,
+      gender: s.gender,
+      pregnant: s.pregnant || false,
+      usesTobacco: s.tobaccoUser || false,
+      aptc_eligible: false, // CRITICAL: Spouses are NEVER applicants, even if they need insurance
+    })),
+    dependents: dependentMembers.map(d => ({
+      dateOfBirth: d.dateOfBirth,
+      gender: d.gender,
+      pregnant: d.pregnant || false,
+      usesTobacco: d.tobaccoUser || false,
+      isApplicant: d.isApplicant !== false, // Default TRUE unless explicitly false
+    })),
+  };
 }
 
 /**
