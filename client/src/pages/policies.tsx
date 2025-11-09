@@ -1267,10 +1267,12 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // Invalidate BOTH queries to refresh ALL data
+      // Invalidate ALL related queries to refresh ALL data
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/policies'] })
+        queryClient.invalidateQueries({ queryKey: ['/api/policies'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] })
       ]);
       
       toast({
