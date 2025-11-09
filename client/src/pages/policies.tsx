@@ -7059,6 +7059,7 @@ export default function PoliciesPage() {
                 const formatCurrency = (value: any) => {
                   if (value === null || value === undefined) return 'N/A';
                   const num = typeof value === 'string' ? parseFloat(value) : value;
+                  if (isNaN(num)) return 'N/A';
                   // Round to $0 if negative, otherwise show real price
                   if (num < 0) return '$0';
                   if (num === 0) return '$0';
@@ -8173,6 +8174,7 @@ export default function PoliciesPage() {
                           const formatCurrency = (value: any) => {
                             if (value === null || value === undefined) return 'N/A';
                             const num = typeof value === 'string' ? parseFloat(value) : value;
+                            if (isNaN(num)) return 'N/A';
                             // Round to $0 if negative, otherwise show real price
                             if (num < 0) return '$0';
                             if (num === 0) return '$0';
@@ -12246,6 +12248,7 @@ export default function PoliciesPage() {
                         const formatCurrency = (value: any) => {
                           if (value === null || value === undefined) return 'N/A';
                           const num = typeof value === 'string' ? parseFloat(value) : value;
+                          if (isNaN(num)) return 'N/A';
                           if (num === 0) return '$0';
                           return `$${num.toFixed(2)}`;
                         };
