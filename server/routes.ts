@@ -90,6 +90,7 @@ import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 import { bulkVSClient } from "./bulkvs";
 import { formatForStorage, formatForDisplay } from "@shared/phone";
+import { buildBirthdayMessage } from "@shared/birthday-message";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -21333,13 +21334,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         }
 
-        // Prepare message
-        const defaultMessage = "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.";
-        const clientFirstName = birthday.name.split(' ')[0];
-        const agentFirstName = user.firstName || user.email.split('@')[0];
-        const messageBody = (settings.customMessage || defaultMessage)
-          .replace('{CLIENT_NAME}', clientFirstName)
-          .replace('{AGENT_NAME}', agentFirstName);
+        // Prepare message using shared helper
+        const messageBody = buildBirthdayMessage({
+          clientFullName: birthday.name,
+          agentFirstName: user.firstName || user.email.split('@')[0],
+          customMessage: settings.customMessage,
+        });
 
         console.log(`[TEST] Sending to ${birthday.name} (${birthday.phone})`);
         console.log(`[TEST] Image URL: ${imageUrl || 'none'}`);
@@ -21369,12 +21369,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             // Create pending message record
             const pendingMessage = await storage.createBirthdayPendingMessage({
               greetingHistoryId: greetingHistory.id,
-              mmsSid: 'temp', // Will be updated
               smsBody: messageBody,
               recipientPhone: birthday.phone,
               recipientName: birthday.name,
               imageUrl: imageUrl,
-              status: 'pending',
+              status: 'pending_mms',
             });
             
             // Send MMS with status callback
@@ -21387,10 +21386,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (mmsResult) {
               twilioImageSid = mmsResult.sid;
               
-              // Update pending message with actual MMS SID
-              await db.update(birthdayPendingMessages)
-                .set({ mmsSid: mmsResult.sid })
-                .where(eq(birthdayPendingMessages.id, pendingMessage.id));
+              // Update pending message with actual MMS SID using storage layer
+              await storage.updateBirthdayPendingMessageMmsSid(pendingMessage.id, mmsResult.sid);
               
               // Update greeting history with image SID
               await storage.updateBirthdayGreetingImageSid(greetingHistory.id, mmsResult.sid);
