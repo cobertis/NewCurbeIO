@@ -127,8 +127,10 @@ const formatPhoneNumber = (value: string) => {
 // Helper to format date for input fields - just returns the yyyy-MM-dd string as-is
 const formatDateForInput = (date: string | null | undefined): string | undefined => {
   if (!date) return undefined;
-  // Date is already in yyyy-MM-dd format - return as-is
-  return date;
+  // Extract YYYY-MM-DD from any date format (handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.sssZ")
+  // This ensures HTML <input type="date"> receives a valid value
+  const dateOnly = date.split('T')[0];
+  return dateOnly;
 };
 
 // Helper to format date for display (converts yyyy-MM-dd to display format like MM/dd/yyyy)
@@ -1105,7 +1107,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
           secondLastName: data.secondLastName,
           email: data.email,
           phone: data.phone,
-          dateOfBirth: data.dateOfBirth,
+          dateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null, // Normalize to YYYY-MM-DD
           ssn: normalizeSSN(data.ssn),
           gender: data.gender,
           isApplicant: data.isApplicant,
@@ -1160,7 +1162,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
             secondLastName: data.secondLastName || null,
             email: data.email || null,
             phone: data.phone || null,
-            dateOfBirth: data.dateOfBirth || null, // Send as string, backend will convert
+            dateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null, // Normalize to YYYY-MM-DD
             ssn: normalizeSSN(data.ssn) || null,
             gender: data.gender || null,
             isApplicant: data.isApplicant || false,
