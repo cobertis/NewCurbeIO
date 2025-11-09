@@ -129,8 +129,145 @@ function formatGenderForCMS(gender?: string): string {
 }
 
 /**
+ * Fetch household eligibility (APTC and CSR) from CMS Marketplace API
+ * FIX for PROBLEM 1: The /plans/search endpoint does NOT return household_aptc
+ * We must call the /households/eligibility/estimates endpoint separately
+ */
+export async function fetchHouseholdEligibility(
+  quoteData: {
+    zipCode: string;
+    county: string;
+    state: string;
+    householdIncome: number;
+    client: {
+      dateOfBirth: string;
+      gender?: string;
+      usesTobacco?: boolean;
+    };
+    spouses?: Array<{
+      dateOfBirth: string;
+      gender?: string;
+      usesTobacco?: boolean;
+      aptc_eligible?: boolean;
+    }>;
+    dependents?: Array<{
+      dateOfBirth: string;
+      gender?: string;
+      usesTobacco?: boolean;
+      isApplicant?: boolean;
+    }>;
+  },
+  yearOverride?: number
+): Promise<{ aptc: number; csr: string } | null> {
+  const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
+  }
+
+  const year = yearOverride || new Date().getFullYear();
+  
+  // Build people array using ONLY the minimal required fields
+  const people = [];
+  
+  // Add client
+  const clientAge = calculateAge(quoteData.client.dateOfBirth);
+  people.push({
+    age: clientAge,
+    aptc_eligible: true,
+    gender: formatGenderForCMS(quoteData.client.gender),
+    uses_tobacco: quoteData.client.usesTobacco || false,
+  });
+  
+  // Add spouses
+  if (quoteData.spouses && quoteData.spouses.length > 0) {
+    quoteData.spouses.forEach(spouse => {
+      const isApplicant = spouse.aptc_eligible !== false;
+      const spouseAge = calculateAge(spouse.dateOfBirth);
+      people.push({
+        age: spouseAge,
+        aptc_eligible: isApplicant,
+        gender: formatGenderForCMS(spouse.gender),
+        uses_tobacco: spouse.usesTobacco || false,
+      });
+    });
+  }
+  
+  // Add dependents
+  if (quoteData.dependents && quoteData.dependents.length > 0) {
+    quoteData.dependents.forEach(dependent => {
+      const needsInsurance = dependent.isApplicant !== false;
+      const dependentAge = calculateAge(dependent.dateOfBirth);
+      people.push({
+        age: dependentAge,
+        aptc_eligible: needsInsurance,
+        gender: formatGenderForCMS(dependent.gender),
+        uses_tobacco: dependent.usesTobacco || false,
+      });
+    });
+  }
+
+  // Get county FIPS code
+  const countyFips = await getCountyFips(quoteData.zipCode, quoteData.county, quoteData.state);
+  if (!countyFips) {
+    console.error('[CMS_MARKETPLACE_ELIGIBILITY] ❌ Could not determine county FIPS code');
+    return null;
+  }
+
+  const requestBody = {
+    household: {
+      income: quoteData.householdIncome,
+      people: people,
+    },
+    place: {
+      countyfips: countyFips,
+      state: quoteData.state,
+      zipcode: quoteData.zipCode,
+    },
+    year: year,
+  };
+
+  try {
+    const apiUrl = `https://marketplace.api.healthcare.gov/api/v1/households/eligibility/estimates?apikey=${apiKey}`;
+    
+    console.log('[CMS_MARKETPLACE_ELIGIBILITY] 🔍 Fetching APTC/CSR from eligibility endpoint...');
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      console.error('[CMS_MARKETPLACE_ELIGIBILITY] API Error:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (data.estimates && data.estimates.length > 0) {
+      const estimate = data.estimates[0];
+      console.log(`[CMS_MARKETPLACE_ELIGIBILITY] ✅ APTC: $${estimate.aptc}, CSR: ${estimate.csr}`);
+      return {
+        aptc: estimate.aptc,
+        csr: estimate.csr,
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[CMS_MARKETPLACE_ELIGIBILITY] Error:', error);
+    return null;
+  }
+}
+
+/**
  * Fetch health insurance plans from CMS Marketplace API
- * PURE PASS-THROUGH - Returns EXACTLY what the CMS API returns without any modifications
+ * FIX for PROBLEM 2: API returns only 10 plans per page, so we fetch ALL pages
+ * FIX for PROBLEM 1: We call the eligibility endpoint first to get household_aptc
  */
 export async function fetchMarketplacePlans(
   quoteData: {
@@ -138,7 +275,7 @@ export async function fetchMarketplacePlans(
     county: string;
     state: string;
     householdIncome: number;
-    effectiveDate?: string; // CRITICAL: Required for APTC/CSR calculation
+    effectiveDate?: string;
     client: {
       dateOfBirth: string;
       gender?: string;
@@ -150,14 +287,14 @@ export async function fetchMarketplacePlans(
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
-      aptc_eligible?: boolean; // CRITICAL: If false, spouse is NOT an applicant (no APTC eligibility)
+      aptc_eligible?: boolean;
     }>;
     dependents?: Array<{
       dateOfBirth: string;
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
-      isApplicant?: boolean; // true = needs insurance (denied Medicaid), false = has Medicaid/CHIP
+      isApplicant?: boolean;
     }>;
   },
   page: number = 1,
@@ -170,26 +307,69 @@ export async function fetchMarketplacePlans(
   }
   
   const targetYear = yearOverride || new Date().getFullYear();
-  console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, Year ${targetYear}`);
-  console.log(`[CMS_MARKETPLACE] ⚠️  PURE PASS-THROUGH MODE - No modifications will be made to API response`);
+  console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, PageSize ${pageSize}, Year ${targetYear}`);
   
-  // Call fetchSinglePage and return EXACTLY what the CMS API returns
-  // NO deduplication, NO recalculation, NO modifications
-  const apiResponse = await fetchSinglePage(quoteData, page, pageSize, yearOverride);
+  // FIX PROBLEM 1: Fetch household eligibility FIRST to get household_aptc
+  console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
+  const eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
   
-  console.log(`[CMS_MARKETPLACE] ✅ Returning EXACT API response:`);
-  console.log(`  - Plans returned: ${apiResponse.plans?.length || 0}`);
-  console.log(`  - Total available: ${apiResponse.total || 0}`);
-  console.log(`  - household_aptc: ${apiResponse.household_aptc || 'NOT PROVIDED BY API'}`);
-  console.log(`  - household_csr: ${apiResponse.household_csr || 'NOT PROVIDED BY API'}`);
-  console.log(`[CMS_MARKETPLACE] 🔒 NO deduplication, NO recalculation - showing exactly what CMS API calculated`);
+  // FIX PROBLEM 2: API returns only 10 plans per page, so we need to fetch multiple pages
+  // Calculate how many API pages we need to fetch to get the requested pageSize
+  const PLANS_PER_API_PAGE = 10; // CMS API hard limit
+  const numApiPagesToFetch = Math.ceil(pageSize / PLANS_PER_API_PAGE);
+  const startOffset = (page - 1) * pageSize;
   
-  return apiResponse;
+  console.log(`[CMS_MARKETPLACE] 📄 Step 2: Fetching plans (need ${numApiPagesToFetch} API pages for ${pageSize} plans)...`);
+  
+  let allPlans: MarketplacePlan[] = [];
+  let totalAvailable = 0;
+  let year = targetYear;
+  
+  // Fetch multiple pages from the API to collect enough plans
+  for (let apiPage = 0; apiPage < numApiPagesToFetch; apiPage++) {
+    const offset = startOffset + (apiPage * PLANS_PER_API_PAGE);
+    
+    console.log(`[CMS_MARKETPLACE] 📄 Fetching API page ${apiPage + 1}/${numApiPagesToFetch} (offset=${offset})...`);
+    
+    const apiResponse = await fetchSinglePage(quoteData, offset, yearOverride);
+    
+    if (apiResponse.plans && apiResponse.plans.length > 0) {
+      allPlans = allPlans.concat(apiResponse.plans);
+      totalAvailable = apiResponse.total;
+      year = apiResponse.year;
+    }
+    
+    // Stop if we've fetched all available plans
+    if (allPlans.length >= totalAvailable) {
+      console.log(`[CMS_MARKETPLACE] ✅ Fetched all ${totalAvailable} available plans`);
+      break;
+    }
+    
+    // Stop if the API returned fewer than 10 plans (last page)
+    if (apiResponse.plans.length < PLANS_PER_API_PAGE) {
+      console.log(`[CMS_MARKETPLACE] ✅ Reached last page (${apiResponse.plans.length} plans)`);
+      break;
+    }
+  }
+  
+  console.log(`[CMS_MARKETPLACE] ✅ Total plans fetched: ${allPlans.length} of ${totalAvailable}`);
+  console.log(`[CMS_MARKETPLACE] ✅ household_aptc: $${eligibility?.aptc || 'NOT AVAILABLE'}`);
+  console.log(`[CMS_MARKETPLACE] ✅ household_csr: ${eligibility?.csr || 'NOT AVAILABLE'}`);
+  
+  // Return combined response with eligibility data
+  return {
+    plans: allPlans,
+    total: totalAvailable,
+    year: year,
+    household_aptc: eligibility?.aptc,
+    household_csr: eligibility?.csr,
+  };
 }
 
 /**
  * Fetch a single page of marketplace plans - internal helper function
- * The CMS API automatically calculates premium_w_credit based on household data
+ * SIMPLIFIED: Uses ONLY the minimal required fields per official CMS API documentation
+ * FIX: Uses offset in request BODY (not query params)
  */
 async function fetchSinglePage(
   quoteData: {
@@ -197,7 +377,7 @@ async function fetchSinglePage(
     county: string;
     state: string;
     householdIncome: number;
-    effectiveDate?: string; // CRITICAL: Required for APTC/CSR calculation
+    effectiveDate?: string;
     client: {
       dateOfBirth: string;
       gender?: string;
@@ -209,18 +389,17 @@ async function fetchSinglePage(
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
-      aptc_eligible?: boolean; // CRITICAL: If false, spouse is NOT an applicant (no APTC eligibility)
+      aptc_eligible?: boolean;
     }>;
     dependents?: Array<{
       dateOfBirth: string;
       gender?: string;
       pregnant?: boolean;
       usesTobacco?: boolean;
-      isApplicant?: boolean; // true = needs insurance (denied Medicaid), false = has Medicaid/CHIP
+      isApplicant?: boolean;
     }>;
   },
-  page: number,
-  limit: number = 100,
+  offset: number,
   yearOverride?: number
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
@@ -229,28 +408,28 @@ async function fetchSinglePage(
     throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
   }
 
-  // Build household members array following CMS API format from documentation
-  // FIX 2: API requires BOTH age and dob fields for accurate calculations
+  const year = yearOverride || new Date().getFullYear();
+
+  // Build household members array using ONLY the minimal required fields
+  // Per official CMS API docs: age, aptc_eligible, gender, uses_tobacco
   const people = [];
   
   // Check if there's a married couple (spouse exists)
   const hasMarriedCouple = quoteData.spouses && quoteData.spouses.length > 0;
   
-  // Determine effective date for age calculation (use provided date or default to Jan 1 of target year)
+  // Determine effective date for age calculation
   const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
   
-  // Add client - Required fields: age, dob, aptc_eligible, gender, relationship, uses_tobacco
+  // Add client - MINIMAL FIELDS ONLY
   const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
     age: clientAge,
-    dob: quoteData.client.dateOfBirth,
     aptc_eligible: true,
     gender: formatGenderForCMS(quoteData.client.gender),
-    relationship: "Self",
     uses_tobacco: quoteData.client.usesTobacco || false,
   });
   
-  // Add spouses - Required fields: age, dob, aptc_eligible, gender, relationship, uses_tobacco
+  // Add spouses - MINIMAL FIELDS ONLY
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const isApplicant = spouse.aptc_eligible !== false;
@@ -258,16 +437,14 @@ async function fetchSinglePage(
       
       people.push({
         age: spouseAge,
-        dob: spouse.dateOfBirth,
         aptc_eligible: isApplicant,
         gender: formatGenderForCMS(spouse.gender),
-        relationship: "Spouse",
         uses_tobacco: spouse.usesTobacco || false,
       });
     });
   }
   
-  // Add dependents - Required fields: age, dob, aptc_eligible, gender, relationship, uses_tobacco
+  // Add dependents - MINIMAL FIELDS ONLY
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
@@ -275,27 +452,14 @@ async function fetchSinglePage(
       
       people.push({
         age: dependentAge,
-        dob: dependent.dateOfBirth,
         aptc_eligible: needsInsurance,
         gender: formatGenderForCMS(dependent.gender),
-        relationship: "Child",
         uses_tobacco: dependent.usesTobacco || false,
       });
     });
   }
 
-  // Use yearOverride if provided, otherwise use current year
-  const year = yearOverride || new Date().getFullYear();
-
-  // Get county FIPS code - CRÍTICO según documentación
-  if (page === 1) { // Only log on first page to reduce noise
-    console.log(`[CMS_MARKETPLACE] 📄 Página ${page} (año ${year}):`, {
-      ZIP: quoteData.zipCode,
-      Estado: quoteData.state,
-      County: quoteData.county,
-    });
-  }
-
+  // Get county FIPS code
   const countyFips = await getCountyFips(quoteData.zipCode, quoteData.county, quoteData.state);
   
   if (!countyFips) {
@@ -303,17 +467,12 @@ async function fetchSinglePage(
     throw new Error(`Unable to determine county FIPS for ${quoteData.county}, ${quoteData.state}. Please verify the address information.`);
   }
 
-  if (page === 1) {
-    console.log('[CMS_MARKETPLACE] County FIPS:', countyFips);
-  }
-
-  // FIX 1: Build request body with ONLY supported fields per official documentation
-  // FIX 3: Pagination moved to query parameters (not in body)
+  // Build SIMPLIFIED request body with MINIMAL fields
   const requestBody: any = {
     household: {
-      income: quoteData.householdIncome, // ANNUAL household income (API assumes annual by default)
-      people: people, // Array of household members with age and dob
-      has_married_couple: hasMarriedCouple, // CRITICAL: Required for accurate APTC calculation for couples
+      income: quoteData.householdIncome,
+      people: people,
+      has_married_couple: hasMarriedCouple,
     },
     market: 'Individual',
     place: {
@@ -322,29 +481,17 @@ async function fetchSinglePage(
       zipcode: quoteData.zipCode,
     },
     year: year,
+    offset: offset, // FIX: Pagination via offset in BODY
   };
   
-  // CRITICAL: Add effective_date if provided - required for accurate APTC/CSR calculation
+  // Add effective_date if provided
   if (quoteData.effectiveDate) {
     requestBody.household.effective_date = quoteData.effectiveDate;
-    if (page === 1) {
-      console.log('[CMS_MARKETPLACE] ✅ Using effective_date:', quoteData.effectiveDate);
-      console.log('[CMS_MARKETPLACE] ✅ Has married couple:', hasMarriedCouple);
-    }
-  } else if (page === 1) {
-    console.log('[CMS_MARKETPLACE] ⚠️ No effective_date provided - APTC/CSR may be inaccurate');
-  }
-
-  if (page === 1) {
-    console.log(`[CMS_MARKETPLACE] 📊 Page ${page}: Requesting up to ${limit} plans per page`);
-    console.log(`[CMS_MARKETPLACE] 💰 ANNUAL Income: $${quoteData.householdIncome}/year`);
-    console.log('[CMS_MARKETPLACE] 🔍 EXACT REQUEST PAYLOAD TO CMS API:');
-    console.log(JSON.stringify(requestBody, null, 2));
   }
 
   try {
-    // FIX 3: CMS Marketplace API endpoint with pagination in query parameters
-    const apiUrl = `https://marketplace.api.healthcare.gov/api/v1/plans/search?apikey=${apiKey}&per_page=${limit}&page=${page}`;
+    // FIX: Simple API URL without pagination query params
+    const apiUrl = `https://marketplace.api.healthcare.gov/api/v1/plans/search?apikey=${apiKey}`;
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -359,7 +506,6 @@ async function fetchSinglePage(
       const errorText = await response.text();
       console.error('[CMS_MARKETPLACE] API Error:', response.status, errorText);
       
-      // Provide more specific error messages
       if (response.status === 400) {
         throw new Error('Invalid request to marketplace API. Please verify all quote information is complete and accurate.');
       } else if (response.status === 401 || response.status === 403) {
@@ -373,39 +519,14 @@ async function fetchSinglePage(
 
     const data: MarketplaceApiResponse = await response.json();
     
-    // CRITICAL DEBUG: Log complete API response on first page to see ALL fields
-    if (page === 1) {
-      console.log('[CMS_MARKETPLACE] 🔍 COMPLETE API RESPONSE (first page):');
-      console.log(JSON.stringify({
-        household_aptc: data.household_aptc,
-        household_csr: data.household_csr,
-        household_lcbp_premium: data.household_lcbp_premium,
-        household_slcsp_premium: data.household_slcsp_premium,
-        total: data.total,
-        year: data.year,
-        plans_count: data.plans?.length
-      }, null, 2));
-    }
-    
-    // Log total plans available (only on first page)
-    if (page === 1 && data.total) {
-      console.log(`[CMS_MARKETPLACE] 📊 Total de planes disponibles: ${data.total}`);
-    }
-    
-    if (page === 1 || page % 5 === 0) { // Reduce logging noise
-      console.log(`[CMS_MARKETPLACE] ✅ Página ${page}: ${data.plans?.length || 0} planes obtenidos`);
-    }
-    
-    // Agregar información del request para mostrar al usuario
+    // Add request metadata for transparency
     data.request_data = {
       household_income: quoteData.householdIncome,
       people_count: people.length,
       people: people.map((p: any) => ({
         age: p.age,
-        dob: p.dob,
         gender: p.gender,
         tobacco: p.uses_tobacco,
-        pregnant: p.is_pregnant,
         aptc_eligible: p.aptc_eligible
       })),
       location: {
@@ -415,52 +536,8 @@ async function fetchSinglePage(
         county_fips: countyFips
       },
       year: year,
-      per_page: limit,
-      page: page
+      offset: offset
     };
-    
-    // DEBUG: Log API response metadata on first page
-    if (page === 1) {
-      console.log('[CMS_MARKETPLACE] 📋 API RESPONSE METADATA:');
-      console.log(`  - household_csr: ${data.household_csr || 'NOT PROVIDED'}`);
-      console.log(`  - household_aptc: ${data.household_aptc || 'NOT PROVIDED'}`);
-      console.log(`  - household_slcsp_premium: ${data.household_slcsp_premium || 'NOT PROVIDED'}`);
-      
-      if (data.plans && data.plans.length > 0) {
-        const firstPlan = data.plans[0];
-        console.log('[CMS_MARKETPLACE] 🔍 SAMPLE PLAN FROM API:');
-        console.log(`  - Plan ID: ${firstPlan.id}`);
-        console.log(`  - Plan Name: ${firstPlan.name}`);
-        console.log(`  - Metal Level: ${firstPlan.metal_level}`);
-        console.log(`  - Premium: ${firstPlan.premium}`);
-        console.log(`  - Premium w/ Credit: ${firstPlan.premium_w_credit}`);
-      }
-    }
-    
-    // DEBUG: Look for Oscar plan specifically in EVERY page
-    if (data.plans) {
-      const oscarPlan = data.plans.find((p: any) => p.id === '40572FL0200025');
-      if (oscarPlan) {
-        console.log('[CMS_MARKETPLACE] 🎯 FOUND OSCAR PLAN 40572FL0200025 ON PAGE ' + page + ':');
-        console.log(`  - Issuer: ${oscarPlan.issuer?.name}`);
-        console.log(`  - Plan Name: ${oscarPlan.name}`);
-        console.log(`  - Metal Level: ${oscarPlan.metal_level}`);
-        console.log(`  - Type: ${oscarPlan.type}`);
-        console.log(`  - Premium (unsubsidized): $${oscarPlan.premium}`);
-        console.log(`  - Premium w/ Credit (subsidized): $${oscarPlan.premium_w_credit}`);
-        console.log(`  - APTC Amount: $${oscarPlan.premium - (oscarPlan.premium_w_credit || 0)}`);
-        console.log(`  - Deductible: ${oscarPlan.deductibles?.[0]?.amount || 'N/A'}`);
-        console.log(`  - Design Type: ${oscarPlan.design_type || 'N/A'}`);
-      }
-    }
-    
-    // API automatically calculates ALL values (premium_w_credit, household_aptc, household_csr)
-    // We do NOT calculate or override ANY values - we return exactly what the API provides
-    
-    // Log if we're reaching the end of pagination
-    if (data.plans && data.plans.length < limit) {
-      console.log(`[CMS_MARKETPLACE] ✅ Búsqueda completa: última página con ${data.plans.length} planes`);
-    }
     
     return data;
   } catch (error) {
