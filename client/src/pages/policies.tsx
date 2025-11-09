@@ -3777,7 +3777,7 @@ export default function PoliciesPage() {
       return response.json();
     },
     getNextPageParam: (lastPage) => {
-      if (!lastPage) return undefined;
+      if (!lastPage || !lastPage.items || !Array.isArray(lastPage.items)) return undefined;
       return lastPage.nextCursor ?? undefined;
     },
   });

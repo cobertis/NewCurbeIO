@@ -1,0 +1,541 @@
+Download the Apollo DevTools for a better development experience: https://chrome.google.com/webstore/detail/apollo-client-developer-t/jdkknkkbebbapilgoeccciglkfbmbnfm
+bc3f23dfc7cd896f.js:2 [LaunchDarkly] LaunchDarkly client initialized
+bc3f23dfc7cd896f.js:2 Cache data may be lost when replacing the dealContext field of a Org object.
+
+This could cause additional (usually avoidable) network requests to fetch data that were otherwise cached.
+
+To address this problem (which is not a bug in Apollo Client), either ensure all objects of type OrgDealContext have an ID or a custom merge function, or define a custom merge function for the Org.dealContext field, so InMemoryCache can safely merge these objects:
+
+  existing: {"__typename":"OrgDealContext","dealType":"default","salesContactEmail":null}
+  incoming: {"__typename":"OrgDealContext","dealType":"default"}
+
+For more information about these options, please refer to the documentation:
+
+  * Ensuring entity objects have IDs: https://go.apollo.dev/c/generating-unique-identifiers
+  * Defining custom merge functions: https://go.apollo.dev/c/merging-non-normalized-objects
+
+(anonymous) @ bc3f23dfc7cd896f.js:2
+(anonymous) @ 4206b4cada407286.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+e.writeToStore @ bd891fa4d45bb59c.js:2
+r.write @ bd891fa4d45bb59c.js:2
+e.writeQuery @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+c @ bd891fa4d45bb59c.js:2
+r.batch @ bd891fa4d45bb59c.js:2
+r.performTransaction @ bd891fa4d45bb59c.js:2
+e.markResult @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+t @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+then @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+m @ 1b224bbc8db79db2.js:2
+_ @ 1b224bbc8db79db2.js:2
+r.next @ 1b224bbc8db79db2.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+H @ bd891fa4d45bb59c.js:2
+next @ bd891fa4d45bb59c.js:2
+m @ 1b224bbc8db79db2.js:2
+_ @ 1b224bbc8db79db2.js:2
+r.next @ 1b224bbc8db79db2.js:2
+m @ 1b224bbc8db79db2.js:2
+_ @ 1b224bbc8db79db2.js:2
+r.next @ 1b224bbc8db79db2.js:2
+onNext @ bd891fa4d45bb59c.js:2
+m @ 1b224bbc8db79db2.js:2
+_ @ 1b224bbc8db79db2.js:2
+r.next @ 1b224bbc8db79db2.js:2
+next @ bd891fa4d45bb59c.js:2
+m @ 1b224bbc8db79db2.js:2
+_ @ 1b224bbc8db79db2.js:2
+r.next @ 1b224bbc8db79db2.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+next @ bd891fa4d45bb59c.js:2
+m @ 1b224bbc8db79db2.js:2
+_ @ 1b224bbc8db79db2.js:2
+r.next @ 1b224bbc8db79db2.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+Promise.then
+(anonymous) @ bd891fa4d45bb59c.js:2
+e @ 1b224bbc8db79db2.js:2
+o.subscribe @ 1b224bbc8db79db2.js:2
+e.consumeQueue @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+e @ 1b224bbc8db79db2.js:2
+o.subscribe @ 1b224bbc8db79db2.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+e @ 1b224bbc8db79db2.js:2
+o.subscribe @ 1b224bbc8db79db2.js:2
+e.try @ bd891fa4d45bb59c.js:2
+e.start @ bd891fa4d45bb59c.js:2
+r.request @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+Promise.then
+(anonymous) @ bd891fa4d45bb59c.js:2
+e @ 1b224bbc8db79db2.js:2
+o.subscribe @ 1b224bbc8db79db2.js:2
+complete @ bd891fa4d45bb59c.js:2
+r.start @ bd891fa4d45bb59c.js:2
+r @ bd891fa4d45bb59c.js:2
+e.getObservableFromLink @ bd891fa4d45bb59c.js:2
+e.getResultsFromLink @ bd891fa4d45bb59c.js:2
+g @ bd891fa4d45bb59c.js:2
+e.fetchQueryByPolicy @ bd891fa4d45bb59c.js:2
+g @ bd891fa4d45bb59c.js:2
+e.fetchConcastWithInfo @ bd891fa4d45bb59c.js:2
+r.fetch @ bd891fa4d45bb59c.js:2
+r.reobserveAsConcast @ bd891fa4d45bb59c.js:2
+r.reobserve @ bd891fa4d45bb59c.js:2
+(anonymous) @ bd891fa4d45bb59c.js:2
+e @ 1b224bbc8db79db2.js:2
+o.subscribe @ 1b224bbc8db79db2.js:2
+(anonymous) @ 4206b4cada407286.js:2
+aC @ ed1e693c96a75807.js:2
+uV @ ed1e693c96a75807.js:2
+iH @ ed1e693c96a75807.js:2
+iT @ ed1e693c96a75807.js:2
+r6 @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iB @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this error
+ed1e693c96a75807.js:2 Unrecognized feature: 'ambient-light-sensor'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'battery'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'execution-while-not-rendered'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'execution-while-out-of-viewport'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'layout-animations'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'legacy-image-formats'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'navigation-override'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'oversized-images'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'publickey-credentials'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'speaker-selection'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'unoptimized-images'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'unsized-media'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Unrecognized feature: 'pointer-lock'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Allow attribute will take precedence over 'allowfullscreen'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+ed1e693c96a75807.js:2 Allow attribute will take precedence over 'allowpaymentrequest'.
+z @ ed1e693c96a75807.js:2
+(anonymous) @ ed1e693c96a75807.js:2
+iA @ ed1e693c96a75807.js:2
+iV @ ed1e693c96a75807.js:2
+iU @ ed1e693c96a75807.js:2
+i_ @ ed1e693c96a75807.js:2
+C @ ed1e693c96a75807.js:2
+M @ ed1e693c96a75807.js:2Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar2p%3A:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+client:536 WebSocket connection to 'wss://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/?token=IpyXWI8YOJpU' failed: 
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+client:536 Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=IpyXWI8YOJpU' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+2injected.js:27 [WebSocket] Connected - server will authenticate using session
+injected.js:27 [NOTES SHEET] Rendering, open state: false
+injected.js:27 WebSocket disconnected
+@tanstack_react-query.js?v=e7037db3:1552 Uncaught TypeError: Cannot read properties of undefined (reading 'length')
+    at getNextPageParam (@tanstack_react-query.js?v=e7037db3:1552:27)
+    at hasNextPage (@tanstack_react-query.js?v=e7037db3:1567:10)
+    at InfiniteQueryObserver.createResult (@tanstack_react-query.js?v=e7037db3:2555:20)
+    at InfiniteQueryObserver.getOptimisticResult (@tanstack_react-query.js?v=e7037db3:1968:25)
+    at InfiniteQueryObserver.getOptimisticResult (@tanstack_react-query.js?v=e7037db3:2523:18)
+    at useBaseQuery (@tanstack_react-query.js?v=e7037db3:3018:27)
+    at useInfiniteQuery (@tanstack_react-query.js?v=e7037db3:3307:10)
+    at PoliciesPage (policies.tsx:3765:7)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=e7037db3:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=e7037db3:14582:28)
+getNextPageParam @ @tanstack_react-query.js?v=e7037db3:1552
+hasNextPage @ @tanstack_react-query.js?v=e7037db3:1567
+createResult @ @tanstack_react-query.js?v=e7037db3:2555
+getOptimisticResult @ @tanstack_react-query.js?v=e7037db3:1968
+getOptimisticResult @ @tanstack_react-query.js?v=e7037db3:2523
+useBaseQuery @ @tanstack_react-query.js?v=e7037db3:3018
+useInfiniteQuery @ @tanstack_react-query.js?v=e7037db3:3307
+PoliciesPage @ policies.tsx:3765
+renderWithHooks @ chunk-RPCDYKBN.js?v=e7037db3:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=e7037db3:14582
+beginWork @ chunk-RPCDYKBN.js?v=e7037db3:15924
+callCallback2 @ chunk-RPCDYKBN.js?v=e7037db3:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e7037db3:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e7037db3:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=e7037db3:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=e7037db3:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=e7037db3:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=e7037db3:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=e7037db3:555
+flush @ @tanstack_react-query.js?v=e7037db3:569
+batch @ @tanstack_react-query.js?v=e7037db3:587
+dispatch_fn @ @tanstack_react-query.js?v=e7037db3:996
+setData @ @tanstack_react-query.js?v=e7037db3:696
+onSuccess @ @tanstack_react-query.js?v=e7037db3:897
+resolve @ @tanstack_react-query.js?v=e7037db3:456
+Promise.then
+run @ @tanstack_react-query.js?v=e7037db3:498
+start @ @tanstack_react-query.js?v=e7037db3:536
+fetch @ @tanstack_react-query.js?v=e7037db3:926
+executeFetch_fn @ @tanstack_react-query.js?v=e7037db3:2211
+onSubscribe @ @tanstack_react-query.js?v=e7037db3:1898
+subscribe @ @tanstack_react-query.js?v=e7037db3:24
+(anonymous) @ @tanstack_react-query.js?v=e7037db3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=e7037db3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=e7037db3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=e7037db3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=e7037db3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=e7037db3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=e7037db3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=e7037db3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=e7037db3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=e7037db3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=e7037db3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627Understand this error
+@tanstack_react-query.js?v=e7037db3:1552 Uncaught TypeError: Cannot read properties of undefined (reading 'length')
+    at getNextPageParam (@tanstack_react-query.js?v=e7037db3:1552:27)
+    at hasNextPage (@tanstack_react-query.js?v=e7037db3:1567:10)
+    at InfiniteQueryObserver.createResult (@tanstack_react-query.js?v=e7037db3:2555:20)
+    at InfiniteQueryObserver.getOptimisticResult (@tanstack_react-query.js?v=e7037db3:1968:25)
+    at InfiniteQueryObserver.getOptimisticResult (@tanstack_react-query.js?v=e7037db3:2523:18)
+    at useBaseQuery (@tanstack_react-query.js?v=e7037db3:3018:27)
+    at useInfiniteQuery (@tanstack_react-query.js?v=e7037db3:3307:10)
+    at PoliciesPage (policies.tsx:3765:7)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=e7037db3:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=e7037db3:14582:28)
+getNextPageParam @ @tanstack_react-query.js?v=e7037db3:1552
+hasNextPage @ @tanstack_react-query.js?v=e7037db3:1567
+createResult @ @tanstack_react-query.js?v=e7037db3:2555
+getOptimisticResult @ @tanstack_react-query.js?v=e7037db3:1968
+getOptimisticResult @ @tanstack_react-query.js?v=e7037db3:2523
+useBaseQuery @ @tanstack_react-query.js?v=e7037db3:3018
+useInfiniteQuery @ @tanstack_react-query.js?v=e7037db3:3307
+PoliciesPage @ policies.tsx:3765
+renderWithHooks @ chunk-RPCDYKBN.js?v=e7037db3:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=e7037db3:14582
+beginWork @ chunk-RPCDYKBN.js?v=e7037db3:15924
+callCallback2 @ chunk-RPCDYKBN.js?v=e7037db3:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e7037db3:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e7037db3:3733
+beginWork$1 @ chunk-RPCDYKBN.js?v=e7037db3:19765
+performUnitOfWork @ chunk-RPCDYKBN.js?v=e7037db3:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=e7037db3:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=e7037db3:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=e7037db3:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=e7037db3:555
+flush @ @tanstack_react-query.js?v=e7037db3:569
+batch @ @tanstack_react-query.js?v=e7037db3:587
+dispatch_fn @ @tanstack_react-query.js?v=e7037db3:996
+setData @ @tanstack_react-query.js?v=e7037db3:696
+onSuccess @ @tanstack_react-query.js?v=e7037db3:897
+resolve @ @tanstack_react-query.js?v=e7037db3:456
+Promise.then
+run @ @tanstack_react-query.js?v=e7037db3:498
+start @ @tanstack_react-query.js?v=e7037db3:536
+fetch @ @tanstack_react-query.js?v=e7037db3:926
+executeFetch_fn @ @tanstack_react-query.js?v=e7037db3:2211
+onSubscribe @ @tanstack_react-query.js?v=e7037db3:1898
+subscribe @ @tanstack_react-query.js?v=e7037db3:24
+(anonymous) @ @tanstack_react-query.js?v=e7037db3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=e7037db3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=e7037db3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=e7037db3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=e7037db3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=e7037db3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=e7037db3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=e7037db3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=e7037db3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=e7037db3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=e7037db3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627Understand this error
+injected.js:27 The above error occurred in the <PoliciesPage> component:
+
+    at PoliciesPage (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/pages/policies.tsx?t=1762702545772:6930:35)
+    at main
+    at div
+    at div
+    at div
+    at Provider (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=e7037db3:38:15)
+    at TooltipProvider (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e7037db3:65:5)
+    at SidebarProvider (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/components/ui/sidebar.tsx:59:3)
+    at DashboardLayout (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/App.tsx?t=1762702545772&v=9BDDd2_cMn9Rom5TfjY_A:130:28)
+    at ProtectedRoute (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/components/protected-route.tsx:20:34)
+    at Route (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e7037db3:191:16)
+    at Switch (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=e7037db3:247:17)
+    at Router
+    at Provider (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=e7037db3:38:15)
+    at TooltipProvider (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=e7037db3:65:5)
+    at ThemeProvider (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/components/theme-provider.tsx:21:3)
+    at QueryClientProvider (https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=e7037db3:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+(anonymous) @ injected.js:27
+logCapturedError @ chunk-RPCDYKBN.js?v=e7037db3:14032
+update.callback @ chunk-RPCDYKBN.js?v=e7037db3:14052
+callCallback @ chunk-RPCDYKBN.js?v=e7037db3:11248
+commitUpdateQueue @ chunk-RPCDYKBN.js?v=e7037db3:11265
+commitLayoutEffectOnFiber @ chunk-RPCDYKBN.js?v=e7037db3:17093
+commitLayoutMountEffects_complete @ chunk-RPCDYKBN.js?v=e7037db3:17980
+commitLayoutEffects_begin @ chunk-RPCDYKBN.js?v=e7037db3:17969
+commitLayoutEffects @ chunk-RPCDYKBN.js?v=e7037db3:17920
+commitRootImpl @ chunk-RPCDYKBN.js?v=e7037db3:19353
+commitRoot @ chunk-RPCDYKBN.js?v=e7037db3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=e7037db3:555
+flush @ @tanstack_react-query.js?v=e7037db3:569
+batch @ @tanstack_react-query.js?v=e7037db3:587
+dispatch_fn @ @tanstack_react-query.js?v=e7037db3:996
+setData @ @tanstack_react-query.js?v=e7037db3:696
+onSuccess @ @tanstack_react-query.js?v=e7037db3:897
+resolve @ @tanstack_react-query.js?v=e7037db3:456
+Promise.then
+run @ @tanstack_react-query.js?v=e7037db3:498
+start @ @tanstack_react-query.js?v=e7037db3:536
+fetch @ @tanstack_react-query.js?v=e7037db3:926
+executeFetch_fn @ @tanstack_react-query.js?v=e7037db3:2211
+onSubscribe @ @tanstack_react-query.js?v=e7037db3:1898
+subscribe @ @tanstack_react-query.js?v=e7037db3:24
+(anonymous) @ @tanstack_react-query.js?v=e7037db3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=e7037db3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=e7037db3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=e7037db3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=e7037db3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=e7037db3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=e7037db3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=e7037db3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=e7037db3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=e7037db3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=e7037db3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627Understand this error
+chunk-RPCDYKBN.js?v=e7037db3:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'length')
+    at getNextPageParam (@tanstack_react-query.js?v=e7037db3:1552:27)
+    at hasNextPage (@tanstack_react-query.js?v=e7037db3:1567:10)
+    at InfiniteQueryObserver.createResult (@tanstack_react-query.js?v=e7037db3:2555:20)
+    at InfiniteQueryObserver.getOptimisticResult (@tanstack_react-query.js?v=e7037db3:1968:25)
+    at InfiniteQueryObserver.getOptimisticResult (@tanstack_react-query.js?v=e7037db3:2523:18)
+    at useBaseQuery (@tanstack_react-query.js?v=e7037db3:3018:27)
+    at useInfiniteQuery (@tanstack_react-query.js?v=e7037db3:3307:10)
+    at PoliciesPage (policies.tsx:3765:7)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=e7037db3:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=e7037db3:14582:28)
+getNextPageParam @ @tanstack_react-query.js?v=e7037db3:1552
+hasNextPage @ @tanstack_react-query.js?v=e7037db3:1567
+createResult @ @tanstack_react-query.js?v=e7037db3:2555
+getOptimisticResult @ @tanstack_react-query.js?v=e7037db3:1968
+getOptimisticResult @ @tanstack_react-query.js?v=e7037db3:2523
+useBaseQuery @ @tanstack_react-query.js?v=e7037db3:3018
+useInfiniteQuery @ @tanstack_react-query.js?v=e7037db3:3307
+PoliciesPage @ policies.tsx:3765
+renderWithHooks @ chunk-RPCDYKBN.js?v=e7037db3:11548
+updateFunctionComponent @ chunk-RPCDYKBN.js?v=e7037db3:14582
+beginWork @ chunk-RPCDYKBN.js?v=e7037db3:15924
+beginWork$1 @ chunk-RPCDYKBN.js?v=e7037db3:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=e7037db3:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=e7037db3:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=e7037db3:19116
+recoverFromConcurrentError @ chunk-RPCDYKBN.js?v=e7037db3:18736
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18879
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=e7037db3:555
+flush @ @tanstack_react-query.js?v=e7037db3:569
+batch @ @tanstack_react-query.js?v=e7037db3:587
+dispatch_fn @ @tanstack_react-query.js?v=e7037db3:996
+setData @ @tanstack_react-query.js?v=e7037db3:696
+onSuccess @ @tanstack_react-query.js?v=e7037db3:897
+resolve @ @tanstack_react-query.js?v=e7037db3:456
+Promise.then
+run @ @tanstack_react-query.js?v=e7037db3:498
+start @ @tanstack_react-query.js?v=e7037db3:536
+fetch @ @tanstack_react-query.js?v=e7037db3:926
+executeFetch_fn @ @tanstack_react-query.js?v=e7037db3:2211
+onSubscribe @ @tanstack_react-query.js?v=e7037db3:1898
+subscribe @ @tanstack_react-query.js?v=e7037db3:24
+(anonymous) @ @tanstack_react-query.js?v=e7037db3:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=e7037db3:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=e7037db3:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=e7037db3:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=e7037db3:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=e7037db3:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=e7037db3:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=e7037db3:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=e7037db3:19447
+commitRootImpl @ chunk-RPCDYKBN.js?v=e7037db3:19416
+commitRoot @ chunk-RPCDYKBN.js?v=e7037db3:19277
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=e7037db3:18895
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=e7037db3:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=e7037db3:18627Understand this error
+injected.js:2

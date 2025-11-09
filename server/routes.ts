@@ -13752,12 +13752,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         options.cursor = cursor;
       }
       
-      // Add agentId filter for admin users (not superadmin)
-      if (currentUser.role === "admin") {
+      // Handle agent filtering based on viewAllCompanyData permission
+      if (shouldViewAllCompanyData(currentUser)) {
+        // User has permission to view all company data - skip agent filter
+        options.skipAgentFilter = true;
+        
+        // Superadmin or users with viewAllCompanyData can still filter by specific agent if requested
+        if (agentId && typeof agentId === 'string') {
+          options.agentId = agentId;
+          options.skipAgentFilter = false; // Apply the explicit filter
+        }
+      } else {
+        // User does NOT have viewAllCompanyData permission - filter by their agentId
         options.agentId = currentUser.id;
-      } else if (agentId && typeof agentId === 'string') {
-        // Superadmin can filter by specific agent
-        options.agentId = agentId;
       }
       
       // Add productType filter

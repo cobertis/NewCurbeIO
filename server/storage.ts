@@ -659,6 +659,7 @@ export interface IStorage {
     status?: string;
     effectiveDateFrom?: string;
     effectiveDateTo?: string;
+    skipAgentFilter?: boolean;
   }): Promise<{
     items: Array<{
       id: string;
@@ -4310,6 +4311,7 @@ export class DbStorage implements IStorage {
     status?: string;
     effectiveDateFrom?: string;
     effectiveDateTo?: string;
+    skipAgentFilter?: boolean;
   }): Promise<{
     items: Array<{
       id: string;
@@ -4345,8 +4347,8 @@ export class DbStorage implements IStorage {
     // Build WHERE conditions
     const conditions: any[] = [eq(policies.companyId, companyId)];
     
-    // Apply filters
-    if (options?.agentId) {
+    // Apply filters (skip agentId filter if skipAgentFilter is true)
+    if (options?.agentId && !options?.skipAgentFilter) {
       conditions.push(eq(policies.agentId, options.agentId));
     }
     if (options?.productType) {

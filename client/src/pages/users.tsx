@@ -2,8 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon, Power, Camera } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -47,6 +48,7 @@ const editUserFormSchema = z.object({
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
+  viewAllCompanyData: z.boolean().optional(),
 });
 
 type UserForm = z.infer<typeof userFormSchema>;
@@ -287,6 +289,7 @@ export default function Users() {
       firstName: user.firstName || "",
       lastName: user.lastName || "",
       phone: user.phone ? formatForDisplay(user.phone) : "",
+      viewAllCompanyData: user.viewAllCompanyData || false,
       dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
       preferredLanguage: user.preferredLanguage || "en",
       role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
@@ -703,6 +706,29 @@ export default function Users() {
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="viewAllCompanyData"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Share Full Company Data
+                        </FormLabel>
+                        <FormDescription>
+                          Allow this user to view all policies, quotes, contacts, tasks, and calendar events from the entire company (not just their own data)
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-view-all-company-data"
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
