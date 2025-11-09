@@ -190,7 +190,7 @@ export default function MarketplacePlansPage() {
   const [isLoadingMorePlans, setIsLoadingMorePlans] = useState(false);
   const [serverPage, setServerPage] = useState(1); // Track current server-side page
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10); // 10 planes por página
+  const [pageSize] = useState(100); // 100 plans per page (CMS API maximum)
 
   // Auto-fetch marketplace plans when component mounts
   useEffect(() => {
@@ -207,9 +207,9 @@ export default function MarketplacePlansPage() {
       console.log(`🚀 Loading marketplace plans for ${isPolicy ? 'Policy' : 'Quote'}: ${quoteId}`);
 
       // Fetch first page - backend returns EXACTLY what CMS API returns (no modifications)
-      // Using smaller page size (10) for on-demand loading
+      // Using pageSize=100 (CMS API maximum) to load more plans per request
       const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=10`,
+        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=100`,
         {
           method: 'GET',
           headers: {
@@ -310,7 +310,7 @@ export default function MarketplacePlansPage() {
       console.log(`📄 Loading page ${nextPage} of marketplace plans...`);
 
       const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?page=${nextPage}&pageSize=10`,
+        `/api/${basePath}/${quoteId}/marketplace-plans?page=${nextPage}&pageSize=100`,
         {
           method: 'GET',
           headers: {

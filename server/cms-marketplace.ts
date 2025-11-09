@@ -325,16 +325,15 @@ async function fetchSinglePage(
   const offset = (currentPage - 1) * limit;
 
   // Build request body following the EXACT structure from documentation
-  // CRITICAL: CMS API expects MONTHLY income, not annual
-  // We receive annual income from the database, so we divide by 12 and round
-  const monthlyIncome = Math.round(quoteData.householdIncome / 12);
-  
+  // CRITICAL FIX: CMS API expects ANNUAL income (confirmed by architect)
+  // The income_period and magi_period fields were causing confusion - removing them
+  // The API will correctly interpret the income as annual when these fields are omitted
   const requestBody: any = {
     household: {
-      income: monthlyIncome, // MONTHLY household income (annual / 12)
-      income_period: 'Monthly', // CRITICAL: Tell CMS API this is monthly income
-      magi: monthlyIncome, // Modified Adjusted Gross Income (same as income)
-      magi_period: 'Monthly', // CRITICAL: MAGI period must match income period
+      income: quoteData.householdIncome, // ANNUAL household income (as stored in database)
+      income_period: 'Annual', // CRITICAL: Explicitly tell CMS API this is ANNUAL income
+      magi: quoteData.householdIncome, // Modified Adjusted Gross Income (same as income)
+      magi_period: 'Annual', // CRITICAL: MAGI period must be Annual to match income
       people: people, // Array de personas
       has_married_couple: hasMarriedCouple, // CRITICAL: Required for accurate APTC calculation for couples
     },
@@ -362,9 +361,10 @@ async function fetchSinglePage(
   }
 
   if (page === 1) {
-    console.log(`[CMS_MARKETPLACE] 📊 Página ${currentPage}: Solicitando hasta ${limit} planes, offset: ${offset}`);
-    console.log(`[CMS_MARKETPLACE] 💰 Income: $${quoteData.householdIncome}/year = $${monthlyIncome.toFixed(2)}/month`);
-    console.log('[CMS_MARKETPLACE] Request body:', JSON.stringify(requestBody, null, 2));
+    console.log(`[CMS_MARKETPLACE] 📊 Page ${currentPage}: Requesting up to ${limit} plans, offset: ${offset}`);
+    console.log(`[CMS_MARKETPLACE] 💰 ANNUAL Income: $${quoteData.householdIncome}/year`);
+    console.log('[CMS_MARKETPLACE] 🔍 EXACT REQUEST PAYLOAD TO CMS API:');
+    console.log(JSON.stringify(requestBody, null, 2));
   }
 
   try {

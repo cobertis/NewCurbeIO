@@ -13145,7 +13145,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get pagination parameters from query string
       const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      const pageSize = parseInt(req.query.pageSize as string) || 100; // Default to CMS API maximum
       
       if (!quoteId) {
         return res.status(400).json({ message: "Quote ID is required" });
@@ -17614,7 +17614,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get pagination parameters from query string
       const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      const pageSize = parseInt(req.query.pageSize as string) || 100; // Default to CMS API maximum
       
       if (!policyId) {
         return res.status(400).json({ message: "Policy ID is required" });
