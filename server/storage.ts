@@ -651,6 +651,33 @@ export interface IStorage {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
+  getPoliciesList(companyId: string, options?: {
+    limit?: number;
+    cursor?: string;
+    agentId?: string;
+    productType?: string;
+    status?: string;
+    effectiveDateFrom?: string;
+    effectiveDateTo?: string;
+  }): Promise<{
+    items: Array<{
+      id: string;
+      companyId: string;
+      effectiveDate: string;
+      productType: string;
+      status: string;
+      clientFirstName: string;
+      clientMiddleName: string | null;
+      clientLastName: string;
+      clientSecondLastName: string | null;
+      clientEmail: string;
+      clientPhone: string;
+      agentId: string | null;
+      agentName: string | null;
+      createdAt: Date;
+    }>;
+    nextCursor: string | null;
+  }>;
   getPoliciesByAgent(agentId: string): Promise<Array<Policy & {
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
@@ -4273,6 +4300,144 @@ export class DbStorage implements IStorage {
     );
 
     return policiesWithDetails;
+  }
+
+  async getPoliciesList(companyId: string, options?: {
+    limit?: number;
+    cursor?: string;
+    agentId?: string;
+    productType?: string;
+    status?: string;
+    effectiveDateFrom?: string;
+    effectiveDateTo?: string;
+  }): Promise<{
+    items: Array<{
+      id: string;
+      companyId: string;
+      effectiveDate: string;
+      productType: string;
+      status: string;
+      clientFirstName: string;
+      clientMiddleName: string | null;
+      clientLastName: string;
+      clientSecondLastName: string | null;
+      clientEmail: string;
+      clientPhone: string;
+      agentId: string | null;
+      agentName: string | null;
+      createdAt: Date;
+    }>;
+    nextCursor: string | null;
+  }> {
+    const limit = Math.min(options?.limit || 50, 200); // Max 200 per page
+    
+    // Parse cursor (format: "effectiveDate,id")
+    let cursorDate: string | null = null;
+    let cursorId: string | null = null;
+    if (options?.cursor) {
+      const parts = options.cursor.split(',');
+      if (parts.length === 2) {
+        cursorDate = parts[0];
+        cursorId = parts[1];
+      }
+    }
+    
+    // Build WHERE conditions
+    const conditions: any[] = [eq(policies.companyId, companyId)];
+    
+    // Apply filters
+    if (options?.agentId) {
+      conditions.push(eq(policies.agentId, options.agentId));
+    }
+    if (options?.productType) {
+      conditions.push(eq(policies.productType, options.productType));
+    }
+    if (options?.status) {
+      conditions.push(eq(policies.status, options.status));
+    }
+    if (options?.effectiveDateFrom) {
+      conditions.push(gte(policies.effectiveDate, options.effectiveDateFrom));
+    }
+    if (options?.effectiveDateTo) {
+      conditions.push(lt(policies.effectiveDate, options.effectiveDateTo));
+    }
+    
+    // Cursor pagination
+    if (cursorDate && cursorId) {
+      conditions.push(
+        or(
+          lt(policies.effectiveDate, cursorDate),
+          and(
+            eq(policies.effectiveDate, cursorDate),
+            lt(policies.id, cursorId)
+          )
+        ) as any
+      );
+    }
+    
+    // Create agent alias for join
+    const agent = alias(users, 'agent');
+    
+    // Execute single optimized query with agent JOIN
+    const results = await db
+      .select({
+        id: policies.id,
+        companyId: policies.companyId,
+        effectiveDate: policies.effectiveDate,
+        productType: policies.productType,
+        status: policies.status,
+        clientFirstName: policies.clientFirstName,
+        clientMiddleName: policies.clientMiddleName,
+        clientLastName: policies.clientLastName,
+        clientSecondLastName: policies.clientSecondLastName,
+        clientEmail: policies.clientEmail,
+        clientPhone: policies.clientPhone,
+        agentId: policies.agentId,
+        agentFirstName: agent.firstName,
+        agentLastName: agent.lastName,
+        createdAt: policies.createdAt,
+      })
+      .from(policies)
+      .leftJoin(agent, eq(policies.agentId, agent.id))
+      .where(and(...conditions))
+      .orderBy(desc(policies.effectiveDate), desc(policies.id))
+      .limit(limit + 1); // Fetch one extra to determine if there's a next page
+    
+    // Determine if there are more results
+    const hasMore = results.length > limit;
+    const items = hasMore ? results.slice(0, limit) : results;
+    
+    // Generate next cursor
+    let nextCursor: string | null = null;
+    if (hasMore) {
+      const lastItem = items[items.length - 1];
+      nextCursor = `${lastItem.effectiveDate},${lastItem.id}`;
+    }
+    
+    // Format results
+    const formattedItems = items.map(item => ({
+      id: item.id,
+      companyId: item.companyId,
+      effectiveDate: item.effectiveDate,
+      productType: item.productType,
+      status: item.status,
+      clientFirstName: item.clientFirstName,
+      clientMiddleName: item.clientMiddleName,
+      clientLastName: item.clientLastName,
+      clientSecondLastName: item.clientSecondLastName,
+      clientEmail: item.clientEmail,
+      clientPhone: item.clientPhone,
+      agentId: item.agentId,
+      agentName: item.agentFirstName && item.agentLastName 
+        ? `${item.agentFirstName} ${item.agentLastName}`.trim()
+        : null,
+      createdAt: item.createdAt,
+    }));
+    
+    return {
+      items: formattedItems,
+      nextCursor,
+    };
   }
 
   async getPoliciesByAgent(agentId: string): Promise<Array<Policy & {
