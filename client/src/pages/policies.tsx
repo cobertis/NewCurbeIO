@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save, Lock } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useInfiniteQuery } from "@tanstack/react-query";
 import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -3755,10 +3755,32 @@ export default function PoliciesPage() {
   });
   const companyAgents = companyAgentsData?.agents || [];
 
-  // Fetch quotes
-  const { data: quotesData, isLoading } = useQuery<{ policies: Quote[] }>({
+  // Fetch quotes with cursor pagination
+  const {
+    data: policiesData,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<{
+    items: Quote[];
+    nextCursor: string | null;
+  }>({
     queryKey: ["/api/policies"],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams();
+      if (pageParam) params.append('cursor', pageParam);
+      params.append('limit', '100'); // Fetch 100 policies per page
+      const response = await fetch(`/api/policies?${params.toString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch policies');
+      return response.json();
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
+
+  // Flatten all pages into single array
+  const allQuotes = policiesData?.pages.flatMap(page => page.items) || [];
 
   // CORRECT SOLUTION: Extract policy ID from query string OR path
   // Common navigation uses ?policyId=XXX, fallback to /policies/XXX format
@@ -3769,7 +3791,7 @@ export default function PoliciesPage() {
   const selectedPolicyId = policyIdFromQuery || policyIdFromPath;
   
   // Find the basic policy from list
-  const basicPolicy = quotesData?.policies?.find(q => q.id === selectedPolicyId);
+  const basicPolicy = allQuotes.find(q => q.id === selectedPolicyId);
   
   // Fetch full details (with income/immigration) when we have a policy selected
   const { data: quoteDetail, isLoading: isLoadingQuoteDetail } = useQuery<{
@@ -5145,7 +5167,6 @@ export default function PoliciesPage() {
   };
 
   const agents = agentsData?.users || [];
-  const allQuotes = quotesData?.policies || [];
   
   // Fetch members with income and immigration details from UNIFIED QUERY
   // The API returns { member, income, immigration, documents } for each member

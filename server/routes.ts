@@ -13698,58 +13698,89 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // Get all policies for company
+  // Get all policies for company (paginated)
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    const { oepFilter } = req.query;
+    const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo } = req.query;
     
     try {
-      let policies: Awaited<ReturnType<typeof storage.getPoliciesByCompany>> = [];
+      if (!currentUser.companyId) {
+        return res.json({ items: [], nextCursor: null });
+      }
+
+      // Build pagination options
+      const options: Parameters<typeof storage.getPoliciesList>[1] = {};
       
-      // Build filters object
-      const filters: { agentId?: string; oepFilter?: "aca" | "medicare" } = {};
+      // Parse limit (default 50, max 200)
+      if (limit && typeof limit === 'string') {
+        const parsedLimit = parseInt(limit, 10);
+        if (!isNaN(parsedLimit) && parsedLimit > 0) {
+          options.limit = parsedLimit;
+        }
+      }
+      
+      // Parse cursor
+      if (cursor && typeof cursor === 'string') {
+        options.cursor = cursor;
+      }
       
       // Add agentId filter for admin users (not superadmin)
       if (currentUser.role === "admin") {
-        filters.agentId = currentUser.id;
+        options.agentId = currentUser.id;
+      } else if (agentId && typeof agentId === 'string') {
+        // Superadmin can filter by specific agent
+        options.agentId = agentId;
       }
       
-      // Add OEP filter if specified
-      if (oepFilter === "aca" || oepFilter === "medicare") {
-        filters.oepFilter = oepFilter as "aca" | "medicare";
+      // Add productType filter
+      if (productType && typeof productType === 'string') {
+        options.productType = productType;
       }
       
-      if (currentUser.role === "superadmin") {
-        // Superadmin can see all policies across all companies
-        // For now, we'll return policies from current company
-        if (currentUser.companyId) {
-          policies = await storage.getPoliciesByCompany(currentUser.companyId, filters);
-        }
-      } else if (currentUser.companyId) {
-        // Get policies with SQL filters applied
-        policies = await storage.getPoliciesByCompany(currentUser.companyId, filters);
+      // Add OEP filter if specified (maps to productType)
+      if (oepFilter === "aca") {
+        options.productType = "Health Insurance ACA";
+      } else if (oepFilter === "medicare") {
+        options.productType = "Medicare";
       }
       
-      // Return policies with plain text SSN (as stored in database)
-      if (policies.length > 0) {
+      // Add status filter
+      if (status && typeof status === 'string') {
+        options.status = status;
+      }
+      
+      // Add date range filters
+      if (effectiveDateFrom && typeof effectiveDateFrom === 'string') {
+        options.effectiveDateFrom = effectiveDateFrom;
+      }
+      if (effectiveDateTo && typeof effectiveDateTo === 'string') {
+        options.effectiveDateTo = effectiveDateTo;
+      }
+      
+      // Fetch policies using optimized function
+      const result = await storage.getPoliciesList(currentUser.companyId, options);
+      
+      // Log PII access
+      if (result.items.length > 0) {
         await logger.logAuth({
           req,
-          action: "view_policys",
+          action: "view_policies_list",
           userId: currentUser.id,
           email: currentUser.email,
           metadata: {
-            entity: "policys",
-            count: policies.length,
-            fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
+            entity: "policies",
+            count: result.items.length,
+            fields: ["clientEmail", "clientPhone"],
+            filters: options,
           },
         });
       }
       
-      res.json({ policies });
+      res.json(result);
     } catch (error: any) {
-      console.error("Error fetching policys:", error);
-      res.status(500).json({ message: "Failed to fetch policys" });
+      console.error("Error fetching policies:", error);
+      res.status(500).json({ message: "Failed to fetch policies" });
     }
   });
   
