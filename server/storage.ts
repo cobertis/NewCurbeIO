@@ -243,7 +243,7 @@ import {
   manualContacts,
   tasks
 } from "@shared/schema";
-import { eq, and, or, desc, sql, inArray, like } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray, like, gte, lt, not } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatForStorage } from "@shared/phone";
 
@@ -647,7 +647,7 @@ export interface IStorage {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }) | undefined>;
-  getPoliciesByCompany(companyId: string): Promise<Array<Policy & {
+  getPoliciesByCompany(companyId: string, filters?: { agentId?: string; oepFilter?: "aca" | "medicare" }): Promise<Array<Policy & {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
@@ -4119,12 +4119,57 @@ export class DbStorage implements IStorage {
     } as any;
   }
 
-  async getPoliciesByCompany(companyId: string): Promise<Array<Policy & {
+  async getPoliciesByCompany(companyId: string, filters?: { agentId?: string; oepFilter?: "aca" | "medicare" }): Promise<Array<Policy & {
     agent?: { id: string; firstName: string | null; lastName: string | null; email: string; avatar?: string; } | null;
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
     spouses?: Array<{ firstName: string; middleName?: string; lastName: string; secondLastName?: string; email?: string; phone?: string; }>;
     dependents?: Array<{ firstName: string; middleName?: string; lastName: string; secondLastName?: string; email?: string; phone?: string; }>;
   }>> {
+    // Build WHERE conditions
+    const conditions = [eq(policies.companyId, companyId)];
+    
+    // Add agentId filter if provided
+    if (filters?.agentId) {
+      conditions.push(eq(policies.agentId, filters.agentId));
+    }
+    
+    // Add OEP filter if provided
+    if (filters?.oepFilter) {
+      // Filter by product type
+      if (filters.oepFilter === "aca") {
+        conditions.push(
+          or(
+            eq(policies.productType, "Health Insurance ACA"),
+            eq(policies.productType, "aca")
+          ) as any
+        );
+      } else if (filters.oepFilter === "medicare") {
+        conditions.push(
+          or(
+            eq(policies.productType, "Medicare"),
+            eq(policies.productType, "medicare")
+          ) as any
+        );
+      }
+      
+      // Filter by effective date (2025 policies only for OEP)
+      conditions.push(
+        and(
+          gte(policies.effectiveDate, "2025-01-01"),
+          lt(policies.effectiveDate, "2026-01-01")
+        ) as any
+      );
+      
+      // Exclude completed renewals and cancelled policies
+      conditions.push(
+        and(
+          not(eq(policies.renewalStatus, "completed")),
+          not(eq(policies.status, "cancelled")),
+          not(eq(policies.status, "canceled"))
+        ) as any
+      );
+    }
+    
     const results = await db
       .select({
         policy: policies,
@@ -4137,8 +4182,9 @@ export class DbStorage implements IStorage {
       })
       .from(policies)
       .leftJoin(users, eq(policies.createdBy, users.id))
-      .where(eq(policies.companyId, companyId))
-      .orderBy(desc(policies.createdAt));
+      .where(and(...conditions))
+      .orderBy(desc(policies.createdAt))
+      .limit(100); // Temporary limit to prevent timeout
 
     const policiesWithDetails = await Promise.all(
       results.map(async (result) => {

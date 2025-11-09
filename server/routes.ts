@@ -13707,47 +13707,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       let policies: Awaited<ReturnType<typeof storage.getPoliciesByCompany>> = [];
       
+      // Build filters object
+      const filters: { agentId?: string; oepFilter?: "aca" | "medicare" } = {};
+      
+      // Add agentId filter for admin users (not superadmin)
+      if (currentUser.role === "admin") {
+        filters.agentId = currentUser.id;
+      }
+      
+      // Add OEP filter if specified
+      if (oepFilter === "aca" || oepFilter === "medicare") {
+        filters.oepFilter = oepFilter as "aca" | "medicare";
+      }
+      
       if (currentUser.role === "superadmin") {
         // Superadmin can see all policies across all companies
         // For now, we'll return policies from current company
-        // TODO: Add query param to filter by companyId for superadmin
         if (currentUser.companyId) {
-          policies = await storage.getPoliciesByCompany(currentUser.companyId);
+          policies = await storage.getPoliciesByCompany(currentUser.companyId, filters);
         }
       } else if (currentUser.companyId) {
-        // Get all policies for the company
-        policies = await storage.getPoliciesByCompany(currentUser.companyId);
-        
-        // If user is admin (not superadmin), filter by agentId
-        if (currentUser.role === "admin") {
-          policies = policies.filter(policy => policy.agentId === currentUser.id);
-        }
-      }
-      
-      // Apply OEP filter if specified
-      if (oepFilter === "aca" || oepFilter === "medicare") {
-        policies = policies.filter(policy => {
-          // Check if effective date is in 2025
-          const effectiveDate = policy.effectiveDate;
-          if (!effectiveDate) return false;
-          
-          const isIn2025 = effectiveDate >= "2025-01-01" && effectiveDate < "2026-01-01";
-          if (!isIn2025) return false;
-          
-          // Check renewal status and policy status
-          if (policy.renewalStatus === "completed") return false;
-          if (policy.status === "cancelled" || policy.status === "canceled") return false;
-          
-          // Filter by product type
-          if (oepFilter === "aca") {
-            return policy.productType === "Health Insurance ACA" || policy.productType?.toLowerCase() === 'aca';
-          } else if (oepFilter === "medicare") {
-            // Medicare products start with "Medicare"
-            return policy.productType?.startsWith("Medicare") || policy.productType?.toLowerCase() === 'medicare';
-          }
-          
-          return false;
-        });
+        // Get policies with SQL filters applied
+        policies = await storage.getPoliciesByCompany(currentUser.companyId, filters);
       }
       
       // Return policies with plain text SSN (as stored in database)
