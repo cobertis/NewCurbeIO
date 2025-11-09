@@ -166,6 +166,9 @@ export const users = pgTable("users", {
   // Multi-tenant reference
   companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }),
   
+  // Data visibility
+  viewAllCompanyData: boolean("view_all_company_data").notNull().default(false), // If true, user can see all company data; if false, only their own data
+  
   // User status
   status: text("status").notNull().default("active"), // 'pending_activation', 'active', 'deactivated'
   isActive: boolean("is_active").notNull().default(true),
@@ -721,6 +724,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   password: z.string().min(6).optional(), // Optional - set during activation
   role: z.enum(["superadmin", "admin", "member", "viewer"]),
   companyId: z.string().optional(),
+  viewAllCompanyData: z.boolean().optional().default(false), // Default to false - users see only their own data
   phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")), // Accept string from frontend
   emailSubscribed: z.boolean().optional().default(true), // Default to true for marketing emails
@@ -746,6 +750,7 @@ export const updateUserSchema = z.object({
   address: z.string().optional(),
   role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
   companyId: z.string().optional(),
+  viewAllCompanyData: z.boolean().optional(), // Allow updating data visibility
   isActive: z.boolean().optional(),
   status: z.enum(["pending_activation", "active", "deactivated"]).optional(),
   agentInternalCode: z.string().optional(),

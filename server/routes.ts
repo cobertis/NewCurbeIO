@@ -91,6 +91,7 @@ import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./se
 import { bulkVSClient } from "./bulkvs";
 import { formatForStorage, formatForDisplay } from "@shared/phone";
 import { buildBirthdayMessage } from "@shared/birthday-message";
+import { shouldViewAllCompanyData } from "./visibility-helpers";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -7745,9 +7746,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const params: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string } = {};
       
       // Filter contacts by user:
-      // - Superadmins: See all contacts (no filters)
-      // - Admins: See only their own contacts (userId filter)
-      if (currentUser.role === "admin") {
+      // - Users with viewAllCompanyData: See all contacts (no filters)
+      // - Users without viewAllCompanyData: See only their own contacts (userId filter)
+      if (!shouldViewAllCompanyData(currentUser)) {
         params.userId = currentUser.id; // Filter by current user's contacts only
         if (currentUser.companyId) {
           params.companyId = currentUser.companyId;
@@ -8928,8 +8929,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Get all quotes for the company
         quotes = await storage.getQuotesByCompany(currentUser.companyId);
         
-        // If user is admin (not superadmin), filter by agentId
-        if (currentUser.role === "admin") {
+        // If user doesn't have viewAllCompanyData permission, filter by agentId
+        if (!shouldViewAllCompanyData(currentUser)) {
           quotes = quotes.filter(quote => quote.agentId === currentUser.id);
         }
       }
@@ -11976,7 +11977,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const birthdaySet = new Set<string>();
 
       // ============== QUOTES BIRTHDAYS ==============
-      const quotes = await storage.getQuotesByCompany(companyId);
+      let quotes = await storage.getQuotesByCompany(companyId);
+      
+      // Filter by agentId if user doesn't have viewAllCompanyData permission
+      if (!shouldViewAllCompanyData(currentUser)) {
+        quotes = quotes.filter(quote => quote.agentId === currentUser.id);
+      }
+      
       for (const quote of quotes) {
         const members = await storage.getQuoteMembersByQuoteId(quote.id, companyId);
         
@@ -12025,7 +12032,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // ============== POLICIES BIRTHDAYS ==============
-      const policies = await storage.getPoliciesByCompany(companyId);
+      let policies = await storage.getPoliciesByCompany(companyId);
+      
+      // Filter by agentId if user doesn't have viewAllCompanyData permission
+      if (!shouldViewAllCompanyData(currentUser)) {
+        policies = policies.filter(policy => policy.agentId === currentUser.id);
+      }
+      
       for (const policy of policies) {
         const members = await storage.getPolicyMembersByPolicyId(policy.id, companyId);
         
@@ -12074,7 +12087,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // ============== QUOTE REMINDERS ==============
-      const quoteReminders = await storage.getQuoteRemindersByCompany(companyId);
+      let quoteReminders = await storage.getQuoteRemindersByCompany(companyId);
+      
+      // Filter reminders by user's quotes if they don't have viewAllCompanyData permission
+      if (!shouldViewAllCompanyData(currentUser)) {
+        const userQuoteIds = new Set(quotes.map(q => q.id));
+        quoteReminders = quoteReminders.filter(reminder => userQuoteIds.has(reminder.quoteId));
+      }
+      
       for (const reminder of quoteReminders) {
         if (reminder.status === 'pending' || reminder.status === 'snoozed') {
           // Get quote to fetch client name
@@ -12098,7 +12118,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // ============== POLICY REMINDERS ==============
-      const policyReminders = await storage.getPolicyRemindersByCompany(companyId);
+      let policyReminders = await storage.getPolicyRemindersByCompany(companyId);
+      
+      // Filter reminders by user's policies if they don't have viewAllCompanyData permission
+      if (!shouldViewAllCompanyData(currentUser)) {
+        const userPolicyIds = new Set(policies.map(p => p.id));
+        policyReminders = policyReminders.filter(reminder => userPolicyIds.has(reminder.policyId));
+      }
+      
       for (const reminder of policyReminders) {
         if (reminder.status === 'pending' || reminder.status === 'snoozed') {
           // Get policy to fetch client name
@@ -13499,8 +13526,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get all policies for the company
       let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
       
-      // If user is admin (not superadmin), filter by agentId
-      if (currentUser.role === "admin") {
+      // If user doesn't have viewAllCompanyData permission, filter by agentId
+      if (!shouldViewAllCompanyData(currentUser)) {
         allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
       }
       
@@ -13587,8 +13614,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get all policies for the company
       let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
       
-      // If user is admin (not superadmin), filter by agentId
-      if (currentUser.role === "admin") {
+      // If user doesn't have viewAllCompanyData permission, filter by agentId
+      if (!shouldViewAllCompanyData(currentUser)) {
         allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
       }
       
@@ -20973,7 +21000,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Get tasks
-      const tasks = await storage.listTasks(filters);
+      let tasks = await storage.listTasks(filters);
+      
+      // If user doesn't have viewAllCompanyData permission, filter to only their tasks
+      // (tasks assigned to them OR created by them)
+      if (!shouldViewAllCompanyData(user)) {
+        tasks = tasks.filter(task => 
+          task.assigneeId === user.id || task.creatorId === user.id
+        );
+      }
 
       // Enrich with assignee data
       const enrichedTasks = await Promise.all(
