@@ -21249,7 +21249,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               settings.selectedImageId.startsWith('https://')) {
             let rawUrl = settings.selectedImageId;
             if (rawUrl.startsWith('/uploads/')) {
-              const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+              // Use Replit public URL for testing
+              const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+              const appUrl = replitDomain ? `https://${replitDomain}` : (process.env.APP_URL || 'https://app.curbe.io');
               imageUrl = `${appUrl}${rawUrl}`;
             } else {
               imageUrl = rawUrl;
@@ -21259,7 +21261,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (image && image.isActive) {
               let rawUrl = image.imageUrl;
               if (rawUrl.startsWith('/uploads/')) {
-                const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+                // Use Replit public URL for testing
+                const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+                const appUrl = replitDomain ? `https://${replitDomain}` : (process.env.APP_URL || 'https://app.curbe.io');
                 imageUrl = `${appUrl}${rawUrl}`;
               } else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
                 imageUrl = rawUrl;

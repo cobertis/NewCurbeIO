@@ -284,7 +284,9 @@ export function startBirthdayScheduler() {
                   
                   // Convert local paths to public URLs
                   if (rawUrl.startsWith('/uploads/')) {
-                    const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+                    // Use Replit public URL in development, production URL otherwise
+                    const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+                    const appUrl = replitDomain ? `https://${replitDomain}` : (process.env.APP_URL || 'https://app.curbe.io');
                     imageUrl = `${appUrl}${rawUrl}`;
                   } else {
                     imageUrl = rawUrl;
@@ -301,7 +303,9 @@ export function startBirthdayScheduler() {
                     
                     // Convert local paths to public URLs
                     if (rawUrl.startsWith('/uploads/')) {
-                      const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+                      // Use Replit public URL in development, production URL otherwise
+                      const replitDomain = process.env.REPLIT_DEV_DOMAIN;
+                      const appUrl = replitDomain ? `https://${replitDomain}` : (process.env.APP_URL || 'https://app.curbe.io');
                       imageUrl = `${appUrl}${rawUrl}`;
                     } else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
                       imageUrl = rawUrl;
