@@ -1238,6 +1238,34 @@ export default function MarketplacePlansPage() {
               );
               })}
 
+              {/* Load More button for server-side pagination */}
+              {marketplacePlans && marketplacePlans.plans && marketplacePlans.plans.length < marketplacePlans.total && (
+                <div className="flex justify-center pt-6">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={loadMorePlans}
+                    disabled={isLoadingMorePlans}
+                    data-testid="button-load-more-plans"
+                    className="min-w-[200px]"
+                  >
+                    {isLoadingMorePlans ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Load More Plans
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (Showing {marketplacePlans.plans.length} of {marketplacePlans.total})
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
               {filteredPlans.length === 0 && (
                 <Card>
                   <CardContent className="py-12 text-center">

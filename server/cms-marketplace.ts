@@ -326,12 +326,15 @@ async function fetchSinglePage(
 
   // Build request body following the EXACT structure from documentation
   // CRITICAL: CMS API expects MONTHLY income, not annual
-  // We receive annual income from the database, so we divide by 12
-  const monthlyIncome = quoteData.householdIncome / 12;
+  // We receive annual income from the database, so we divide by 12 and round
+  const monthlyIncome = Math.round(quoteData.householdIncome / 12);
   
   const requestBody: any = {
     household: {
       income: monthlyIncome, // MONTHLY household income (annual / 12)
+      income_period: 'Monthly', // CRITICAL: Tell CMS API this is monthly income
+      magi: monthlyIncome, // Modified Adjusted Gross Income (same as income)
+      magi_period: 'Monthly', // CRITICAL: MAGI period must match income period
       people: people, // Array de personas
       has_married_couple: hasMarriedCouple, // CRITICAL: Required for accurate APTC calculation for couples
     },
