@@ -125,8 +125,8 @@ const formatPhoneNumber = (value: string) => {
 };
 
 // Helper to format date for input fields - just returns the yyyy-MM-dd string as-is
-const formatDateForInput = (date: string | null | undefined): string => {
-  if (!date) return '';
+const formatDateForInput = (date: string | null | undefined): string | undefined => {
+  if (!date) return undefined;
   // Date is already in yyyy-MM-dd format - return as-is
   return date;
 };
@@ -895,8 +895,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         secondLastName: quote.clientSecondLastName || '',
         email: quote.clientEmail || '',
         phone: quote.clientPhone || '',
-        dateOfBirth: formatDateForInput(quote.clientDateOfBirth),
-        ssn: normalizeSSN(quote.clientSsn),
+        dateOfBirth: formatDateForInput(quote.clientDateOfBirth) || '',
+        ssn: normalizeSSN(quote.clientSsn) || '',
         gender: quote.clientGender || '',
         isApplicant: quote.clientIsApplicant ?? true,
         tobaccoUser: quote.clientTobaccoUser ?? false,
@@ -912,7 +912,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         position: income.position || '',
         annualIncome: income.annualIncome || '',
         incomeFrequency: income.incomeFrequency || 'annually',
-        selfEmployed: income.selfEmployed || false,
+        selfEmployed: income.selfEmployed ?? false,
         // Immigration fields from API
         immigrationStatus: immigration.immigrationStatus || '',
         naturalizationNumber: immigration.naturalizationNumber || '',
@@ -938,8 +938,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         secondLastName: spouse.secondLastName || '',
         email: spouse.email || '',
         phone: spouse.phone || '',
-        dateOfBirth: formatDateForInput(spouse.dateOfBirth),
-        ssn: normalizeSSN(spouse.ssn),
+        dateOfBirth: formatDateForInput(spouse.dateOfBirth) || '',
+        ssn: normalizeSSN(spouse.ssn) || '',
         gender: spouse.gender || '',
         isApplicant: spouse.isApplicant ?? false,
         isPrimaryDependent: spouse.isPrimaryDependent ?? false,
@@ -956,7 +956,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         position: income.position || '',
         annualIncome: income.annualIncome || '',
         incomeFrequency: income.incomeFrequency || 'annually',
-        selfEmployed: income.selfEmployed || false,
+        selfEmployed: income.selfEmployed ?? false,
         // Immigration fields from API
         immigrationStatus: immigration.immigrationStatus || '',
         naturalizationNumber: immigration.naturalizationNumber || '',
@@ -980,8 +980,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         secondLastName: dependent.secondLastName || '',
         email: dependent.email || '',
         phone: dependent.phone || '',
-        dateOfBirth: formatDateForInput(dependent.dateOfBirth),
-        ssn: normalizeSSN(dependent.ssn),
+        dateOfBirth: formatDateForInput(dependent.dateOfBirth) || '',
+        ssn: normalizeSSN(dependent.ssn) || '',
         gender: dependent.gender || '',
         isApplicant: dependent.isApplicant ?? false,
         isPrimaryDependent: dependent.isPrimaryDependent ?? false,
@@ -999,7 +999,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         position: income.position || '',
         annualIncome: income.annualIncome || '',
         incomeFrequency: income.incomeFrequency || 'annually',
-        selfEmployed: income.selfEmployed || false,
+        selfEmployed: income.selfEmployed ?? false,
         // Immigration fields from API
         immigrationStatus: immigration.immigrationStatus || '',
         naturalizationNumber: immigration.naturalizationNumber || '',
@@ -1015,28 +1015,36 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     defaultValues: memberData || {},
   });
 
-  // Reset the initialization flag when sheet closes OR when member changes
+  // Track previous member to detect genuine member switches
+  const prevMemberIdRef = useRef(currentMemberId);
+  
+  // Reset the initialization flag when sheet closes
   useEffect(() => {
     if (!open) {
       hasInitializedRef.current = false;
+      prevMemberIdRef.current = undefined;
     }
   }, [open]);
   
-  // CRITICAL: Reset initialization flag when switching between members (prev/next navigation)
+  // CRITICAL: Only reset when actually switching members (not on refetch)
   useEffect(() => {
-    hasInitializedRef.current = false;
-  }, [currentMemberId, memberType, memberIndex]);
+    // Only reset if currentMemberId genuinely changed (not just a refetch)
+    if (currentMemberId !== prevMemberIdRef.current) {
+      hasInitializedRef.current = false;
+      prevMemberIdRef.current = currentMemberId;
+    }
+  }, [currentMemberId]);
 
-  // Reset form ONCE when data is ready (income + immigration loaded)
-  // This prevents blank form on first open while avoiding mid-edit resets
+  // Reset form ONCE when data is ready AND member has changed
+  // This prevents blank form on first open while avoiding mid-edit resets on refetch
   useEffect(() => {
     if (isMemberDataReady && memberData && !hasInitializedRef.current) {
       console.log('[EditMemberSheet] Resetting form with complete data:', memberData);
       editForm.reset(memberData);
-      hasInitializedRef.current = true; // Mark as initialized for this open cycle
+      hasInitializedRef.current = true; // Mark as initialized for this member
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMemberDataReady]); // Only trigger when data readiness changes
+  }, [isMemberDataReady, hasInitializedRef.current]); // Only trigger when data readiness or init flag changes
 
   // Reset tab to "basic" whenever member changes
   useEffect(() => {
