@@ -149,6 +149,8 @@ import {
   type InsertUserBirthdaySettings,
   type BirthdayGreetingHistory,
   type InsertBirthdayGreetingHistory,
+  type BirthdayPendingMessage,
+  type InsertBirthdayPendingMessage,
   type BulkvsPhoneNumber,
   type InsertBulkvsPhoneNumber,
   type BulkvsThread,
@@ -835,7 +837,14 @@ export interface IStorage {
   createBirthdayGreetingHistory(data: InsertBirthdayGreetingHistory & { userId: string; companyId: string }): Promise<BirthdayGreetingHistory>;
   getBirthdayGreetingHistory(companyId: string, userId?: string): Promise<BirthdayGreetingHistory[]>;
   updateBirthdayGreetingStatus(id: string, status: string, errorMessage?: string): Promise<void>;
+  updateBirthdayGreetingImageSid(id: string, twilioImageSid: string): Promise<void>;
   checkIfBirthdayGreetingSentToday(recipientPhone: string, recipientDateOfBirth: string): Promise<boolean>;
+  
+  // Birthday Automation - Pending Messages
+  createBirthdayPendingMessage(data: InsertBirthdayPendingMessage): Promise<BirthdayPendingMessage>;
+  getBirthdayPendingMessageByMmsSid(mmsSid: string): Promise<BirthdayPendingMessage | undefined>;
+  updateBirthdayPendingMessageStatus(id: string, status: string): Promise<void>;
+  deleteBirthdayPendingMessage(id: string): Promise<void>;
   
   // BulkVS Phone Numbers
   getBulkvsPhoneNumber(id: string): Promise<BulkvsPhoneNumber | undefined>;
@@ -6680,6 +6689,16 @@ export class DbStorage implements IStorage {
       .where(eq(birthdayGreetingHistory.id, id));
   }
   
+  async updateBirthdayGreetingImageSid(id: string, twilioImageSid: string): Promise<void> {
+    await db
+      .update(birthdayGreetingHistory)
+      .set({
+        twilioImageSid,
+        updatedAt: new Date(),
+      })
+      .where(eq(birthdayGreetingHistory.id, id));
+  }
+  
   async checkIfBirthdayGreetingSentToday(recipientPhone: string, recipientDateOfBirth: string): Promise<boolean> {
     const today = new Date().toISOString().split('T')[0];
     const result = await db
@@ -6693,6 +6712,44 @@ export class DbStorage implements IStorage {
         )
       );
     return result.length > 0;
+  }
+  
+  // ==================== BIRTHDAY PENDING MESSAGES ====================
+  
+  async createBirthdayPendingMessage(data: InsertBirthdayPendingMessage): Promise<BirthdayPendingMessage> {
+    const result = await db
+      .insert(birthdayPendingMessages)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+  
+  async getBirthdayPendingMessageByMmsSid(mmsSid: string): Promise<BirthdayPendingMessage | undefined> {
+    const result = await db
+      .select()
+      .from(birthdayPendingMessages)
+      .where(eq(birthdayPendingMessages.mmsSid, mmsSid));
+    return result[0];
+  }
+  
+  async updateBirthdayPendingMessageStatus(id: string, status: string): Promise<void> {
+    await db
+      .update(birthdayPendingMessages)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(birthdayPendingMessages.id, id));
+  }
+  
+  async deleteBirthdayPendingMessage(id: string): Promise<void> {
+    await db
+      .delete(birthdayPendingMessages)
+      .where(eq(birthdayPendingMessages.id, id));
   }
   
   // ==================== BULKVS PHONE NUMBERS ====================
