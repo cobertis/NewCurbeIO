@@ -667,12 +667,23 @@ export interface IStorage {
       effectiveDate: string;
       productType: string;
       status: string;
+      documentsStatus: string | null;
+      paymentStatus: string | null;
       clientFirstName: string;
       clientMiddleName: string | null;
       clientLastName: string;
       clientSecondLastName: string | null;
       clientEmail: string;
       clientPhone: string;
+      clientDateOfBirth: string | null;
+      clientGender: string | null;
+      clientSsn: string | null;
+      clientIsApplicant: boolean | null;
+      physical_city: string | null;
+      physical_state: string | null;
+      physical_state_abbreviation: string | null;
+      physical_postal_code: string | null;
+      selectedPlan: any;
       agentId: string | null;
       agentName: string | null;
       createdAt: Date;
@@ -4390,12 +4401,23 @@ export class DbStorage implements IStorage {
         effectiveDate: policies.effectiveDate,
         productType: policies.productType,
         status: policies.status,
+        documentsStatus: policies.documentsStatus,
+        paymentStatus: policies.paymentStatus,
         clientFirstName: policies.clientFirstName,
         clientMiddleName: policies.clientMiddleName,
         clientLastName: policies.clientLastName,
         clientSecondLastName: policies.clientSecondLastName,
         clientEmail: policies.clientEmail,
         clientPhone: policies.clientPhone,
+        clientDateOfBirth: policies.clientDateOfBirth,
+        clientGender: policies.clientGender,
+        clientSsn: policies.clientSsn,
+        clientIsApplicant: policies.clientIsApplicant,
+        physical_city: policies.physical_city,
+        physical_state: policies.physical_state,
+        physical_state_abbreviation: policies.physical_state_abbreviation,
+        physical_postal_code: policies.physical_postal_code,
+        selectedPlan: policies.selectedPlan,
         agentId: policies.agentId,
         agentFirstName: agent.firstName,
         agentLastName: agent.lastName,
@@ -4425,12 +4447,23 @@ export class DbStorage implements IStorage {
       effectiveDate: item.effectiveDate,
       productType: item.productType,
       status: item.status,
+      documentsStatus: item.documentsStatus,
+      paymentStatus: item.paymentStatus,
       clientFirstName: item.clientFirstName,
       clientMiddleName: item.clientMiddleName,
       clientLastName: item.clientLastName,
       clientSecondLastName: item.clientSecondLastName,
       clientEmail: item.clientEmail,
       clientPhone: item.clientPhone,
+      clientDateOfBirth: item.clientDateOfBirth,
+      clientGender: item.clientGender,
+      clientSsn: item.clientSsn,
+      clientIsApplicant: item.clientIsApplicant,
+      physical_city: item.physical_city,
+      physical_state: item.physical_state,
+      physical_state_abbreviation: item.physical_state_abbreviation,
+      physical_postal_code: item.physical_postal_code,
+      selectedPlan: item.selectedPlan,
       agentId: item.agentId,
       agentName: item.agentFirstName && item.agentLastName 
         ? `${item.agentFirstName} ${item.agentLastName}`.trim()
