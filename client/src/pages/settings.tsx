@@ -4110,7 +4110,7 @@ function AutomationsTab() {
             <div className="space-y-2">
               <h3 className="text-sm font-semibold mb-2">Birthday Automation</h3>
               
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <label className="text-xs font-medium">Enable</label>
                 <Switch
                   checked={formData.isEnabled}
