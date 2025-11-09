@@ -74,7 +74,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -21139,6 +21139,220 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // ==================== BIRTHDAY AUTOMATION ROUTES ====================
+  
+  // POST /api/test/run-birthday-scheduler - Manually trigger birthday scheduler (temporary test endpoint - NO AUTH for testing)
+  app.post("/api/test/run-birthday-scheduler", async (req: Request, res: Response) => {
+    try {
+      // FOR TESTING - Use Claudia's account directly
+      const claudiaUser = await storage.getUserByEmail('claudia@cobertisinsurance.com');
+      if (!claudiaUser) {
+        return res.status(404).json({ message: "Test user not found" });
+      }
+
+      const user = claudiaUser;
+      console.log(`[TEST] Manually running birthday scheduler for ${user.email}`);
+
+      // Import from birthday-scheduler
+      const { format: formatDate } = await import('date-fns-tz');
+      const { formatInTimeZone } = await import('date-fns-tz');
+      
+      // Get Twilio credentials
+      const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+
+      if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+        return res.status(400).json({ message: "Twilio credentials not configured" });
+      }
+
+      const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
+      const now = new Date();
+
+      // Get user's company
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      const companyTimezone = company.timezone || 'UTC';
+      const todayMonthDay = formatInTimeZone(now, companyTimezone, 'MM-dd');
+      
+      console.log(`[TEST] Looking for birthdays on ${todayMonthDay} in timezone ${companyTimezone}`);
+
+      // Get user's birthday settings
+      const settings = await storage.getUserBirthdaySettings(user.id);
+      if (!settings || !settings.isEnabled) {
+        return res.status(400).json({ message: "Birthday automation not enabled" });
+      }
+
+      // Get today's birthdays - using same logic as scheduler
+      const birthdays: Array<{ name: string; phone: string | null; dateOfBirth: string }> = [];
+      const birthdaySet = new Set<string>();
+
+      // QUOTES
+      const quotes = await storage.getQuotesByCompany(user.companyId);
+      for (const quote of quotes) {
+        const members = await storage.getQuoteMembersByQuoteId(quote.id, user.companyId);
+        const primaryClientInMembers = members.find(m => m.role === 'client');
+        
+        if (quote.clientDateOfBirth && !primaryClientInMembers) {
+          const monthDay = quote.clientDateOfBirth.slice(5);
+          if (monthDay === todayMonthDay) {
+            const fullName = `${quote.clientFirstName} ${quote.clientLastName}`.toLowerCase().trim();
+            const birthdayKey = `${fullName}-${quote.clientDateOfBirth}`;
+            if (!birthdaySet.has(birthdayKey)) {
+              birthdaySet.add(birthdayKey);
+              birthdays.push({
+                name: `${quote.clientFirstName} ${quote.clientLastName}`,
+                phone: quote.clientPhone || null,
+                dateOfBirth: quote.clientDateOfBirth,
+              });
+            }
+          }
+        }
+
+        for (const member of members) {
+          if (member.dateOfBirth) {
+            const monthDay = member.dateOfBirth.slice(5);
+            if (monthDay === todayMonthDay) {
+              const fullName = `${member.firstName} ${member.lastName}`.toLowerCase().trim();
+              const birthdayKey = `${fullName}-${member.dateOfBirth}`;
+              if (!birthdaySet.has(birthdayKey)) {
+                birthdaySet.add(birthdayKey);
+                birthdays.push({
+                  name: `${member.firstName} ${member.lastName}`,
+                  phone: member.phone || null,
+                  dateOfBirth: member.dateOfBirth,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      console.log(`[TEST] Found ${birthdays.length} birthday(s) today`);
+
+      const results: any[] = [];
+
+      // Process each birthday
+      for (const birthday of birthdays) {
+        if (!birthday.phone) {
+          results.push({ name: birthday.name, status: 'skipped', reason: 'no phone number' });
+          continue;
+        }
+
+        // Get birthday image
+        let imageUrl: string | null = null;
+        if (settings.selectedImageId) {
+          if (settings.selectedImageId.startsWith('/uploads/') || 
+              settings.selectedImageId.startsWith('http://') || 
+              settings.selectedImageId.startsWith('https://')) {
+            let rawUrl = settings.selectedImageId;
+            if (rawUrl.startsWith('/uploads/')) {
+              const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+              imageUrl = `${appUrl}${rawUrl}`;
+            } else {
+              imageUrl = rawUrl;
+            }
+          } else {
+            const image = await storage.getBirthdayImage(settings.selectedImageId);
+            if (image && image.isActive) {
+              let rawUrl = image.imageUrl;
+              if (rawUrl.startsWith('/uploads/')) {
+                const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+                imageUrl = `${appUrl}${rawUrl}`;
+              } else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+                imageUrl = rawUrl;
+              }
+            }
+          }
+        }
+
+        // Prepare message
+        const defaultMessage = "¡Feliz Cumpleaños {CLIENT_NAME}!\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros.";
+        const clientFirstName = birthday.name.split(' ')[0];
+        const agentFirstName = user.firstName || user.email.split('@')[0];
+        const messageBody = (settings.customMessage || defaultMessage)
+          .replace('{CLIENT_NAME}', clientFirstName)
+          .replace('{AGENT_NAME}', agentFirstName);
+
+        console.log(`[TEST] Sending to ${birthday.name} (${birthday.phone})`);
+        console.log(`[TEST] Image URL: ${imageUrl || 'none'}`);
+        console.log(`[TEST] Message: ${messageBody}`);
+
+        let twilioMessageSid: string | null = null;
+        let status = 'pending';
+        let errorMessage: string | null = null;
+
+        try {
+          // Send IMAGE first if exists
+          if (imageUrl) {
+            console.log(`[TEST] Sending image: ${imageUrl}`);
+            const imageMessage = await twilioClient.messages.create({
+              mediaUrl: [imageUrl],
+              body: '🎂',
+              from: twilioPhoneNumber,
+              to: birthday.phone,
+            });
+            console.log(`[TEST] Image sent, SID: ${imageMessage.sid}`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+
+          // Send TEXT
+          console.log(`[TEST] Sending text message`);
+          const textMessage = await twilioClient.messages.create({
+            body: messageBody,
+            from: twilioPhoneNumber,
+            to: birthday.phone,
+          });
+          
+          twilioMessageSid = textMessage.sid;
+          status = textMessage.status || 'sent';
+          console.log(`[TEST] Text sent, SID: ${twilioMessageSid}`);
+        } catch (twilioError: any) {
+          console.error(`[TEST] Twilio error:`, twilioError);
+          status = 'failed';
+          errorMessage = twilioError.message || 'Failed to send SMS';
+        }
+
+        // Save to history
+        await db.insert(birthdayGreetingHistory).values({
+          userId: user.id,
+          companyId: user.companyId,
+          recipientName: birthday.name,
+          recipientPhone: birthday.phone,
+          recipientDateOfBirth: birthday.dateOfBirth,
+          message: messageBody,
+          imageUrl: imageUrl,
+          status: status,
+          twilioMessageSid: twilioMessageSid,
+          errorMessage: errorMessage,
+          sentAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        results.push({
+          name: birthday.name,
+          phone: birthday.phone,
+          status: status,
+          imageUrl: imageUrl,
+          message: messageBody,
+          twilioMessageSid: twilioMessageSid,
+          errorMessage: errorMessage,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: `Processed ${birthdays.length} birthday greeting(s)`,
+        results: results,
+      });
+    } catch (error: any) {
+      console.error("[TEST] Error running birthday scheduler:", error);
+      res.status(500).json({ message: error.message || "Failed to run birthday scheduler" });
+    }
+  });
   
   // GET /api/birthday-images/active - List active birthday images (all authenticated users)
   app.get("/api/birthday-images/active", requireAuth, async (req: Request, res: Response) => {
