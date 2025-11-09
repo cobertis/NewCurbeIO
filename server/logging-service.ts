@@ -3,6 +3,57 @@ import type { IStorage } from "./storage";
 import type { InsertActivityLog } from "@shared/schema";
 
 /**
+ * Get detailed geolocation data from IP address using ip-api.com
+ */
+async function getGeoLocationData(ip: string | null): Promise<Record<string, any>> {
+  if (!ip || ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    return {
+      country: 'Local',
+      countryCode: 'LOCAL',
+      region: 'N/A',
+      regionName: 'N/A',
+      city: 'Localhost',
+      zip: 'N/A',
+      lat: 0,
+      lon: 0,
+      timezone: 'UTC',
+      isp: 'Local Network',
+      org: 'Local',
+      as: 'N/A',
+      query: ip || 'unknown'
+    };
+  }
+
+  try {
+    // Use ip-api.com (free, no API key required)
+    // Fields: country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query`, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Curbe-Admin/1.0'
+      }
+    });
+
+    if (!response.ok) {
+      console.warn(`[GEOLOCATION] Failed to fetch data for IP ${ip}: ${response.status}`);
+      return { query: ip };
+    }
+
+    const data = await response.json();
+    
+    if (data.status === 'fail') {
+      console.warn(`[GEOLOCATION] IP lookup failed for ${ip}: ${data.message}`);
+      return { query: ip, error: data.message };
+    }
+
+    return data;
+  } catch (error) {
+    console.error(`[GEOLOCATION] Error fetching geolocation for IP ${ip}:`, error);
+    return { query: ip };
+  }
+}
+
+/**
  * Centralized logging service for audit trail
  * Logs all actions performed in the system
  */
@@ -27,8 +78,11 @@ export class LoggingService {
       const userId = req.session.userId || null;
       
       // Extract IP and User Agent
-      const ipAddress = req.ip || req.connection.remoteAddress || null;
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip || req.connection.remoteAddress || null;
       const userAgent = req.get("user-agent") || null;
+
+      // Get detailed geolocation data
+      const geoData = await getGeoLocationData(ipAddress);
 
       const logEntry: InsertActivityLog = {
         companyId: companyId || null,
@@ -36,7 +90,10 @@ export class LoggingService {
         action,
         entity,
         entityId: entityId || null,
-        metadata: metadata || {},
+        metadata: {
+          ...metadata,
+          ...geoData
+        },
         ipAddress,
         userAgent,
       };

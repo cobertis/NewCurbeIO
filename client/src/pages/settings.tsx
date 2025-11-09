@@ -3718,16 +3718,30 @@ function SessionActivityTab() {
     return `${browser}\n${os}`;
   };
 
-  // Get country from metadata
-  const getCountry = (metadata: any) => {
-    // This is a placeholder - you could integrate with a geolocation API
-    // For now, extract from metadata if available
-    return metadata?.country || "United States";
-  };
-
-  // Get city from metadata
-  const getCity = (metadata: any) => {
-    return metadata?.city || "Miami";
+  // Get full location info from metadata
+  const getLocationInfo = (metadata: any) => {
+    if (!metadata) return { country: "Unknown", details: "" };
+    
+    const parts = [];
+    
+    // City, Region/State
+    if (metadata.city) parts.push(metadata.city);
+    if (metadata.regionName) parts.push(metadata.regionName);
+    if (metadata.country) parts.push(metadata.country);
+    
+    const location = parts.join(", ") || "Unknown Location";
+    
+    // Additional details (ISP, ZIP, Coordinates)
+    const details = [];
+    if (metadata.zip && metadata.zip !== 'N/A') details.push(`ZIP: ${metadata.zip}`);
+    if (metadata.isp && metadata.isp !== 'N/A') details.push(`ISP: ${metadata.isp}`);
+    if (metadata.timezone && metadata.timezone !== 'UTC') details.push(`TZ: ${metadata.timezone}`);
+    if (metadata.lat && metadata.lon) details.push(`${metadata.lat.toFixed(4)}, ${metadata.lon.toFixed(4)}`);
+    
+    return {
+      location,
+      details: details.join(" • ")
+    };
   };
 
   const handleSearch = () => {
@@ -3815,40 +3829,44 @@ function SessionActivityTab() {
                     <th className="px-4 py-3 text-left text-sm font-medium">Datetime</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">IP</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Browser</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Country</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">Location</th>
                     <th className="px-4 py-3 text-left text-sm font-medium">Result</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30" data-testid={`row-activity-${log.id}`}>
-                      <td className="px-4 py-3 text-sm" data-testid="text-datetime">
-                        {format(parseISO(log.timestamp), "MMM dd, yyyy h:mm a")}
-                      </td>
-                      <td className="px-4 py-3 text-sm" data-testid="text-ip">
-                        {log.ipAddress || "Unknown"}
-                      </td>
-                      <td className="px-4 py-3 text-sm whitespace-pre-line" data-testid="text-browser">
-                        {parseUserAgent(log.userAgent)}
-                      </td>
-                      <td className="px-4 py-3 text-sm" data-testid="text-country">
-                        {getCountry(log.metadata)}
-                        <br />
-                        <span className="text-muted-foreground text-xs">{getCity(log.metadata)}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm" data-testid="text-result">
-                        {log.action === "auth_login" || log.action === "auth_login_with_otp" || log.action === "auth_login_trusted_device" ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-                            Successfully signed in.
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
-                            User password invalid.
-                          </Badge>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {logs.map((log) => {
+                    const locationInfo = getLocationInfo(log.metadata);
+                    return (
+                      <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30" data-testid={`row-activity-${log.id}`}>
+                        <td className="px-4 py-3 text-sm" data-testid="text-datetime">
+                          {format(parseISO(log.timestamp), "MMM dd, yyyy h:mm a")}
+                        </td>
+                        <td className="px-4 py-3 text-sm" data-testid="text-ip">
+                          {log.ipAddress || "Unknown"}
+                        </td>
+                        <td className="px-4 py-3 text-sm whitespace-pre-line" data-testid="text-browser">
+                          {parseUserAgent(log.userAgent)}
+                        </td>
+                        <td className="px-4 py-3 text-sm" data-testid="text-country">
+                          <div className="font-medium">{locationInfo.location}</div>
+                          {locationInfo.details && (
+                            <div className="text-muted-foreground text-xs mt-1">{locationInfo.details}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm" data-testid="text-result">
+                          {log.action === "auth_login" || log.action === "auth_login_with_otp" || log.action === "auth_login_trusted_device" ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                              Successfully signed in.
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+                              User password invalid.
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
