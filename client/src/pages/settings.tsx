@@ -3993,6 +3993,7 @@ function AutomationsTab() {
     customMessage: "🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros. 🎊",
   });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Update form data when settings load
@@ -4106,29 +4107,60 @@ function AutomationsTab() {
                     size="sm"
                     className="h-8 text-xs flex-1"
                     onClick={() => document.getElementById('birthday-image-upload')?.click()}
+                    disabled={uploadingImage}
                     data-testid="button-upload-custom-image"
                   >
                     <Upload className="h-3 w-3 mr-1" />
-                    Upload Custom
+                    {uploadingImage ? "Uploading..." : "Upload Custom"}
                   </Button>
                   <input
                     id="birthday-image-upload"
                     type="file"
                     accept="image/*"
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          const base64 = reader.result as string;
-                          setFormData({ ...formData, selectedImageId: base64 });
+                        setUploadingImage(true);
+                        try {
+                          const formDataUpload = new FormData();
+                          formDataUpload.append('image', file);
+                          
+                          const response = await fetch('/api/birthday-images/upload', {
+                            method: 'POST',
+                            body: formDataUpload,
+                            credentials: 'include',
+                          });
+                          
+                          if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.message || 'Upload failed');
+                          }
+                          
+                          const data = await response.json();
+                          setFormData({ ...formData, selectedImageId: data.imageUrl });
                           if (!isEditing) setIsEditing(true);
-                        };
-                        reader.readAsDataURL(file);
+                          
+                          toast({
+                            title: "Image Uploaded",
+                            description: "Your custom birthday image has been uploaded successfully.",
+                            duration: 3000,
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "Upload Failed",
+                            description: error.message || "Failed to upload image",
+                            variant: "destructive",
+                            duration: 3000,
+                          });
+                        } finally {
+                          setUploadingImage(false);
+                          e.target.value = '';
+                        }
                       }
                     }}
                     className="hidden"
                     data-testid="input-custom-image"
+                    disabled={uploadingImage}
                   />
                 </div>
               </div>
@@ -4203,7 +4235,7 @@ function AutomationsTab() {
               <div className="border rounded p-2 bg-muted/20">
                 <div className="bg-white dark:bg-gray-800 rounded shadow-sm p-2 space-y-1.5">
                   {formData.selectedImageId && (() => {
-                    if (formData.selectedImageId.startsWith('data:image')) {
+                    if (formData.selectedImageId.startsWith('data:image') || formData.selectedImageId.startsWith('/uploads/')) {
                       return <img src={formData.selectedImageId} alt="Birthday" className="w-full rounded" data-testid="img-preview-birthday" />;
                     } else {
                       const selectedImage = images.find(img => img.id === formData.selectedImageId);

@@ -21151,6 +21151,70 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch birthday images" });
     }
   });
+
+  // POST /api/birthday-images/upload - Upload custom birthday image (all authenticated users)
+  app.post("/api/birthday-images/upload", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'birthday_images');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      const birthdayImageStorage = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `birthday-${uniqueSuffix}${ext}`);
+        },
+      });
+
+      const birthdayImageUpload = multer({
+        storage: birthdayImageStorage,
+        limits: { fileSize: MAX_IMAGE_SIZE },
+        fileFilter: (req, file, cb) => {
+          if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'));
+          }
+          cb(null, true);
+        },
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        birthdayImageUpload.single('image')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 5MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const imageUrl = `/uploads/birthday_images/${file.filename}`;
+      
+      res.json({ imageUrl });
+    } catch (error: any) {
+      console.error("Error uploading birthday image:", error);
+      res.status(500).json({ message: error.message || "Failed to upload image" });
+    }
+  });
   
   // GET /api/admin/birthday-images - List all birthday images (superadmin only)
   app.get("/api/admin/birthday-images", requireAuth, async (req: Request, res: Response) => {
