@@ -282,7 +282,19 @@ export function startBirthdayScheduler() {
                   .where(eq(birthdayImages.id, senderSettings.selectedImageId));
                 
                 if (image.length > 0 && image[0].isActive) {
-                  imageUrl = image[0].imageUrl;
+                  let rawUrl = image[0].imageUrl;
+                  
+                  // Convert local paths to public URLs
+                  if (rawUrl.startsWith('/uploads/')) {
+                    const appUrl = process.env.APP_URL || 'https://app.curbe.io';
+                    imageUrl = `${appUrl}${rawUrl}`;
+                  } else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+                    imageUrl = rawUrl;
+                  } else {
+                    // Skip invalid URLs (base64, relative paths, etc.)
+                    console.log(`[BIRTHDAY SCHEDULER] Skipping invalid image URL format: ${rawUrl.substring(0, 50)}...`);
+                    imageUrl = null;
+                  }
                 }
               }
 
@@ -301,28 +313,39 @@ export function startBirthdayScheduler() {
 
               console.log(`[BIRTHDAY SCHEDULER] Sending birthday greeting to ${birthday.name} (${birthday.phone})...`);
 
-              // Send SMS via Twilio
+              // Send via Twilio
               let twilioMessageSid: string | null = null;
               let status = 'pending';
               let errorMessage: string | null = null;
 
               try {
-                const messageOptions: any = {
-                  body: messageBody,
-                  from: twilioPhoneNumber,
-                  to: birthday.phone, // Use E.164 format from DB
-                };
-
-                // Add media URL if image is selected
+                // STEP 1: Send IMAGE first (if selected)
                 if (imageUrl) {
-                  messageOptions.mediaUrl = [imageUrl];
+                  console.log(`[BIRTHDAY SCHEDULER] Sending image first: ${imageUrl}`);
+                  const imageMessage = await twilioClient.messages.create({
+                    mediaUrl: [imageUrl],
+                    body: '🎂', // Fallback emoji in case MMS fails
+                    from: twilioPhoneNumber,
+                    to: birthday.phone,
+                  });
+                  console.log(`[BIRTHDAY SCHEDULER] Image sent successfully, SID: ${imageMessage.sid}`);
+                  
+                  // Small delay to ensure proper message ordering
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 }
 
-                const message = await twilioClient.messages.create(messageOptions);
-                twilioMessageSid = message.sid;
-                status = message.status || 'sent';
+                // STEP 2: Send TEXT message
+                console.log(`[BIRTHDAY SCHEDULER] Sending text message`);
+                const textMessage = await twilioClient.messages.create({
+                  body: messageBody,
+                  from: twilioPhoneNumber,
+                  to: birthday.phone,
+                });
                 
-                console.log(`[BIRTHDAY SCHEDULER] SMS sent successfully to ${birthday.name}, SID: ${twilioMessageSid}`);
+                twilioMessageSid = textMessage.sid;
+                status = textMessage.status || 'sent';
+                
+                console.log(`[BIRTHDAY SCHEDULER] Text sent successfully, SID: ${twilioMessageSid}`);
               } catch (twilioError: any) {
                 console.error(`[BIRTHDAY SCHEDULER] Twilio error sending to ${birthday.name}:`, twilioError);
                 status = 'failed';
