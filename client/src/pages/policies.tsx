@@ -3779,8 +3779,8 @@ export default function PoliciesPage() {
     refetchOnWindowFocus: false,
   });
 
-  // Flatten all pages into single array
-  const allQuotes = policiesData?.pages.flatMap(page => page.items) || [];
+  // Flatten all pages into single array with defensive guards
+  const allQuotes = policiesData?.pages?.flatMap(page => page?.items || []) || [];
 
   // CORRECT SOLUTION: Extract policy ID from query string OR path
   // Common navigation uses ?policyId=XXX, fallback to /policies/XXX format
