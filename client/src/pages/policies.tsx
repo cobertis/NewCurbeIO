@@ -3755,32 +3755,22 @@ export default function PoliciesPage() {
   });
   const companyAgents = companyAgentsData?.agents || [];
 
-  // Fetch quotes with cursor pagination
-  const {
-    data: policiesData,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
+  // Fetch policies - using simple query like quotes page
+  const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
     queryKey: ["/api/policies"],
-    initialPageParam: null,
-    queryFn: async ({ pageParam }) => {
+    queryFn: async () => {
       const params = new URLSearchParams();
-      if (pageParam) params.append('cursor', String(pageParam));
-      params.append('limit', '100'); // Fetch 100 policies per page
+      params.append('limit', '200'); // Fetch 200 policies
       const response = await fetch(`/api/policies?${params.toString()}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch policies');
       return response.json();
     },
-    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
-    getPreviousPageParam: () => undefined,
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });
 
-  // Flatten all pages into single array with defensive guards
-  const allQuotes = policiesData?.pages?.flatMap(page => page?.items || []) || [];
+  // Extract policies from response
+  const allQuotes = policiesResponse?.items || [];
 
   // CORRECT SOLUTION: Extract policy ID from query string OR path
   // Common navigation uses ?policyId=XXX, fallback to /policies/XXX format
