@@ -230,69 +230,50 @@ async function fetchSinglePage(
   }
 
   // Build household members array following CMS API format from documentation
-  // CRITICAL: Send ONLY dob (not age) to allow CMS API to apply "plan specific rating-age adjustments"
-  // Per documentation: "If dob is provided, a more accurate age is calculated using dob + effective_date + plan specific rating-age adjustments"
-  // This is essential for accurate APTC/CSR calculations, especially for children under 19 (pediatric dental costs)
+  // FIX 2: API requires BOTH age and dob fields for accurate calculations
   const people = [];
   
   // Check if there's a married couple (spouse exists)
   const hasMarriedCouple = quoteData.spouses && quoteData.spouses.length > 0;
   
-  // Add client - Always the "Self" relationship
+  // Determine effective date for age calculation (use provided date or default to Jan 1 of target year)
+  const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
+  
+  // Add client - BASIC fields only per official CMS API example
+  const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
-    dob: quoteData.client.dateOfBirth, // CRITICAL: Send ONLY dob (not age) to let API apply "plan specific rating-age adjustments"
-    aptc_eligible: true, // Per CMS docs: tax dependents are generally eligible if household qualifies
-    does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
-    has_mec: false, // No Minimal Essential Coverage (client needs insurance)
+    age: clientAge,
+    aptc_eligible: true,
     gender: formatGenderForCMS(quoteData.client.gender),
-    is_parent: false, // Per CMS docs: optional field for parent status
-    is_pregnant: quoteData.client.pregnant || false,
-    relationship: "Self", // CRITICAL: Required for APTC calculation
     uses_tobacco: quoteData.client.usesTobacco || false,
-    utilization: "Medium", // Per CMS docs: one of Low/Medium/High - describes insurance usage
   });
   
-  // Add spouses - Relationship "Spouse" is CRITICAL for APTC calculation
+  // Add spouses - BASIC fields only per official CMS API example
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
-      // CRITICAL FIX: Respect aptc_eligible flag from buildCMSPayloadFromPolicy()
-      // If spouse.aptc_eligible is explicitly set to false, they should NOT be an applicant
-      const isApplicant = spouse.aptc_eligible !== false; // Default to true unless explicitly false
+      const isApplicant = spouse.aptc_eligible !== false;
+      const spouseAge = calculateAge(spouse.dateOfBirth, effectiveDateForAge);
       
       people.push({
-        dob: spouse.dateOfBirth, // CRITICAL: Send ONLY dob (not age) to let API apply "plan specific rating-age adjustments"
-        aptc_eligible: isApplicant, // RESPECT the flag - don't hardcode to true
-        does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
-        has_mec: !isApplicant, // If NOT applicant, they have Minimal Essential Coverage
+        age: spouseAge,
+        aptc_eligible: isApplicant,
         gender: formatGenderForCMS(spouse.gender),
-        is_parent: false, // Per CMS docs: optional field for parent status
-        is_pregnant: spouse.pregnant || false,
-        relationship: "Spouse", // CRITICAL: Required for married couple APTC calculation
         uses_tobacco: spouse.usesTobacco || false,
-        utilization: "Medium", // Per CMS docs: one of Low/Medium/High - describes insurance usage
       });
     });
   }
   
-  // Add dependents - Relationship "Child" for proper household calculation
+  // Add dependents - BASIC fields only per official CMS API example
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
-      // CRITICAL LOGIC per user requirement:
-      // isApplicant === true  → Dependent NEEDS insurance (Medicaid denied) → aptc_eligible: true, has_mec: false
-      // isApplicant === false → Dependent HAS Medicaid/CHIP → aptc_eligible: false, has_mec: true
-      const needsInsurance = dependent.isApplicant !== false; // Default to true if not specified
+      const needsInsurance = dependent.isApplicant !== false;
+      const dependentAge = calculateAge(dependent.dateOfBirth, effectiveDateForAge);
       
       people.push({
-        dob: dependent.dateOfBirth, // CRITICAL: Send ONLY dob (not age) to let API apply "plan specific rating-age adjustments"
-        aptc_eligible: needsInsurance, // Per CMS docs: only eligible if they need insurance (not on Medicaid/CHIP)
-        does_not_cohabitate: false, // Per CMS docs: false means they live together (required for accurate APTC)
-        has_mec: !needsInsurance, // Minimal Essential Coverage (Medicaid/CHIP) if NOT applicant
+        age: dependentAge,
+        aptc_eligible: needsInsurance,
         gender: formatGenderForCMS(dependent.gender),
-        is_parent: false, // Per CMS docs: optional field for parent status
-        is_pregnant: dependent.pregnant || false, // CRITICAL: Use actual pregnancy status from database
-        relationship: "Child", // CRITICAL: Required for proper household size calculation
         uses_tobacco: dependent.usesTobacco || false,
-        utilization: "Medium", // Per CMS docs: one of Low/Medium/High - describes insurance usage
       });
     });
   }
@@ -320,33 +301,21 @@ async function fetchSinglePage(
     console.log('[CMS_MARKETPLACE] County FIPS:', countyFips);
   }
 
-  // Calculate pagination parameters
-  const currentPage = page;
-  const offset = (currentPage - 1) * limit;
-
-  // Build request body following the EXACT structure from documentation
-  // CRITICAL FIX: CMS API expects ANNUAL income (confirmed by architect)
-  // The income_period and magi_period fields were causing confusion - removing them
-  // The API will correctly interpret the income as annual when these fields are omitted
+  // FIX 1: Build request body with ONLY supported fields per official documentation
+  // FIX 3: Pagination moved to query parameters (not in body)
   const requestBody: any = {
     household: {
-      income: quoteData.householdIncome, // ANNUAL household income (as stored in database)
-      income_period: 'Annual', // CRITICAL: Explicitly tell CMS API this is ANNUAL income
-      magi: quoteData.householdIncome, // Modified Adjusted Gross Income (same as income)
-      magi_period: 'Annual', // CRITICAL: MAGI period must be Annual to match income
-      people: people, // Array de personas
+      income: quoteData.householdIncome, // ANNUAL household income (API assumes annual by default)
+      people: people, // Array of household members with age and dob
       has_married_couple: hasMarriedCouple, // CRITICAL: Required for accurate APTC calculation for couples
     },
-    market: 'Individual', // Mercado individual
+    market: 'Individual',
     place: {
-      countyfips: countyFips, // CRÍTICO: Código FIPS del condado
-      state: quoteData.state, // Estado de 2 letras
-      zipcode: quoteData.zipCode, // ZIP de 5 dígitos
+      countyfips: countyFips,
+      state: quoteData.state,
+      zipcode: quoteData.zipCode,
     },
     year: year,
-    // Paginación en el body según documentación
-    limit: limit,
-    offset: offset,
   };
   
   // CRITICAL: Add effective_date if provided - required for accurate APTC/CSR calculation
@@ -361,22 +330,21 @@ async function fetchSinglePage(
   }
 
   if (page === 1) {
-    console.log(`[CMS_MARKETPLACE] 📊 Page ${currentPage}: Requesting up to ${limit} plans, offset: ${offset}`);
+    console.log(`[CMS_MARKETPLACE] 📊 Page ${page}: Requesting up to ${limit} plans per page`);
     console.log(`[CMS_MARKETPLACE] 💰 ANNUAL Income: $${quoteData.householdIncome}/year`);
     console.log('[CMS_MARKETPLACE] 🔍 EXACT REQUEST PAYLOAD TO CMS API:');
     console.log(JSON.stringify(requestBody, null, 2));
   }
 
   try {
-    // CMS Marketplace API endpoint - exacto de la documentación
-    const apiUrl = 'https://marketplace.api.healthcare.gov/api/v1/plans/search';
+    // FIX 3: CMS Marketplace API endpoint with pagination in query parameters
+    const apiUrl = `https://marketplace.api.healthcare.gov/api/v1/plans/search?apikey=${apiKey}&per_page=${limit}&page=${page}`;
     
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'apikey': apiKey, // Mantenemos el API key aunque la doc dice que no es necesario
       },
       body: JSON.stringify(requestBody),
     });
@@ -414,12 +382,12 @@ async function fetchSinglePage(
     }
     
     // Log total plans available (only on first page)
-    if (offset === 0 && data.total) {
+    if (page === 1 && data.total) {
       console.log(`[CMS_MARKETPLACE] 📊 Total de planes disponibles: ${data.total}`);
     }
     
     if (page === 1 || page % 5 === 0) { // Reduce logging noise
-      console.log(`[CMS_MARKETPLACE] ✅ Página ${currentPage}: ${data.plans?.length || 0} planes obtenidos`);
+      console.log(`[CMS_MARKETPLACE] ✅ Página ${page}: ${data.plans?.length || 0} planes obtenidos`);
     }
     
     // Agregar información del request para mostrar al usuario
@@ -427,6 +395,7 @@ async function fetchSinglePage(
       household_income: quoteData.householdIncome,
       people_count: people.length,
       people: people.map((p: any) => ({
+        age: p.age,
         dob: p.dob,
         gender: p.gender,
         tobacco: p.uses_tobacco,
@@ -440,8 +409,8 @@ async function fetchSinglePage(
         county_fips: countyFips
       },
       year: year,
-      limit: limit,
-      offset: offset
+      per_page: limit,
+      page: page
     };
     
     // DEBUG: Log API response metadata on first page
@@ -466,7 +435,7 @@ async function fetchSinglePage(
     if (data.plans) {
       const oscarPlan = data.plans.find((p: any) => p.id === '40572FL0200025');
       if (oscarPlan) {
-        console.log('[CMS_MARKETPLACE] 🎯 FOUND OSCAR PLAN 40572FL0200025 ON PAGE ' + currentPage + ':');
+        console.log('[CMS_MARKETPLACE] 🎯 FOUND OSCAR PLAN 40572FL0200025 ON PAGE ' + page + ':');
         console.log(`  - Issuer: ${oscarPlan.issuer?.name}`);
         console.log(`  - Plan Name: ${oscarPlan.name}`);
         console.log(`  - Metal Level: ${oscarPlan.metal_level}`);
