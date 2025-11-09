@@ -4049,6 +4049,32 @@ function AutomationsTab() {
     },
   });
 
+  // Manual birthday greetings mutation
+  const processManualBirthdaysMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/test/run-birthday-scheduler", {});
+    },
+    onSuccess: (data: any) => {
+      const count = data.results?.length || 0;
+      const successful = data.results?.filter((r: any) => r.status === "sent").length || 0;
+      
+      toast({
+        title: "Birthday Greetings Processed",
+        description: `Processed ${count} birthday(s). ${successful} sent successfully.`,
+        duration: 3000,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/birthday-greetings/history"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process birthday greetings",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
   const handleSave = () => {
     saveSettingsMutation.mutate(formData);
   };
@@ -4233,6 +4259,20 @@ function AutomationsTab() {
                   className="resize-none text-xs"
                   data-testid="textarea-birthday-message"
                 />
+              </div>
+
+              {/* Manual Process Button */}
+              <div className="pt-2">
+                <Button
+                  onClick={() => processManualBirthdaysMutation.mutate()}
+                  disabled={processManualBirthdaysMutation.isPending}
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  data-testid="button-process-birthdays-manual"
+                >
+                  {processManualBirthdaysMutation.isPending ? "Processing..." : "Process Today's Birthdays Now"}
+                </Button>
               </div>
 
               {isEditing && (
