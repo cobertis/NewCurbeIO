@@ -13952,9 +13952,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Use the new unified getPolicyDetail function that fetches all data atomically
       const policyDetail = await storage.getPolicyDetail(id, currentUser.companyId!);
       
-      // If user is admin (not superadmin), verify they have permission to view this policy
-      if (currentUser.role === "admin" && policyDetail.policy.agentId !== currentUser.id) {
-        return res.status(403).json({ message: "You don't have permission to view this policy" });
+      // Check visibility: superadmins and users with viewAllCompanyData can see all policies
+      // Others can only see policies where they are the assigned agent
+      if (currentUser.role !== "superadmin" && !shouldViewAllCompanyData(currentUser)) {
+        if (policyDetail.policy.agentId !== currentUser.id) {
+          return res.status(403).json({ message: "You don't have permission to view this policy" });
+        }
       }
       
       // Log access to sensitive data
