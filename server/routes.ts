@@ -13228,32 +13228,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Fetch plans from CMS Marketplace with pagination (using static import from top of file)
       const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize);
       
-      // Enrich plans with dental coverage information from benefits
-      if (marketplaceData.plans) {
-        marketplaceData.plans = marketplaceData.plans.map((plan: any) => {
-          // Check for dental coverage in benefits
-          const hasDentalChild = plan.benefits?.some((b: any) => 
-            b.type?.toLowerCase().includes('dental') && 
-            b.type?.toLowerCase().includes('child') &&
-            b.covered === true
-          ) || false;
-          
-          const hasDentalAdult = plan.benefits?.some((b: any) => 
-            b.type?.toLowerCase().includes('dental') && 
-            b.type?.toLowerCase().includes('adult') &&
-            b.covered === true
-          ) || false;
-          
-          return {
-            ...plan,
-            has_dental_child_coverage: hasDentalChild,
-            has_dental_adult_coverage: hasDentalAdult,
-          };
-        });
-      }
-      
-      // Log successful fetch for tracking
-      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${quoteId}, page ${page}`);
+      // Return EXACTLY what the CMS API returns - NO modifications
+      console.log(`[CMS_MARKETPLACE] Returning EXACT API response - ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
       
       res.json(marketplaceData);
     } catch (error: any) {
@@ -17716,30 +17692,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Fetch plans from CMS Marketplace with pagination and correct year (using static import from top of file)
       const marketplaceData = await fetchMarketplacePlans(policyData, page, pageSize, targetYear);
       
-      // Enrich plans with dental coverage information from benefits
-      if (marketplaceData.plans) {
-        marketplaceData.plans = marketplaceData.plans.map((plan: any) => {
-          const hasDentalChild = plan.benefits?.some((b: any) => 
-            b.type?.toLowerCase().includes('dental') && 
-            b.type?.toLowerCase().includes('child') &&
-            b.covered === true
-          ) || false;
-          
-          const hasDentalAdult = plan.benefits?.some((b: any) => 
-            b.type?.toLowerCase().includes('dental') && 
-            b.type?.toLowerCase().includes('adult') &&
-            b.covered === true
-          ) || false;
-          
-          return {
-            ...plan,
-            has_dental_child_coverage: hasDentalChild,
-            has_dental_adult_coverage: hasDentalAdult,
-          };
-        });
-      }
-      
-      console.log(`[CMS_MARKETPLACE] Successfully fetched ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);
+      // Return EXACTLY what the CMS API returns - NO modifications
+      console.log(`[CMS_MARKETPLACE] Returning EXACT API response - ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);
       
       res.json(marketplaceData);
     } catch (error: any) {

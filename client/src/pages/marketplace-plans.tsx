@@ -202,11 +202,11 @@ export default function MarketplacePlansPage() {
     
     setIsLoadingPlans(true);
     try {
-      console.log(`🚀 Cargando TODOS los planes para ${isPolicy ? 'Policy' : 'Quote'}: ${quoteId}`);
+      console.log(`🚀 Loading marketplace plans for ${isPolicy ? 'Policy' : 'Quote'}: ${quoteId}`);
 
-      // Fetch ALL plans in one optimized call - backend handles parallel fetching
+      // Fetch first page - backend returns EXACTLY what CMS API returns (no modifications)
       const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=1000`,
+        `/api/${basePath}/${quoteId}/marketplace-plans?page=1&pageSize=100`,
         {
           method: 'GET',
           headers: {
@@ -224,11 +224,17 @@ export default function MarketplacePlansPage() {
 
       const data = await response.json();
       
-      // Backend now returns ALL plans at once
-      const totalPlansCount = data.total || data.plans?.length || 0;
-      console.log(`📊 Total de planes disponibles: ${totalPlansCount}`);
+      // Display EXACTLY what the CMS API returned - NO modifications
+      const totalPlansAvailable = data.total || 0;
+      const plansInResponse = data.plans?.length || 0;
       
-      // Prepare metadata with all information
+      console.log(`📊 EXACT CMS API Response:`);
+      console.log(`  - Total plans available: ${totalPlansAvailable}`);
+      console.log(`  - Plans in this page: ${plansInResponse}`);
+      console.log(`  - household_aptc (from API): ${data.household_aptc || 'Not provided'}`);
+      console.log(`  - household_csr (from API): ${data.household_csr || 'Not provided'}`);
+      
+      // Store the API response exactly as received
       const apiRequestData = data.request_data || {
         household_income: (quoteData as any)?.totalHouseholdIncome || quote?.householdIncome || 0,
         people_count: totalApplicants,
@@ -248,24 +254,23 @@ export default function MarketplacePlansPage() {
         request_data: apiRequestData,
       };
       
-      console.log(`💰 Frontend received household_aptc: ${data.household_aptc}`);
+      console.log(`💰 Displaying EXACT household_aptc from CMS API: ${data.household_aptc}`);
 
-      // Set all plans at once
-      const combinedData = {
+      // Set plans EXACTLY as returned by the API - NO modifications
+      const exactApiData = {
         ...marketplaceMetadata,
         plans: data.plans || [],
+        total: totalPlansAvailable, // EXACT total from API
       };
 
-      setMarketplacePlans(combinedData);
+      setMarketplacePlans(exactApiData);
       setCurrentPage(1);
       
-      const totalPlans = data.plans?.length || 0;
-      
-      console.log(`✅ ${totalPlans} planes cargados exitosamente en una sola llamada rápida!`);
+      console.log(`✅ Showing ${plansInResponse} of ${totalPlansAvailable} plans - EXACT CMS API response (no modifications)`);
       
       toast({
-        title: "Planes cargados exitosamente",
-        description: `${totalPlans} planes de seguro de salud disponibles`,
+        title: "Plans loaded successfully",
+        description: `Showing ${plansInResponse} of ${totalPlansAvailable} available plans from CMS API`,
       });
     } catch (error: any) {
       console.error('Error fetching marketplace plans:', error);

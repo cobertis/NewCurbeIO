@@ -129,8 +129,8 @@ function formatGenderForCMS(gender?: string): string {
 }
 
 /**
- * Fetch ALL health insurance plans from CMS Marketplace API in parallel
- * Optimized for speed - gets all plans in one go
+ * Fetch health insurance plans from CMS Marketplace API
+ * PURE PASS-THROUGH - Returns EXACTLY what the CMS API returns without any modifications
  */
 export async function fetchMarketplacePlans(
   quoteData: {
@@ -160,8 +160,8 @@ export async function fetchMarketplacePlans(
       isApplicant?: boolean; // true = needs insurance (denied Medicaid), false = has Medicaid/CHIP
     }>;
   },
-  page?: number,
-  pageSize?: number,
+  page: number = 1,
+  pageSize: number = 100,
   yearOverride?: number
 ): Promise<MarketplaceApiResponse> {
   // Validate yearOverride if provided
@@ -169,92 +169,22 @@ export async function fetchMarketplacePlans(
     throw new Error(`Year override must be between 2025 and 2030, received: ${yearOverride}`);
   }
   
-  // If page is specified, return just that page (for backwards compatibility)
-  if (page && page > 1) {
-    return fetchSinglePage(quoteData, page, yearOverride);
-  }
-  
-  // Otherwise, fetch ALL plans in parallel
   const targetYear = yearOverride || new Date().getFullYear();
-  console.log(`[CMS_MARKETPLACE] 🚀 Iniciando carga rápida de TODOS los planes para año ${targetYear}`);
+  console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, Year ${targetYear}`);
+  console.log(`[CMS_MARKETPLACE] ⚠️  PURE PASS-THROUGH MODE - No modifications will be made to API response`);
   
-  // First, get the total count with page 1
-  const firstPage = await fetchSinglePage(quoteData, 1, yearOverride);
-  const totalPlans = firstPage.total || 0;
+  // Call fetchSinglePage and return EXACTLY what the CMS API returns
+  // NO deduplication, NO recalculation, NO modifications
+  const apiResponse = await fetchSinglePage(quoteData, page, pageSize, yearOverride);
   
-  if (totalPlans <= 10) {
-    // If 10 or fewer plans, we already have them all - return exactly what API gave us
-    return firstPage;
-  }
+  console.log(`[CMS_MARKETPLACE] ✅ Returning EXACT API response:`);
+  console.log(`  - Plans returned: ${apiResponse.plans?.length || 0}`);
+  console.log(`  - Total available: ${apiResponse.total || 0}`);
+  console.log(`  - household_aptc: ${apiResponse.household_aptc || 'NOT PROVIDED BY API'}`);
+  console.log(`  - household_csr: ${apiResponse.household_csr || 'NOT PROVIDED BY API'}`);
+  console.log(`[CMS_MARKETPLACE] 🔒 NO deduplication, NO recalculation - showing exactly what CMS API calculated`);
   
-  // Calculate how many pages we need (API returns max 10 per page)
-  const plansPerPage = 10; // API limitation
-  const totalPages = Math.ceil(totalPlans / plansPerPage);
-  
-  console.log(`[CMS_MARKETPLACE] 📊 ${totalPlans} planes disponibles en ${totalPages} páginas`);
-  console.log(`[CMS_MARKETPLACE] ⚡ Obteniendo todas las páginas en paralelo...`);
-  
-  // Create promises for all remaining pages (we already have page 1)
-  const pagePromises: Promise<MarketplaceApiResponse>[] = [];
-  
-  // Batch requests in groups of 5 to avoid overwhelming the API
-  const batchSize = 5;
-  for (let page = 2; page <= totalPages; page++) {
-    pagePromises.push(fetchSinglePage(quoteData, page, yearOverride));
-    
-    // Add small delay between batches to be respectful to the API
-    if (page % batchSize === 0 && page < totalPages) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-  
-  // Fetch all pages in parallel
-  const remainingPages = await Promise.all(pagePromises);
-  
-  // Combine all plans from all pages
-  const allPlans = [...(firstPage.plans || [])];
-  for (const pageData of remainingPages) {
-    if (pageData.plans) {
-      allPlans.push(...pageData.plans);
-    }
-  }
-  
-  // Remove duplicates by plan ID (just in case)
-  const uniquePlans = allPlans.filter((plan, index, self) =>
-    index === self.findIndex(p => p.id === plan.id)
-  );
-  
-  console.log(`[CMS_MARKETPLACE] ✅ ${uniquePlans.length} planes únicos obtenidos exitosamente`);
-  
-  // Extract household_aptc from SLCSP (Second Lowest Cost Silver Plan) if API didn't provide it
-  // This is NOT a manual calculation - we're just extracting what the API already calculated
-  let household_aptc = firstPage.household_aptc;
-  
-  if (!household_aptc || household_aptc === 0) {
-    // Find Silver plans sorted by unsubsidized premium
-    const silverPlans = uniquePlans
-      .filter((p: any) => p.metal_level === 'Silver')
-      .sort((a: any, b: any) => (a.premium || 0) - (b.premium || 0));
-    
-    if (silverPlans.length >= 2) {
-      // SLCSP = Second Lowest Cost Silver Plan
-      const slcsp = silverPlans[1];
-      // The API calculated the subsidy - we just extract it
-      household_aptc = (slcsp.premium || 0) - (slcsp.premium_w_credit || 0);
-      console.log(`[CMS_MARKETPLACE] 💰 Extracted household_aptc from API's SLCSP calculation: $${household_aptc.toFixed(2)}`);
-      console.log(`  - SLCSP: ${slcsp.name} (${slcsp.id})`);
-      console.log(`  - API calculated premium: $${slcsp.premium}`);
-      console.log(`  - API calculated premium_w_credit: $${slcsp.premium_w_credit}`);
-    }
-  }
-  
-  // Return combined response - we're returning what the API calculated
-  return {
-    ...firstPage,
-    plans: uniquePlans,
-    total: uniquePlans.length,
-    household_aptc: household_aptc || 0,
-  };
+  return apiResponse;
 }
 
 /**
@@ -290,6 +220,7 @@ async function fetchSinglePage(
     }>;
   },
   page: number,
+  limit: number = 100,
   yearOverride?: number
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
@@ -391,8 +322,7 @@ async function fetchSinglePage(
 
   // Calculate pagination parameters
   const currentPage = page;
-  const limit = 100; // Try to get max, but API only returns 10
-  const offset = (currentPage - 1) * 10; // Use 10 because that's what API actually returns
+  const offset = (currentPage - 1) * limit;
 
   // Build request body following the EXACT structure from documentation
   // IMPORTANTE: limit y offset van en el body, no en la URL
