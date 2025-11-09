@@ -1256,12 +1256,16 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // Invalidate UNIFIED query to refresh ALL data
-      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] });
+      // Invalidate BOTH queries to refresh ALL data
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/policies'] })
+      ]);
       
       toast({
         title: "Success",
         description: "Member information saved successfully.",
+        duration: 3000,
       });
       // Don't close the sheet - allow user to continue editing or navigate to other members
     } catch (error) {
@@ -4913,15 +4917,19 @@ export default function PoliciesPage() {
       if (!selectedPolicyId) throw new Error("Quote ID not found");
       return apiRequest("DELETE", `/api/policies/${selectedPolicyId}/members/${memberId}`);
     },
-    onSuccess: () => {
-      // Invalidate UNIFIED query to refresh ALL data
+    onSuccess: async () => {
+      // Invalidate BOTH queries to refresh ALL data
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/policies'] })
+        ]);
       }
       setDeletingMember(null);
       toast({
         title: "Member deleted",
         description: "The family member has been removed from this policy.",
+        duration: 3000,
       });
     },
     onError: (error: any) => {
@@ -5044,11 +5052,13 @@ export default function PoliciesPage() {
       
       return { memberId, warnings };
     },
-    onSuccess: (result) => {
-      // Invalidate UNIFIED query to refresh ALL data immediately
+    onSuccess: async (result) => {
+      // Invalidate BOTH queries to refresh ALL data immediately
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
-        queryClient.invalidateQueries({ queryKey: ["/api/policies"] }); // Also refresh the list
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/policies"] })
+        ]);
       }
       
       // Show appropriate toast based on warnings
@@ -5058,11 +5068,13 @@ export default function PoliciesPage() {
           variant: "destructive",
           title: "Partial Success",
           description: `Member created but ${failedSections} data failed to save. You can edit it later.`,
+          duration: 3000,
         });
       } else {
         toast({
           title: "Success",
           description: "Family member added successfully",
+          duration: 3000,
         });
       }
       
