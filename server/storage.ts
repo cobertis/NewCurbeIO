@@ -236,6 +236,7 @@ import {
   birthdayImages,
   userBirthdaySettings,
   birthdayGreetingHistory,
+  birthdayPendingMessages,
   bulkvsPhoneNumbers,
   bulkvsThreads,
   bulkvsMessages,
