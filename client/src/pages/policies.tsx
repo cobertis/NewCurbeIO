@@ -3776,7 +3776,10 @@ export default function PoliciesPage() {
       if (!response.ok) throw new Error('Failed to fetch policies');
       return response.json();
     },
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage) return undefined;
+      return lastPage.nextCursor ?? undefined;
+    },
   });
 
   // Flatten all pages into single array
