@@ -571,20 +571,81 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { MessageSid, MessageStatus, ErrorCode, ErrorMessage } = req.body;
+      const pendingMessageId = req.query.pendingMessageId as string | undefined;
       
-      console.log(`[TWILIO STATUS] SID: ${MessageSid}, Status: ${MessageStatus}`);
+      console.log(`[TWILIO STATUS] SID: ${MessageSid}, Status: ${MessageStatus}, PendingID: ${pendingMessageId}`);
       
       if (!MessageSid || !MessageStatus) {
         return res.status(400).send("Missing required fields");
       }
       
-      // Update message status in database
-      await storage.updateCampaignSmsMessageStatus(
-        MessageSid, 
-        MessageStatus,
-        ErrorCode,
-        ErrorMessage
-      );
+      // Check if this is a birthday MMS delivery callback
+      if (pendingMessageId) {
+        console.log(`[BIRTHDAY MMS] Processing MMS delivery callback for pending message: ${pendingMessageId}`);
+        
+        const pendingMessage = await storage.getBirthdayPendingMessageByMmsSid(MessageSid);
+        
+        if (pendingMessage && pendingMessage.id === pendingMessageId) {
+          console.log(`[BIRTHDAY MMS] Found pending message for ${pendingMessage.recipientName}`);
+          
+          if (MessageStatus === 'delivered') {
+            console.log(`[BIRTHDAY MMS] MMS delivered successfully. Sending follow-up SMS...`);
+            
+            try {
+              // Send the SMS text message
+              const smsResult = await twilioService.sendSMS(
+                pendingMessage.recipientPhone,
+                pendingMessage.smsBody
+              );
+              
+              if (smsResult) {
+                console.log(`[BIRTHDAY MMS] Follow-up SMS sent. SID: ${smsResult.sid}`);
+                
+                // Update greeting history with SMS SID
+                await storage.updateBirthdayGreetingStatus(
+                  pendingMessage.greetingHistoryId,
+                  'delivered',
+                  undefined
+                );
+                
+                // Mark pending message as completed
+                await storage.updateBirthdayPendingMessageStatus(pendingMessage.id, 'completed');
+                
+                // Clean up pending message
+                await storage.deleteBirthdayPendingMessage(pendingMessage.id);
+                
+                console.log(`[BIRTHDAY MMS] ✓ Complete birthday greeting flow finished`);
+              }
+            } catch (smsError) {
+              console.error(`[BIRTHDAY MMS] Failed to send follow-up SMS:`, smsError);
+              await storage.updateBirthdayPendingMessageStatus(pendingMessage.id, 'failed');
+              await storage.updateBirthdayGreetingStatus(
+                pendingMessage.greetingHistoryId,
+                'failed',
+                `SMS send failed: ${smsError}`
+              );
+            }
+          } else if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
+            console.log(`[BIRTHDAY MMS] MMS delivery failed with status: ${MessageStatus}`);
+            await storage.updateBirthdayPendingMessageStatus(pendingMessage.id, 'failed');
+            await storage.updateBirthdayGreetingStatus(
+              pendingMessage.greetingHistoryId,
+              'failed',
+              `MMS ${MessageStatus}: ${ErrorMessage || 'Unknown error'}`
+            );
+          }
+        } else {
+          console.warn(`[BIRTHDAY MMS] Pending message not found or ID mismatch for MMS SID: ${MessageSid}`);
+        }
+      } else {
+        // Regular campaign SMS status update
+        await storage.updateCampaignSmsMessageStatus(
+          MessageSid, 
+          MessageStatus,
+          ErrorCode,
+          ErrorMessage
+        );
+      }
       
       res.status(200).send("OK");
     } catch (error) {
