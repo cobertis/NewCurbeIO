@@ -124,9 +124,9 @@ const formatPhoneNumber = (value: string) => {
   }
 };
 
-// Helper to format date for input fields - just returns the yyyy-MM-dd string as-is
-const formatDateForInput = (date: string | null | undefined): string | undefined => {
-  if (!date) return undefined;
+// Helper to format date for input fields - extracts YYYY-MM-DD from any format
+const formatDateForInput = (date: string | null | undefined): string => {
+  if (!date) return '';
   // Extract YYYY-MM-DD from any date format (handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.sssZ")
   // This ensures HTML <input type="date"> receives a valid value
   const dateOnly = date.split('T')[0];
