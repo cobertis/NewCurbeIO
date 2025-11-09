@@ -17628,9 +17628,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Prepare data for CMS API
+      console.log(`[MARKETPLACE_PLANS] Total members found: ${members.length}`);
+      console.log(`[MARKETPLACE_PLANS] Members roles:`, members.map(m => ({ id: m.id, role: m.role, dob: m.dateOfBirth })));
+      
       const client = members.find(m => m.role === 'client');
       const spouses = members.filter(m => m.role === 'spouse');
       const dependents = members.filter(m => m.role === 'dependent');
+      
+      console.log(`[MARKETPLACE_PLANS] Breakdown - Client: ${client ? 'YES' : 'NO'}, Spouses: ${spouses.length}, Dependents: ${dependents.length}`);
       
       // If no client in members, check the policy's client fields
       const clientData = client || {
@@ -17639,6 +17644,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         tobaccoUser: policy.clientTobaccoUser,
         pregnant: false,
       };
+      
+      console.log(`[MARKETPLACE_PLANS] Using ${client ? 'member' : 'policy'} data for client with DOB: ${clientData.dateOfBirth}`);
       
       if (!clientData || !clientData.dateOfBirth) {
         return res.status(400).json({ message: "Client information incomplete - date of birth required" });
