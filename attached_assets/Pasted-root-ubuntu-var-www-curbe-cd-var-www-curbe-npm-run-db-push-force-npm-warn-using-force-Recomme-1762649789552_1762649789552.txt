@@ -1,0 +1,53 @@
+root@ubuntu:/var/www/curbe# cd /var/www/curbe
+npm run db:push --force
+npm warn using --force Recommended protections disabled.
+
+> rest-express@1.0.0 db:push
+> drizzle-kit push
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/var/www/curbe/drizzle.config.ts'
+Using 'pg' driver for database querying
+[✓] Pulling schema from database...
+· You're about to add user_birthday_settings_user_id_unique unique constraint to the table, which contains 1 items. If this statement fails, you will receive an error from the database. Do you want to truncate user_birthday_settings table?
+
+· You're about to add bulkvs_phone_numbers_did_unique unique constraint to the table, which contains 1 items. If this statement fails, you will receive an error from the database. Do you want to truncate bulkvs_phone_numbers table?
+
+· You're about to add activation_tokens_token_unique unique constraint to the table, which contains 4 items. If this statement fails, you will receive an error from the database. Do you want to truncate activation_tokens table?
+
+· You're about to add incoming_sms_messages_twilio_message_sid_unique unique constraint to the table, which contains 4 items. If this statement fails, you will receive an error from the database. Do you want to truncate incoming_sms_messages table?
+
+· You're about to add landing_pages_slug_unique unique constraint to the table, which contains 3 items. If this statement fails, you will receive an error from the database. Do you want to truncate landing_pages table?
+
+· You're about to add password_reset_tokens_token_unique unique constraint to the table, which contains 3 items. If this statement fails, you will receive an error from the database. Do you want to truncate password_reset_tokens table?
+
+· You're about to add invoices_invoice_number_unique unique constraint to the table, which contains 19 items. If this statement fails, you will receive an error from the database. Do you want to truncate invoices table?
+
+· You're about to add invoices_stripe_invoice_id_unique unique constraint to the table, which contains 19 items. If this statement fails, you will receive an error from the database. Do you want to truncate invoices table?
+
+· You're about to add plans_stripe_price_id_unique unique constraint to the table, which contains 3 items. If this statement fails, you will receive an error from the database. Do you want to truncate plans table?
+
+· You're about to add quote_member_immigration_member_id_unique unique constraint to the table, which contains 2 items. If this statement fails, you will receive an error from the database. Do you want to truncate quote_member_immigration table?
+
+· You're about to add subscriptions_stripe_customer_id_unique unique constraint to the table, which contains 1 items. If this statement fails, you will receive an error from the database. Do you want to truncate subscriptions table?
+
+· You're about to add subscriptions_stripe_subscription_id_unique unique constraint to the table, which contains 1 items. If this statement fails, you will receive an error from the database. Do you want to truncate subscriptions table?
+
+· You're about to add trusted_devices_device_token_unique unique constraint to the table, which contains 10 items. If this statement fails, you will receive an error from the database. Do you want to truncate trusted_devices table?
+
+· You're about to add quote_member_income_member_id_unique unique constraint to the table, which contains 2 items. If this statement fails, you will receive an error from the database. Do you want to truncate quote_member_income table?
+
+· You're about to add users_slug_unique unique constraint to the table, which contains 5 items. If this statement fails, you will receive an error from the database. Do you want to truncate users table?
+
+· You're about to add contact_list_members_list_id_user_id_unique unique constraint to the table, which contains 1 items. If this statement fails, you will receive an error from the database. Do you want to truncate contact_list_members table?
+
+ Warning  Found data-loss statements:
+· You're about to delete session table with 10 items
+· You're about to delete stripe_setup_fee_price_id column in companies table with 1 items
+
+THIS ACTION WILL CAUSE DATA LOSS AND CANNOT BE REVERTED
+
+Do you still want to push changes?
+[x] All changes were aborted
+root@ubuntu:/var/www/curbe# 
+root@ubuntu:/var/www/curbe# 
