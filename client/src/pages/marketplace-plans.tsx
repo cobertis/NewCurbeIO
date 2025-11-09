@@ -122,7 +122,7 @@ export default function MarketplacePlansPage() {
 
   // CRITICAL FIX: Load REAL family members from quote_members/policy_members table
   const { data: membersDetailsData } = useQuery<{ members: any[] }>({
-    queryKey: [`/api/${basePath}`, quoteId, 'members'],
+    queryKey: [`/api/${basePath}/${quoteId}/members`],
     enabled: !!quoteId,
   });
 
