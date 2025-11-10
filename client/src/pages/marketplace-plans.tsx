@@ -686,7 +686,7 @@ export default function MarketplacePlansPage() {
                 {/* Second Row: Total Plans Count */}
                 <div className="flex items-center">
                   <span className="text-sm font-medium">
-                    Total plans: {totalFilteredPlans} {totalPages > 1 && `(Page ${currentPage} of ${totalPages})`}
+                    Total plans: {totalPlans} {totalPages > 1 && `(Page ${currentPage} of ${totalPages})`}
                   </span>
                 </div>
               </div>
