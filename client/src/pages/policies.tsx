@@ -11132,7 +11132,7 @@ export default function PoliciesPage() {
                       metal_level: manualPlanData.metal,
                       type: manualPlanData.productType,
                       network_type: manualPlanData.networkType,
-                      premium: parseFloat(manualPlanData.premium) || 0,
+                      premium: manualPlanData.planWas ? parseFloat(manualPlanData.planWas) : (manualPlanData.premium ? parseFloat(manualPlanData.premium) : 0),
                       premium_w_credit: manualPlanData.premium ? parseFloat(manualPlanData.premium) : null,
                       household_aptc: manualPlanData.taxCredit ? parseFloat(manualPlanData.taxCredit) : null,
                       deductibles: deductibles,
