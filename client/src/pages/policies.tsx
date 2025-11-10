@@ -6596,7 +6596,7 @@ export default function PoliciesPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Member ID</span>
-                  <span className="text-xs">-</span>
+                  <span className="text-xs font-semibold">{viewingQuote.memberId || '-'}</span>
                 </div>
               </div>
             </div>
