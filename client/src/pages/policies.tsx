@@ -11133,9 +11133,8 @@ export default function PoliciesPage() {
                       type: manualPlanData.productType,
                       network_type: manualPlanData.networkType,
                       premium: parseFloat(manualPlanData.premium) || 0,
-                      premium_w_credit: manualPlanData.taxCredit 
-                        ? (parseFloat(manualPlanData.premium) || 0) - (parseFloat(manualPlanData.taxCredit) || 0) 
-                        : null,
+                      premium_w_credit: manualPlanData.premium ? parseFloat(manualPlanData.premium) : null,
+                      household_aptc: manualPlanData.taxCredit ? parseFloat(manualPlanData.taxCredit) : null,
                       deductibles: deductibles,
                       moops: moops,
                       out_of_pocket_limit: manualPlanData.outOfPocketMax ? parseFloat(manualPlanData.outOfPocketMax) : null,
