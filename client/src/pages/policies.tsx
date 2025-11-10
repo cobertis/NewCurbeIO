@@ -3778,10 +3778,16 @@ export default function PoliciesPage() {
 
   // Fetch policies - using simple query like quotes page
   const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
-    queryKey: ["/api/policies"],
+    queryKey: ["/api/policies", searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('limit', '200'); // Fetch 200 policies
+      
+      // Send search term to backend for server-side filtering (before limit)
+      if (searchQuery.trim()) {
+        params.append('searchTerm', searchQuery.trim());
+      }
+      
       const response = await fetch(`/api/policies?${params.toString()}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch policies');
       return response.json();

@@ -79,9 +79,9 @@ Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security inclu
 **Policies Pagination System (Nov 2025):**
 The policies system uses cursor-based pagination to efficiently handle large datasets (10,000+ policies) with sub-500ms load times:
 - **Database Indexes:** 4 composite B-tree indexes on policies table: (company_id, agent_id), (company_id, effective_date DESC), (company_id, product_type, effective_date DESC), (company_id, status)
-- **Backend:** `getPoliciesList()` function uses single-query optimization with agent JOIN (eliminates N+1 queries), cursor format: "effectiveDate,id", max 200 items per page
-- **Frontend:** TanStack Query's `useInfiniteQuery` with page flattening: `policiesData?.pages.flatMap(page => page.items)`
-- **Performance:** Initial load fetches 100 policies, additional pages loaded on demand via nextCursor
+- **Backend:** `getPoliciesList()` function uses single-query optimization with agent JOIN (eliminates N+1 queries), cursor format: "effectiveDate,id", max 200 items per page. Supports server-side search filtering by client name, email, and phone before applying limit (Nov 2025 optimization).
+- **Frontend:** Sends searchQuery as `searchTerm` query parameter to backend for server-side filtering. TanStack Query key includes searchQuery for proper cache invalidation.
+- **Performance:** Initial load fetches 200 policies, server-side search ensures all matching results appear regardless of total count
 
 **Policies Page Performance Optimization (Nov 2025):**
 The policies page implements aggressive caching to prevent repeated expensive queries:

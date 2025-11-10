@@ -4327,6 +4327,7 @@ export class DbStorage implements IStorage {
     effectiveDateFrom?: string;
     effectiveDateTo?: string;
     skipAgentFilter?: boolean;
+    searchTerm?: string;
   }): Promise<{
     items: Array<{
       id: string;
@@ -4377,6 +4378,19 @@ export class DbStorage implements IStorage {
     }
     if (options?.effectiveDateTo) {
       conditions.push(lt(policies.effectiveDate, options.effectiveDateTo));
+    }
+    
+    // Search filter (applied BEFORE limit to ensure results aren't truncated)
+    if (options?.searchTerm) {
+      const searchLower = options.searchTerm.toLowerCase();
+      const searchPattern = `%${searchLower}%`;
+      conditions.push(
+        or(
+          sql`LOWER(CONCAT(${policies.clientFirstName}, ' ', COALESCE(${policies.clientMiddleName}, ''), ' ', ${policies.clientLastName}, ' ', COALESCE(${policies.clientSecondLastName}, ''))) LIKE ${searchPattern}`,
+          sql`LOWER(${policies.clientEmail}) LIKE ${searchPattern}`,
+          sql`${policies.clientPhone} LIKE ${searchPattern}`
+        ) as any
+      );
     }
     
     // Cursor pagination

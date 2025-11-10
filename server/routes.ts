@@ -13697,7 +13697,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo } = req.query;
+    const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo, searchTerm } = req.query;
     
     try {
       if (!currentUser.companyId) {
@@ -13758,6 +13758,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       if (effectiveDateTo && typeof effectiveDateTo === 'string') {
         options.effectiveDateTo = effectiveDateTo;
+      }
+      
+      // Add search filter (applied server-side BEFORE limit)
+      if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
+        options.searchTerm = searchTerm.trim();
       }
       
       // Fetch policies using optimized function
