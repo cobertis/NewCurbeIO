@@ -199,10 +199,31 @@ export default function MarketplacePlansPage() {
 
   // Fetch marketplace plans with useQuery (with pagination)
   const { data: marketplacePlans, isLoading: isLoadingPlans } = useQuery({
-    queryKey: ['/api/', basePath, quoteId, 'marketplace-plans', { page: currentPage }],
+    queryKey: ['/api/', basePath, quoteId, 'marketplace-plans', {
+      page: currentPage,
+      metalLevels: Array.from(selectedMetals),
+      issuers: Array.from(selectedCarriers),
+      diseasePrograms: Array.from(selectedDiseasePrograms),
+    }],
     queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+      });
+
+      // Add backend filters (CMS API native)
+      if (selectedMetals.size > 0) {
+        params.append('metalLevels', Array.from(selectedMetals).join(','));
+      }
+      if (selectedCarriers.size > 0) {
+        params.append('issuers', Array.from(selectedCarriers).join(','));
+      }
+      if (selectedDiseasePrograms.size > 0) {
+        params.append('diseasePrograms', Array.from(selectedDiseasePrograms).join(','));
+      }
+
       const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?page=${currentPage}&pageSize=${pageSize}`,
+        `/api/${basePath}/${quoteId}/marketplace-plans?${params}`,
         {
           method: 'GET',
           headers: {
@@ -224,6 +245,11 @@ export default function MarketplacePlansPage() {
       console.log(`  - Total plans available: ${data.total || 0}`);
       console.log(`  - Plans in this page: ${data.plans?.length || 0}`);
       console.log(`  - household_aptc (from API): ${data.household_aptc || 'Not provided'}`);
+      console.log(`  - Backend filters applied:`, {
+        metalLevels: Array.from(selectedMetals),
+        issuers: Array.from(selectedCarriers),
+        diseasePrograms: Array.from(selectedDiseasePrograms),
+      });
       
       return data;
     },
@@ -267,12 +293,59 @@ export default function MarketplacePlansPage() {
     .map(([name, count]) => ({ name, count: count as number }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Display plans from current page (server-side pagination, no client-side slicing)
-  const filteredPlans = marketplacePlans?.plans || [];
+  // Server returns plans filtered by backend (metal, issuers, disease programs)
+  const serverPlans = marketplacePlans?.plans || [];
+
+  // Apply client-side filters (premium, deductible, networks, features)
+  let filteredPlans = serverPlans;
+
+  // Filter by max premium
+  if (maxPremium < 3000) {
+    filteredPlans = filteredPlans.filter((plan: any) => {
+      const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
+      return premium <= maxPremium;
+    });
+  }
+
+  // Filter by max deductible
+  if (maxDeductible < 10000) {
+    filteredPlans = filteredPlans.filter((plan: any) => {
+      const medicalDeductible = plan.deductibles?.find((d: any) => d.type === 'Medical Deductible' || d.type === 'Medical EHB Deductible');
+      return !medicalDeductible || medicalDeductible.amount <= maxDeductible;
+    });
+  }
+
+  // Filter by networks
+  if (selectedNetworks.size > 0) {
+    filteredPlans = filteredPlans.filter((plan: any) => 
+      selectedNetworks.has(plan.type)
+    );
+  }
+
+  // Filter by plan features
+  if (selectedPlanFeatures.size > 0) {
+    filteredPlans = filteredPlans.filter((plan: any) => {
+      return Array.from(selectedPlanFeatures).every(feature => {
+        if (feature === 'dental_child') return plan.has_dental_child_coverage;
+        if (feature === 'dental_adult') return plan.has_dental_adult_coverage;
+        if (feature === 'hsa_eligible') return plan.hsa_eligible;
+        if (feature === 'simple_choice') return plan.simple_choice;
+        return false;
+      });
+    });
+  }
+
+  // Calculate total pages based on client-side filtered plans
+  const totalFilteredPlans = filteredPlans.length;
+  const totalPages = Math.ceil(totalFilteredPlans / pageSize);
+
+  // Slice for client-side pagination
+  const paginatedPlans = filteredPlans.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   
-  // Calculate total pages based on server's total count
-  const totalPlans = marketplacePlans?.total || 0;
-  const totalPages = Math.ceil(totalPlans / pageSize);
+  // Use server's total for display if no client-side filters are active
+  const totalPlans = (maxPremium < 3000 || maxDeductible < 10000 || selectedNetworks.size > 0 || selectedPlanFeatures.size > 0)
+    ? totalFilteredPlans
+    : (marketplacePlans?.total || 0);
   
   // Helper functions for plan comparison
   const togglePlanForComparison = (planId: string) => {
@@ -691,7 +764,7 @@ export default function MarketplacePlansPage() {
                 </div>
               </div>
 
-              {filteredPlans.map((plan: any, index: number) => {
+              {paginatedPlans.map((plan: any, index: number) => {
                 // Calculate APTC (tax credit) for this plan
                 const aptcAmount = plan.premium - (plan.premium_w_credit || plan.premium);
                 
