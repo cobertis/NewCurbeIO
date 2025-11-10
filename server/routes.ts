@@ -17616,6 +17616,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 100; // Default to CMS API maximum
       
+      // Extract filters from query params (CMS API native filters)
+      const filters: {
+        metalLevels?: string[];
+        issuers?: string[];
+        networks?: string[];
+        diseasePrograms?: string[];
+      } = {};
+      
+      if (req.query.metalLevels) {
+        filters.metalLevels = typeof req.query.metalLevels === 'string' 
+          ? req.query.metalLevels.split(',').filter(Boolean)
+          : (req.query.metalLevels as string[]).filter(Boolean);
+      }
+      
+      if (req.query.issuers) {
+        filters.issuers = typeof req.query.issuers === 'string' 
+          ? req.query.issuers.split(',').filter(Boolean)
+          : (req.query.issuers as string[]).filter(Boolean);
+      }
+      
+      if (req.query.networks) {
+        filters.networks = typeof req.query.networks === 'string' 
+          ? req.query.networks.split(',').filter(Boolean)
+          : (req.query.networks as string[]).filter(Boolean);
+      }
+      
+      if (req.query.diseasePrograms) {
+        filters.diseasePrograms = typeof req.query.diseasePrograms === 'string' 
+          ? req.query.diseasePrograms.split(',').filter(Boolean)
+          : (req.query.diseasePrograms as string[]).filter(Boolean);
+      }
+      
       if (!policyId) {
         return res.status(400).json({ message: "Policy ID is required" });
       }
@@ -17689,8 +17721,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log(`[MARKETPLACE_PLANS] Fetching plans for policy ${policyId} - Effective Date: ${policy.effectiveDate}, Target Year: ${targetYear}`);
       
-      // Fetch plans from CMS Marketplace with pagination and correct year (using static import from top of file)
-      const marketplaceData = await fetchMarketplacePlans(policyData, page, pageSize, targetYear);
+      // Fetch plans from CMS Marketplace with pagination, year, and filters
+      const hasFilters = Object.keys(filters).some(key => filters[key as keyof typeof filters]?.length);
+      const marketplaceData = await fetchMarketplacePlans(
+        policyData, 
+        page, 
+        pageSize, 
+        targetYear, 
+        hasFilters ? filters : undefined
+      );
       
       // Return EXACTLY what the CMS API returns - NO modifications
       console.log(`[CMS_MARKETPLACE] Returning EXACT API response - ${marketplaceData.plans?.length || 0} plans for policy ${policyId}, page ${page}`);

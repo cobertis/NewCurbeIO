@@ -303,7 +303,13 @@ export async function fetchMarketplacePlans(
   },
   page: number = 1,
   pageSize: number = 100,
-  yearOverride?: number
+  yearOverride?: number,
+  filters?: {
+    metalLevels?: string[];
+    issuers?: string[];
+    networks?: string[];
+    diseasePrograms?: string[];
+  }
 ): Promise<MarketplaceApiResponse> {
   // Validate yearOverride if provided
   if (yearOverride && (yearOverride < 2025 || yearOverride > 2030)) {
@@ -335,7 +341,7 @@ export async function fetchMarketplacePlans(
     
     console.log(`[CMS_MARKETPLACE] 📄 Fetching API page ${apiPage + 1}/${numApiPagesToFetch} (offset=${offset})...`);
     
-    const apiResponse = await fetchSinglePage(quoteData, offset, yearOverride);
+    const apiResponse = await fetchSinglePage(quoteData, offset, yearOverride, filters);
     
     if (apiResponse.plans && apiResponse.plans.length > 0) {
       allPlans = allPlans.concat(apiResponse.plans);
@@ -404,7 +410,13 @@ async function fetchSinglePage(
     }>;
   },
   offset: number,
-  yearOverride?: number
+  yearOverride?: number,
+  filters?: {
+    metalLevels?: string[];
+    issuers?: string[];
+    networks?: string[];
+    diseasePrograms?: string[];
+  }
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
@@ -491,6 +503,38 @@ async function fetchSinglePage(
   // Add effective_date if provided
   if (quoteData.effectiveDate) {
     requestBody.household.effective_date = quoteData.effectiveDate;
+  }
+
+  // Add filters if provided (CMS API native filters)
+  if (filters) {
+    const filterObj: any = {};
+    
+    // Metal levels filter
+    if (filters.metalLevels && filters.metalLevels.length > 0) {
+      filterObj.metal_levels = filters.metalLevels;
+    }
+    
+    // Issuers filter (carriers)
+    if (filters.issuers && filters.issuers.length > 0) {
+      filterObj.issuers = filters.issuers;
+    }
+    
+    // Network type filter (division in CMS API)
+    if (filters.networks && filters.networks.length > 0) {
+      // CMS API uses 'division' for network type filtering
+      // For now, we'll handle this in frontend since CMS API's division mapping is unclear
+      // filterObj.division = filters.networks[0]; // CMS accepts single division, not array
+    }
+    
+    // Disease management programs filter
+    if (filters.diseasePrograms && filters.diseasePrograms.length > 0) {
+      filterObj.disease_mgmt_programs = filters.diseasePrograms;
+    }
+    
+    // Only add filter object if it has properties
+    if (Object.keys(filterObj).length > 0) {
+      requestBody.filter = filterObj;
+    }
   }
 
   try {
