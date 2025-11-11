@@ -16359,7 +16359,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ==================== QUOTE PAYMENT METHODS ====================
   
   // Get all payment methods for a policy (PLAIN TEXT - NO ENCRYPTION)
-  // Returns ONLY payment methods for THIS specific policy (no cross-policy sharing)
+  // Returns payment methods for ALL policies of this client (shared across policy years)
   app.get("/api/policies/:policyId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -16376,8 +16376,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Get payment methods ONLY for this specific policy
-      const paymentMethods = await storage.getPolicyPaymentMethods(policyId, policy.companyId);
+      // Get ALL policies for this client to share payment methods across policy years
+      const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
+      
+      // Get payment methods for ALL policies of this client
+      const paymentMethods = await storage.getPolicyPaymentMethods(canonicalPolicyIds, policy.companyId);
       
       // Return payment methods with plain text card/bank info
       await logger.logAuth({
