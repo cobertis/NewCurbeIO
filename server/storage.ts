@@ -4328,6 +4328,7 @@ export class DbStorage implements IStorage {
     effectiveDateTo?: string;
     skipAgentFilter?: boolean;
     searchTerm?: string;
+    includeFamilyMembers?: boolean;
   }): Promise<{
     items: Array<{
       id: string;
@@ -4385,13 +4386,18 @@ export class DbStorage implements IStorage {
     if (options?.searchTerm) {
       const searchLower = options.searchTerm.toLowerCase();
       const searchPattern = `%${searchLower}%`;
-      conditions.push(
-        or(
-          sql`LOWER(CONCAT(${policies.clientFirstName}, ' ', COALESCE(${policies.clientMiddleName}, ''), ' ', ${policies.clientLastName}, ' ', COALESCE(${policies.clientSecondLastName}, ''))) LIKE ${searchPattern}`,
-          sql`LOWER(${policies.clientEmail}) LIKE ${searchPattern}`,
-          sql`${policies.clientPhone} LIKE ${searchPattern}`
-        ) as any
-      );
+      
+      // If includeFamilyMembers is true, we'll add the family member search in the query
+      // Otherwise, just search in client fields
+      if (!options.includeFamilyMembers) {
+        conditions.push(
+          or(
+            sql`LOWER(CONCAT(${policies.clientFirstName}, ' ', COALESCE(${policies.clientMiddleName}, ''), ' ', ${policies.clientLastName}, ' ', COALESCE(${policies.clientSecondLastName}, ''))) LIKE ${searchPattern}`,
+            sql`LOWER(${policies.clientEmail}) LIKE ${searchPattern}`,
+            sql`${policies.clientPhone} LIKE ${searchPattern}`
+          ) as any
+        );
+      }
     }
     
     // Cursor pagination
@@ -4410,9 +4416,9 @@ export class DbStorage implements IStorage {
     // Create agent alias for join
     const agent = alias(users, 'agent');
     
-    // Execute single optimized query with agent and primary plan JOINs
-    const results = await db
-      .select({
+    // Build base query
+    let query = db
+      .selectDistinct({
         id: policies.id,
         companyId: policies.companyId,
         effectiveDate: policies.effectiveDate,
@@ -4445,8 +4451,34 @@ export class DbStorage implements IStorage {
       .leftJoin(policyPlans, and(
         eq(policyPlans.policyId, policies.id),
         eq(policyPlans.isPrimary, true)
-      ))
-      .where(and(...conditions))
+      ));
+    
+    // Add LEFT JOIN with policy_members if searching family members
+    if (options?.includeFamilyMembers && options?.searchTerm) {
+      const searchLower = options.searchTerm.toLowerCase();
+      const searchPattern = `%${searchLower}%`;
+      
+      query = query
+        .leftJoin(policyMembers, eq(policyMembers.policyId, policies.id))
+        .where(and(
+          ...conditions,
+          or(
+            // Client fields
+            sql`LOWER(CONCAT(${policies.clientFirstName}, ' ', COALESCE(${policies.clientMiddleName}, ''), ' ', ${policies.clientLastName}, ' ', COALESCE(${policies.clientSecondLastName}, ''))) LIKE ${searchPattern}`,
+            sql`LOWER(${policies.clientEmail}) LIKE ${searchPattern}`,
+            sql`${policies.clientPhone} LIKE ${searchPattern}`,
+            // Family member fields
+            sql`LOWER(CONCAT(${policyMembers.firstName}, ' ', COALESCE(${policyMembers.middleName}, ''), ' ', ${policyMembers.lastName}, ' ', COALESCE(${policyMembers.secondLastName}, ''))) LIKE ${searchPattern}`,
+            sql`LOWER(${policyMembers.email}) LIKE ${searchPattern}`,
+            sql`${policyMembers.phone} LIKE ${searchPattern}`
+          ) as any
+        )) as any;
+    } else {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    // Execute query with ordering and limit
+    const results = await query
       .orderBy(desc(policies.effectiveDate), desc(policies.id))
       .limit(limit + 1); // Fetch one extra to determine if there's a next page
     
