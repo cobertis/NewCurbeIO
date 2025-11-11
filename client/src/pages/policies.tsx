@@ -1192,6 +1192,70 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
     }
   }, [memberType, memberIndex, setMemberTab, open])
 
+  // Define fields for each tab for targeted validation
+  const tabFieldsMap: Record<string, (keyof z.infer<typeof editMemberSchema>)[]> = {
+    basic: [
+      'firstName', 'middleName', 'lastName', 'secondLastName',
+      'dateOfBirth', 'ssn', 'phone', 'email', 'gender', 'maritalStatus',
+      'countryOfBirth', 'preferredLanguage', 'weight', 'height',
+      'isApplicant', 'isPrimaryDependent', 'tobaccoUser', 'pregnant'
+    ] as (keyof z.infer<typeof editMemberSchema>)[],
+    income: [
+      'employerName', 'position', 'employerPhone', 'selfEmployed',
+      'incomeAmount', 'incomeFrequency', 'otherIncomeAmount', 'otherIncomeFrequency',
+      'unemploymentAmount', 'unemploymentFrequency', 'socialSecurityAmount', 'socialSecurityFrequency',
+      'pensionAmount', 'pensionFrequency'
+    ] as (keyof z.infer<typeof editMemberSchema>)[],
+    immigration: [
+      'immigrationStatus', 'citizenshipStatus', 'greenCardNumber',
+      'visaType', 'visaExpirationDate', 'countryOfCitizenship'
+    ] as (keyof z.infer<typeof editMemberSchema>)[]
+  };
+
+  // Custom tab change handler with auto-save
+  const handleTabChange = async (newTab: string) => {
+    // Don't allow tab changes while saving
+    if (isSaving || isPending) {
+      return;
+    }
+
+    // Get current tab's fields
+    const currentTabFields = tabFieldsMap[memberTab as keyof typeof tabFieldsMap] || [];
+
+    // Trigger validation for current tab's fields only
+    const isValid = await editForm.trigger(currentTabFields as any);
+
+    if (!isValid) {
+      // Show validation errors but don't block tab change
+      // User can see errors and decide to fix them or move on
+      toast({
+        title: "Validation Warning",
+        description: "Some fields have errors. Please review before final save.",
+        variant: "default",
+        duration: 3000,
+      });
+      // Allow tab change anyway
+      setMemberTab(newTab);
+      return;
+    }
+
+    // If valid, auto-save before changing tabs
+    try {
+      const formData = editForm.getValues();
+      await handleSave(formData);
+      // Only change tab after successful save
+      setMemberTab(newTab);
+    } catch (error) {
+      // If save fails, stay on current tab
+      toast({
+        title: "Save Failed",
+        description: "Could not save changes. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
+
   const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
     console.log('[EditMemberSheet] handleSave called with data:', data);
     console.log('[EditMemberSheet] Form errors:', editForm.formState.errors);
@@ -1564,21 +1628,29 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
         </div>
         <Form {...editForm}>
           <form onSubmit={editForm.handleSubmit(handleSave)} className="flex flex-col flex-1 min-h-0">
-            <Tabs value={memberTab} onValueChange={setMemberTab} className="flex-1 flex flex-col">
-              <TabsList className="grid w-full grid-cols-3 mb-4 mx-4 mt-4">
-                <TabsTrigger value="basic" className="text-xs">
-                  <User className="h-4 w-4 mr-1" />
-                  Basic Info
-                </TabsTrigger>
-                <TabsTrigger value="income" className="text-xs">
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  Income
-                </TabsTrigger>
-                <TabsTrigger value="immigration" className="text-xs">
-                  <Plane className="h-4 w-4 mr-1" />
-                  Immigration
-                </TabsTrigger>
-              </TabsList>
+            <Tabs value={memberTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+              <div className="px-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4 mt-4">
+                  <TabsTrigger value="basic" className="text-xs" disabled={isSaving || isPending}>
+                    <User className="h-4 w-4 mr-1" />
+                    Basic Info
+                  </TabsTrigger>
+                  <TabsTrigger value="income" className="text-xs" disabled={isSaving || isPending}>
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Income
+                  </TabsTrigger>
+                  <TabsTrigger value="immigration" className="text-xs" disabled={isSaving || isPending}>
+                    <Plane className="h-4 w-4 mr-1" />
+                    Immigration
+                  </TabsTrigger>
+                </TabsList>
+                {(isSaving || isPending) && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pb-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Saving changes...</span>
+                  </div>
+                )}
+              </div>
 
               {/* Tab 1: Basic Information */}
               <TabsContent value="basic" className="flex-1 overflow-y-auto space-y-6 p-4">
@@ -2692,6 +2764,66 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     }
   }, [open]);
 
+  // Define fields for each tab for targeted validation
+  const tabFieldsMap: Record<string, (keyof z.infer<typeof addMemberSchema>)[]> = {
+    basic: [
+      'relation', 'firstName', 'middleName', 'lastName', 'secondLastName',
+      'dateOfBirth', 'ssn', 'phone', 'email', 'gender', 'maritalStatus',
+      'countryOfBirth', 'weight', 'height', 'tobaccoUser', 'pregnant'
+    ] as (keyof z.infer<typeof addMemberSchema>)[],
+    income: [
+      'employerName', 'position', 'employerPhone', 'selfEmployed',
+      'annualIncome', 'incomeFrequency'
+    ] as (keyof z.infer<typeof addMemberSchema>)[],
+    immigration: [
+      'immigrationStatus', 'naturalizationNumber', 'uscisNumber',
+      'immigrationStatusCategory'
+    ] as (keyof z.infer<typeof addMemberSchema>)[]
+  };
+
+  // Custom tab change handler with auto-save
+  const handleTabChange = async (newTab: string) => {
+    // Don't allow tab changes while saving
+    if (isSaving || isPending) {
+      return;
+    }
+
+    // Get current tab's fields
+    const currentTabFields = tabFieldsMap[memberTab as keyof typeof tabFieldsMap] || [];
+
+    // Trigger validation for current tab's fields only
+    const isValid = await addMemberForm.trigger(currentTabFields as any);
+
+    if (!isValid) {
+      // Show validation errors but don't block tab change
+      toast({
+        title: "Validation Warning",
+        description: "Some fields have errors. Please review before final save.",
+        variant: "default",
+        duration: 3000,
+      });
+      // Allow tab change anyway
+      setMemberTab(newTab);
+      return;
+    }
+
+    // If valid, auto-save before changing tabs
+    try {
+      const formData = addMemberForm.getValues();
+      await handleSave(formData);
+      // Only change tab after successful save
+      setMemberTab(newTab);
+    } catch (error) {
+      // If save fails, stay on current tab
+      toast({
+        title: "Save Failed",
+        description: "Could not save changes. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  };
+
   // Cargar Income data cuando esté disponible
   useEffect(() => {
     if (incomeData?.income && createdMemberId) {
@@ -2791,21 +2923,29 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
         </div>
         <Form {...addMemberForm}>
           <div className="flex flex-col flex-1 min-h-0">
-            <Tabs value={memberTab} onValueChange={setMemberTab} className="flex-1 flex flex-col">
-              <TabsList className="grid w-full grid-cols-3 mb-4 mx-4 mt-4">
-                <TabsTrigger value="basic" className="text-xs">
-                  <User className="h-4 w-4 mr-1" />
-                  Basic Info
-                </TabsTrigger>
-                <TabsTrigger value="income" className="text-xs">
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  Income
-                </TabsTrigger>
-                <TabsTrigger value="immigration" className="text-xs">
-                  <Plane className="h-4 w-4 mr-1" />
-                  Immigration
-                </TabsTrigger>
-              </TabsList>
+            <Tabs value={memberTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+              <div className="px-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4 mt-4">
+                  <TabsTrigger value="basic" className="text-xs" disabled={isSaving || isPending}>
+                    <User className="h-4 w-4 mr-1" />
+                    Basic Info
+                  </TabsTrigger>
+                  <TabsTrigger value="income" className="text-xs" disabled={isSaving || isPending}>
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Income
+                  </TabsTrigger>
+                  <TabsTrigger value="immigration" className="text-xs" disabled={isSaving || isPending}>
+                    <Plane className="h-4 w-4 mr-1" />
+                    Immigration
+                  </TabsTrigger>
+                </TabsList>
+                {(isSaving || isPending) && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pb-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Saving changes...</span>
+                  </div>
+                )}
+              </div>
 
               {/* Tab 1: Basic Information */}
               <TabsContent value="basic" className="flex-1 overflow-y-auto space-y-6 p-4">
