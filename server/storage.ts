@@ -807,6 +807,7 @@ export interface IStorage {
   
   // Policy Folders
   listPolicyFolders(companyId: string, userId: string): Promise<{ agency: PolicyFolder[]; personal: PolicyFolder[] }>;
+  getPolicyFolder(id: string): Promise<PolicyFolder | undefined>;
   createPolicyFolder(data: InsertPolicyFolder): Promise<PolicyFolder>;
   updatePolicyFolder(id: string, companyId: string, data: Partial<InsertPolicyFolder>): Promise<PolicyFolder | null>;
   deletePolicyFolder(id: string, companyId: string): Promise<boolean>;
@@ -6335,6 +6336,16 @@ export class DbStorage implements IStorage {
       agency: agencyFolders,
       personal: personalFolders
     };
+  }
+  
+  async getPolicyFolder(id: string): Promise<PolicyFolder | undefined> {
+    const result = await db
+      .select()
+      .from(policyFolders)
+      .where(eq(policyFolders.id, id))
+      .limit(1);
+    
+    return result[0];
   }
   
   async createPolicyFolder(data: InsertPolicyFolder): Promise<PolicyFolder> {

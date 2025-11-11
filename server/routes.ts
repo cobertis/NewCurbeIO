@@ -18343,15 +18343,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const currentUser = req.user!;
     
     try {
-      const validatedData = insertPolicyFolderSchema.parse(req.body);
-      
       const folderData = {
-        ...validatedData,
+        ...req.body,
         companyId: currentUser.companyId!,
         createdBy: currentUser.id,
       };
       
-      const folder = await storage.createPolicyFolder(folderData);
+      const validatedData = insertPolicyFolderSchema.parse(folderData);
+      
+      const folder = await storage.createPolicyFolder(validatedData);
       
       await logger.logCrud({
         req,
