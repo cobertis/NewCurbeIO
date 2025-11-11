@@ -6190,15 +6190,78 @@ export class DbStorage implements IStorage {
   }
   
   async removePolicyPlan(planId: string, companyId: string): Promise<boolean> {
-    const result = await db
-      .delete(policyPlans)
-      .where(and(
-        eq(policyPlans.id, planId),
-        eq(policyPlans.companyId, companyId)
-      ))
-      .returning();
-    
-    return result.length > 0;
+    return await db.transaction(async (tx) => {
+      // First, get the plan to know which policy it belongs to and if it's primary
+      const planToDelete = await tx
+        .select()
+        .from(policyPlans)
+        .where(and(
+          eq(policyPlans.id, planId),
+          eq(policyPlans.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (planToDelete.length === 0) {
+        return false;
+      }
+      
+      const policyId = planToDelete[0].policyId;
+      const wasPrimary = planToDelete[0].isPrimary;
+      
+      // Delete the plan
+      const result = await tx
+        .delete(policyPlans)
+        .where(and(
+          eq(policyPlans.id, planId),
+          eq(policyPlans.companyId, companyId)
+        ))
+        .returning();
+      
+      if (result.length === 0) {
+        return false;
+      }
+      
+      // Only clear memberId if the deleted plan was primary
+      if (wasPrimary && policyId) {
+        // Check if any remaining plans exist for this policy
+        const remainingPlans = await tx
+          .select()
+          .from(policyPlans)
+          .where(and(
+            eq(policyPlans.policyId, policyId),
+            eq(policyPlans.companyId, companyId)
+          ))
+          .limit(1);
+        
+        // Clear memberId only if no plans remain OR no primary plan remains
+        const remainingPrimary = await tx
+          .select()
+          .from(policyPlans)
+          .where(and(
+            eq(policyPlans.policyId, policyId),
+            eq(policyPlans.companyId, companyId),
+            eq(policyPlans.isPrimary, true)
+          ))
+          .limit(1);
+        
+        if (remainingPlans.length === 0 || remainingPrimary.length === 0) {
+          // Clear memberId AND selectedPlan (legacy) when primary plan is deleted and no replacement primary exists
+          await tx
+            .update(policies)
+            .set({ 
+              memberId: null,
+              selectedPlan: null,
+              updatedAt: new Date()
+            })
+            .where(and(
+              eq(policies.id, policyId),
+              eq(policies.companyId, companyId)
+            ));
+        }
+      }
+      
+      return true;
+    });
   }
   
   async setPrimaryPolicyPlan(planId: string, policyId: string, companyId: string): Promise<void> {
