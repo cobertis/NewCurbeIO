@@ -38,7 +38,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with dedicated phone numbers, real-time updates, and privacy isolation.
 - **Billing & Stripe Integration:** Automated customer/subscription management.
 - **Quotes Management System:** 3-step wizard, Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
-- **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification, using cursor-based pagination.
+- **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification, using cursor-based pagination. Search by family members feature uses server-side filtering via `searchTerm` and `includeFamilyMembers` parameters sent to backend, which performs LEFT JOIN with policy_members table to search across client AND family member data (names, emails, phones).
 - **Consent Document System:** Generates legal consent documents, multi-channel delivery, e-signatures.
 - **Calendar System:** Full-screen, multi-tenant display of company-wide events.
 - **Reminder System:** Background scheduler for notifications, manual event creation, and appointment availability configuration.

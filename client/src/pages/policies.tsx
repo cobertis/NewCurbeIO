@@ -3892,12 +3892,21 @@ export default function PoliciesPage() {
   });
   const companyAgents = companyAgentsData?.agents || [];
 
-  // Fetch policies - Load ALL policies without limit for client-side filtering
+  // Fetch policies - Server-side filtering for family members search
   const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
-    queryKey: ["/api/policies"],
+    queryKey: ["/api/policies", { searchTerm: searchQuery, includeFamilyMembers: filters.searchFamilyMembers }],
     queryFn: async () => {
-      // No limit - fetch ALL policies from server
-      const response = await fetch(`/api/policies`, { credentials: 'include' });
+      // Build query params for server-side search
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) {
+        params.append('searchTerm', searchQuery.trim());
+      }
+      if (filters.searchFamilyMembers) {
+        params.append('searchFamilyMembers', 'true');
+      }
+      
+      const url = `/api/policies${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch policies');
       return response.json();
     },
@@ -5407,46 +5416,11 @@ export default function PoliciesPage() {
   // });
   const householdIncomeData = quoteDetail ? { totalIncome: quoteDetail.totalHouseholdIncome } : undefined;
   
-  // Filter quotes based on search and filters
+  // Filter quotes based on filters (search is now handled server-side)
   const filteredQuotes = allQuotes.filter((quote) => {
-    // Search filter
-    const searchLower = searchQuery.toLowerCase();
-    
-    // Default search: client name, email, phone
-    let matchesSearch = 
-      searchQuery === "" ||
-      `${quote.clientFirstName} ${quote.clientMiddleName || ''} ${quote.clientLastName} ${quote.clientSecondLastName || ''}`.toLowerCase().includes(searchLower) ||
-      quote.clientEmail.toLowerCase().includes(searchLower) ||
-      quote.clientPhone.includes(searchQuery);
-    
-    // Search in spouses and dependents ONLY if checkbox is enabled
-    if (!matchesSearch && searchQuery !== "" && filters.searchFamilyMembers) {
-      // Search in spouses
-      if (quote.spouses && Array.isArray(quote.spouses)) {
-        const spouseMatch = quote.spouses.some((spouse: any) => {
-          const spouseName = `${spouse.firstName || ''} ${spouse.middleName || ''} ${spouse.lastName || ''} ${spouse.secondLastName || ''}`.toLowerCase();
-          const spouseEmail = (spouse.email || '').toLowerCase();
-          const spousePhone = spouse.phone || '';
-          return spouseName.includes(searchLower) || 
-                 spouseEmail.includes(searchLower) || 
-                 spousePhone.includes(searchQuery);
-        });
-        if (spouseMatch) matchesSearch = true;
-      }
-      
-      // Search in dependents
-      if (!matchesSearch && quote.dependents && Array.isArray(quote.dependents)) {
-        const dependentMatch = quote.dependents.some((dependent: any) => {
-          const dependentName = `${dependent.firstName || ''} ${dependent.middleName || ''} ${dependent.lastName || ''} ${dependent.secondLastName || ''}`.toLowerCase();
-          const dependentEmail = (dependent.email || '').toLowerCase();
-          const dependentPhone = dependent.phone || '';
-          return dependentName.includes(searchLower) || 
-                 dependentEmail.includes(searchLower) || 
-                 dependentPhone.includes(searchQuery);
-        });
-        if (dependentMatch) matchesSearch = true;
-      }
-    }
+    // NOTE: Search filtering is now handled server-side via searchTerm + includeFamilyMembers params
+    // The backend already filtered results based on client name/email/phone and family members
+    // This client-side filter only applies additional UI filters (status, product type, etc.)
     
     // Status filter
     const matchesStatus = filters.status === "all" || quote.status === filters.status;
@@ -5512,7 +5486,7 @@ export default function PoliciesPage() {
       matchesView = !quote.isArchived;
     }
     
-    return matchesSearch && matchesStatus && matchesProduct && matchesState && 
+    return matchesStatus && matchesProduct && matchesState && 
            matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
            matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo &&
            matchesEffectiveYear && matchesOEP && matchesView;
