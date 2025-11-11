@@ -4351,14 +4351,16 @@ export class DbStorage implements IStorage {
     // No limit by default - load ALL policies for client-side filtering
     const limit = options?.limit || 999999;
     
-    // Parse cursor (format: "effectiveDate,id")
+    // Parse cursor (format: "updatedAt,effectiveDate,id")
+    let cursorUpdatedAt: string | null = null;
     let cursorDate: string | null = null;
     let cursorId: string | null = null;
     if (options?.cursor) {
       const parts = options.cursor.split(',');
-      if (parts.length === 2) {
-        cursorDate = parts[0];
-        cursorId = parts[1];
+      if (parts.length === 3) {
+        cursorUpdatedAt = parts[0];
+        cursorDate = parts[1];
+        cursorId = parts[2];
       }
     }
     
@@ -4401,14 +4403,25 @@ export class DbStorage implements IStorage {
     }
     
     // Cursor pagination
-    if (cursorDate && cursorId) {
+    // ORDER BY: COALESCE(updatedAt, createdAt) DESC, effectiveDate DESC, id DESC
+    if (cursorUpdatedAt && cursorDate && cursorId) {
       conditions.push(
         or(
-          lt(policies.effectiveDate, cursorDate),
+          // updatedAt is less than cursor (DESC order)
+          sql`COALESCE(${policies.updatedAt}, ${policies.createdAt}) < ${cursorUpdatedAt}`,
+          // updatedAt equals cursor, check effectiveDate
           and(
-            eq(policies.effectiveDate, cursorDate),
-            lt(policies.id, cursorId)
-          )
+            sql`COALESCE(${policies.updatedAt}, ${policies.createdAt}) = ${cursorUpdatedAt}`,
+            or(
+              // effectiveDate is less than cursor (DESC order)
+              sql`${policies.effectiveDate}::date < ${cursorDate}::date`,
+              // effectiveDate equals cursor, check id
+              and(
+                sql`${policies.effectiveDate}::date = ${cursorDate}::date`,
+                lt(policies.id, cursorId)
+              )
+            ) as any
+          ) as any
         ) as any
       );
     }
@@ -4493,11 +4506,12 @@ export class DbStorage implements IStorage {
     const hasMore = results.length > limit;
     const items = hasMore ? results.slice(0, limit) : results;
     
-    // Generate next cursor
+    // Generate next cursor (format: "updatedAt,effectiveDate,id")
     let nextCursor: string | null = null;
     if (hasMore) {
       const lastItem = items[items.length - 1];
-      nextCursor = `${lastItem.effectiveDate},${lastItem.id}`;
+      const updatedAtTimestamp = lastItem.updatedAt || lastItem.createdAt;
+      nextCursor = `${updatedAtTimestamp.toISOString()},${lastItem.effectiveDate},${lastItem.id}`;
     }
     
     // Format results

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, unique, index, AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { validateCardNumber, validateCVV, validateExpirationDate } from './creditCardUtils';
@@ -2110,13 +2110,15 @@ export const policies = pgTable("policies", {
   // Renewal tracking (OEP 2026)
   renewalTargetYear: integer("renewal_target_year"),
   renewalStatus: text("renewal_status").default("pending").notNull(),
-  renewedFromPolicyId: varchar("renewed_from_policy_id", { length: 8 }).references(() => policies.id, { onDelete: "set null" }),
-  renewedToPolicyId: varchar("renewed_to_policy_id", { length: 8 }).references(() => policies.id, { onDelete: "set null" }),
+  renewedFromPolicyId: varchar("renewed_from_policy_id", { length: 8 }).references((): AnyPgColumn => policies.id, { onDelete: "set null" }),
+  renewedToPolicyId: varchar("renewed_to_policy_id", { length: 8 }).references((): AnyPgColumn => policies.id, { onDelete: "set null" }),
   renewedAt: timestamp("renewed_at"),
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  updatedAtIdx: index('policies_updated_at_idx').on(t.updatedAt),
+}));
 
 export const insertPolicySchema = createInsertSchema(policies).omit({
   id: true,
