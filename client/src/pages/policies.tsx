@@ -22,10 +22,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save, Lock } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useController } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema, type QuoteMember, type QuoteMemberIncome, type QuoteMemberImmigration, type QuoteMemberDocument, type QuoteReminder, type InsertQuoteReminder, insertQuoteReminderSchema } from "@shared/schema";
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import { useLocation } from "wouter";
 import { z } from "zod";
@@ -763,6 +763,122 @@ function EditAddressesSheet({ open, onOpenChange, quote, onSave, isPending, addr
     </Sheet>
   );
 }
+
+// Helper functions for income field (outside render to avoid recreation)
+const calculateAnnualIncome = (amount: string, frequency: string): string => {
+  const num = parseFloat(amount || '0');
+  if (isNaN(num) || num <= 0) return '0';
+  
+  switch (frequency) {
+    case 'annually':
+      return amount;
+    case 'weekly':
+      return (num * 52).toFixed(2);
+    case 'biweekly':
+      return (num * 26).toFixed(2);
+    case 'monthly':
+      return (num * 12).toFixed(2);
+    default:
+      return amount;
+  }
+};
+
+const getFrequencyLabel = (frequency: string): string => {
+  switch (frequency) {
+    case 'weekly': return 'Weekly';
+    case 'biweekly': return 'Biweekly';
+    case 'monthly': return 'Monthly';
+    default: return 'Annual';
+  }
+};
+
+// Optimized Income Field Component
+const IncomeField = React.memo(({ control, frequency }: { control: any; frequency: string }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const { field, fieldState } = useController({
+    name: 'annualIncome',
+    control,
+  });
+
+  const frequencyLabel = useMemo(() => getFrequencyLabel(frequency), [frequency]);
+  
+  const displayValue = useMemo(() => {
+    if (isFocused) return field.value || '';
+    if (!field.value) return '';
+    return parseFloat(field.value).toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+  }, [isFocused, field.value]);
+  
+  const annualAmount = useMemo(() => calculateAnnualIncome(field.value || '0', frequency), [field.value, frequency]);
+  const showAnnualEquivalent = useMemo(() => {
+    return field.value && parseFloat(field.value) > 0 && frequency !== 'annually';
+  }, [field.value, frequency]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    value = value.replace(/[^\d.]/g, '');
+    
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    if (parts.length === 2 && parts[1].length > 2) {
+      value = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    
+    field.onChange(value);
+  }, [field]);
+
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    setIsFocused(false);
+    let value = e.target.value.replace(/,/g, '');
+    
+    if (value && value !== '') {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        field.onChange(num === 0 ? '' : num.toFixed(2));
+      }
+    }
+    field.onBlur();
+  }, [field]);
+
+  return (
+    <FormItem>
+      <FormLabel>{frequencyLabel} Income <span className="text-destructive">*</span></FormLabel>
+      <FormControl>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+          <Input 
+            type="text"
+            placeholder="0.00" 
+            data-testid="input-income-amount"
+            className="pl-7 bg-background"
+            value={displayValue}
+            onFocus={() => setIsFocused(true)}
+            onChange={handleChange}
+            onBlur={handleBlur}
+          />
+        </div>
+      </FormControl>
+      {showAnnualEquivalent && (
+        <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
+          <p className="text-xs font-medium text-primary">
+            Annual Equivalent: ${parseFloat(annualAmount).toLocaleString('en-US', { 
+              minimumFractionDigits: 2, 
+              maximumFractionDigits: 2 
+            })}
+          </p>
+        </div>
+      )}
+      {fieldState.error && <p className="text-sm font-medium text-destructive">{fieldState.error.message}</p>}
+    </FormItem>
+  );
+});
+
+IncomeField.displayName = 'IncomeField';
 
 // Edit Member Sheet Component - Extracted outside to prevent recreation on each render
 interface EditMemberSheetProps {
@@ -1948,108 +2064,8 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                     )}
                   />
 
-                  {/* Income Amount */}
-                  <FormField
-                    control={editForm.control}
-                    name="annualIncome"
-                    render={({ field }) => {
-                      const [isFocused, setIsFocused] = useState(false);
-                      const frequency = editForm.watch('incomeFrequency') || 'annually';
-                      const frequencyLabel = frequency === 'annually' ? 'Annual' : frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Biweekly' : 'Monthly';
-                      
-                      const calculateAnnualIncome = (amount: string) => {
-                        const num = parseFloat(amount || '0');
-                        if (isNaN(num) || num <= 0) return '0';
-                        
-                        switch (frequency) {
-                          case 'annually':
-                            return amount; // No calculation needed for annual
-                          case 'weekly':
-                            return (num * 52).toFixed(2);
-                          case 'biweekly':
-                            return (num * 26).toFixed(2);
-                          case 'monthly':
-                            return (num * 12).toFixed(2);
-                          default:
-                            return amount;
-                        }
-                      };
-                      
-                      // Display value with commas when NOT focused
-                      const displayValue = isFocused ? (field.value || '') : (
-                        field.value ? 
-                          parseFloat(field.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
-                          : ''
-                      );
-                      
-                      const annualAmount = calculateAnnualIncome(field.value || '0');
-                      const showAnnualEquivalent = field.value && parseFloat(field.value) > 0 && frequency !== 'annually';
-                      
-                      return (
-                        <FormItem>
-                          <FormLabel>{frequencyLabel} Income <span className="text-destructive">*</span></FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                              <Input 
-                                type="text"
-                                placeholder="0.00" 
-                                data-testid="input-income-amount"
-                                className="pl-7 bg-background"
-                                value={displayValue}
-                                onFocus={() => setIsFocused(true)}
-                                onChange={(e) => {
-                                  let value = e.target.value;
-                                  // Remove all non-numeric characters except decimal point
-                                  value = value.replace(/[^\d.]/g, '');
-                                  
-                                  // Ensure only one decimal point
-                                  const parts = value.split('.');
-                                  if (parts.length > 2) {
-                                    value = parts[0] + '.' + parts.slice(1).join('');
-                                  }
-                                  
-                                  // Limit to 2 decimal places
-                                  if (parts.length === 2 && parts[1].length > 2) {
-                                    value = parts[0] + '.' + parts[1].substring(0, 2);
-                                  }
-                                  
-                                  field.onChange(value);
-                                }}
-                                onBlur={(e) => {
-                                  setIsFocused(false);
-                                  let value = e.target.value;
-                                  // Remove commas before parsing
-                                  value = value.replace(/,/g, '');
-                                  if (value && value !== '') {
-                                    const num = parseFloat(value);
-                                    if (!isNaN(num)) {
-                                      // If the value is zero, clear the field (delete income)
-                                      if (num === 0) {
-                                        field.onChange('');
-                                      } else {
-                                        // Otherwise format to 2 decimals on blur
-                                        field.onChange(num.toFixed(2));
-                                      }
-                                    }
-                                  }
-                                  field.onBlur();
-                                }}
-                              />
-                            </div>
-                          </FormControl>
-                          {showAnnualEquivalent && (
-                            <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
-                              <p className="text-xs font-medium text-primary">
-                                Annual Equivalent: ${parseFloat(annualAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
+                  {/* Income Amount - Optimized */}
+                  <IncomeField control={editForm.control} frequency={editForm.watch('incomeFrequency') || 'annually'} />
                 </div>
                 </div>
               </TabsContent>
