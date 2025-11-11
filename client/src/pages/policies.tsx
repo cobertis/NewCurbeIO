@@ -7918,8 +7918,8 @@ export default function PoliciesPage() {
                               
                               const mappedData = {
                                 productType: policyInfo.productType || '',
-                                carrier: plan?.carrier || '',
-                                carrierIssuerId: plan?.carrier_issuer_id || '',
+                                carrier: plan?.issuer?.name || plan?.carrier || '',
+                                carrierIssuerId: plan?.issuer?.id || plan?.carrier_issuer_id || '',
                                 planName: plan?.name || '',
                                 cmsPlanId: plan?.id || '',
                                 metal: plan?.metal_level || '',
