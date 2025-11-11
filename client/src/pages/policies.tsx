@@ -3469,6 +3469,7 @@ export default function PoliciesPage() {
   const { toast} = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
@@ -3683,6 +3684,15 @@ export default function PoliciesPage() {
   
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/policies/new";
+  
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchInput]);
   
   // Fetch policies statistics
   const { data: stats, isLoading: isLoadingStats } = useQuery<{
@@ -11829,8 +11839,8 @@ export default function PoliciesPage() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Type here to search..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
                           className="pl-10"
                           data-testid="input-search-quotes"
                         />
