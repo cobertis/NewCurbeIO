@@ -3490,6 +3490,52 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
 }
 
 
+// States with State-Based Exchanges (SBE) that don't use the federal CMS Marketplace
+const STATE_BASED_EXCHANGES = [
+  'CA', // California – Covered California
+  'CO', // Colorado – Connect for Health Colorado
+  'CT', // Connecticut – Access Health CT
+  'DC', // District of Columbia – DC Health Link
+  'ID', // Idaho – Your Health Idaho
+  'IL', // Illinois
+  'KY', // Kentucky – kynect
+  'ME', // Maine – CoverME.gov
+  'MD', // Maryland – Maryland Health Connection
+  'MA', // Massachusetts – MA Health Connector
+  'MN', // Minnesota – MNsure
+  'NV', // Nevada – Nevada Health Link
+  'NJ', // New Jersey – Get Covered NJ
+  'NM', // New Mexico – beWellnm
+  'PA', // Pennsylvania – Pennie
+  'RI', // Rhode Island – HealthSource RI
+  'VT', // Vermont – Vermont Health Connect
+  'VA', // Virginia – Virginia's Insurance Marketplace
+  'WA', // Washington – Washington Healthplanfinder
+];
+
+// Map state codes to their marketplace names
+const STATE_MARKETPLACE_NAMES: Record<string, string> = {
+  'CA': 'Covered California',
+  'CO': 'Connect for Health Colorado',
+  'CT': 'Access Health CT',
+  'DC': 'DC Health Link',
+  'ID': 'Your Health Idaho',
+  'IL': 'Illinois State Marketplace',
+  'KY': 'kynect',
+  'ME': 'CoverME.gov',
+  'MD': 'Maryland Health Connection',
+  'MA': 'MA Health Connector',
+  'MN': 'MNsure',
+  'NV': 'Nevada Health Link',
+  'NJ': 'Get Covered NJ',
+  'NM': 'beWellnm',
+  'PA': 'Pennie',
+  'RI': 'HealthSource RI',
+  'VT': 'Vermont Health Connect',
+  'VA': "Virginia's Insurance Marketplace",
+  'WA': 'Washington Healthplanfinder',
+};
+
 export default function PoliciesPage() {
   const [location, setLocation] = useLocation();
   const { toast} = useToast();
@@ -6917,36 +6963,48 @@ export default function PoliciesPage() {
                     
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      {viewingQuote.productType === 'aca' && (
-                        <Button 
-                          variant="default" 
-                          size="sm" 
-                          data-testid="button-search-plans"
-                          onClick={() => {
-                            const missingFields = validateMarketplaceData();
-                            if (missingFields.length > 0) {
-                              toast({
-                                title: "Missing Required Data",
-                                description: (
-                                  <div>
-                                    <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
-                                    <ul className="list-disc pl-4 space-y-1">
-                                      {missingFields.map((field, index) => (
-                                        <li key={index}>{field}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ),
-                                variant: "destructive",
-                              });
-                            } else {
-                              setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
-                            }
-                          }}
-                        >
-                          Search plans
-                        </Button>
-                      )}
+                      {viewingQuote.productType === 'aca' && (() => {
+                        // Normalize state to uppercase for consistent lookup
+                        const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                        const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                        
+                        // Don't show CMS search button for state-based exchanges
+                        if (isStateBased) {
+                          return null;
+                        }
+                        
+                        // Federal marketplace - show search button
+                        return (
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            data-testid="button-search-plans"
+                            onClick={() => {
+                              const missingFields = validateMarketplaceData();
+                              if (missingFields.length > 0) {
+                                toast({
+                                  title: "Missing Required Data",
+                                  description: (
+                                    <div>
+                                      <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
+                                      <ul className="list-disc pl-4 space-y-1">
+                                        {missingFields.map((field, index) => (
+                                          <li key={index}>{field}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ),
+                                  variant: "destructive",
+                                });
+                              } else {
+                                setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                              }
+                            }}
+                          >
+                            Search plans
+                          </Button>
+                        );
+                      })()}
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -7075,17 +7133,29 @@ export default function PoliciesPage() {
                             </p>
                           </div>
                           <div className="flex items-center justify-center gap-3">
-                            {viewingQuote.productType === 'aca' && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
-                                data-testid="button-search-plans-empty"
-                              >
-                                <Search className="h-4 w-4 mr-2" />
-                                Search Plans
-                              </Button>
-                            )}
+                            {viewingQuote.productType === 'aca' && (() => {
+                              // Normalize state to uppercase for consistent lookup
+                              const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                              const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                              
+                              // Don't show CMS search button for state-based exchanges
+                              if (isStateBased) {
+                                return null;
+                              }
+                              
+                              // Federal marketplace - show search button
+                              return (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
+                                  data-testid="button-search-plans-empty"
+                                >
+                                  <Search className="h-4 w-4 mr-2" />
+                                  Search Plans
+                                </Button>
+                              );
+                            })()}
                             <Button
                               variant="outline"
                               size="sm"
