@@ -811,7 +811,7 @@ export interface IStorage {
   createPolicyFolder(data: InsertPolicyFolder): Promise<PolicyFolder>;
   updatePolicyFolder(id: string, companyId: string, data: Partial<InsertPolicyFolder>): Promise<PolicyFolder | null>;
   deletePolicyFolder(id: string, companyId: string): Promise<boolean>;
-  assignPoliciesToFolder(policyIds: string[], folderId: string | null, userId: string, companyId: string): Promise<void>;
+  assignPoliciesToFolder(policyIds: string[], folderId: string | null, userId: string, companyId: string): Promise<number>;
   
   // Landing Pages
   getLandingPagesByUser(userId: string, companyId: string): Promise<LandingPage[]>;
@@ -6385,7 +6385,7 @@ export class DbStorage implements IStorage {
     return result.length > 0;
   }
   
-  async assignPoliciesToFolder(policyIds: string[], folderId: string | null, userId: string, companyId: string): Promise<void> {
+  async assignPoliciesToFolder(policyIds: string[], folderId: string | null, userId: string, companyId: string): Promise<number> {
     await db.transaction(async (tx) => {
       if (folderId === null) {
         await tx
@@ -6409,6 +6409,8 @@ export class DbStorage implements IStorage {
         }
       }
     });
+    
+    return policyIds.length;
   }
   
   // ==================== LANDING PAGES ====================

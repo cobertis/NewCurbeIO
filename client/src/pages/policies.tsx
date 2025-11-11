@@ -3992,35 +3992,42 @@ export default function PoliciesPage() {
   
   // Bulk move mutation
   const bulkMoveMutation = useMutation({
-    mutationFn: async (folderId: string | null) => {
+    mutationFn: async (params: { folderId: string | null; folderName?: string }) => {
       return apiRequest('POST', '/api/policies/bulk/move-to-folder', {
         policyIds: Array.from(selectedPolicyIds),
-        folderId: folderId,
+        folderId: params.folderId,
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/policies'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
       setSelectedPolicyIds(new Set());
+      
+      const count = data.count || selectedPolicyIds.size;
+      const policyText = count === 1 ? 'policy' : 'policies';
+      const destination = variables.folderName 
+        ? `moved to "${variables.folderName}"`
+        : 'removed from folder';
+      
       toast({
-        title: "Policies moved successfully",
-        description: data.message,
+        title: "Success",
+        description: `${count} ${policyText} ${destination}`,
         duration: 3000,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error moving policies",
-        description: error.message,
+        title: "Error",
+        description: error.message || "Failed to move policies",
         variant: "destructive",
         duration: 3000,
       });
     },
   });
 
-  const handleBulkMove = (folderId: string | null) => {
+  const handleBulkMove = (folderId: string | null, folderName?: string) => {
     if (selectedPolicyIds.size === 0) return;
-    bulkMoveMutation.mutate(folderId);
+    bulkMoveMutation.mutate({ folderId, folderName });
   };
   
   // Create folder mutation
@@ -14808,7 +14815,7 @@ export default function PoliciesPage() {
                     {agencyFolders.map((folder) => (
                       <DropdownMenuItem
                         key={folder.id}
-                        onClick={() => handleBulkMove(folder.id)}
+                        onClick={() => handleBulkMove(folder.id, folder.name)}
                         data-testid={`menu-move-to-agency-${folder.id}`}
                       >
                         <FolderIcon className="mr-2 h-4 w-4" />
@@ -14821,7 +14828,7 @@ export default function PoliciesPage() {
                     {myFolders.map((folder) => (
                       <DropdownMenuItem
                         key={folder.id}
-                        onClick={() => handleBulkMove(folder.id)}
+                        onClick={() => handleBulkMove(folder.id, folder.name)}
                         data-testid={`menu-move-to-personal-${folder.id}`}
                       >
                         <FolderIcon className="mr-2 h-4 w-4" />
