@@ -7835,8 +7835,8 @@ export default function PoliciesPage() {
                             );
 
                             // Map data from CMS API format (snake_case) to form fields
-                            // Network type is stored in plan.type (HMO, PPO, EPO, POS)
-                            const networkType = plan.type || '';
+                            // Network type is stored in plan.network_type (HMO, PPO, EPO, POS)
+                            const networkType = plan.network_type || plan.type || '';
                             
                             // Premium after tax credit (what user pays)
                             const premiumAfterCredit = plan.premium_w_credit ?? plan.premium ?? 0;
@@ -7923,7 +7923,7 @@ export default function PoliciesPage() {
                                 planName: plan?.name || '',
                                 cmsPlanId: plan?.id || '',
                                 metal: plan?.metal_level || '',
-                                networkType: plan?.type || '',
+                                networkType: plan?.network_type || plan?.type || '',
                                 rating: plan?.quality_rating?.global_rating?.toString() || '',
                                 planWas: plan?.premium_was?.toString() || '',
                                 premium: plan?.premium?.toString() || '',
