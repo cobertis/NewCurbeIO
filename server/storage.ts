@@ -4347,7 +4347,8 @@ export class DbStorage implements IStorage {
     }>;
     nextCursor: string | null;
   }> {
-    const limit = Math.min(options?.limit || 50, 200); // Max 200 per page
+    // No limit by default - load ALL policies for client-side filtering
+    const limit = options?.limit || 999999;
     
     // Parse cursor (format: "effectiveDate,id")
     let cursorDate: string | null = null;

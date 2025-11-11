@@ -3588,6 +3588,9 @@ export default function PoliciesPage() {
   
   const documentFileInputRef = useRef<HTMLInputElement>(null);
   
+  // Search debounce timeout ref
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   // Reminders sheet state
   const [remindersSheetOpen, setRemindersSheetOpen] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState<QuoteReminder | null>(null);
@@ -3803,19 +3806,12 @@ export default function PoliciesPage() {
   });
   const companyAgents = companyAgentsData?.agents || [];
 
-  // Fetch policies - using simple query like quotes page
+  // Fetch policies - Load ALL policies without limit for client-side filtering
   const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
-    queryKey: ["/api/policies", searchQuery],
+    queryKey: ["/api/policies"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.append('limit', '200'); // Fetch 200 policies
-      
-      // Send search term to backend for server-side filtering (before limit)
-      if (searchQuery.trim()) {
-        params.append('searchTerm', searchQuery.trim());
-      }
-      
-      const response = await fetch(`/api/policies?${params.toString()}`, { credentials: 'include' });
+      // No limit - fetch ALL policies from server
+      const response = await fetch(`/api/policies`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch policies');
       return response.json();
     },
@@ -3895,6 +3891,26 @@ export default function PoliciesPage() {
     viewingQuote?.cancellationDate,
     viewingQuote?.specialEnrollmentDate
   ]);
+
+  // Debounced search: auto-update searchQuery 300ms after user stops typing
+  useEffect(() => {
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Set new timeout to update searchQuery after 300ms
+    searchTimeoutRef.current = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+    
+    // Cleanup function to clear timeout on unmount or when searchInput changes
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchInput]);
 
   // Pre-select product type when opening manual plan dialog
   useEffect(() => {
@@ -11857,11 +11873,15 @@ export default function PoliciesPage() {
                       <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Type here to search and press Enter..."
+                          placeholder="Search clients (filters as you type)..."
                           value={searchInput}
                           onChange={(e) => setSearchInput(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
+                              // Cancel pending timeout and apply search immediately
+                              if (searchTimeoutRef.current) {
+                                clearTimeout(searchTimeoutRef.current);
+                              }
                               setSearchQuery(searchInput);
                             }
                           }}
