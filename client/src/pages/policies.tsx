@@ -3645,7 +3645,9 @@ export default function PoliciesPage() {
   const [manualPlanDialogOpen, setManualPlanDialogOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
-  const [manualPlanData, setManualPlanData] = useState({
+  
+  // Empty form state for manual plan dialog
+  const emptyManualPlanData = {
     // Basic Info
     productType: '',
     carrier: '',
@@ -3709,7 +3711,9 @@ export default function PoliciesPage() {
     marketplaceId: '',
     memberId: '',
     policyTotalCost: '',
-  });
+  };
+  
+  const [manualPlanData, setManualPlanData] = useState(emptyManualPlanData);
   
   // Other policies year filter state
   const [otherPoliciesYear, setOtherPoliciesYear] = useState<string>("all");
@@ -7505,6 +7509,21 @@ export default function PoliciesPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            setEditingPlanId(policyPlan.id);
+                            
+                            // Branch based on plan source to handle different data structures
+                            if (policyPlan.source === 'marketplace') {
+                              // MARKETPLACE PLAN: Map from CMS API structure
+                              const plan = policyPlan.planData as any;
+                              
+                              // Validate CMS data structure
+                              if (!plan || typeof plan !== 'object' || !plan.issuer) {
+                                // Invalid marketplace data - reset form and open empty dialog
+                                setManualPlanData(emptyManualPlanData);
+                                setManualPlanDialogOpen(true);
+                                return;
+                              }
+                            
                             // Extract benefit costs from the benefits array
                             const getBenefitCost = (name: string) => {
                               const benefit = plan.benefits?.find((b: any) => 
@@ -7604,14 +7623,78 @@ export default function PoliciesPage() {
                             };
                             
                             
-                            setEditingPlanId(policyPlan.id);
-                            setManualPlanData(mappedData);
-                            
-                            // Open dialog after React state update (next event loop)
-                            setTimeout(() => {
-                              console.log('[OPENING DIALOG] State updated, opening dialog');
+                              setManualPlanData(mappedData);
+                              
+                              // Open dialog after React state update (next event loop)
+                              setTimeout(() => {
+                                console.log('[OPENING DIALOG] State updated, opening dialog');
+                                setManualPlanDialogOpen(true);
+                              }, 50);
+                            } else {
+                              // MANUAL PLAN: Map from direct fields
+                              const plan = policyPlan.planData as any;
+                              
+                              const mappedData = {
+                                productType: policyInfo.productType || '',
+                                carrier: plan?.carrier || '',
+                                carrierIssuerId: plan?.carrier_issuer_id || '',
+                                planName: plan?.name || '',
+                                cmsPlanId: plan?.id || '',
+                                metal: plan?.metal_level || '',
+                                networkType: plan?.type || '',
+                                rating: plan?.quality_rating?.global_rating?.toString() || '',
+                                planWas: plan?.premium_was?.toString() || '',
+                                premium: plan?.premium?.toString() || '',
+                                taxCredit: plan?.tax_credit?.toString() || '',
+                                deductible: plan?.deductible?.toString() || '',
+                                deductibleFamily: plan?.deductible_family?.toString() || '',
+                                outOfPocketMax: plan?.out_of_pocket_max?.toString() || '',
+                                outOfPocketMaxFamily: plan?.out_of_pocket_max_family?.toString() || '',
+                                primaryCare: plan?.copay_primary_care || '',
+                                specialist: plan?.copay_specialist || '',
+                                urgentCare: plan?.copay_urgent_care || '',
+                                emergency: plan?.copay_emergency || '',
+                                mentalHealth: plan?.copay_mental_health || '',
+                                genericDrugs: plan?.copay_generic_drugs || '',
+                                preferredBrandDrugs: plan?.copay_preferred_brand_drugs || '',
+                                nonPreferredBrandDrugs: plan?.copay_non_preferred_brand_drugs || '',
+                                specialtyDrugs: plan?.copay_specialty_drugs || '',
+                                inpatientFacility: plan?.copay_inpatient_facility || '',
+                                inpatientPhysician: plan?.copay_inpatient_physician || '',
+                                outpatientFacility: plan?.copay_outpatient_facility || '',
+                                outpatientPhysician: plan?.copay_outpatient_physician || '',
+                                imaging: plan?.copay_imaging || '',
+                                labWork: plan?.copay_lab_work || '',
+                                xrays: plan?.copay_xrays || '',
+                                preventiveCare: plan?.copay_preventive_care || '',
+                                rehabilitation: plan?.copay_rehabilitation || '',
+                                habilitationServices: plan?.copay_habilitation_services || '',
+                                skilledNursing: plan?.copay_skilled_nursing || '',
+                                durableMedicalEquipment: plan?.copay_durable_medical_equipment || '',
+                                hospiceCare: plan?.copay_hospice_care || '',
+                                emergencyTransport: plan?.copay_emergency_transport || '',
+                                dentalChild: plan?.has_dental_child_coverage || false,
+                                dentalAdult: plan?.has_dental_adult_coverage || false,
+                                hsaEligible: plan?.hsa_eligible || false,
+                                simpleChoice: plan?.simple_choice || false,
+                                specialistReferralRequired: plan?.specialist_referral_required || false,
+                                hasNationalNetwork: plan?.has_national_network || false,
+                                diseaseManagementPrograms: Array.isArray(plan?.disease_mgmt_programs) ? plan.disease_mgmt_programs.join(', ') : '',
+                                effectiveDate: policyInfo.effectiveDate || '',
+                                cancellationDate: policyInfo.cancellationDate || '',
+                                specialEnrollmentDate: policyInfo.specialEnrollmentDate || '',
+                                specialEnrollmentReason: policyInfo.specialEnrollmentReason || '',
+                                saleType: policyInfo.saleType || '',
+                                ffmMarketplace: policyInfo.ffmMarketplace || '',
+                                npnMarketplace: policyInfo.npnMarketplace || '',
+                                marketplaceId: policyInfo.marketplaceId || '',
+                                memberId: policyInfo.memberId || '',
+                                policyTotalCost: '',
+                              };
+                              
+                              setManualPlanData(mappedData);
                               setManualPlanDialogOpen(true);
-                            }, 50);
+                            }
                           }}
                           data-testid="button-edit-plan"
                         >
