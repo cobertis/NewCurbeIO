@@ -6968,9 +6968,35 @@ export default function PoliciesPage() {
                         const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
                         const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
                         
-                        // Don't show CMS search button for state-based exchanges
+                        // Show info message for state-based exchanges
                         if (isStateBased) {
-                          return null;
+                          const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
+                          return (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              data-testid="button-state-marketplace-info"
+                              onClick={() => {
+                                toast({
+                                  title: "State-Based Marketplace",
+                                  description: (
+                                    <div>
+                                      <p className="mb-2">
+                                        This policy is from <strong>{marketplaceName}</strong>, which uses a state-based exchange.
+                                      </p>
+                                      <p className="text-sm text-muted-foreground">
+                                        Please search for plans on the state's portal and add them manually using the "Add Plan Manually" button.
+                                      </p>
+                                    </div>
+                                  ),
+                                  duration: 5000,
+                                });
+                              }}
+                            >
+                              <Info className="h-4 w-4 mr-2" />
+                              State Marketplace ({policyState})
+                            </Button>
+                          );
                         }
                         
                         // Federal marketplace - show search button
@@ -7138,9 +7164,35 @@ export default function PoliciesPage() {
                               const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
                               const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
                               
-                              // Don't show CMS search button for state-based exchanges
+                              // Show info message for state-based exchanges
                               if (isStateBased) {
-                                return null;
+                                const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
+                                return (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    data-testid="button-state-marketplace-info-empty"
+                                    onClick={() => {
+                                      toast({
+                                        title: "State-Based Marketplace",
+                                        description: (
+                                          <div>
+                                            <p className="mb-2">
+                                              This policy is from <strong>{marketplaceName}</strong>, which uses a state-based exchange.
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                              Please search for plans on the state's portal and add them manually using the "Add Plan Manually" button.
+                                            </p>
+                                          </div>
+                                        ),
+                                        duration: 5000,
+                                      });
+                                    }}
+                                  >
+                                    <Info className="h-4 w-4 mr-2" />
+                                    State Marketplace ({policyState})
+                                  </Button>
+                                );
                               }
                               
                               // Federal marketplace - show search button
