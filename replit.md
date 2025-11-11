@@ -1,38 +1,21 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system designed for businesses, offering customer relationship management, communication, and an admin dashboard for superadmins. It integrates iMessage/SMS/RCS, role-based access, Stripe billing, and custom SMTP notifications. Key modules include Quotes, Policies, Campaigns, and a real-time SMS Chat application, all built on a scalable full-stack architecture. The project aims to streamline operations and enhance communication capabilities for its users with a business vision to provide a comprehensive, multi-tenant CRM that enhances operational efficiency and communication for businesses across various sectors.
+Curbe is a multi-tenant CRM system providing customer relationship management, communication tools, and an admin dashboard for superadmins. It integrates iMessage/SMS/RCS, role-based access, Stripe billing, and custom SMTP notifications. Key modules include Quotes, Policies, Campaigns, and a real-time SMS Chat application. The project's vision is to offer a comprehensive CRM that enhances operational efficiency and communication for businesses across various sectors.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 Design style: Extremely professional corporate design - NO bright colors, NO emojis, space-efficient mobile-responsive UI.
-
 **Toast Notifications:**
 - All toast notifications auto-dismiss after 3 seconds
 - Users can still manually dismiss toasts before the timeout
-
 **Loading State Pattern (MANDATORY):**
-ALWAYS use the standardized `LoadingSpinner` component for all loading states across the application:
-```tsx
-import { LoadingSpinner } from "@/components/loading-spinner";
-
-// For full-screen loading (pages, major components):
-if (isLoading) {
-  return <LoadingSpinner message="Loading data..." />;
-}
-
-// For smaller containers (sheets, dialogs):
-if (isLoading) {
-  return <LoadingSpinner message="Loading..." fullScreen={false} />;
-}
-```
+ALWAYS use the standardized `LoadingSpinner` component for all loading states across the application.
 - User strongly prefers consistent loading indicators across all pages
 - Shows large, centered spinner (h-12 w-12) with descriptive text
 - `fullScreen={true}` (default) for pages, `fullScreen={false}` for sheets/dialogs
-- Navigation prefetch enabled to improve UX (see Navigation Prefetch System below)
 - Apply consistently across ALL pages, sheets, dialogs, and async components
 - This ensures a uniform user experience throughout the entire application
-
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 
 ## System Architecture
@@ -52,45 +35,27 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Audit Logging:** Centralized action tracking.
 - **Campaign System:** Unified Email/SMS Campaign and Contact List management.
 - **Real-Time Notifications:** WebSocket-based updates.
-- **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with dedicated phone numbers, real-time updates, privacy isolation, and automated webhook management. Includes message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, and default avatars. Supports new message creation, thread deletion, number provisioning, billing, and number reactivation.
+- **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with dedicated phone numbers, real-time updates, and privacy isolation.
 - **Billing & Stripe Integration:** Automated customer/subscription management.
-- **Quotes Management System:** 3-step wizard for 11 product types, Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
-- **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification. Uses cursor-based pagination for efficient handling of 10,000+ policies with <500ms load times. "Other Policies" table uses same data loading logic as main policies list (LEFT JOIN with policy_plans for plan fallback). Search state auto-clears when navigating to policy details via `navigateToPolicy()` helper.
+- **Quotes Management System:** 3-step wizard, Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
+- **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification, using cursor-based pagination.
 - **Consent Document System:** Generates legal consent documents, multi-channel delivery, e-signatures.
 - **Calendar System:** Full-screen, multi-tenant display of company-wide events.
-- **Reminder System:** Background scheduler for notifications.
-- **Manual Event Creation:** For Birthday, Reminder, and Appointment events.
-- **Appointment Availability Configuration:** User-specific scheduling.
+- **Reminder System:** Background scheduler for notifications, manual event creation, and appointment availability configuration.
 - **Agent Assignment System:** Flexible reassignment for quotes and policies.
-- **Policy Renewal System (Nov 2025):** Automated renewal period activation with smart CMS Marketplace integration. Best-effort plan fetching validates state-based exchanges (19 SBE states: CA, CO, CT, DC, ID, IL, KY, ME, MD, MA, MN, NV, NJ, NM, PA, RI, VT, VA, WA) and required fields (ZIP, county, state, DOB) before calling CMS API. Renewal succeeds even if plan fetch fails, showing non-blocking warning toast. Response includes `plansFetchWarning` and `plansFetched` flags for UI handling.
+- **Policy Renewal System:** Automated renewal period activation with smart CMS Marketplace integration, validating state-based exchanges.
 - **Landing Page Builder System:** SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes.
-- **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and Manual Contacts (excludes BulkVS SMS contacts). Features intelligent deduplication, advanced filtering, search, CSV export (with SSN masking for non-superadmins), and role-based access control. Manual contacts can be added from SMS chat.
-- **Tasks & Reminders Management System:** Unified task management with assignment, priority levels, status tracking, due dates, descriptions, search, and advanced filtering. Superadmins have cross-company visibility.
-- **Birthday Automation System:** Automated birthday greeting system with superadmin-managed image library, per-user customizable messages and settings, Twilio SMS/MMS delivery at 9 AM local time, and comprehensive sending history tracking. Sends birthday greetings to all contacts from quotes, policies, manual contacts, and team members using the same deduplication logic as the calendar system. Configurable via Settings > Automations tab.
-- **Navigation Prefetch System**: System that preloads page data before navigation to improve user experience.
-- **User-Level Data Visibility System (Nov 2025):** Fine-grained data visibility controls allowing selective sharing of policies, quotes, contacts, tasks, and calendar events between team members. Admins can toggle the `viewAllCompanyData` permission via UI switch in Settings > Team. When enabled, users see all company data; when disabled, users only see data they own or are assigned to. Superadmins always have full company visibility regardless of the flag.
-- **Policy Data Architecture (Nov 2025):** Implements a hybrid data sharing model to balance client continuity with policy-year specificity:
-  - **Shared Across All Client Policies:** Notes, Documents, Consents, and Payment Methods use `getCanonicalPolicyIds()` to aggregate data across all policy years for the same client, ensuring continuity of client records, documentation, and billing information. All GET, PATCH, and DELETE operations for these shared resources validate against canonical policy IDs, allowing users to view, edit, and delete from any policy year of the same client.
-  - **Isolated Per Policy Year:** Reminders are strictly scoped to individual policy IDs, as each policy year maintains independent renewal schedules.
-- **CMS Marketplace Integration (Nov 2025):** Pure pass-through system that returns EXACTLY what the CMS Marketplace API returns without any modifications. Separate payload builders for quotes vs policies. `buildCMSPayloadFromPolicy()` respects the `isApplicant` field for all members (client, spouses, dependents) to ensure accurate APTC/CSR calculations. Spouses and dependents with `isApplicant=true` are marked as `aptc_eligible=true`, while those with `isApplicant=false` get `aptc_eligible=false` and `has_mec=true`. This allows households with multiple applicants (e.g., client + spouse both needing insurance) to receive correct subsidy calculations from the CMS API. `fetchMarketplacePlans()` is a pass-through that calls `fetchSinglePage()` and returns the exact API response without deduplication, APTC recalculation, or data transformation. Frontend displays exact household_aptc, premiums, and totals as provided by CMS. Pagination handled client-side with page/pageSize parameters.
-  - **Hybrid Filtering System (Nov 2025):** Implements a dual-layer filtering approach for CMS Marketplace plans. Backend filters (sent to CMS API): metal levels, issuers (carriers), disease management programs. Frontend filters (client-side post-processing): max premium, max deductible, networks (PPO/HMO/POS/EPO), plan features (dental child/adult, HSA eligible, simple choice). This hybrid architecture optimizes performance by reducing network payload with CMS-native filters while providing instant UI response for premium/deductible/feature filters. Filter state included in TanStack Query key for proper cache invalidation. All filters automatically reset pagination to page 1.
+- **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and Manual Contacts with deduplication, filtering, and CSV export.
+- **Tasks & Reminders Management System:** Unified task management with assignment, priority levels, status tracking, due dates, and advanced filtering.
+- **Birthday Automation System:** Automated birthday greetings via Twilio SMS/MMS, with customizable messages and image library, tracking sending history.
+- **Navigation Prefetch System:** Preloads page data before navigation.
+- **User-Level Data Visibility System:** Fine-grained data visibility controls allowing selective sharing of data between team members, configurable via UI switch.
+- **Policy Data Architecture:** Hybrid data sharing model where Notes, Documents, Consents, and Payment Methods are shared across all client policies, while Reminders are isolated per policy year.
+- **CMS Marketplace Integration:** Pure pass-through system returning exact CMS Marketplace API responses. Includes a Hybrid Filtering System (backend for metal levels/issuers, frontend for premium/deductible/features) and a Flexible Cost-Share Parsing System for unified cost-share value handling.
 
 ### System Design Choices
-Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities (`shared/phone.ts`) standardize phone number formatting to 11-digit (with "1" prefix) for consistency with BulkVS API. All message timestamps are normalized using `parseISO()` to explicitly parse as UTC before converting to user's local timezone with `toZonedTime()`.
-
-**Policies Pagination System (Nov 2025):**
-The policies system uses cursor-based pagination to efficiently handle large datasets (10,000+ policies) with sub-500ms load times:
-- **Database Indexes:** 4 composite B-tree indexes on policies table: (company_id, agent_id), (company_id, effective_date DESC), (company_id, product_type, effective_date DESC), (company_id, status)
-- **Backend:** `getPoliciesList()` function uses single-query optimization with agent JOIN (eliminates N+1 queries), cursor format: "effectiveDate,id", max 200 items per page. Supports server-side search filtering by client name, email, and phone before applying limit (Nov 2025 optimization).
-- **Frontend:** Sends searchQuery as `searchTerm` query parameter to backend for server-side filtering. TanStack Query key includes searchQuery for proper cache invalidation.
-- **Performance:** Initial load fetches 200 policies, server-side search ensures all matching results appear regardless of total count
-
-**Policies Page Performance Optimization (Nov 2025):**
-The policies page implements aggressive caching to prevent repeated expensive queries:
-- **Stats Queries Caching:** Both `/api/policies/stats` and `/api/policies/oep-stats` queries cache results for 5 minutes (`staleTime: 5 * 60 * 1000`) and disable refetch on window focus
-- **Impact:** First load may take ~5-6 seconds for stats calculation, but subsequent navigations to /policies are instant (data served from cache)
-- **Known Issue:** Backend stats endpoints load ALL policies into memory for aggregation (inefficient for 10k+ policies). Future optimization: implement SQL-native aggregation queries with proper indexes.
-- **User Experience:** After initial page load, navigating away and back to /policies is nearly instantaneous due to caching
+Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities standardize 11-digit phone number formatting. All message timestamps are normalized using `parseISO()` to explicitly parse as UTC before converting to user's local timezone with `toZonedTime()`.
+The policies system uses cursor-based pagination with database indexes for efficient handling of large datasets and server-side search filtering. Policy page performance is optimized with aggressive caching of stats queries.
 
 ### Security Architecture
 - **Session Security:** `SESSION_SECRET` environment variable mandatory.
@@ -102,13 +67,13 @@ The policies page implements aggressive caching to prevent repeated expensive qu
 
 ## External Dependencies
 
-- **Database:** PostgreSQL (local production server), Drizzle ORM, `postgres` package for raw SQL queries.
+- **Database:** PostgreSQL, Drizzle ORM, `postgres`.
 - **Email:** Nodemailer.
-- **SMS/MMS:** Twilio (system notifications), BulkVS (individual user chat).
+- **SMS/MMS:** Twilio, BulkVS.
 - **Payments:** Stripe.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 - **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.
-- **Rich Text Editing:** TipTap (React, StarterKit, Underline, TextAlign, Link, Color, TextStyle extensions).
+- **Rich Text Editing:** TipTap.
 - **Form Management & Validation:** React Hook Form, Zod.
 - **Session Management:** `express-session`, `connect-pg-simple`.
 - **Security:** Bcrypt.
