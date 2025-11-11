@@ -5657,8 +5657,9 @@ export class DbStorage implements IStorage {
       })
     );
     
-    // Get payment methods
-    const paymentMethods = await this.getPolicyPaymentMethods(policyId, companyId);
+    // Get payment methods - shared across all policies for the same client
+    const canonicalPolicyIds = await this.getCanonicalPolicyIds(policyId);
+    const paymentMethods = await this.getPolicyPaymentMethods(canonicalPolicyIds, companyId);
     
     // Get policy plans
     const plans = await this.listPolicyPlans(policyId, companyId);
