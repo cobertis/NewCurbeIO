@@ -12399,8 +12399,9 @@ export default function PoliciesPage() {
                                       <div className="text-left font-medium">Address:</div>
                                       <div className="text-right">
                                         {quote.physical_street || 'N/A'}
-                                        {quote.physical_county && <><br/>{quote.physical_county}</>}
-                                        <br/>{quote.physical_city}, {quote.physical_state} ({quote.physical_state_abbreviation || quote.physical_state}), {quote.physical_postal_code}
+                                        <br/>
+                                        {quote.physical_county && <>{quote.physical_county}<br/></>}
+                                        {quote.physical_city}, {quote.physical_state} ({quote.physical_state_abbreviation || quote.physical_state}), {quote.physical_postal_code}
                                       </div>
                                     </div>
                                   </div>
