@@ -11647,9 +11647,15 @@ export default function PoliciesPage() {
                       try {
                         await apiRequest("POST", `/api/policies/${viewingQuote.id}/archive`, { isArchived: true });
                         
-                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        // Invalidate all policies queries (including parameterized ones)
+                        queryClient.invalidateQueries({ 
+                          predicate: (query) => {
+                            const key = query.queryKey;
+                            return Array.isArray(key) && key[0] === '/api/policies';
+                          }
+                        });
                         queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/oep-stats"] });
                         
                         toast({
                           title: "Policy Archived",
@@ -11658,6 +11664,9 @@ export default function PoliciesPage() {
                         });
                         
                         setArchivePolicyDialogOpen(false);
+                        
+                        // Navigate back to policies list if we're viewing the archived policy
+                        setLocation('/policies');
                       } catch (error: any) {
                         toast({
                           title: "Error",
