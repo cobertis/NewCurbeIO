@@ -16520,14 +16520,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Verify payment method exists and belongs to this policy
+      // Get ALL policies for this client (payment methods are shared across policy years)
+      const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
+      
+      // Verify payment method exists and belongs to this client's policies
       const existingPaymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!existingPaymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
       
-      if (existingPaymentMethod.policyId !== policyId) {
-        return res.status(404).json({ message: "Payment method not found in this policy" });
+      // Check if payment method belongs to any policy of this client
+      if (!canonicalPolicyIds.includes(existingPaymentMethod.policyId)) {
+        return res.status(404).json({ message: "Payment method not found in this client's policies" });
       }
       
       // Validate request body
@@ -16583,14 +16587,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Verify payment method exists and belongs to this policy
+      // Get ALL policies for this client (payment methods are shared across policy years)
+      const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
+      
+      // Verify payment method exists and belongs to this client's policies
       const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!paymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
       
-      if (paymentMethod.policyId !== policyId) {
-        return res.status(404).json({ message: "Payment method not found in this policy" });
+      // Check if payment method belongs to any policy of this client
+      if (!canonicalPolicyIds.includes(paymentMethod.policyId)) {
+        return res.status(404).json({ message: "Payment method not found in this client's policies" });
       }
       
       // Delete payment method
