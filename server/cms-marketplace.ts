@@ -229,9 +229,8 @@ export async function fetchHouseholdEligibility(
   
   if (applicantCount > 0) {
     // Get FPL for household size
-    const { getHHSPovertyGuideline } = await import('./hhs-poverty-guidelines.js');
-    const fplData = getHHSPovertyGuideline(year, quoteData.state);
-    const fplForHousehold = fplData.guidelines[applicantCount] || fplData.guidelines[8];
+    const { getPovertyGuidelineForHouseholdSize } = await import('./hhs-poverty-guidelines.js');
+    const fplForHousehold = await getPovertyGuidelineForHouseholdSize(applicantCount, year, quoteData.state);
     const medicaidThreshold = Math.round(fplForHousehold * 1.38); // 138% FPL
     
     // If income is below Medicaid threshold, adjust to 138% + $100 to force APTC
