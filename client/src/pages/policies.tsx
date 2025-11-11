@@ -11633,7 +11633,7 @@ export default function PoliciesPage() {
                       }`}
                       data-testid="sidebar-policies"
                     >
-                      <div className={`w-2 h-2 rounded-full ${selectedView === "policies" ? "bg-primary-foreground" : "bg-transparent"}`} />
+                      <Shield className="w-4 h-4 text-green-600" />
                       <span className="flex-1 text-left">Policies</span>
                     </button>
 

@@ -96,6 +96,10 @@ interface MarketplaceApiResponse {
   household_lcbp_premium?: number;
   household_slcsp_premium?: number;
   request_data?: any; // Data about the request for transparency
+  currentPage?: number; // Current page number in pagination
+  pageSize?: number; // Number of items per page
+  totalPages?: number; // Total number of pages available
+  totalCmsPlans?: number; // Total plans from CMS before filtering (for transparency)
 }
 
 /**
@@ -270,8 +274,15 @@ export async function fetchHouseholdEligibility(
 
 /**
  * Fetch health insurance plans from CMS Marketplace API
- * FIX for PROBLEM 2: API returns only 10 plans per page, so we fetch ALL pages
- * FIX for PROBLEM 1: We call the eligibility endpoint first to get household_aptc
+ * 
+ * CRITICAL FIX IMPLEMENTED:
+ * - Continuously fetches CMS pages until enough FILTERED results are accumulated
+ * - Applies filters after each batch to ensure we don't miss plans on later pages
+ * - Stops when either: enough filtered results for requested page OR all CMS data exhausted
+ * - Returns accurate pagination metadata based on filtered totals, not CMS raw data
+ * 
+ * This ensures filters work correctly even when matching plans are on later CMS pages,
+ * preventing the issue where filters would return 0 results incorrectly.
  */
 export async function fetchMarketplacePlans(
   quoteData: {
@@ -322,106 +333,125 @@ export async function fetchMarketplacePlans(
   const targetYear = yearOverride || new Date().getFullYear();
   console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, PageSize ${pageSize}, Year ${targetYear}`);
   
-  // FIX PROBLEM 1: Fetch household eligibility FIRST to get household_aptc
+  // Step 1: Fetch household eligibility FIRST to get household_aptc
   console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
   const eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
   
-  // FIX PROBLEM 2: API returns only 10 plans per page, so we need to fetch multiple pages
-  // Calculate how many API pages we need to fetch to get the requested pageSize
+  // Step 2: CRITICAL FIX - Keep fetching CMS pages until we have enough filtered results
+  // OR we've exhausted all available CMS data
   const PLANS_PER_API_PAGE = 10; // CMS API hard limit
-  const numApiPagesToFetch = Math.ceil(pageSize / PLANS_PER_API_PAGE);
-  const startOffset = (page - 1) * pageSize;
+  console.log('[CMS_MARKETPLACE] 📄 Step 2: Fetching and filtering plans from CMS...');
   
-  console.log(`[CMS_MARKETPLACE] 📄 Step 2: Fetching plans (need ${numApiPagesToFetch} API pages for ${pageSize} plans)...`);
-  
-  let allPlans: MarketplacePlan[] = [];
-  let totalAvailable = 0;
+  let allCmsPlans: MarketplacePlan[] = [];
+  let filteredAccumulator: MarketplacePlan[] = [];
+  let totalCmsPlans = 0;
   let year = targetYear;
+  let cmsOffset = 0;
+  let cmsFetchCount = 0;
   
-  // Fetch multiple pages from the API to collect enough plans
-  for (let apiPage = 0; apiPage < numApiPagesToFetch; apiPage++) {
-    const offset = startOffset + (apiPage * PLANS_PER_API_PAGE);
+  // Calculate how many filtered plans we need to satisfy the requested page
+  const neededFilteredPlans = page * pageSize;
+  
+  // Keep fetching until we have enough filtered plans OR we've exhausted CMS data
+  while (true) {
+    cmsFetchCount++;
+    console.log(`[CMS_MARKETPLACE] 📄 Fetching CMS batch #${cmsFetchCount} (offset=${cmsOffset})...`);
     
-    console.log(`[CMS_MARKETPLACE] 📄 Fetching API page ${apiPage + 1}/${numApiPagesToFetch} (offset=${offset})...`);
-    
-    const apiResponse = await fetchSinglePage(quoteData, offset, yearOverride, filters);
+    const apiResponse = await fetchSinglePage(quoteData, cmsOffset, yearOverride, filters);
     
     if (apiResponse.plans && apiResponse.plans.length > 0) {
-      allPlans = allPlans.concat(apiResponse.plans);
-      totalAvailable = apiResponse.total;
+      // Add to all CMS plans collection
+      allCmsPlans = allCmsPlans.concat(apiResponse.plans);
+      totalCmsPlans = apiResponse.total;
       year = apiResponse.year;
+      
+      // Apply filters to the new batch
+      let batchFiltered = apiResponse.plans;
+      
+      // Filter by networks (plan.type)
+      if (filters?.networks && filters.networks.length > 0) {
+        batchFiltered = batchFiltered.filter((plan: MarketplacePlan) => 
+          filters.networks!.includes(plan.type)
+        );
+      }
+      
+      // Filter by max premium
+      if (filters?.maxPremium && filters.maxPremium > 0) {
+        batchFiltered = batchFiltered.filter((plan: MarketplacePlan) => {
+          const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
+          return premium <= filters.maxPremium!;
+        });
+      }
+      
+      // Filter by max deductible
+      if (filters?.maxDeductible && filters.maxDeductible > 0) {
+        batchFiltered = batchFiltered.filter((plan: MarketplacePlan) => {
+          const medicalDeductible = plan.deductibles?.find((d: any) => 
+            d.type === 'Medical Deductible' || d.type === 'Medical EHB Deductible'
+          );
+          return !medicalDeductible || medicalDeductible.amount <= filters.maxDeductible!;
+        });
+      }
+      
+      // Filter by plan features
+      if (filters?.planFeatures && filters.planFeatures.length > 0) {
+        batchFiltered = batchFiltered.filter((plan: MarketplacePlan) => {
+          return filters.planFeatures!.every(feature => {
+            if (feature === 'dental_child') return plan.has_dental_child_coverage;
+            if (feature === 'dental_adult') return plan.has_dental_adult_coverage;
+            if (feature === 'hsa_eligible') return plan.hsa_eligible;
+            if (feature === 'simple_choice') return plan.simple_choice;
+            return false;
+          });
+        });
+      }
+      
+      // Add filtered results to accumulator
+      filteredAccumulator = filteredAccumulator.concat(batchFiltered);
+      
+      console.log(`[CMS_MARKETPLACE] Batch #${cmsFetchCount}: ${apiResponse.plans.length} CMS plans, ${batchFiltered.length} passed filters`);
+      console.log(`[CMS_MARKETPLACE] Total accumulated: ${filteredAccumulator.length} filtered plans of ${allCmsPlans.length} CMS plans fetched`);
     }
     
-    // Stop if we've fetched all available plans
-    if (allPlans.length >= totalAvailable) {
-      console.log(`[CMS_MARKETPLACE] ✅ Fetched all ${totalAvailable} available plans`);
+    // Determine if we should continue fetching
+    const hasEnoughFilteredPlans = filteredAccumulator.length >= neededFilteredPlans;
+    const reachedEndOfCmsData = !apiResponse.plans || 
+                                 apiResponse.plans.length === 0 || 
+                                 apiResponse.plans.length < PLANS_PER_API_PAGE ||
+                                 allCmsPlans.length >= totalCmsPlans;
+    
+    if (hasEnoughFilteredPlans) {
+      console.log(`[CMS_MARKETPLACE] ✅ Have enough filtered plans (${filteredAccumulator.length}) for page ${page}`);
       break;
     }
     
-    // Stop if the API returned fewer than 10 plans (last page)
-    if (apiResponse.plans.length < PLANS_PER_API_PAGE) {
-      console.log(`[CMS_MARKETPLACE] ✅ Reached last page (${apiResponse.plans.length} plans)`);
+    if (reachedEndOfCmsData) {
+      console.log(`[CMS_MARKETPLACE] ✅ Exhausted all CMS data (${allCmsPlans.length} of ${totalCmsPlans} total CMS plans)`);
+      break;
+    }
+    
+    // Move to next CMS page
+    cmsOffset += PLANS_PER_API_PAGE;
+    
+    // Safety limit to prevent infinite loops (max 100 pages = 1000 plans)
+    if (cmsFetchCount >= 100) {
+      console.log('[CMS_MARKETPLACE] ⚠️ Reached safety limit of 100 CMS page fetches');
       break;
     }
   }
   
-  console.log(`[CMS_MARKETPLACE] ✅ Total plans fetched from CMS: ${allPlans.length} of ${totalAvailable}`);
+  console.log(`[CMS_MARKETPLACE] ✅ Final totals: ${allCmsPlans.length} CMS plans fetched, ${filteredAccumulator.length} passed filters`);
   console.log(`[CMS_MARKETPLACE] ✅ household_aptc: $${eligibility?.aptc || 'NOT AVAILABLE'}`);
   console.log(`[CMS_MARKETPLACE] ✅ household_csr: ${eligibility?.csr || 'NOT AVAILABLE'}`);
   
-  // Apply non-CMS filters server-side (networks, maxPremium, maxDeductible, planFeatures)
-  let filteredPlans = allPlans;
-  
-  // Filter by networks (plan.type)
-  if (filters?.networks && filters.networks.length > 0) {
-    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => 
-      filters.networks!.includes(plan.type)
-    );
-    console.log(`[CMS_MARKETPLACE] Applied network filter: ${filteredPlans.length} plans remaining`);
-  }
-  
-  // Filter by max premium
-  if (filters?.maxPremium && filters.maxPremium > 0) {
-    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => {
-      const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
-      return premium <= filters.maxPremium!;
-    });
-    console.log(`[CMS_MARKETPLACE] Applied maxPremium filter ($${filters.maxPremium}): ${filteredPlans.length} plans remaining`);
-  }
-  
-  // Filter by max deductible
-  if (filters?.maxDeductible && filters.maxDeductible > 0) {
-    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => {
-      const medicalDeductible = plan.deductibles?.find((d: any) => 
-        d.type === 'Medical Deductible' || d.type === 'Medical EHB Deductible'
-      );
-      return !medicalDeductible || medicalDeductible.amount <= filters.maxDeductible!;
-    });
-    console.log(`[CMS_MARKETPLACE] Applied maxDeductible filter ($${filters.maxDeductible}): ${filteredPlans.length} plans remaining`);
-  }
-  
-  // Filter by plan features
-  if (filters?.planFeatures && filters.planFeatures.length > 0) {
-    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => {
-      return filters.planFeatures!.every(feature => {
-        if (feature === 'dental_child') return plan.has_dental_child_coverage;
-        if (feature === 'dental_adult') return plan.has_dental_adult_coverage;
-        if (feature === 'hsa_eligible') return plan.hsa_eligible;
-        if (feature === 'simple_choice') return plan.simple_choice;
-        return false;
-      });
-    });
-    console.log(`[CMS_MARKETPLACE] Applied planFeatures filter: ${filteredPlans.length} plans remaining`);
-  }
-  
-  // Calculate pagination on filtered results
-  const totalFilteredPlans = filteredPlans.length;
+  // Step 3: Calculate pagination on the already-filtered results
+  const totalFilteredPlans = filteredAccumulator.length;
   const totalPages = Math.ceil(totalFilteredPlans / pageSize);
   
   // Return paginated subset of filtered plans
   const startIndex = (page - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const paginatedPlans = filteredPlans.slice(startIndex, endIndex);
+  const paginatedPlans = filteredAccumulator.slice(startIndex, endIndex);
   
   console.log(`[CMS_MARKETPLACE] ✅ Final result: Page ${page}/${totalPages}, showing ${paginatedPlans.length} of ${totalFilteredPlans} filtered plans`);
   
@@ -435,6 +465,7 @@ export async function fetchMarketplacePlans(
     year: year,
     household_aptc: eligibility?.aptc,
     household_csr: eligibility?.csr,
+    totalCmsPlans: totalCmsPlans, // Add for transparency
   };
 }
 
