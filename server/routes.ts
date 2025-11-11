@@ -70,7 +70,8 @@ import {
   insertBulkvsMessageSchema,
   insertManualContactSchema,
   insertTaskSchema,
-  updateTaskSchema
+  updateTaskSchema,
+  insertPolicyFolderSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte } from "drizzle-orm";
@@ -13788,7 +13789,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo, searchTerm, searchFamilyMembers } = req.query;
+    const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo, searchTerm, searchFamilyMembers, folderId } = req.query;
     
     try {
       if (!currentUser.companyId) {
@@ -13859,6 +13860,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Add family members search flag
       if (searchFamilyMembers === 'true' || searchFamilyMembers === true) {
         options.includeFamilyMembers = true;
+      }
+      
+      // Add folder filter
+      if (folderId !== undefined) {
+        if (folderId === 'null' || folderId === null) {
+          // Show only policies WITHOUT folder assignment
+          options.folderId = null;
+        } else if (typeof folderId === 'string') {
+          // Show policies IN that folder
+          options.folderId = folderId;
+        }
       }
       
       // Fetch policies using optimized function
@@ -18308,6 +18320,216 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting policy consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
+    }
+  });
+
+  // ==================== POLICY FOLDERS API ====================
+
+  // GET /api/policy-folders - List all folders for current user
+  app.get("/api/policy-folders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const folders = await storage.listPolicyFolders(currentUser.companyId!, currentUser.id);
+      res.json(folders);
+    } catch (error: any) {
+      console.error("Error listing policy folders:", error);
+      res.status(500).json({ message: "Failed to list policy folders" });
+    }
+  });
+
+  // POST /api/policy-folders - Create new folder
+  app.post("/api/policy-folders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const validatedData = insertPolicyFolderSchema.parse(req.body);
+      
+      const folderData = {
+        ...validatedData,
+        companyId: currentUser.companyId!,
+        createdBy: currentUser.id,
+      };
+      
+      const folder = await storage.createPolicyFolder(folderData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "policy_folder",
+        entityId: folder.id,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.status(201).json(folder);
+    } catch (error: any) {
+      console.error("Error creating policy folder:", error);
+      
+      if (error.message && error.message.includes("duplicate")) {
+        return res.status(400).json({ message: "A folder with this name already exists" });
+      }
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid folder data", errors: error.errors });
+      }
+      
+      res.status(500).json({ message: "Failed to create policy folder" });
+    }
+  });
+
+  // PATCH /api/policy-folders/:id - Rename folder
+  app.patch("/api/policy-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const { name } = req.body;
+      
+      if (!name || typeof name !== "string" || name.trim() === "") {
+        return res.status(400).json({ message: "Name is required and must be a non-empty string" });
+      }
+      
+      const folder = await storage.getPolicyFolder(id);
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      if (folder.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const isCreator = folder.createdBy === currentUser.id;
+      const isAdmin = currentUser.role === "admin" || currentUser.role === "superadmin";
+      
+      if (folder.type === "personal" && !isCreator) {
+        return res.status(403).json({ message: "Forbidden - only the creator can rename personal folders" });
+      }
+      
+      if (folder.type === "agency" && !isAdmin) {
+        return res.status(403).json({ message: "Forbidden - admin role required to rename agency folders" });
+      }
+      
+      const updatedFolder = await storage.updatePolicyFolder(id, currentUser.companyId!, { name: name.trim() });
+      
+      if (!updatedFolder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "policy_folder",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.json(updatedFolder);
+    } catch (error: any) {
+      console.error("Error updating policy folder:", error);
+      res.status(500).json({ message: "Failed to update policy folder" });
+    }
+  });
+
+  // DELETE /api/policy-folders/:id - Delete folder
+  app.delete("/api/policy-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const folder = await storage.getPolicyFolder(id);
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      if (folder.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const isCreator = folder.createdBy === currentUser.id;
+      const isAdmin = currentUser.role === "admin" || currentUser.role === "superadmin";
+      
+      if (folder.type === "personal" && !isCreator) {
+        return res.status(403).json({ message: "Forbidden - only the creator can delete personal folders" });
+      }
+      
+      if (folder.type === "agency" && !isAdmin) {
+        return res.status(403).json({ message: "Forbidden - admin role required to delete agency folders" });
+      }
+      
+      const deleted = await storage.deletePolicyFolder(id, currentUser.companyId!);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "policy_folder",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.json({ message: "Folder deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting policy folder:", error);
+      res.status(500).json({ message: "Failed to delete policy folder" });
+    }
+  });
+
+  // POST /api/policies/bulk/move-to-folder - Bulk move policies to folder
+  app.post("/api/policies/bulk/move-to-folder", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const bulkMovePoliciesSchema = z.object({
+        policyIds: z.array(z.string()).min(1, "At least one policy ID is required"),
+        folderId: z.string().nullable(),
+      });
+      
+      const { policyIds, folderId } = bulkMovePoliciesSchema.parse(req.body);
+      
+      if (folderId) {
+        const folder = await storage.getPolicyFolder(folderId);
+        if (!folder) {
+          return res.status(404).json({ message: "Folder not found" });
+        }
+        
+        if (folder.companyId !== currentUser.companyId) {
+          return res.status(403).json({ message: "Forbidden - access denied to folder" });
+        }
+        
+        if (folder.type === "personal" && folder.createdBy !== currentUser.id) {
+          return res.status(403).json({ message: "Forbidden - cannot move policies to another user's personal folder" });
+        }
+      }
+      
+      const count = await storage.assignPoliciesToFolder(policyIds, folderId, currentUser.id, currentUser.companyId!);
+      
+      await logger.logCrud({
+        req,
+        operation: "bulk_move",
+        entity: "policy_folder_assignment",
+        entityId: folderId || "none",
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          policyCount: count,
+          folderId: folderId || null,
+        },
+      });
+      
+      res.json({ 
+        message: `${count} ${count === 1 ? 'policy' : 'policies'} moved successfully`,
+        count 
+      });
+    } catch (error: any) {
+      console.error("Error moving policies to folder:", error);
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      }
+      
+      res.status(500).json({ message: "Failed to move policies to folder" });
     }
   });
 

@@ -125,6 +125,8 @@ import {
   type InsertPolicyConsentEvent,
   type PolicyPlan,
   type InsertPolicyPlan,
+  type PolicyFolder,
+  type InsertPolicyFolder,
   type LandingPage,
   type InsertLandingPage,
   type LandingBlock,
@@ -224,6 +226,8 @@ import {
   policyNotes,
   policyConsentDocuments,
   policyConsentSignatureEvents,
+  policyFolders,
+  policyFolderAssignments,
   landingPages,
   landingBlocks,
   landingAnalytics,
@@ -243,7 +247,7 @@ import {
   manualContacts,
   tasks
 } from "@shared/schema";
-import { eq, and, or, desc, sql, inArray, like, gte, lt, not } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatForStorage } from "@shared/phone";
 
@@ -800,6 +804,13 @@ export interface IStorage {
   updatePolicyPlan(planId: string, companyId: string, data: Partial<InsertPolicyPlan>): Promise<PolicyPlan | null>;
   removePolicyPlan(planId: string, companyId: string): Promise<boolean>;
   setPrimaryPolicyPlan(planId: string, policyId: string, companyId: string): Promise<void>;
+  
+  // Policy Folders
+  listPolicyFolders(companyId: string, userId: string): Promise<{ agency: PolicyFolder[]; personal: PolicyFolder[] }>;
+  createPolicyFolder(data: InsertPolicyFolder): Promise<PolicyFolder>;
+  updatePolicyFolder(id: string, companyId: string, data: Partial<InsertPolicyFolder>): Promise<PolicyFolder | null>;
+  deletePolicyFolder(id: string, companyId: string): Promise<boolean>;
+  assignPoliciesToFolder(policyIds: string[], folderId: string | null, userId: string, companyId: string): Promise<void>;
   
   // Landing Pages
   getLandingPagesByUser(userId: string, companyId: string): Promise<LandingPage[]>;
@@ -4329,6 +4340,7 @@ export class DbStorage implements IStorage {
     skipAgentFilter?: boolean;
     searchTerm?: string;
     includeFamilyMembers?: boolean;
+    folderId?: string | null;
   }): Promise<{
     items: Array<{
       id: string;
@@ -4403,6 +4415,17 @@ export class DbStorage implements IStorage {
       }
     }
     
+    // Folder filter
+    if (options?.folderId !== undefined) {
+      if (options.folderId === null) {
+        // Show only policies WITHOUT folder assignment
+        conditions.push(isNull(policyFolderAssignments.folderId));
+      } else {
+        // Show policies IN that folder
+        conditions.push(eq(policyFolderAssignments.folderId, options.folderId));
+      }
+    }
+    
     // Cursor pagination
     // ORDER BY: COALESCE(updatedAt, createdAt) DESC, effectiveDate DESC, id DESC
     if (cursorUpdatedAt && cursorDate && cursorId) {
@@ -4471,7 +4494,8 @@ export class DbStorage implements IStorage {
       .leftJoin(policyPlans, and(
         eq(policyPlans.policyId, policies.id),
         eq(policyPlans.isPrimary, true)
-      ));
+      ))
+      .leftJoin(policyFolderAssignments, eq(policyFolderAssignments.policyId, policies.id));
     
     // Add LEFT JOIN with policy_members if searching family members
     if (options?.includeFamilyMembers && options?.searchTerm) {
@@ -6282,6 +6306,97 @@ export class DbStorage implements IStorage {
           eq(policyPlans.id, planId),
           eq(policyPlans.companyId, companyId)
         ));
+    });
+  }
+  
+  // ==================== POLICY FOLDERS ====================
+  
+  async listPolicyFolders(companyId: string, userId: string): Promise<{ agency: PolicyFolder[], personal: PolicyFolder[] }> {
+    const agencyFolders = await db
+      .select()
+      .from(policyFolders)
+      .where(and(
+        eq(policyFolders.companyId, companyId),
+        eq(policyFolders.type, 'agency')
+      ))
+      .orderBy(policyFolders.name);
+    
+    const personalFolders = await db
+      .select()
+      .from(policyFolders)
+      .where(and(
+        eq(policyFolders.companyId, companyId),
+        eq(policyFolders.type, 'personal'),
+        eq(policyFolders.createdBy, userId)
+      ))
+      .orderBy(policyFolders.name);
+    
+    return {
+      agency: agencyFolders,
+      personal: personalFolders
+    };
+  }
+  
+  async createPolicyFolder(data: InsertPolicyFolder): Promise<PolicyFolder> {
+    const result = await db
+      .insert(policyFolders)
+      .values(data)
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updatePolicyFolder(id: string, companyId: string, data: Partial<InsertPolicyFolder>): Promise<PolicyFolder | undefined> {
+    const result = await db
+      .update(policyFolders)
+      .set({
+        name: data.name,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(policyFolders.id, id),
+        eq(policyFolders.companyId, companyId)
+      ))
+      .returning();
+    
+    return result[0];
+  }
+  
+  async deletePolicyFolder(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(policyFolders)
+      .where(and(
+        eq(policyFolders.id, id),
+        eq(policyFolders.companyId, companyId)
+      ))
+      .returning();
+    
+    return result.length > 0;
+  }
+  
+  async assignPoliciesToFolder(policyIds: string[], folderId: string | null, userId: string, companyId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      if (folderId === null) {
+        await tx
+          .delete(policyFolderAssignments)
+          .where(inArray(policyFolderAssignments.policyId, policyIds));
+      } else {
+        await tx
+          .delete(policyFolderAssignments)
+          .where(inArray(policyFolderAssignments.policyId, policyIds));
+        
+        const assignmentsToInsert = policyIds.map(policyId => ({
+          policyId,
+          folderId,
+          assignedBy: userId
+        }));
+        
+        if (assignmentsToInsert.length > 0) {
+          await tx
+            .insert(policyFolderAssignments)
+            .values(assignmentsToInsert);
+        }
+      }
     });
   }
   

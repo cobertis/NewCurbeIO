@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, uniqueIndex, AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { validateCardNumber, validateCVV, validateExpirationDate } from './creditCardUtils';
@@ -2631,6 +2631,66 @@ export type InsertPolicyConsentDocument = z.infer<typeof insertPolicyConsentDocu
 
 export type PolicyConsentSignatureEvent = typeof policyConsentSignatureEvents.$inferSelect;
 export type InsertPolicyConsentEvent = z.infer<typeof insertPolicyConsentEventSchema>;
+
+// =====================================================
+// POLICY FOLDERS (Organizational folders for policies)
+// =====================================================
+
+export const policyFolders = pgTable("policy_folders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  type: text("type").notNull(), // "agency" | "personal"
+  
+  // For personal folders, this is the owner user ID
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  // Partial unique index for AGENCY folders: company-wide unique names
+  // NOTE: Partial indexes are created via SQL, not Drizzle schema
+  // See: CREATE UNIQUE INDEX unique_agency_folder_name_idx ON policy_folders(company_id, name) WHERE type = 'agency';
+  // Partial unique index for PERSONAL folders: unique per user + company
+  // See: CREATE UNIQUE INDEX unique_personal_folder_name_idx ON policy_folders(company_id, created_by, name) WHERE type = 'personal';
+}));
+
+export const insertPolicyFolderSchema = createInsertSchema(policyFolders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(1, "Folder name is required").max(50, "Folder name must be 50 characters or less"),
+  type: z.enum(["agency", "personal"]),
+});
+
+export const updatePolicyFolderSchema = insertPolicyFolderSchema.partial().omit({
+  companyId: true,
+  createdBy: true,
+});
+
+export type PolicyFolder = typeof policyFolders.$inferSelect;
+export type InsertPolicyFolder = z.infer<typeof insertPolicyFolderSchema>;
+
+// =====================================================
+// POLICY FOLDER ASSIGNMENTS (Assign policies to folders)
+// =====================================================
+
+export const policyFolderAssignments = pgTable("policy_folder_assignments", {
+  policyId: varchar("policy_id", { length: 8 }).notNull().references(() => policies.id, { onDelete: "cascade" }).primaryKey(),
+  folderId: varchar("folder_id").notNull().references(() => policyFolders.id, { onDelete: "cascade" }),
+  
+  assignedBy: varchar("assigned_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").notNull().defaultNow(),
+});
+
+export const insertPolicyFolderAssignmentSchema = createInsertSchema(policyFolderAssignments).omit({
+  assignedAt: true,
+});
+
+export type PolicyFolderAssignment = typeof policyFolderAssignments.$inferSelect;
+export type InsertPolicyFolderAssignment = z.infer<typeof insertPolicyFolderAssignmentSchema>;
 
 // =====================================================
 // LANDING PAGES (Bio Link Builder)
