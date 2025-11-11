@@ -3706,7 +3706,7 @@ export default function PoliciesPage() {
   // Helper function to navigate to a policy and clear search
   const navigateToPolicy = (policyId: string) => {
     setSearchInput("");
-    setSearchQuery("");
+    setFilters(prev => ({ ...prev, searchTerm: "" }));
     setLocation(`/policies/${policyId}`);
   };
   

@@ -4429,6 +4429,9 @@ export class DbStorage implements IStorage {
     // Create agent alias for join
     const agent = alias(users, 'agent');
     
+    // Define the computed field for ordering (needed for DISTINCT with ORDER BY)
+    const updatedOrCreatedExpr = sql<Date>`COALESCE(${policies.updatedAt}, ${policies.createdAt})`;
+    
     // Build base query
     let query = db
       .selectDistinct({
@@ -4459,6 +4462,7 @@ export class DbStorage implements IStorage {
         agentLastName: agent.lastName,
         createdAt: policies.createdAt,
         updatedAt: policies.updatedAt,
+        updatedOrCreated: updatedOrCreatedExpr,
       })
       .from(policies)
       .leftJoin(agent, eq(policies.agentId, agent.id))
@@ -4496,7 +4500,7 @@ export class DbStorage implements IStorage {
     // Fallback to effectiveDate for policies with same updatedAt or NULL updatedAt
     const results = await query
       .orderBy(
-        sql`COALESCE(${policies.updatedAt}, ${policies.createdAt}) DESC`,
+        desc(updatedOrCreatedExpr),
         sql`${policies.effectiveDate}::date DESC`,
         desc(policies.id)
       )
