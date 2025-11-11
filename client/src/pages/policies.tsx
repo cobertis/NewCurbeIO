@@ -7172,20 +7172,22 @@ export default function PoliciesPage() {
                             {/* Left: Prima mensual */}
                             <div>
                               <p className="text-sm font-semibold mb-2">Premium</p>
-                              <p className="text-4xl font-bold mb-1">
-                                {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null 
-                                  ? formatCurrency(plan.premium_w_credit)
-                                  : formatCurrency(plan.premium)}
-                              </p>
-                              {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium > plan.premium_w_credit && (
+                              {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit ? (
                                 <>
-                                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                    APTC received: {formatCurrency(plan.premium - plan.premium_w_credit)}
+                                  <p className="text-4xl font-bold mb-1">
+                                    {formatCurrency(plan.premium_w_credit)}
                                   </p>
-                                  <p className="text-xs text-muted-foreground line-through">
-                                    Plan was {formatCurrency(plan.premium)}
+                                  <p className="text-sm text-muted-foreground line-through mb-0.5">
+                                    Was {formatCurrency(plan.premium)}
+                                  </p>
+                                  <p className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                    You save: {formatCurrency(Math.abs(plan.premium - plan.premium_w_credit))}
                                   </p>
                                 </>
+                              ) : (
+                                <p className="text-4xl font-bold mb-1">
+                                  {formatCurrency(plan.premium)}
+                                </p>
                               )}
                             </div>
 
