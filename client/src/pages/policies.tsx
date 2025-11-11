@@ -8412,10 +8412,12 @@ export default function PoliciesPage() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                <span className="text-sm font-medium">
-                                  {policy.effectiveDate ? policy.effectiveDate.split('-')[0] : 'N/A'}
-                                </span>
+                              <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                                <div className="inline-flex items-center justify-center border-2 border-foreground px-4 py-1.5 bg-background rounded-sm">
+                                  <span className="text-2xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
+                                    {policy.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+                                  </span>
+                                </div>
                               </TableCell>
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-2">
