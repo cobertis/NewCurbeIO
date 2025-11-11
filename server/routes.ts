@@ -10103,7 +10103,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // Create or update member income (upsert)
+  // Create or update member income (upsert) - DELETE if annualIncome is empty
   app.put("/api/quotes/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { memberId } = req.params;
@@ -10124,6 +10124,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Check if annualIncome is empty/null - treat as DELETE request
+      const annualIncomeValue = req.body.annualIncome?.toString().trim();
+      if (!annualIncomeValue || annualIncomeValue === '' || annualIncomeValue === '0' || annualIncomeValue === '0.00') {
+        // Delete the income record
+        const deleted = await storage.deleteQuoteMemberIncome(memberId, quote.companyId);
+        
+        await logger.logCrud({
+          req,
+          operation: "delete",
+          entity: "quote_member_income",
+          entityId: memberId,
+          companyId: currentUser.companyId || undefined,
+          metadata: {
+            memberId,
+            deletedBy: currentUser.email,
+            reason: "Empty income value",
+          },
+        });
+        
+        return res.json({ deleted: true, message: "Income deleted successfully" });
       }
       
       // Validate request body (include companyId from member)
@@ -15675,7 +15697,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // Create or update member income (upsert)
+  // Create or update member income (upsert) - DELETE if annualIncome is empty
   app.put("/api/policies/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { memberId } = req.params;
@@ -15696,6 +15718,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      // Check if annualIncome is empty/null - treat as DELETE request
+      const annualIncomeValue = req.body.annualIncome?.toString().trim();
+      if (!annualIncomeValue || annualIncomeValue === '' || annualIncomeValue === '0' || annualIncomeValue === '0.00') {
+        // Delete the income record
+        const deleted = await storage.deletePolicyMemberIncome(memberId, policy.companyId);
+        
+        await logger.logCrud({
+          req,
+          operation: "delete",
+          entity: "policy_member_income",
+          entityId: memberId,
+          companyId: currentUser.companyId || undefined,
+          metadata: {
+            memberId,
+            deletedBy: currentUser.email,
+            reason: "Empty income value",
+          },
+        });
+        
+        return res.json({ deleted: true, message: "Income deleted successfully" });
       }
       
       // Validate request body (include companyId from member)

@@ -834,11 +834,16 @@ const IncomeField = React.memo(({ control, frequency }: { control: any; frequenc
 
   const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
-    let value = e.target.value.replace(/,/g, '');
+    let value = e.target.value.replace(/,/g, '').trim();
     
-    if (value && value !== '') {
+    // Always update the field state
+    if (!value || value === '') {
+      // Empty field = delete income
+      field.onChange('');
+    } else {
       const num = parseFloat(value);
       if (!isNaN(num)) {
+        // Zero = delete income, otherwise format to 2 decimals
         field.onChange(num === 0 ? '' : num.toFixed(2));
       }
     }
