@@ -4478,8 +4478,10 @@ export class DbStorage implements IStorage {
     }
     
     // Execute query with ordering and limit
+    // CRITICAL FIX: Cast effective_date to DATE for chronological ordering
+    // Text ordering fails with non-ISO dates like "2025-2-12" vs "2025-11-03"
     const results = await query
-      .orderBy(desc(policies.effectiveDate), desc(policies.id))
+      .orderBy(sql`${policies.effectiveDate}::date DESC`, desc(policies.id))
       .limit(limit + 1); // Fetch one extra to determine if there's a next page
     
     // Determine if there are more results

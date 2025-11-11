@@ -55,7 +55,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 ### System Design Choices
 Uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A background scheduler (`node-cron`) manages reminder notifications. Centralized phone utilities standardize 11-digit phone number formatting. All message timestamps are normalized using `parseISO()` to explicitly parse as UTC before converting to user's local timezone with `toZonedTime()`.
-The policies system uses cursor-based pagination with database indexes for efficient handling of large datasets and server-side search filtering. Policy page performance is optimized with aggressive caching of stats queries.
+The policies system uses cursor-based pagination with database indexes for efficient handling of large datasets and server-side search filtering. **Policies are always ordered by most recent effectiveDate first** using PostgreSQL `::date` cast in ORDER BY to ensure chronological sorting despite text column storing mixed formats (ISO "2025-02-12" and non-ISO "2025-2-12"). Policy page performance is optimized with aggressive caching of stats queries.
 
 ### Security Architecture
 - **Session Security:** `SESSION_SECRET` environment variable mandatory.
