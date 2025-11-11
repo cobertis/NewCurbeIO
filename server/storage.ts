@@ -697,7 +697,7 @@ export interface IStorage {
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
   updatePolicy(id: string, data: Partial<InsertPolicy>): Promise<Policy | undefined>;
-  updatePolicySelectedPlan(id: string, selectedPlan: any): Promise<Policy | undefined>;
+  updatePolicySelectedPlan(id: string, selectedPlan: any, aptcData?: { aptcAmount?: string; aptcSource?: string; aptcCapturedAt?: string }): Promise<Policy | undefined>;
   deletePolicy(id: string): Promise<boolean>;
   submitQuoteAsPolicy(quoteId: string): Promise<Policy>;
   
@@ -4680,13 +4680,22 @@ export class DbStorage implements IStorage {
     return updated;
   }
 
-  async updatePolicySelectedPlan(id: string, selectedPlan: any): Promise<Policy | undefined> {
+  async updatePolicySelectedPlan(id: string, selectedPlan: any, aptcData?: { aptcAmount?: string; aptcSource?: string; aptcCapturedAt?: string }): Promise<Policy | undefined> {
+    const updateData: any = {
+      selectedPlan,
+      updatedAt: new Date(),
+    };
+    
+    // Add APTC data if provided
+    if (aptcData) {
+      if (aptcData.aptcAmount !== undefined) updateData.aptcAmount = aptcData.aptcAmount;
+      if (aptcData.aptcSource !== undefined) updateData.aptcSource = aptcData.aptcSource;
+      if (aptcData.aptcCapturedAt !== undefined) updateData.aptcCapturedAt = aptcData.aptcCapturedAt;
+    }
+    
     const [updated] = await db
       .update(policies)
-      .set({
-        selectedPlan,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(policies.id, id))
       .returning();
     return updated;

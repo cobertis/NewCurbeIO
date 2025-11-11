@@ -323,7 +323,8 @@ export async function fetchMarketplacePlans(
     maxPremium?: number;
     maxDeductible?: number;
     planFeatures?: string[];
-  }
+  },
+  aptcOverride?: number
 ): Promise<MarketplaceApiResponse> {
   // Validate yearOverride if provided
   if (yearOverride && (yearOverride < 2025 || yearOverride > 2030)) {
@@ -333,9 +334,14 @@ export async function fetchMarketplacePlans(
   const targetYear = yearOverride || new Date().getFullYear();
   console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, PageSize ${pageSize}, Year ${targetYear}`);
   
-  // Step 1: Fetch household eligibility FIRST to get household_aptc
-  console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
-  const eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
+  // Step 1: Fetch household eligibility FIRST to get household_aptc (skip if aptcOverride provided)
+  let eligibility = null;
+  if (aptcOverride !== undefined) {
+    console.log(`[CMS_MARKETPLACE] 📊 Step 1: Using APTC override ($${aptcOverride}) - skipping eligibility calculation`);
+  } else {
+    console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
+    eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
+  }
   
   // Step 2: CRITICAL FIX - Keep fetching CMS pages until we have enough filtered results
   // OR we've exhausted all available CMS data
@@ -357,7 +363,7 @@ export async function fetchMarketplacePlans(
     cmsFetchCount++;
     console.log(`[CMS_MARKETPLACE] 📄 Fetching CMS batch #${cmsFetchCount} (offset=${cmsOffset})...`);
     
-    const apiResponse = await fetchSinglePage(quoteData, cmsOffset, yearOverride, filters);
+    const apiResponse = await fetchSinglePage(quoteData, cmsOffset, yearOverride, filters, aptcOverride);
     
     if (apiResponse.plans && apiResponse.plans.length > 0) {
       // Add to all CMS plans collection
@@ -512,7 +518,8 @@ async function fetchSinglePage(
     maxPremium?: number;
     maxDeductible?: number;
     planFeatures?: string[];
-  }
+  },
+  aptcOverride?: number
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
@@ -599,6 +606,12 @@ async function fetchSinglePage(
   // Add effective_date if provided
   if (quoteData.effectiveDate) {
     requestBody.household.effective_date = quoteData.effectiveDate;
+  }
+  
+  // Add aptc_override if provided (top-level parameter per CMS API docs)
+  if (aptcOverride !== undefined) {
+    requestBody.aptc_override = aptcOverride;
+    console.log(`[CMS_MARKETPLACE] Using APTC override: $${aptcOverride}`);
   }
 
   // Add filters if provided (CMS API native filters)

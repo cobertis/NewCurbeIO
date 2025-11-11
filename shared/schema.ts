@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, unique, index, AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { validateCardNumber, validateCVV, validateExpirationDate } from './creditCardUtils';
@@ -1400,6 +1400,11 @@ export const quotes = pgTable("quotes", {
   // Selected Plan from Marketplace
   selectedPlan: jsonb("selected_plan"), // Complete plan object selected from marketplace
   
+  // APTC (Advanced Premium Tax Credit) Persistence
+  aptcAmount: numeric("aptc_amount", { precision: 10, scale: 2 }), // Dollar amount of tax credit
+  aptcSource: text("aptc_source"), // "calculated", "manual", "previous_year", etc.
+  aptcCapturedAt: timestamp("aptc_captured_at"), // When APTC was captured
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -2098,6 +2103,11 @@ export const policies = pgTable("policies", {
   
   // Selected Plan from Marketplace
   selectedPlan: jsonb("selected_plan"),
+  
+  // APTC (Advanced Premium Tax Credit) Persistence
+  aptcAmount: numeric("aptc_amount", { precision: 10, scale: 2 }), // Dollar amount of tax credit
+  aptcSource: text("aptc_source"), // "calculated", "manual", "previous_year", etc.
+  aptcCapturedAt: timestamp("aptc_captured_at"), // When APTC was captured
   
   // Archive status
   isArchived: boolean("is_archived").default(false).notNull(),

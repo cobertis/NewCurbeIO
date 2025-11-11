@@ -4043,6 +4043,9 @@ export default function PoliciesPage() {
   });
   const companyAgents = companyAgentsData?.agents || [];
 
+  // Debounce search for family members (server-side search) - MUST be declared before use
+  const [debouncedFamilySearch, setDebouncedFamilySearch] = useState("");
+
   // Fetch policies - Hybrid search: server-side for family members, client-side for primary client
   const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
     queryKey: ["/api/policies", { searchTerm: filters.searchFamilyMembers ? debouncedFamilySearch : undefined, includeFamilyMembers: filters.searchFamilyMembers }],
@@ -4138,10 +4141,7 @@ export default function PoliciesPage() {
     viewingQuote?.specialEnrollmentDate
   ]);
 
-  // Debounce search for family members (server-side search)
-  // Client-side search has no debounce since it's instant
-  const [debouncedFamilySearch, setDebouncedFamilySearch] = useState("");
-  
+  // Debounce effect for family member search
   useEffect(() => {
     if (!filters.searchFamilyMembers) {
       // If family member search is disabled, clear debounced value

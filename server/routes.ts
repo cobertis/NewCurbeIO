@@ -9174,6 +9174,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // 3. Validate with Zod (strips unknown keys, validates nested arrays)
       const validatedData = updateQuoteSchema.parse(payload);
       
+      // Extract and save APTC if a plan is being selected
+      if (payload.selectedPlan && typeof payload.selectedPlan === 'object') {
+        const plan = payload.selectedPlan as any;
+        if (plan.household_aptc !== undefined && plan.household_aptc !== null) {
+          validatedData.aptcAmount = String(plan.household_aptc);
+          validatedData.aptcSource = 'calculated';
+          validatedData.aptcCapturedAt = new Date().toISOString();
+          console.log(`[APTC_SAVE] Saving APTC to quote: $${plan.household_aptc} (source: calculated)`);
+        }
+      }
+      
       // 4. Update the quote
       const updatedQuote = await storage.updateQuote(id, validatedData);
       
@@ -13296,8 +13307,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })),
       };
       
+      // Extract saved APTC from quote if available
+      const aptcOverride = quote.aptcAmount !== null && quote.aptcAmount !== undefined
+        ? Number(quote.aptcAmount)
+        : undefined;
+      if (aptcOverride !== undefined) {
+        console.log(`[MARKETPLACE_PLANS] Using saved APTC from quote: $${aptcOverride} (source: ${quote.aptcSource})`);
+      }
+      
       // Fetch plans from CMS Marketplace with pagination and filters
-      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize, undefined, filters);
+      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize, undefined, filters, aptcOverride);
       
       // Return EXACTLY what the CMS API returns - NO modifications
       console.log(`[CMS_MARKETPLACE] Returning EXACT API response - ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
@@ -15014,8 +15033,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "selectedPlan is required" });
       }
       
-      // Update the policy's selected plan
-      const updatedPolicy = await storage.updatePolicySelectedPlan(id, selectedPlan);
+      // Extract APTC from selected plan if available
+      let aptcData: { aptcAmount?: string; aptcSource?: string; aptcCapturedAt?: string } = {};
+      if (selectedPlan.household_aptc !== undefined && selectedPlan.household_aptc !== null) {
+        aptcData = {
+          aptcAmount: String(selectedPlan.household_aptc),
+          aptcSource: 'calculated',
+          aptcCapturedAt: new Date().toISOString(),
+        };
+        console.log(`[APTC_SAVE] Saving APTC to policy: $${selectedPlan.household_aptc} (source: calculated)`);
+      }
+      
+      // Update the policy's selected plan with APTC data
+      const updatedPolicy = await storage.updatePolicySelectedPlan(id, selectedPlan, aptcData);
       
       if (!updatedPolicy) {
         return res.status(404).json({ message: "Failed to update policy plan" });
@@ -17866,6 +17896,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log(`[MARKETPLACE_PLANS] Fetching plans for policy ${policyId} - Effective Date: ${policy.effectiveDate}, Target Year: ${targetYear}`);
       
+      // Extract saved APTC from policy if available
+      const aptcOverride = policy.aptcAmount !== null && policy.aptcAmount !== undefined
+        ? Number(policy.aptcAmount)
+        : undefined;
+      if (aptcOverride !== undefined) {
+        console.log(`[MARKETPLACE_PLANS] Using saved APTC from policy: $${aptcOverride} (source: ${policy.aptcSource})`);
+      }
+      
       // Fetch plans from CMS Marketplace with pagination, year, and filters
       const hasFilters = Object.keys(filters).some(key => filters[key as keyof typeof filters]?.length);
       const marketplaceData = await fetchMarketplacePlans(
@@ -17873,7 +17911,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         page, 
         pageSize, 
         targetYear, 
-        hasFilters ? filters : undefined
+        hasFilters ? filters : undefined,
+        aptcOverride
       );
       
       // Return EXACTLY what the CMS API returns - NO modifications
