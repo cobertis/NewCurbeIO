@@ -222,9 +222,30 @@ export async function fetchHouseholdEligibility(
     return null;
   }
 
+  // CRITICAL FIX: If isApplicant = true, Medicaid was DENIED
+  // We need to force APTC eligibility by adjusting income above Medicaid threshold (138% FPL)
+  let adjustedIncome = quoteData.householdIncome;
+  const applicantCount = people.filter(p => p.aptc_eligible).length;
+  
+  if (applicantCount > 0) {
+    // Get FPL for household size
+    const { getHHSPovertyGuideline } = await import('./hhs-poverty-guidelines.js');
+    const fplData = getHHSPovertyGuideline(year, quoteData.state);
+    const fplForHousehold = fplData.guidelines[applicantCount] || fplData.guidelines[8];
+    const medicaidThreshold = Math.round(fplForHousehold * 1.38); // 138% FPL
+    
+    // If income is below Medicaid threshold, adjust to 138% + $100 to force APTC
+    if (quoteData.householdIncome < medicaidThreshold) {
+      adjustedIncome = medicaidThreshold + 100;
+      console.log(`[CMS_MARKETPLACE_ELIGIBILITY] 🔧 Medicaid was DENIED (isApplicant=true)`);
+      console.log(`[CMS_MARKETPLACE_ELIGIBILITY] 🔧 Adjusting income from $${quoteData.householdIncome} → $${adjustedIncome} (138% FPL + $100)`);
+      console.log(`[CMS_MARKETPLACE_ELIGIBILITY] 🔧 This forces APTC eligibility since Medicaid is not an option`);
+    }
+  }
+
   const requestBody = {
     household: {
-      income: quoteData.householdIncome,
+      income: adjustedIncome,
       people: people,
     },
     place: {
