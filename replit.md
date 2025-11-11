@@ -55,7 +55,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with dedicated phone numbers, real-time updates, privacy isolation, and automated webhook management. Includes message status, read receipts, labels/tags, pin/mute/archive, unread counters, thread search, and default avatars. Supports new message creation, thread deletion, number provisioning, billing, and number reactivation.
 - **Billing & Stripe Integration:** Automated customer/subscription management.
 - **Quotes Management System:** 3-step wizard for 11 product types, Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
-- **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification. Uses cursor-based pagination for efficient handling of 10,000+ policies with <500ms load times.
+- **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification. Uses cursor-based pagination for efficient handling of 10,000+ policies with <500ms load times. "Other Policies" table uses same data loading logic as main policies list (LEFT JOIN with policy_plans for plan fallback). Search state auto-clears when navigating to policy details via `navigateToPolicy()` helper.
 - **Consent Document System:** Generates legal consent documents, multi-channel delivery, e-signatures.
 - **Calendar System:** Full-screen, multi-tenant display of company-wide events.
 - **Reminder System:** Background scheduler for notifications.

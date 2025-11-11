@@ -3502,6 +3502,13 @@ export default function PoliciesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   
+  // Helper function to navigate to a policy and clear search
+  const navigateToPolicy = (policyId: string) => {
+    setSearchInput("");
+    setSearchQuery("");
+    setLocation(`/policies/${policyId}`);
+  };
+  
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
   const [addingMember, setAddingMember] = useState(false);
@@ -8463,7 +8470,7 @@ export default function PoliciesPage() {
                                   <Button 
                                     variant="outline" 
                                     size="sm" 
-                                    onClick={() => setLocation(`/policies/${policy.id}`)}
+                                    onClick={() => navigateToPolicy(policy.id)}
                                     data-testid={`button-view-other-${policy.id}`}
                                   >
                                     <Eye className="h-3.5 w-3.5 mr-1.5" />
@@ -12357,7 +12364,7 @@ export default function PoliciesPage() {
                                   <div className="cursor-pointer">
                                     <div 
                                       className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                      onClick={() => setLocation(`/policies/${quote.id}`)}
+                                      onClick={() => navigateToPolicy(quote.id)}
                                     >
                                       {quote.clientFirstName} {quote.clientMiddleName} {quote.clientLastName} {quote.clientSecondLastName}
                                     </div>
@@ -12488,7 +12495,7 @@ export default function PoliciesPage() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setLocation(`/policies/${quote.id}`)}>
+                                    <DropdownMenuItem onClick={() => navigateToPolicy(quote.id)}>
                                       View Details
                                     </DropdownMenuItem>
                                     <DropdownMenuItem 
