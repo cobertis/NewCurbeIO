@@ -344,11 +344,42 @@ export async function fetchMarketplacePlans(
   
   // Step 1: Fetch household eligibility FIRST to get household_aptc (skip if aptcOverride provided)
   let eligibility = null;
+  let finalAptcOverride = aptcOverride;
+  
   if (aptcOverride !== undefined) {
     console.log(`[CMS_MARKETPLACE] 📊 Step 1: Using APTC override ($${aptcOverride}) - skipping eligibility calculation`);
   } else {
     console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
     eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
+    
+    // CRITICAL FIX: If eligibility returns $0 APTC due to Medicaid eligibility,
+    // but we have applicants (Medicaid was DENIED), recalculate with adjusted income
+    if (eligibility && eligibility.aptc === 0) {
+      const { getPovertyGuidelineForHouseholdSize } = await import('./hhs-poverty-guidelines.js');
+      const applicantCount = [
+        quoteData.client,
+        ...(quoteData.spouses?.filter(s => s.aptc_eligible !== false) || []),
+        ...(quoteData.dependents?.filter(d => d.isApplicant !== false) || [])
+      ].length;
+      
+      const fplForHousehold = await getPovertyGuidelineForHouseholdSize(applicantCount, targetYear, quoteData.state);
+      const medicaidThreshold = Math.round(fplForHousehold * 1.38); // 138% FPL
+      
+      if (quoteData.householdIncome < medicaidThreshold && applicantCount > 0) {
+        console.log(`[CMS_MARKETPLACE] 🔧 APTC is $0 due to Medicaid eligibility, but Medicaid was DENIED (applicants exist)`);
+        console.log(`[CMS_MARKETPLACE] 🔧 Recalculating APTC with adjusted income (138% FPL + $100)`);
+        
+        const adjustedIncome = medicaidThreshold + 100;
+        const adjustedQuoteData = { ...quoteData, householdIncome: adjustedIncome };
+        const adjustedEligibility = await fetchHouseholdEligibility(adjustedQuoteData, yearOverride);
+        
+        if (adjustedEligibility && adjustedEligibility.aptc > 0) {
+          console.log(`[CMS_MARKETPLACE] ✅ APTC recalculated: $${adjustedEligibility.aptc} (using aptc_override)`);
+          finalAptcOverride = adjustedEligibility.aptc;
+          eligibility = adjustedEligibility; // Update CSR too
+        }
+      }
+    }
   }
   
   // Step 2: CRITICAL FIX - Keep fetching CMS pages until we have enough filtered results
