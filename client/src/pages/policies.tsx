@@ -1152,6 +1152,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   const editForm = useForm({
     resolver: zodResolver(editMemberSchema),
     defaultValues: memberData || {},
+    shouldUnregister: false,
   });
 
   // Track previous member to detect genuine member switches
@@ -1468,13 +1469,10 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // FORCE refetch of ALL related queries to update UI immediately
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ['/api/policies', quote.id, 'detail'] }),
-        queryClient.refetchQueries({ queryKey: ['/api/policies'] }),
-        queryClient.refetchQueries({ queryKey: ['/api/policies/stats'] }),
-        queryClient.refetchQueries({ queryKey: ['/api/policies/oep-stats'] })
-      ]);
+      // Invalidate only specific queries - no refetch, just mark as stale
+      // This makes saves instant while keeping data fresh
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'], exact: true });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'members'], exact: false });
       
       toast({
         title: "Success",
@@ -1555,10 +1553,27 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   return (
     <Sheet 
       open={open} 
-      onOpenChange={(isOpen) => {
+      onOpenChange={async (isOpen) => {
         // Only allow closing the sheet, never opening from here
         if (!isOpen && !isSaving && !isPending) {
-          onOpenChange(false);
+          // Auto-save before closing if form has changes
+          if (editForm.formState.isDirty) {
+            try {
+              const formData = editForm.getValues();
+              await handleSave(formData);
+              // Only close if save was successful
+              onOpenChange(false);
+            } catch (error) {
+              // If save fails, keep sheet open and show error
+              // handleSave already shows error toast, so no need to show another
+              // User can retry or manually close without saving
+              console.error('[EditMemberSheet] Auto-save on close failed:', error);
+              // DO NOT close the sheet - keep it open so user can fix errors
+            }
+          } else {
+            // No changes, close immediately
+            onOpenChange(false);
+          }
         }
       }}
     >
