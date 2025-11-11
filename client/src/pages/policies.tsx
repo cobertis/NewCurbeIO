@@ -19,7 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save, Lock } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save, Lock, Folder as FolderIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
 import { useForm, useFieldArray, useController } from "react-hook-form";
@@ -3766,6 +3766,15 @@ export default function PoliciesPage() {
   // Sidebar view selection state
   const [selectedView, setSelectedView] = useState<"policies" | "oep-aca" | "oep-medicare" | "important" | "archived" | "exports">("policies");
   
+  // Folder selection and expand/collapse states
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [agencyFoldersOpen, setAgencyFoldersOpen] = useState(true);
+  const [myFoldersOpen, setMyFoldersOpen] = useState(true);
+  
+  // Multi-select state for bulk operations
+  const [selectedPolicyIds, setSelectedPolicyIds] = useState<Set<string>>(new Set());
+  const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  
   // OEP Renewal modal state
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [renewalData, setRenewalData] = useState<any>(null);
@@ -3798,6 +3807,14 @@ export default function PoliciesPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [viewingImages, setViewingImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Folder management dialog states
+  const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false);
+  const [renameFolderDialogOpen, setRenameFolderDialogOpen] = useState(false);
+  const [deleteFolderDialogOpen, setDeleteFolderDialogOpen] = useState(false);
+  const [folderToEdit, setFolderToEdit] = useState<{ id: string; name: string; type: 'agency' | 'personal' } | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderType, setNewFolderType] = useState<'agency' | 'personal'>('personal');
   
   // Documents sheet state
   const [documentsSheetOpen, setDocumentsSheetOpen] = useState(false);
@@ -3962,6 +3979,135 @@ export default function PoliciesPage() {
     refetchOnWindowFocus: false, // Don't refetch on tab switch
   });
   
+  // Fetch policy folders
+  const { data: foldersData } = useQuery<{ agency: any[]; personal: any[] }>({
+    queryKey: ['/api/policy-folders'],
+    enabled: !showWizard,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const agencyFolders = foldersData?.agency || [];
+  const myFolders = foldersData?.personal || [];
+  
+  // Bulk move mutation
+  const bulkMoveMutation = useMutation({
+    mutationFn: async (folderId: string | null) => {
+      return apiRequest('POST', '/api/policies/bulk/move-to-folder', {
+        policyIds: Array.from(selectedPolicyIds),
+        folderId: folderId,
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
+      setSelectedPolicyIds(new Set());
+      toast({
+        title: "Policies moved successfully",
+        description: data.message,
+        duration: 3000,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error moving policies",
+        description: error.message,
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  const handleBulkMove = (folderId: string | null) => {
+    if (selectedPolicyIds.size === 0) return;
+    bulkMoveMutation.mutate(folderId);
+  };
+  
+  // Create folder mutation
+  const createFolderMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/policy-folders', {
+        name: newFolderName.trim(),
+        type: newFolderType,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
+      setCreateFolderDialogOpen(false);
+      setNewFolderName("");
+      toast({
+        title: "Folder created",
+        description: `Folder "${newFolderName}" has been created successfully.`,
+        duration: 3000,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error creating folder",
+        description: error.message,
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  // Rename folder mutation
+  const renameFolderMutation = useMutation({
+    mutationFn: async () => {
+      if (!folderToEdit) throw new Error("No folder selected");
+      return apiRequest('PATCH', `/api/policy-folders/${folderToEdit.id}`, {
+        name: newFolderName.trim(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
+      setRenameFolderDialogOpen(false);
+      setFolderToEdit(null);
+      setNewFolderName("");
+      toast({
+        title: "Folder renamed",
+        description: "Folder has been renamed successfully.",
+        duration: 3000,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error renaming folder",
+        description: error.message,
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  // Delete folder mutation
+  const deleteFolderMutation = useMutation({
+    mutationFn: async () => {
+      if (!folderToEdit) throw new Error("No folder selected");
+      return apiRequest('DELETE', `/api/policy-folders/${folderToEdit.id}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'], exact: false });
+      setDeleteFolderDialogOpen(false);
+      setFolderToEdit(null);
+      setSelectedFolderId(null); // Clear selection if viewing deleted folder
+      toast({
+        title: "Folder deleted",
+        description: "Folder has been deleted successfully.",
+        duration: 3000,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error deleting folder",
+        description: error.message,
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+  
   // Renewal mutation
   const renewalMutation = useMutation({
     mutationFn: async (policyId: string) => {
@@ -4048,7 +4194,11 @@ export default function PoliciesPage() {
 
   // Fetch policies - Hybrid search: server-side for family members, client-side for primary client
   const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
-    queryKey: ["/api/policies", { searchTerm: filters.searchFamilyMembers ? debouncedFamilySearch : undefined, includeFamilyMembers: filters.searchFamilyMembers }],
+    queryKey: ["/api/policies", { 
+      searchTerm: filters.searchFamilyMembers ? debouncedFamilySearch : undefined, 
+      includeFamilyMembers: filters.searchFamilyMembers,
+      folderId: selectedFolderId
+    }],
     queryFn: async () => {
       // Build query params
       const params = new URLSearchParams();
@@ -4057,6 +4207,11 @@ export default function PoliciesPage() {
       if (filters.searchFamilyMembers && debouncedFamilySearch.trim()) {
         params.append('searchTerm', debouncedFamilySearch.trim());
         params.append('searchFamilyMembers', 'true');
+      }
+      
+      // Add folderId parameter if set
+      if (selectedFolderId !== null) {
+        params.append('folderId', selectedFolderId);
       }
       
       const url = `/api/policies${params.toString() ? `?${params.toString()}` : ''}`;
@@ -12018,9 +12173,10 @@ export default function PoliciesPage() {
                       onClick={() => {
                         setSelectedView("policies");
                         setOepFilter(null);
+                        setSelectedFolderId(null);
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                        selectedView === "policies"
+                        selectedView === "policies" && !selectedFolderId
                           ? "bg-primary text-primary-foreground"
                           : "hover:bg-muted"
                       }`}
@@ -12035,6 +12191,7 @@ export default function PoliciesPage() {
                       onClick={() => {
                         setSelectedView("oep-aca");
                         setOepFilter("aca");
+                        setSelectedFolderId(null);
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         selectedView === "oep-aca"
@@ -12052,6 +12209,7 @@ export default function PoliciesPage() {
                       onClick={() => {
                         setSelectedView("oep-medicare");
                         setOepFilter("medicare");
+                        setSelectedFolderId(null);
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         selectedView === "oep-medicare"
@@ -12066,7 +12224,10 @@ export default function PoliciesPage() {
 
                     {/* Important View */}
                     <button
-                      onClick={() => setSelectedView("important")}
+                      onClick={() => {
+                        setSelectedView("important");
+                        setSelectedFolderId(null);
+                      }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         selectedView === "important"
                           ? "bg-primary text-primary-foreground"
@@ -12080,7 +12241,10 @@ export default function PoliciesPage() {
 
                     {/* Archived View */}
                     <button
-                      onClick={() => setSelectedView("archived")}
+                      onClick={() => {
+                        setSelectedView("archived");
+                        setSelectedFolderId(null);
+                      }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         selectedView === "archived"
                           ? "bg-primary text-primary-foreground"
@@ -12094,7 +12258,10 @@ export default function PoliciesPage() {
 
                     {/* Exports View */}
                     <button
-                      onClick={() => setSelectedView("exports")}
+                      onClick={() => {
+                        setSelectedView("exports");
+                        setSelectedFolderId(null);
+                      }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                         selectedView === "exports"
                           ? "bg-primary text-primary-foreground"
@@ -12107,68 +12274,150 @@ export default function PoliciesPage() {
                     </button>
                   </div>
 
-                  {/* Agency Folders Section */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Agency folders</span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Shared folders for your agency</p>
-                          </TooltipContent>
-                        </Tooltip>
+                  {/* Agency Folders */}
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setAgencyFoldersOpen(!agencyFoldersOpen)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ChevronDown className={`h-4 w-4 transition-transform ${agencyFoldersOpen ? '' : '-rotate-90'}`} />
+                      <Building2 className="h-4 w-4" />
+                      <span>Agency Folders</span>
+                    </button>
+                    {agencyFoldersOpen && (
+                      <div className="ml-6 space-y-1">
+                        {agencyFolders.map((folder) => (
+                          <DropdownMenu key={folder.id}>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
+                                className="w-full justify-between group"
+                                data-testid={`folder-agency-${folder.id}`}
+                              >
+                                <div className="flex items-center" onClick={() => {
+                                  setSelectedView("policies");
+                                  setSelectedFolderId(folder.id);
+                                }}>
+                                  <FolderIcon className="mr-2 h-4 w-4" />
+                                  <span>{folder.name}</span>
+                                </div>
+                                <MoreHorizontal className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setFolderToEdit(folder);
+                                  setNewFolderName(folder.name);
+                                  setRenameFolderDialogOpen(true);
+                                }}
+                                data-testid={`menu-rename-${folder.id}`}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setFolderToEdit(folder);
+                                  setDeleteFolderDialogOpen(true);
+                                }}
+                                className="text-destructive"
+                                data-testid={`menu-delete-${folder.id}`}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setNewFolderType('agency');
+                            setCreateFolderDialogOpen(true);
+                          }}
+                          className="mt-1 text-xs w-full justify-start"
+                          data-testid="button-create-agency-folder"
+                        >
+                          <Plus className="mr-1 h-3 w-3" />
+                          New Agency Folder
+                        </Button>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs" 
-                        data-testid="button-create-agency-folder"
-                        onClick={() => {
-                          toast({
-                            title: "Feature coming soon",
-                            description: "Agency folders functionality will be available in a future update.",
-                          });
-                        }}
-                      >
-                        Create
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground pl-3">You have no agency folders.</p>
+                    )}
                   </div>
 
-                  {/* Personal Folders Section */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Personal folders</span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="w-3.5 h-3.5 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Private folders for your personal use</p>
-                          </TooltipContent>
-                        </Tooltip>
+                  {/* My Folders */}
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setMyFoldersOpen(!myFoldersOpen)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ChevronDown className={`h-4 w-4 transition-transform ${myFoldersOpen ? '' : '-rotate-90'}`} />
+                      <User className="h-4 w-4" />
+                      <span>My Folders</span>
+                    </button>
+                    {myFoldersOpen && (
+                      <div className="ml-6 space-y-1">
+                        {myFolders.map((folder) => (
+                          <DropdownMenu key={folder.id}>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
+                                className="w-full justify-between group"
+                                data-testid={`folder-personal-${folder.id}`}
+                              >
+                                <div className="flex items-center" onClick={() => {
+                                  setSelectedView("policies");
+                                  setSelectedFolderId(folder.id);
+                                }}>
+                                  <FolderIcon className="mr-2 h-4 w-4" />
+                                  <span>{folder.name}</span>
+                                </div>
+                                <MoreHorizontal className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setFolderToEdit(folder);
+                                  setNewFolderName(folder.name);
+                                  setRenameFolderDialogOpen(true);
+                                }}
+                                data-testid={`menu-rename-${folder.id}`}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setFolderToEdit(folder);
+                                  setDeleteFolderDialogOpen(true);
+                                }}
+                                className="text-destructive"
+                                data-testid={`menu-delete-${folder.id}`}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setNewFolderType('personal');
+                            setCreateFolderDialogOpen(true);
+                          }}
+                          className="mt-1 text-xs w-full justify-start"
+                          data-testid="button-create-personal-folder"
+                        >
+                          <Plus className="mr-1 h-3 w-3" />
+                          New Personal Folder
+                        </Button>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 px-2 text-xs" 
-                        data-testid="button-create-personal-folder"
-                        onClick={() => {
-                          toast({
-                            title: "Feature coming soon",
-                            description: "Personal folders functionality will be available in a future update.",
-                          });
-                        }}
-                      >
-                        Create
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground pl-3">You have no personal folders.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -12685,7 +12934,17 @@ export default function PoliciesPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">
-                            <Checkbox data-testid="checkbox-select-all" />
+                            <Checkbox 
+                              checked={selectedPolicyIds.size === filteredQuotes.length && filteredQuotes.length > 0}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedPolicyIds(new Set(filteredQuotes.map(q => q.id)));
+                                } else {
+                                  setSelectedPolicyIds(new Set());
+                                }
+                              }}
+                              data-testid="checkbox-select-all" 
+                            />
                           </TableHead>
                           <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Agent</TableHead>
                           <TableHead className="sticky top-0 z-30 py-3 px-4 bg-white dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">Client</TableHead>
@@ -12712,7 +12971,21 @@ export default function PoliciesPage() {
                         return (
                           <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`}>
                             <TableCell className="py-3 px-4">
-                              <Checkbox data-testid={`checkbox-quote-${quote.id}`} />
+                              <Checkbox 
+                                checked={selectedPolicyIds.has(quote.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedPolicyIds(prev => {
+                                    const newSet = new Set(prev);
+                                    if (checked) {
+                                      newSet.add(quote.id);
+                                    } else {
+                                      newSet.delete(quote.id);
+                                    }
+                                    return newSet;
+                                  });
+                                }}
+                                data-testid={`checkbox-policy-${quote.id}`} 
+                              />
                             </TableCell>
                             <TableCell className="text-center py-3 px-4">
                               <Tooltip>
@@ -14498,6 +14771,186 @@ export default function PoliciesPage() {
           }}
         />
       )}
+
+      {/* Bulk Actions Toolbar */}
+      {selectedPolicyIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <Card className="shadow-lg border-2">
+            <CardContent className="p-4 flex items-center gap-4">
+              <span className="text-sm font-medium">
+                {selectedPolicyIds.size} {selectedPolicyIds.size === 1 ? 'policy' : 'policies'} selected
+              </span>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="default" size="sm" data-testid="button-move-to-folder">
+                    <FolderIcon className="mr-2 h-4 w-4" />
+                    Move to Folder
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-56">
+                  <div className="p-2">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Agency Folders</div>
+                    {agencyFolders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onClick={() => handleBulkMove(folder.id)}
+                        data-testid={`menu-move-to-agency-${folder.id}`}
+                      >
+                        <FolderIcon className="mr-2 h-4 w-4" />
+                        {folder.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                  <div className="p-2 border-t">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">My Folders</div>
+                    {myFolders.map((folder) => (
+                      <DropdownMenuItem
+                        key={folder.id}
+                        onClick={() => handleBulkMove(folder.id)}
+                        data-testid={`menu-move-to-personal-${folder.id}`}
+                      >
+                        <FolderIcon className="mr-2 h-4 w-4" />
+                        {folder.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkMove(null)}
+                data-testid="button-clear-folder"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Clear Folder
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedPolicyIds(new Set())}
+                data-testid="button-cancel-selection"
+              >
+                Cancel
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Create Folder Dialog */}
+      <Dialog open={createFolderDialogOpen} onOpenChange={setCreateFolderDialogOpen}>
+        <DialogContent data-testid="dialog-create-folder">
+          <DialogHeader>
+            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription>
+              Create a new folder to organize your policies.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="folder-name">Folder Name</Label>
+              <Input
+                id="folder-name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Enter folder name..."
+                data-testid="input-folder-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Folder Type</Label>
+              <RadioGroup value={newFolderType} onValueChange={(v: 'agency' | 'personal') => setNewFolderType(v)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="agency" id="type-agency" data-testid="radio-agency" />
+                  <Label htmlFor="type-agency" className="font-normal">Agency Folder (Shared with all team members)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="personal" id="type-personal" data-testid="radio-personal" />
+                  <Label htmlFor="type-personal" className="font-normal">Personal Folder (Private to you)</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateFolderDialogOpen(false)} data-testid="button-cancel-create">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createFolderMutation.mutate()}
+              disabled={!newFolderName.trim() || createFolderMutation.isPending}
+              data-testid="button-confirm-create"
+            >
+              {createFolderMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Folder Dialog */}
+      <Dialog open={renameFolderDialogOpen} onOpenChange={setRenameFolderDialogOpen}>
+        <DialogContent data-testid="dialog-rename-folder">
+          <DialogHeader>
+            <DialogTitle>Rename Folder</DialogTitle>
+            <DialogDescription>
+              Enter a new name for "{folderToEdit?.name}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-folder-name">New Folder Name</Label>
+              <Input
+                id="new-folder-name"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Enter new folder name..."
+                data-testid="input-new-folder-name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameFolderDialogOpen(false)} data-testid="button-cancel-rename">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => renameFolderMutation.mutate()}
+              disabled={!newFolderName.trim() || renameFolderMutation.isPending}
+              data-testid="button-confirm-rename"
+            >
+              {renameFolderMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Folder Dialog */}
+      <AlertDialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-folder">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Folder?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{folderToEdit?.name}"? Policies in this folder will be moved to "Unassigned". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteFolderMutation.mutate()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteFolderMutation.isPending}
+              data-testid="button-confirm-delete"
+            >
+              {deleteFolderMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Folder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
