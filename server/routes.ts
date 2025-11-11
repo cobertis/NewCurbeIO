@@ -16784,18 +16784,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
+      // Get ALL policies for this client (notes are shared across policy years)
+      const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
+      
       // Get the note to check permissions
       const [existingNote] = await db
         .select()
         .from(policyNotes)
         .where(and(
           eq(policyNotes.id, noteId),
-          eq(policyNotes.policyId, policyId),
           eq(policyNotes.companyId, policy.companyId)
         ));
       
       if (!existingNote) {
         return res.status(404).json({ message: "Note not found" });
+      }
+      
+      // Check if note belongs to any policy of this client
+      if (!canonicalPolicyIds.includes(existingNote.policyId)) {
+        return res.status(404).json({ message: "Note not found in this client's policies" });
       }
       
       // Permission check: only creator can edit (unless superadmin)
@@ -16820,7 +16827,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .set({ ...updateData, updatedAt: new Date() })
         .where(and(
           eq(policyNotes.id, noteId),
-          eq(policyNotes.policyId, policyId),
           eq(policyNotes.companyId, policy.companyId)
         ));
       
@@ -16861,18 +16867,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
+      // Get ALL policies for this client (notes are shared across policy years)
+      const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
+      
       // Get the note to check permissions
       const [existingNote] = await db
         .select()
         .from(policyNotes)
         .where(and(
           eq(policyNotes.id, noteId),
-          eq(policyNotes.policyId, policyId),
           eq(policyNotes.companyId, policy.companyId)
         ));
       
       if (!existingNote) {
         return res.status(404).json({ message: "Note not found" });
+      }
+      
+      // Check if note belongs to any policy of this client
+      if (!canonicalPolicyIds.includes(existingNote.policyId)) {
+        return res.status(404).json({ message: "Note not found in this client's policies" });
       }
       
       // Permission check: only creator, company admin, or superadmin can delete
@@ -17205,15 +17218,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
+      // Get ALL policies for this client (documents are shared across policy years)
+      const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
+
       // Get document
       const document = await storage.getPolicyDocument(documentId, policy.companyId);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Verify document belongs to policy
-      if (document.policyId !== policyId) {
-        return res.status(403).json({ message: "Document does not belong to this policy" });
+      // Check if document belongs to any policy of this client
+      if (!canonicalPolicyIds.includes(document.policyId)) {
+        return res.status(403).json({ message: "Document does not belong to this client's policies" });
       }
 
       // Delete from database first
