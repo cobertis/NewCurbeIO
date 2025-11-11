@@ -204,6 +204,10 @@ export default function MarketplacePlansPage() {
       metalLevels: Array.from(selectedMetals),
       issuers: Array.from(selectedCarriers),
       diseasePrograms: Array.from(selectedDiseasePrograms),
+      networks: Array.from(selectedNetworks),
+      planFeatures: Array.from(selectedPlanFeatures),
+      maxPremium,
+      maxDeductible,
     }],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -211,7 +215,7 @@ export default function MarketplacePlansPage() {
         pageSize: pageSize.toString(),
       });
 
-      // Add backend filters (CMS API native)
+      // Send ALL filters to backend - server will handle everything
       if (selectedMetals.size > 0) {
         params.append('metalLevels', Array.from(selectedMetals).join(','));
       }
@@ -220,6 +224,18 @@ export default function MarketplacePlansPage() {
       }
       if (selectedDiseasePrograms.size > 0) {
         params.append('diseasePrograms', Array.from(selectedDiseasePrograms).join(','));
+      }
+      if (selectedNetworks.size > 0) {
+        params.append('networks', Array.from(selectedNetworks).join(','));
+      }
+      if (selectedPlanFeatures.size > 0) {
+        params.append('planFeatures', Array.from(selectedPlanFeatures).join(','));
+      }
+      if (maxPremium < 3000) {
+        params.append('maxPremium', maxPremium.toString());
+      }
+      if (maxDeductible < 10000) {
+        params.append('maxDeductible', maxDeductible.toString());
       }
 
       const response = await fetch(
@@ -293,59 +309,11 @@ export default function MarketplacePlansPage() {
     .map(([name, count]) => ({ name, count: count as number }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Server returns plans filtered by backend (metal, issuers, disease programs)
-  const serverPlans = marketplacePlans?.plans || [];
-
-  // Apply client-side filters (premium, deductible, networks, features)
-  let filteredPlans = serverPlans;
-
-  // Filter by max premium
-  if (maxPremium < 3000) {
-    filteredPlans = filteredPlans.filter((plan: any) => {
-      const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
-      return premium <= maxPremium;
-    });
-  }
-
-  // Filter by max deductible
-  if (maxDeductible < 10000) {
-    filteredPlans = filteredPlans.filter((plan: any) => {
-      const medicalDeductible = plan.deductibles?.find((d: any) => d.type === 'Medical Deductible' || d.type === 'Medical EHB Deductible');
-      return !medicalDeductible || medicalDeductible.amount <= maxDeductible;
-    });
-  }
-
-  // Filter by networks
-  if (selectedNetworks.size > 0) {
-    filteredPlans = filteredPlans.filter((plan: any) => 
-      selectedNetworks.has(plan.type)
-    );
-  }
-
-  // Filter by plan features
-  if (selectedPlanFeatures.size > 0) {
-    filteredPlans = filteredPlans.filter((plan: any) => {
-      return Array.from(selectedPlanFeatures).every(feature => {
-        if (feature === 'dental_child') return plan.has_dental_child_coverage;
-        if (feature === 'dental_adult') return plan.has_dental_adult_coverage;
-        if (feature === 'hsa_eligible') return plan.hsa_eligible;
-        if (feature === 'simple_choice') return plan.simple_choice;
-        return false;
-      });
-    });
-  }
-
-  // Calculate total pages based on client-side filtered plans
-  const totalFilteredPlans = filteredPlans.length;
-  const totalPages = Math.ceil(totalFilteredPlans / pageSize);
-
-  // Slice for client-side pagination
-  const paginatedPlans = filteredPlans.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  
-  // Use server's total for display if no client-side filters are active
-  const totalPlans = (maxPremium < 3000 || maxDeductible < 10000 || selectedNetworks.size > 0 || selectedPlanFeatures.size > 0)
-    ? totalFilteredPlans
-    : (marketplacePlans?.total || 0);
+  // CRITICAL: Use API response DIRECTLY - no client-side filtering or pagination!
+  // All filtering and pagination happens server-side now
+  const displayedPlans = marketplacePlans?.plans || [];
+  const totalPlans = marketplacePlans?.total || 0;
+  const totalPages = marketplacePlans?.totalPages || Math.ceil(totalPlans / pageSize);
   
   // Helper functions for plan comparison
   const togglePlanForComparison = (planId: string) => {
@@ -645,7 +613,7 @@ export default function MarketplacePlansPage() {
           {/* Center: Plans List */}
           <div className="space-y-4">
 
-          {marketplacePlans && filteredPlans && (
+          {marketplacePlans && displayedPlans && (
             <div className="grid gap-4">
               {/* Header with Sort, Order, and Pagination */}
               <div className="space-y-3 pb-2 border-b">
@@ -764,7 +732,7 @@ export default function MarketplacePlansPage() {
                 </div>
               </div>
 
-              {paginatedPlans.map((plan: any, index: number) => {
+              {displayedPlans.map((plan: any, index: number) => {
                 // Calculate APTC (tax credit) for this plan
                 const aptcAmount = plan.premium - (plan.premium_w_credit || plan.premium);
                 
@@ -1147,7 +1115,7 @@ export default function MarketplacePlansPage() {
                 </div>
               )}
 
-              {filteredPlans.length === 0 && (
+              {displayedPlans.length === 0 && (
                 <Card>
                   <CardContent className="py-12 text-center">
                     <Info className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />

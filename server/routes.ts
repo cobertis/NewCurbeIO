@@ -13167,7 +13167,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get pagination parameters from query string
       const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 100; // Default to CMS API maximum
+      const pageSize = parseInt(req.query.pageSize as string) || 10; // Default page size
+      
+      // Extract ALL filters from query params
+      const filters: {
+        metalLevels?: string[];
+        issuers?: string[];
+        networks?: string[];
+        diseasePrograms?: string[];
+        maxPremium?: number;
+        maxDeductible?: number;
+        planFeatures?: string[];
+      } = {};
+      
+      if (req.query.metalLevels) {
+        filters.metalLevels = typeof req.query.metalLevels === 'string' 
+          ? req.query.metalLevels.split(',').filter(Boolean)
+          : (req.query.metalLevels as string[]).filter(Boolean);
+      }
+      
+      if (req.query.issuers) {
+        filters.issuers = typeof req.query.issuers === 'string' 
+          ? req.query.issuers.split(',').filter(Boolean)
+          : (req.query.issuers as string[]).filter(Boolean);
+      }
+      
+      if (req.query.networks) {
+        filters.networks = typeof req.query.networks === 'string' 
+          ? req.query.networks.split(',').filter(Boolean)
+          : (req.query.networks as string[]).filter(Boolean);
+      }
+      
+      if (req.query.diseasePrograms) {
+        filters.diseasePrograms = typeof req.query.diseasePrograms === 'string' 
+          ? req.query.diseasePrograms.split(',').filter(Boolean)
+          : (req.query.diseasePrograms as string[]).filter(Boolean);
+      }
+      
+      if (req.query.planFeatures) {
+        filters.planFeatures = typeof req.query.planFeatures === 'string' 
+          ? req.query.planFeatures.split(',').filter(Boolean)
+          : (req.query.planFeatures as string[]).filter(Boolean);
+      }
+      
+      if (req.query.maxPremium) {
+        filters.maxPremium = parseFloat(req.query.maxPremium as string);
+      }
+      
+      if (req.query.maxDeductible) {
+        filters.maxDeductible = parseFloat(req.query.maxDeductible as string);
+      }
       
       if (!quoteId) {
         return res.status(400).json({ message: "Quote ID is required" });
@@ -13247,11 +13296,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })),
       };
       
-      // Fetch plans from CMS Marketplace with pagination (using static import from top of file)
-      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize);
+      // Fetch plans from CMS Marketplace with pagination and filters
+      const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize, undefined, filters);
       
       // Return EXACTLY what the CMS API returns - NO modifications
       console.log(`[CMS_MARKETPLACE] Returning EXACT API response - ${marketplaceData.plans?.length || 0} plans for quote ${quoteId}, page ${page}`);
+      console.log(`[CMS_MARKETPLACE] Applied filters:`, filters);
       
       res.json(marketplaceData);
     } catch (error: any) {
@@ -17625,14 +17675,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Get pagination parameters from query string
       const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 100; // Default to CMS API maximum
+      const pageSize = parseInt(req.query.pageSize as string) || 10; // Default page size
       
-      // Extract filters from query params (CMS API native filters)
+      // Extract ALL filters from query params
       const filters: {
         metalLevels?: string[];
         issuers?: string[];
         networks?: string[];
         diseasePrograms?: string[];
+        maxPremium?: number;
+        maxDeductible?: number;
+        planFeatures?: string[];
       } = {};
       
       if (req.query.metalLevels) {
@@ -17657,6 +17710,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         filters.diseasePrograms = typeof req.query.diseasePrograms === 'string' 
           ? req.query.diseasePrograms.split(',').filter(Boolean)
           : (req.query.diseasePrograms as string[]).filter(Boolean);
+      }
+      
+      if (req.query.planFeatures) {
+        filters.planFeatures = typeof req.query.planFeatures === 'string' 
+          ? req.query.planFeatures.split(',').filter(Boolean)
+          : (req.query.planFeatures as string[]).filter(Boolean);
+      }
+      
+      if (req.query.maxPremium) {
+        filters.maxPremium = parseFloat(req.query.maxPremium as string);
+      }
+      
+      if (req.query.maxDeductible) {
+        filters.maxDeductible = parseFloat(req.query.maxDeductible as string);
       }
       
       if (!policyId) {

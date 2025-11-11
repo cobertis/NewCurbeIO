@@ -309,6 +309,9 @@ export async function fetchMarketplacePlans(
     issuers?: string[];
     networks?: string[];
     diseasePrograms?: string[];
+    maxPremium?: number;
+    maxDeductible?: number;
+    planFeatures?: string[];
   }
 ): Promise<MarketplaceApiResponse> {
   // Validate yearOverride if provided
@@ -362,14 +365,73 @@ export async function fetchMarketplacePlans(
     }
   }
   
-  console.log(`[CMS_MARKETPLACE] ✅ Total plans fetched: ${allPlans.length} of ${totalAvailable}`);
+  console.log(`[CMS_MARKETPLACE] ✅ Total plans fetched from CMS: ${allPlans.length} of ${totalAvailable}`);
   console.log(`[CMS_MARKETPLACE] ✅ household_aptc: $${eligibility?.aptc || 'NOT AVAILABLE'}`);
   console.log(`[CMS_MARKETPLACE] ✅ household_csr: ${eligibility?.csr || 'NOT AVAILABLE'}`);
   
-  // Return combined response with eligibility data
+  // Apply non-CMS filters server-side (networks, maxPremium, maxDeductible, planFeatures)
+  let filteredPlans = allPlans;
+  
+  // Filter by networks (plan.type)
+  if (filters?.networks && filters.networks.length > 0) {
+    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => 
+      filters.networks!.includes(plan.type)
+    );
+    console.log(`[CMS_MARKETPLACE] Applied network filter: ${filteredPlans.length} plans remaining`);
+  }
+  
+  // Filter by max premium
+  if (filters?.maxPremium && filters.maxPremium > 0) {
+    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => {
+      const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
+      return premium <= filters.maxPremium!;
+    });
+    console.log(`[CMS_MARKETPLACE] Applied maxPremium filter ($${filters.maxPremium}): ${filteredPlans.length} plans remaining`);
+  }
+  
+  // Filter by max deductible
+  if (filters?.maxDeductible && filters.maxDeductible > 0) {
+    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => {
+      const medicalDeductible = plan.deductibles?.find((d: any) => 
+        d.type === 'Medical Deductible' || d.type === 'Medical EHB Deductible'
+      );
+      return !medicalDeductible || medicalDeductible.amount <= filters.maxDeductible!;
+    });
+    console.log(`[CMS_MARKETPLACE] Applied maxDeductible filter ($${filters.maxDeductible}): ${filteredPlans.length} plans remaining`);
+  }
+  
+  // Filter by plan features
+  if (filters?.planFeatures && filters.planFeatures.length > 0) {
+    filteredPlans = filteredPlans.filter((plan: MarketplacePlan) => {
+      return filters.planFeatures!.every(feature => {
+        if (feature === 'dental_child') return plan.has_dental_child_coverage;
+        if (feature === 'dental_adult') return plan.has_dental_adult_coverage;
+        if (feature === 'hsa_eligible') return plan.hsa_eligible;
+        if (feature === 'simple_choice') return plan.simple_choice;
+        return false;
+      });
+    });
+    console.log(`[CMS_MARKETPLACE] Applied planFeatures filter: ${filteredPlans.length} plans remaining`);
+  }
+  
+  // Calculate pagination on filtered results
+  const totalFilteredPlans = filteredPlans.length;
+  const totalPages = Math.ceil(totalFilteredPlans / pageSize);
+  
+  // Return paginated subset of filtered plans
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedPlans = filteredPlans.slice(startIndex, endIndex);
+  
+  console.log(`[CMS_MARKETPLACE] ✅ Final result: Page ${page}/${totalPages}, showing ${paginatedPlans.length} of ${totalFilteredPlans} filtered plans`);
+  
+  // Return combined response with eligibility data and proper pagination metadata
   return {
-    plans: allPlans,
-    total: totalAvailable,
+    plans: paginatedPlans,
+    total: totalFilteredPlans, // Total after filtering
+    totalPages: totalPages, // Total pages after filtering
+    currentPage: page,
+    pageSize: pageSize,
     year: year,
     household_aptc: eligibility?.aptc,
     household_csr: eligibility?.csr,
@@ -416,6 +478,9 @@ async function fetchSinglePage(
     issuers?: string[];
     networks?: string[];
     diseasePrograms?: string[];
+    maxPremium?: number;
+    maxDeductible?: number;
+    planFeatures?: string[];
   }
 ): Promise<MarketplaceApiResponse> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
