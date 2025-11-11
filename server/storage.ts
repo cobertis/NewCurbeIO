@@ -4344,6 +4344,7 @@ export class DbStorage implements IStorage {
       clientPhone: string;
       agentId: string | null;
       agentName: string | null;
+      isArchived: boolean | null;
       createdAt: Date;
     }>;
     nextCursor: string | null;
@@ -4460,6 +4461,7 @@ export class DbStorage implements IStorage {
         agentId: policies.agentId,
         agentFirstName: agent.firstName,
         agentLastName: agent.lastName,
+        isArchived: policies.isArchived,
         createdAt: policies.createdAt,
         updatedAt: policies.updatedAt,
         updatedOrCreated: updatedOrCreatedExpr,
