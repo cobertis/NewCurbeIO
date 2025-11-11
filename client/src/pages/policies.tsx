@@ -2024,8 +2024,13 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                                   if (value && value !== '') {
                                     const num = parseFloat(value);
                                     if (!isNaN(num)) {
-                                      // Always format to 2 decimals on blur
-                                      field.onChange(num.toFixed(2));
+                                      // If the value is zero, clear the field (delete income)
+                                      if (num === 0) {
+                                        field.onChange('');
+                                      } else {
+                                        // Otherwise format to 2 decimals on blur
+                                        field.onChange(num.toFixed(2));
+                                      }
                                     }
                                   }
                                   field.onBlur();
