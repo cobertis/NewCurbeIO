@@ -16304,7 +16304,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ==================== QUOTE PAYMENT METHODS ====================
   
   // Get all payment methods for a policy (PLAIN TEXT - NO ENCRYPTION)
-  // CROSS-POLICY SHARING: Returns payment methods from ALL policies of the same client
+  // Returns ONLY payment methods for THIS specific policy (no cross-policy sharing)
   app.get("/api/policies/:policyId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -16321,14 +16321,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Get all policy IDs for this client (request-scoped memoization)
-      if (!(req as any)._clientPolicyIds) {
-        (req as any)._clientPolicyIds = await storage.getCanonicalPolicyIds(policyId);
-      }
-      const clientPolicyIds = (req as any)._clientPolicyIds as string[];
-      
-      // Get payment methods from ALL client policies
-      const paymentMethods = await storage.getPolicyPaymentMethods(clientPolicyIds, policy.companyId);
+      // Get payment methods ONLY for this specific policy
+      const paymentMethods = await storage.getPolicyPaymentMethods(policyId, policy.companyId);
       
       // Return payment methods with plain text card/bank info
       await logger.logAuth({
@@ -16339,18 +16333,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         metadata: {
           entity: "policy_payment_methods",
           policyId,
-          clientPolicyIds,
           fields: ["cardNumber", "cvv", "accountNumber", "routingNumber"],
         },
       });
       
-      res.json({ 
-        paymentMethods,
-        metadata: {
-          totalPolicies: clientPolicyIds.length,
-          policyIds: clientPolicyIds
-        }
-      });
+      res.json({ paymentMethods });
     } catch (error: any) {
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
@@ -16683,7 +16670,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // Get all notes for a policy
-  // CROSS-POLICY SHARING: Returns notes from ALL policies of the same client
+  // Returns ONLY notes for THIS specific policy (no cross-policy sharing)
   app.get("/api/policies/:policyId/notes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -16700,22 +16687,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Get all policy IDs for this client (request-scoped memoization)
-      if (!(req as any)._clientPolicyIds) {
-        (req as any)._clientPolicyIds = await storage.getCanonicalPolicyIds(policyId);
-      }
-      const clientPolicyIds = (req as any)._clientPolicyIds as string[];
+      // Get notes ONLY for this specific policy
+      const notes = await storage.getPolicyNotes(policyId, policy.companyId);
       
-      // Get notes from ALL client policies
-      const notes = await storage.getPolicyNotes(clientPolicyIds, policy.companyId);
-      
-      res.json({ 
-        notes,
-        metadata: {
-          totalPolicies: clientPolicyIds.length,
-          policyIds: clientPolicyIds
-        }
-      });
+      res.json({ notes });
     } catch (error: any) {
       console.error("Error fetching policy notes:", error);
       res.status(500).json({ message: "Failed to fetch policy notes" });
@@ -16960,7 +16935,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ==================== POLICY DOCUMENTS ENDPOINTS ====================
 
   // GET /api/policies/:policyId/documents - List all documents for a policy
-  // CROSS-POLICY SHARING: Returns documents from ALL policies of the same client
+  // Returns ONLY documents for THIS specific policy (no cross-policy sharing)
   app.get("/api/policies/:policyId/documents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -16978,25 +16953,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
-      // Get all policy IDs for this client (request-scoped memoization)
-      if (!(req as any)._clientPolicyIds) {
-        (req as any)._clientPolicyIds = await storage.getCanonicalPolicyIds(policyId);
-      }
-      const clientPolicyIds = (req as any)._clientPolicyIds as string[];
-
-      // List documents from ALL client policies with optional filters
-      const documents = await storage.listPolicyDocuments(clientPolicyIds, policy.companyId, {
+      // List documents ONLY for this specific policy with optional filters
+      const documents = await storage.listPolicyDocuments(policyId, policy.companyId, {
         category: category as string | undefined,
         search: q as string | undefined
       });
 
-      res.json({ 
-        documents,
-        metadata: {
-          totalPolicies: clientPolicyIds.length,
-          policyIds: clientPolicyIds
-        }
-      });
+      res.json({ documents });
     } catch (error: any) {
       console.error("Error listing policy documents:", error);
       res.status(500).json({ message: "Failed to list documents" });
@@ -17228,7 +17191,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ==================== QUOTE REMINDERS ====================
   
   // GET /api/policys/:policyId/reminders - List all reminders for a policy
-  // CROSS-POLICY SHARING: Returns reminders from ALL policies of the same client
+  // Returns ONLY reminders for THIS specific policy (no cross-policy sharing)
   app.get("/api/policies/:policyId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { policyId } = req.params;
@@ -17246,28 +17209,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
 
-      // Get all policy IDs for this client (request-scoped memoization)
-      if (!(req as any)._clientPolicyIds) {
-        (req as any)._clientPolicyIds = await storage.getCanonicalPolicyIds(policyId);
-      }
-      const clientPolicyIds = (req as any)._clientPolicyIds as string[];
-
       // Build filters
       const filters: { status?: string; priority?: string; userId?: string } = {};
       if (status && typeof status === 'string') filters.status = status;
       if (priority && typeof priority === 'string') filters.priority = priority;
       if (userId && typeof userId === 'string') filters.userId = userId;
 
-      // Get reminders from ALL client policies
-      const reminders = await storage.listPolicyReminders(clientPolicyIds, policy.companyId, filters);
+      // Get reminders ONLY for this specific policy
+      const reminders = await storage.listPolicyReminders(policyId, policy.companyId, filters);
 
-      res.json({ 
-        reminders,
-        metadata: {
-          totalPolicies: clientPolicyIds.length,
-          policyIds: clientPolicyIds
-        }
-      });
+      res.json({ reminders });
     } catch (error: any) {
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
@@ -18108,7 +18059,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // GET /api/policys/:id/consents - List all consents for a policy
-  // CROSS-POLICY SHARING: Returns consents from ALL policies of the same client
+  // Returns ONLY consents for THIS specific policy (no cross-policy sharing)
   app.get("/api/policies/:id/consents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { id: policyId } = req.params;
@@ -18125,22 +18076,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
-      // Get all policy IDs for this client (request-scoped memoization)
-      if (!(req as any)._clientPolicyIds) {
-        (req as any)._clientPolicyIds = await storage.getCanonicalPolicyIds(policyId);
-      }
-      const clientPolicyIds = (req as any)._clientPolicyIds as string[];
+      // Get consents ONLY for this specific policy
+      const consents = await storage.listPolicyConsents(policyId, policy.companyId);
       
-      // Get consents from ALL client policies
-      const consents = await storage.listPolicyConsents(clientPolicyIds, policy.companyId);
-      
-      res.json({ 
-        consents,
-        metadata: {
-          totalPolicies: clientPolicyIds.length,
-          policyIds: clientPolicyIds
-        }
-      });
+      res.json({ consents });
     } catch (error: any) {
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
