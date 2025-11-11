@@ -4445,6 +4445,7 @@ export class DbStorage implements IStorage {
         agentFirstName: agent.firstName,
         agentLastName: agent.lastName,
         createdAt: policies.createdAt,
+        updatedAt: policies.updatedAt,
       })
       .from(policies)
       .leftJoin(agent, eq(policies.agentId, agent.id))
@@ -4478,10 +4479,14 @@ export class DbStorage implements IStorage {
     }
     
     // Execute query with ordering and limit
-    // CRITICAL FIX: Cast effective_date to DATE for chronological ordering
-    // Text ordering fails with non-ISO dates like "2025-2-12" vs "2025-11-03"
+    // Order by most recently edited policies first (updatedAt DESC)
+    // Fallback to effectiveDate for policies with same updatedAt or NULL updatedAt
     const results = await query
-      .orderBy(sql`${policies.effectiveDate}::date DESC`, desc(policies.id))
+      .orderBy(
+        sql`COALESCE(${policies.updatedAt}, ${policies.createdAt}) DESC`,
+        sql`${policies.effectiveDate}::date DESC`,
+        desc(policies.id)
+      )
       .limit(limit + 1); // Fetch one extra to determine if there's a next page
     
     // Determine if there are more results
@@ -4524,6 +4529,7 @@ export class DbStorage implements IStorage {
         ? `${item.agentFirstName} ${item.agentLastName}`.trim()
         : null,
       createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
     }));
     
     return {

@@ -3955,7 +3955,7 @@ export default function PoliciesPage() {
     },
     onSuccess: (data) => {
       setRenewingPolicyId(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] });
       
       // Navigate directly to the renewed policy after a short delay
@@ -4910,7 +4910,7 @@ export default function PoliciesPage() {
           console.log('[CREATE QUOTE] Navigating to policy:', quoteId);
           
           // Invalidate queries first to ensure fresh data
-          await queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
           
           // Small delay to ensure the policy is available in the database
           await new Promise(resolve => setTimeout(resolve, 300));
@@ -5011,7 +5011,7 @@ export default function PoliciesPage() {
           setIsCreatingQuote(false);
           
           // Invalidate queries to refresh the list
-          await queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
           
           toast({
             title: "Policy Created",
@@ -5027,7 +5027,7 @@ export default function PoliciesPage() {
         setIsCreatingQuote(false);
         
         // Invalidate queries to refresh the list
-        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
         
         toast({
           title: "Policy Created",
@@ -5036,7 +5036,7 @@ export default function PoliciesPage() {
       }
       
       // Invalidate queries and reset form in background
-      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       
       // Reset form state for next quote (delayed to not interfere with navigation)
       setTimeout(() => {
@@ -5113,7 +5113,7 @@ export default function PoliciesPage() {
     onSuccess: (_, variables) => {
       // Invalidate UNIFIED query to refresh ALL related data
       queryClient.invalidateQueries({ queryKey: ['/api/policies', variables.quoteId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       toast({
         title: "Quote updated",
         description: "Your changes have been saved successfully.",
@@ -5133,7 +5133,7 @@ export default function PoliciesPage() {
       return apiRequest("DELETE", `/api/policies/${quoteId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       setDeleteDialogOpen(false);
       setQuoteToDelete(null);
       toast({
@@ -5160,7 +5160,7 @@ export default function PoliciesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       toast({
         title: "Agent Updated",
         description: "The agent has been successfully changed.",
@@ -5189,7 +5189,7 @@ export default function PoliciesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
       toast({
         title: "Status Updated",
@@ -5353,7 +5353,7 @@ export default function PoliciesPage() {
       if (selectedPolicyId) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] }),
-          queryClient.invalidateQueries({ queryKey: ["/api/policies"] })
+          queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false })
         ]);
       }
       
@@ -7241,7 +7241,7 @@ export default function PoliciesPage() {
                                 
                                 // Refresh policy details
                                 queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
                                 queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                                 
                                 toast({
@@ -11753,7 +11753,7 @@ export default function PoliciesPage() {
                         await apiRequest("POST", `/api/policies/${viewingQuote.id}/status`, { status: "canceled" });
                         
                         queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
                         queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                         
                         toast({
@@ -11857,7 +11857,7 @@ export default function PoliciesPage() {
                           duration: 3000,
                         });
                         
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
                         queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                         
                         setDuplicatePolicyDialogOpen(false);
@@ -11907,7 +11907,7 @@ export default function PoliciesPage() {
                         });
                         
                         queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
                         queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                         
                         setBlockPolicyDialogOpen(false);
@@ -14585,7 +14585,7 @@ function StatusBadgeEditor({
       if (type === "quote") {
         queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       } else {
-        queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       }
       
       toast({
