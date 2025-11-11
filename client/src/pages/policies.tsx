@@ -3698,7 +3698,6 @@ export default function PoliciesPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [searchInput, setSearchInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
@@ -3796,9 +3795,6 @@ export default function PoliciesPage() {
   
   
   const documentFileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Search debounce timeout ref
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Reminders sheet state
   const [remindersSheetOpen, setRemindersSheetOpen] = useState(false);
@@ -4032,16 +4028,16 @@ export default function PoliciesPage() {
   });
   const companyAgents = companyAgentsData?.agents || [];
 
-  // Fetch policies - Server-side filtering for family members search
+  // Fetch policies - Hybrid search: server-side for family members, client-side for primary client
   const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
-    queryKey: ["/api/policies", { searchTerm: searchQuery, includeFamilyMembers: filters.searchFamilyMembers }],
+    queryKey: ["/api/policies", { searchTerm: filters.searchFamilyMembers ? debouncedFamilySearch : undefined, includeFamilyMembers: filters.searchFamilyMembers }],
     queryFn: async () => {
-      // Build query params for server-side search
+      // Build query params
       const params = new URLSearchParams();
-      if (searchQuery.trim()) {
-        params.append('searchTerm', searchQuery.trim());
-      }
-      if (filters.searchFamilyMembers) {
+      
+      // When family member search is enabled, send debounced search term to server
+      if (filters.searchFamilyMembers && debouncedFamilySearch.trim()) {
+        params.append('searchTerm', debouncedFamilySearch.trim());
         params.append('searchFamilyMembers', 'true');
       }
       
@@ -4127,25 +4123,24 @@ export default function PoliciesPage() {
     viewingQuote?.specialEnrollmentDate
   ]);
 
-  // Debounced search: auto-update searchQuery 300ms after user stops typing
+  // Debounce search for family members (server-side search)
+  // Client-side search has no debounce since it's instant
+  const [debouncedFamilySearch, setDebouncedFamilySearch] = useState("");
+  
   useEffect(() => {
-    // Clear any existing timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+    if (!filters.searchFamilyMembers) {
+      // If family member search is disabled, clear debounced value
+      setDebouncedFamilySearch("");
+      return;
     }
     
-    // Set new timeout to update searchQuery after 300ms
-    searchTimeoutRef.current = setTimeout(() => {
-      setSearchQuery(searchInput);
-    }, 300);
+    // Debounce the search when family member search is enabled
+    const timer = setTimeout(() => {
+      setDebouncedFamilySearch(searchInput);
+    }, 500);
     
-    // Cleanup function to clear timeout on unmount or when searchInput changes
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchInput]);
+    return () => clearTimeout(timer);
+  }, [searchInput, filters.searchFamilyMembers]);
 
   // Pre-select product type when opening manual plan dialog
   useEffect(() => {
@@ -5556,11 +5551,21 @@ export default function PoliciesPage() {
   // });
   const householdIncomeData = quoteDetail ? { totalIncome: quoteDetail.totalHouseholdIncome } : undefined;
   
-  // Filter quotes based on filters (search is now handled server-side)
+  // Filter quotes based on filters (hybrid: client-side for primary, server-side for family)
   const filteredQuotes = allQuotes.filter((quote) => {
-    // NOTE: Search filtering is now handled server-side via searchTerm + includeFamilyMembers params
-    // The backend already filtered results based on client name/email/phone and family members
-    // This client-side filter only applies additional UI filters (status, product type, etc.)
+    // Client-side search filter (only when family member search is disabled)
+    let matchesSearch = true;
+    if (!filters.searchFamilyMembers && searchInput.trim()) {
+      const searchLower = searchInput.toLowerCase().trim();
+      const fullName = `${quote.clientFirstName} ${quote.clientMiddleName || ''} ${quote.clientLastName} ${quote.clientSecondLastName || ''}`.toLowerCase();
+      const email = (quote.clientEmail || '').toLowerCase();
+      const phone = (quote.clientPhone || '').toLowerCase();
+      
+      matchesSearch = fullName.includes(searchLower) || 
+                      email.includes(searchLower) || 
+                      phone.includes(searchLower);
+    }
+    // When family member search is enabled, server handles filtering
     
     // Status filter
     const matchesStatus = filters.status === "all" || quote.status === filters.status;
@@ -5626,7 +5631,7 @@ export default function PoliciesPage() {
       matchesView = !quote.isArchived;
     }
     
-    return matchesStatus && matchesProduct && matchesState && 
+    return matchesSearch && matchesStatus && matchesProduct && matchesState && 
            matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
            matchesEffectiveDateTo && matchesApplicantsFrom && matchesApplicantsTo &&
            matchesEffectiveYear && matchesOEP && matchesView;
@@ -5648,7 +5653,7 @@ export default function PoliciesPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filters]);
+  }, [searchInput, filters]);
   
   // Reset all filters
   const resetFilters = () => {
@@ -12251,15 +12256,6 @@ export default function PoliciesPage() {
                           placeholder="Search clients (filters as you type)..."
                           value={searchInput}
                           onChange={(e) => setSearchInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              // Cancel pending timeout and apply search immediately
-                              if (searchTimeoutRef.current) {
-                                clearTimeout(searchTimeoutRef.current);
-                              }
-                              setSearchQuery(searchInput);
-                            }
-                          }}
                           className="pl-10"
                           data-testid="input-search-quotes"
                         />
