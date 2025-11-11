@@ -62,7 +62,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Manual Event Creation:** For Birthday, Reminder, and Appointment events.
 - **Appointment Availability Configuration:** User-specific scheduling.
 - **Agent Assignment System:** Flexible reassignment for quotes and policies.
-- **Policy Renewal System:** Automated renewal period activation.
+- **Policy Renewal System (Nov 2025):** Automated renewal period activation with smart CMS Marketplace integration. Best-effort plan fetching validates state-based exchanges (19 SBE states: CA, CO, CT, DC, ID, IL, KY, ME, MD, MA, MN, NV, NJ, NM, PA, RI, VT, VA, WA) and required fields (ZIP, county, state, DOB) before calling CMS API. Renewal succeeds even if plan fetch fails, showing non-blocking warning toast. Response includes `plansFetchWarning` and `plansFetched` flags for UI handling.
 - **Landing Page Builder System:** SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes.
 - **Unified Contacts Directory:** Comprehensive contact management system aggregating contacts from Quotes, Policies, and Manual Contacts (excludes BulkVS SMS contacts). Features intelligent deduplication, advanced filtering, search, CSV export (with SSN masking for non-superadmins), and role-based access control. Manual contacts can be added from SMS chat.
 - **Tasks & Reminders Management System:** Unified task management with assignment, priority levels, status tracking, due dates, descriptions, search, and advanced filtering. Superadmins have cross-company visibility.

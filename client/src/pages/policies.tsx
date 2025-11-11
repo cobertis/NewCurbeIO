@@ -3808,11 +3808,24 @@ export default function PoliciesPage() {
       
       // Navigate directly to the renewed policy after a short delay
       if (data?.renewedPolicy?.id) {
+        // Show success toast
         toast({
           title: "Policy renewed successfully",
           description: `New policy ${data.renewedPolicy.id} created for 2026`,
           duration: 3000,
         });
+        
+        // Show warning toast if plans couldn't be fetched
+        if (data.plansFetchWarning) {
+          setTimeout(() => {
+            toast({
+              title: "Action Required",
+              description: data.plansFetchWarning,
+              variant: "default",
+              duration: 6000,
+            });
+          }, 1000); // Delay slightly so it appears after the success toast
+        }
         
         // Small delay to ensure queries invalidate before navigation
         setTimeout(() => {
