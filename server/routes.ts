@@ -16419,14 +16419,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
       
+      // Get ALL policies for this client (payment methods are shared across policy years)
+      const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
+      
       const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!paymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
       
-      // Verify payment method belongs to this policy
-      if (paymentMethod.policyId !== policyId) {
-        return res.status(404).json({ message: "Payment method not found in this policy" });
+      // Check if payment method belongs to any policy of this client
+      if (!canonicalPolicyIds.includes(paymentMethod.policyId)) {
+        return res.status(404).json({ message: "Payment method not found in this client's policies" });
       }
       
       // Return payment method with plain text data
