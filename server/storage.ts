@@ -4609,6 +4609,7 @@ export class DbStorage implements IStorage {
     const results = await db
       .select({
         policy: policies,
+        primaryPlanData: policyPlans.planData,
         creator: {
           id: creatorUser.id,
           firstName: creatorUser.firstName,
@@ -4625,11 +4626,17 @@ export class DbStorage implements IStorage {
       .from(policies)
       .leftJoin(creatorUser, eq(policies.createdBy, creatorUser.id))
       .leftJoin(agentUser, eq(policies.agentId, agentUser.id))
+      .leftJoin(policyPlans, and(
+        eq(policyPlans.policyId, policies.id),
+        eq(policyPlans.isPrimary, true)
+      ))
       .where(and(...conditions))
       .orderBy(desc(policies.effectiveDate), desc(policies.createdAt));
 
     return results.map((result) => ({
       ...result.policy,
+      // Use primaryPlanData from policy_plans if selectedPlan is null (legacy field)
+      selectedPlan: result.policy.selectedPlan || result.primaryPlanData || null,
       creator: result.creator,
       agent: result.agent.id ? result.agent : null,
     })) as any;
