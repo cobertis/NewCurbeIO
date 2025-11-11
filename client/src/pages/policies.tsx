@@ -8334,7 +8334,7 @@ export default function PoliciesPage() {
                               </TableCell>
                               <TableCell>
                                 <div className="space-y-1">
-                                  <div className="font-medium text-sm text-blue-600 dark:text-blue-400">
+                                  <div className="font-semibold text-sm">
                                     {(() => {
                                       const typeMap: Record<string, string> = {
                                         'aca': 'Health Insurance ACA',
@@ -8352,24 +8352,16 @@ export default function PoliciesPage() {
                                       const insuranceType = typeMap[policy.productType?.toLowerCase()] || policy.productType;
                                       const carrierName = policy.selectedPlan ? (policy.selectedPlan.issuer?.name || policy.selectedPlan.issuer_name) : null;
                                       
-                                      return carrierName ? `${carrierName} - ${insuranceType}` : insuranceType;
+                                      return carrierName ? `${carrierName} ${insuranceType}` : insuranceType;
                                     })()}
                                   </div>
                                   {policy.selectedPlan ? (
                                     <div className="space-y-0.5">
-                                      <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                        {policy.selectedPlan.plan_marketing_name}
-                                      </div>
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <Badge variant="secondary" className="text-xs px-1.5 py-0">
                                           {capitalize(policy.selectedPlan.metal_level) || 'N/A'}
                                         </Badge>
-                                        {policy.selectedPlan.plan_type && (
-                                          <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                            {policy.selectedPlan.plan_type}
-                                          </Badge>
-                                        )}
-                                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                                        <span className="text-xs text-muted-foreground font-semibold">
                                           {policy.selectedPlan.premium_w_credit !== undefined && policy.selectedPlan.premium_w_credit !== null
                                             ? formatCurrency(policy.selectedPlan.premium_w_credit)
                                             : formatCurrency(policy.selectedPlan.premium)}/mo
@@ -8381,8 +8373,8 @@ export default function PoliciesPage() {
                                       No plan selected
                                     </div>
                                   )}
-                                  <div className="text-xs text-muted-foreground pt-1 border-t">
-                                    Effective {formatDateForDisplay(policy.effectiveDate, "MMM dd, yyyy")} • ID: {policy.id.slice(0, 8)}
+                                  <div className="text-xs text-muted-foreground">
+                                    {formatDateForDisplay(policy.effectiveDate, "MMM dd, yyyy")} • {policy.id.slice(0, 8)}
                                   </div>
                                 </div>
                               </TableCell>
