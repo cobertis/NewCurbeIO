@@ -1180,7 +1180,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   useEffect(() => {
     if (isMemberDataReady && memberData && !hasInitializedRef.current) {
       console.log('[EditMemberSheet] Resetting form with complete data:', memberData);
-      editForm.reset(memberData);
+      editForm.reset(memberData, { keepDirty: false }); // CRITICAL: Reset dirty state to track real changes
       hasInitializedRef.current = true; // Mark as initialized for this member
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1220,6 +1220,15 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       return;
     }
 
+    // CRITICAL: Only auto-save if form has actual changes
+    const hasChanges = editForm.formState.isDirty;
+    
+    if (!hasChanges) {
+      // No changes - instant tab switch (no save needed)
+      setMemberTab(newTab);
+      return;
+    }
+
     // Get current tab's fields
     const currentTabFields = tabFieldsMap[memberTab as keyof typeof tabFieldsMap] || [];
 
@@ -1240,7 +1249,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       return;
     }
 
-    // If valid, auto-save before changing tabs
+    // If valid AND has changes, auto-save before changing tabs
     try {
       const formData = editForm.getValues();
       await handleSave(formData);
@@ -1469,10 +1478,30 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
       
       console.log('[EditMemberSheet] All data saved successfully!');
       
-      // Invalidate only specific queries - no refetch, just mark as stale
-      // This makes saves instant while keeping data fresh
-      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'], exact: true });
-      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'members'], exact: false });
+      // OPTIMIZED: Targeted cache invalidation with exact: true for instant saves
+      // Only invalidate the specific resources we touched
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/policies', quote.id, 'detail'], 
+        exact: true 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['/api/policies', quote.id, 'members'], 
+        exact: true 
+      });
+      if (currentMemberId) {
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/policies', quote.id, 'members', currentMemberId], 
+          exact: true 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/policies', quote.id, 'members', currentMemberId, 'income'], 
+          exact: true 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/policies', quote.id, 'members', currentMemberId, 'immigration'], 
+          exact: true 
+        });
+      }
       
       toast({
         title: "Success",
