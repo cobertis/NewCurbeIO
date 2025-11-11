@@ -4548,6 +4548,7 @@ export class DbStorage implements IStorage {
       agentName: item.agentFirstName && item.agentLastName 
         ? `${item.agentFirstName} ${item.agentLastName}`.trim()
         : null,
+      isArchived: item.isArchived,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     }));
