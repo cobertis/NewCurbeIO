@@ -239,6 +239,7 @@ export async function fetchHouseholdEligibility(
     const apiUrl = `https://marketplace.api.healthcare.gov/api/v1/households/eligibility/estimates?apikey=${apiKey}`;
     
     console.log('[CMS_MARKETPLACE_ELIGIBILITY] 🔍 Fetching APTC/CSR from eligibility endpoint...');
+    console.log('[CMS_MARKETPLACE_ELIGIBILITY] 📤 Request Body:', JSON.stringify(requestBody, null, 2));
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -251,10 +252,13 @@ export async function fetchHouseholdEligibility(
 
     if (!response.ok) {
       console.error('[CMS_MARKETPLACE_ELIGIBILITY] API Error:', response.status);
+      const errorText = await response.text();
+      console.error('[CMS_MARKETPLACE_ELIGIBILITY] ❌ Error Response:', errorText);
       return null;
     }
 
     const data = await response.json();
+    console.log('[CMS_MARKETPLACE_ELIGIBILITY] 📥 Full Response:', JSON.stringify(data, null, 2));
     
     if (data.estimates && data.estimates.length > 0) {
       const estimate = data.estimates[0];
@@ -265,6 +269,7 @@ export async function fetchHouseholdEligibility(
       };
     }
     
+    console.log('[CMS_MARKETPLACE_ELIGIBILITY] ⚠️ No estimates found in response');
     return null;
   } catch (error) {
     console.error('[CMS_MARKETPLACE_ELIGIBILITY] Error:', error);
