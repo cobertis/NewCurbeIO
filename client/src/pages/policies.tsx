@@ -3685,15 +3685,6 @@ export default function PoliciesPage() {
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/policies/new";
   
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(searchInput);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [searchInput]);
-  
   // Fetch policies statistics
   const { data: stats, isLoading: isLoadingStats } = useQuery<{
     totalPolicies: number;
@@ -11840,9 +11831,14 @@ export default function PoliciesPage() {
                       <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Type here to search..."
+                          placeholder="Type here to search and press Enter..."
                           value={searchInput}
                           onChange={(e) => setSearchInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              setSearchQuery(searchInput);
+                            }
+                          }}
                           className="pl-10"
                           data-testid="input-search-quotes"
                         />
