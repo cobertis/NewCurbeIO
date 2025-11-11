@@ -12287,48 +12287,55 @@ export default function PoliciesPage() {
                     {agencyFoldersOpen && (
                       <div className="ml-6 space-y-1">
                         {agencyFolders.map((folder) => (
-                          <DropdownMenu key={folder.id}>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
-                                className="w-full justify-between group"
-                                data-testid={`folder-agency-${folder.id}`}
-                              >
-                                <div className="flex items-center" onClick={() => {
-                                  setSelectedView("policies");
-                                  setSelectedFolderId(folder.id);
-                                }}>
-                                  <FolderIcon className="mr-2 h-4 w-4" />
-                                  <span>{folder.name}</span>
-                                </div>
-                                <MoreHorizontal className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setFolderToEdit(folder);
-                                  setNewFolderName(folder.name);
-                                  setRenameFolderDialogOpen(true);
-                                }}
-                                data-testid={`menu-rename-${folder.id}`}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setFolderToEdit(folder);
-                                  setDeleteFolderDialogOpen(true);
-                                }}
-                                className="text-destructive"
-                                data-testid={`menu-delete-${folder.id}`}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div key={folder.id} className="flex items-center gap-1 group">
+                            <Button
+                              variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
+                              className="flex-1 justify-start"
+                              onClick={() => {
+                                setSelectedView("policies");
+                                setSelectedFolderId(folder.id);
+                              }}
+                              data-testid={`folder-agency-${folder.id}`}
+                            >
+                              <FolderIcon className="mr-2 h-4 w-4" />
+                              <span>{folder.name}</span>
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setFolderToEdit(folder);
+                                    setNewFolderName(folder.name);
+                                    setRenameFolderDialogOpen(true);
+                                  }}
+                                  data-testid={`menu-rename-${folder.id}`}
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setFolderToEdit(folder);
+                                    setDeleteFolderDialogOpen(true);
+                                  }}
+                                  className="text-destructive"
+                                  data-testid={`menu-delete-${folder.id}`}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ))}
                         <Button
                           variant="ghost"
@@ -12360,48 +12367,55 @@ export default function PoliciesPage() {
                     {myFoldersOpen && (
                       <div className="ml-6 space-y-1">
                         {myFolders.map((folder) => (
-                          <DropdownMenu key={folder.id}>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
-                                className="w-full justify-between group"
-                                data-testid={`folder-personal-${folder.id}`}
-                              >
-                                <div className="flex items-center" onClick={() => {
-                                  setSelectedView("policies");
-                                  setSelectedFolderId(folder.id);
-                                }}>
-                                  <FolderIcon className="mr-2 h-4 w-4" />
-                                  <span>{folder.name}</span>
-                                </div>
-                                <MoreHorizontal className="h-4 w-4 opacity-0 group-hover:opacity-100" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setFolderToEdit(folder);
-                                  setNewFolderName(folder.name);
-                                  setRenameFolderDialogOpen(true);
-                                }}
-                                data-testid={`menu-rename-${folder.id}`}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setFolderToEdit(folder);
-                                  setDeleteFolderDialogOpen(true);
-                                }}
-                                className="text-destructive"
-                                data-testid={`menu-delete-${folder.id}`}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div key={folder.id} className="flex items-center gap-1 group">
+                            <Button
+                              variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
+                              className="flex-1 justify-start"
+                              onClick={() => {
+                                setSelectedView("policies");
+                                setSelectedFolderId(folder.id);
+                              }}
+                              data-testid={`folder-personal-${folder.id}`}
+                            >
+                              <FolderIcon className="mr-2 h-4 w-4" />
+                              <span>{folder.name}</span>
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setFolderToEdit(folder);
+                                    setNewFolderName(folder.name);
+                                    setRenameFolderDialogOpen(true);
+                                  }}
+                                  data-testid={`menu-rename-${folder.id}`}
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setFolderToEdit(folder);
+                                    setDeleteFolderDialogOpen(true);
+                                  }}
+                                  className="text-destructive"
+                                  data-testid={`menu-delete-${folder.id}`}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         ))}
                         <Button
                           variant="ghost"
