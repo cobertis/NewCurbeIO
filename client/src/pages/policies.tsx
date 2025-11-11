@@ -5469,18 +5469,19 @@ export default function PoliciesPage() {
     // Sidebar view filter
     let matchesView = true;
     if (selectedView === 'archived') {
-      // Show cancelled policies in archived view
-      matchesView = quote.status === 'canceled';
+      // Show only archived policies
+      matchesView = quote.isArchived === true;
     } else if (selectedView === 'exports') {
-      // Show policies ready for export (approved, submitted, or completed statuses)
-      matchesView = quote.status === 'approved' || quote.status === 'submitted' || quote.status === 'completed';
+      // Show policies ready for export (approved, submitted, or completed statuses) - exclude archived
+      matchesView = (quote.status === 'approved' || quote.status === 'submitted' || quote.status === 'completed') && !quote.isArchived;
     } else if (selectedView === 'important') {
-      // Show policies that need attention (pending_review, rejected, or have issues)
-      // Note: This could be enhanced to check for important notes via additional query
-      matchesView = quote.status === 'pending_review' || quote.status === 'rejected' || 
-                   quote.documentsStatus === 'declined' || quote.paymentStatus === 'failed';
+      // Show policies that need attention (pending_review, rejected, or have issues) - exclude archived
+      matchesView = (quote.status === 'pending_review' || quote.status === 'rejected' || 
+                   quote.documentsStatus === 'declined' || quote.paymentStatus === 'failed') && !quote.isArchived;
+    } else {
+      // 'policies', 'oep-aca', and 'oep-medicare' views - exclude archived policies
+      matchesView = !quote.isArchived;
     }
-    // 'policies', 'oep-aca', and 'oep-medicare' views show all matching quotes
     
     return matchesSearch && matchesStatus && matchesProduct && matchesState && 
            matchesZipCode && matchesAssignedTo && matchesEffectiveDateFrom && 
@@ -12481,7 +12482,7 @@ export default function PoliciesPage() {
                       <div>
                         <Archive className="h-12 w-12 mx-auto mb-3 opacity-50" />
                         <p className="font-medium mb-1">No archived policies</p>
-                        <p className="text-sm">Cancelled policies will appear here</p>
+                        <p className="text-sm">Archived policies will appear here</p>
                       </div>
                     ) : selectedView === 'important' ? (
                       <div>
