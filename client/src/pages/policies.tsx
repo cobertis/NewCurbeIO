@@ -11468,6 +11468,11 @@ export default function PoliciesPage() {
                         benefits: originalPlanData.benefits || planObject.benefits,
                         deductibles: planObject.deductibles || originalPlanData.deductibles,
                         moops: planObject.moops || originalPlanData.moops,
+                        // CRITICAL FIX: Explicitly preserve the NEW issuer data (carrier name) from the form
+                        issuer: {
+                          ...originalPlanData.issuer,  // Keep original issuer data first (e.g., existing ID)
+                          ...planObject.issuer,        // Overwrite with new values from form (carrier name)
+                        },
                       };
                       
                       await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
