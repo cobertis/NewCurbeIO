@@ -11825,22 +11825,16 @@ export default function PoliciesPage() {
                   <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-[18px] shadow-[0_12px_24px_-12px_rgba(15,23,42,0.12)] p-4 space-y-3">
                     {/* Search Input and Buttons Row */}
                     <div className="flex items-center gap-2">
-                      <Input
-                        placeholder="Type here to search..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="flex-1"
-                        data-testid="input-search-quotes"
-                      />
-                      <Button 
-                        variant="default"
-                        size="default"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                        data-testid="button-search"
-                      >
-                        <Search className="h-4 w-4 mr-2" />
-                        Search
-                      </Button>
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Type here to search..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                          data-testid="input-search-quotes"
+                        />
+                      </div>
                       <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
                         <SheetTrigger asChild>
                           <Button 
