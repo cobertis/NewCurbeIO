@@ -65,6 +65,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { extractCostShareFromCMS, formatCostShareValueShort } from "@shared/cost-share-utils";
 
 // Helper to format yyyy-MM-dd string without timezone conversion
 const formatDateFromString = (dateString: string): string => {
@@ -747,14 +748,19 @@ export default function MarketplacePlansPage() {
                 
                 // Extract benefits with cost sharing info
                 const getBenefitCost = (benefitName: string) => {
+                  // For CMS plans: extract from benefits array
                   const benefit = plan.benefits?.find((b: any) => 
                     b.name?.toLowerCase().includes(benefitName.toLowerCase())
                   );
-                  if (!benefit) return null;
-                  const costSharing = benefit.cost_sharings?.[0];
-                  return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  if (benefit) {
+                    const costSharing = benefit.cost_sharings?.[0];
+                    const costShareValue = extractCostShareFromCMS(costSharing);
+                    return costShareValue ? formatCostShareValueShort(costShareValue) : null;
+                  }
+                  return null;
                 };
 
+                // CRITICAL FIX: Restore fallback to plan.copay_primary/copay_specialist fields
                 const primaryCareCost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
                 const specialistCost = getBenefitCost('Specialist') || (plan.copay_specialist ? formatCurrency(plan.copay_specialist) : null);
                 const urgentCareCost = getBenefitCost('Urgent Care') || (plan.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : null);

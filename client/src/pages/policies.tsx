@@ -45,6 +45,7 @@ import {
 } from "@shared/creditCardUtils";
 import { CARRIERS_BY_TYPE, PRODUCT_TYPES as SIMPLE_PRODUCT_TYPES, getCarriersByProductType } from "@shared/carriers";
 import { PolicyRenewalComparison } from "@/components/PolicyRenewalComparison";
+import { parseCostShareValue, formatCostShareValue, formatCostShareValueShort, extractCostShareFromCMS, type CostShareValue } from "@shared/cost-share-utils";
 
 // Type definitions for spouse and dependent objects (matching zod schemas in shared/schema.ts)
 type Spouse = {
@@ -296,6 +297,21 @@ const formatFileSize = (bytes: number): string => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+};
+
+// Helper to extract raw value from CostShareValue or legacy string
+// Used when loading existing plans for editing in the manual plan form
+const getCostShareRawValue = (value: any): string => {
+  if (!value) return '';
+  // New format: CostShareValue object with 'raw' property
+  if (typeof value === 'object' && value.raw) {
+    return value.raw;
+  }
+  // Legacy format: plain string
+  if (typeof value === 'string') {
+    return value;
+  }
+  return '';
 };
 
 // US States for dropdown
@@ -7261,12 +7277,16 @@ export default function PoliciesPage() {
                 
                 // Extract benefits with cost sharing info
                 const getBenefitCost = (benefitName: string) => {
+                  // For CMS plans: extract from benefits array
                   const benefit = plan.benefits?.find((b: any) => 
                     b.name?.toLowerCase().includes(benefitName.toLowerCase())
                   );
-                  if (!benefit) return null;
-                  const costSharing = benefit.cost_sharings?.[0];
-                  return costSharing?.display_string || costSharing?.copay_options || costSharing?.coinsurance_options;
+                  if (benefit) {
+                    const costSharing = benefit.cost_sharings?.[0];
+                    const costShareValue = extractCostShareFromCMS(costSharing);
+                    return costShareValue ? formatCostShareValueShort(costShareValue) : null;
+                  }
+                  return null;
                 };
 
                 const formatCurrency = (value: any) => {
@@ -7280,10 +7300,18 @@ export default function PoliciesPage() {
                   return num % 1 === 0 ? `$${num.toFixed(0)}` : `$${num.toFixed(2)}`;
                 };
 
-                const primaryCareCost = getBenefitCost('Primary Care') || (plan.copay_primary ? formatCurrency(plan.copay_primary) : null);
-                const specialistCost = getBenefitCost('Specialist') || (plan.copay_specialist ? formatCurrency(plan.copay_specialist) : null);
-                const urgentCareCost = getBenefitCost('Urgent Care') || (plan.copay_urgent_care ? formatCurrency(plan.copay_urgent_care) : null);
-                const emergencyCost = getBenefitCost('Emergency') || (plan.copay_emergency ? formatCurrency(plan.copay_emergency) : null);
+                // Helper to format manual plan cost fields
+                const formatManualCost = (value: any) => {
+                  if (!value) return null;
+                  const rawValue = getCostShareRawValue(value);
+                  const costShareValue = parseCostShareValue(rawValue);
+                  return costShareValue ? formatCostShareValueShort(costShareValue) : null;
+                };
+
+                const primaryCareCost = getBenefitCost('Primary Care') || formatManualCost(plan.copay_primary);
+                const specialistCost = getBenefitCost('Specialist') || formatManualCost(plan.copay_specialist);
+                const urgentCareCost = getBenefitCost('Urgent Care') || formatManualCost(plan.copay_urgent_care);
+                const emergencyCost = getBenefitCost('Emergency') || formatManualCost(plan.copay_emergency);
                 const genericDrugsCost = getBenefitCost('Generic Drugs');
                 const mentalHealthCost = getBenefitCost('Mental');
 
@@ -7666,10 +7694,9 @@ export default function PoliciesPage() {
                                 b.name?.toLowerCase().includes(name.toLowerCase())
                               );
                               if (!benefit) return '';
-                              if (benefit.cost_sharings?.[0]?.display_string) {
-                                return benefit.cost_sharings[0].display_string;
-                              }
-                              return '';
+                              const costSharing = benefit.cost_sharings?.[0];
+                              const costShareValue = extractCostShareFromCMS(costSharing);
+                              return costShareValue ? formatCostShareValueShort(costShareValue) : '';
                             };
 
                             // Extract deductibles
@@ -7786,29 +7813,29 @@ export default function PoliciesPage() {
                                 deductibleFamily: plan?.deductible_family?.toString() || '',
                                 outOfPocketMax: plan?.out_of_pocket_max?.toString() || '',
                                 outOfPocketMaxFamily: plan?.out_of_pocket_max_family?.toString() || '',
-                                primaryCare: plan?.copay_primary_care || '',
-                                specialist: plan?.copay_specialist || '',
-                                urgentCare: plan?.copay_urgent_care || '',
-                                emergency: plan?.copay_emergency || '',
-                                mentalHealth: plan?.copay_mental_health || '',
-                                genericDrugs: plan?.copay_generic_drugs || '',
-                                preferredBrandDrugs: plan?.copay_preferred_brand_drugs || '',
-                                nonPreferredBrandDrugs: plan?.copay_non_preferred_brand_drugs || '',
-                                specialtyDrugs: plan?.copay_specialty_drugs || '',
-                                inpatientFacility: plan?.copay_inpatient_facility || '',
-                                inpatientPhysician: plan?.copay_inpatient_physician || '',
-                                outpatientFacility: plan?.copay_outpatient_facility || '',
-                                outpatientPhysician: plan?.copay_outpatient_physician || '',
-                                imaging: plan?.copay_imaging || '',
-                                labWork: plan?.copay_lab_work || '',
-                                xrays: plan?.copay_xrays || '',
-                                preventiveCare: plan?.copay_preventive_care || '',
-                                rehabilitation: plan?.copay_rehabilitation || '',
-                                habilitationServices: plan?.copay_habilitation_services || '',
-                                skilledNursing: plan?.copay_skilled_nursing || '',
-                                durableMedicalEquipment: plan?.copay_durable_medical_equipment || '',
-                                hospiceCare: plan?.copay_hospice_care || '',
-                                emergencyTransport: plan?.copay_emergency_transport || '',
+                                primaryCare: getCostShareRawValue(plan?.copay_primary || plan?.copay_primary_care),
+                                specialist: getCostShareRawValue(plan?.copay_specialist),
+                                urgentCare: getCostShareRawValue(plan?.copay_urgent_care),
+                                emergency: getCostShareRawValue(plan?.copay_emergency),
+                                mentalHealth: getCostShareRawValue(plan?.copay_mental_health),
+                                genericDrugs: getCostShareRawValue(plan?.copay_generic_drugs),
+                                preferredBrandDrugs: getCostShareRawValue(plan?.copay_preferred_brand_drugs),
+                                nonPreferredBrandDrugs: getCostShareRawValue(plan?.copay_non_preferred_brand_drugs),
+                                specialtyDrugs: getCostShareRawValue(plan?.copay_specialty_drugs),
+                                inpatientFacility: getCostShareRawValue(plan?.copay_inpatient_facility),
+                                inpatientPhysician: getCostShareRawValue(plan?.copay_inpatient_physician),
+                                outpatientFacility: getCostShareRawValue(plan?.copay_outpatient_facility),
+                                outpatientPhysician: getCostShareRawValue(plan?.copay_outpatient_physician),
+                                imaging: getCostShareRawValue(plan?.copay_imaging),
+                                labWork: getCostShareRawValue(plan?.copay_lab_work),
+                                xrays: getCostShareRawValue(plan?.copay_xrays),
+                                preventiveCare: getCostShareRawValue(plan?.copay_preventive_care),
+                                rehabilitation: getCostShareRawValue(plan?.copay_rehabilitation),
+                                habilitationServices: getCostShareRawValue(plan?.copay_habilitation_services),
+                                skilledNursing: getCostShareRawValue(plan?.copay_skilled_nursing),
+                                durableMedicalEquipment: getCostShareRawValue(plan?.copay_durable_medical_equipment),
+                                hospiceCare: getCostShareRawValue(plan?.copay_hospice_care),
+                                emergencyTransport: getCostShareRawValue(plan?.copay_emergency_transport),
                                 dentalChild: plan?.has_dental_child_coverage || false,
                                 dentalAdult: plan?.has_dental_adult_coverage || false,
                                 hsaEligible: plan?.hsa_eligible || false,
@@ -11409,29 +11436,29 @@ export default function PoliciesPage() {
                       deductibles: deductibles,
                       moops: moops,
                       out_of_pocket_limit: manualPlanData.outOfPocketMax ? parseFloat(manualPlanData.outOfPocketMax) : null,
-                      copay_primary: manualPlanData.primaryCare,
-                      copay_specialist: manualPlanData.specialist,
-                      copay_urgent_care: manualPlanData.urgentCare,
-                      copay_emergency: manualPlanData.emergency,
-                      copay_mental_health: manualPlanData.mentalHealth,
-                      copay_generic_drugs: manualPlanData.genericDrugs,
-                      copay_preferred_brand_drugs: manualPlanData.preferredBrandDrugs,
-                      copay_non_preferred_brand_drugs: manualPlanData.nonPreferredBrandDrugs,
-                      copay_specialty_drugs: manualPlanData.specialtyDrugs,
-                      copay_inpatient_facility: manualPlanData.inpatientFacility,
-                      copay_inpatient_physician: manualPlanData.inpatientPhysician,
-                      copay_outpatient_facility: manualPlanData.outpatientFacility,
-                      copay_outpatient_physician: manualPlanData.outpatientPhysician,
-                      copay_imaging: manualPlanData.imaging,
-                      copay_lab_work: manualPlanData.labWork,
-                      copay_xrays: manualPlanData.xrays,
-                      copay_preventive_care: manualPlanData.preventiveCare,
-                      copay_rehabilitation: manualPlanData.rehabilitation,
-                      copay_habilitation_services: manualPlanData.habilitationServices,
-                      copay_skilled_nursing: manualPlanData.skilledNursing,
-                      copay_durable_medical_equipment: manualPlanData.durableMedicalEquipment,
-                      copay_hospice_care: manualPlanData.hospiceCare,
-                      copay_emergency_transport: manualPlanData.emergencyTransport,
+                      copay_primary: parseCostShareValue(manualPlanData.primaryCare),
+                      copay_specialist: parseCostShareValue(manualPlanData.specialist),
+                      copay_urgent_care: parseCostShareValue(manualPlanData.urgentCare),
+                      copay_emergency: parseCostShareValue(manualPlanData.emergency),
+                      copay_mental_health: parseCostShareValue(manualPlanData.mentalHealth),
+                      copay_generic_drugs: parseCostShareValue(manualPlanData.genericDrugs),
+                      copay_preferred_brand_drugs: parseCostShareValue(manualPlanData.preferredBrandDrugs),
+                      copay_non_preferred_brand_drugs: parseCostShareValue(manualPlanData.nonPreferredBrandDrugs),
+                      copay_specialty_drugs: parseCostShareValue(manualPlanData.specialtyDrugs),
+                      copay_inpatient_facility: parseCostShareValue(manualPlanData.inpatientFacility),
+                      copay_inpatient_physician: parseCostShareValue(manualPlanData.inpatientPhysician),
+                      copay_outpatient_facility: parseCostShareValue(manualPlanData.outpatientFacility),
+                      copay_outpatient_physician: parseCostShareValue(manualPlanData.outpatientPhysician),
+                      copay_imaging: parseCostShareValue(manualPlanData.imaging),
+                      copay_lab_work: parseCostShareValue(manualPlanData.labWork),
+                      copay_xrays: parseCostShareValue(manualPlanData.xrays),
+                      copay_preventive_care: parseCostShareValue(manualPlanData.preventiveCare),
+                      copay_rehabilitation: parseCostShareValue(manualPlanData.rehabilitation),
+                      copay_habilitation_services: parseCostShareValue(manualPlanData.habilitationServices),
+                      copay_skilled_nursing: parseCostShareValue(manualPlanData.skilledNursing),
+                      copay_durable_medical_equipment: parseCostShareValue(manualPlanData.durableMedicalEquipment),
+                      copay_hospice_care: parseCostShareValue(manualPlanData.hospiceCare),
+                      copay_emergency_transport: parseCostShareValue(manualPlanData.emergencyTransport),
                       has_dental_child_coverage: manualPlanData.dentalChild,
                       has_dental_adult_coverage: manualPlanData.dentalAdult,
                       hsa_eligible: manualPlanData.hsaEligible,
