@@ -171,22 +171,11 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
       {/* Full-size image dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-black/95">
-          <div className="relative">
-            <img 
-              src={blobUrl} 
-              alt={alt} 
-              className="w-full h-full max-h-[85vh] object-contain"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white"
-              onClick={() => setIsOpen(false)}
-              data-testid="button-close-image"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          <img 
+            src={blobUrl} 
+            alt={alt} 
+            className="w-full h-full max-h-[85vh] object-contain"
+          />
         </DialogContent>
       </Dialog>
     </>
