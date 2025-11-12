@@ -1384,12 +1384,12 @@ export default function IMessagePage() {
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-          <div className="text-center">
-            <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="text-center flex flex-col items-center">
+            <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center mb-4">
               <MessageSquare className="h-12 w-12 text-white" />
             </div>
             <h2 className="text-2xl font-bold mb-2">iMessage on Bulk Solutions</h2>
-            <p className="text-gray-600 dark:text-gray-400 max-w-md">
+            <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
               Send and receive iMessages right from your dashboard. Select a conversation to start chatting.
             </p>
             {!isConnected && (
