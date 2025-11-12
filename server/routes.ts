@@ -1560,7 +1560,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // 6. POST /api/imessage/typing - Send typing indicator
+  // 6. DELETE /api/imessage/conversations/:id - Delete conversation
+  app.delete("/api/imessage/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify conversation belongs to company
+      const conversation = await storage.getImessageConversation(id);
+      if (!conversation || conversation.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete the conversation (this will cascade delete all messages)
+      const deleted = await storage.deleteImessageConversation(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+  
+  // 7. POST /api/imessage/typing - Send typing indicator
   app.post("/api/imessage/typing", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;

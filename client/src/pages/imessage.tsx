@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -351,6 +352,30 @@ export default function IMessagePage() {
     }
   });
 
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest('DELETE', `/api/imessage/conversations/${conversationId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+      // Clear selected conversation if it was deleted
+      if (selectedConversationId === deleteConversationMutation.variables) {
+        setSelectedConversationId(null);
+      }
+      toast({
+        title: "Conversation deleted",
+        description: "The conversation has been removed"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete conversation",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   // Helper functions
   const playSound = (type: 'send' | 'receive') => {
     if (!soundEnabled) return;
@@ -516,44 +541,87 @@ export default function IMessagePage() {
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {filteredConversations?.map(conversation => (
-                <button
+                <div
                   key={conversation.id}
-                  onClick={() => setSelectedConversationId(conversation.id)}
                   className={cn(
-                    "w-full p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left",
+                    "group relative flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer",
                     selectedConversationId === conversation.id && "bg-blue-50 dark:bg-blue-950 hover:bg-blue-50 dark:hover:bg-blue-950"
                   )}
+                  onClick={() => setSelectedConversationId(conversation.id)}
                   data-testid={`conversation-${conversation.id}`}
                 >
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={conversation.avatarUrl} />
-                      <AvatarFallback className="bg-blue-500 text-white">
-                        {conversation.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium truncate">{conversation.displayName}</p>
-                        {conversation.lastMessageTime && (
-                          <span className="text-xs text-gray-500">
-                            {formatMessageTime(conversation.lastMessageTime)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                          {conversation.lastMessageText || "No messages yet"}
-                        </p>
-                        {conversation.unreadCount > 0 && (
-                          <Badge className="bg-blue-500 text-white ml-2">
-                            {conversation.unreadCount}
-                          </Badge>
-                        )}
-                      </div>
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={conversation.avatarUrl} />
+                    <AvatarFallback className="bg-blue-500 text-white">
+                      {conversation.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium truncate">{conversation.displayName}</p>
+                      {conversation.lastMessageTime && (
+                        <span className="text-xs text-gray-500">
+                          {formatMessageTime(conversation.lastMessageTime)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        {conversation.lastMessageText || "No messages yet"}
+                      </p>
+                      {conversation.unreadCount > 0 && (
+                        <Badge className="bg-blue-500 text-white ml-2">
+                          {conversation.unreadCount}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                </button>
+                  
+                  {/* Dropdown Menu */}
+                  <AlertDialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`button-conversation-actions-${conversation.id}`}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem className="text-red-600 dark:text-red-400" onSelect={(e) => e.preventDefault()}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Conversation
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this conversation with {conversation.displayName}? This action cannot be undone and will remove all messages.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteConversationMutation.mutate(conversation.id)}
+                          disabled={deleteConversationMutation.isPending}
+                          className="bg-red-600 hover:bg-red-700"
+                          data-testid={`button-confirm-delete-${conversation.id}`}
+                        >
+                          {deleteConversationMutation.isPending ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               ))}
             </div>
           )}
