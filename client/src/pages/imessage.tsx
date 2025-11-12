@@ -54,6 +54,11 @@ function getAvatarColorFromString(str: string): string {
 function getInitials(name: string): string {
   if (!name || name.trim() === '') return '';
   
+  // If it's a phone number (starts with + or is all digits), don't show initials
+  if (/^[\+\d\s\-\(\)]+$/.test(name.trim())) {
+    return '';
+  }
+  
   const parts = name.trim().split(' ');
   if (parts.length === 1) {
     return parts[0].substring(0, 2).toUpperCase();
@@ -906,10 +911,14 @@ export default function IMessagePage() {
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={conversation.avatarUrl} />
                     <AvatarFallback 
-                      className="text-white font-semibold"
+                      className="text-white font-semibold flex items-center justify-center"
                       style={{ backgroundColor: getAvatarColorFromString(conversation.chatGuid || conversation.displayName) }}
                     >
-                      {getInitials(conversation.displayName) || <UserIcon className="h-6 w-6" />}
+                      {getInitials(conversation.displayName) ? (
+                        getInitials(conversation.displayName)
+                      ) : (
+                        <UserIcon className="h-6 w-6" />
+                      )}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -994,10 +1003,14 @@ export default function IMessagePage() {
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={selectedConversation.avatarUrl} />
                   <AvatarFallback 
-                    className="text-white font-semibold"
+                    className="text-white font-semibold flex items-center justify-center"
                     style={{ backgroundColor: getAvatarColorFromString(selectedConversation.chatGuid || selectedConversation.displayName) }}
                   >
-                    {getInitials(selectedConversation.displayName) || <UserIcon className="h-5 w-5" />}
+                    {getInitials(selectedConversation.displayName) ? (
+                      getInitials(selectedConversation.displayName)
+                    ) : (
+                      <UserIcon className="h-5 w-5" />
+                    )}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -1070,10 +1083,14 @@ export default function IMessagePage() {
                                 {showAvatar && (
                                   <Avatar className="h-8 w-8">
                                     <AvatarFallback 
-                                      className="text-xs text-white font-semibold"
+                                      className="text-xs text-white font-semibold flex items-center justify-center"
                                       style={{ backgroundColor: getAvatarColorFromString(message.senderAddress || message.senderName || '') }}
                                     >
-                                      {getInitials(message.senderName || '') || <UserIcon className="h-4 w-4" />}
+                                      {getInitials(message.senderName || '') ? (
+                                        getInitials(message.senderName || '')
+                                      ) : (
+                                        <UserIcon className="h-4 w-4" />
+                                      )}
                                     </AvatarFallback>
                                   </Avatar>
                                 )}
