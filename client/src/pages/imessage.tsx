@@ -1797,189 +1797,105 @@ export default function IMessagePage() {
               </div>
             )}
 
-            {/* STATE 2: RECORDING - Compact red recording UI inside input */}
+            {/* STATE 2: RECORDING - Full width recording UI with red waveform */}
             {recordingState === 'recording' && (
-              <div className="flex items-center gap-2">
-                {/* Recording indicator inside rounded input */}
-                <div className="flex-1 bg-red-500 rounded-full flex items-center px-4 py-2 gap-2">
-                  {/* Animated waveform bars - 30 thin bars for compact view */}
-                  <div className="flex-1 flex items-center gap-0.5 h-6">
-                    {Array.from({ length: 30 }).map((_, i) => {
-                      const heightIndex = i % waveformBars.length;
-                      const baseHeight = waveformBars[heightIndex] || 0.3;
-                      const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
-                      
-                      return (
-                        <div
-                          key={i}
-                          className="w-0.5 bg-red-700 rounded-full transition-all duration-100"
-                          style={{ 
-                            height: `${Math.max(20, height * 100)}%`,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Timer */}
-                  <span className="text-white font-mono text-xs font-medium min-w-[35px]">
-                    {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                  </span>
-
-                  {/* Stop button (square icon) */}
-                  <Button
-                    size="icon"
-                    className="rounded-full bg-red-200 hover:bg-red-300 h-7 w-7 flex-shrink-0"
-                    onClick={stopRecording}
-                    data-testid="stop-recording-button"
-                  >
-                    <div className="w-3 h-3 bg-white rounded-sm" />
-                  </Button>
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
+                {/* Animated waveform bars - 60 thin bars */}
+                <div className="flex-1 flex items-center justify-center gap-0.5 h-10">
+                  {Array.from({ length: 60 }).map((_, i) => {
+                    const heightIndex = i % waveformBars.length;
+                    const baseHeight = waveformBars[heightIndex] || 0.3;
+                    const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
+                    
+                    return (
+                      <div
+                        key={i}
+                        className="w-0.5 bg-red-500 rounded-full transition-all duration-100"
+                        style={{ 
+                          height: `${Math.max(20, height * 100)}%`,
+                        }}
+                      />
+                    );
+                  })}
                 </div>
 
-                {/* External buttons remain visible */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="gallery-button"
-                >
-                  <ImageIcon className="h-5 w-5" />
-                </Button>
+                {/* Timer */}
+                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px]">
+                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                </span>
 
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="emoji-button"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
-
+                {/* Stop button (square icon) */}
                 <Button
                   size="icon"
-                  variant="ghost"
-                  className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                  disabled
-                  data-testid="send-button"
+                  className="rounded-full bg-red-500 hover:bg-red-600 text-white h-10 w-10"
+                  onClick={stopRecording}
+                  data-testid="stop-recording-button"
                 >
-                  <Send className="h-5 w-5" />
-                </Button>
-
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="location-button"
-                >
-                  <MapPin className="h-5 w-5" />
+                  <div className="w-4 h-4 bg-white rounded-sm" />
                 </Button>
               </div>
             )}
 
-            {/* STATE 3: PREVIEW - Compact gray preview UI inside input */}
+            {/* STATE 3: PREVIEW - Full width preview UI with gray waveform */}
             {recordingState === 'preview' && audioPreview && (
-              <div className="flex items-center gap-2">
-                {/* Preview controls inside rounded input */}
-                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-3 py-2 gap-2">
-                  {/* X button (cancel) */}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 h-6 w-6 flex-shrink-0"
-                    onClick={cancelPreview}
-                    data-testid="cancel-preview-button"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-
-                  {/* Play/Pause button */}
-                  <Button
-                    size="icon"
-                    className="rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 h-6 w-6 flex-shrink-0"
-                    onClick={playPreview}
-                    data-testid="play-preview-button"
-                  >
-                    {isPlayingPreview ? (
-                      <Pause className="h-3 w-3" />
-                    ) : (
-                      <Play className="h-3 w-3 ml-0.5" />
-                    )}
-                  </Button>
-
-                  {/* Static waveform bars - 30 thin bars for compact view */}
-                  <div className="flex-1 flex items-center gap-0.5 h-6">
-                    {Array.from({ length: 30 }).map((_, i) => {
-                      const heightIndex = i % waveformBars.length;
-                      const baseHeight = waveformBars[heightIndex] || 0.3;
-                      const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
-                      
-                      return (
-                        <div
-                          key={i}
-                          className="w-0.5 bg-gray-600 dark:bg-gray-500 rounded-full"
-                          style={{ 
-                            height: `${Math.max(20, height * 100)}%`,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Timer showing duration */}
-                  <span className="text-gray-600 dark:text-gray-400 font-mono text-xs font-medium min-w-[35px]">
-                    {Math.floor(audioPreview.duration / 60)}:{(audioPreview.duration % 60).toString().padStart(2, '0')}
-                  </span>
-
-                  {/* Send button (blue up arrow) */}
-                  <Button
-                    size="icon"
-                    className="rounded-full bg-blue-500 hover:bg-blue-600 text-white h-7 w-7 flex-shrink-0"
-                    onClick={sendAudioPreview}
-                    data-testid="send-audio-button"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* External buttons remain visible */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="gallery-button"
-                >
-                  <ImageIcon className="h-5 w-5" />
-                </Button>
-
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="emoji-button"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
-
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
+                {/* X button (cancel) */}
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                  disabled
-                  data-testid="send-button"
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 h-10 w-10"
+                  onClick={cancelPreview}
+                  data-testid="cancel-preview-button"
                 >
-                  <Send className="h-5 w-5" />
+                  <X className="h-5 w-5" />
                 </Button>
 
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="location-button"
+                {/* Play/Pause button */}
+                <Button
+                  size="icon"
+                  className="rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 h-10 w-10"
+                  onClick={playPreview}
+                  data-testid="play-preview-button"
                 >
-                  <MapPin className="h-5 w-5" />
+                  {isPlayingPreview ? (
+                    <Pause className="h-5 w-5" />
+                  ) : (
+                    <Play className="h-5 w-5 ml-0.5" />
+                  )}
+                </Button>
+
+                {/* Static waveform bars - 60 thin bars */}
+                <div className="flex-1 flex items-center justify-center gap-0.5 h-10">
+                  {Array.from({ length: 60 }).map((_, i) => {
+                    const heightIndex = i % waveformBars.length;
+                    const baseHeight = waveformBars[heightIndex] || 0.3;
+                    const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
+                    
+                    return (
+                      <div
+                        key={i}
+                        className="w-0.5 bg-gray-600 dark:bg-gray-500 rounded-full"
+                        style={{ 
+                          height: `${Math.max(20, height * 100)}%`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Timer showing duration */}
+                <span className="text-gray-600 dark:text-gray-400 font-mono text-sm font-medium min-w-[40px]">
+                  {Math.floor(audioPreview.duration / 60)}:{(audioPreview.duration % 60).toString().padStart(2, '0')}
+                </span>
+
+                {/* Send button (blue up arrow) */}
+                <Button
+                  size="icon"
+                  className="rounded-full bg-blue-500 hover:bg-blue-600 text-white h-10 w-10"
+                  onClick={sendAudioPreview}
+                  data-testid="send-audio-button"
+                >
+                  <Send className="h-5 w-5" />
                 </Button>
               </div>
             )}
