@@ -129,6 +129,7 @@ export class BlueBubblesClient {
     // When called from our API, we'll pass the file path from multer upload
     const formData = new FormData();
     formData.append('chatGuid', chatGuid);
+    formData.append('method', 'private-api'); // CRITICAL: Force Private API for audio messages
     
     // Use provided tempGuid or generate a new one (for webhook reconciliation)
     const messageGuid = tempGuid || `temp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
@@ -138,11 +139,26 @@ export class BlueBubblesClient {
     const fs = await import('fs');
     const fileBuffer = fs.readFileSync(attachmentPath);
     const fileName = attachmentPath.split('/').pop() || 'attachment';
-    const blob = new Blob([fileBuffer]);
+    
+    // Determine MIME type based on file extension or isAudioMessage flag
+    let mimeType = 'application/octet-stream';
+    if (fileName.endsWith('.caf')) {
+      mimeType = 'audio/x-caf';
+    } else if (fileName.endsWith('.m4a')) {
+      mimeType = 'audio/mp4';
+    } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+      mimeType = 'image/jpeg';
+    } else if (fileName.endsWith('.png')) {
+      mimeType = 'image/png';
+    }
+    
+    // Create blob with correct MIME type
+    const blob = new Blob([fileBuffer], { type: mimeType });
     formData.append('attachment', blob, fileName);
     formData.append('name', fileName);
     
     // Mark as audio message (voice memo) if it's a CAF file
+    // This tells iMessage to display it as a native voice memo with waveform
     if (isAudioMessage) {
       formData.append('isAudioMessage', 'true');
       console.log('[iMessage] Marking attachment as audio message (voice memo)');
@@ -153,7 +169,8 @@ export class BlueBubblesClient {
 
     console.log('[iMessage] Sending attachment with tempGuid:', messageGuid);
     console.log('[iMessage] ChatGuid:', chatGuid);
-    console.log('[iMessage] File:', fileName, 'Size:', fileBuffer.length);
+    console.log('[iMessage] File:', fileName, 'MIME:', mimeType, 'Size:', fileBuffer.length);
+    console.log('[iMessage] isAudioMessage:', isAudioMessage);
     console.log('[iMessage] BlueBubbles URL:', urlWithAuth.toString().replace(this.password, '***'));
 
     const response = await fetch(urlWithAuth.toString(), {
