@@ -25,7 +25,7 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause
+  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause, AudioWaveform
 } from "lucide-react";
 import type { User } from "@shared/schema";
 
@@ -1619,7 +1619,7 @@ export default function IMessagePage() {
                   data-testid="message-input"
                 />
                 
-                {/* Microphone button - inside input on the right */}
+                {/* Audio waveform button - inside input on the right */}
                 <Button 
                   size="icon" 
                   variant="ghost" 
@@ -1643,7 +1643,7 @@ export default function IMessagePage() {
                   }}
                   data-testid="mic-button"
                 >
-                  <Mic className="h-4 w-4" />
+                  <AudioWaveform className="h-4 w-4" />
                 </Button>
               </div>
 
