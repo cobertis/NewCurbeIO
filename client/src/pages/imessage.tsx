@@ -831,22 +831,30 @@ export default function IMessagePage() {
                                       </div>
                                     )}
 
-                                    {/* Reactions */}
+                                    {/* Reactions - iMessage style */}
                                     {message.reactions.length > 0 && (
-                                      <div className="absolute -bottom-3 right-2 flex gap-1">
-                                        {Array.from(new Set(message.reactions.map(r => r.reaction))).map(reaction => (
-                                          <span
-                                            key={reaction}
-                                            className="bg-white dark:bg-gray-700 rounded-full px-1.5 py-0.5 text-xs shadow-sm border border-gray-200 dark:border-gray-600"
-                                          >
-                                            {reaction}
-                                            {message.reactions.filter(r => r.reaction === reaction).length > 1 && (
-                                              <span className="ml-1 text-gray-500">
-                                                {message.reactions.filter(r => r.reaction === reaction).length}
-                                              </span>
-                                            )}
-                                          </span>
-                                        ))}
+                                      <div className={cn(
+                                        "absolute -bottom-2 flex gap-0.5",
+                                        message.isFromMe ? "-left-2" : "-right-2"
+                                      )}>
+                                        {Array.from(new Set(message.reactions.map(r => r.reaction))).map(reaction => {
+                                          const count = message.reactions.filter(r => r.reaction === reaction).length;
+                                          return (
+                                            <div
+                                              key={reaction}
+                                              className="flex items-center justify-center w-7 h-7 rounded-full shadow-md border-2 border-white dark:border-gray-900"
+                                              style={{ backgroundColor: '#007AFF' }}
+                                              title={`${count} reaction${count > 1 ? 's' : ''}`}
+                                            >
+                                              <span className="text-sm leading-none">{reaction}</span>
+                                              {count > 1 && (
+                                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                                  {count}
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     )}
                                   </div>
