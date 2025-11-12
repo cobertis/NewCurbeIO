@@ -359,6 +359,17 @@ export default function IMessagePage() {
       // Use the clientGuid passed from handleSendMessage
       const clientGuid = variables.clientGuid!;
       
+      // Create temporary blob URLs for attachments (so images show immediately)
+      const tempAttachments = variables.attachments?.map((file, index) => ({
+        id: `temp-${clientGuid}-${index}`,
+        guid: `temp-${clientGuid}-${index}`,
+        mimeType: file.type,
+        fileName: file.name,
+        fileSize: file.size,
+        url: URL.createObjectURL(file), // Temporary blob URL for immediate display
+        thumbnailUrl: undefined,
+      })) || [];
+      
       // Optimistically update to the new value
       const optimisticMessage: ImessageMessage = {
         id: clientGuid, // Use GUID as ID too
@@ -373,11 +384,14 @@ export default function IMessagePage() {
         senderAddress: 'me',
         senderName: undefined,
         hasAttachments: (variables.attachments?.length || 0) > 0,
-        attachments: [],
+        attachments: tempAttachments,
         reactions: [],
         replyToMessageId: variables.replyToMessageId || undefined,
-        effect: variables.effectId || undefined,
-        status: 'sending'
+        effectId: variables.effectId || undefined,
+        status: 'sending',
+        isDeleted: false,
+        isEdited: false,
+        metadata: { clientGuid }
       };
       
       queryClient.setQueryData<ImessageMessage[]>(
