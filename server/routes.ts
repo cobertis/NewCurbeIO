@@ -887,59 +887,73 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             });
             newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
           } else {
-            // Store the message
-            newMessage = await storage.createImessageMessage({
-              companyId: company.id,
-              conversationId: conversation.id,
-              chatGuid,
-              messageGuid,
-              text: messageData.text || messageData.message || '',
-              senderHandle: messageData.handle?.address || messageData.from || 'Unknown',
-              senderName: messageData.handle?.name || null,
-              fromMe: messageData.isFromMe || messageData.fromMe || false,
-              dateSent: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
-              dateRead: messageData.dateRead ? new Date(messageData.dateRead) : null,
-              dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : null,
-              attachments: messageData.attachments || [],
-              metadata: {
-                associatedMessageGuid: messageData.associatedMessageGuid || null,
-                associatedMessageType: messageData.associatedMessageType || null,
-              },
-              status: "sent",
-              isImessage: true,
-              hasAttachments: (messageData.attachments || []).length > 0,
-            });
+            // Store the message - wrap in try-catch to handle race conditions with duplicate messages
+            try {
+              newMessage = await storage.createImessageMessage({
+                companyId: company.id,
+                conversationId: conversation.id,
+                chatGuid,
+                messageGuid,
+                text: messageData.text || messageData.message || '',
+                senderHandle: messageData.handle?.address || messageData.from || 'Unknown',
+                senderName: messageData.handle?.name || null,
+                fromMe: messageData.isFromMe || messageData.fromMe || false,
+                dateSent: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
+                dateRead: messageData.dateRead ? new Date(messageData.dateRead) : null,
+                dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : null,
+                attachments: messageData.attachments || [],
+                metadata: {
+                  associatedMessageGuid: messageData.associatedMessageGuid || null,
+                  associatedMessageType: messageData.associatedMessageType || null,
+                },
+                status: "sent",
+                isImessage: true,
+                hasAttachments: (messageData.attachments || []).length > 0,
+              });
+            } catch (createError: any) {
+              // If duplicate key error, the message already exists (race condition)
+              if (createError.code === '23505') {
+                console.log('[BlueBubbles Webhook] Message already exists (race condition), fetching existing message');
+                newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
+              } else {
+                // Re-throw other errors
+                throw createError;
+              }
+            }
           }
           
-          // Update conversation last message
-          await storage.updateImessageConversation(conversation.id, {
-            lastMessageAt: newMessage.dateSent,
-            lastMessageText: newMessage.text,
-            unreadCount: conversation.unreadCount + (newMessage.fromMe ? 0 : 1),
-          });
-          
-          // Broadcast to WebSocket clients
-          broadcastImessageMessage(company.id, conversation.id, newMessage);
-          
-          // Send browser notification if enabled
-          if (!newMessage.fromMe) {
-            // Create notifications for all company users
-            const companyUsers = await storage.getUsersByCompany(company.id);
-            for (const user of companyUsers) {
-              await storage.createNotification({
-                userId: user.id,
-                type: 'imessage',
-                title: `New iMessage from ${newMessage.senderName || newMessage.senderHandle}`,
-                message: newMessage.text || 'New message',
-                isRead: false,
-                data: JSON.stringify({
-                  conversationId: conversation.id,
-                  messageId: newMessage.id,
-                }),
-              });
+          // Only proceed if we have a message (could be undefined if both create and fetch failed)
+          if (newMessage) {
+            // Update conversation last message
+            await storage.updateImessageConversation(conversation.id, {
+              lastMessageAt: newMessage.dateSent,
+              lastMessageText: newMessage.text,
+              unreadCount: conversation.unreadCount + (newMessage.fromMe ? 0 : 1),
+            });
+            
+            // Broadcast to WebSocket clients
+            broadcastImessageMessage(company.id, conversation.id, newMessage);
+            
+            // Send browser notification if enabled
+            if (!newMessage.fromMe) {
+              // Create notifications for all company users
+              const companyUsers = await storage.getUsersByCompany(company.id);
+              for (const user of companyUsers) {
+                await storage.createNotification({
+                  userId: user.id,
+                  type: 'imessage',
+                  title: `New iMessage from ${newMessage.senderName || newMessage.senderHandle}`,
+                  message: newMessage.text || 'New message',
+                  isRead: false,
+                  data: JSON.stringify({
+                    conversationId: conversation.id,
+                    messageId: newMessage.id,
+                  }),
+                });
+              }
+              // Broadcast notification update to all clients
+              broadcastNotificationUpdate(company.id);
             }
-            // Broadcast notification update to all clients
-            broadcastNotificationUpdate(company.id);
           }
           
           break;

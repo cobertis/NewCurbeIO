@@ -320,6 +320,13 @@ export const blueBubblesClient = {
     return blueBubblesClientInstance.sendReaction(params);
   },
   
+  unsendMessage: async (messageGuid: string, partIndex: number = 0): Promise<SendMessageResponse> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.unsendMessage(messageGuid, partIndex);
+  },
+  
   initialize: (settings: CompanySettings): boolean => {
     blueBubblesClientInstance = BlueBubblesClient.createFromSettings(settings);
     return blueBubblesClientInstance !== null;

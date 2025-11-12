@@ -351,7 +351,6 @@ export default function IMessagePage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachments(prev => [...prev, ...files]);
-    setShowAttachmentDialog(false);
   };
 
   const groupedMessages = useMemo(() => {
