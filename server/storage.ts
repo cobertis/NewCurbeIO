@@ -951,6 +951,7 @@ export interface IStorage {
   updateImessageMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void>;
   updateImessageMessageReadStatus(messageGuid: string, readAt: Date): Promise<void>;
   getImessageUnreadCount(conversationId: string): Promise<number>;
+  recalculateImessageUnreadCount(conversationId: string): Promise<number>;
   searchImessageMessages(companyId: string, query: string): Promise<ImessageMessage[]>;
   addMessageReaction(messageId: string, userId: string, reaction: string): Promise<void>;
   removeMessageReaction(messageId: string, userId: string, reaction: string): Promise<void>;
@@ -8419,6 +8420,20 @@ export class DbStorage implements IStorage {
           eq(imessageMessages.conversationId, conversationId),
           eq(imessageMessages.isRead, false),
           eq(imessageMessages.fromMe, false)
+        )
+      );
+    return result[0]?.count || 0;
+  }
+  
+  async recalculateImessageUnreadCount(conversationId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(imessageMessages)
+      .where(
+        and(
+          eq(imessageMessages.conversationId, conversationId),
+          eq(imessageMessages.fromMe, false),
+          isNull(imessageMessages.dateRead)
         )
       );
     return result[0]?.count || 0;

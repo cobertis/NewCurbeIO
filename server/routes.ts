@@ -1325,7 +1325,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await storage.updateImessageConversation(conversation.id, {
               lastMessageAt: newMessage.dateSent ? new Date(newMessage.dateSent) : new Date(),
               lastMessageText: newMessage.text,
-              unreadCount: conversation.unreadCount + (newMessage.isFromMe ? 0 : 1),
+              unreadCount: await storage.recalculateImessageUnreadCount(conversation.id),
             });
             
             // Broadcast to WebSocket clients

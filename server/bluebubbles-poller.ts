@@ -66,9 +66,10 @@ async function pollBlueBubblesForCompany(companyId: string) {
     return;
   }
   
-  // Only poll if webhook is not configured (fallback mode)
+  // CRITICAL: Only poll if webhook is not configured (fallback mode)
+  // This prevents double-counting when webhook is active
   if (imessageSettings.webhookSecret) {
-    console.log(`[BlueBubbles Poller] Company ${companyId} has webhook configured, skipping polling`);
+    console.log(`[BlueBubbles Poller] Company ${companyId} has webhook configured, stopping polling to prevent double-counting`);
     stopBlueBubblesPolling(companyId);
     return;
   }
@@ -134,11 +135,11 @@ async function pollBlueBubblesForCompany(companyId: string) {
             
             newMessageCount++;
             
-            // Update conversation
+            // Update conversation with recalculated unread count
             await storage.updateImessageConversation(conversation.id, {
               lastMessageAt: newMessage.dateCreated,
               lastMessageText: newMessage.text,
-              unreadCount: conversation.unreadCount + (newMessage.isFromMe ? 0 : 1),
+              unreadCount: await storage.recalculateImessageUnreadCount(conversation.id),
             });
             
             // Broadcast new message
