@@ -1,0 +1,143 @@
+Registrar un menor rechazado por Medicaid/CHIP en la API del Marketplace (con APTC)
+Contexto del caso
+
+Cuando un niño de 2 años es denegado por Medicaid o CHIP, puede convertirse en elegible para un Crédito Fiscal Anticipado para Primas (APTC) en el Mercado de Seguros. En la aplicación de Healthcare.gov, a los solicitantes se les pregunta explícitamente si alguien fue encontrado no elegible para Medicaid/CHIP en los últimos 90 días, lo cual permite al Marketplace otorgar APTC al menor a pesar de su edad. Sin embargo, en la API pública del CMS Marketplace no existen campos llamados medicaid_denied ni medicaid_chip_determination. En su lugar, esta situación se representa utilizando los campos estándar de elegibilidad y cobertura mínima esencial en la solicitud. A continuación explicamos cómo hacerlo correctamente.
+
+Campos de la solicitud para reflejar el rechazo de Medicaid/CHIP
+
+En la API del Marketplace, la información de la familia se envía en un objeto JSON llamado household con una lista de people. Para indicar que el niño es elegible para APTC (y no cuenta con Medicaid/CHIP), se utilizan dos campos principales dentro de la información de esa persona:
+
+aptc_eligible: Debe establecerse en true para el niño. Este campo indica que la persona es elegible para créditos fiscales avanzados de prima
+developer.cms.gov
+. En otras palabras, marcar aptc_eligible: true comunica al sistema que incluya a este menor en el cálculo de APTC (lo cual implícitamente significa que no tiene otra cobertura pública bloqueándolo).
+
+has_mec: Debe establecerse en false. “MEC” significa Minimum Essential Coverage (Cobertura Esencial Mínima). Poner has_mec: false señala que el niño no tiene cobertura de Medicaid/CHIP u otra cobertura esencial actualmente
+developer.cms.gov
+. Normalmente, si una persona tiene Medicaid/CHIP (has_mec: true), el sistema la excluye del cálculo de elegibilidad de primas en el Marketplace. En este caso, al estar en false, confirmamos que el menor no tiene Medicaid vigente (ya que fue rechazado) y por lo tanto debe ser considerado en la determinación de APTC.
+
+Además de estos campos, incluya la información habitual para el menor: su edad o fecha de nacimiento (age o dob), género (gender), relación con el solicitante principal (relationship, por ejemplo "Child" si decide especificarlo) y cualquier otro campo requerido. Asegúrese también de proveer el ingreso anual del hogar (income) y el tamaño/miembros del hogar completos, ya que la elegibilidad a APTC depende del ingreso familiar relativo al nivel de pobreza federal.
+
+Nota: No existe un campo directo para “denegado por Medicaid”, pero al marcar manualmente al niño como elegible para APTC y sin cobertura MEC, estamos representando el mismo hecho. En la lógica de la API, aptc_eligible: true implica que el solicitante cumple las condiciones para recibir el crédito (lo que solo es correcto si Medicaid/CHIP no es una opción)
+developer.cms.gov
+. De esta forma, comunicamos que el menor, pese a tener 2 años, no tiene acceso a Medicaid/CHIP y debe recibir ayuda de APTC.
+
+Endpoints de la API involucrados
+
+Estimación de elegibilidad (/households/eligibility/estimates): Este endpoint calcula la elegibilidad del hogar para subsidios en base a la composición familiar, ingresos, lugar de residencia y otros datos. Al enviar la solicitud con el menor incluido (y aptc_eligible: true, has_mec: false para él), la respuesta incluirá un objeto de Eligibility con detalles como el monto de APTC calculado (aptc) y un indicador de si el hogar califica para Medicaid/CHIP (is_medicaid_chip)
+developer.cms.gov
+. Por ejemplo, el campo aptc devolverá el crédito fiscal mensual en dólares para el hogar, y csr indicará el nivel de reducciones de costos compartidos si aplica. El indicador booleano is_medicaid_chip informará si, según los datos proporcionados, alguien del hogar habría sido elegible a Medicaid/CHIP (en escenarios normales). Si su ingreso es bajo, es posible que is_medicaid_chip aparezca como true incluso después de marcar aptc_eligible (ya que la API estima elegibilidad basada en umbrales); esto simplemente refleja que normalmente ese menor calificaría para Medicaid/CHIP con ese ingreso. Dado que en nuestro caso hay una denegación oficial, seguimos adelante con APTC ignorando ese flag, ya que sabemos que el estado rechazó al niño. Importante: si la respuesta de este endpoint indica algún error, como errMissingMedicaidCHIPEligibility (código 1015), podría significar que faltan datos o que no se encontró información de elegibilidad de Medicaid/CHIP para la combinación de estado/año proporcionada
+developer.cms.gov
+. Asegúrese de estar usando el año de cobertura correcto y de que el estado de residencia del menor esté bien especificado.
+
+Búsqueda de planes (/plans/search): Con la información de elegibilidad y la composición del hogar confirmada, se utiliza este endpoint para obtener los planes disponibles y precios. En la solicitud a /plans/search, incluya el objeto household con el menor configurado de la misma forma (aptc_eligible: true, etc.), además de la ubicación (zipcode, countyfips, state) y año de cobertura. Opcionalmente, puede incluir un campo aptc_override con el valor de crédito APTC específico que obtuvo del paso anterior
+developer.cms.gov
+. Si no incluye aptc_override, la API calculará el crédito estimado automáticamente en base a los ingresos y tamaño del hogar que envió. La respuesta de este endpoint listará los planes de salud aplicables y mostrará las primas mensuales tanto sin subsidio como con el APTC aplicado. Específicamente, cada plan tendrá un campo premium (prima completa, sin créditos) y premium_w_credit (prima neta con el APTC descontado)
+developer.cms.gov
+. De esta forma, podrá ver cuánto pagarían mensualmente por ese plan incluyendo el niño con el subsidio. También hay campos como aptc_eligible_premium que indican la porción de la prima cubierta por el APTC en cada plan
+developer.cms.gov
+, pero en general usted puede confiar en premium_w_credit para el costo final.
+
+Estos dos endpoints trabajan en conjunto: primero se estima la elegibilidad y el monto de subsidio, luego se aplican esos resultados a la búsqueda de planes. Cabe mencionar que la API del Marketplace está diseñada principalmente para la comparación de planes y cálculos previos (“window shopping”), por lo que al marcar un menor como apto para APTC, la API le permitirá ver los planes y precios considerando ese crédito sin exigir verificación documental en esa etapa. La verificación ocurriría en el proceso formal de inscripción.
+
+Requerimientos adicionales y consideraciones
+
+Documentación del rechazo: Aunque la API en sí no le pedirá que cargue una carta de rechazo de Medicaid/CHIP, es prudente contar con ella. En la aplicación real del Marketplace, el solicitante debe atestar que el niño fue rechazado por Medicaid/CHIP recientemente. De hecho, el formulario preguntará si “¿Alguien en la solicitud fue encontrado no elegible para Medicaid o CHIP en los últimos 90 días?” y se debe responder sí en el caso del menor
+ihealthagents.com
+. Esta confirmación activa la elegibilidad a APTC para el niño a pesar de que, por ingreso y edad, normalmente habría calificado para Medicaid/CHIP. No hay un flag específico en la API pública para adjuntar esa respuesta, pero internamente su aplicación de inscripción (si está construyendo una) deberá marcarlo. CMS podría requerir la documentación del estado que comprueba la denegación, especialmente si la elegibilidad del menor a APTC es auditada más adelante. Asegúrese de conservar la notificación de rechazo oficial y de seguir cualquier procedimiento de verificación que el Marketplace indique.
+
+Flags especiales o categorías para menores: No existen campos especiales exclusivos para menores de edad aparte de los ya mencionados. Simplemente incluir al niño con su edad en la estructura del hogar es suficiente para que la API aplique las reglas correspondientes. Por ejemplo, la API conoce los umbrales de Medicaid/CHIP según la edad (los porcentajes FPL para niños de 1-5 años, etc.) y los utiliza internamente
+developer.cms.gov
+. Usted no necesita indicar que es un niño de categoría especial; basta con su edad/fecha de nacimiento y los flags de elegibilidad. Tampoco necesita un indicador separado de CHIP vs Medicaid – el sistema automáticamente trata al menor como parte del grupo que podría ser elegible a Medicaid/CHIP y, al marcarlo apto para APTC, estamos indicando que no tiene otro programa público disponible. En resumen, no se requiere un flag extra por ser menor, solo asegurarse de no marcar has_mec en true (porque eso lo excluiría del cálculo de APTC) y de establecer correctamente la elegibilidad APTC como explicamos.
+
+Ingreso del hogar y tamaño familiar: Revise que el ingreso anual familiar que envía a la API sea el más actualizado y refleje la realidad tras el rechazo de Medicaid. Si el ingreso cambió desde la solicitud de Medicaid (por ejemplo, aumentó), eso podría afectar la elegibilidad. La guía del Marketplace sugiere que si los ingresos o el tamaño del hogar han cambiado desde la denegación, es posible que haya que volver a evaluar la situación en lugar de usar la denegación pasada directamente
+ihealthagents.com
+. En la API, esto significa que si el ingreso del hogar bajó sustancialmente desde la carta de rechazo, quizás ahora el niño sí calificaría a Medicaid; se debe entonces tener precaución al afirmar que sigue siendo apto a APTC. A efectos de la API, sin embargo, este nivel de detalle no se configura con flags, sino que depende de los datos de ingreso que proporcione.
+
+Pasos para manejar el caso paso a paso
+
+A continuación se describe un procedimiento paso a paso para registrar correctamente al niño de 2 años (rechazado por Medicaid/CHIP) en la API pública del Marketplace, asegurando su elegibilidad a APTC:
+
+Construir la solicitud JSON del hogar: Incluya al menor de 2 años en el array de people del objeto household. Establezca los campos del niño de la siguiente forma:
+
+age o dob: su edad (2 años) o fecha de nacimiento correspondiente.
+
+aptc_eligible: true – señalando que será considerado para el crédito fiscal
+developer.cms.gov
+.
+
+has_mec: false – indicando que no tiene cobertura de Medicaid/CHIP actualmente
+developer.cms.gov
+.
+
+relationship: puede indicar "Child" respecto al solicitante principal (opcional pero recomendado para mayor precisión en ciertos cálculos de planes).
+
+Otros campos necesarios: género (gender), si usa tabaco (uses_tobacco), etc., según aplique.
+
+Ingreso del hogar (income): asegúrese de que el objeto household incluya el ingreso anual total del hogar y el número correcto de miembros. Esto es crucial para que la API calcule correctamente el APTC y verifique umbrales de Medicaid. Por ejemplo, para un hogar de 3 personas con cierto ingreso, la API determinará el % del nivel de pobreza y comparará con los límites de Medicaid infantil del estado automáticamente
+developer.cms.gov
+.
+
+Verifique que household.state y household.zipcode/countyfips correspondan al estado donde reside el niño, ya que la elegibilidad de Medicaid/CHIP varía por estado.
+
+Llamar al endpoint de elegibilidad (POST /api/v1/households/eligibility/estimates): Envíe el JSON construido en el paso anterior a este endpoint. Como resultado, recibirá un objeto de respuesta con los cálculos de elegibilidad. Revise en la respuesta:
+
+El campo aptc dentro de la sección de elegibilidad, que indicará la cantidad mensual de APTC para el hogar (por ejemplo, podría retornar algo como "aptc": 200.00 si califican a $200 mensuales)
+developer.cms.gov
+. Esta cantidad se basa en la composición familiar e ingreso proporcionados.
+
+El campo csr (reducción de costos compartidos) que corresponde al nivel de CSR si el ingreso califica (p.ej. Silver CSR 73, etc., dependiendo del porcentaje FPL).
+
+El indicador is_medicaid_chip: si aparece true, significa que según los datos, algún miembro (posiblemente el menor) tendría derecho a Medicaid/CHIP. Dado que sabemos que el estado lo rechazó, puede ignorar este valor en cuanto a la decisión de inscripción, pero téngalo en cuenta: la API lo marca porque, técnicamente, con ese ingreso y edad el niño estaría en rango de Medicaid/CHIP
+developer.cms.gov
+. Nuestra configuración de aptc_eligible: true no “apaga” completamente esa lógica interna, sino que más bien fuerza a que también se calcule un APTC. Si la API devolvió aptc > 0 para el niño, significa que está aceptando al menor para efectos de crédito fiscal (lo cual es lo que necesitamos). En caso de que aptc resultara 0 y is_medicaid_chip: true únicamente, podría indicar que la API está considerando al menor solo elegible a Medicaid – revise que incluyó correctamente los campos mencionados y el ingreso. De ser necesario, se podría ajustar el ingreso en la simulación (por ejemplo, usar el ingreso mínimo para APTC que esté justo por encima del umbral de Medicaid) para forzar un cálculo de APTC en la estimación, aunque idealmente debería reflejar la situación real con la denegación.
+
+Si todo es correcto, tome nota del valor de aptc calculado y del ID de plan de segunda menor prima plata (SLCSP) si la respuesta lo proporciona, ya que el APTC se basa en ella. Estos datos se usarán en el siguiente paso.
+
+Llamar al endpoint de búsqueda de planes (POST /api/v1/plans/search): Utilice el mismo JSON del hogar (posiblemente enriquecido con el aptc_override si desea fijar el crédito). Por ejemplo:
+
+Incluya year y market (Individual) según corresponda.
+
+Si obtuvo un valor de APTC en el paso 2 (digamos 200), puede añadir al JSON a nivel raíz \"aptc_override\": 200 para aplicar exactamente ese crédito en la comparación de planes
+developer.cms.gov
+. Esto garantiza que la prima con crédito (premium_w_credit) se calcule usando ese monto. Si no incluye aptc_override, la API igualmente calculará el crédito internamente (de forma consistente con el paso 2, siempre y cuando los datos no hayan cambiado).
+
+Envíe la solicitud de búsqueda de planes con los parámetros de ubicación (código postal, FIPS de condado, estado) y el JSON del hogar. La respuesta contendrá un listado de planes elegibles para ese hogar. Para cada plan, verifique los campos de costos:
+
+premium: la prima mensual estándar sin subsidios (en dólares).
+
+premium_w_credit: la prima mensual con el APTC aplicado
+developer.cms.gov
+. Aquí debería ver que este valor es menor (en el ejemplo, aproximadamente $200 menos que premium si ese es el crédito). Por ejemplo, si un plan cuesta $300 sin subsidio, premium_w_credit podría ser $100 con $200 de APTC aplicado.
+
+aptc_eligible_premium: la porción de la prima que es elegible para crédito
+developer.cms.gov
+. En la práctica, para planes del Marketplace, casi toda la prima de los beneficios esenciales de salud es elegible para el crédito, hasta el límite del crédito calculado. Este campo es más técnico, pero confirma cuánto de la prima se pudo subsidiar.
+
+Otros campos como deducibles, copagos, cobertura, etc., también estarán en la respuesta, pero no son específicos de este caso.
+
+Compruebe que los planes incluyen al menor en la cobertura (generalmente la API infiere elegibilidad de planes según la edad; todos los planes de mercado individual cubren dependientes menores normalmente, así que no habrá exclusiones por la edad de 2 años). Si incluyó el campo relationship: "Child" para el menor, la API puede filtrar planes que acepten dependientes hijos (la mayoría lo harán). De cualquier forma, al listar planes debería ver opciones con precios reducidos por el APTC para toda la familia incluyendo el niño.
+
+Revisar la necesidad de SEP (Periodo Especial de Inscripción): Este paso es una consideración externa a la API, pero relevante. Si el rechazo de Medicaid ocurrió fuera del período de inscripción abierta, es posible que la familia califique para un Special Enrollment Period por haber sido denegados por Medicaid después de que el Marketplace inicialmente los hubiera encaminado allí. La situación “Found not eligible for Medicaid or CHIP coverage” se considera un motivo válido de SEP
+healthcare.gov
+. A efectos prácticos de la API, esto no cambia nada en la solicitud JSON; sin embargo, si su aplicación continúa hasta la inscripción real, deberá asegurarse de indicar que cuentan con un SEP (y posiblemente proporcionar la documentación de la denegación a CMS). Nuevamente, esto se maneja fuera de la API pública (mediante los procesos de inscripción del Marketplace o EDE). Simplemente tenga en mente que tras obtener los planes y costos, al inscribir al menor necesitarán el SEP activo si están fuera de las fechas de Open Enrollment.
+
+Completar la inscripción (fuera de la API pública): La API pública le habrá proporcionado la información necesaria para planificar la inscripción del menor en un plan del Marketplace con subsidio. El último paso sería proceder con la aplicación/enrollment real mediante Healthcare.gov o una integración de Enhanced Direct Enrollment (EDE) si la tiene. En ese proceso, usted debe marcar que el niño fue rechazado por Medicaid/CHIP cuando se le pregunte (como se mencionó, la aplicación tiene una pregunta dedicada a esto). Asegúrese de seleccionar al menor en esa pregunta para que el sistema del Marketplace reconozca la elegibilidad a APTC del niño. No olvide adjuntar o referenciar la carta de denegación de Medicaid/CHIP si el sistema se lo solicita, o al menos informar la fecha de la denegación si es necesario. Tras esto, podrá seleccionar el plan deseado y finalizar la inscripción. El Marketplace podría validar la situación (en algunos casos pueden pedir verificar los ingresos o el estatus legal si fuera relevante, por ejemplo en denegaciones por estatus migratorio). En el caso típico de ingresos altos para Medicaid, normalmente basta con la atestación y el comprobante de denegación en registro.
+
+En resumen: Use los campos aptc_eligible = true y has_mec = false para indicar que el niño de 2 años, rechazado por Medicaid/CHIP, debe ser tratado como miembro elegible a subsidio en la API
+developer.cms.gov
+developer.cms.gov
+. Emplee el endpoint de elegibilidad para obtener el monto de APTC y confirmar la evaluación del sistema
+developer.cms.gov
+, luego pase esa información al endpoint de planes para obtener los costos con crédito aplicado
+developer.cms.gov
+. No hay campos especiales llamados “medicaid_denied”, por lo que toda la lógica se reduce a marcar correctamente la elegibilidad a APTC y la falta de cobertura pública. Finalmente, asegúrese de documentar el rechazo y contestar afirmativamente la pregunta correspondiente durante la inscripción, ya que, aunque la API de cotización no lo requiera, el proceso de Marketplace sí espera esa confirmación del usuario. Con estos pasos, podrá manejar apropiadamente el caso del menor de 2 años rechazado por Medicaid/CHIP, obteniendo sus opciones de cobertura del Marketplace con el apoyo del APTC al que tiene derecho.
+
+Fuentes: La documentación oficial de la API pública del CMS Marketplace proporciona los detalles de estos campos y endpoints. Por ejemplo, la especificación indica que aptc_eligible determina la elegibilidad de una persona para el crédito fiscal
+developer.cms.gov
+, y que has_mec define si la persona tiene Medicaid/CHIP (cobertura mínima esencial) o no
+developer.cms.gov
+. El objeto de Eligibility devuelto por la API incluye el monto de APTC calculado y si aplica Medicaid/CHIP
+developer.cms.gov
+. Asimismo, los resultados de búsqueda de planes muestran las primas sin y con crédito (premium vs premium_w_credit) para reflejar el efecto del APTC
+developer.cms.gov
+. Esta información, junto con las guías de CMS sobre casos de denegación de Medicaid, respaldan el proceso descrito. En resumen, aunque la API no tenga un campo explícito de “medicaid_denied”, utiliza los campos mencionados para capturar la situación y permite registrar correctamente al menor con APTC.
