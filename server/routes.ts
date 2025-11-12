@@ -22247,7 +22247,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
@@ -22286,7 +22286,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
@@ -22383,7 +22383,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
@@ -22445,7 +22445,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
@@ -22468,7 +22468,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
@@ -22499,7 +22499,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
@@ -22627,7 +22627,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(companySettings.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(companySettings.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled" });
       }
@@ -22719,7 +22719,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
