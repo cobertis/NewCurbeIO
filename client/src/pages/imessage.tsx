@@ -488,8 +488,16 @@ export default function IMessagePage() {
     audio.play().catch(console.error);
   };
 
-  const formatMessageTime = (date: string) => {
+  const formatMessageTime = (date: string | undefined) => {
+    if (!date) return '';
+    
     const msgDate = new Date(date);
+    
+    // Validate date is valid
+    if (isNaN(msgDate.getTime())) {
+      return '';
+    }
+    
     if (isToday(msgDate)) {
       return format(msgDate, 'h:mm a');
     } else if (isYesterday(msgDate)) {
@@ -505,6 +513,12 @@ export default function IMessagePage() {
 
   const formatDateSeparator = (date: string) => {
     const msgDate = new Date(date);
+    
+    // Validate date is valid
+    if (isNaN(msgDate.getTime())) {
+      return 'Today';
+    }
+    
     if (isToday(msgDate)) return 'Today';
     if (isYesterday(msgDate)) return 'Yesterday';
     if (isThisYear(msgDate)) return format(msgDate, 'EEEE, MMMM d');
