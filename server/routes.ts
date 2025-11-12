@@ -1467,30 +1467,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // 8. DELETE /api/imessage/messages/:id - Delete a message (soft delete for UI)
-  app.delete("/api/imessage/messages/:id", requireActiveCompany, async (req: Request, res: Response) => {
+  // 8. DELETE /api/imessage/messages/:messageGuid - Delete a message (soft delete for UI)
+  app.delete("/api/imessage/messages/:messageGuid", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const { id } = req.params;
+      const { messageGuid } = req.params;
       
-      // Get message to verify it belongs to company
-      const message = await storage.getImessageMessage(id);
-      if (!message || message.companyId !== user.companyId) {
+      // Get message to verify it belongs to company (search by GUID)
+      const message = await storage.getImessageMessageByGuid(user.companyId, messageGuid);
+      if (!message) {
         return res.status(404).json({ message: "Message not found" });
       }
       
       // Mark message as deleted for this user (soft delete)
-      await storage.updateImessageMessageStatus(id, "deleted");
+      await storage.updateImessageMessageStatus(message.id, "deleted");
       
       // Broadcast deletion
       const { broadcastImessageUpdate } = await import("./websocket");
       broadcastImessageUpdate(user.companyId, {
         type: "message-deleted",
-        messageId: id,
+        messageId: message.id,
+        messageGuid: messageGuid,
         conversationId: message.conversationId
       });
       
