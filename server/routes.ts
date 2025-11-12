@@ -22401,8 +22401,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: targetCompanyId,
         userId: user.id,
         action: "iMessage settings updated",
-        targetType: "company_settings",
-        targetId: targetCompanyId,
+        entity: "company_settings",
+        entityId: targetCompanyId,
         metadata: {
           isEnabled: updatedImessageSettings.isEnabled,
           hasServerUrl: !!updatedImessageSettings.serverUrl,

@@ -196,7 +196,7 @@ export default function Companies() {
       const featureToAdd = allFeatures?.features.find(f => f.id === featureId);
       
       // Optimistically update cache
-      if (previousFeatures && featureToAdd) {
+      if (previousFeatures && previousFeatures.features && Array.isArray(previousFeatures.features) && featureToAdd) {
         queryClient.setQueryData(["/api/companies", companyId, "features"], {
           features: [...previousFeatures.features, featureToAdd]
         });
