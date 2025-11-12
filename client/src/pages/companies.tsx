@@ -161,19 +161,30 @@ export default function Companies() {
 
   const addFeatureMutation = useMutation({
     mutationFn: async ({ companyId, featureId }: { companyId: string; featureId: string }) => {
-      const response = await fetch(`/api/companies/${companyId}/features`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ featureId }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to add feature");
+      console.log(`[FEATURE-TOGGLE] Starting POST to /api/companies/${companyId}/features with featureId:`, featureId);
+      try {
+        const response = await fetch(`/api/companies/${companyId}/features`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ featureId }),
+        });
+        console.log(`[FEATURE-TOGGLE] Response status:`, response.status, response.statusText);
+        if (!response.ok) {
+          const error = await response.json();
+          console.error(`[FEATURE-TOGGLE] Server error:`, error);
+          throw new Error(error.message || "Failed to add feature");
+        }
+        const data = await response.json();
+        console.log(`[FEATURE-TOGGLE] Success:`, data);
+        return data;
+      } catch (err) {
+        console.error(`[FEATURE-TOGGLE] Fetch error:`, err);
+        throw err;
       }
-      return response.json();
     },
     onMutate: async ({ companyId, featureId }) => {
+      console.log(`[FEATURE-TOGGLE] onMutate called for company ${companyId}, feature ${featureId}`);
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/companies", companyId, "features"] });
       
@@ -194,20 +205,23 @@ export default function Companies() {
       return { previousFeatures };
     },
     onSuccess: async (_, { companyId }) => {
+      console.log(`[FEATURE-TOGGLE] onSuccess called, invalidating cache`);
       await queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "features"] });
       toast({
         title: "Feature Added",
         description: "The feature has been added to the company",
       });
     },
-    onError: (_, { companyId }, context) => {
+    onError: (error, { companyId }, context) => {
+      console.error(`[FEATURE-TOGGLE] onError called:`, error);
+      console.error(`[FEATURE-TOGGLE] Error details:`, { message: (error as Error).message, stack: (error as Error).stack });
       // Rollback on error
       if (context?.previousFeatures) {
         queryClient.setQueryData(["/api/companies", companyId, "features"], context.previousFeatures);
       }
       toast({
         title: "Error",
-        description: "Failed to add feature",
+        description: (error as Error).message || "Failed to add feature",
         variant: "destructive",
       });
     },
