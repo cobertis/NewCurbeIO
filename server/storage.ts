@@ -8299,7 +8299,34 @@ export class DbStorage implements IStorage {
       query = query.offset(options.offset);
     }
     
-    return query;
+    const rows = await query;
+    
+    // Map snake_case database fields to camelCase for frontend compatibility
+    return rows.map(row => ({
+      id: row.id,
+      conversationId: row.conversationId,
+      companyId: row.companyId,
+      guid: row.messageGuid,
+      chatGuid: row.chatGuid,
+      text: row.text || '',
+      subject: row.subject,
+      isFromMe: row.fromMe,
+      senderName: row.senderName,
+      senderAddress: row.senderHandle,
+      dateCreated: row.dateSent,
+      dateRead: row.dateRead,
+      dateDelivered: row.dateDelivered,
+      hasAttachments: row.hasAttachments,
+      attachments: row.attachments as any || [],
+      effectId: row.expressiveType,
+      replyToMessageId: row.replyToGuid,
+      reactions: [],  // TODO: Load reactions from reactions table
+      isDeleted: false,  // TODO: Implement soft delete
+      isEdited: false,  // TODO: Implement message editing
+      editedAt: undefined,
+      metadata: row.metadata,
+      status: row.status
+    }));
   }
 
   async createImessageMessage(data: InsertImessageMessage): Promise<ImessageMessage> {
