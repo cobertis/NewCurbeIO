@@ -130,6 +130,10 @@ export class BlueBubblesClient {
     const formData = new FormData();
     formData.append('chatGuid', chatGuid);
     
+    // Generate a temporary GUID for the message (required by BlueBubbles)
+    const tempGuid = `temp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    formData.append('tempGuid', tempGuid);
+    
     // Read file from disk and append as blob
     const fs = await import('fs');
     const fileBuffer = fs.readFileSync(attachmentPath);
