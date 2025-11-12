@@ -968,6 +968,16 @@ export default function IMessagePage() {
 
   // Audio recording functions
   const startRecording = async () => {
+    // Validate that a conversation is selected
+    if (!selectedConversationId) {
+      toast({
+        title: "No conversation selected",
+        description: "Please select a conversation before recording a voice message",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
