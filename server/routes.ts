@@ -22265,21 +22265,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // iMessage Routes (BlueBubbles Integration)
   // ====================================================================
 
-  // GET /api/imessage/settings - Get iMessage settings for company (admin only)
+  // GET /api/imessage/settings - Get iMessage settings for company (superadmin only)
   app.get("/api/imessage/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
-        return res.status(403).json({ message: "Only admins can view iMessage settings" });
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can view iMessage settings" });
+      }
+
+      // Allow superadmin to query settings for any company via ?companyId= parameter
+      const targetCompanyId = req.query.companyId ? String(req.query.companyId) : user.companyId;
+
+      // Superadmin must have companyId in query
+      if (user.role === "superadmin" && !req.query.companyId) {
+        return res.status(400).json({ message: "companyId query parameter required for superadmin" });
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(targetCompanyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
 
-      const settings = await storage.getCompanySettings(user.companyId);
+      const settings = await storage.getCompanySettings(targetCompanyId);
       if (!settings) {
         return res.status(404).json({ message: "Company settings not found" });
       }
@@ -22304,16 +22312,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // PUT /api/imessage/settings - Update iMessage settings (admin/superadmin only)
+  // PUT /api/imessage/settings - Update iMessage settings (superadmin only)
   app.put("/api/imessage/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
-        return res.status(403).json({ message: "Only admins can update iMessage settings" });
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can update iMessage settings" });
+      }
+
+      // Allow superadmin to update settings for any company via ?companyId= parameter
+      const targetCompanyId = req.query.companyId ? String(req.query.companyId) : user.companyId;
+
+      // Superadmin must have companyId in query
+      if (user.role === "superadmin" && !req.query.companyId) {
+        return res.status(400).json({ message: "companyId query parameter required for superadmin" });
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(targetCompanyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
@@ -22348,7 +22364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const { serverUrl, password, isEnabled } = validationResult.data;
 
-      const settings = await storage.getCompanySettings(user.companyId);
+      const settings = await storage.getCompanySettings(targetCompanyId);
       if (!settings) {
         return res.status(404).json({ message: "Company settings not found" });
       }
@@ -22371,17 +22387,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         webhookSecret,
       };
 
-      await storage.updateCompanySettings(user.companyId, {
+      await storage.updateCompanySettings(targetCompanyId, {
         imessageSettings: updatedImessageSettings,
       });
 
       // Log activity
       await storage.createActivityLog({
-        companyId: user.companyId,
+        companyId: targetCompanyId,
         userId: user.id,
         action: "iMessage settings updated",
         targetType: "company_settings",
-        targetId: user.companyId,
+        targetId: targetCompanyId,
         metadata: {
           isEnabled: updatedImessageSettings.isEnabled,
           hasServerUrl: !!updatedImessageSettings.serverUrl,
@@ -22401,21 +22417,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/imessage/settings/regenerate-webhook-secret - Regenerate webhook secret (admin only)
+  // POST /api/imessage/settings/regenerate-webhook-secret - Regenerate webhook secret (superadmin only)
   app.post("/api/imessage/settings/regenerate-webhook-secret", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
-        return res.status(403).json({ message: "Only admins can regenerate webhook secret" });
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can regenerate webhook secret" });
+      }
+
+      // Allow superadmin to regenerate settings for any company via ?companyId= parameter
+      const targetCompanyId = req.query.companyId ? String(req.query.companyId) : user.companyId;
+
+      // Superadmin must have companyId in query
+      if (user.role === "superadmin" && !req.query.companyId) {
+        return res.status(400).json({ message: "companyId query parameter required for superadmin" });
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(targetCompanyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
 
-      const settings = await storage.getCompanySettings(user.companyId);
+      const settings = await storage.getCompanySettings(targetCompanyId);
       if (!settings) {
         return res.status(404).json({ message: "Company settings not found" });
       }
@@ -22435,17 +22459,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         webhookSecret: newWebhookSecret,
       };
 
-      await storage.updateCompanySettings(user.companyId, {
+      await storage.updateCompanySettings(targetCompanyId, {
         imessageSettings: updatedImessageSettings,
       });
 
       // Log activity
       await storage.createActivityLog({
-        companyId: user.companyId,
+        companyId: targetCompanyId,
         userId: user.id,
         action: "iMessage webhook secret regenerated",
         targetType: "company_settings",
-        targetId: user.companyId,
+        targetId: targetCompanyId,
         metadata: {
           regeneratedBy: user.email,
         },

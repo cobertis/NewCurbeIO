@@ -1,9 +1,9 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2, Plus, Trash2, Search, Package, Power } from "lucide-react";
+import { Building2, Plus, Trash2, Search, Package, Power, Settings2, Eye, EyeOff, Copy, CheckCircle, AlertCircle, AlertTriangle, Zap } from "lucide-react";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -12,14 +12,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createCompanyWithAdminSchema, type Company, type Feature } from "@shared/schema";
-import { useState, useRef } from "react";
+import { createCompanyWithAdminSchema, type Company, type Feature, type User } from "@shared/schema";
+import { useState, useRef, useEffect } from "react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { formatForDisplay, formatPhoneInput } from "@shared/phone";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { BusinessAutocomplete } from "@/components/business-autocomplete";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 // Function to generate slug from company name
 function generateSlug(name: string): string {
@@ -42,7 +44,19 @@ export default function Companies() {
   const [searchTerm, setSearchTerm] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
+  const [imessageConfigOpen, setImessageConfigOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
+  const [newWebhookSecret, setNewWebhookSecret] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Get session data to check if user is superadmin
+  const { data: userData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+
+  const isSuperadmin = userData?.user?.role === "superadmin";
 
   const { data, isLoading } = useQuery<{ companies: Company[] }>({
     queryKey: ["/api/companies"],
@@ -306,6 +320,165 @@ export default function Companies() {
       removeFeatureMutation.mutate({ companyId: selectedCompany.id, featureId });
     } else {
       addFeatureMutation.mutate({ companyId: selectedCompany.id, featureId });
+    }
+  };
+
+  // iMessage configuration logic
+  const { data: imessageSettingsData, isLoading: loadingImessageSettings } = useQuery<{ settings: any }>({
+    queryKey: ["/api/imessage/settings", selectedCompany?.id],
+    queryFn: async () => {
+      if (!selectedCompany?.id) return null;
+      const response = await fetch(`/api/imessage/settings?companyId=${selectedCompany.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch iMessage settings");
+      }
+      return response.json();
+    },
+    enabled: imessageConfigOpen && isSuperadmin && !!selectedCompany?.id,
+  });
+
+  const currentImessageSettings = imessageSettingsData?.settings || imessageSettingsData || {};
+
+  // Form schema for iMessage settings
+  const imessageFormSchema = z.object({
+    serverUrl: z.string().url("Must be a valid URL").min(1, "Server URL is required"),
+    password: z.string().min(1, "Password is required"),
+    isEnabled: z.boolean(),
+  });
+
+  // Form for iMessage settings
+  const imessageForm = useForm({
+    resolver: zodResolver(imessageFormSchema),
+    defaultValues: {
+      serverUrl: currentImessageSettings.serverUrl || "",
+      password: currentImessageSettings.password || "",
+      isEnabled: currentImessageSettings.isEnabled || false,
+    },
+  });
+
+  // Update form when settings load
+  useEffect(() => {
+    if (currentImessageSettings) {
+      imessageForm.reset({
+        serverUrl: currentImessageSettings.serverUrl || "",
+        password: currentImessageSettings.password || "",
+        isEnabled: currentImessageSettings.isEnabled || false,
+      });
+    }
+  }, [currentImessageSettings, imessageForm]);
+
+  // Set webhook URL when component mounts
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const domain = window.location.origin;
+      setWebhookUrl(`${domain}/api/imessage/webhook`);
+    }
+  }, []);
+
+  // Save iMessage settings mutation
+  const saveImessageSettingsMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (!selectedCompany?.id) {
+        throw new Error("No company selected");
+      }
+      const response = await fetch(`/api/imessage/settings?companyId=${selectedCompany.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save settings");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/imessage/settings", selectedCompany?.id] });
+      toast({
+        title: "Settings saved",
+        description: "iMessage settings have been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to save settings",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveImessageSettings = imessageForm.handleSubmit((data) => {
+    saveImessageSettingsMutation.mutate(data);
+  });
+
+  const handleCopyWebhookUrl = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast({
+      title: "Copied to clipboard",
+      description: "Webhook URL has been copied to your clipboard.",
+    });
+  };
+
+  // Regenerate webhook secret mutation
+  const regenerateSecretMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedCompany?.id) {
+        throw new Error("No company selected");
+      }
+      const response = await fetch(`/api/imessage/settings/regenerate-webhook-secret?companyId=${selectedCompany.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to regenerate secret");
+      }
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      setNewWebhookSecret(data.webhookSecret);
+      setShowRegenerateDialog(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/imessage/settings", selectedCompany?.id] });
+      toast({
+        title: "Webhook secret regenerated",
+        description: "Your new webhook secret has been generated. Please copy it now.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to regenerate secret",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCopyWebhookSecret = () => {
+    if (newWebhookSecret) {
+      navigator.clipboard.writeText(newWebhookSecret);
+      toast({
+        title: "Copied to clipboard",
+        description: "Webhook secret has been copied to your clipboard.",
+      });
+    }
+  };
+
+  const handleCloseRegenerateDialog = () => {
+    setShowRegenerateDialog(false);
+    // Clear the secret from memory when dialog closes
+    setTimeout(() => setNewWebhookSecret(null), 300);
+  };
+
+  const handleConfigureImessage = (feature: Feature) => {
+    if (isSuperadmin && feature.key === "imessage") {
+      setImessageConfigOpen(true);
     }
   };
 
@@ -855,6 +1028,18 @@ export default function Companies() {
                               Inactive
                             </Badge>
                           )}
+                          {isSuperadmin && feature.key === "imessage" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 ml-auto"
+                              onClick={() => handleConfigureImessage(feature)}
+                              data-testid="button-configure-imessage"
+                              title="Configure iMessage"
+                            >
+                              <Settings2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground" data-testid={`text-feature-desc-${feature.id}`}>
                           {feature.description || 'No description'}
@@ -880,6 +1065,263 @@ export default function Companies() {
               data-testid="button-close-features"
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* iMessage Configuration Dialog */}
+      <Dialog open={imessageConfigOpen} onOpenChange={setImessageConfigOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]" data-testid="dialog-configure-imessage">
+          <DialogHeader>
+            <DialogTitle>Configure iMessage</DialogTitle>
+            <DialogDescription>
+              Configure BlueBubbles server connection and webhook settings for iMessage integration
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingImessageSettings ? (
+            <div className="flex items-center justify-center p-6">
+              <LoadingSpinner data-testid="loading-imessage-settings" />
+            </div>
+          ) : (
+            <Form {...imessageForm}>
+              <form onSubmit={handleSaveImessageSettings} className="space-y-4 overflow-y-auto max-h-[60vh] px-1">
+                {/* BlueBubbles Server Configuration */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">BlueBubbles Server</h3>
+                  
+                  <FormField
+                    control={imessageForm.control}
+                    name="serverUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Server URL</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="https://your-server.ngrok.io"
+                            data-testid="input-imessage-server-url"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={imessageForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Server Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Enter server password"
+                              data-testid="input-imessage-password"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3"
+                              onClick={() => setShowPassword(!showPassword)}
+                              data-testid="button-toggle-imessage-password"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={imessageForm.control}
+                    name="isEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Enable iMessage Integration</FormLabel>
+                          <CardDescription>
+                            Allow iMessage messaging through BlueBubbles server
+                          </CardDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-enable-imessage"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Webhook Configuration */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-semibold">Webhook Configuration</h3>
+                  
+                  <div className="space-y-2">
+                    <Label>Webhook URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={webhookUrl}
+                        readOnly
+                        className="flex-1 font-mono text-sm"
+                        data-testid="input-imessage-webhook-url"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleCopyWebhookUrl}
+                        data-testid="button-copy-imessage-webhook"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Configure this URL in your BlueBubbles server webhook settings
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Webhook Secret Status</Label>
+                    <div className="flex items-center gap-2 rounded-lg border p-3">
+                      {currentImessageSettings.hasWebhookSecret ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-500" />
+                          <span className="text-sm text-green-600 dark:text-green-500 font-medium">
+                            Webhook secret configured
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                          <span className="text-sm text-amber-600 dark:text-amber-500 font-medium">
+                            No webhook secret configured
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => regenerateSecretMutation.mutate()}
+                      disabled={regenerateSecretMutation.isPending}
+                      className="w-full"
+                      data-testid="button-regenerate-imessage-webhook-secret"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      {regenerateSecretMutation.isPending ? "Regenerating..." : "Regenerate Webhook Secret"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      <AlertTriangle className="h-3 w-3 inline mr-1" />
+                      Regenerating will invalidate the previous secret
+                    </p>
+                  </div>
+                </div>
+              </form>
+            </Form>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setImessageConfigOpen(false)}
+              data-testid="button-cancel-imessage-config"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveImessageSettings}
+              disabled={saveImessageSettingsMutation.isPending}
+              data-testid="button-save-imessage-settings"
+            >
+              {saveImessageSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Regenerate Secret Dialog - ONE TIME SHOW */}
+      <Dialog open={showRegenerateDialog} onOpenChange={handleCloseRegenerateDialog}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-webhook-secret">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-500" />
+              Webhook Secret Generated
+            </DialogTitle>
+            <DialogDescription>
+              Copy this secret now and configure it in your BlueBubbles server. This secret will not be shown again for security reasons.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Warning Alert */}
+            <div className="rounded-lg border border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 mt-0.5" />
+                <div className="text-sm text-amber-800 dark:text-amber-200">
+                  <p className="font-semibold">Important: Previous secret invalidated</p>
+                  <p className="mt-1">Update your BlueBubbles server configuration immediately.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Secret Display */}
+            <div className="space-y-2">
+              <Label>Your New Webhook Secret</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newWebhookSecret || ""}
+                  readOnly
+                  className="flex-1 font-mono text-sm"
+                  data-testid="input-new-imessage-webhook-secret"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyWebhookSecret}
+                  data-testid="button-copy-imessage-webhook-secret"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Instructions */}
+            <div className="space-y-2">
+              <Label>Configuration Instructions</Label>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+                <li>Copy the webhook secret above</li>
+                <li>Open your BlueBubbles server settings</li>
+                <li>Navigate to the webhook configuration section</li>
+                <li>Paste this secret in the webhook secret field</li>
+                <li>Save your BlueBubbles server configuration</li>
+              </ol>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={handleCloseRegenerateDialog}
+              data-testid="button-close-imessage-regenerate-dialog"
+            >
+              I've Copied the Secret
             </Button>
           </DialogFooter>
         </DialogContent>
