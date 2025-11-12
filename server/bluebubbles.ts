@@ -107,10 +107,17 @@ export class BlueBubblesClient {
     });
   }
 
-  async sendAttachment(chatGuid: string, attachment: File): Promise<SendMessageResponse> {
+  async sendAttachment(chatGuid: string, attachmentPath: string): Promise<SendMessageResponse> {
+    // BlueBubbles expects a file path or Buffer, not a File object
+    // When called from our API, we'll pass the file path from multer upload
     const formData = new FormData();
     formData.append('chatGuid', chatGuid);
-    formData.append('attachment', attachment);
+    
+    // Read file from disk and append as blob
+    const fs = await import('fs');
+    const fileBuffer = fs.readFileSync(attachmentPath);
+    const blob = new Blob([fileBuffer]);
+    formData.append('attachment', blob, attachmentPath.split('/').pop());
 
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);
     urlWithAuth.searchParams.set('password', this.password);
@@ -121,7 +128,8 @@ export class BlueBubblesClient {
     });
 
     if (!response.ok) {
-      throw new Error(`BlueBubbles API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`BlueBubbles API error: ${response.status} - ${errorText}`);
     }
 
     return response.json();
@@ -181,6 +189,70 @@ export class BlueBubblesClient {
     });
   }
 }
+
+// Singleton instance - will be initialized on demand
+let blueBubblesClientInstance: BlueBubblesClient | null = null;
+
+// Export a singleton getter that creates/returns the client
+export const blueBubblesClient = {
+  sendMessage: async (request: SendMessageRequest): Promise<SendMessageResponse> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.sendMessage(request);
+  },
+  
+  sendAttachment: async (chatGuid: string, attachment: File): Promise<SendMessageResponse> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.sendAttachment(chatGuid, attachment);
+  },
+  
+  getChats: async (offset = 0, limit = 100): Promise<{ data: Chat[] }> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.getChats(offset, limit);
+  },
+  
+  getChat: async (chatGuid: string): Promise<{ data: Chat }> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.getChat(chatGuid);
+  },
+  
+  getChatMessages: async (chatGuid: string, offset = 0, limit = 100): Promise<{ data: Message[] }> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.getChatMessages(chatGuid, offset, limit);
+  },
+  
+  markAsRead: async (chatGuid: string): Promise<void> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.markAsRead(chatGuid);
+  },
+  
+  getServerInfo: async (): Promise<any> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.getServerInfo();
+  },
+  
+  initialize: (settings: CompanySettings): boolean => {
+    blueBubblesClientInstance = BlueBubblesClient.createFromSettings(settings);
+    return blueBubblesClientInstance !== null;
+  },
+  
+  isInitialized: (): boolean => {
+    return blueBubblesClientInstance !== null;
+  }
+};
 
 export function validateWebhookSignature(
   payload: string,

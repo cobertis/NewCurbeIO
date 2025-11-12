@@ -413,6 +413,9 @@ export default function Settings() {
   // Track which company section is currently saving
   const [savingSection, setSavingSection] = useState<string | null>(null);
   
+  // iMessage webhook settings state
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  
   // Address autocomplete state
   const [addressValue, setAddressValue] = useState("");
   

@@ -518,3 +518,168 @@ export function broadcastBulkvsMessageStatus(messageId: string, status: string, 
 
   console.log(`[WebSocket] Broadcasting bulkvs_message_status to ${sentCount} clients`);
 }
+
+// ==================== iMESSAGE WEBSOCKET HANDLERS ====================
+
+// Broadcast iMessage update to all clients in the same company
+export function broadcastImessageUpdate(companyId: string, data: any) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'imessage_update',
+    ...data,
+    companyId
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    // CRITICAL: Always verify authentication first to prevent leaks
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to clients in the same company or superadmins
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(message);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast iMessage update to ${sentCount} client(s)`);
+}
+
+// Broadcast new iMessage to all clients in the same company
+export function broadcastImessageMessage(companyId: string, conversationId: string, message: any) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'imessage_message',
+    conversationId,
+    message,
+    companyId
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to clients in the same company or superadmins
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast iMessage message to ${sentCount} client(s)`);
+}
+
+// Broadcast typing indicator
+export function broadcastImessageTyping(companyId: string, conversationId: string, userId: string, isTyping: boolean) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'imessage_typing',
+    conversationId,
+    userId,
+    isTyping,
+    companyId
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to clients in the same company (excluding the typing user)
+    if (authClient.companyId === companyId && authClient.userId !== userId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast iMessage typing to ${sentCount} client(s)`);
+}
+
+// Broadcast reaction update
+export function broadcastImessageReaction(companyId: string, messageId: string, userId: string, reaction: string, action: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'imessage_reaction',
+    messageId,
+    userId,
+    reaction,
+    action,
+    companyId
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to clients in the same company or superadmins
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast iMessage reaction to ${sentCount} client(s)`);
+}
+
+// Broadcast read receipt update
+export function broadcastImessageReadReceipt(companyId: string, conversationId: string, messageGuids: string[]) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'imessage_read_receipt',
+    conversationId,
+    messageGuids,
+    companyId
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to clients in the same company or superadmins
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast iMessage read receipt to ${sentCount} client(s)`);
+}

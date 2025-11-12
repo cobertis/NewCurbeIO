@@ -932,6 +932,25 @@ export interface IStorage {
   updateBulkvsMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void>;
   searchBulkvsMessages(userId: string, query: string): Promise<BulkvsMessage[]>;
   
+  // iMessage Conversations
+  getImessageConversation(id: string): Promise<ImessageConversation | undefined>;
+  getImessageConversationsByCompany(companyId: string, options?: { archived?: boolean; search?: string }): Promise<ImessageConversation[]>;
+  getImessageConversationByHandle(companyId: string, handle: string): Promise<ImessageConversation | undefined>;
+  createImessageConversation(data: InsertImessageConversation): Promise<ImessageConversation>;
+  updateImessageConversation(id: string, data: Partial<InsertImessageConversation>): Promise<ImessageConversation | undefined>;
+  deleteImessageConversation(id: string): Promise<boolean>;
+  incrementConversationUnread(conversationId: string): Promise<void>;
+  markConversationAsRead(conversationId: string): Promise<void>;
+  
+  // iMessage Messages
+  getImessageMessage(id: string): Promise<ImessageMessage | undefined>;
+  getImessageMessagesByConversation(conversationId: string, options?: { limit?: number; offset?: number }): Promise<ImessageMessage[]>;
+  createImessageMessage(data: InsertImessageMessage): Promise<ImessageMessage>;
+  updateImessageMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void>;
+  searchImessageMessages(companyId: string, query: string): Promise<ImessageMessage[]>;
+  addMessageReaction(messageId: string, userId: string, reaction: string): Promise<void>;
+  removeMessageReaction(messageId: string, userId: string, reaction: string): Promise<void>;
+  
   // Manual Contacts
   createManualContact(data: InsertManualContact): Promise<ManualContact>;
   getManualContacts(companyId: string): Promise<ManualContact[]>;
@@ -8127,14 +8146,41 @@ export class DbStorage implements IStorage {
       .orderBy(desc(imessageConversations.updatedAt));
   }
 
-  async getImessageConversation(id: string, companyId: string): Promise<ImessageConversation | undefined> {
+  async getImessageConversation(id: string): Promise<ImessageConversation | undefined> {
+    const result = await db
+      .select()
+      .from(imessageConversations)
+      .where(eq(imessageConversations.id, id));
+    return result[0];
+  }
+  
+  async getImessageConversationsByCompany(companyId: string, options?: { archived?: boolean; search?: string }): Promise<ImessageConversation[]> {
+    let query = db
+      .select()
+      .from(imessageConversations)
+      .where(eq(imessageConversations.companyId, companyId));
+    
+    // Add search filter if provided
+    if (options?.search) {
+      query = query.where(
+        or(
+          sql`${imessageConversations.displayName} ILIKE ${'%' + options.search + '%'}`,
+          sql`array_to_string(${imessageConversations.participants}, ',') ILIKE ${'%' + options.search + '%'}`
+        )
+      );
+    }
+    
+    return query.orderBy(desc(imessageConversations.updatedAt));
+  }
+  
+  async getImessageConversationByHandle(companyId: string, handle: string): Promise<ImessageConversation | undefined> {
     const result = await db
       .select()
       .from(imessageConversations)
       .where(
         and(
-          eq(imessageConversations.id, id),
-          eq(imessageConversations.companyId, companyId)
+          eq(imessageConversations.companyId, companyId),
+          sql`${handle} = ANY(${imessageConversations.participants})`
         )
       );
     return result[0];
@@ -8165,24 +8211,55 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateImessageConversation(id: string, companyId: string, data: Partial<InsertImessageConversation>): Promise<ImessageConversation | undefined> {
+  async updateImessageConversation(id: string, data: Partial<InsertImessageConversation>): Promise<ImessageConversation | undefined> {
     const result = await db
       .update(imessageConversations)
       .set({
         ...data,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(imessageConversations.id, id),
-          eq(imessageConversations.companyId, companyId)
-        )
-      )
+      .where(eq(imessageConversations.id, id))
       .returning();
     return result[0];
   }
+  
+  async deleteImessageConversation(id: string): Promise<boolean> {
+    const result = await db
+      .delete(imessageConversations)
+      .where(eq(imessageConversations.id, id))
+      .returning();
+    return result.length > 0;
+  }
+  
+  async incrementConversationUnread(conversationId: string): Promise<void> {
+    await db
+      .update(imessageConversations)
+      .set({
+        unreadCount: sql`${imessageConversations.unreadCount} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(imessageConversations.id, conversationId));
+  }
+  
+  async markConversationAsRead(conversationId: string): Promise<void> {
+    await db
+      .update(imessageConversations)
+      .set({
+        unreadCount: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(imessageConversations.id, conversationId));
+  }
 
   // ==================== iMESSAGE MESSAGES ====================
+
+  async getImessageMessage(id: string): Promise<ImessageMessage | undefined> {
+    const result = await db
+      .select()
+      .from(imessageMessages)
+      .where(eq(imessageMessages.id, id));
+    return result[0];
+  }
 
   async getImessageMessages(conversationId: string, companyId: string, limit = 50, offset = 0): Promise<ImessageMessage[]> {
     return db
@@ -8197,6 +8274,23 @@ export class DbStorage implements IStorage {
       .orderBy(imessageMessages.dateSent)
       .limit(limit)
       .offset(offset);
+  }
+  
+  async getImessageMessagesByConversation(conversationId: string, options?: { limit?: number; offset?: number }): Promise<ImessageMessage[]> {
+    let query = db
+      .select()
+      .from(imessageMessages)
+      .where(eq(imessageMessages.conversationId, conversationId))
+      .orderBy(desc(imessageMessages.dateSent));
+    
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+    if (options?.offset) {
+      query = query.offset(options.offset);
+    }
+    
+    return query;
   }
 
   async createImessageMessage(data: InsertImessageMessage): Promise<ImessageMessage> {
@@ -8226,6 +8320,91 @@ export class DbStorage implements IStorage {
       )
       .returning();
     return result[0];
+  }
+  
+  async updateImessageMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void> {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+    
+    // Handle different status updates
+    if (status === "delivered" && deliveredAt) {
+      updateData.dateDelivered = deliveredAt;
+    }
+    if (status === "read" && readAt) {
+      updateData.dateRead = readAt;
+      updateData.isRead = true;
+    }
+    if (status === "deleted") {
+      updateData.isDeleted = true;
+    }
+    
+    await db
+      .update(imessageMessages)
+      .set(updateData)
+      .where(eq(imessageMessages.id, id));
+  }
+  
+  async searchImessageMessages(companyId: string, query: string): Promise<ImessageMessage[]> {
+    return db
+      .select()
+      .from(imessageMessages)
+      .where(
+        and(
+          eq(imessageMessages.companyId, companyId),
+          sql`${imessageMessages.text} ILIKE ${'%' + query + '%'}`
+        )
+      )
+      .orderBy(desc(imessageMessages.dateSent))
+      .limit(100);
+  }
+  
+  async addMessageReaction(messageId: string, userId: string, reaction: string): Promise<void> {
+    // Get the current message
+    const message = await this.getImessageMessage(messageId);
+    if (!message) return;
+    
+    // Update reactions object
+    const reactions = message.reactions || {};
+    if (!reactions[reaction]) {
+      reactions[reaction] = [];
+    }
+    if (!reactions[reaction].includes(userId)) {
+      reactions[reaction].push(userId);
+    }
+    
+    // Update the message
+    await db
+      .update(imessageMessages)
+      .set({
+        reactions,
+        updatedAt: new Date(),
+      })
+      .where(eq(imessageMessages.id, messageId));
+  }
+  
+  async removeMessageReaction(messageId: string, userId: string, reaction: string): Promise<void> {
+    // Get the current message
+    const message = await this.getImessageMessage(messageId);
+    if (!message) return;
+    
+    // Update reactions object
+    const reactions = message.reactions || {};
+    if (reactions[reaction]) {
+      reactions[reaction] = reactions[reaction].filter((id: string) => id !== userId);
+      if (reactions[reaction].length === 0) {
+        delete reactions[reaction];
+      }
+    }
+    
+    // Update the message
+    await db
+      .update(imessageMessages)
+      .set({
+        reactions,
+        updatedAt: new Date(),
+      })
+      .where(eq(imessageMessages.id, messageId));
   }
 
   // Helper for webhook - get all company settings

@@ -445,8 +445,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!req.session.user) {
       req.session.user = {
         id: user.id,
+        email: user.email,
         companyId: user.companyId ?? null,
-        role: user.role
+        role: user.role,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
+        twoFactorEmailEnabled: user.twoFactorEmailEnabled,
+        twoFactorSmsEnabled: user.twoFactorSmsEnabled,
+        status: user.status || 'active',
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        avatar: user.avatar,
+        dateOfBirth: user.dateOfBirth,
+        preferredLanguage: user.preferredLanguage,
+        timezone: user.timezone
       };
     }
 
@@ -469,8 +482,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!req.session.user) {
       req.session.user = {
         id: user.id,
+        email: user.email,
         companyId: user.companyId ?? null,
-        role: user.role
+        role: user.role,
+        isActive: user.isActive,
+        emailVerified: user.emailVerified,
+        twoFactorEmailEnabled: user.twoFactorEmailEnabled,
+        twoFactorSmsEnabled: user.twoFactorSmsEnabled,
+        status: user.status || 'active',
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        avatar: user.avatar,
+        dateOfBirth: user.dateOfBirth,
+        preferredLanguage: user.preferredLanguage,
+        timezone: user.timezone
       };
     }
 
@@ -748,6 +774,666 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // ==================== iMESSAGE API ENDPOINTS ====================
+  
+  // CRITICAL: BlueBubbles Webhook Endpoint
+  // POST /api/imessage/webhook/:companySlug - Receive webhooks from BlueBubbles server
+  app.post("/api/imessage/webhook/:companySlug", async (req: Request, res: Response) => {
+    try {
+      const { companySlug } = req.params;
+      
+      console.log(`[BlueBubbles Webhook] Received webhook for company: ${companySlug}`);
+      console.log("[BlueBubbles Webhook] Headers:", req.headers);
+      console.log("[BlueBubbles Webhook] Body:", JSON.stringify(req.body, null, 2));
+      
+      // Find company by slug
+      const company = await storage.getCompanyBySlug(companySlug);
+      if (!company) {
+        console.error(`[BlueBubbles Webhook] Company not found: ${companySlug}`);
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Get company settings for webhook validation
+      const companySettings = await storage.getCompanySettings(company.id);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      
+      if (!imessageSettings?.isEnabled) {
+        console.error(`[BlueBubbles Webhook] iMessage not enabled for company: ${companySlug}`);
+        return res.status(403).json({ message: "iMessage not enabled" });
+      }
+      
+      // Validate webhook signature if configured
+      const webhookSecret = imessageSettings.webhookSecret;
+      if (webhookSecret) {
+        const signature = req.headers['x-bluebubbles-signature'] as string;
+        if (!signature) {
+          console.error(`[BlueBubbles Webhook] Missing signature header`);
+          return res.status(401).json({ message: "Missing webhook signature" });
+        }
+        
+        // Verify HMAC signature
+        const { createHmac } = await import("crypto");
+        const expectedSignature = createHmac('sha256', webhookSecret)
+          .update(JSON.stringify(req.body))
+          .digest('hex');
+        
+        if (signature !== expectedSignature) {
+          console.error(`[BlueBubbles Webhook] Invalid signature`);
+          return res.status(401).json({ message: "Invalid webhook signature" });
+        }
+      }
+      
+      // Process webhook payload based on event type
+      const payload = req.body;
+      const eventType = payload.type || payload.event;
+      
+      console.log(`[BlueBubbles Webhook] Event type: ${eventType}`);
+      
+      switch (eventType) {
+        case 'message':
+        case 'new-message':
+        case 'message.received': {
+          // Handle incoming message
+          const messageData = payload.data || payload;
+          
+          // Find or create conversation
+          const chatGuid = messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
+          const participants = messageData.participants || [messageData.handle || messageData.from];
+          
+          let conversation = await storage.getImessageConversationByChatGuid(chatGuid);
+          if (!conversation) {
+            // Create new conversation
+            conversation = await storage.createImessageConversation({
+              companyId: company.id,
+              chatGuid,
+              participants: participants,
+              displayName: participants[0] || 'Unknown',
+              lastMessageAt: new Date(),
+              unreadCount: 1,
+            });
+          }
+          
+          // Store the message
+          const newMessage = await storage.createImessageMessage({
+            conversationId: conversation.id,
+            guid: messageData.guid || `msg_${Date.now()}`,
+            text: messageData.text || messageData.message || '',
+            sender: messageData.handle?.address || messageData.from || 'Unknown',
+            isFromMe: messageData.isFromMe || false,
+            dateCreated: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
+            dateRead: messageData.dateRead ? new Date(messageData.dateRead) : null,
+            dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : null,
+            attachments: messageData.attachments || [],
+            associatedMessageGuid: messageData.associatedMessageGuid || null,
+            associatedMessageType: messageData.associatedMessageType || null,
+          });
+          
+          // Update conversation last message
+          await storage.updateImessageConversation(conversation.id, {
+            lastMessageAt: newMessage.dateCreated,
+            lastMessageText: newMessage.text,
+            unreadCount: conversation.unreadCount + (newMessage.isFromMe ? 0 : 1),
+          });
+          
+          // Broadcast to WebSocket clients
+          broadcastImessageMessage(company.id, conversation.id, newMessage);
+          
+          // Send browser notification if enabled
+          if (!newMessage.isFromMe) {
+            await notificationService.sendImessageNotification(company.id, {
+              conversationId: conversation.id,
+              senderName: newMessage.sender,
+              messageText: newMessage.text,
+            });
+          }
+          
+          break;
+        }
+        
+        case 'typing':
+        case 'typing-indicator': {
+          // Handle typing indicator
+          const typingData = payload.data || payload;
+          const chatGuid = typingData.chatGuid || typingData.chat_guid;
+          const isTyping = typingData.typing || typingData.isTyping;
+          
+          const conversation = await storage.getImessageConversationByChatGuid(chatGuid);
+          if (conversation) {
+            broadcastImessageTyping(company.id, conversation.id, typingData.handle || 'Unknown', isTyping);
+          }
+          break;
+        }
+        
+        case 'reaction':
+        case 'message.reaction': {
+          // Handle reactions
+          const reactionData = payload.data || payload;
+          const messageGuid = reactionData.messageGuid || reactionData.message_guid;
+          const reaction = reactionData.reaction || reactionData.type;
+          const action = reactionData.action || 'add'; // add or remove
+          
+          broadcastImessageReaction(company.id, messageGuid, reactionData.handle || 'Unknown', reaction, action);
+          break;
+        }
+        
+        case 'read':
+        case 'read-receipt':
+        case 'message.read': {
+          // Handle read receipts
+          const readData = payload.data || payload;
+          const chatGuid = readData.chatGuid || readData.chat_guid;
+          const messageGuids = readData.messageGuids || readData.messages || [];
+          
+          const conversation = await storage.getImessageConversationByChatGuid(chatGuid);
+          if (conversation) {
+            // Mark messages as read
+            for (const guid of messageGuids) {
+              await storage.updateImessageMessageReadStatus(guid, new Date());
+            }
+            
+            // Update unread count
+            const unreadCount = await storage.getImessageUnreadCount(conversation.id);
+            await storage.updateImessageConversation(conversation.id, { unreadCount });
+            
+            // Broadcast read receipt
+            broadcastImessageReadReceipt(company.id, conversation.id, messageGuids);
+          }
+          break;
+        }
+        
+        default:
+          console.log(`[BlueBubbles Webhook] Unknown event type: ${eventType}`);
+      }
+      
+      // Always return 200 OK to acknowledge webhook receipt
+      res.json({ success: true, message: "Webhook processed" });
+      
+    } catch (error: any) {
+      console.error("[BlueBubbles Webhook] Error processing webhook:", error);
+      // Still return 200 to prevent webhook retries for processing errors
+      res.json({ success: false, message: "Webhook processing error", error: error.message });
+    }
+  });
+  
+  // Attachment upload endpoint
+  // POST /api/imessage/attachments/upload - Upload attachment for iMessage
+  app.post("/api/imessage/attachments/upload", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Check if company has iMessage configured
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      if (!imessageSettings?.isEnabled) {
+        return res.status(503).json({ message: "iMessage service is not configured" });
+      }
+      
+      // Setup multer for file upload
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'imessage');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      const imessageStorage = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `imessage-${uniqueSuffix}${ext}`);
+        },
+      });
+      
+      const imessageUpload = multer({
+        storage: imessageStorage,
+        limits: { fileSize: MAX_IMESSAGE_SIZE },
+        fileFilter: (req, file, cb) => {
+          if (!ALLOWED_IMESSAGE_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type for iMessage'));
+          }
+          cb(null, true);
+        },
+      });
+      
+      await new Promise<void>((resolve, reject) => {
+        imessageUpload.single('attachment')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 100MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+      
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Return file info for sending via BlueBubbles
+      const attachmentUrl = `/uploads/imessage/${file.filename}`;
+      
+      res.json({
+        success: true,
+        attachment: {
+          id: file.filename,
+          url: attachmentUrl,
+          mimeType: file.mimetype,
+          size: file.size,
+          originalName: file.originalname,
+        },
+      });
+      
+    } catch (error: any) {
+      console.error("Error uploading iMessage attachment:", error);
+      res.status(500).json({ message: error.message || "Failed to upload attachment" });
+    }
+  });
+  
+  // Attachment serving endpoint  
+  // GET /api/imessage/attachments/:id - Serve iMessage attachment
+  app.get("/api/imessage/attachments/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      const filePath = path.join(process.cwd(), 'uploads', 'imessage', id);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "Attachment not found" });
+      }
+      
+      // Send file
+      res.sendFile(filePath);
+      
+    } catch (error: any) {
+      console.error("Error serving iMessage attachment:", error);
+      res.status(500).json({ message: "Failed to serve attachment" });
+    }
+  });
+  
+  // 1. GET /api/imessage/conversations - List company's conversations
+  app.get("/api/imessage/conversations", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Check if company has iMessage feature enabled
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      if (!imessageSettings?.isEnabled) {
+        return res.status(403).json({ message: "iMessage feature not enabled" });
+      }
+      
+      const { archived, search } = req.query;
+      const options: any = {};
+      if (archived !== undefined) {
+        options.archived = archived === "true";
+      }
+      if (search) {
+        options.search = search as string;
+      }
+      
+      const conversations = await storage.getImessageConversationsByCompany(user.companyId, options);
+      res.json(conversations);
+    } catch (error: any) {
+      console.error("Error fetching iMessage conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+  
+  // 2. GET /api/imessage/conversations/:id/messages - Get messages for a conversation
+  app.get("/api/imessage/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      const { limit, offset } = req.query;
+      
+      // Verify conversation belongs to company
+      const conversation = await storage.getImessageConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      if (conversation.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const options: any = {};
+      if (limit) options.limit = parseInt(limit as string);
+      if (offset) options.offset = parseInt(offset as string);
+      
+      const messages = await storage.getImessageMessagesByConversation(id, options);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("Error fetching iMessage messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+  
+  // 3. POST /api/imessage/messages/send - Send an iMessage
+  app.post("/api/imessage/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Check if company has iMessage configured
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      if (!imessageSettings?.isEnabled || !imessageSettings?.serverUrl) {
+        return res.status(503).json({ message: "iMessage service is not configured" });
+      }
+      
+      // Initialize BlueBubbles client
+      const { blueBubblesClient } = await import("./bluebubbles");
+      if (companySettings) {
+        blueBubblesClient.initialize(companySettings);
+      }
+      
+      const { conversationId, to, text, attachments, replyToGuid, effect } = req.body;
+      
+      if (!conversationId && !to) {
+        return res.status(400).json({ message: "Either conversationId or to is required" });
+      }
+      
+      if (!text && (!attachments || attachments.length === 0)) {
+        return res.status(400).json({ message: "Either text or attachments required" });
+      }
+      
+      // Get or create conversation
+      let conversation;
+      if (conversationId) {
+        conversation = await storage.getImessageConversation(conversationId);
+        if (!conversation || conversation.companyId !== user.companyId) {
+          return res.status(404).json({ message: "Conversation not found" });
+        }
+      } else {
+        // Check if conversation already exists for this handle
+        conversation = await storage.getImessageConversationByHandle(user.companyId, to);
+        
+        if (!conversation) {
+          // Create new conversation
+          conversation = await storage.createImessageConversation({
+            companyId: user.companyId,
+            chatGuid: `iMessage;-;${to}`,
+            displayName: to,
+            participants: [to],
+            isGroup: false,
+            isImessage: true,
+            status: 'active',
+            isPinned: false,
+            unreadCount: 0
+          });
+        }
+      }
+      
+      // Use BlueBubbles client to send message
+      try {
+        const sendResult = await blueBubblesClient.sendMessage({
+          chatGuid: conversation.chatGuid,
+          message: text || "",
+          method: 'private-api',
+          effectId: effect
+        });
+        
+        // Store message in database
+        const message = await storage.createImessageMessage({
+          conversationId: conversation.id,
+          companyId: user.companyId,
+          chatGuid: conversation.chatGuid,
+          isImessage: true,
+          messageGuid: sendResult.data.guid || `temp_${Date.now()}`,
+          text: text || "",
+          fromMe: true,
+          dateSent: new Date(sendResult.data.dateCreated),
+          dateDelivered: null,
+          dateRead: null,
+          status: 'sent',
+          hasAttachments: false,
+          attachments: attachments || [],
+          replyToGuid,
+          effect
+        });
+        
+        // Broadcast update via WebSocket
+        const { broadcastImessageUpdate } = await import("./websocket");
+        broadcastImessageUpdate(user.companyId, {
+          type: "new-message",
+          conversationId: conversation.id,
+          message
+        });
+        
+        res.json({ message, conversation });
+      } catch (sendError: any) {
+        console.error("[iMessage] Failed to send:", sendError);
+        return res.status(500).json({ message: sendError.message || "Failed to send message" });
+      }
+    } catch (error: any) {
+      console.error("Error sending iMessage:", error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+  
+  // 4. POST /api/imessage/messages/:id/reaction - Add/remove reaction to message
+  app.post("/api/imessage/messages/:id/reaction", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      const { reaction, action = "add" } = req.body;
+      
+      if (!reaction || !["❤️", "👍", "👎", "😂", "!!", "?"].includes(reaction)) {
+        return res.status(400).json({ message: "Invalid reaction" });
+      }
+      
+      // Get message to verify it belongs to company
+      const message = await storage.getImessageMessage(id);
+      if (!message || message.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+      
+      // Update reactions
+      if (action === "add") {
+        await storage.addMessageReaction(id, user.id, reaction);
+      } else if (action === "remove") {
+        await storage.removeMessageReaction(id, user.id, reaction);
+      }
+      
+      // Send reaction via BlueBubbles if configured
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      if (imessageSettings?.serverUrl) {
+        const { blueBubblesClient } = await import("./bluebubbles");
+        if (companySettings) {
+          blueBubblesClient.initialize(companySettings);
+        }
+        // Note: sendReaction method not implemented in our client, just skip for now
+        // await blueBubblesClient.sendReaction(message.messageGuid, reaction, action === "add");
+      }
+      
+      // Broadcast update
+      const { broadcastImessageUpdate } = await import("./websocket");
+      broadcastImessageUpdate(user.companyId, {
+        type: "reaction-updated",
+        messageId: id,
+        userId: user.id,
+        reaction,
+        action
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error updating reaction:", error);
+      res.status(500).json({ message: "Failed to update reaction" });
+    }
+  });
+  
+  // 5. POST /api/imessage/conversations/:id/read - Mark conversation as read
+  app.post("/api/imessage/conversations/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify conversation belongs to company
+      const conversation = await storage.getImessageConversation(id);
+      if (!conversation || conversation.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      await storage.markConversationAsRead(id);
+      
+      // Send read receipt via BlueBubbles if configured
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      if (imessageSettings?.serverUrl) {
+        const { blueBubblesClient } = await import("./bluebubbles");
+        if (companySettings) {
+          blueBubblesClient.initialize(companySettings);
+          await blueBubblesClient.markAsRead(conversation.chatGuid);
+        }
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error marking conversation as read:", error);
+      res.status(500).json({ message: "Failed to mark as read" });
+    }
+  });
+  
+  // 6. POST /api/imessage/typing - Send typing indicator
+  app.post("/api/imessage/typing", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { conversationId, isTyping } = req.body;
+      
+      if (!conversationId) {
+        return res.status(400).json({ message: "conversationId is required" });
+      }
+      
+      // Verify conversation belongs to company
+      const conversation = await storage.getImessageConversation(conversationId);
+      if (!conversation || conversation.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Send typing indicator via BlueBubbles
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      if (imessageSettings?.serverUrl && companySettings) {
+        const { blueBubblesClient } = await import("./bluebubbles");
+        blueBubblesClient.initialize(companySettings);
+        // Note: sendTypingIndicator not implemented in our client
+        // await blueBubblesClient.sendTypingIndicator(conversation.chatGuid, isTyping);
+      }
+      
+      // Broadcast typing update
+      const { broadcastImessageUpdate } = await import("./websocket");
+      broadcastImessageUpdate(user.companyId, {
+        type: isTyping ? "typing-start" : "typing-stop",
+        conversationId,
+        userId: user.id
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error sending typing indicator:", error);
+      res.status(500).json({ message: "Failed to send typing indicator" });
+    }
+  });
+  
+  // 7. GET /api/imessage/messages/search - Search messages
+  app.get("/api/imessage/messages/search", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { q } = req.query;
+      
+      if (!q) {
+        return res.status(400).json({ message: "Search query (q) is required" });
+      }
+      
+      const messages = await storage.searchImessageMessages(user.companyId, q as string);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("Error searching iMessages:", error);
+      res.status(500).json({ message: "Failed to search messages" });
+    }
+  });
+  
+  // 8. DELETE /api/imessage/messages/:id - Delete a message (soft delete for UI)
+  app.delete("/api/imessage/messages/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      // Get message to verify it belongs to company
+      const message = await storage.getImessageMessage(id);
+      if (!message || message.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+      
+      // Mark message as deleted for this user (soft delete)
+      await storage.updateImessageMessageStatus(id, "deleted");
+      
+      // Broadcast deletion
+      const { broadcastImessageUpdate } = await import("./websocket");
+      broadcastImessageUpdate(user.companyId, {
+        type: "message-deleted",
+        messageId: id,
+        conversationId: message.conversationId
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting iMessage:", error);
+      res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+  
   // ==================== CONSENT PUBLIC ENDPOINTS ====================
   
   // Rate limiting for consent endpoints to prevent brute force attacks
@@ -782,7 +1468,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // Clean up old rate limit records every 5 minutes
   setInterval(() => {
     const now = Date.now();
-    for (const [ip, record] of consentRateLimitMap.entries()) {
+    for (const [ip, record] of Array.from(consentRateLimitMap.entries())) {
       if (now > record.resetAt) {
         consentRateLimitMap.delete(ip);
       }
