@@ -8290,7 +8290,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(imessageMessages)
       .where(eq(imessageMessages.conversationId, conversationId))
-      .orderBy(desc(imessageMessages.dateSent));
+      .orderBy(imessageMessages.dateSent); // ASC order - oldest first, newest last
     
     if (options?.limit) {
       query = query.limit(options.limit);
@@ -8320,7 +8320,7 @@ export class DbStorage implements IStorage {
       attachments: row.attachments as any || [],
       effectId: row.expressiveType,
       replyToMessageId: row.replyToGuid,
-      reactions: [],  // TODO: Load reactions from reactions table
+      reactions: row.reactions as any || {},  // Load reactions from database
       isDeleted: false,  // TODO: Implement soft delete
       isEdited: false,  // TODO: Implement message editing
       editedAt: undefined,
