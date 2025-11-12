@@ -847,9 +847,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Find or create conversation
           // BlueBubbles sends chat info in chats array
           const chatData = messageData.chats?.[0] || {};
-          const chatGuid = chatData.guid || messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
+          const chatGuid = messageData.chats?.[0]?.guid || chatData.guid || messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
           const handle = messageData.handle?.address || messageData.from || 'Unknown';
           const participants = messageData.participants || [handle];
+          
+          // Validate chat GUID
+          if (!chatGuid) {
+            console.error('[BlueBubbles Webhook] No chat GUID found in payload');
+            return res.status(400).json({ message: 'Invalid payload: missing chat GUID' });
+          }
           
           let conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (!conversation) {
@@ -23380,120 +23386,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error sending iMessage:", error);
       res.status(500).json({ message: "Failed to send message", error: error.message });
-    }
-  });
-
-  // POST /api/imessage/webhook/:companySlug - Receive incoming messages from BlueBubbles
-  app.post("/api/imessage/webhook/:companySlug", async (req: Request, res: Response) => {
-    try {
-      const { companySlug } = req.params;
-      
-      // Find company by slug
-      const company = await storage.getCompanyBySlug(companySlug);
-      if (!company) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-
-      // Validate webhook secret
-      const webhookSecret = req.headers['x-webhook-secret'] as string;
-      
-      if (!webhookSecret) {
-        return res.status(401).json({ message: "Missing webhook secret" });
-      }
-      
-      // Get company settings
-      const companySettings = await storage.getCompanySettings(company.id);
-      if (!companySettings) {
-        return res.status(404).json({ message: "Company settings not found" });
-      }
-
-      // Verify webhook secret
-      const imessageSettings = companySettings.imessageSettings as { webhookSecret?: string };
-      if (!imessageSettings?.webhookSecret || imessageSettings.webhookSecret !== webhookSecret) {
-        return res.status(401).json({ message: "Invalid webhook secret" });
-      }
-
-      // Check if company has iMessage feature enabled
-      const hasFeature = await storage.hasFeature(company.id, 'imessage');
-      if (!hasFeature) {
-        return res.status(403).json({ message: "iMessage feature not enabled" });
-      }
-
-      const { type, data } = req.body;
-
-      // Handle new message
-      if (type === "new-message") {
-        const messageData = data;
-        
-        // Find or create conversation
-        let conversation = await storage.findImessageConversationByChatGuid(
-          company.id,
-          messageData.chatGuid
-        );
-
-        if (!conversation) {
-          conversation = await storage.createImessageConversation({
-            companyId: company.id,
-            chatGuid: messageData.chatGuid,
-            displayName: messageData.handle?.displayName,
-            contactPhone: messageData.handle?.address,
-            status: "active",
-            isPinned: false,
-            isGroup: false,
-            isImessage: messageData.service === "iMessage",
-            lastMessageText: messageData.text,
-            lastMessageAt: new Date(messageData.dateCreated),
-            lastMessageFromMe: messageData.isFromMe,
-            unreadCount: messageData.isFromMe ? 0 : 1,
-          });
-        } else {
-          // Update conversation
-          await storage.updateImessageConversation(conversation.id, company.id, {
-            lastMessageText: messageData.text,
-            lastMessageAt: new Date(messageData.dateCreated),
-            lastMessageFromMe: messageData.isFromMe,
-            unreadCount: messageData.isFromMe ? conversation.unreadCount : conversation.unreadCount + 1,
-          });
-        }
-
-        // Create message
-        await storage.createImessageMessage({
-          conversationId: conversation.id,
-          companyId: company.id,
-          messageGuid: messageData.guid,
-          chatGuid: messageData.chatGuid,
-          text: messageData.text,
-          subject: messageData.subject,
-          fromMe: messageData.isFromMe,
-          senderHandle: messageData.handle?.address,
-          senderName: messageData.handle?.displayName,
-          status: "sent",
-          isImessage: messageData.service === "iMessage",
-          hasAttachments: messageData.hasAttachments || false,
-          attachments: messageData.attachments || [],
-          dateSent: new Date(messageData.dateCreated),
-          dateRead: messageData.dateRead ? new Date(messageData.dateRead) : undefined,
-          dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : undefined,
-        });
-      }
-
-      // Handle read receipt
-      if (type === "read-receipt") {
-        const { messageGuid, dateRead } = data;
-        await storage.updateImessageMessageByGuid(
-          company.id,
-          messageGuid,
-          {
-            dateRead: new Date(dateRead),
-            status: "read",
-          }
-        );
-      }
-
-      res.json({ success: true });
-    } catch (error: any) {
-      console.error("Error processing iMessage webhook:", error);
-      res.status(500).json({ message: "Failed to process webhook" });
     }
   });
 
