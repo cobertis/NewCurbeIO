@@ -1007,35 +1007,32 @@ export default function IMessagePage() {
                                     {/* Attachments - iMessage style with gray background wrapper */}
                                     {message.hasAttachments && message.attachments.length > 0 && (
                                       <div className={cn(
-                                        "rounded-3xl overflow-hidden inline-block",
-                                        message.text ? "mt-2" : "",
-                                        message.isFromMe ? "bg-white/10" : "bg-gray-200 dark:bg-gray-700"
+                                        "rounded-3xl overflow-hidden inline-block bg-gray-200 dark:bg-gray-700 flex flex-col gap-1 p-1.5",
+                                        message.text ? "mt-2" : ""
                                       )}>
-                                        <div className="p-1.5 space-y-1">
-                                          {message.attachments.map(attachment => (
-                                            <div key={attachment.id}>
-                                              {attachment.mimeType.startsWith('image/') ? (
-                                                <ImessageAttachmentImage 
-                                                  url={attachment.url}
-                                                  alt={attachment.fileName}
-                                                />
-                                              ) : attachment.mimeType.startsWith('video/') ? (
-                                                <ImessageAttachmentVideo 
-                                                  url={attachment.url}
-                                                  fileName={attachment.fileName}
-                                                />
-                                              ) : (
-                                                <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
-                                                  <FileText className="h-4 w-4" />
-                                                  <span className="text-sm">{attachment.fileName}</span>
-                                                  <Button size="icon" variant="ghost" className="h-6 w-6">
-                                                    <Download className="h-3 w-3" />
-                                                  </Button>
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
+                                        {message.attachments.map(attachment => (
+                                          <div key={attachment.id}>
+                                            {attachment.mimeType.startsWith('image/') ? (
+                                              <ImessageAttachmentImage 
+                                                url={attachment.url}
+                                                alt={attachment.fileName}
+                                              />
+                                            ) : attachment.mimeType.startsWith('video/') ? (
+                                              <ImessageAttachmentVideo 
+                                                url={attachment.url}
+                                                fileName={attachment.fileName}
+                                              />
+                                            ) : (
+                                              <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
+                                                <FileText className="h-4 w-4" />
+                                                <span className="text-sm">{attachment.fileName}</span>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6">
+                                                  <Download className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
                                       </div>
                                     )}
 
