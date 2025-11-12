@@ -1643,7 +1643,20 @@ export default function IMessagePage() {
                   }}
                   data-testid="mic-button"
                 >
-                  <AudioWaveform className="h-4 w-4" />
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 16 16" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4"
+                  >
+                    <rect x="2" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
+                    <rect x="5" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
+                    <rect x="8" y="5" width="1.5" height="6" rx="0.75" fill="currentColor" opacity="0.8"/>
+                    <rect x="11" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
+                    <rect x="14" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
+                  </svg>
                 </Button>
               </div>
 
