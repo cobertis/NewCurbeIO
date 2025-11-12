@@ -299,16 +299,8 @@ export default function MarketplacePlansPage() {
     return 'bg-blue-500 text-white';
   };
 
-  // Extract unique carriers with counts
-  const carrierCounts = marketplacePlans?.plans?.reduce((acc: Record<string, number>, plan: any) => {
-    const carrierName = plan.issuer?.name || 'Unknown';
-    acc[carrierName] = (acc[carrierName] || 0) + 1;
-    return acc;
-  }, {}) || {};
-  
-  const carriers: Array<{ name: string; count: number }> = Object.entries(carrierCounts)
-    .map(([name, count]) => ({ name, count: count as number }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  // Use carriers facets from backend (calculated from ALL filtered plans, not just current page)
+  const carriers: Array<{ name: string; count: number }> = marketplacePlans?.facets?.carriers || [];
 
   // CRITICAL: Use API response DIRECTLY - no client-side filtering or pagination!
   // All filtering and pagination happens server-side now

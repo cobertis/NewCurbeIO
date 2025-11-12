@@ -101,6 +101,9 @@ interface MarketplaceApiResponse {
   pageSize?: number; // Number of items per page
   totalPages?: number; // Total number of pages available
   totalCmsPlans?: number; // Total plans from CMS before filtering (for transparency)
+  facets?: {
+    carriers: Array<{ issuerId: string; name: string; count: number }>;
+  };
 }
 
 /**
@@ -447,7 +450,26 @@ export async function fetchMarketplacePlans(
   console.log(`[CMS_MARKETPLACE] ✅ household_csr: ${eligibility?.csr || 'NOT AVAILABLE'}`);
   console.log(`[CMS_MARKETPLACE] ✅ is_medicaid_chip: ${eligibility?.is_medicaid_chip ?? 'NOT AVAILABLE'}`);
   
-  // Step 3: Calculate pagination on the already-filtered results
+  // Step 3: Calculate facets from ALL filtered plans (before pagination)
+  const carrierCounts = new Map<string, { issuerId: string; name: string; count: number }>();
+  filteredAccumulator.forEach(plan => {
+    const issuerId = plan.issuer?.id || 'unknown';
+    const name = plan.issuer?.name || 'Unknown';
+    const existing = carrierCounts.get(issuerId);
+    if (existing) {
+      existing.count++;
+    } else {
+      carrierCounts.set(issuerId, { issuerId, name, count: 1 });
+    }
+  });
+  
+  const facets = {
+    carriers: Array.from(carrierCounts.values()).sort((a, b) => a.name.localeCompare(b.name))
+  };
+  
+  console.log(`[CMS_MARKETPLACE] ✅ Facets calculated: ${facets.carriers.length} unique carriers`);
+  
+  // Step 4: Calculate pagination on the already-filtered results
   const totalFilteredPlans = filteredAccumulator.length;
   const totalPages = Math.ceil(totalFilteredPlans / pageSize);
   
@@ -458,7 +480,7 @@ export async function fetchMarketplacePlans(
   
   console.log(`[CMS_MARKETPLACE] ✅ Final result: Page ${page}/${totalPages}, showing ${paginatedPlans.length} of ${totalFilteredPlans} filtered plans`);
   
-  // Return combined response with eligibility data and proper pagination metadata
+  // Return combined response with eligibility data, facets, and proper pagination metadata
   return {
     plans: paginatedPlans,
     total: totalFilteredPlans, // Total after filtering
@@ -470,6 +492,7 @@ export async function fetchMarketplacePlans(
     household_csr: eligibility?.csr,
     is_medicaid_chip: eligibility?.is_medicaid_chip, // Document Medicaid eligibility flag
     totalCmsPlans: totalCmsPlans, // Add for transparency
+    facets: facets, // Facets calculated from all filtered plans
   };
 }
 
