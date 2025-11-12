@@ -120,6 +120,7 @@ export default function IMessagePage() {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // State
@@ -819,11 +820,25 @@ export default function IMessagePage() {
                       <ImageIcon className="h-4 w-4 mr-2" />
                       Photo/Video
                     </Button>
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        documentInputRef.current?.click();
+                        setShowAttachmentDialog(false);
+                      }}
+                    >
                       <FileText className="h-4 w-4 mr-2" />
                       Document
                     </Button>
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        fileInputRef.current?.click();
+                        setShowAttachmentDialog(false);
+                      }}
+                    >
                       <Camera className="h-4 w-4 mr-2" />
                       Camera
                     </Button>
@@ -927,12 +942,20 @@ export default function IMessagePage() {
         </div>
       )}
 
-      {/* Hidden file input */}
+      {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,video/*,.pdf,.doc,.docx"
+        accept="image/*,video/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      <input
+        ref={documentInputRef}
+        type="file"
+        multiple
+        accept=".pdf,.doc,.docx,.txt,.rtf,.pages,.odt"
         onChange={handleFileSelect}
         className="hidden"
       />

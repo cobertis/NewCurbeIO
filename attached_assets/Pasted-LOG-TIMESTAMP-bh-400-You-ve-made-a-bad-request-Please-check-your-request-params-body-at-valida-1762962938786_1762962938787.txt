@@ -1,0 +1,92 @@
+LOG	TIMESTAMP
+bh: [400] You've made a bad request! Please check your request params & body at validateAttachment (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:299370) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at /Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:311210 at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Mh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:256910) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Jh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291481) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Qh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291860) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32)	11/12/2025, 10:54:54 AM
+Request to /api/v1/message/attachment took 1 ms	11/12/2025, 10:54:54 AM
+Raw Error: bh: [400] You've made a bad request! Please check your request params & body	11/12/2025, 10:54:54 AM
+API Error: [400] You've made a bad request! Please check your request params & body -> A 'tempGuid' is required when sending via AppleScript	11/12/2025, 10:54:54 AM
+Request to /api/v1/message/attachment (URL Params: {})	11/12/2025, 10:54:54 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:54:47 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read took 1 ms	11/12/2025, 10:54:47 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read (URL Params: {})	11/12/2025, 10:54:47 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:54:30 AM
+[BlueBubblesServer] Delivered message from [You]: ["ok"; Date: 11/12/2025, 10:54:29 AM] - [11/12/2025, 10:54:29 AM]	11/12/2025, 10:54:30 AM
+Request to /api/v1/message/attachment took 1 ms	11/12/2025, 10:54:29 AM
+bh: [400] You've made a bad request! Please check your request params & body at validateAttachment (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:299370) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at /Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:311210 at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Mh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:256910) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Jh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291481) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Qh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291860) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32)	11/12/2025, 10:54:29 AM
+Request to /api/v1/message/attachment (URL Params: {})	11/12/2025, 10:54:29 AM
+Raw Error: bh: [400] You've made a bad request! Please check your request params & body	11/12/2025, 10:54:29 AM
+API Error: [400] You've made a bad request! Please check your request params & body -> A 'tempGuid' is required when sending via AppleScript	11/12/2025, 10:54:29 AM
+[BlueBubblesServer] New Message from You, "ok"; Date: 11/12/2025, 10:54:29 AM	11/12/2025, 10:54:29 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:54:29 AM
+Request to /api/v1/message/text took 260 ms	11/12/2025, 10:54:29 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:54:28 AM
+Adding await for chat: "iMessage;-;+13053936666"; text: ok; tempGuid: N/A	11/12/2025, 10:54:28 AM
+Request to /api/v1/message/text (URL Params: {})	11/12/2025, 10:54:28 AM
+Sending message "ok" to iMessage;-;+13053936666	11/12/2025, 10:54:28 AM
+Request to /api/v1/message/attachment took 2 ms	11/12/2025, 10:54:09 AM
+bh: [400] You've made a bad request! Please check your request params & body at validateAttachment (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:299370) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at /Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:311210 at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Mh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:256910) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Jh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291481) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Qh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291860) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32)	11/12/2025, 10:54:09 AM
+Request to /api/v1/message/attachment (URL Params: {})	11/12/2025, 10:54:09 AM
+Raw Error: bh: [400] You've made a bad request! Please check your request params & body	11/12/2025, 10:54:09 AM
+API Error: [400] You've made a bad request! Please check your request params & body -> A 'tempGuid' is required when sending via AppleScript	11/12/2025, 10:54:09 AM
+bh: [400] You've made a bad request! Please check your request params & body at validateAttachment (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:299370) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at /Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:311210 at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Mh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:256910) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Jh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291481) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Qh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291860) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32)	11/12/2025, 10:54:03 AM
+Request to /api/v1/message/attachment took 1 ms	11/12/2025, 10:54:03 AM
+Raw Error: bh: [400] You've made a bad request! Please check your request params & body	11/12/2025, 10:54:03 AM
+API Error: [400] You've made a bad request! Please check your request params & body -> A 'tempGuid' is required when sending via AppleScript	11/12/2025, 10:54:03 AM
+Request to /api/v1/message/attachment (URL Params: {})	11/12/2025, 10:54:03 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read took 1 ms	11/12/2025, 10:53:47 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:53:47 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read (URL Params: {})	11/12/2025, 10:53:47 AM
+[CaffeinateService] Spawned Caffeinate with PID: 3061	11/12/2025, 10:52:54 AM
+Request to /api/v1/message/attachment took 2 ms	11/12/2025, 10:52:09 AM
+bh: [400] You've made a bad request! Please check your request params & body at dg (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:297437) at validateAttachment (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:299208) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at /Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:311210 at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Mh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:256910) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Jh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291481) at dispatch (/Applications/BlueBubbles.app/Contents/Resources/app.asar/node_modules/koa-compose/index.js:42:32) at Qh (/Applications/BlueBubbles.app/Contents/Resources/app.asar/dist/main.js:1:291860)	11/12/2025, 10:52:09 AM
+API Error: [400] You've made a bad request! Please check your request params & body -> The name field is required.	11/12/2025, 10:52:09 AM
+Raw Error: bh: [400] You've made a bad request! Please check your request params & body	11/12/2025, 10:52:09 AM
+Request to /api/v1/message/attachment (URL Params: {})	11/12/2025, 10:52:09 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:52:00 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read took 1 ms	11/12/2025, 10:52:00 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read (URL Params: {})	11/12/2025, 10:52:00 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:51:18 AM
+[BlueBubblesServer] Chat read [iMessage;-;+13053936666]	11/12/2025, 10:51:18 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:51:18 AM
+[BlueBubblesServer] Read message from [+*******6666]: ["Que"; Date: 11/12/2025, 10:50:08 AM] - [11/12/2025, 10:51:17 AM]	11/12/2025, 10:51:18 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:50:08 AM
+[BlueBubblesServer] New Message from +*******6666, "Que"; Date: 11/12/2025, 10:50:08 AM	11/12/2025, 10:50:08 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:50:08 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:49:49 AM
+[BlueBubblesServer] Read message from [You]: ["ok"; Date: 11/12/2025, 10:49:45 AM] - [11/12/2025, 10:49:49 AM]	11/12/2025, 10:49:49 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:49:45 AM
+[BlueBubblesServer] Delivered message from [You]: ["ok"; Date: 11/12/2025, 10:49:45 AM] - [11/12/2025, 10:49:45 AM]	11/12/2025, 10:49:45 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:49:45 AM
+[BlueBubblesServer] New Message from You, "ok"; Date: 11/12/2025, 10:49:45 AM	11/12/2025, 10:49:45 AM
+Request to /api/v1/message/text took 30 ms	11/12/2025, 10:49:44 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:49:44 AM
+Adding await for chat: "iMessage;-;+13053936666"; text: ok; tempGuid: N/A	11/12/2025, 10:49:44 AM
+Sending message "ok" to iMessage;-;+13053936666	11/12/2025, 10:49:44 AM
+Request to /api/v1/message/text (URL Params: {})	11/12/2025, 10:49:44 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:49:33 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read took 1 ms	11/12/2025, 10:49:33 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read (URL Params: {})	11/12/2025, 10:49:33 AM
+[Messages] [stderr] 2025-11-12 10:42:40.027 Messages[2101:54940] Could not fetch group for change type 1 with identifier 33D84F09-3805-414B-AE1E-21C143BA3544:ABGroup, making it a delete change type.	11/12/2025, 10:42:40 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:42:29 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read took 1 ms	11/12/2025, 10:42:29 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read (URL Params: {})	11/12/2025, 10:42:29 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:31:06 AM
+[BlueBubblesServer] Read message from [You]: ["hey"; Date: 11/12/2025, 10:25:32 AM] - [11/12/2025, 10:31:05 AM]	11/12/2025, 10:31:06 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:31:05 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:28:01 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read took 2 ms	11/12/2025, 10:28:01 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read (URL Params: {})	11/12/2025, 10:28:00 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:25:32 AM
+[BlueBubblesServer] New Message from You, "hey"; Date: 11/12/2025, 10:25:32 AM	11/12/2025, 10:25:32 AM
+Request to /api/v1/message/text took 31 ms	11/12/2025, 10:25:31 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:25:31 AM
+Adding await for chat: "iMessage;-;+13053936666"; text: hey; tempGuid: N/A	11/12/2025, 10:25:31 AM
+Sending message "hey" to iMessage;-;+13053936666	11/12/2025, 10:25:31 AM
+Request to /api/v1/message/text (URL Params: {})	11/12/2025, 10:25:31 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:25:25 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read took 1 ms	11/12/2025, 10:25:25 AM
+Request to /api/v1/chat/iMessage%3B-%3B%2B13053936666/read (URL Params: {})	11/12/2025, 10:25:25 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:24:19 AM
+[BlueBubblesServer] Chat read [iMessage;-;+13053936666]	11/12/2025, 10:24:19 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:24:19 AM
+[BlueBubblesServer] Read message from [+*******6666]: ["En la manana te..."; Date: 11/12/2025, 10:24:09 AM] - [11/12/2025, 10:24:19 AM]	11/12/2025, 10:24:19 AM
+[WebhookService] Dispatching event to webhook: https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/imessage/webhook/dls-insurance-group	11/12/2025, 10:24:19 AM
+[BlueBubblesServer] Read message from [+*******6666]: ["Manana"; Date: 11/12/2025, 10:24:05 AM] - [11/12/2025, 10:24:19 AM
