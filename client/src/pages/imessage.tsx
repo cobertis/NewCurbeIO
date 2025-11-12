@@ -120,8 +120,6 @@ export default function IMessagePage() {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // State
@@ -134,7 +132,6 @@ export default function IMessagePage() {
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [showEffectsPicker, setShowEffectsPicker] = useState(false);
-  const [showAttachmentDialog, setShowAttachmentDialog] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, TypingIndicator>>(new Map());
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -801,51 +798,16 @@ export default function IMessagePage() {
           {/* Message Input */}
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
             <div className="flex items-end gap-2">
-              {/* Attachment button */}
-              <Popover open={showAttachmentDialog} onOpenChange={setShowAttachmentDialog}>
-                <PopoverTrigger asChild>
-                  <Button size="icon" variant="ghost" className="rounded-full">
-                    <Paperclip className="h-5 w-5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" side="top">
-                  <div className="space-y-2">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        fileInputRef.current?.click();
-                        setShowAttachmentDialog(false);
-                      }}
-                    >
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Photo/Video
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        documentInputRef.current?.click();
-                        setShowAttachmentDialog(false);
-                      }}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Document
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        cameraInputRef.current?.click();
-                        setShowAttachmentDialog(false);
-                      }}
-                    >
-                      <Camera className="h-4 w-4 mr-2" />
-                      Camera
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              {/* Attachment button - simplified */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="attachment-button"
+              >
+                <Paperclip className="h-5 w-5" />
+              </Button>
 
               {/* Effects button */}
               <Popover open={showEffectsPicker} onOpenChange={setShowEffectsPicker}>
@@ -943,30 +905,15 @@ export default function IMessagePage() {
         </div>
       )}
 
-      {/* Hidden file inputs */}
+      {/* Hidden file input - accepts all file types */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,video/*"
+        accept="*/*"
         onChange={handleFileSelect}
         className="hidden"
-      />
-      <input
-        ref={documentInputRef}
-        type="file"
-        multiple
-        accept=".pdf,.doc,.docx,.txt,.rtf,.pages,.odt"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
-      <input
-        ref={cameraInputRef}
-        type="file"
-        accept="image/*,video/*"
-        capture="environment"
-        onChange={handleFileSelect}
-        className="hidden"
+        data-testid="file-input"
       />
 
       {/* Custom CSS for message effects */}
