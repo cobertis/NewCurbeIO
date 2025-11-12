@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plus, Cake, Bell, Calendar as CalendarIcon, Settings, List, Grid3x3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Cake, Bell, Calendar as CalendarIcon, Settings, List, Grid3x3, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -10,7 +11,7 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { NewEventDialog } from "@/components/new-event-dialog";
 
 interface CalendarEvent {
-  type: 'birthday' | 'reminder' | 'appointment';
+  type: 'birthday' | 'reminder' | 'appointment' | 'holiday';
   date: string;
   title: string;
   description: string;
@@ -28,6 +29,8 @@ interface CalendarEvent {
   appointmentPhone?: string;
   appointmentEmail?: string;
   clientName?: string;
+  countryCode?: string;
+  global?: boolean;
 }
 
 interface AppointmentDetails {
@@ -373,6 +376,28 @@ export default function Calendar() {
                           <span className="truncate flex-1">{event.title}</span>
                         </div>
                       );
+                    } else if (event.type === 'holiday') {
+                      return (
+                        <TooltipProvider key={`holiday-${eventIndex}`}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className="flex items-start gap-1 px-1.5 py-0.5 rounded text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-200"
+                                data-testid={`event-holiday-${eventIndex}`}
+                              >
+                                <Flag className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                <span className="truncate flex-1">{event.title}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{event.title}</p>
+                              {event.description && event.description !== event.title && (
+                                <p className="text-xs text-muted-foreground">{event.description}</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
                     } else if (event.type === 'appointment') {
                       // Appointment - color based on status
                       const statusColors = {
@@ -510,6 +535,38 @@ export default function Calendar() {
                                   <p className="text-sm text-blue-700 dark:text-blue-300">{event.role}</p>
                                 </div>
                               </div>
+                            );
+                          } else if (event.type === 'holiday') {
+                            return (
+                              <TooltipProvider key={`list-holiday-${eventIndex}`}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      className="flex items-start gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800"
+                                      data-testid={`event-holiday-${eventIndex}`}
+                                    >
+                                      <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/40 rounded-full flex items-center justify-center">
+                                        <Flag className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="font-medium text-purple-900 dark:text-purple-100">{event.title}</h4>
+                                        {event.description && event.description !== event.title && (
+                                          <p className="text-sm text-purple-700 dark:text-purple-300">{event.description}</p>
+                                        )}
+                                        {event.global && (
+                                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">National Holiday</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="font-medium">{event.title}</p>
+                                    {event.description && event.description !== event.title && (
+                                      <p className="text-xs text-muted-foreground">{event.description}</p>
+                                    )}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             );
                           } else if (event.type === 'appointment') {
                             const statusColors = {

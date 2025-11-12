@@ -114,6 +114,9 @@ export const companySettings = pgTable("company_settings", {
     webhookSecret: "", // Secret for validating incoming webhooks from BlueBubbles
   }),
   
+  // Holiday settings
+  holidayCountryCode: text("holiday_country_code").default("US"), // Country code for public holidays (ISO 3166-1 alpha-2)
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

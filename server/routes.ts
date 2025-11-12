@@ -93,6 +93,7 @@ import { bulkVSClient } from "./bulkvs";
 import { formatForStorage, formatForDisplay } from "@shared/phone";
 import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
+import { getCalendarHolidays } from "./services/holidays";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -12362,6 +12363,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       } catch (error: any) {
         console.error("Error fetching tasks for calendar:", error);
+      }
+      
+      // ============== PUBLIC HOLIDAYS ==============
+      try {
+        // Get company settings to determine which country's holidays to display
+        const companySettings = await storage.getCompanySettings(companyId);
+        const holidayCountryCode = companySettings?.holidayCountryCode || 'US';
+        
+        // Calculate year range: current year ±1 to handle cross-year calendar views
+        const currentYear = new Date().getFullYear();
+        const yearRange = [currentYear - 1, currentYear, currentYear + 1];
+        
+        // Fetch holidays for all years in range
+        const holidaysPromises = yearRange.map(year => 
+          getCalendarHolidays(holidayCountryCode, year)
+        );
+        const holidaysByYear = await Promise.all(holidaysPromises);
+        
+        // Flatten and merge all holidays into events array
+        const allHolidays = holidaysByYear.flat();
+        events.push(...allHolidays);
+        
+        console.log(`[CALENDAR] Added ${allHolidays.length} holidays for ${holidayCountryCode} (${yearRange.join(', ')})`);
+      } catch (error: any) {
+        console.error("Error fetching public holidays for calendar:", error);
+        // Continue without holidays - don't break the entire calendar
       }
 
       res.json({ events });
