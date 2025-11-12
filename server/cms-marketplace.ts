@@ -95,6 +95,7 @@ interface MarketplaceApiResponse {
   household_csr?: string;
   household_lcbp_premium?: number;
   household_slcsp_premium?: number;
+  is_medicaid_chip?: boolean; // Indicates if household is Medicaid/CHIP eligible
   request_data?: any; // Data about the request for transparency
   currentPage?: number; // Current page number in pagination
   pageSize?: number; // Number of items per page
@@ -175,13 +176,12 @@ export async function fetchHouseholdEligibility(
   // CRITICAL FIX: Use effective date for age calculation (same as fetchSinglePage)
   const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
   
-  // Build people array - pass data exactly as-is to CMS API
+  // Build people array - use DOB directly per CMS spec
   const people = [];
   
   // Add client (always the primary applicant)
-  const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
-    age: clientAge,
+    dob: quoteData.client.dateOfBirth, // Send DOB directly (not calculated age)
     aptc_eligible: true,
     has_mec: false,
     gender: formatGenderForCMS(quoteData.client.gender),
@@ -193,9 +193,8 @@ export async function fetchHouseholdEligibility(
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const isApplicant = spouse.aptc_eligible !== false;
-      const spouseAge = calculateAge(spouse.dateOfBirth, effectiveDateForAge);
       people.push({
-        age: spouseAge,
+        dob: spouse.dateOfBirth, // Send DOB directly (not calculated age)
         aptc_eligible: isApplicant,
         has_mec: false,
         gender: formatGenderForCMS(spouse.gender),
@@ -209,9 +208,8 @@ export async function fetchHouseholdEligibility(
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
-      const dependentAge = calculateAge(dependent.dateOfBirth, effectiveDateForAge);
       people.push({
-        age: dependentAge,
+        dob: dependent.dateOfBirth, // Send DOB directly (not calculated age)
         aptc_eligible: needsInsurance,
         has_mec: false,
         gender: formatGenderForCMS(dependent.gender),
@@ -558,51 +556,48 @@ async function fetchSinglePage(
 
   const year = yearOverride || new Date().getFullYear();
 
-  // Build household members array using ONLY the minimal required fields
-  // Per official CMS API docs: age, aptc_eligible, gender, uses_tobacco
+  // Build household members array - use DOB directly per CMS spec
+  // Per official CMS API docs: dob, aptc_eligible, gender, uses_tobacco, relationship
   const people = [];
   
   // Check if there's a married couple (spouse exists)
   const hasMarriedCouple = quoteData.spouses && quoteData.spouses.length > 0;
   
-  // Determine effective date for age calculation
-  const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
-  
-  // Add client - MINIMAL FIELDS ONLY
-  const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
+  // Add client - send DOB directly (not calculated age)
   people.push({
-    age: clientAge,
+    dob: quoteData.client.dateOfBirth,
     aptc_eligible: true,
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
+    relationship: 'Self',
   });
   
-  // Add spouses - MINIMAL FIELDS ONLY
+  // Add spouses - send DOB directly (not calculated age)
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const isApplicant = spouse.aptc_eligible !== false;
-      const spouseAge = calculateAge(spouse.dateOfBirth, effectiveDateForAge);
       
       people.push({
-        age: spouseAge,
+        dob: spouse.dateOfBirth,
         aptc_eligible: isApplicant,
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
+        relationship: 'Spouse',
       });
     });
   }
   
-  // Add dependents - MINIMAL FIELDS ONLY
+  // Add dependents - send DOB directly (not calculated age)
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
-      const dependentAge = calculateAge(dependent.dateOfBirth, effectiveDateForAge);
       
       people.push({
-        age: dependentAge,
+        dob: dependent.dateOfBirth,
         aptc_eligible: needsInsurance,
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
+        relationship: 'Child',
       });
     });
   }
