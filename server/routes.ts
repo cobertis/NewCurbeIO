@@ -108,7 +108,7 @@ const ALLOWED_MMS_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/m
 const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Security constants for iMessage attachments
-const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4'];
+const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3'];
 const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
@@ -1482,7 +1482,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
         'video/mp4', 'video/quicktime', 'video/mov',
         'application/pdf', 'text/plain',
-        'audio/mpeg', 'audio/wav', 'audio/m4a'
+        'audio/mpeg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/webm', 'audio/ogg'
       ];
       if (allowedMimes.includes(file.mimetype)) {
         cb(null, true);

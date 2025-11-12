@@ -559,9 +559,32 @@ export default function IMessagePage() {
             [`/api/imessage/conversations/${message.conversationId}/messages`],
             (old) => {
               if (!old) return [message.message];
+              
               // Check if message already exists (dedup by GUID)
-              const exists = old.some(m => m.guid === message.message.guid);
-              if (exists) return old;
+              const existsByGuid = old.some(m => m.guid === message.message.guid);
+              if (existsByGuid) return old;
+              
+              // Check if this is replacing an optimistic message (by clientGuid in metadata)
+              const optimisticIndex = old.findIndex(m => 
+                m.metadata?.clientGuid && message.message.metadata?.clientGuid &&
+                m.metadata.clientGuid === message.message.metadata.clientGuid
+              );
+              
+              if (optimisticIndex !== -1) {
+                // Replace optimistic message with real one
+                const newMessages = [...old];
+                // Revoke any blob URLs from optimistic attachments
+                if (newMessages[optimisticIndex].attachments) {
+                  newMessages[optimisticIndex].attachments.forEach(att => {
+                    if (att.url.startsWith('blob:')) {
+                      URL.revokeObjectURL(att.url);
+                    }
+                  });
+                }
+                newMessages[optimisticIndex] = message.message;
+                return newMessages;
+              }
+              
               // Add new message to the end
               return [...old, message.message];
             }
