@@ -123,8 +123,10 @@ export class BlueBubblesClient {
     // Read file from disk and append as blob
     const fs = await import('fs');
     const fileBuffer = fs.readFileSync(attachmentPath);
+    const fileName = attachmentPath.split('/').pop() || 'attachment';
     const blob = new Blob([fileBuffer]);
-    formData.append('attachment', blob, attachmentPath.split('/').pop());
+    formData.append('attachment', blob, fileName);
+    formData.append('name', fileName);
 
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);
     urlWithAuth.searchParams.set('password', this.password);
