@@ -356,10 +356,8 @@ export async function fetchMarketplacePlans(
   let cmsOffset = 0;
   let cmsFetchCount = 0;
   
-  // Calculate how many filtered plans we need to satisfy the requested page
-  const neededFilteredPlans = page * pageSize;
-  
-  // Keep fetching until we have enough filtered plans OR we've exhausted CMS data
+  // ALWAYS fetch ALL plans from CMS API, then apply pagination to the filtered results
+  // This ensures users see all available plans with proper filtering and pagination
   while (true) {
     cmsFetchCount++;
     console.log(`[CMS_MARKETPLACE] 📄 Fetching CMS batch #${cmsFetchCount} (offset=${cmsOffset})...`);
@@ -423,17 +421,11 @@ export async function fetchMarketplacePlans(
       console.log(`[CMS_MARKETPLACE] Total accumulated: ${filteredAccumulator.length} filtered plans of ${allCmsPlans.length} CMS plans fetched`);
     }
     
-    // Determine if we should continue fetching
-    const hasEnoughFilteredPlans = filteredAccumulator.length >= neededFilteredPlans;
+    // Check if we've exhausted all CMS data
     const reachedEndOfCmsData = !apiResponse.plans || 
                                  apiResponse.plans.length === 0 || 
                                  apiResponse.plans.length < PLANS_PER_API_PAGE ||
                                  allCmsPlans.length >= totalCmsPlans;
-    
-    if (hasEnoughFilteredPlans) {
-      console.log(`[CMS_MARKETPLACE] ✅ Have enough filtered plans (${filteredAccumulator.length}) for page ${page}`);
-      break;
-    }
     
     if (reachedEndOfCmsData) {
       console.log(`[CMS_MARKETPLACE] ✅ Exhausted all CMS data (${allCmsPlans.length} of ${totalCmsPlans} total CMS plans)`);
