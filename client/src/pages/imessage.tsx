@@ -153,21 +153,22 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
     <>
       {/* Video thumbnail with play button - iMessage style */}
       <div 
-        className="relative cursor-pointer max-w-[200px]"
+        className="relative cursor-pointer"
         onClick={() => setIsOpen(true)}
         data-testid="video-thumbnail"
       >
         {/* Video element for thumbnail (paused at first frame) */}
         <video
           src={blobUrl}
-          className="rounded-2xl max-h-[200px] w-full object-cover bg-black"
+          className="rounded-2xl w-full object-cover bg-black"
+          style={{ maxHeight: '250px', maxWidth: '200px' }}
           preload="metadata"
         />
         
-        {/* Play button overlay - iMessage style (simple, semi-transparent) */}
+        {/* Play button overlay - iMessage style (smaller, more subtle) */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white/70 dark:bg-gray-900/70 rounded-full p-2.5 shadow-md">
-            <svg className="h-6 w-6 text-gray-800 dark:text-white pl-0.5" fill="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white/80 dark:bg-gray-800/80 rounded-full p-2 shadow-lg">
+            <svg className="h-5 w-5 text-gray-700 dark:text-white pl-0.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
@@ -236,14 +237,15 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
     <>
       {/* Thumbnail with eye icon */}
       <div 
-        className="relative group cursor-pointer max-w-[200px]"
+        className="relative group cursor-pointer"
         onClick={() => setIsOpen(true)}
         data-testid="attachment-thumbnail"
       >
         <img 
           src={blobUrl} 
           alt={alt} 
-          className="rounded-2xl max-h-[200px] object-cover"
+          className="rounded-2xl object-cover"
+          style={{ maxHeight: '250px', maxWidth: '200px' }}
         />
         {/* Eye icon overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-2xl flex items-center justify-center">
@@ -1000,34 +1002,40 @@ export default function IMessagePage() {
                                     }}
                                   >
                                     {/* Message text */}
-                                    <p className="break-words whitespace-pre-wrap">{message.text}</p>
+                                    {message.text && <p className="break-words whitespace-pre-wrap">{message.text}</p>}
                                     
-                                    {/* Attachments */}
+                                    {/* Attachments - iMessage style with gray background wrapper */}
                                     {message.hasAttachments && message.attachments.length > 0 && (
-                                      <div className="mt-2 space-y-2">
-                                        {message.attachments.map(attachment => (
-                                          <div key={attachment.id} className="rounded-lg overflow-hidden">
-                                            {attachment.mimeType.startsWith('image/') ? (
-                                              <ImessageAttachmentImage 
-                                                url={attachment.url}
-                                                alt={attachment.fileName}
-                                              />
-                                            ) : attachment.mimeType.startsWith('video/') ? (
-                                              <ImessageAttachmentVideo 
-                                                url={attachment.url}
-                                                fileName={attachment.fileName}
-                                              />
-                                            ) : (
-                                              <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
-                                                <FileText className="h-4 w-4" />
-                                                <span className="text-sm">{attachment.fileName}</span>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6">
-                                                  <Download className="h-3 w-3" />
-                                                </Button>
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))}
+                                      <div className={cn(
+                                        "rounded-3xl overflow-hidden inline-block",
+                                        message.text ? "mt-2" : "",
+                                        message.isFromMe ? "bg-white/10" : "bg-gray-200 dark:bg-gray-700"
+                                      )}>
+                                        <div className="p-1.5 space-y-1">
+                                          {message.attachments.map(attachment => (
+                                            <div key={attachment.id}>
+                                              {attachment.mimeType.startsWith('image/') ? (
+                                                <ImessageAttachmentImage 
+                                                  url={attachment.url}
+                                                  alt={attachment.fileName}
+                                                />
+                                              ) : attachment.mimeType.startsWith('video/') ? (
+                                                <ImessageAttachmentVideo 
+                                                  url={attachment.url}
+                                                  fileName={attachment.fileName}
+                                                />
+                                              ) : (
+                                                <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
+                                                  <FileText className="h-4 w-4" />
+                                                  <span className="text-sm">{attachment.fileName}</span>
+                                                  <Button size="icon" variant="ghost" className="h-6 w-6">
+                                                    <Download className="h-3 w-3" />
+                                                  </Button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
                                     )}
 
