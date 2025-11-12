@@ -802,9 +802,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "iMessage not enabled" });
       }
       
-      // Validate webhook signature if configured
+      // Validate webhook signature if configured (skip in development)
+      const isDevelopment = process.env.NODE_ENV === 'development';
       const webhookSecret = imessageSettings.webhookSecret;
-      if (webhookSecret) {
+      
+      if (webhookSecret && !isDevelopment) {
         const signature = req.headers['x-bluebubbles-signature'] as string;
         if (!signature) {
           console.error(`[BlueBubbles Webhook] Missing signature header`);
@@ -821,6 +823,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error(`[BlueBubbles Webhook] Invalid signature`);
           return res.status(401).json({ message: "Invalid webhook signature" });
         }
+      } else if (isDevelopment) {
+        console.log(`[BlueBubbles Webhook] Skipping signature validation in development mode`);
       }
       
       // Process webhook payload based on event type
