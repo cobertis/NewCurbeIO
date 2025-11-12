@@ -894,13 +894,13 @@ export default function IMessagePage() {
                                     )}
 
                                     {/* Reactions - iMessage style */}
-                                    {message.reactions.length > 0 && (
+                                    {message.reactions && message.reactions.length > 0 && (
                                       <div className={cn(
                                         "absolute -bottom-2 flex gap-0.5",
                                         message.isFromMe ? "-left-2" : "-right-2"
                                       )}>
                                         {Array.from(new Set(message.reactions.map(r => r.reaction))).map(reaction => {
-                                          const count = message.reactions.filter(r => r.reaction === reaction).length;
+                                          const count = message.reactions?.filter(r => r.reaction === reaction).length || 0;
                                           return (
                                             <div
                                               key={reaction}
