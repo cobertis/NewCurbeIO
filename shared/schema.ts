@@ -144,7 +144,10 @@ export const companyFeatures = pgTable("company_features", {
   featureId: varchar("feature_id").notNull().references(() => features.id, { onDelete: "cascade" }),
   enabledAt: timestamp("enabled_at").notNull().defaultNow(),
   enabledBy: varchar("enabled_by").references(() => users.id, { onDelete: "set null" }), // Who enabled it
-});
+}, (table) => ({
+  // Prevent duplicate feature assignments to same company
+  companyFeatureUnique: uniqueIndex("company_features_company_feature_unique").on(table.companyId, table.featureId),
+}));
 
 // =====================================================
 // USERS

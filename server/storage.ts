@@ -1609,9 +1609,31 @@ export class DbStorage implements IStorage {
   }
 
   async addFeatureToCompany(companyId: string, featureId: string, enabledBy?: string): Promise<CompanyFeature> {
+    // Use upsert pattern to prevent duplicate feature assignments
     const result = await db.insert(companyFeatures)
       .values({ companyId, featureId, enabledBy })
+      .onConflictDoNothing({ target: [companyFeatures.companyId, companyFeatures.featureId] })
       .returning();
+    
+    // If conflict occurred (feature already exists), fetch and return existing record
+    if (result.length === 0) {
+      const existing = await db
+        .select()
+        .from(companyFeatures)
+        .where(and(
+          eq(companyFeatures.companyId, companyId),
+          eq(companyFeatures.featureId, featureId)
+        ))
+        .limit(1);
+      
+      // Defensive check: if record doesn't exist after conflict, something is wrong
+      if (!existing[0]) {
+        throw new Error(`Feature assignment not found after conflict for company ${companyId} and feature ${featureId}`);
+      }
+      
+      return existing[0];
+    }
+    
     return result[0];
   }
 

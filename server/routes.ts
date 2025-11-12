@@ -7259,14 +7259,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Feature ID is required" });
       }
 
+      console.log(`[FEATURES] Adding feature ${featureId} to company ${req.params.companyId} by user ${currentUser.id}`);
+      
       const companyFeature = await storage.addFeatureToCompany(
         req.params.companyId,
         featureId,
         currentUser.id
       );
+      
+      console.log(`[FEATURES] Successfully added feature`, companyFeature);
       res.status(201).json(companyFeature);
-    } catch (error) {
-      res.status(400).json({ message: "Failed to add feature to company" });
+    } catch (error: any) {
+      console.error(`[FEATURES] Error adding feature:`, error);
+      res.status(400).json({ message: error.message || "Failed to add feature to company" });
     }
   });
 
