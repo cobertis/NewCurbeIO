@@ -1046,13 +1046,19 @@ export default function IMessagePage() {
         // Save current waveform as static preview
         const previewWaveform = [...waveformBars];
         
-        // Transition to preview mode (do NOT auto-send)
-        setAudioPreview({
-          blob: audioBlob,
-          url: audioUrl,
-          duration: recordingDuration
+        // Get actual audio duration from the blob
+        const audio = new Audio(audioUrl);
+        audio.addEventListener('loadedmetadata', () => {
+          const actualDuration = Math.floor(audio.duration);
+          
+          // Transition to preview mode (do NOT auto-send)
+          setAudioPreview({
+            blob: audioBlob,
+            url: audioUrl,
+            duration: actualDuration
+          });
+          setRecordingState('preview');
         });
-        setRecordingState('preview');
         
         // Stop audio analysis
         if (animationFrameRef.current) {
