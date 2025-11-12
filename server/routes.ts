@@ -1284,12 +1284,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Step 1: Send text message first (if exists)
         if (text && text.trim()) {
-          const sendResult = await blueBubblesClient.sendMessage({
+          const sendPayload: any = {
             chatGuid: conversation.chatGuid,
             message: text,
             method: 'private-api',
             effectId: effect
-          });
+          };
+          
+          // Add reply fields if provided
+          if (replyToGuid) {
+            sendPayload.selectedMessageGuid = replyToGuid;
+            sendPayload.partIndex = 0;
+          }
+          
+          const sendResult = await blueBubblesClient.sendMessage(sendPayload);
           
           // Store text message in database
           message = await storage.createImessageMessage({

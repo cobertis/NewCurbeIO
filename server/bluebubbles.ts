@@ -11,6 +11,8 @@ interface SendMessageRequest {
   method?: 'private-api' | 'apple-script';
   subject?: string;
   effectId?: string;
+  selectedMessageGuid?: string; // For replies
+  partIndex?: number; // For replies (default: 0)
 }
 
 interface SendMessageResponse {
@@ -102,15 +104,23 @@ export class BlueBubblesClient {
   }
 
   async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
+    const payload: any = {
+      chatGuid: request.chatGuid,
+      message: request.message,
+      method: request.method || 'private-api',
+      subject: request.subject,
+      effectId: request.effectId,
+    };
+    
+    // Add reply fields if provided
+    if (request.selectedMessageGuid) {
+      payload.selectedMessageGuid = request.selectedMessageGuid;
+      payload.partIndex = request.partIndex || 0;
+    }
+    
     return this.request<SendMessageResponse>('/api/v1/message/text', {
       method: 'POST',
-      body: JSON.stringify({
-        chatGuid: request.chatGuid,
-        message: request.message,
-        method: request.method || 'private-api',
-        subject: request.subject,
-        effectId: request.effectId,
-      }),
+      body: JSON.stringify(payload),
     });
   }
 

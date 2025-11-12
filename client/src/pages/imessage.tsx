@@ -324,7 +324,7 @@ export default function IMessagePage() {
     sendMessageMutation.mutate({
       text: messageText,
       effectId: selectedEffect || undefined,
-      replyToMessageId: replyingToMessage?.id,
+      replyToMessageId: replyingToMessage?.guid, // Use GUID instead of ID
       attachments
     });
 
