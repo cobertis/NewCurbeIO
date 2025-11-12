@@ -124,7 +124,7 @@ export class BlueBubblesClient {
     });
   }
 
-  async sendAttachment(chatGuid: string, attachmentPath: string, tempGuid?: string): Promise<SendMessageResponse> {
+  async sendAttachment(chatGuid: string, attachmentPath: string, tempGuid?: string, isAudioMessage: boolean = false): Promise<SendMessageResponse> {
     // BlueBubbles expects a file path or Buffer, not a File object
     // When called from our API, we'll pass the file path from multer upload
     const formData = new FormData();
@@ -141,6 +141,12 @@ export class BlueBubblesClient {
     const blob = new Blob([fileBuffer]);
     formData.append('attachment', blob, fileName);
     formData.append('name', fileName);
+    
+    // Mark as audio message (voice memo) if it's a CAF file
+    if (isAudioMessage) {
+      formData.append('isAudioMessage', 'true');
+      console.log('[iMessage] Marking attachment as audio message (voice memo)');
+    }
 
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);
     urlWithAuth.searchParams.set('password', this.password);
@@ -290,11 +296,11 @@ export const blueBubblesClient = {
     return blueBubblesClientInstance.sendMessage(request);
   },
   
-  sendAttachment: async (chatGuid: string, attachment: File): Promise<SendMessageResponse> => {
+  sendAttachment: async (chatGuid: string, attachmentPath: string, tempGuid?: string, isAudioMessage: boolean = false): Promise<SendMessageResponse> => {
     if (!blueBubblesClientInstance) {
       throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
     }
-    return blueBubblesClientInstance.sendAttachment(chatGuid, attachment);
+    return blueBubblesClientInstance.sendAttachment(chatGuid, attachmentPath, tempGuid, isAudioMessage);
   },
   
   getChats: async (offset = 0, limit = 100): Promise<{ data: Chat[] }> => {

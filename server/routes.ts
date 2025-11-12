@@ -1712,11 +1712,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           filePaths.push(actualFilePath);
           
-          console.log(`[iMessage] Sending attachment: ${actualFilename} (${actualMimeType})`);
+          // Check if this is an audio message (voice memo)
+          const isVoiceMemo = actualMimeType === 'audio/x-caf';
+          
+          console.log(`[iMessage] Sending attachment: ${actualFilename} (${actualMimeType})${isVoiceMemo ? ' as voice memo' : ''}`);
           const attachmentResult = await blueBubblesClient.sendAttachment(
             conversation.chatGuid,
             actualFilePath,
-            clientGuid // Send clientGuid for webhook reconciliation
+            clientGuid, // Send clientGuid for webhook reconciliation
+            isVoiceMemo // Mark as audio message if CAF
           );
           
           // If no text message was sent, use attachment result as primary
