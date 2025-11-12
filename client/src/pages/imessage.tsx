@@ -58,6 +58,7 @@ interface ImessageMessage {
   senderName?: string;
   senderAddress?: string;
   dateCreated: string;
+  dateSent?: string;
   dateRead?: string;
   dateDelivered?: string;
   hasAttachments: boolean;
@@ -69,6 +70,7 @@ interface ImessageMessage {
   isEdited: boolean;
   editedAt?: string;
   metadata?: any;
+  status: string; // 'sending', 'sent', 'delivered', 'read', 'failed'
 }
 
 interface MessageAttachment {

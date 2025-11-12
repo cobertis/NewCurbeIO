@@ -8267,7 +8267,7 @@ export class DbStorage implements IStorage {
       .select()
       .from(imessageMessages)
       .where(eq(imessageMessages.id, id));
-    return result[0];
+    return result[0] ? this.mapImessageMessage(result[0]) : undefined;
   }
 
   async getImessageMessageByGuid(companyId: string, messageGuid: string): Promise<ImessageMessage | undefined> {
@@ -8280,11 +8280,11 @@ export class DbStorage implements IStorage {
           eq(imessageMessages.messageGuid, messageGuid)
         )
       );
-    return result[0];
+    return result[0] ? this.mapImessageMessage(result[0]) : undefined;
   }
 
   async getImessageMessages(conversationId: string, companyId: string, limit = 50, offset = 0): Promise<ImessageMessage[]> {
-    return db
+    const rows = await db
       .select()
       .from(imessageMessages)
       .where(
@@ -8296,8 +8296,39 @@ export class DbStorage implements IStorage {
       .orderBy(imessageMessages.dateSent)
       .limit(limit)
       .offset(offset);
+    return rows.map(row => this.mapImessageMessage(row));
   }
   
+  // Shared mapper function to transform DB rows to frontend-compatible format
+  private mapImessageMessage(row: any): ImessageMessage {
+    return {
+      id: row.id,
+      conversationId: row.conversationId,
+      companyId: row.companyId,
+      guid: row.messageGuid,          // DB: messageGuid → Frontend: guid
+      chatGuid: row.chatGuid,
+      text: row.text || '',
+      subject: row.subject,
+      isFromMe: row.fromMe,            // DB: fromMe → Frontend: isFromMe
+      senderName: row.senderName,
+      senderAddress: row.senderHandle, // DB: senderHandle → Frontend: senderAddress
+      dateCreated: row.dateSent ? row.dateSent.toISOString() : new Date().toISOString(), // DB: dateSent → Frontend: dateCreated
+      dateRead: row.dateRead ? row.dateRead.toISOString() : undefined,
+      dateDelivered: row.dateDelivered ? row.dateDelivered.toISOString() : undefined,
+      dateSent: row.dateSent ? row.dateSent.toISOString() : undefined,
+      hasAttachments: row.hasAttachments,
+      attachments: row.attachments as any || [],
+      effectId: row.expressiveType,     // DB: expressiveType → Frontend: effectId
+      replyToMessageId: row.replyToGuid, // DB: replyToGuid → Frontend: replyToMessageId
+      reactions: row.reactions as any || {},
+      isDeleted: false,
+      isEdited: false,
+      editedAt: undefined,
+      metadata: row.metadata,
+      status: row.status
+    } as ImessageMessage;
+  }
+
   async getImessageMessagesByConversation(conversationId: string, options?: { limit?: number; offset?: number }): Promise<ImessageMessage[]> {
     let query = db
       .select()
@@ -8313,33 +8344,7 @@ export class DbStorage implements IStorage {
     }
     
     const rows = await query;
-    
-    // Map snake_case database fields to camelCase for frontend compatibility
-    return rows.map(row => ({
-      id: row.id,
-      conversationId: row.conversationId,
-      companyId: row.companyId,
-      guid: row.messageGuid,
-      chatGuid: row.chatGuid,
-      text: row.text || '',
-      subject: row.subject,
-      isFromMe: row.fromMe,
-      senderName: row.senderName,
-      senderAddress: row.senderHandle,
-      dateCreated: row.dateSent ? row.dateSent.toISOString() : new Date().toISOString(),
-      dateRead: row.dateRead ? row.dateRead.toISOString() : undefined,
-      dateDelivered: row.dateDelivered ? row.dateDelivered.toISOString() : undefined,
-      hasAttachments: row.hasAttachments,
-      attachments: row.attachments as any || [],
-      effectId: row.expressiveType,
-      replyToMessageId: row.replyToGuid,
-      reactions: row.reactions as any || {},  // Load reactions from database
-      isDeleted: false,  // TODO: Implement soft delete
-      isEdited: false,  // TODO: Implement message editing
-      editedAt: undefined,
-      metadata: row.metadata,
-      status: row.status
-    }));
+    return rows.map(row => this.mapImessageMessage(row));
   }
 
   async createImessageMessage(data: InsertImessageMessage): Promise<ImessageMessage> {
@@ -8351,7 +8356,7 @@ export class DbStorage implements IStorage {
         updatedAt: new Date(),
       })
       .returning();
-    return result[0];
+    return this.mapImessageMessage(result[0]); // Apply mapper
   }
 
   async updateImessageMessageByGuid(companyId: string, messageGuid: string, data: Partial<InsertImessageMessage>): Promise<ImessageMessage | undefined> {
@@ -8368,7 +8373,7 @@ export class DbStorage implements IStorage {
         )
       )
       .returning();
-    return result[0];
+    return result[0] ? this.mapImessageMessage(result[0]) : undefined; // Apply mapper
   }
   
   async updateImessageMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void> {
@@ -8420,7 +8425,7 @@ export class DbStorage implements IStorage {
   }
   
   async searchImessageMessages(companyId: string, query: string): Promise<ImessageMessage[]> {
-    return db
+    const rows = await db
       .select()
       .from(imessageMessages)
       .where(
@@ -8431,6 +8436,7 @@ export class DbStorage implements IStorage {
       )
       .orderBy(desc(imessageMessages.dateSent))
       .limit(100);
+    return rows.map(row => this.mapImessageMessage(row));
   }
   
   async addMessageReaction(messageId: string, userId: string, reaction: string): Promise<void> {
