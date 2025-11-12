@@ -551,12 +551,18 @@ export default function IMessagePage() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string; duration: number } | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
-  const [waveformBars, setWaveformBars] = useState<number[]>([0, 0, 0, 0, 0]); // 5 bars for waveform
+  const [waveformRenderKey, setWaveformRenderKey] = useState(0); // Trigger re-renders periodically
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Fixed-size buffer for performance
+  const waveformBufferRef = useRef<number[]>(new Array(100).fill(0));
+  const waveformIndexRef = useRef(0); // How many values captured so far
+  const frameCountRef = useRef(0); // For throttled UI updates
+  const waveformPreviewRef = useRef<number[]>([]); // Frozen snapshot for preview
+  const waveformPreviewIndexRef = useRef(0); // How many samples in preview
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -977,27 +983,28 @@ export default function IMessagePage() {
     setAttachments(prev => [...prev, ...files]);
   };
 
-  // Audio waveform analysis
+  // Audio waveform analysis - captures waveform progressively with fixed buffer
   const analyzeAudio = useCallback(() => {
     if (!analyserRef.current) return;
     
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     analyserRef.current.getByteFrequencyData(dataArray);
     
-    // Sample 5 different frequency ranges for the 5 bars
-    const barCount = 5;
-    const samplesPerBar = Math.floor(dataArray.length / barCount);
-    const bars: number[] = [];
+    // Calculate average volume for this moment
+    const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+    const normalizedValue = Math.max(0.05, average / 255); // Normalize to 0-1, min 0.05
     
-    for (let i = 0; i < barCount; i++) {
-      const start = i * samplesPerBar;
-      const end = start + samplesPerBar;
-      const slice = dataArray.slice(start, end);
-      const average = slice.reduce((a, b) => a + b, 0) / slice.length;
-      bars.push(average / 255); // Normalize to 0-1
+    // Update buffer (circular if we exceed 100 samples)
+    const currentIndex = waveformIndexRef.current % 100;
+    waveformBufferRef.current[currentIndex] = normalizedValue;
+    waveformIndexRef.current++;
+    
+    // Throttle React re-renders: only update UI every 5 frames (~12 updates/sec instead of 60)
+    frameCountRef.current++;
+    if (frameCountRef.current % 5 === 0) {
+      setWaveformRenderKey(prev => prev + 1);
     }
     
-    setWaveformBars(bars);
     animationFrameRef.current = requestAnimationFrame(analyzeAudio);
   }, []);
 
@@ -1043,8 +1050,9 @@ export default function IMessagePage() {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         
-        // Save current waveform as static preview
-        const previewWaveform = [...waveformBars];
+        // Freeze waveform buffer for preview (clone to prevent mutation)
+        waveformPreviewRef.current = [...waveformBufferRef.current];
+        waveformPreviewIndexRef.current = waveformIndexRef.current; // Capture sample count
         
         // Get actual audio duration from the blob
         const audio = new Audio(audioUrl);
@@ -1070,14 +1078,16 @@ export default function IMessagePage() {
         
         // Release microphone
         stream.getTracks().forEach(track => track.stop());
-        
-        // Reset waveform to static preview
-        setWaveformBars(previewWaveform.map(v => v || 0.5)); // Ensure some visual
       };
 
       mediaRecorder.start();
       setRecordingState('recording');
       setRecordingDuration(0);
+      // Reset waveform buffer for new recording
+      waveformBufferRef.current = new Array(100).fill(0);
+      waveformIndexRef.current = 0;
+      frameCountRef.current = 0;
+      setWaveformRenderKey(0);
     } catch (error) {
       console.error('Error starting recording:', error);
       toast({
@@ -1145,7 +1155,10 @@ export default function IMessagePage() {
     setAudioPreview(null);
     setRecordingState('idle');
     setRecordingDuration(0);
-    setWaveformBars([0, 0, 0, 0, 0]);
+    waveformBufferRef.current = new Array(100).fill(0);
+    waveformIndexRef.current = 0;
+    waveformPreviewRef.current = [];
+    waveformPreviewIndexRef.current = 0;
     setIsPlayingPreview(false);
   };
 
@@ -1160,7 +1173,10 @@ export default function IMessagePage() {
     setAudioPreview(null);
     setRecordingState('idle');
     setRecordingDuration(0);
-    setWaveformBars([0, 0, 0, 0, 0]);
+    waveformBufferRef.current = new Array(100).fill(0);
+    waveformIndexRef.current = 0;
+    waveformPreviewRef.current = [];
+    waveformPreviewIndexRef.current = 0;
     setIsPlayingPreview(false);
   };
 
@@ -1803,22 +1819,27 @@ export default function IMessagePage() {
               </div>
             )}
 
-            {/* STATE 2: RECORDING - Full width recording UI with red waveform */}
+            {/* STATE 2: RECORDING - Full width recording UI with progressive red waveform */}
             {recordingState === 'recording' && (
               <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
-                {/* Animated waveform bars - 100 thin bars to fill width */}
-                <div className="flex-1 flex items-center gap-px h-10">
-                  {Array.from({ length: 100 }).map((_, i) => {
-                    const heightIndex = i % waveformBars.length;
-                    const baseHeight = waveformBars[heightIndex] || 0.3;
-                    const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
+                {/* Progressive waveform bars - 100 bars showing recording progress */}
+                <div className="flex-1 flex items-center gap-px h-10" key={waveformRenderKey}>
+                  {waveformBufferRef.current.map((value, i) => {
+                    // For recordings under 100 samples: show progressive fill left-to-right
+                    // For longer recordings: all bars show data (circular buffer effect)
+                    const totalSamples = waveformIndexRef.current;
+                    const hasData = totalSamples >= 100 ? true : i < totalSamples;
+                    
+                    // Show real amplitude where recorded, flat line where not yet recorded
+                    const height = hasData ? Math.max(0.05, value) : 0.05;
                     
                     return (
                       <div
-                        key={i}
-                        className="flex-1 bg-red-500 rounded-full transition-all duration-100"
+                        key={`recording-bar-${i}`}
+                        className="flex-1 bg-red-500 rounded-full transition-all duration-75"
                         style={{ 
-                          height: `${Math.max(20, height * 100)}%`,
+                          height: `${height * 100}%`,
+                          opacity: hasData ? 1 : 0.3
                         }}
                       />
                     );
@@ -1870,19 +1891,25 @@ export default function IMessagePage() {
                   )}
                 </Button>
 
-                {/* Static waveform bars - 100 thin bars to fill width */}
+                {/* Static waveform bars - 100 bars showing captured recording */}
                 <div className="flex-1 flex items-center gap-px h-10">
                   {Array.from({ length: 100 }).map((_, i) => {
-                    const heightIndex = i % waveformBars.length;
-                    const baseHeight = waveformBars[heightIndex] || 0.3;
-                    const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
+                    // For recordings under 100 samples: only show captured bars
+                    // For longer recordings: all bars show data (circular buffer)
+                    const totalSamples = waveformPreviewIndexRef.current;
+                    const hasData = totalSamples >= 100 ? true : i < totalSamples;
+                    
+                    // Get value from frozen preview buffer
+                    const value = hasData && waveformPreviewRef.current[i] ? waveformPreviewRef.current[i] : 0.1;
+                    const height = Math.max(0.1, value);
                     
                     return (
                       <div
-                        key={i}
+                        key={`preview-bar-${i}`}
                         className="flex-1 bg-gray-600 dark:bg-gray-500 rounded-full"
                         style={{ 
-                          height: `${Math.max(20, height * 100)}%`,
+                          height: `${height * 100}%`,
+                          opacity: hasData ? 1 : 0.3
                         }}
                       />
                     );
