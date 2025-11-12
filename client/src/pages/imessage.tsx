@@ -24,7 +24,7 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare
+  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye
 } from "lucide-react";
 import type { User } from "@shared/schema";
 
@@ -105,10 +105,11 @@ const MESSAGE_EFFECTS = {
 
 type MessageEffectKey = keyof typeof MESSAGE_EFFECTS;
 
-// Component to handle authenticated image loading
+// Component to handle authenticated image loading with thumbnail and full-size preview
 function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -144,7 +145,52 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
     return <div className="h-32 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />;
   }
 
-  return <img src={blobUrl} alt={alt} className="max-w-full rounded-lg" />;
+  return (
+    <>
+      {/* Thumbnail with eye icon */}
+      <div 
+        className="relative group cursor-pointer max-w-[200px]"
+        onClick={() => setIsOpen(true)}
+        data-testid="attachment-thumbnail"
+      >
+        <img 
+          src={blobUrl} 
+          alt={alt} 
+          className="rounded-lg max-h-[150px] object-cover"
+        />
+        {/* Eye icon overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-lg flex items-center justify-center">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg">
+              <Eye className="h-5 w-5 text-gray-700 dark:text-gray-200" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Full-size image dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-black/95">
+          <div className="relative">
+            <img 
+              src={blobUrl} 
+              alt={alt} 
+              className="w-full h-full max-h-[85vh] object-contain"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 text-white"
+              onClick={() => setIsOpen(false)}
+              data-testid="button-close-image"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
 
 const TAPBACK_REACTIONS = [
