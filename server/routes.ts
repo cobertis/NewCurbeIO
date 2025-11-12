@@ -1021,6 +1021,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               updateData.dateDelivered = new Date(messageData.dateDelivered);
             }
             
+            // CRITICAL: Update attachments with BlueBubbles GUIDs (so frontend can load images)
+            if (messageData.attachments && messageData.attachments.length > 0) {
+              const transformedAttachments = messageData.attachments.map((att: any) => ({
+                guid: att.guid,
+                mimeType: att.mimeType,
+                fileName: att.transferName || att.fileName || 'attachment',
+                fileSize: att.totalBytes || 0,
+                width: att.width,
+                height: att.height,
+                url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+              }));
+              updateData.attachments = transformedAttachments;
+              updateData.hasAttachments = true;
+            }
+            
             await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, updateData);
             newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
             console.log(`[BlueBubbles Webhook] Updated existing message from clientGuid to BlueBubbles GUID`);
@@ -1075,10 +1090,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Only proceed if we have a message (could be undefined if both create and fetch failed)
           if (newMessage) {
             // Update conversation last message
+            // CRITICAL: Convert dateSent from ISO string to Date object (mapper returns strings)
             await storage.updateImessageConversation(conversation.id, {
-              lastMessageAt: newMessage.dateSent,
+              lastMessageAt: newMessage.dateSent ? new Date(newMessage.dateSent) : new Date(),
               lastMessageText: newMessage.text,
-              unreadCount: conversation.unreadCount + (newMessage.fromMe ? 0 : 1),
+              unreadCount: conversation.unreadCount + (newMessage.isFromMe ? 0 : 1),
             });
             
             // Broadcast to WebSocket clients
