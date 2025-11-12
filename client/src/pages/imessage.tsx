@@ -305,21 +305,69 @@ export default function IMessagePage() {
         });
       }
     },
-    onSuccess: () => {
+    // Optimistic update - add message immediately to UI
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: [`/api/imessage/conversations/${selectedConversationId}/messages`] });
+      
+      // Snapshot the previous value
+      const previousMessages = queryClient.getQueryData<ImessageMessage[]>([`/api/imessage/conversations/${selectedConversationId}/messages`]);
+      
+      // Optimistically update to the new value
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMessage: ImessageMessage = {
+        id: tempId,
+        conversationId: selectedConversationId!,
+        guid: tempId,
+        text: variables.text,
+        isFromMe: true,
+        dateCreated: new Date().toISOString(),
+        dateSent: new Date().toISOString(),
+        dateDelivered: undefined,
+        dateRead: undefined,
+        senderAddress: 'me',
+        senderName: undefined,
+        hasAttachments: (variables.attachments?.length || 0) > 0,
+        attachments: [],
+        reactions: [],
+        replyToMessageId: variables.replyToMessageId || undefined,
+        effect: variables.effectId || undefined,
+        status: 'sending'
+      };
+      
+      queryClient.setQueryData<ImessageMessage[]>(
+        [`/api/imessage/conversations/${selectedConversationId}/messages`],
+        (old) => [...(old || []), optimisticMessage]
+      );
+      
+      // Clear inputs immediately
       setMessageText("");
       setSelectedEffect(null);
       setReplyingToMessage(null);
       setAttachments([]);
+      
       if (soundEnabled) playSound('send');
-      queryClient.invalidateQueries({ queryKey: [`/api/imessage/conversations/${selectedConversationId}/messages`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+      
+      return { previousMessages };
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Revert to previous state on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData(
+          [`/api/imessage/conversations/${selectedConversationId}/messages`],
+          context.previousMessages
+        );
+      }
       toast({
         title: "Failed to send message",
         description: error.message,
         variant: "destructive"
       });
+    },
+    onSuccess: () => {
+      // Invalidate to get the real message from server
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/conversations/${selectedConversationId}/messages`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
     }
   });
 
