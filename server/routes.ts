@@ -1148,22 +1148,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (contentLength) res.setHeader('Content-Length', contentLength);
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       
-      // Stream the response
+      // Stream the response using Node.js Readable.fromWeb (Node 18+)
       if (attachmentResponse.body) {
-        const reader = attachmentResponse.body.getReader();
-        const stream = new ReadableStream({
-          async start(controller) {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              controller.enqueue(value);
-            }
-            controller.close();
-          }
-        });
-        
-        // Convert to Node.js stream and pipe
-        const nodeStream = require('stream').Readable.from(stream);
+        const { Readable } = await import('stream');
+        const nodeStream = Readable.fromWeb(attachmentResponse.body as any);
         nodeStream.pipe(res);
       } else {
         throw new Error('No response body from BlueBubbles');
@@ -1353,11 +1341,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       
-      // Use BlueBubbles client to send message
+      // Use BlueBubbles client to send message - BlueBubbles will notify us via webhook
       const filePaths: string[] = [];
       try {
-        let message: any = null;
-        
         // Step 1: Send text message first (if exists)
         if (text && text.trim()) {
           const sendPayload: any = {
@@ -1373,26 +1359,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             sendPayload.partIndex = 0;
           }
           
-          const sendResult = await blueBubblesClient.sendMessage(sendPayload);
-          
-          // Store text message in database
-          message = await storage.createImessageMessage({
-            conversationId: conversation.id,
-            companyId: user.companyId,
-            chatGuid: conversation.chatGuid,
-            isImessage: true,
-            messageGuid: sendResult.data.guid || `temp_${Date.now()}`,
-            text: text,
-            fromMe: true,
-            dateSent: new Date(sendResult.data.dateCreated),
-            dateDelivered: null,
-            dateRead: null,
-            status: 'sent',
-            hasAttachments: uploadedFiles.length > 0,
-            attachments: [],
-            replyToGuid,
-            effect
-          });
+          console.log(`[iMessage] Sending text message via BlueBubbles`);
+          await blueBubblesClient.sendMessage(sendPayload);
         }
         
         // Step 2: Send each attachment one by one
@@ -1400,71 +1368,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           filePaths.push(file.path);
           
           console.log(`[iMessage] Sending attachment: ${file.originalname}`);
-          const attachmentResult = await blueBubblesClient.sendAttachment(
+          await blueBubblesClient.sendAttachment(
             conversation.chatGuid,
             file.path
           );
-          
-          // Store attachment message in database if we didn't already create a text message
-          if (!message) {
-            message = await storage.createImessageMessage({
-              conversationId: conversation.id,
-              companyId: user.companyId,
-              chatGuid: conversation.chatGuid,
-              isImessage: true,
-              messageGuid: attachmentResult.data.guid || `temp_${Date.now()}`,
-              text: '',
-              fromMe: true,
-              dateSent: new Date(attachmentResult.data.dateCreated),
-              dateDelivered: null,
-              dateRead: null,
-              status: 'sent',
-              hasAttachments: true,
-              attachments: [{
-                filename: file.originalname,
-                mimeType: file.mimetype,
-                size: file.size
-              }],
-              replyToGuid,
-              effect
-            });
-          }
         }
         
-        // If we only had attachments and no text, create a message record
-        if (!message && uploadedFiles.length > 0) {
-          message = await storage.createImessageMessage({
-            conversationId: conversation.id,
-            companyId: user.companyId,
-            chatGuid: conversation.chatGuid,
-            isImessage: true,
-            messageGuid: `temp_${Date.now()}`,
-            text: '',
-            fromMe: true,
-            dateSent: new Date(),
-            dateDelivered: null,
-            dateRead: null,
-            status: 'sent',
-            hasAttachments: true,
-            attachments: uploadedFiles.map(f => ({
-              filename: f.originalname,
-              mimeType: f.mimetype,
-              size: f.size
-            })),
-            replyToGuid,
-            effect
-          });
-        }
-        
-        // Broadcast update via WebSocket
-        const { broadcastImessageUpdate } = await import("./websocket");
-        broadcastImessageUpdate(user.companyId, {
-          type: "new-message",
-          conversationId: conversation.id,
-          message
+        // Return success - the webhook will handle database persistence
+        res.json({ 
+          success: true, 
+          conversation,
+          message: "Message sent successfully. BlueBubbles will notify us when delivered."
         });
-        
-        res.json({ message, conversation });
       } catch (sendError: any) {
         console.error("[iMessage] Failed to send:", sendError);
         return res.status(500).json({ message: sendError.message || "Failed to send message" });
