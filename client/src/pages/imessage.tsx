@@ -130,17 +130,6 @@ interface TypingIndicator {
   isTyping: boolean;
 }
 
-const MESSAGE_EFFECTS = {
-  slam: { name: "Slam", className: "animate-slam" },
-  gentle: { name: "Gentle", className: "animate-gentle" },
-  loud: { name: "Loud", className: "animate-loud" },
-  invisible: { name: "Invisible Ink", className: "animate-invisible" },
-  echo: { name: "Echo", className: "animate-echo" },
-  spotlight: { name: "Spotlight", className: "animate-spotlight" }
-} as const;
-
-type MessageEffectKey = keyof typeof MESSAGE_EFFECTS;
-
 // Helper function to format file size
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
@@ -409,11 +398,9 @@ export default function IMessagePage() {
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [conversationSearch, setConversationSearch] = useState("");
-  const [selectedEffect, setSelectedEffect] = useState<MessageEffectKey | null>(null);
   const [replyingToMessage, setReplyingToMessage] = useState<ImessageMessage | null>(null);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [showEffectsPicker, setShowEffectsPicker] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, TypingIndicator>>(new Map());
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -610,7 +597,6 @@ export default function IMessagePage() {
       
       // Clear inputs immediately
       setMessageText("");
-      setSelectedEffect(null);
       setReplyingToMessage(null);
       setAttachments([]);
       
@@ -784,7 +770,6 @@ export default function IMessagePage() {
 
     sendMessageMutation.mutate({
       text: messageText,
-      effectId: selectedEffect || undefined,
       replyToMessageId: replyingToMessage?.guid, // Use GUID instead of ID
       attachments,
       clientGuid // Pass to backend for echo back
@@ -1341,38 +1326,6 @@ export default function IMessagePage() {
                 <Paperclip className="h-5 w-5" />
               </Button>
 
-              {/* Effects button */}
-              <Popover open={showEffectsPicker} onOpenChange={setShowEffectsPicker}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className={cn("rounded-full", selectedEffect && "text-blue-500")}
-                    data-testid="effects-button"
-                  >
-                    <span className="text-xl">✨</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48" side="top">
-                  <div className="space-y-1">
-                    {Object.entries(MESSAGE_EFFECTS).map(([id, effect]) => (
-                      <Button
-                        key={id}
-                        variant={selectedEffect === id ? "secondary" : "ghost"}
-                        className="w-full justify-start"
-                        onClick={() => {
-                          setSelectedEffect(selectedEffect === id ? null : (id as MessageEffectKey));
-                          setShowEffectsPicker(false);
-                        }}
-                        data-testid={`effect-${id}`}
-                      >
-                        {effect.name}
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
               {/* Message input */}
               <div className="flex-1 relative">
                 <textarea
@@ -1397,13 +1350,6 @@ export default function IMessagePage() {
                   rows={1}
                   data-testid="message-input"
                 />
-                {selectedEffect && (
-                  <Badge 
-                    className="absolute top-1/2 right-12 -translate-y-1/2 bg-blue-500 text-white"
-                  >
-                    {MESSAGE_EFFECTS[selectedEffect].name}
-                  </Badge>
-                )}
               </div>
 
               {/* Send button */}
@@ -1450,30 +1396,6 @@ export default function IMessagePage() {
         data-testid="file-input"
       />
 
-      {/* Custom CSS for message effects */}
-      <style>{`
-        @keyframes slam {
-          0% { transform: scale(1.5) rotate(-5deg); opacity: 0; }
-          50% { transform: scale(1.2) rotate(2deg); }
-          100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-        
-        @keyframes gentle {
-          0% { transform: scale(0.8); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        
-        @keyframes loud {
-          0%, 100% { transform: scale(1); }
-          25% { transform: scale(1.1); }
-          50% { transform: scale(0.95); }
-          75% { transform: scale(1.05); }
-        }
-        
-        .animate-slam { animation: slam 0.5s ease-out; }
-        .animate-gentle { animation: gentle 0.5s ease-out; }
-        .animate-loud { animation: loud 0.5s ease-out; }
-      `}</style>
     </div>
   );
 }
