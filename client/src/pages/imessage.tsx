@@ -1078,25 +1078,6 @@ export default function IMessagePage() {
                               !isFirstInGroup && "mt-0.5"
                             )}
                           >
-                            {!message.isFromMe && (
-                              <div className="w-8">
-                                {showAvatar && (
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarFallback 
-                                      className="text-xs text-white font-semibold flex items-center justify-center"
-                                      style={{ backgroundColor: getAvatarColorFromString(message.senderAddress || message.senderName || '') }}
-                                    >
-                                      {getInitials(message.senderName || '') ? (
-                                        getInitials(message.senderName || '')
-                                      ) : (
-                                        <UserIcon className="h-4 w-4" />
-                                      )}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                )}
-                              </div>
-                            )}
-                            
                             <div className={cn("max-w-[65%] relative", message.isFromMe && "text-right")}>
                               {/* Reply indicator */}
                               {replyToMessage && (
@@ -1262,8 +1243,6 @@ export default function IMessagePage() {
                                 </div>
                               )}
                             </div>
-
-                            {message.isFromMe && <div className="w-8" />}
                           </div>
                         );
                       })}
