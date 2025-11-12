@@ -124,15 +124,15 @@ export class BlueBubblesClient {
     });
   }
 
-  async sendAttachment(chatGuid: string, attachmentPath: string): Promise<SendMessageResponse> {
+  async sendAttachment(chatGuid: string, attachmentPath: string, tempGuid?: string): Promise<SendMessageResponse> {
     // BlueBubbles expects a file path or Buffer, not a File object
     // When called from our API, we'll pass the file path from multer upload
     const formData = new FormData();
     formData.append('chatGuid', chatGuid);
     
-    // Generate a temporary GUID for the message (required by BlueBubbles)
-    const tempGuid = `temp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-    formData.append('tempGuid', tempGuid);
+    // Use provided tempGuid or generate a new one (for webhook reconciliation)
+    const messageGuid = tempGuid || `temp-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    formData.append('tempGuid', messageGuid);
     
     // Read file from disk and append as blob
     const fs = await import('fs');
@@ -145,7 +145,7 @@ export class BlueBubblesClient {
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);
     urlWithAuth.searchParams.set('password', this.password);
 
-    console.log('[iMessage] Sending attachment with tempGuid:', tempGuid);
+    console.log('[iMessage] Sending attachment with tempGuid:', messageGuid);
     console.log('[iMessage] ChatGuid:', chatGuid);
     console.log('[iMessage] File:', fileName, 'Size:', fileBuffer.length);
     console.log('[iMessage] BlueBubbles URL:', urlWithAuth.toString().replace(this.password, '***'));

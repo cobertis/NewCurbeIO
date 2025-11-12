@@ -974,16 +974,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // If not found AND message is from us, check if we have a pending message from this conversation
           // This handles the case where we sent a message with clientGuid and webhook arrives with real BlueBubbles GUID
           if (!existingMessage && messageData.isFromMe) {
-            // Find recent "sending" status message in this conversation (within last 10 seconds)
-            const recentMessages = await storage.getImessageMessages(conversation.id, company.id, 10, 0);
-            const pendingMessage = recentMessages.find((msg: any) => 
-              msg.status === 'sending' && 
-              msg.text === (messageData.text || messageData.message || '') &&
-              msg.isFromMe
-            );
+            // Get tempGuid from webhook (BlueBubbles sends this back)
+            const tempGuid = messageData.tempGuid || messageData.temp_guid;
+            
+            // Find recent "sending" status message in this conversation (within last 30 seconds)
+            const recentMessages = await storage.getImessageMessages(conversation.id, company.id, 50, 0);
+            
+            // CRITICAL: Match by tempGuid in metadata (works for both text AND images)
+            const pendingMessage = recentMessages.find((msg: any) => {
+              if (msg.status !== 'sending' || !msg.isFromMe) return false;
+              
+              // Primary match: tempGuid in metadata (works for images and text)
+              if (tempGuid && msg.metadata?.clientGuid === tempGuid) {
+                return true;
+              }
+              
+              // Fallback match: text comparison (for legacy messages without tempGuid)
+              // Only use for text messages (images have empty text)
+              if (msg.text && messageData.text && msg.text === messageData.text) {
+                return true;
+              }
+              
+              return false;
+            });
             
             if (pendingMessage) {
-              console.log(`[BlueBubbles Webhook] Found pending message with clientGuid, updating to BlueBubbles GUID: ${messageGuid}`);
+              console.log(`[BlueBubbles Webhook] Found pending message with clientGuid: ${tempGuid || 'text-based match'}`);
               existingMessage = pendingMessage;
             }
           }
@@ -1523,7 +1539,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       
-      // Use BlueBubbles client to send message
+      // CRITICAL: Create message in database FIRST (before sending to BlueBubbles)
+      // This prevents webhook race condition where webhook arrives before backend creates message
+      const attachmentMetadata: any[] = uploadedFiles.map(file => ({
+        filename: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size
+      }));
+      
+      const optimisticMessage = await storage.createImessageMessage({
+        companyId: user.companyId,
+        conversationId: conversation.id,
+        messageGuid: clientGuid, // Use clientGuid first, webhook will update to real GUID
+        chatGuid: conversation.chatGuid,
+        text: text || '',
+        fromMe: true,
+        status: 'sending',
+        hasAttachments: uploadedFiles.length > 0,
+        attachments: attachmentMetadata,
+        replyToGuid: replyToGuid || null,
+        expressiveType: effect || null,
+        dateSent: new Date(),
+        metadata: { clientGuid } // Store clientGuid for webhook reconciliation
+      });
+      
+      // Now send to BlueBubbles (webhook will arrive and update the message)
       const filePaths: string[] = [];
       let sendResult: any;
       
@@ -1534,7 +1574,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             chatGuid: conversation.chatGuid,
             message: text,
             method: 'private-api',
-            effectId: effect
+            effectId: effect,
+            tempGuid: clientGuid // Send clientGuid for webhook reconciliation
           };
           
           // Add reply fields if provided
@@ -1549,53 +1590,36 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         
         // Step 2: Send each attachment one by one
-        const attachmentMetadata: any[] = [];
         for (const file of uploadedFiles) {
           filePaths.push(file.path);
           
           console.log(`[iMessage] Sending attachment: ${file.originalname}`);
           const attachmentResult = await blueBubblesClient.sendAttachment(
             conversation.chatGuid,
-            file.path
+            file.path,
+            clientGuid // Send clientGuid for webhook reconciliation
           );
           
           // If no text message was sent, use attachment result as primary
           if (!sendResult) {
             sendResult = attachmentResult;
           }
-          
-          attachmentMetadata.push({
-            filename: file.originalname,
-            mimeType: file.mimetype,
-            size: file.size
-          });
         }
         
-        // Create message in database with CORRECT schema fields
-        const newMessage = await storage.createImessageMessage({
-          companyId: user.companyId,
-          conversationId: conversation.id,
-          messageGuid: sendResult?.data?.guid || clientGuid, // Use BlueBubbles GUID or fallback to clientGuid
-          chatGuid: sendResult?.data?.chatGuid || conversation.chatGuid,
-          text: text || '',
-          fromMe: true, // Correct field name
-          status: 'sending',
-          hasAttachments: uploadedFiles.length > 0,
-          attachments: attachmentMetadata,
-          replyToGuid: replyToGuid || null,
-          expressiveType: effect || null,
-          dateSent: sendResult?.data?.dateCreated ? new Date(sendResult.data.dateCreated) : new Date(),
-          metadata: { clientGuid } // Store clientGuid for reconciliation
-        });
-        
-        // Return success with the created message
+        // Return success with the created message (webhook will update it)
         res.json({ 
           success: true, 
           conversation,
-          message: newMessage
+          message: optimisticMessage
         });
       } catch (sendError: any) {
         console.error("[iMessage] Failed to send:", sendError);
+        
+        // Mark message as failed in database
+        await storage.updateImessageMessageByGuid(user.companyId, clientGuid, {
+          status: 'failed'
+        });
+        
         return res.status(500).json({ message: sendError.message || "Failed to send message" });
       } finally {
         // Clean up temporary files
