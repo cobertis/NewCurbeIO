@@ -1299,6 +1299,7 @@ export default function IMessagePage() {
                     size="icon" 
                     variant="ghost" 
                     className={cn("rounded-full", selectedEffect && "text-blue-500")}
+                    data-testid="effects-button"
                   >
                     <span className="text-xl">✨</span>
                   </Button>
@@ -1311,9 +1312,10 @@ export default function IMessagePage() {
                         variant={selectedEffect === id ? "secondary" : "ghost"}
                         className="w-full justify-start"
                         onClick={() => {
-                          setSelectedEffect(selectedEffect === id ? null : id);
+                          setSelectedEffect(selectedEffect === id ? null : (id as MessageEffectKey));
                           setShowEffectsPicker(false);
                         }}
+                        data-testid={`effect-${id}`}
                       >
                         {effect.name}
                       </Button>
