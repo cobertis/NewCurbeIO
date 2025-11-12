@@ -206,10 +206,13 @@ export default function Companies() {
     },
     onSuccess: async (_, { companyId }) => {
       console.log(`[FEATURE-TOGGLE] onSuccess called, invalidating cache`);
+      // Refetch to ensure UI is updated with server data
       await queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "features"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/companies", companyId, "features"] });
       toast({
         title: "Feature Added",
         description: "The feature has been added to the company",
+        duration: 3000,
       });
     },
     onError: (error, { companyId }, context) => {
@@ -256,10 +259,13 @@ export default function Companies() {
       return { previousFeatures };
     },
     onSuccess: async (_, { companyId }) => {
+      // Refetch to ensure UI is updated with server data
       await queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "features"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/companies", companyId, "features"] });
       toast({
         title: "Feature Removed",
         description: "The feature has been removed from the company",
+        duration: 3000,
       });
     },
     onError: (_, { companyId }, context) => {
@@ -382,7 +388,8 @@ export default function Companies() {
         isEnabled: currentImessageSettings.isEnabled || false,
       });
     }
-  }, [currentImessageSettings, imessageForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentImessageSettings]);
 
   // Set webhook URL when selected company changes
   useEffect(() => {
