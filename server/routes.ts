@@ -1581,7 +1581,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // 8. DELETE /api/imessage/messages/:messageGuid - Delete a message (soft delete for UI)
+  // 8. DELETE /api/imessage/messages/:messageGuid - Delete/Unsend a message
   app.delete("/api/imessage/messages/:messageGuid", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -1597,7 +1597,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Message not found" });
       }
       
-      // Mark message as deleted for this user (soft delete)
+      // Only allow deleting own messages
+      if (!message.fromMe) {
+        return res.status(403).json({ message: "You can only delete your own messages" });
+      }
+      
+      // Check if company has iMessage configured
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      
+      // Try to unsend via BlueBubbles if configured
+      if (imessageSettings?.isEnabled && imessageSettings?.serverUrl) {
+        try {
+          const { blueBubblesClient } = await import("./bluebubbles");
+          if (companySettings) {
+            blueBubblesClient.initialize(companySettings);
+          }
+          
+          console.log(`[iMessage] Attempting to unsend message: ${messageGuid}`);
+          await blueBubblesClient.unsendMessage(messageGuid, 0);
+          console.log(`[iMessage] Successfully unsent message: ${messageGuid}`);
+        } catch (unsendError: any) {
+          console.error(`[iMessage] Failed to unsend message via BlueBubbles:`, unsendError);
+          // Continue anyway - mark as deleted locally even if unsend fails
+        }
+      }
+      
+      // Mark message as deleted in database
       await storage.updateImessageMessageStatus(message.id, "deleted");
       
       // Broadcast deletion

@@ -181,6 +181,17 @@ export class BlueBubblesClient {
     });
   }
 
+  async unsendMessage(messageGuid: string, partIndex: number = 0): Promise<SendMessageResponse> {
+    // Unsend (retract) a message - removes it from all devices
+    // Requires macOS 13+ and Private API enabled
+    return this.request<SendMessageResponse>(`/api/v1/message/${messageGuid}/unsend`, {
+      method: 'POST',
+      body: JSON.stringify({
+        partIndex: partIndex
+      }),
+    });
+  }
+
   async getChats(offset = 0, limit = 100): Promise<{ data: Chat[] }> {
     return this.request<{ data: Chat[] }>(
       `/api/v1/chat?offset=${offset}&limit=${limit}&with=lastMessage`
