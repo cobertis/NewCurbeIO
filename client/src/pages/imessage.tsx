@@ -397,6 +397,8 @@ export default function IMessagePage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // State
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -411,6 +413,8 @@ export default function IMessagePage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isConnected, setIsConnected] = useState(true); // BlueBubbles is working, webhooks are arriving
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -807,6 +811,83 @@ export default function IMessagePage() {
     const files = Array.from(e.target.files || []);
     setAttachments(prev => [...prev, ...files]);
   };
+
+  // Audio recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+        
+        // Automatically send the audio message
+        if (selectedConversationId && audioFile.size > 0) {
+          const clientGuid = crypto.randomUUID();
+          sendMessageMutation.mutate({
+            text: '',
+            replyToMessageId: replyingToMessage?.guid,
+            attachments: [audioFile],
+            clientGuid
+          });
+        }
+
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        setRecordingDuration(0);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast({
+        title: "Microphone access denied",
+        description: "Please allow microphone access to record audio messages",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      mediaRecorderRef.current = null;
+      audioChunksRef.current = [];
+      setIsRecording(false);
+      setRecordingDuration(0);
+    }
+  };
+
+  // Recording duration timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording]);
 
   const groupedMessages = useMemo(() => {
     if (!messages) return [];
@@ -1310,12 +1391,45 @@ export default function IMessagePage() {
 
           {/* Message Input */}
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
+            {/* Recording indicator */}
+            {isRecording && (
+              <div className="mb-3 flex items-center gap-3 text-red-500">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                  <span className="font-medium">Recording...</span>
+                </div>
+                <span className="text-sm">
+                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={cancelRecording}
+                  className="ml-auto text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+
             <div className="flex items-center gap-2">
               {/* Microphone button */}
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                className={cn(
+                  "rounded-full transition-colors",
+                  isRecording 
+                    ? "bg-red-500 text-white hover:bg-red-600" 
+                    : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                )}
+                onMouseDown={startRecording}
+                onMouseUp={stopRecording}
+                onMouseLeave={() => {
+                  if (isRecording) stopRecording();
+                }}
+                onTouchStart={startRecording}
+                onTouchEnd={stopRecording}
                 data-testid="mic-button"
               >
                 <Mic className="h-5 w-5" />
@@ -1340,6 +1454,7 @@ export default function IMessagePage() {
                     "flex-1 bg-transparent border-0 outline-none",
                     "placeholder:text-gray-500"
                   )}
+                  disabled={isRecording}
                   data-testid="message-input"
                 />
               </div>
