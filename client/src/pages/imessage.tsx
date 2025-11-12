@@ -146,33 +146,30 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
   }
 
   if (!blobUrl) {
-    return <div className="h-32 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />;
+    return <div className="h-32 w-48 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse" />;
   }
 
   return (
     <>
-      {/* Video thumbnail with play button */}
+      {/* Video thumbnail with play button - iMessage style */}
       <div 
-        className="relative group cursor-pointer max-w-[250px]"
+        className="relative cursor-pointer max-w-[200px]"
         onClick={() => setIsOpen(true)}
         data-testid="video-thumbnail"
       >
         {/* Video element for thumbnail (paused at first frame) */}
         <video
           src={blobUrl}
-          className="rounded-lg max-h-[150px] w-full object-cover bg-black"
+          className="rounded-2xl max-h-[200px] w-full object-cover bg-black"
           preload="metadata"
         />
         
-        {/* Play button overlay - always visible */}
+        {/* Play button overlay - iMessage style (simple, semi-transparent) */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white/90 dark:bg-gray-800/90 rounded-full p-3 shadow-lg group-hover:scale-110 transition-transform">
-            <div className="relative flex items-center justify-center">
-              <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20" />
-              <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
+          <div className="bg-white/70 dark:bg-gray-900/70 rounded-full p-2.5 shadow-md">
+            <svg className="h-6 w-6 text-gray-800 dark:text-white pl-0.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </div>
         </div>
       </div>
@@ -246,10 +243,10 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
         <img 
           src={blobUrl} 
           alt={alt} 
-          className="rounded-lg max-h-[150px] object-cover"
+          className="rounded-2xl max-h-[200px] object-cover"
         />
         {/* Eye icon overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-lg flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-2xl flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg">
               <Eye className="h-5 w-5 text-gray-700 dark:text-gray-200" />
