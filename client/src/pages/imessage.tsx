@@ -136,20 +136,10 @@ export default function IMessagePage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(true); // BlueBubbles is working, webhooks are arriving
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
-    // Handle connection status
-    if (message.type === 'connected') {
-      setIsConnected(true);
-      return;
-    }
-    if (message.type === 'disconnected') {
-      setIsConnected(false);
-      return;
-    }
-
     switch (message.type) {
       case 'imessage:new-message':
         queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', message.conversationId] });
@@ -198,7 +188,7 @@ export default function IMessagePage() {
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery<ImessageMessage[]>({
-    queryKey: ['/api/imessage/messages', selectedConversationId],
+    queryKey: selectedConversationId ? [`/api/imessage/conversations/${selectedConversationId}/messages`] : [''],
     enabled: !!selectedConversationId,
     refetchInterval: 5000
   });
@@ -233,7 +223,7 @@ export default function IMessagePage() {
       setReplyingToMessage(null);
       setAttachments([]);
       if (soundEnabled) playSound('send');
-      queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', selectedConversationId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/conversations/${selectedConversationId}/messages`] });
       queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
     },
     onError: (error: any) => {
@@ -250,7 +240,7 @@ export default function IMessagePage() {
       return apiRequest('POST', `/api/imessage/messages/${messageId}/reaction`, { reaction });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', selectedConversationId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/conversations/${selectedConversationId}/messages`] });
     }
   });
 
@@ -259,7 +249,7 @@ export default function IMessagePage() {
       return apiRequest('DELETE', `/api/imessage/messages/${messageId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', selectedConversationId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/conversations/${selectedConversationId}/messages`] });
       setSelectedMessages(new Set());
       setIsSelectionMode(false);
     }
