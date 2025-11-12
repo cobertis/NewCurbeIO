@@ -25,9 +25,42 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye
+  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon
 } from "lucide-react";
 import type { User } from "@shared/schema";
+
+// Helper function to generate consistent color from string
+function getAvatarColorFromString(str: string): string {
+  const colors = [
+    '#6B7280', // gray-500 - default
+    '#EF4444', // red-500
+    '#F59E0B', // amber-500
+    '#10B981', // emerald-500
+    '#3B82F6', // blue-500
+    '#8B5CF6', // violet-500
+    '#EC4899', // pink-500
+    '#14B8A6', // teal-500
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// Helper function to get initials from name
+function getInitials(name: string): string {
+  if (!name || name.trim() === '') return '';
+  
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) {
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+  
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 // Updated interface types for BlueBubbles integration
 interface ImessageConversation {
@@ -449,8 +482,9 @@ export default function IMessagePage() {
                     reactions: [...msg.reactions, {
                       id: `temp-${Date.now()}`,
                       messageId: msg.id,
+                      userId: message.userId || 'unknown',
+                      userName: message.userName || message.sender || 'Unknown',
                       reaction: message.reaction,
-                      senderHandle: message.sender || 'Unknown',
                       createdAt: new Date().toISOString()
                     }]
                   };
@@ -886,8 +920,11 @@ export default function IMessagePage() {
                 >
                   <Avatar className="h-12 w-12">
                     <AvatarImage src={conversation.avatarUrl} />
-                    <AvatarFallback className="bg-blue-500 text-white">
-                      {conversation.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    <AvatarFallback 
+                      className="text-white font-semibold"
+                      style={{ backgroundColor: getAvatarColorFromString(conversation.chatGuid || conversation.displayName) }}
+                    >
+                      {getInitials(conversation.displayName) || <UserIcon className="h-6 w-6" />}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -971,8 +1008,11 @@ export default function IMessagePage() {
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={selectedConversation.avatarUrl} />
-                  <AvatarFallback className="bg-blue-500 text-white">
-                    {selectedConversation.displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  <AvatarFallback 
+                    className="text-white font-semibold"
+                    style={{ backgroundColor: getAvatarColorFromString(selectedConversation.chatGuid || selectedConversation.displayName) }}
+                  >
+                    {getInitials(selectedConversation.displayName) || <UserIcon className="h-5 w-5" />}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -1044,8 +1084,11 @@ export default function IMessagePage() {
                               <div className="w-8">
                                 {showAvatar && (
                                   <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="text-xs bg-gray-300">
-                                      {message.senderName?.[0]?.toUpperCase() || '?'}
+                                    <AvatarFallback 
+                                      className="text-xs text-white font-semibold"
+                                      style={{ backgroundColor: getAvatarColorFromString(message.senderAddress || message.senderName || '') }}
+                                    >
+                                      {getInitials(message.senderName || '') || <UserIcon className="h-4 w-4" />}
                                     </AvatarFallback>
                                   </Avatar>
                                 )}
