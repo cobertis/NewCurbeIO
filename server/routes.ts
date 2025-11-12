@@ -845,8 +845,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const messageData = payload.data || payload;
           
           // Find or create conversation
-          const chatGuid = messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
-          const participants = messageData.participants || [messageData.handle || messageData.from];
+          // BlueBubbles sends chat info in chats array
+          const chatData = messageData.chats?.[0] || {};
+          const chatGuid = chatData.guid || messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
+          const handle = messageData.handle?.address || messageData.from || 'Unknown';
+          const participants = messageData.participants || [handle];
           
           let conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (!conversation) {
@@ -855,7 +858,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               companyId: company.id,
               chatGuid,
               participants: participants,
-              displayName: participants[0] || 'Unknown',
+              displayName: chatData.displayName || handle || participants[0] || 'Unknown',
               lastMessageAt: new Date(),
               unreadCount: 1,
               status: "active",
