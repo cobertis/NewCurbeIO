@@ -113,7 +113,7 @@ const ALLOWED_MMS_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/m
 const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Security constants for iMessage attachments
-const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3'];
+const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/x-caf'];
 const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Verify ffmpeg is available at startup
@@ -127,18 +127,21 @@ const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
   }
 })();
 
-async function convertWebMToM4A(inputPath: string): Promise<string> {
+async function convertWebMToCAF(inputPath: string): Promise<string> {
   // Use path.parse for safe filename handling
   const parsed = path.parse(inputPath);
-  const outputPath = path.join(parsed.dir, `${parsed.name}.m4a`);
+  // Use standardized name for iMessage audio messages with unique timestamp
+  const timestamp = Date.now();
+  const outputPath = path.join(parsed.dir, `Audio Message ${timestamp}.caf`);
   
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .noVideo()
-      .audioCodec('aac')
+      .audioCodec('alac') // Apple Lossless Audio Codec for CAF
       .audioBitrate('192k')
       .audioChannels(2)
-      .toFormat('m4a')
+      .audioFrequency(44100)
+      .toFormat('caf')
       .on('end', async () => {
         console.log(`[FFmpeg] Conversion complete: ${outputPath}`);
         
@@ -152,7 +155,7 @@ async function convertWebMToM4A(inputPath: string): Promise<string> {
           return reject(new Error(`Output validation failed: ${err.message}`));
         }
         
-        // Delete original WebM only after confirming M4A exists
+        // Delete original WebM only after confirming CAF exists
         try {
           await fsPromises.unlink(inputPath);
         } catch (err) {
@@ -1541,7 +1544,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
         'video/mp4', 'video/quicktime', 'video/mov',
         'application/pdf', 'text/plain',
-        'audio/mpeg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/webm', 'audio/ogg'
+        'audio/mpeg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/webm', 'audio/ogg', 'audio/x-caf'
       ];
       if (allowedMimes.includes(file.mimetype)) {
         cb(null, true);
@@ -1676,13 +1679,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                              (file.originalname && file.originalname.toLowerCase().endsWith('.webm'));
           
           if (isWebMAudio) {
-            console.log(`[iMessage] Converting WebM audio to M4A: ${file.originalname}`);
+            console.log(`[iMessage] Converting WebM audio to CAF for iMessage audio message: ${file.originalname}`);
             try {
-              const convertedPath = await convertWebMToM4A(file.path);
+              const convertedPath = await convertWebMToCAF(file.path);
               
               // Update file references
               actualFilePath = convertedPath;
-              actualMimeType = 'audio/mp4';
+              actualMimeType = 'audio/x-caf'; // CAF MIME type for iMessage audio messages
               actualFilename = path.basename(convertedPath); // Use actual converted filename
               
               console.log(`[iMessage] Conversion successful: ${actualFilename}`);
