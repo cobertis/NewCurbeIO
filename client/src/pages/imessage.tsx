@@ -220,7 +220,20 @@ export default function IMessagePage() {
   const handleWebSocketMessage = useCallback((message: any) => {
     switch (message.type) {
       case 'imessage:new-message':
-        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', message.conversationId] });
+        // Merge message into cache instead of invalidating to prevent flicker
+        if (message.conversationId === selectedConversationId && message.message) {
+          queryClient.setQueryData<ImessageMessage[]>(
+            [`/api/imessage/conversations/${selectedConversationId}/messages`],
+            (old) => {
+              if (!old) return [message.message];
+              // Check if message already exists (dedup by GUID)
+              const exists = old.some(m => m.guid === message.message.guid);
+              if (exists) return old;
+              // Add new message to the end
+              return [...old, message.message];
+            }
+          );
+        }
         queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
         if (soundEnabled && message.conversationId === selectedConversationId) {
           playSound('receive');
@@ -244,7 +257,32 @@ export default function IMessagePage() {
         queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', message.conversationId] });
         break;
       case 'imessage:reaction-added':
-        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', message.conversationId] });
+        // Merge reaction into cache instead of invalidating
+        if (message.conversationId === selectedConversationId && message.messageGuid && message.reaction) {
+          queryClient.setQueryData<ImessageMessage[]>(
+            [`/api/imessage/conversations/${selectedConversationId}/messages`],
+            (old) => {
+              if (!old) return old;
+              return old.map(msg => {
+                if (msg.guid === message.messageGuid) {
+                  const reactionExists = msg.reactions.some(r => r.reaction === message.reaction);
+                  if (reactionExists) return msg;
+                  return {
+                    ...msg,
+                    reactions: [...msg.reactions, {
+                      id: `temp-${Date.now()}`,
+                      messageId: msg.id,
+                      reaction: message.reaction,
+                      senderHandle: message.sender || 'Unknown',
+                      createdAt: new Date().toISOString()
+                    }]
+                  };
+                }
+                return msg;
+              });
+            }
+          );
+        }
         break;
     }
   }, [selectedConversationId, soundEnabled, queryClient]);
@@ -268,7 +306,8 @@ export default function IMessagePage() {
   const { data: messages, isLoading: messagesLoading } = useQuery<ImessageMessage[]>({
     queryKey: selectedConversationId ? [`/api/imessage/conversations/${selectedConversationId}/messages`] : [''],
     enabled: !!selectedConversationId,
-    refetchInterval: 5000
+    refetchInterval: 30000, // Reduced from 5s to 30s - rely on WebSocket instead
+    placeholderData: (previousData) => previousData // Keep previous data during refetch to prevent flicker
   });
 
   // Mutations
@@ -364,9 +403,27 @@ export default function IMessagePage() {
         variant: "destructive"
       });
     },
-    onSuccess: () => {
-      // Invalidate to get the real message from server
-      queryClient.invalidateQueries({ queryKey: [`/api/imessage/conversations/${selectedConversationId}/messages`] });
+    onSuccess: (response: any) => {
+      // Replace optimistic message with real message from server
+      // DO NOT INVALIDATE - this causes flicker
+      const realMessage = response?.message;
+      if (realMessage) {
+        queryClient.setQueryData<ImessageMessage[]>(
+          [`/api/imessage/conversations/${selectedConversationId}/messages`],
+          (old) => {
+            if (!old) return [realMessage];
+            // Replace temp message with real message (dedup by GUID)
+            return old.map(msg => 
+              msg.id.startsWith('temp-') ? realMessage : msg
+            ).filter((msg, index, self) => 
+              // Remove duplicates based on GUID
+              index === self.findIndex(m => m.guid === msg.guid)
+            );
+          }
+        );
+      }
+      
+      // Only invalidate conversations list (for last message preview)
       queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
     }
   });
