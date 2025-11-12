@@ -156,6 +156,14 @@ export default function Companies() {
 
   const { data: companyFeaturesData, isLoading: isLoadingCompanyFeatures } = useQuery<{ features: Feature[] }>({
     queryKey: ["/api/companies", selectedCompany?.id, "features"],
+    queryFn: async () => {
+      if (!selectedCompany?.id) throw new Error("No company selected");
+      const response = await fetch(`/api/companies/${selectedCompany.id}/features`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch company features");
+      return response.json();
+    },
     enabled: featuresOpen && !!selectedCompany?.id,
   });
 
