@@ -1553,14 +1553,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           guid: clientGuid, // Use clientGuid for matching with optimistic update
           text: text || '',
           isFromMe: true,
-          dateCreated: new Date().toISOString(),
-          dateSent: new Date().toISOString(),
-          dateDelivered: null, // Use null instead of undefined for Drizzle
-          dateRead: null, // Use null instead of undefined for Drizzle
+          dateCreated: new Date(), // Pass Date object, not string
+          dateSent: new Date(), // Pass Date object, not string
+          dateDelivered: null,
+          dateRead: null,
           senderAddress: conversation.participants[0] || '',
-          senderName: null, // Use null instead of undefined
+          senderName: null,
           hasAttachments: uploadedFiles.length > 0,
-          effect: effect || null, // Use null instead of undefined
+          effect: effect || null,
           status: 'sending'
         });
         
