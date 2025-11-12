@@ -1546,17 +1546,17 @@ export default function IMessagePage() {
                                           
                                           return (
                                             <div key={attachment.guid || attachment.url}>
-                                              {attachment.mimeType.startsWith('image/') ? (
+                                              {attachment.mimeType?.startsWith('image/') ?? false ? (
                                                 <ImessageAttachmentImage 
                                                   url={attachment.url}
                                                   alt={attachment.fileName}
                                                 />
-                                              ) : attachment.mimeType.startsWith('audio/') || isAudioWebm ? (
+                                              ) : attachment.mimeType?.startsWith('audio/') ?? false || isAudioWebm ? (
                                                 <ImessageAudioMessage
                                                   url={attachment.url}
                                                   fileName={attachment.fileName}
                                                 />
-                                              ) : attachment.mimeType.startsWith('video/') ? (
+                                              ) : attachment.mimeType?.startsWith('video/') ?? false ? (
                                                 <ImessageAttachmentVideo 
                                                   url={attachment.url}
                                                   fileName={attachment.fileName}

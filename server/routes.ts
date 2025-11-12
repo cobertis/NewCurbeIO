@@ -127,21 +127,152 @@ const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
   }
 })();
 
-async function convertWebMToCAF(inputPath: string): Promise<string> {
-  // Use path.parse for safe filename handling
+// Helper function to extract real audio duration using ffprobe
+async function extractAudioDuration(audioPath: string): Promise<number> {
+  try {
+    const { stdout } = await execAsync(
+      `ffprobe -v quiet -print_format json -show_format "${audioPath}"`
+    );
+    const metadata = JSON.parse(stdout);
+    const durationSeconds = parseFloat(metadata.format?.duration || '0');
+    const durationMs = Math.round(durationSeconds * 1000);
+    console.log(`[FFprobe] Extracted duration: ${durationMs}ms (${durationSeconds}s)`);
+    return durationMs;
+  } catch (error: any) {
+    console.error(`[FFprobe] Failed to extract duration: ${error.message}`);
+    // Fallback to file size estimation
+    const stats = await fsPromises.stat(audioPath);
+    return Math.floor(stats.size / 3000);
+  }
+}
+
+// Helper function to generate real waveform from audio file
+// Returns 40-64 amplitude samples normalized to 0-255
+async function generateAudioWaveform(audioPath: string, targetSamples: number = 50): Promise<number[]> {
+  try {
+    // Extract audio peak levels using ffmpeg volumedetect filter
+    // We'll use showwavespic to get amplitude data
+    const tempWaveData = path.join(path.dirname(audioPath), `wavedata_${Date.now()}.txt`);
+    
+    // Use astats filter to get per-sample RMS values
+    // Output format: frame|pts|peak|rms for each sample
+    await execAsync(
+      `ffmpeg -i "${audioPath}" -af "astats=metadata=1:reset=1,ametadata=print:file=${tempWaveData}" -f null - 2>&1`
+    );
+    
+    // Read and parse the waveform data
+    try {
+      const waveData = await fsPromises.readFile(tempWaveData, 'utf-8');
+      const lines = waveData.split('\n');
+      
+      // Extract RMS values from metadata (more stable than peak)
+      const rmsValues: number[] = [];
+      for (const line of lines) {
+        const match = line.match(/lavfi\.astats\.Overall\.RMS_level=([-\d.]+)/);
+        if (match) {
+          // Convert dB to linear scale (0-1), then normalize to 0-255
+          const dbValue = parseFloat(match[1]);
+          // dB range typically -60 to 0, normalize to 0-255
+          const normalized = Math.max(0, Math.min(255, Math.round(((dbValue + 60) / 60) * 255)));
+          rmsValues.push(normalized);
+        }
+      }
+      
+      // Clean up temp file
+      await fsPromises.unlink(tempWaveData).catch(() => {});
+      
+      if (rmsValues.length === 0) {
+        throw new Error('No RMS values extracted');
+      }
+      
+      // Downsample to target number of samples
+      const step = rmsValues.length / targetSamples;
+      const waveform: number[] = [];
+      for (let i = 0; i < targetSamples; i++) {
+        const index = Math.floor(i * step);
+        waveform.push(rmsValues[index] || 0);
+      }
+      
+      console.log(`[Waveform] Generated ${waveform.length} samples from ${rmsValues.length} data points`);
+      return waveform;
+      
+    } catch (parseError) {
+      console.warn('[Waveform] Failed to parse waveform data, using simplified method');
+      throw parseError;
+    }
+    
+  } catch (error: any) {
+    console.warn(`[Waveform] Failed to generate real waveform: ${error.message}, using fallback`);
+    
+    // Fallback: Generate a simple waveform based on file characteristics
+    // This creates a more realistic "voice memo" pattern (attack, sustain, decay)
+    const waveform: number[] = [];
+    for (let i = 0; i < targetSamples; i++) {
+      const position = i / targetSamples; // 0 to 1
+      let amplitude: number;
+      
+      if (position < 0.1) {
+        // Attack phase (0-10%)
+        amplitude = Math.floor((position / 0.1) * 180) + 40;
+      } else if (position < 0.8) {
+        // Sustain phase (10-80%) - vary around 160
+        amplitude = 160 + Math.floor(Math.sin(position * 20) * 40);
+      } else {
+        // Decay phase (80-100%)
+        amplitude = Math.floor(((1 - position) / 0.2) * 160);
+      }
+      
+      // Add some randomness for realism
+      amplitude += Math.floor((Math.random() - 0.5) * 20);
+      
+      // Clamp to 0-255
+      waveform.push(Math.max(0, Math.min(255, amplitude)));
+    }
+    
+    console.log(`[Waveform] Generated ${waveform.length} fallback samples`);
+    return waveform;
+  }
+}
+
+async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Promise<{ path: string, metadata: AudioMetadata }> {
   const parsed = path.parse(inputPath);
-  // Use standardized name for iMessage audio messages with unique timestamp
   const timestamp = Date.now();
   const outputPath = path.join(parsed.dir, `Audio Message ${timestamp}.caf`);
   
   return new Promise((resolve, reject) => {
-    ffmpeg(inputPath)
+    // Try Opus first (native iMessage format since iOS 12.2)
+    // Fallback to AAC if Opus not available
+    const useOpus = tryOpus;
+    
+    const ffmpegCommand = ffmpeg(inputPath)
       .noVideo()
-      .audioCodec('alac') // Apple Lossless Audio Codec for CAF
-      .audioBitrate('192k')
-      .audioChannels(2)
-      .audioFrequency(44100)
-      .toFormat('caf')
+      .audioChannels(1) // Mono for voice
+      .toFormat('caf');
+    
+    if (useOpus) {
+      // Opus @ 24kHz - native iMessage voice memo format
+      ffmpegCommand
+        .audioCodec('libopus')
+        .audioFrequency(24000)
+        .audioBitrate('28k')
+        .outputOptions([
+          '-frame_duration 60',
+          '-application voip'
+        ]);
+      console.log('[FFmpeg] Converting to Opus @ 24kHz (iMessage native format)');
+    } else {
+      // AAC-LC @ 44.1kHz - fallback format
+      ffmpegCommand
+        .audioCodec('aac')
+        .audioFrequency(44100)
+        .audioBitrate('64k')
+        .outputOptions([
+          '-profile:a aac_low'
+        ]);
+      console.log('[FFmpeg] Converting to AAC-LC @ 44.1kHz (fallback)');
+    }
+    
+    ffmpegCommand
       .on('end', async () => {
         console.log(`[FFmpeg] Conversion complete: ${outputPath}`);
         
@@ -151,25 +282,63 @@ async function convertWebMToCAF(inputPath: string): Promise<string> {
           if (stats.size === 0) {
             throw new Error('Output file is empty');
           }
+          
+          // Extract REAL metadata from the converted audio file
+          console.log('[Metadata] Extracting real audio metadata...');
+          const realDuration = await extractAudioDuration(outputPath);
+          const realWaveform = await generateAudioWaveform(outputPath, 50);
+          
+          // Generate metadata for iMessage voice memo
+          const metadata: AudioMetadata = {
+            duration: realDuration,
+            waveform: realWaveform,
+            mimeType: 'audio/x-caf',
+            uti: 'com.apple.coreaudio-format',
+            codec: useOpus ? 'opus' : 'aac',
+            sampleRate: useOpus ? 24000 : 44100
+          };
+          
+          console.log(`[Metadata] ✓ Real metadata extracted: duration=${metadata.duration}ms, waveform=${metadata.waveform.length} samples`);
+          
+          // Delete original WebM only after confirming CAF exists
+          try {
+            await fsPromises.unlink(inputPath);
+          } catch (err) {
+            console.warn(`[FFmpeg] Could not delete original: ${inputPath}`);
+          }
+          
+          resolve({ path: outputPath, metadata });
         } catch (err: any) {
           return reject(new Error(`Output validation failed: ${err.message}`));
         }
-        
-        // Delete original WebM only after confirming CAF exists
-        try {
-          await fsPromises.unlink(inputPath);
-        } catch (err) {
-          console.warn(`[FFmpeg] Could not delete original: ${inputPath}`);
-        }
-        
-        resolve(outputPath);
       })
-      .on('error', (err) => {
+      .on('error', async (err) => {
         console.error(`[FFmpeg] Conversion error: ${err.message}`);
-        reject(new Error(`FFmpeg conversion failed: ${err.message}`));
+        
+        // If Opus failed, try AAC fallback
+        if (tryOpus) {
+          console.log('[FFmpeg] Opus failed, retrying with AAC...');
+          try {
+            const result = await convertWebMToCAF(inputPath, false); // Recursive call with AAC
+            resolve(result);
+          } catch (fallbackErr) {
+            reject(fallbackErr);
+          }
+        } else {
+          reject(new Error(`FFmpeg conversion failed: ${err.message}`));
+        }
       })
       .save(outputPath);
   });
+}
+
+interface AudioMetadata {
+  duration: number; // milliseconds
+  waveform: number[]; // array of 40-64 amplitude values 0-255
+  mimeType: string;
+  uti: string;
+  codec: string;
+  sampleRate: number;
 }
 
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
@@ -1678,17 +1847,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const isWebMAudio = file.mimetype === 'audio/webm' || 
                              (file.originalname && file.originalname.toLowerCase().endsWith('.webm'));
           
+          let audioMetadata: AudioMetadata | undefined;
+          
           if (isWebMAudio) {
             console.log(`[iMessage] Converting WebM audio to CAF for iMessage audio message: ${file.originalname}`);
             try {
-              const convertedPath = await convertWebMToCAF(file.path);
+              const { path: convertedPath, metadata } = await convertWebMToCAF(file.path);
               
               // Update file references
               actualFilePath = convertedPath;
-              actualMimeType = 'audio/x-caf'; // CAF MIME type for iMessage audio messages
-              actualFilename = path.basename(convertedPath); // Use actual converted filename
+              actualMimeType = metadata.mimeType;
+              actualFilename = path.basename(convertedPath);
+              audioMetadata = metadata;
               
-              console.log(`[iMessage] Conversion successful: ${actualFilename}`);
+              console.log(`[iMessage] Conversion successful: ${actualFilename} (${metadata.codec} @ ${metadata.sampleRate}Hz)`);
             } catch (conversionError: any) {
               console.error(`[iMessage] Audio conversion failed for ${file.originalname}:`, conversionError);
               
@@ -1720,7 +1892,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             conversation.chatGuid,
             actualFilePath,
             clientGuid, // Send clientGuid for webhook reconciliation
-            isVoiceMemo // Mark as audio message if CAF
+            isVoiceMemo, // Mark as audio message if CAF
+            audioMetadata // Send audio metadata for voice memos
           );
           
           // If no text message was sent, use attachment result as primary

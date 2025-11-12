@@ -124,7 +124,20 @@ export class BlueBubblesClient {
     });
   }
 
-  async sendAttachment(chatGuid: string, attachmentPath: string, tempGuid?: string, isAudioMessage: boolean = false): Promise<SendMessageResponse> {
+  async sendAttachment(
+    chatGuid: string, 
+    attachmentPath: string, 
+    tempGuid?: string, 
+    isAudioMessage: boolean = false,
+    audioMetadata?: {
+      duration: number;
+      waveform: number[];
+      mimeType: string;
+      uti: string;
+      codec: string;
+      sampleRate: number;
+    }
+  ): Promise<SendMessageResponse> {
     // BlueBubbles expects a file path or Buffer, not a File object
     // When called from our API, we'll pass the file path from multer upload
     const formData = new FormData();
@@ -140,16 +153,18 @@ export class BlueBubblesClient {
     const fileBuffer = fs.readFileSync(attachmentPath);
     const fileName = attachmentPath.split('/').pop() || 'attachment';
     
-    // Determine MIME type based on file extension or isAudioMessage flag
-    let mimeType = 'application/octet-stream';
-    if (fileName.endsWith('.caf')) {
-      mimeType = 'audio/x-caf';
-    } else if (fileName.endsWith('.m4a')) {
-      mimeType = 'audio/mp4';
-    } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-      mimeType = 'image/jpeg';
-    } else if (fileName.endsWith('.png')) {
-      mimeType = 'image/png';
+    // Determine MIME type based on file extension or audioMetadata
+    let mimeType = audioMetadata?.mimeType || 'application/octet-stream';
+    if (!audioMetadata) {
+      if (fileName.endsWith('.caf')) {
+        mimeType = 'audio/x-caf';
+      } else if (fileName.endsWith('.m4a')) {
+        mimeType = 'audio/mp4';
+      } else if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+        mimeType = 'image/jpeg';
+      } else if (fileName.endsWith('.png')) {
+        mimeType = 'image/png';
+      }
     }
     
     // Create blob with correct MIME type
@@ -162,6 +177,19 @@ export class BlueBubblesClient {
     if (isAudioMessage) {
       formData.append('isAudioMessage', 'true');
       console.log('[iMessage] Marking attachment as audio message (voice memo)');
+      
+      // Send audio metadata if available
+      if (audioMetadata) {
+        const metadata = {
+          duration: audioMetadata.duration,
+          waveform: audioMetadata.waveform,
+          uti: audioMetadata.uti,
+          codec: audioMetadata.codec,
+          sampleRate: audioMetadata.sampleRate
+        };
+        formData.append('metadata', JSON.stringify(metadata));
+        console.log(`[iMessage] Sending audio metadata: ${audioMetadata.codec} @ ${audioMetadata.sampleRate}Hz, duration: ${audioMetadata.duration}ms, waveform: ${audioMetadata.waveform.length} samples`);
+      }
     }
 
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);
