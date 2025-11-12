@@ -567,7 +567,12 @@ export default function IMessagePage() {
     let currentDate = '';
     
     messages.forEach(message => {
-      const messageDate = startOfDay(new Date(message.dateCreated)).toISOString();
+      // Safely handle date parsing - check if date is valid
+      const dateObj = message.dateCreated ? new Date(message.dateCreated) : new Date();
+      const messageDate = dateObj.getTime() && !isNaN(dateObj.getTime()) 
+        ? startOfDay(dateObj).toISOString() 
+        : startOfDay(new Date()).toISOString();
+      
       if (messageDate !== currentDate) {
         currentDate = messageDate;
         groups.push({ date: messageDate, messages: [] });
