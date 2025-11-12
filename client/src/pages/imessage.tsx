@@ -1806,9 +1806,9 @@ export default function IMessagePage() {
             {/* STATE 2: RECORDING - Full width recording UI with red waveform */}
             {recordingState === 'recording' && (
               <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
-                {/* Animated waveform bars - 60 thin bars */}
-                <div className="flex-1 flex items-center justify-center gap-0.5 h-10">
-                  {Array.from({ length: 60 }).map((_, i) => {
+                {/* Animated waveform bars - 100 thin bars to fill width */}
+                <div className="flex-1 flex items-center gap-px h-10">
+                  {Array.from({ length: 100 }).map((_, i) => {
                     const heightIndex = i % waveformBars.length;
                     const baseHeight = waveformBars[heightIndex] || 0.3;
                     const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
@@ -1816,7 +1816,7 @@ export default function IMessagePage() {
                     return (
                       <div
                         key={i}
-                        className="w-0.5 bg-red-500 rounded-full transition-all duration-100"
+                        className="flex-1 bg-red-500 rounded-full transition-all duration-100"
                         style={{ 
                           height: `${Math.max(20, height * 100)}%`,
                         }}
@@ -1870,9 +1870,9 @@ export default function IMessagePage() {
                   )}
                 </Button>
 
-                {/* Static waveform bars - 60 thin bars */}
-                <div className="flex-1 flex items-center justify-center gap-0.5 h-10">
-                  {Array.from({ length: 60 }).map((_, i) => {
+                {/* Static waveform bars - 100 thin bars to fill width */}
+                <div className="flex-1 flex items-center gap-px h-10">
+                  {Array.from({ length: 100 }).map((_, i) => {
                     const heightIndex = i % waveformBars.length;
                     const baseHeight = waveformBars[heightIndex] || 0.3;
                     const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
@@ -1880,7 +1880,7 @@ export default function IMessagePage() {
                     return (
                       <div
                         key={i}
-                        className="w-0.5 bg-gray-600 dark:bg-gray-500 rounded-full"
+                        className="flex-1 bg-gray-600 dark:bg-gray-500 rounded-full"
                         style={{ 
                           height: `${Math.max(20, height * 100)}%`,
                         }}
