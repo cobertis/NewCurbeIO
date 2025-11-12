@@ -1549,12 +1549,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Create message in database immediately for optimistic update reconciliation
         const newMessage = await storage.createImessageMessage({
+          companyId: user.companyId, // REQUIRED field that was missing
           conversationId: conversation.id,
-          guid: clientGuid, // Use clientGuid for matching with optimistic update
+          guid: clientGuid,
           text: text || '',
           isFromMe: true,
-          dateCreated: new Date(), // Pass Date object, not string
-          dateSent: new Date(), // Pass Date object, not string
+          dateCreated: new Date(),
+          dateSent: new Date(),
           dateDelivered: null,
           dateRead: null,
           senderAddress: conversation.participants[0] || '',
