@@ -8270,6 +8270,19 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  async getImessageMessageByGuid(companyId: string, messageGuid: string): Promise<ImessageMessage | undefined> {
+    const result = await db
+      .select()
+      .from(imessageMessages)
+      .where(
+        and(
+          eq(imessageMessages.companyId, companyId),
+          eq(imessageMessages.messageGuid, messageGuid)
+        )
+      );
+    return result[0];
+  }
+
   async getImessageMessages(conversationId: string, companyId: string, limit = 50, offset = 0): Promise<ImessageMessage[]> {
     return db
       .select()

@@ -874,28 +874,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             });
           }
           
-          // Store the message
-          const newMessage = await storage.createImessageMessage({
-            companyId: company.id,
-            conversationId: conversation.id,
-            chatGuid,
-            messageGuid: messageData.guid || messageData.message_guid || `msg_${Date.now()}`,
-            text: messageData.text || messageData.message || '',
-            senderHandle: messageData.handle?.address || messageData.from || 'Unknown',
-            senderName: messageData.handle?.name || null,
-            fromMe: messageData.isFromMe || messageData.fromMe || false,
-            dateSent: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
-            dateRead: messageData.dateRead ? new Date(messageData.dateRead) : null,
-            dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : null,
-            attachments: messageData.attachments || [],
-            metadata: {
-              associatedMessageGuid: messageData.associatedMessageGuid || null,
-              associatedMessageType: messageData.associatedMessageType || null,
-            },
-            status: "sent",
-            isImessage: true,
-            hasAttachments: (messageData.attachments || []).length > 0,
-          });
+          // Check if message already exists (to avoid duplicates when webhook is called for our own sent messages)
+          const messageGuid = messageData.guid || messageData.message_guid || `msg_${Date.now()}`;
+          let existingMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
+          
+          let newMessage;
+          if (existingMessage) {
+            // Update existing message (e.g., delivery status, read status)
+            await storage.updateImessageMessageByGuid(company.id, messageGuid, {
+              dateRead: messageData.dateRead ? new Date(messageData.dateRead) : existingMessage.dateRead,
+              dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : existingMessage.dateDelivered,
+            });
+            newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
+          } else {
+            // Store the message
+            newMessage = await storage.createImessageMessage({
+              companyId: company.id,
+              conversationId: conversation.id,
+              chatGuid,
+              messageGuid,
+              text: messageData.text || messageData.message || '',
+              senderHandle: messageData.handle?.address || messageData.from || 'Unknown',
+              senderName: messageData.handle?.name || null,
+              fromMe: messageData.isFromMe || messageData.fromMe || false,
+              dateSent: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
+              dateRead: messageData.dateRead ? new Date(messageData.dateRead) : null,
+              dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : null,
+              attachments: messageData.attachments || [],
+              metadata: {
+                associatedMessageGuid: messageData.associatedMessageGuid || null,
+                associatedMessageType: messageData.associatedMessageType || null,
+              },
+              status: "sent",
+              isImessage: true,
+              hasAttachments: (messageData.attachments || []).length > 0,
+            });
+          }
           
           // Update conversation last message
           await storage.updateImessageConversation(conversation.id, {
@@ -1289,43 +1303,55 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const { id } = req.params;
+      const { id: messageGuid } = req.params;
       const { reaction, action = "add" } = req.body;
       
-      if (!reaction || !["❤️", "👍", "👎", "😂", "!!", "?"].includes(reaction)) {
+      if (!reaction || !["❤️", "👍", "👎", "😂", "!!", "?", "❓"].includes(reaction)) {
         return res.status(400).json({ message: "Invalid reaction" });
       }
       
-      // Get message to verify it belongs to company
-      const message = await storage.getImessageMessage(id);
-      if (!message || message.companyId !== user.companyId) {
+      // Get message by GUID to verify it belongs to company
+      const message = await storage.getImessageMessageByGuid(user.companyId, messageGuid);
+      if (!message) {
         return res.status(404).json({ message: "Message not found" });
       }
       
-      // Update reactions
+      // Update reactions locally (using database ID)
       if (action === "add") {
-        await storage.addMessageReaction(id, user.id, reaction);
+        await storage.addMessageReaction(message.id, user.id, reaction);
       } else if (action === "remove") {
-        await storage.removeMessageReaction(id, user.id, reaction);
+        await storage.removeMessageReaction(message.id, user.id, reaction);
       }
       
       // Send reaction via BlueBubbles if configured
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
-      if (imessageSettings?.serverUrl) {
-        const { blueBubblesClient } = await import("./bluebubbles");
-        if (companySettings) {
-          blueBubblesClient.initialize(companySettings);
+      if (imessageSettings?.serverUrl && imessageSettings?.isEnabled) {
+        try {
+          const { blueBubblesClient } = await import("./bluebubbles");
+          if (companySettings) {
+            blueBubblesClient.initialize(companySettings);
+          }
+          
+          // Send reaction to BlueBubbles
+          await blueBubblesClient.sendReaction({
+            chatGuid: message.chatGuid,
+            messageGuid: message.messageGuid,
+            reaction: reaction,
+            remove: action === 'remove'
+          });
+        } catch (bbError: any) {
+          console.error("Error sending reaction to BlueBubbles:", bbError);
+          // Continue - don't fail the request if BlueBubbles fails
         }
-        // Note: sendReaction method not implemented in our client, just skip for now
-        // await blueBubblesClient.sendReaction(message.messageGuid, reaction, action === "add");
       }
       
       // Broadcast update
-      const { broadcastImessageUpdate } = await import("./websocket");
-      broadcastImessageUpdate(user.companyId, {
-        type: "reaction-updated",
-        messageId: id,
+      const { broadcastImessageReaction } = await import("./websocket");
+      broadcastImessageReaction(user.companyId, {
+        conversationId: message.conversationId,
+        messageId: message.id,
+        messageGuid: message.messageGuid,
         userId: user.id,
         reaction,
         action

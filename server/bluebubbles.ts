@@ -24,6 +24,13 @@ interface SendMessageResponse {
   };
 }
 
+interface SendReactionRequest {
+  chatGuid: string;
+  messageGuid: string;
+  reaction: string;
+  remove?: boolean;
+}
+
 interface Chat {
   guid: string;
   chatIdentifier: string;
@@ -135,6 +142,33 @@ export class BlueBubblesClient {
     return response.json();
   }
 
+  async sendReaction(params: SendReactionRequest): Promise<SendMessageResponse> {
+    // Map emoji reactions to BlueBubbles keywords
+    const reactionMap: Record<string, string> = {
+      '❤️': 'love',
+      '👍': 'like',
+      '👎': 'dislike',
+      '😂': 'laugh',
+      '!!': 'emphasize',
+      '?': 'question',
+      '❓': 'question'
+    };
+
+    const mappedReaction = reactionMap[params.reaction] || params.reaction;
+
+    return this.request<SendMessageResponse>('/api/v1/message/reaction', {
+      method: 'POST',
+      body: JSON.stringify({
+        chatGuid: params.chatGuid,
+        messageGuid: params.messageGuid,
+        reaction: mappedReaction,
+        remove: params.remove || false,
+        part: 0,
+        forcePrivateApi: true
+      }),
+    });
+  }
+
   async getChats(offset = 0, limit = 100): Promise<{ data: Chat[] }> {
     return this.request<{ data: Chat[] }>(
       `/api/v1/chat?offset=${offset}&limit=${limit}&with=lastMessage`
@@ -242,6 +276,13 @@ export const blueBubblesClient = {
       throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
     }
     return blueBubblesClientInstance.getServerInfo();
+  },
+  
+  sendReaction: async (params: SendReactionRequest): Promise<SendMessageResponse> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.sendReaction(params);
   },
   
   initialize: (settings: CompanySettings): boolean => {

@@ -700,7 +700,7 @@ export default function IMessagePage() {
                                         variant="ghost"
                                         size="sm"
                                         className="h-8 w-8 p-0"
-                                        onClick={() => addReactionMutation.mutate({ messageId: message.id, reaction: emoji })}
+                                        onClick={() => addReactionMutation.mutate({ messageId: message.guid, reaction: emoji })}
                                         title={label}
                                       >
                                         {emoji}
