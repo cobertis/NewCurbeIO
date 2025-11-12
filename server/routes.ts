@@ -967,16 +967,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Check if message already exists (to avoid duplicates when webhook is called for our own sent messages)
           const messageGuid = messageData.guid || messageData.message_guid || `msg_${Date.now()}`;
+          
+          // First, try to find by BlueBubbles GUID
           let existingMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
+          
+          // If not found AND message is from us, check if we have a pending message from this conversation
+          // This handles the case where we sent a message with clientGuid and webhook arrives with real BlueBubbles GUID
+          if (!existingMessage && messageData.isFromMe) {
+            // Find recent "sending" status message in this conversation (within last 10 seconds)
+            const recentMessages = await storage.getImessageMessages(conversation.id, 10);
+            const pendingMessage = recentMessages.find((msg: any) => 
+              msg.status === 'sending' && 
+              msg.text === (messageData.text || messageData.message || '') &&
+              msg.isFromMe
+            );
+            
+            if (pendingMessage) {
+              console.log(`[BlueBubbles Webhook] Found pending message with clientGuid, updating to BlueBubbles GUID: ${messageGuid}`);
+              existingMessage = pendingMessage;
+            }
+          }
           
           let newMessage;
           if (existingMessage) {
-            // Update existing message (e.g., delivery status, read status)
-            await storage.updateImessageMessageByGuid(company.id, messageGuid, {
+            // Update existing message (reconcile clientGuid message with BlueBubbles GUID)
+            await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, {
+              guid: messageGuid, // Update to real BlueBubbles GUID
               dateRead: messageData.dateRead ? new Date(messageData.dateRead) : existingMessage.dateRead,
               dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : existingMessage.dateDelivered,
+              status: 'sent'
             });
             newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
+            console.log(`[BlueBubbles Webhook] Updated existing message from clientGuid to BlueBubbles GUID`);
           } else {
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
@@ -1449,7 +1471,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         blueBubblesClient.initialize(companySettings);
       }
       
-      const { conversationId, to, text, replyToGuid, effect } = req.body;
+      const { conversationId, to, text, replyToGuid, effect, clientGuid } = req.body;
       const uploadedFiles = (req as any).files as Express.Multer.File[] || [];
       
       if (!conversationId && !to) {
@@ -1458,6 +1480,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (!text && uploadedFiles.length === 0) {
         return res.status(400).json({ message: "Either text or attachments required" });
+      }
+      
+      // Validate clientGuid for optimistic updates
+      if (!clientGuid) {
+        return res.status(400).json({ message: "clientGuid is required for message tracking" });
       }
       
       // Get or create conversation
@@ -1520,11 +1547,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           );
         }
         
-        // Return success - the webhook will handle database persistence
+        // Create message in database immediately for optimistic update reconciliation
+        const newMessage = await storage.createImessageMessage({
+          conversationId: conversation.id,
+          guid: clientGuid, // Use clientGuid for matching with optimistic update
+          text: text || '',
+          isFromMe: true,
+          dateCreated: new Date().toISOString(),
+          dateSent: new Date().toISOString(),
+          dateDelivered: undefined,
+          dateRead: undefined,
+          senderAddress: conversation.participants[0] || '',
+          senderName: undefined,
+          hasAttachments: uploadedFiles.length > 0,
+          effect: effect || undefined,
+          status: 'sending'
+        });
+        
+        // Return success with the created message
         res.json({ 
           success: true, 
           conversation,
-          message: "Message sent successfully. BlueBubbles will notify us when delivered."
+          message: newMessage
         });
       } catch (sendError: any) {
         console.error("[iMessage] Failed to send:", sendError);

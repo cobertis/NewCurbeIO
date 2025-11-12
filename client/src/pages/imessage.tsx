@@ -312,7 +312,7 @@ export default function IMessagePage() {
 
   // Mutations
   const sendMessageMutation = useMutation({
-    mutationFn: async (data: { text: string; effectId?: string; replyToMessageId?: string; attachments?: File[] }) => {
+    mutationFn: async (data: { text: string; effectId?: string; replyToMessageId?: string; attachments?: File[]; clientGuid?: string }) => {
       // If we have attachments, use FormData, otherwise use JSON
       if (data.attachments && data.attachments.length > 0) {
         const formData = new FormData();
@@ -320,6 +320,7 @@ export default function IMessagePage() {
         formData.append('text', data.text);
         if (data.effectId) formData.append('effectId', data.effectId);
         if (data.replyToMessageId) formData.append('replyToMessageId', data.replyToMessageId);
+        if (data.clientGuid) formData.append('clientGuid', data.clientGuid);
         data.attachments.forEach(file => formData.append('attachments', file));
 
         const response = await fetch('/api/imessage/messages/send', {
@@ -340,7 +341,8 @@ export default function IMessagePage() {
           conversationId: selectedConversationId!,
           text: data.text,
           effect: data.effectId,
-          replyToGuid: data.replyToMessageId
+          replyToGuid: data.replyToMessageId,
+          clientGuid: data.clientGuid
         });
       }
     },
@@ -352,14 +354,16 @@ export default function IMessagePage() {
       // Snapshot the previous value
       const previousMessages = queryClient.getQueryData<ImessageMessage[]>([`/api/imessage/conversations/${selectedConversationId}/messages`]);
       
+      // Use the clientGuid passed from handleSendMessage
+      const clientGuid = variables.clientGuid!;
+      
       // Optimistically update to the new value
-      const tempId = `temp-${Date.now()}`;
       const optimisticMessage: ImessageMessage = {
-        id: tempId,
+        id: clientGuid, // Use GUID as ID too
         conversationId: selectedConversationId!,
-        guid: tempId,
+        guid: clientGuid, // Real GUID for matching
         text: variables.text,
-        isFromMe: true,
+        isFromMe: true, // CRITICAL: Set isFromMe to true so it renders on the right
         dateCreated: new Date().toISOString(),
         dateSent: new Date().toISOString(),
         dateDelivered: undefined,
@@ -387,7 +391,7 @@ export default function IMessagePage() {
       
       if (soundEnabled) playSound('send');
       
-      return { previousMessages };
+      return { previousMessages, clientGuid };
     },
     onError: (error: any, variables, context) => {
       // Revert to previous state on error
@@ -403,18 +407,21 @@ export default function IMessagePage() {
         variant: "destructive"
       });
     },
-    onSuccess: (response: any) => {
+    onSuccess: (response: any, variables, context) => {
       // Replace optimistic message with real message from server
       // DO NOT INVALIDATE - this causes flicker
       const realMessage = response?.message;
-      if (realMessage) {
+      const clientGuid = context?.clientGuid;
+      
+      if (realMessage && clientGuid) {
         queryClient.setQueryData<ImessageMessage[]>(
           [`/api/imessage/conversations/${selectedConversationId}/messages`],
           (old) => {
             if (!old) return [realMessage];
-            // Replace temp message with real message (dedup by GUID)
+            
+            // Replace optimistic message by GUID
             return old.map(msg => 
-              msg.id.startsWith('temp-') ? realMessage : msg
+              msg.guid === clientGuid ? { ...realMessage, isFromMe: true } : msg
             ).filter((msg, index, self) => 
               // Remove duplicates based on GUID
               index === self.findIndex(m => m.guid === msg.guid)
@@ -539,11 +546,15 @@ export default function IMessagePage() {
     if (!messageText.trim() && attachments.length === 0) return;
     if (!selectedConversationId) return;
 
+    // Generate clientGuid that will be used for optimistic update
+    const clientGuid = crypto.randomUUID();
+
     sendMessageMutation.mutate({
       text: messageText,
       effectId: selectedEffect || undefined,
       replyToMessageId: replyingToMessage?.guid, // Use GUID instead of ID
-      attachments
+      attachments,
+      clientGuid // Pass to backend for echo back
     });
 
     // Send typing stop event
@@ -822,7 +833,7 @@ export default function IMessagePage() {
 
                         return (
                           <div
-                            key={message.id}
+                            key={message.guid || message.id}
                             data-testid={`message-${message.id}`}
                             className={cn(
                               "flex items-end gap-2 group",
