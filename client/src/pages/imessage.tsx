@@ -196,26 +196,36 @@ export default function IMessagePage() {
   // Mutations
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { text: string; effectId?: string; replyToMessageId?: string; attachments?: File[] }) => {
-      const formData = new FormData();
-      formData.append('conversationId', selectedConversationId!);
-      formData.append('text', data.text);
-      if (data.effectId) formData.append('effectId', data.effectId);
-      if (data.replyToMessageId) formData.append('replyToMessageId', data.replyToMessageId);
-      data.attachments?.forEach(file => formData.append('attachments', file));
+      // If we have attachments, use FormData, otherwise use JSON
+      if (data.attachments && data.attachments.length > 0) {
+        const formData = new FormData();
+        formData.append('conversationId', selectedConversationId!);
+        formData.append('text', data.text);
+        if (data.effectId) formData.append('effectId', data.effectId);
+        if (data.replyToMessageId) formData.append('replyToMessageId', data.replyToMessageId);
+        data.attachments.forEach(file => formData.append('attachments', file));
 
-      // Use fetch directly for FormData uploads
-      const response = await fetch('/api/imessage/messages/send', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to send message');
+        const response = await fetch('/api/imessage/messages/send', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          const error = await response.text();
+          throw new Error(error || 'Failed to send message');
+        }
+        
+        return response.json();
+      } else {
+        // For text-only messages, use JSON
+        return apiRequest('POST', '/api/imessage/messages/send', {
+          conversationId: selectedConversationId!,
+          text: data.text,
+          effect: data.effectId,
+          replyToGuid: data.replyToMessageId
+        });
       }
-      
-      return response.json();
     },
     onSuccess: () => {
       setMessageText("");
