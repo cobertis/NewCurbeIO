@@ -1882,10 +1882,54 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
           }
           
+          // If this is a CAF file but wasn't converted (uploaded directly), extract metadata
+          if (!audioMetadata && actualMimeType === 'audio/x-caf') {
+            console.log(`[iMessage] Extracting metadata from pre-existing CAF file: ${actualFilename}`);
+            try {
+              const duration = await extractAudioDuration(actualFilePath);
+              const waveform = await generateAudioWaveform(actualFilePath);
+              
+              audioMetadata = {
+                duration,
+                waveform,
+                mimeType: 'audio/x-caf',
+                uti: 'com.apple.coreaudio-format',
+                codec: 'unknown', // Cannot determine codec from existing CAF without deep inspection
+                sampleRate: 24000 // Assume standard iMessage rate
+              };
+              
+              console.log(`[iMessage] Metadata extracted: duration ${duration}ms, waveform ${waveform.length} samples`);
+            } catch (metadataError: any) {
+              console.warn(`[iMessage] Failed to extract metadata from CAF: ${metadataError.message}`);
+              // Continue without metadata - file will still send but may not display as native voice memo
+            }
+          }
+          
           filePaths.push(actualFilePath);
           
           // Check if this is an audio message (voice memo)
           const isVoiceMemo = actualMimeType === 'audio/x-caf';
+          
+          // CRITICAL: Voice memos MUST have metadata for native iMessage rendering
+          if (isVoiceMemo && !audioMetadata) {
+            console.error(`[iMessage] FATAL: Voice memo missing metadata - cannot send as native audio message`);
+            
+            // Clean up temp file
+            try {
+              fs.unlinkSync(actualFilePath);
+            } catch (cleanupErr) {
+              console.error(`[iMessage] Failed to cleanup ${actualFilePath}:`, cleanupErr);
+            }
+            
+            // Mark message as failed
+            await storage.updateImessageMessageByGuid(user.companyId, clientGuid, {
+              status: 'failed'
+            });
+            
+            return res.status(500).json({ 
+              error: 'Voice memo metadata extraction failed - cannot send as native audio message' 
+            });
+          }
           
           console.log(`[iMessage] Sending attachment: ${actualFilename} (${actualMimeType})${isVoiceMemo ? ' as voice memo' : ''}`);
           const attachmentResult = await blueBubblesClient.sendAttachment(
@@ -1893,7 +1937,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             actualFilePath,
             clientGuid, // Send clientGuid for webhook reconciliation
             isVoiceMemo, // Mark as audio message if CAF
-            audioMetadata // Send audio metadata for voice memos
+            audioMetadata // Send audio metadata for voice memos (guaranteed non-null if isVoiceMemo=true)
           );
           
           // If no text message was sent, use attachment result as primary

@@ -120,6 +120,12 @@ interface MessageAttachment {
   thumbnailUrl?: string;
   width?: number;
   height?: number;
+  metadata?: {
+    duration?: number;
+    waveform?: number[];
+    codec?: string;
+    sampleRate?: number;
+  };
 }
 
 interface MessageReaction {
@@ -384,7 +390,15 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
 }
 
 // Component to display audio messages with waveform visualization
-function ImessageAudioMessage({ url, fileName }: { url: string; fileName: string }) {
+function ImessageAudioMessage({ 
+  url, 
+  fileName, 
+  waveform 
+}: { 
+  url: string; 
+  fileName: string; 
+  waveform?: number[];
+}) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -460,10 +474,15 @@ function ImessageAudioMessage({ url, fileName }: { url: string; fileName: string
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Generate random waveform bars for visualization
+  // Use real waveform if available, otherwise generate random bars
   const waveformBars = useMemo(() => {
+    if (waveform && waveform.length > 0) {
+      // Use real waveform data (normalized to 0-100)
+      return waveform.map(val => (val / 255) * 100);
+    }
+    // Fallback: generate random waveform bars
     return Array.from({ length: 40 }, () => Math.random() * 100);
-  }, []);
+  }, [waveform]);
 
   return (
     <div className="flex items-center gap-2 min-w-[280px] max-w-[320px] p-2">
@@ -1546,17 +1565,18 @@ export default function IMessagePage() {
                                           
                                           return (
                                             <div key={attachment.guid || attachment.url}>
-                                              {attachment.mimeType?.startsWith('image/') ?? false ? (
+                                              {(attachment.mimeType?.startsWith('image/') ?? false) ? (
                                                 <ImessageAttachmentImage 
                                                   url={attachment.url}
                                                   alt={attachment.fileName}
                                                 />
-                                              ) : attachment.mimeType?.startsWith('audio/') ?? false || isAudioWebm ? (
+                                              ) : ((attachment.mimeType?.startsWith('audio/') ?? false) || isAudioWebm) ? (
                                                 <ImessageAudioMessage
                                                   url={attachment.url}
                                                   fileName={attachment.fileName}
+                                                  waveform={attachment.metadata?.waveform}
                                                 />
-                                              ) : attachment.mimeType?.startsWith('video/') ?? false ? (
+                                              ) : (attachment.mimeType?.startsWith('video/') ?? false) ? (
                                                 <ImessageAttachmentVideo 
                                                   url={attachment.url}
                                                   fileName={attachment.fileName}

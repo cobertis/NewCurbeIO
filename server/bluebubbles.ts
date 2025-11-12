@@ -173,23 +173,23 @@ export class BlueBubblesClient {
     formData.append('name', fileName);
     
     // Mark as audio message (voice memo) if it's a CAF file
-    // This tells iMessage to display it as a native voice memo with waveform
-    if (isAudioMessage) {
-      formData.append('isAudioMessage', 'true');
-      console.log('[iMessage] Marking attachment as audio message (voice memo)');
-      
-      // Send audio metadata if available
-      if (audioMetadata) {
-        const metadata = {
+    // BlueBubbles requires payloadJson with nested metadata to trigger voice memo code path
+    if (isAudioMessage && audioMetadata) {
+      const payloadJson = {
+        metadata: {
           duration: audioMetadata.duration,
           waveform: audioMetadata.waveform,
           uti: audioMetadata.uti,
+          mimeType: audioMetadata.mimeType,
           codec: audioMetadata.codec,
           sampleRate: audioMetadata.sampleRate
-        };
-        formData.append('metadata', JSON.stringify(metadata));
-        console.log(`[iMessage] Sending audio metadata: ${audioMetadata.codec} @ ${audioMetadata.sampleRate}Hz, duration: ${audioMetadata.duration}ms, waveform: ${audioMetadata.waveform.length} samples`);
-      }
+        },
+        isAudioMessage: true
+      };
+      
+      // CRITICAL: Send as payloadJson (not flat fields) to avoid MP3 conversion
+      formData.append('payloadJson', JSON.stringify(payloadJson));
+      console.log(`[iMessage] Sending voice memo via payloadJson: ${audioMetadata.codec} @ ${audioMetadata.sampleRate}Hz, duration: ${audioMetadata.duration}ms, waveform: ${audioMetadata.waveform.length} samples`);
     }
 
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);
@@ -341,11 +341,24 @@ export const blueBubblesClient = {
     return blueBubblesClientInstance.sendMessage(request);
   },
   
-  sendAttachment: async (chatGuid: string, attachmentPath: string, tempGuid?: string, isAudioMessage: boolean = false): Promise<SendMessageResponse> => {
+  sendAttachment: async (
+    chatGuid: string, 
+    attachmentPath: string, 
+    tempGuid?: string, 
+    isAudioMessage: boolean = false,
+    audioMetadata?: {
+      duration: number;
+      waveform: number[];
+      mimeType: string;
+      uti: string;
+      codec: string;
+      sampleRate: number;
+    }
+  ): Promise<SendMessageResponse> => {
     if (!blueBubblesClientInstance) {
       throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
     }
-    return blueBubblesClientInstance.sendAttachment(chatGuid, attachmentPath, tempGuid, isAudioMessage);
+    return blueBubblesClientInstance.sendAttachment(chatGuid, attachmentPath, tempGuid, isAudioMessage, audioMetadata);
   },
   
   getChats: async (offset = 0, limit = 100): Promise<{ data: Chat[] }> => {
