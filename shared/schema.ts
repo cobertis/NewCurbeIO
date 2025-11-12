@@ -106,6 +106,14 @@ export const companySettings = pgTable("company_settings", {
     twoFactorRequired: false,
   }),
   
+  // iMessage/BlueBubbles settings
+  imessageSettings: jsonb("imessage_settings").default({
+    serverUrl: "", // BlueBubbles server URL (e.g., "https://your-server.ngrok.io")
+    password: "", // BlueBubbles server password/guid
+    isEnabled: false, // Whether iMessage is enabled for this company
+    webhookSecret: "", // Secret for validating incoming webhooks from BlueBubbles
+  }),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -684,6 +692,16 @@ export const updateCompanySettingsSchema = z.object({
 }).refine(data => Object.values(data).some(v => v !== undefined), {
   message: "At least one field must be provided",
 });
+
+// iMessage Settings Schema
+export const insertImessageSettingsSchema = z.object({
+  serverUrl: z.string().url("Must be a valid URL").min(1, "Server URL is required"),
+  password: z.string().min(1, "Password is required"),
+  isEnabled: z.boolean(),
+  webhookSecret: z.string().optional(),
+});
+
+export type InsertImessageSettings = z.infer<typeof insertImessageSettingsSchema>;
 
 // Features
 export const insertFeatureSchema = createInsertSchema(features).omit({
@@ -3524,3 +3542,146 @@ export type UnifiedContact = {
     details: any;
   }[];
 };
+
+// =====================================================
+// iMESSAGE SYSTEM (BlueBubbles Integration)
+// =====================================================
+
+export const imessageConversations = pgTable("imessage_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // BlueBubbles chat data
+  chatGuid: text("chat_guid").notNull(), // e.g., "iMessage;-;+1234567890"
+  displayName: text("display_name"),
+  participants: text("participants").array(), // Phone numbers/emails of participants
+  
+  // Contact information
+  contactName: text("contact_name"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  
+  // Status
+  status: text("status").notNull().default("active"), // active, archived, closed
+  isPinned: boolean("is_pinned").notNull().default(false),
+  isGroup: boolean("is_group").notNull().default(false),
+  
+  // Message type detection
+  isImessage: boolean("is_imessage").default(true), // true = blue (iMessage), false = green (SMS/RCS)
+  
+  // User assignment
+  assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }),
+  
+  // Last message info (for display in list)
+  lastMessageText: text("last_message_text"),
+  lastMessageAt: timestamp("last_message_at"),
+  lastMessageFromMe: boolean("last_message_from_me").default(false),
+  
+  // Unread tracking
+  unreadCount: integer("unread_count").notNull().default(0),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Enforce unique chat per company
+  uniqueChatPerCompany: unique().on(table.companyId, table.chatGuid),
+  // Indexes for performance
+  companyIdIdx: index("imessage_conversations_company_id_idx").on(table.companyId),
+  chatGuidIdx: index("imessage_conversations_chat_guid_idx").on(table.chatGuid),
+  assignedToIdx: index("imessage_conversations_assigned_to_idx").on(table.assignedTo),
+  updatedAtIdx: index("imessage_conversations_updated_at_idx").on(table.updatedAt),
+}));
+
+export const imessageMessages = pgTable("imessage_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => imessageConversations.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // BlueBubbles message data
+  messageGuid: text("message_guid").notNull(), // BlueBubbles message ID (unique per company, not globally)
+  chatGuid: text("chat_guid").notNull(), // Reference to chat
+  
+  // Message content
+  text: text("text"),
+  subject: text("subject"), // iMessage subject line
+  
+  // Sender information
+  fromMe: boolean("from_me").notNull().default(false), // true if sent by us, false if received
+  senderHandle: text("sender_handle"), // Phone number/email of sender
+  senderName: text("sender_name"),
+  
+  // Message status (for outgoing messages)
+  status: text("status").notNull().default("sent"), // sending, sent, delivered, read, failed
+  errorMessage: text("error_message"), // If status is 'failed'
+  
+  // Message type
+  isImessage: boolean("is_imessage").default(true), // true = blue (iMessage), false = green (SMS/RCS)
+  
+  // Attachments
+  hasAttachments: boolean("has_attachments").notNull().default(false),
+  attachments: jsonb("attachments").default([]), // Array of attachment URLs/metadata
+  
+  // iMessage features (requires Private API)
+  expressiveType: text("expressive_type"), // e.g., "com.apple.MobileSMS.expressivesend.impact" (slam, loud, etc.)
+  reactionType: text("reaction_type"), // love, like, dislike, laugh, emphasize, question
+  replyToGuid: text("reply_to_guid"), // Message this is replying to
+  
+  // Timestamps
+  dateSent: timestamp("date_sent"), // When message was sent (from BlueBubbles)
+  dateRead: timestamp("date_read"), // When message was read
+  dateDelivered: timestamp("date_delivered"), // When message was delivered
+  
+  // Metadata
+  metadata: jsonb("metadata").default({}), // Additional BlueBubbles metadata
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Enforce uniqueness scoped to company (multi-tenant safe)
+  uniqueMessagePerCompany: unique().on(table.companyId, table.messageGuid),
+  // Indexes for high-value access paths
+  conversationIdIdx: index("imessage_messages_conversation_id_idx").on(table.conversationId),
+  companyIdIdx: index("imessage_messages_company_id_idx").on(table.companyId),
+  chatGuidIdx: index("imessage_messages_chat_guid_idx").on(table.chatGuid),
+  companyMessageGuidIdx: index("imessage_messages_company_message_guid_idx").on(table.companyId, table.messageGuid),
+  dateSentIdx: index("imessage_messages_date_sent_idx").on(table.dateSent),
+  // Index for listing conversation messages ordered by date
+  conversationDateIdx: index("imessage_messages_conversation_date_idx").on(table.conversationId, table.dateSent),
+}));
+
+// Zod validation schemas
+export const insertImessageConversationSchema = createInsertSchema(imessageConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  chatGuid: z.string().min(1, "Chat GUID is required"),
+  companyId: z.string().uuid(),
+  status: z.enum(["active", "archived", "closed"]).default("active"),
+  isPinned: z.boolean().default(false),
+  isGroup: z.boolean().default(false),
+  isImessage: z.boolean().default(true),
+});
+
+export const insertImessageMessageSchema = createInsertSchema(imessageMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  messageGuid: z.string().min(1, "Message GUID is required"),
+  chatGuid: z.string().min(1, "Chat GUID is required"),
+  conversationId: z.string().uuid(),
+  companyId: z.string().uuid(),
+  text: z.string().optional().nullable(),
+  fromMe: z.boolean().default(false),
+  status: z.enum(["sending", "sent", "delivered", "read", "failed"]).default("sent"),
+  isImessage: z.boolean().default(true),
+  hasAttachments: z.boolean().default(false),
+});
+
+// Types
+export type ImessageConversation = typeof imessageConversations.$inferSelect;
+export type InsertImessageConversation = z.infer<typeof insertImessageConversationSchema>;
+
+export type ImessageMessage = typeof imessageMessages.$inferSelect;
+export type InsertImessageMessage = z.infer<typeof insertImessageMessageSchema>;

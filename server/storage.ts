@@ -164,7 +164,11 @@ import {
   type UnifiedContact,
   type Task,
   type InsertTask,
-  type UpdateTask
+  type UpdateTask,
+  type ImessageConversation,
+  type InsertImessageConversation,
+  type ImessageMessage,
+  type InsertImessageMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -245,7 +249,9 @@ import {
   bulkvsThreads,
   bulkvsMessages,
   manualContacts,
-  tasks
+  tasks,
+  imessageConversations,
+  imessageMessages
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -8087,6 +8093,122 @@ export class DbStorage implements IStorage {
 
     const result = await query;
     return result;
+  }
+
+  // ==================== iMESSAGE CONVERSATIONS ====================
+
+  async getImessageConversations(companyId: string): Promise<ImessageConversation[]> {
+    return db
+      .select()
+      .from(imessageConversations)
+      .where(eq(imessageConversations.companyId, companyId))
+      .orderBy(desc(imessageConversations.updatedAt));
+  }
+
+  async getImessageConversation(id: string, companyId: string): Promise<ImessageConversation | undefined> {
+    const result = await db
+      .select()
+      .from(imessageConversations)
+      .where(
+        and(
+          eq(imessageConversations.id, id),
+          eq(imessageConversations.companyId, companyId)
+        )
+      );
+    return result[0];
+  }
+
+  async findImessageConversationByChatGuid(companyId: string, chatGuid: string): Promise<ImessageConversation | undefined> {
+    const result = await db
+      .select()
+      .from(imessageConversations)
+      .where(
+        and(
+          eq(imessageConversations.companyId, companyId),
+          eq(imessageConversations.chatGuid, chatGuid)
+        )
+      );
+    return result[0];
+  }
+
+  async createImessageConversation(data: InsertImessageConversation): Promise<ImessageConversation> {
+    const result = await db
+      .insert(imessageConversations)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+
+  async updateImessageConversation(id: string, companyId: string, data: Partial<InsertImessageConversation>): Promise<ImessageConversation | undefined> {
+    const result = await db
+      .update(imessageConversations)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(imessageConversations.id, id),
+          eq(imessageConversations.companyId, companyId)
+        )
+      )
+      .returning();
+    return result[0];
+  }
+
+  // ==================== iMESSAGE MESSAGES ====================
+
+  async getImessageMessages(conversationId: string, companyId: string, limit = 50, offset = 0): Promise<ImessageMessage[]> {
+    return db
+      .select()
+      .from(imessageMessages)
+      .where(
+        and(
+          eq(imessageMessages.conversationId, conversationId),
+          eq(imessageMessages.companyId, companyId)
+        )
+      )
+      .orderBy(imessageMessages.dateSent)
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async createImessageMessage(data: InsertImessageMessage): Promise<ImessageMessage> {
+    const result = await db
+      .insert(imessageMessages)
+      .values({
+        ...data,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return result[0];
+  }
+
+  async updateImessageMessageByGuid(companyId: string, messageGuid: string, data: Partial<InsertImessageMessage>): Promise<ImessageMessage | undefined> {
+    const result = await db
+      .update(imessageMessages)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(imessageMessages.companyId, companyId),
+          eq(imessageMessages.messageGuid, messageGuid)
+        )
+      )
+      .returning();
+    return result[0];
+  }
+
+  // Helper for webhook - get all company settings
+  async getAllCompanySettings(): Promise<CompanySettings[]> {
+    return db.select().from(companySettings);
   }
 }
 

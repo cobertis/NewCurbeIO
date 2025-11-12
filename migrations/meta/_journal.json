@@ -15,6 +15,13 @@
       "when": 1761832226507,
       "tag": "0001_third_yellowjacket",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1762913087372,
+      "tag": "0002_remarkable_agent_brand",
+      "breakpoints": true
     }
   ]
 }

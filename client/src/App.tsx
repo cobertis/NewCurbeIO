@@ -68,6 +68,7 @@ import EmailMarketingPage from "@/pages/email-marketing";
 import IntegrationsPage from "@/pages/integrations";
 import Leads from "@/pages/leads";
 import Tasks from "@/pages/tasks";
+import IMessagePage from "@/pages/imessage";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -105,6 +106,8 @@ const getPageTitle = (path: string): string => {
     '/email-configuration': 'Email Configuration',
     '/birthday-images': 'Birthday Images',
     '/sms': 'SMS',
+    '/imessage': 'iMessage',
+    '/settings/imessage': 'Settings - iMessage',
   };
   
   if (path.startsWith('/campaigns/') && path.includes('/stats')) {
@@ -145,7 +148,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   // Fetch company data for all users with a companyId
   const { data: companyData } = useQuery<{ company: any }>({
-    ...getCompanyQueryOptions(user?.companyId),
+    ...getCompanyQueryOptions(user?.companyId || undefined),
   });
 
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
@@ -1204,6 +1207,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings/imessage">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       
       <Route path="/audit-logs">
         <ProtectedRoute>
@@ -1251,6 +1261,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SmsMmsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/imessage">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <IMessagePage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

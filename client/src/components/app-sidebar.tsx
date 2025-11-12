@@ -31,7 +31,8 @@ import {
   Contact,
   CheckSquare,
   Bell,
-  ImagePlus
+  ImagePlus,
+  MessageCircle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Link, useLocation } from "wouter";
@@ -181,6 +182,12 @@ const marketingMenuItems = [
     icon: MessageSquare,
   },
   {
+    title: "iMessage",
+    url: "/imessage",
+    icon: MessageCircle,
+    featureKey: "iMessage",
+  },
+  {
     title: "Contacts",
     url: "/contacts",
     icon: Mail,
@@ -234,6 +241,14 @@ export function AppSidebar() {
   const { data: companyData, isSuccess: companyDataLoaded } = useQuery<{ company: { logo?: string } }>({
     ...getCompanyQueryOptions(userData?.user?.companyId),
   });
+
+  // Get company features for feature gating
+  const { data: featuresData } = useQuery<{ features: Array<{ key: string }> }>({
+    queryKey: ["/api/companies", userData?.user?.companyId, "features"],
+    enabled: !!userData?.user?.companyId,
+  });
+
+  const enabledFeatures = new Set(featuresData?.features?.map(f => f.key) || []);
 
   // Get BulkVS threads to count unread messages
   const { data: threadsData } = useQuery<BulkvsThread[]>({
@@ -468,7 +483,9 @@ export function AppSidebar() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="space-y-1">
-                  {marketingMenuItems.map((item) => (
+                  {marketingMenuItems
+                    .filter((item: any) => !item.featureKey || enabledFeatures.has(item.featureKey))
+                    .map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild

@@ -36,6 +36,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Campaign System:** Unified Email/SMS Campaign and Contact List management.
 - **Real-Time Notifications:** WebSocket-based updates.
 - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with dedicated phone numbers, real-time updates, and privacy isolation.
+- **iMessage Integration (BlueBubbles):** Modular feature system allowing companies to enable iMessage messaging through BlueBubbles bridge. Features include: (1) Admin-only configuration panel for BlueBubbles server settings (serverUrl, password), (2) Secure webhook-based message synchronization with HMAC validation, (3) Multi-tenant data isolation with company-scoped message GUIDs, (4) Feature gating on all routes ensuring only enabled companies can access iMessage functionality, (5) Zod validation for settings updates requiring serverUrl/password when enabling, (6) Real-time message delivery with status tracking (sent/delivered/read), (7) BlueBubbles client abstraction (server/bluebubbles.ts) for REST API integration, (8) Support for both iMessage (blue) and SMS/RCS (green) message types. Security: Webhook secrets never exposed to frontend, admin-only access to configuration, activity logging for settings changes. Database schema includes `imessage_conversations` and `imessage_messages` tables with optimized indexes for conversation listing and message pagination.
 - **Billing & Stripe Integration:** Automated customer/subscription management.
 - **Quotes Management System:** 3-step wizard, Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
 - **Policies Management System:** Converts quotes to policies, status management, agent assignment, and canonical client identification, using cursor-based pagination. Search by family members feature uses server-side filtering via `searchTerm` and `includeFamilyMembers` parameters sent to backend, which performs LEFT JOIN with policy_members table to search across client AND family member data (names, emails, phones).
@@ -62,17 +63,18 @@ The policies system uses cursor-based pagination with database indexes for effic
 
 ### Security Architecture
 - **Session Security:** `SESSION_SECRET` environment variable mandatory.
-- **Webhook Validation:** Twilio and BulkVS webhook signature validation.
+- **Webhook Validation:** Twilio, BulkVS, and BlueBubbles webhook signature validation.
 - **Input Validation:** Zod schema validation on all public-facing endpoints.
 - **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 - **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 - **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
+- **iMessage Security:** Webhook secret isolation (never exposed to non-admin users), admin-only settings access, feature gating on all routes, multi-tenant GUID scoping to prevent cross-company data leakage.
 
 ## External Dependencies
 
 - **Database:** PostgreSQL, Drizzle ORM, `postgres`.
 - **Email:** Nodemailer.
-- **SMS/MMS:** Twilio, BulkVS.
+- **SMS/MMS/iMessage:** Twilio, BulkVS, BlueBubbles (iMessage bridge).
 - **Payments:** Stripe.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 - **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.

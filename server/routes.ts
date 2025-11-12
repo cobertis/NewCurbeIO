@@ -22234,6 +22234,527 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ====================================================================
+  // iMessage Routes (BlueBubbles Integration)
+  // ====================================================================
+
+  // GET /api/imessage/settings - Get iMessage settings for company (admin only)
+  app.get("/api/imessage/settings", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+        return res.status(403).json({ message: "Only admins can view iMessage settings" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled for this company" });
+      }
+
+      const settings = await storage.getCompanySettings(user.companyId);
+      if (!settings) {
+        return res.status(404).json({ message: "Company settings not found" });
+      }
+
+      const imessageSettings = settings.imessageSettings as {
+        serverUrl?: string;
+        password?: string;
+        isEnabled?: boolean;
+        webhookSecret?: string;
+      } || {};
+
+      // NEVER send password or webhookSecret to frontend for security
+      res.json({
+        serverUrl: imessageSettings.serverUrl || "",
+        isEnabled: imessageSettings.isEnabled || false,
+        hasPassword: !!(imessageSettings.password),
+        hasWebhookSecret: !!(imessageSettings.webhookSecret),
+      });
+    } catch (error: any) {
+      console.error("Error fetching iMessage settings:", error);
+      res.status(500).json({ message: "Failed to fetch iMessage settings" });
+    }
+  });
+
+  // PUT /api/imessage/settings - Update iMessage settings (admin/superadmin only)
+  app.put("/api/imessage/settings", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+        return res.status(403).json({ message: "Only admins can update iMessage settings" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled for this company" });
+      }
+
+      // Validate request body with Zod
+      const { z } = await import('zod');
+      const updateImessageSettingsSchema = z.object({
+        serverUrl: z.string().url().optional(),
+        password: z.string().min(1).optional(),
+        isEnabled: z.boolean().optional(),
+      }).refine(
+        (data) => {
+          // If enabling, require serverUrl and password
+          if (data.isEnabled === true) {
+            return data.serverUrl && data.password;
+          }
+          return true;
+        },
+        {
+          message: "serverUrl and password are required when enabling iMessage",
+          path: ["isEnabled"],
+        }
+      );
+
+      const validationResult = updateImessageSettingsSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid request body",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const { serverUrl, password, isEnabled } = validationResult.data;
+
+      const settings = await storage.getCompanySettings(user.companyId);
+      if (!settings) {
+        return res.status(404).json({ message: "Company settings not found" });
+      }
+
+      const currentImessageSettings = settings.imessageSettings as {
+        serverUrl?: string;
+        password?: string;
+        isEnabled?: boolean;
+        webhookSecret?: string;
+      } || {};
+
+      // Generate webhook secret if not exists
+      const crypto = require('crypto');
+      const webhookSecret = currentImessageSettings.webhookSecret || crypto.randomBytes(32).toString('hex');
+
+      const updatedImessageSettings = {
+        serverUrl: serverUrl || currentImessageSettings.serverUrl || "",
+        password: password || currentImessageSettings.password || "",
+        isEnabled: isEnabled !== undefined ? isEnabled : currentImessageSettings.isEnabled || false,
+        webhookSecret,
+      };
+
+      await storage.updateCompanySettings(user.companyId, {
+        imessageSettings: updatedImessageSettings,
+      });
+
+      // Log activity
+      await storage.createActivityLog({
+        companyId: user.companyId,
+        userId: user.id,
+        action: "iMessage settings updated",
+        targetType: "company_settings",
+        targetId: user.companyId,
+        metadata: {
+          isEnabled: updatedImessageSettings.isEnabled,
+          hasServerUrl: !!updatedImessageSettings.serverUrl,
+        },
+      });
+
+      // NEVER send password or webhookSecret in response
+      res.json({
+        serverUrl: updatedImessageSettings.serverUrl,
+        isEnabled: updatedImessageSettings.isEnabled,
+        hasPassword: !!updatedImessageSettings.password,
+        hasWebhookSecret: !!updatedImessageSettings.webhookSecret,
+      });
+    } catch (error: any) {
+      console.error("Error updating iMessage settings:", error);
+      res.status(500).json({ message: "Failed to update iMessage settings" });
+    }
+  });
+
+  // POST /api/imessage/settings/regenerate-webhook-secret - Regenerate webhook secret (admin only)
+  app.post("/api/imessage/settings/regenerate-webhook-secret", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+        return res.status(403).json({ message: "Only admins can regenerate webhook secret" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled for this company" });
+      }
+
+      const settings = await storage.getCompanySettings(user.companyId);
+      if (!settings) {
+        return res.status(404).json({ message: "Company settings not found" });
+      }
+
+      const currentImessageSettings = settings.imessageSettings as {
+        serverUrl?: string;
+        password?: string;
+        isEnabled?: boolean;
+        webhookSecret?: string;
+      } || {};
+
+      // Generate new webhook secret
+      const newWebhookSecret = crypto.randomBytes(32).toString('hex');
+
+      const updatedImessageSettings = {
+        ...currentImessageSettings,
+        webhookSecret: newWebhookSecret,
+      };
+
+      await storage.updateCompanySettings(user.companyId, {
+        imessageSettings: updatedImessageSettings,
+      });
+
+      // Log activity
+      await storage.createActivityLog({
+        companyId: user.companyId,
+        userId: user.id,
+        action: "iMessage webhook secret regenerated",
+        targetType: "company_settings",
+        targetId: user.companyId,
+        metadata: {
+          regeneratedBy: user.email,
+        },
+      });
+
+      // Return the NEW webhook secret ONE TIME only
+      // This is the ONLY endpoint that returns the actual secret value
+      res.json({
+        webhookSecret: newWebhookSecret,
+        message: "Webhook secret regenerated successfully. Please copy this secret now - it will not be shown again.",
+      });
+    } catch (error: any) {
+      console.error("Error regenerating webhook secret:", error);
+      res.status(500).json({ message: "Failed to regenerate webhook secret" });
+    }
+  });
+
+  // GET /api/imessage/conversations - List all conversations
+  app.get("/api/imessage/conversations", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled for this company" });
+      }
+
+      const conversations = await storage.getImessageConversations(user.companyId);
+      
+      res.json({ conversations });
+    } catch (error: any) {
+      console.error("Error fetching iMessage conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  // GET /api/imessage/conversations/:id/messages - Get messages for a conversation
+  app.get("/api/imessage/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled for this company" });
+      }
+
+      const { id } = req.params;
+      const { limit = "50", offset = "0" } = req.query;
+
+      const messages = await storage.getImessageMessages(
+        id,
+        user.companyId,
+        parseInt(limit as string),
+        parseInt(offset as string)
+      );
+
+      res.json({ messages });
+    } catch (error: any) {
+      console.error("Error fetching iMessage messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // POST /api/imessage/send - Send an iMessage
+  app.post("/api/imessage/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled for this company" });
+      }
+
+      // Validate request body with Zod
+      const { z } = await import('zod');
+      const sendMessageSchema = z.object({
+        conversationId: z.string().optional(),
+        text: z.string().min(1),
+        chatGuid: z.string().optional(),
+      }).refine(
+        (data) => data.conversationId || data.chatGuid,
+        {
+          message: "Either conversationId or chatGuid must be provided",
+        }
+      );
+
+      const validationResult = sendMessageSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid request body",
+          errors: validationResult.error.errors,
+        });
+      }
+
+      const { conversationId, text, chatGuid } = validationResult.data;
+
+      // Get BlueBubbles client
+      const settings = await storage.getCompanySettings(user.companyId);
+      if (!settings) {
+        return res.status(404).json({ message: "Company settings not found" });
+      }
+
+      const { BlueBubblesClient } = await import('./bluebubbles');
+      const client = BlueBubblesClient.createFromSettings(settings);
+      
+      if (!client) {
+        return res.status(400).json({ message: "iMessage not configured or disabled" });
+      }
+
+      // Determine chat GUID
+      let targetChatGuid = chatGuid;
+      if (conversationId && !chatGuid) {
+        const conversation = await storage.getImessageConversation(conversationId, user.companyId);
+        if (!conversation) {
+          return res.status(404).json({ message: "Conversation not found" });
+        }
+        targetChatGuid = conversation.chatGuid;
+      }
+
+      // Send message via BlueBubbles
+      const response = await client.sendMessage({
+        chatGuid: targetChatGuid,
+        message: text,
+      });
+
+      // Store message in database
+      const messageData = {
+        conversationId: conversationId || "",
+        companyId: user.companyId,
+        messageGuid: response.data.guid,
+        chatGuid: targetChatGuid,
+        text,
+        fromMe: true,
+        status: "sent" as const,
+        isImessage: true,
+        hasAttachments: false,
+        dateSent: new Date(),
+      };
+
+      // If conversation doesn't exist, create it
+      if (!conversationId) {
+        const newConversation = await storage.createImessageConversation({
+          companyId: user.companyId,
+          chatGuid: targetChatGuid,
+          status: "active",
+          isPinned: false,
+          isGroup: false,
+          isImessage: true,
+          lastMessageText: text,
+          lastMessageAt: new Date(),
+          lastMessageFromMe: true,
+          unreadCount: 0,
+        });
+        messageData.conversationId = newConversation.id;
+      }
+
+      const message = await storage.createImessageMessage(messageData);
+
+      // Update conversation's last message
+      if (conversationId) {
+        await storage.updateImessageConversation(conversationId, user.companyId, {
+          lastMessageText: text,
+          lastMessageAt: new Date(),
+          lastMessageFromMe: true,
+        });
+      }
+
+      res.json({ message });
+    } catch (error: any) {
+      console.error("Error sending iMessage:", error);
+      res.status(500).json({ message: "Failed to send message", error: error.message });
+    }
+  });
+
+  // POST /api/imessage/webhook - Receive incoming messages from BlueBubbles
+  app.post("/api/imessage/webhook", async (req: Request, res: Response) => {
+    try {
+      // Validate webhook secret
+      const webhookSecret = req.headers['x-webhook-secret'] as string;
+      
+      if (!webhookSecret) {
+        return res.status(401).json({ message: "Missing webhook secret" });
+      }
+      
+      // Find company by webhook secret
+      const allSettings = await storage.getAllCompanySettings();
+      const companySettings = allSettings.find((s: any) => {
+        const imessageSettings = s.imessageSettings as { webhookSecret?: string };
+        return imessageSettings?.webhookSecret === webhookSecret;
+      });
+
+      if (!companySettings) {
+        return res.status(401).json({ message: "Invalid webhook secret" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(companySettings.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled" });
+      }
+
+      const { type, data } = req.body;
+
+      // Handle new message
+      if (type === "new-message") {
+        const messageData = data;
+        
+        // Find or create conversation
+        let conversation = await storage.findImessageConversationByChatGuid(
+          companySettings.companyId,
+          messageData.chatGuid
+        );
+
+        if (!conversation) {
+          conversation = await storage.createImessageConversation({
+            companyId: companySettings.companyId,
+            chatGuid: messageData.chatGuid,
+            displayName: messageData.handle?.displayName,
+            contactPhone: messageData.handle?.address,
+            status: "active",
+            isPinned: false,
+            isGroup: false,
+            isImessage: messageData.service === "iMessage",
+            lastMessageText: messageData.text,
+            lastMessageAt: new Date(messageData.dateCreated),
+            lastMessageFromMe: messageData.isFromMe,
+            unreadCount: messageData.isFromMe ? 0 : 1,
+          });
+        } else {
+          // Update conversation
+          await storage.updateImessageConversation(conversation.id, companySettings.companyId, {
+            lastMessageText: messageData.text,
+            lastMessageAt: new Date(messageData.dateCreated),
+            lastMessageFromMe: messageData.isFromMe,
+            unreadCount: messageData.isFromMe ? conversation.unreadCount : conversation.unreadCount + 1,
+          });
+        }
+
+        // Create message
+        await storage.createImessageMessage({
+          conversationId: conversation.id,
+          companyId: companySettings.companyId,
+          messageGuid: messageData.guid,
+          chatGuid: messageData.chatGuid,
+          text: messageData.text,
+          subject: messageData.subject,
+          fromMe: messageData.isFromMe,
+          senderHandle: messageData.handle?.address,
+          senderName: messageData.handle?.displayName,
+          status: "sent",
+          isImessage: messageData.service === "iMessage",
+          hasAttachments: messageData.hasAttachments || false,
+          attachments: messageData.attachments || [],
+          dateSent: new Date(messageData.dateCreated),
+          dateRead: messageData.dateRead ? new Date(messageData.dateRead) : undefined,
+          dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : undefined,
+        });
+      }
+
+      // Handle read receipt
+      if (type === "read-receipt") {
+        const { messageGuid, dateRead } = data;
+        await storage.updateImessageMessageByGuid(
+          companySettings.companyId,
+          messageGuid,
+          {
+            dateRead: new Date(dateRead),
+            status: "read",
+          }
+        );
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error processing iMessage webhook:", error);
+      res.status(500).json({ message: "Failed to process webhook" });
+    }
+  });
+
+  // PATCH /api/imessage/conversations/:id - Update conversation (mark as read, pin, etc.)
+  app.patch("/api/imessage/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.companyHasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.status(403).json({ message: "iMessage feature not enabled for this company" });
+      }
+
+      const { id } = req.params;
+      const updates = req.body;
+
+      // If marking as read, also mark in BlueBubbles
+      if (updates.unreadCount === 0) {
+        const conversation = await storage.getImessageConversation(id, user.companyId);
+        if (conversation) {
+          const settings = await storage.getCompanySettings(user.companyId);
+          if (settings) {
+            const { BlueBubblesClient } = await import('./bluebubbles');
+            const client = BlueBubblesClient.createFromSettings(settings);
+            if (client) {
+              try {
+                await client.markAsRead(conversation.chatGuid);
+              } catch (error) {
+                console.error("Error marking as read in BlueBubbles:", error);
+              }
+            }
+          }
+        }
+      }
+
+      const updated = await storage.updateImessageConversation(id, user.companyId, updates);
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating iMessage conversation:", error);
+      res.status(500).json({ message: "Failed to update conversation" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time chat updates with session validation
