@@ -345,13 +345,12 @@ export async function fetchMarketplacePlans(
   const targetYear = yearOverride || new Date().getFullYear();
   console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, PageSize ${pageSize}, Year ${targetYear}`);
   
-  // Step 1: Fetch household eligibility to get household_aptc
+  // Skip eligibility endpoint - let /plans/search calculate APTC automatically
+  // The /plans/search endpoint will calculate APTC based on aptc_eligible: true
+  console.log('[CMS_MARKETPLACE] 📊 Skipping eligibility endpoint - letting /plans/search calculate APTC');
   let eligibility = null;
   
-  console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
-  eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
-  
-  // Step 2: CRITICAL FIX - Keep fetching CMS pages until we have enough filtered results
+  // CRITICAL FIX - Keep fetching CMS pages until we have enough filtered results
   // OR we've exhausted all available CMS data
   const PLANS_PER_API_PAGE = 10; // CMS API hard limit
   console.log('[CMS_MARKETPLACE] 📄 Step 2: Fetching and filtering plans from CMS...');
