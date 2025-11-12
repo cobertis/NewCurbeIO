@@ -1514,10 +1514,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       
-      // Use BlueBubbles client to send message - BlueBubbles will notify us via webhook
+      // Use BlueBubbles client to send message
       const filePaths: string[] = [];
+      let sendResult: any;
+      
       try {
-        // Step 1: Send text message first (if exists)
+        // Step 1: Send text message first (if exists) and capture response
         if (text && text.trim()) {
           const sendPayload: any = {
             chatGuid: conversation.chatGuid,
@@ -1533,36 +1535,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
           
           console.log(`[iMessage] Sending text message via BlueBubbles`);
-          await blueBubblesClient.sendMessage(sendPayload);
+          sendResult = await blueBubblesClient.sendMessage(sendPayload);
+          console.log(`[iMessage] BlueBubbles response:`, sendResult);
         }
         
         // Step 2: Send each attachment one by one
+        const attachmentMetadata: any[] = [];
         for (const file of uploadedFiles) {
           filePaths.push(file.path);
           
           console.log(`[iMessage] Sending attachment: ${file.originalname}`);
-          await blueBubblesClient.sendAttachment(
+          const attachmentResult = await blueBubblesClient.sendAttachment(
             conversation.chatGuid,
             file.path
           );
+          
+          // If no text message was sent, use attachment result as primary
+          if (!sendResult) {
+            sendResult = attachmentResult;
+          }
+          
+          attachmentMetadata.push({
+            filename: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size
+          });
         }
         
-        // Create message in database immediately for optimistic update reconciliation
+        // Create message in database with CORRECT schema fields
         const newMessage = await storage.createImessageMessage({
-          companyId: user.companyId, // REQUIRED field that was missing
+          companyId: user.companyId,
           conversationId: conversation.id,
-          guid: clientGuid,
+          messageGuid: sendResult?.data?.guid || clientGuid, // Use BlueBubbles GUID or fallback to clientGuid
+          chatGuid: sendResult?.data?.chatGuid || conversation.chatGuid,
           text: text || '',
-          isFromMe: true,
-          dateCreated: new Date(),
-          dateSent: new Date(),
-          dateDelivered: null,
-          dateRead: null,
-          senderAddress: conversation.participants[0] || '',
-          senderName: null,
+          fromMe: true, // Correct field name
+          status: 'sending',
           hasAttachments: uploadedFiles.length > 0,
-          effect: effect || null,
-          status: 'sending'
+          attachments: attachmentMetadata,
+          replyToGuid: replyToGuid || null,
+          expressiveType: effect || null,
+          dateSent: sendResult?.data?.dateCreated ? new Date(sendResult.data.dateCreated) : new Date(),
+          metadata: { clientGuid } // Store clientGuid for reconciliation
         });
         
         // Return success with the created message
