@@ -12,6 +12,9 @@ import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
 import twilio from "twilio";
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
 import { 
   insertUserSchema, 
   loginSchema, 
@@ -80,8 +83,10 @@ import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMe
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
 import fs from "fs";
+import { promises as fsPromises } from "fs";
 import crypto from "crypto";
 import multer from "multer";
+import ffmpeg from "fluent-ffmpeg";
 import "./types";
 import { initializeStripe, getStripeClient, type AuditAction } from "./types";
 import type Stripe from "stripe";
@@ -110,6 +115,59 @@ const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 // Security constants for iMessage attachments
 const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3'];
 const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// Verify ffmpeg is available at startup
+(async () => {
+  try {
+    await execAsync('ffmpeg -version');
+    console.log('[FFmpeg] Binary found and ready');
+  } catch (error) {
+    console.error('[FFmpeg] NOT FOUND - audio conversion will fail!');
+    console.error('[FFmpeg] Install with: packager_tool install system ["ffmpeg"]');
+  }
+})();
+
+async function convertWebMToM4A(inputPath: string): Promise<string> {
+  // Use path.parse for safe filename handling
+  const parsed = path.parse(inputPath);
+  const outputPath = path.join(parsed.dir, `${parsed.name}.m4a`);
+  
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .noVideo()
+      .audioCodec('aac')
+      .audioBitrate('192k')
+      .audioChannels(2)
+      .toFormat('m4a')
+      .on('end', async () => {
+        console.log(`[FFmpeg] Conversion complete: ${outputPath}`);
+        
+        // Verify output exists and has content
+        try {
+          const stats = await fsPromises.stat(outputPath);
+          if (stats.size === 0) {
+            throw new Error('Output file is empty');
+          }
+        } catch (err: any) {
+          return reject(new Error(`Output validation failed: ${err.message}`));
+        }
+        
+        // Delete original WebM only after confirming M4A exists
+        try {
+          await fsPromises.unlink(inputPath);
+        } catch (err) {
+          console.warn(`[FFmpeg] Could not delete original: ${inputPath}`);
+        }
+        
+        resolve(outputPath);
+      })
+      .on('error', (err) => {
+        console.error(`[FFmpeg] Conversion error: ${err.message}`);
+        reject(new Error(`FFmpeg conversion failed: ${err.message}`));
+      })
+      .save(outputPath);
+  });
+}
 
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
   const user = await storage.getUser(userId);
@@ -1609,12 +1667,52 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Step 2: Send each attachment one by one
         for (const file of uploadedFiles) {
-          filePaths.push(file.path);
+          let actualFilePath = file.path;
+          let actualMimeType = file.mimetype;
+          let actualFilename = file.originalname;
           
-          console.log(`[iMessage] Sending attachment: ${file.originalname}`);
+          // Check if this is a WebM audio file that needs conversion
+          const isWebMAudio = file.mimetype === 'audio/webm' || 
+                             (file.originalname && file.originalname.toLowerCase().endsWith('.webm'));
+          
+          if (isWebMAudio) {
+            console.log(`[iMessage] Converting WebM audio to M4A: ${file.originalname}`);
+            try {
+              const convertedPath = await convertWebMToM4A(file.path);
+              
+              // Update file references
+              actualFilePath = convertedPath;
+              actualMimeType = 'audio/mp4';
+              actualFilename = path.basename(convertedPath); // Use actual converted filename
+              
+              console.log(`[iMessage] Conversion successful: ${actualFilename}`);
+            } catch (conversionError: any) {
+              console.error(`[iMessage] Audio conversion failed for ${file.originalname}:`, conversionError);
+              
+              // Clean up original file
+              try {
+                fs.unlinkSync(file.path);
+              } catch (cleanupErr) {
+                console.error(`[iMessage] Failed to cleanup ${file.path}:`, cleanupErr);
+              }
+              
+              // Mark message as failed
+              await storage.updateImessageMessageByGuid(user.companyId, clientGuid, {
+                status: 'failed'
+              });
+              
+              return res.status(500).json({ 
+                error: `Audio conversion failed: ${conversionError.message}` 
+              });
+            }
+          }
+          
+          filePaths.push(actualFilePath);
+          
+          console.log(`[iMessage] Sending attachment: ${actualFilename} (${actualMimeType})`);
           const attachmentResult = await blueBubblesClient.sendAttachment(
             conversation.chatGuid,
-            file.path,
+            actualFilePath,
             clientGuid // Send clientGuid for webhook reconciliation
           );
           
