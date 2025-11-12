@@ -683,6 +683,11 @@ async function fetchSinglePage(
 
     const data: MarketplaceApiResponse = await response.json();
     
+    // Log what CMS API actually returns
+    console.log('[CMS_MARKETPLACE] 📥 CMS API Response Keys:', Object.keys(data));
+    console.log('[CMS_MARKETPLACE] 📥 household_aptc from API:', data.household_aptc);
+    console.log('[CMS_MARKETPLACE] 📥 household_csr from API:', data.household_csr);
+    
     // Add request metadata for transparency
     data.request_data = {
       household_income: quoteData.householdIncome,
