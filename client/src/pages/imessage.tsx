@@ -204,7 +204,7 @@ export default function IMessagePage() {
       data.attachments?.forEach(file => formData.append('attachments', file));
 
       // Use fetch directly for FormData uploads
-      const response = await fetch('/api/imessage/messages', {
+      const response = await fetch('/api/imessage/messages/send', {
         method: 'POST',
         body: formData,
         credentials: 'include'
