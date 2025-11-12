@@ -175,40 +175,43 @@ export async function fetchHouseholdEligibility(
   // CRITICAL FIX: Use effective date for age calculation (same as fetchSinglePage)
   const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
   
-  // Build people array using ONLY the minimal required fields
+  // Build people array with correct CMS API fields
   const people = [];
   
-  // Add client - calculate age against effective date
+  // Add client with Medicaid-denial attestation
   const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
     age: clientAge,
-    aptc_eligible: true,
+    is_applicant: true,
+    medicaid_chip_determination: "Denied",
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
   });
   
-  // Add spouses - calculate age against effective date
+  // Add spouses with Medicaid-denial attestation
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const isApplicant = spouse.aptc_eligible !== false;
       const spouseAge = calculateAge(spouse.dateOfBirth, effectiveDateForAge);
       people.push({
         age: spouseAge,
-        aptc_eligible: isApplicant,
+        is_applicant: isApplicant,
+        medicaid_chip_determination: isApplicant ? "Denied" : undefined,
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
       });
     });
   }
   
-  // Add dependents - calculate age against effective date
+  // Add dependents with Medicaid-denial attestation
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
       const dependentAge = calculateAge(dependent.dateOfBirth, effectiveDateForAge);
       people.push({
         age: dependentAge,
-        aptc_eligible: needsInsurance,
+        is_applicant: needsInsurance,
+        medicaid_chip_determination: needsInsurance ? "Denied" : undefined,
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
       });
@@ -342,45 +345,11 @@ export async function fetchMarketplacePlans(
   const targetYear = yearOverride || new Date().getFullYear();
   console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, PageSize ${pageSize}, Year ${targetYear}`);
   
-  // Step 1: Fetch household eligibility FIRST to get household_aptc (skip if aptcOverride provided)
+  // Step 1: Fetch household eligibility to get household_aptc
   let eligibility = null;
-  let finalAptcOverride = aptcOverride;
   
-  if (aptcOverride !== undefined) {
-    console.log(`[CMS_MARKETPLACE] 📊 Step 1: Using APTC override ($${aptcOverride}) - skipping eligibility calculation`);
-  } else {
-    console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
-    eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
-    
-    // CRITICAL FIX: If eligibility returns $0 APTC due to Medicaid eligibility,
-    // but we have applicants (Medicaid was DENIED), recalculate with adjusted income
-    if (eligibility && eligibility.aptc === 0) {
-      const { getPovertyGuidelineForHouseholdSize } = await import('./hhs-poverty-guidelines.js');
-      const applicantCount = [
-        quoteData.client,
-        ...(quoteData.spouses?.filter(s => s.aptc_eligible !== false) || []),
-        ...(quoteData.dependents?.filter(d => d.isApplicant !== false) || [])
-      ].length;
-      
-      const fplForHousehold = await getPovertyGuidelineForHouseholdSize(applicantCount, targetYear, quoteData.state);
-      const medicaidThreshold = Math.round(fplForHousehold * 1.38); // 138% FPL
-      
-      if (quoteData.householdIncome < medicaidThreshold && applicantCount > 0) {
-        console.log(`[CMS_MARKETPLACE] 🔧 APTC is $0 due to Medicaid eligibility, but Medicaid was DENIED (applicants exist)`);
-        console.log(`[CMS_MARKETPLACE] 🔧 Recalculating APTC with adjusted income (138% FPL + $100)`);
-        
-        const adjustedIncome = medicaidThreshold + 100;
-        const adjustedQuoteData = { ...quoteData, householdIncome: adjustedIncome };
-        const adjustedEligibility = await fetchHouseholdEligibility(adjustedQuoteData, yearOverride);
-        
-        if (adjustedEligibility && adjustedEligibility.aptc > 0) {
-          console.log(`[CMS_MARKETPLACE] ✅ APTC recalculated: $${adjustedEligibility.aptc} (using aptc_override)`);
-          finalAptcOverride = adjustedEligibility.aptc;
-          eligibility = adjustedEligibility; // Update CSR too
-        }
-      }
-    }
-  }
+  console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching household eligibility (APTC/CSR)...');
+  eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
   
   // Step 2: CRITICAL FIX - Keep fetching CMS pages until we have enough filtered results
   // OR we've exhausted all available CMS data
@@ -402,7 +371,7 @@ export async function fetchMarketplacePlans(
     cmsFetchCount++;
     console.log(`[CMS_MARKETPLACE] 📄 Fetching CMS batch #${cmsFetchCount} (offset=${cmsOffset})...`);
     
-    const apiResponse = await fetchSinglePage(quoteData, cmsOffset, yearOverride, filters, aptcOverride);
+    const apiResponse = await fetchSinglePage(quoteData, cmsOffset, yearOverride, filters);
     
     if (apiResponse.plans && apiResponse.plans.length > 0) {
       // Add to all CMS plans collection
