@@ -23,7 +23,7 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle
+  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare
 } from "lucide-react";
 import type { User } from "@shared/schema";
 
@@ -100,7 +100,9 @@ const MESSAGE_EFFECTS = {
   invisible: { name: "Invisible Ink", className: "animate-invisible" },
   echo: { name: "Echo", className: "animate-echo" },
   spotlight: { name: "Spotlight", className: "animate-spotlight" }
-};
+} as const;
+
+type MessageEffectKey = keyof typeof MESSAGE_EFFECTS;
 
 const TAPBACK_REACTIONS = [
   { emoji: '❤️', label: 'Love' },
@@ -124,7 +126,7 @@ export default function IMessagePage() {
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [conversationSearch, setConversationSearch] = useState("");
-  const [selectedEffect, setSelectedEffect] = useState<string | null>(null);
+  const [selectedEffect, setSelectedEffect] = useState<MessageEffectKey | null>(null);
   const [replyingToMessage, setReplyingToMessage] = useState<ImessageMessage | null>(null);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -134,14 +136,60 @@ export default function IMessagePage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
 
-  // WebSocket setup
-  const { sendMessage: wsSendMessage, isConnected } = useWebSocket({
-    onMessage: (event) => {
-      const data = JSON.parse(event.data);
-      handleWebSocketMessage(data);
+  // WebSocket message handler - define before using in useWebSocket
+  const handleWebSocketMessage = useCallback((message: any) => {
+    // Handle connection status
+    if (message.type === 'connected') {
+      setIsConnected(true);
+      return;
     }
-  });
+    if (message.type === 'disconnected') {
+      setIsConnected(false);
+      return;
+    }
+
+    switch (message.type) {
+      case 'imessage:new-message':
+        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', message.conversationId] });
+        queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+        if (soundEnabled && message.conversationId === selectedConversationId) {
+          playSound('receive');
+        }
+        break;
+      case 'imessage:typing-start':
+        setTypingUsers(prev => new Map(prev).set(message.userId, {
+          conversationId: message.conversationId,
+          userName: message.userName,
+          isTyping: true
+        }));
+        break;
+      case 'imessage:typing-stop':
+        setTypingUsers(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(message.userId);
+          return newMap;
+        });
+        break;
+      case 'imessage:message-read':
+        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', message.conversationId] });
+        break;
+      case 'imessage:reaction-added':
+        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', message.conversationId] });
+        break;
+    }
+  }, [selectedConversationId, soundEnabled, queryClient]);
+
+  // WebSocket setup - use the WebSocket instance directly
+  const ws = useWebSocket(handleWebSocketMessage);
+
+  // Helper function to send WebSocket messages
+  const wsSendMessage = useCallback((data: any) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(data));
+    }
+  }, [ws]);
 
   // Queries
   const { data: conversations, isLoading: conversationsLoading } = useQuery<ImessageConversation[]>({
@@ -165,10 +213,19 @@ export default function IMessagePage() {
       if (data.replyToMessageId) formData.append('replyToMessageId', data.replyToMessageId);
       data.attachments?.forEach(file => formData.append('attachments', file));
 
-      return apiRequest('/api/imessage/messages', {
+      // Use fetch directly for FormData uploads
+      const response = await fetch('/api/imessage/messages', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
+      
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to send message');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       setMessageText("");
@@ -190,11 +247,7 @@ export default function IMessagePage() {
 
   const addReactionMutation = useMutation({
     mutationFn: async ({ messageId, reaction }: { messageId: string; reaction: string }) => {
-      return apiRequest(`/api/imessage/messages/${messageId}/reaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reaction })
-      });
+      return apiRequest('POST', `/api/imessage/messages/${messageId}/reaction`, { reaction });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', selectedConversationId] });
@@ -203,9 +256,7 @@ export default function IMessagePage() {
 
   const deleteMessageMutation = useMutation({
     mutationFn: async (messageId: string) => {
-      return apiRequest(`/api/imessage/messages/${messageId}`, {
-        method: 'DELETE'
-      });
+      return apiRequest('DELETE', `/api/imessage/messages/${messageId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', selectedConversationId] });
@@ -216,47 +267,12 @@ export default function IMessagePage() {
 
   const markAsReadMutation = useMutation({
     mutationFn: async (conversationId: string) => {
-      return apiRequest(`/api/imessage/conversations/${conversationId}/read`, {
-        method: 'POST'
-      });
+      return apiRequest('POST', `/api/imessage/conversations/${conversationId}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
     }
   });
-
-  // WebSocket message handler
-  const handleWebSocketMessage = useCallback((data: any) => {
-    switch (data.type) {
-      case 'imessage:new-message':
-        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', data.conversationId] });
-        queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
-        if (soundEnabled && data.conversationId === selectedConversationId) {
-          playSound('receive');
-        }
-        break;
-      case 'imessage:typing-start':
-        setTypingUsers(prev => new Map(prev).set(data.userId, {
-          conversationId: data.conversationId,
-          userName: data.userName,
-          isTyping: true
-        }));
-        break;
-      case 'imessage:typing-stop':
-        setTypingUsers(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(data.userId);
-          return newMap;
-        });
-        break;
-      case 'imessage:message-read':
-        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', data.conversationId] });
-        break;
-      case 'imessage:reaction-added':
-        queryClient.invalidateQueries({ queryKey: ['/api/imessage/messages', data.conversationId] });
-        break;
-    }
-  }, [selectedConversationId, soundEnabled, queryClient]);
 
   // Helper functions
   const playSound = (type: 'send' | 'receive') => {
@@ -903,7 +919,7 @@ export default function IMessagePage() {
       />
 
       {/* Custom CSS for message effects */}
-      <style jsx>{`
+      <style>{`
         @keyframes slam {
           0% { transform: scale(1.5) rotate(-5deg); opacity: 0; }
           50% { transform: scale(1.2) rotate(2deg); }
