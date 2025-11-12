@@ -22382,8 +22382,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } || {};
 
       // Generate webhook secret if not exists
-      const crypto = require('crypto');
-      const webhookSecret = currentImessageSettings.webhookSecret || crypto.randomBytes(32).toString('hex');
+      const { randomBytes } = await import('crypto');
+      const webhookSecret = currentImessageSettings.webhookSecret || randomBytes(32).toString('hex');
 
       const updatedImessageSettings = {
         serverUrl: serverUrl || currentImessageSettings.serverUrl || "",
