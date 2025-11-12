@@ -238,7 +238,7 @@ export function AppSidebar() {
 
   // Get company features for feature gating
   const { data: featuresData } = useQuery<{ features: Array<{ key: string }> }>({
-    queryKey: ["/api/companies", userData?.user?.companyId, "features"],
+    queryKey: [`/api/companies/${userData?.user?.companyId}/features`],
     enabled: !!userData?.user?.companyId,
   });
 
