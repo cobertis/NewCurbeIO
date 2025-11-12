@@ -1837,7 +1837,7 @@ export default function IMessagePage() {
             {recordingState === 'recording' && (
               <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
                 {/* Progressive waveform bars - 100 bars showing recording progress */}
-                <div className="flex-1 flex items-center gap-px h-10" key={waveformRenderKey}>
+                <div className="flex-1 flex items-center gap-0.5 h-10" key={waveformRenderKey}>
                   {waveformBufferRef.current.map((value, i) => {
                     // For recordings under 100 samples: show progressive fill left-to-right
                     // For longer recordings: all bars show data (circular buffer effect)
@@ -1850,7 +1850,7 @@ export default function IMessagePage() {
                     return (
                       <div
                         key={`recording-bar-${i}`}
-                        className="flex-1 bg-red-500 rounded-full transition-all duration-75"
+                        className="w-1 bg-red-500 rounded-full transition-all duration-75"
                         style={{ 
                           height: `${height * 100}%`,
                           opacity: hasData ? 1 : 0.3
@@ -1906,7 +1906,7 @@ export default function IMessagePage() {
                 </Button>
 
                 {/* Static waveform bars - 100 bars showing captured recording */}
-                <div className="flex-1 flex items-center gap-px h-10">
+                <div className="flex-1 flex items-center gap-0.5 h-10">
                   {Array.from({ length: 100 }).map((_, i) => {
                     // For recordings under 100 samples: only show captured bars
                     // For longer recordings: all bars show data (circular buffer)
@@ -1920,7 +1920,7 @@ export default function IMessagePage() {
                     return (
                       <div
                         key={`preview-bar-${i}`}
-                        className="flex-1 bg-gray-600 dark:bg-gray-500 rounded-full"
+                        className="w-1 bg-gray-600 dark:bg-gray-500 rounded-full"
                         style={{ 
                           height: `${height * 100}%`,
                           opacity: hasData ? 1 : 0.3
