@@ -617,13 +617,27 @@ export default function IMessagePage() {
                                     {/* Attachments */}
                                     {message.hasAttachments && message.attachments.length > 0 && (
                                       <div className="mt-2 space-y-2">
-                                        {message.attachments.map(attachment => (
+                                        {message.attachments.map(attachment => {
+                                          console.log('[iMessage] Rendering attachment:', {
+                                            id: attachment.id,
+                                            fileName: attachment.fileName,
+                                            url: attachment.url,
+                                            mimeType: attachment.mimeType
+                                          });
+                                          return (
                                           <div key={attachment.id} className="rounded-lg overflow-hidden">
                                             {attachment.mimeType.startsWith('image/') ? (
                                               <img 
                                                 src={attachment.url} 
                                                 alt={attachment.fileName}
                                                 className="max-w-full rounded-lg"
+                                                onError={(e) => {
+                                                  console.error('[iMessage] Image failed to load:', attachment.url);
+                                                  console.error('[iMessage] Error:', e);
+                                                }}
+                                                onLoad={() => {
+                                                  console.log('[iMessage] Image loaded successfully:', attachment.url);
+                                                }}
                                               />
                                             ) : (
                                               <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
@@ -635,7 +649,8 @@ export default function IMessagePage() {
                                               </div>
                                             )}
                                           </div>
-                                        ))}
+                                          );
+                                        })}
                                       </div>
                                     )}
 
