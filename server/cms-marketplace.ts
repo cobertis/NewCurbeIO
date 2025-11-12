@@ -175,43 +175,43 @@ export async function fetchHouseholdEligibility(
   // CRITICAL FIX: Use effective date for age calculation (same as fetchSinglePage)
   const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
   
-  // Build people array with correct CMS API fields
+  // Build people array - pass data exactly as-is to CMS API
   const people = [];
   
-  // Add client with Medicaid-denial attestation
+  // Add client
   const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
     age: clientAge,
-    is_applicant: true,
-    medicaid_chip_determination: "Denied",
+    aptc_eligible: true,
+    has_mec: false,
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
   });
   
-  // Add spouses with Medicaid-denial attestation
+  // Add spouses
   if (quoteData.spouses && quoteData.spouses.length > 0) {
     quoteData.spouses.forEach(spouse => {
       const isApplicant = spouse.aptc_eligible !== false;
       const spouseAge = calculateAge(spouse.dateOfBirth, effectiveDateForAge);
       people.push({
         age: spouseAge,
-        is_applicant: isApplicant,
-        medicaid_chip_determination: isApplicant ? "Denied" : undefined,
+        aptc_eligible: isApplicant,
+        has_mec: false,
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
       });
     });
   }
   
-  // Add dependents with Medicaid-denial attestation
+  // Add dependents
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
       const dependentAge = calculateAge(dependent.dateOfBirth, effectiveDateForAge);
       people.push({
         age: dependentAge,
-        is_applicant: needsInsurance,
-        medicaid_chip_determination: needsInsurance ? "Denied" : undefined,
+        aptc_eligible: needsInsurance,
+        has_mec: false,
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
       });
