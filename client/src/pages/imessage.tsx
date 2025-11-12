@@ -153,7 +153,7 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
     <>
       {/* Video thumbnail with play button - iMessage style */}
       <div 
-        className="relative cursor-pointer"
+        className="relative group cursor-pointer"
         onClick={() => setIsOpen(true)}
         data-testid="video-thumbnail"
       >
@@ -166,9 +166,9 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
         />
         
         {/* Play button overlay - iMessage style (smaller, more subtle) */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white/80 dark:bg-gray-800/80 rounded-full p-2 shadow-lg">
-            <svg className="h-5 w-5 text-gray-700 dark:text-white pl-0.5" fill="currentColor" viewBox="0 0 24 24">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="bg-white/60 dark:bg-gray-800/60 rounded-full p-1.5 shadow-md">
+            <svg className="h-3.5 w-3.5 text-gray-700 dark:text-white pl-0.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
@@ -248,10 +248,10 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
           style={{ maxHeight: '250px', maxWidth: '200px' }}
         />
         {/* Eye icon overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all rounded-2xl flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all rounded-2xl flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="bg-white dark:bg-gray-800 rounded-full p-2 shadow-lg">
-              <Eye className="h-5 w-5 text-gray-700 dark:text-gray-200" />
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-full p-1.5 shadow-md">
+              <Eye className="h-3.5 w-3.5 text-gray-700 dark:text-gray-200" />
             </div>
           </div>
         </div>
