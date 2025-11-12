@@ -1140,21 +1140,62 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Stream attachment from BlueBubbles
       const attachmentResponse = await blueBubblesClient.getAttachmentStream(guid);
       
-      // Forward headers
+      console.log('[iMessage Attachment] BlueBubbles response status:', attachmentResponse.status);
+      console.log('[iMessage Attachment] Headers:', {
+        contentType: attachmentResponse.headers.get('content-type'),
+        contentLength: attachmentResponse.headers.get('content-length'),
+        contentDisposition: attachmentResponse.headers.get('content-disposition')
+      });
+      
+      if (!attachmentResponse.ok) {
+        console.error('[iMessage Attachment] BlueBubbles returned non-OK status:', attachmentResponse.status);
+        return res.status(attachmentResponse.status).json({ message: 'Failed to fetch attachment from BlueBubbles' });
+      }
+      
+      // Forward headers from BlueBubbles response
       const contentType = attachmentResponse.headers.get('content-type');
       const contentLength = attachmentResponse.headers.get('content-length');
+      const contentDisposition = attachmentResponse.headers.get('content-disposition');
       
-      if (contentType) res.setHeader('Content-Type', contentType);
-      if (contentLength) res.setHeader('Content-Length', contentLength);
+      if (contentType) {
+        res.setHeader('Content-Type', contentType);
+        console.log('[iMessage Attachment] Set Content-Type:', contentType);
+      } else {
+        // Fallback to image/png for images if header missing
+        res.setHeader('Content-Type', 'image/png');
+        console.log('[iMessage Attachment] No Content-Type from BlueBubbles, using fallback: image/png');
+      }
+      
+      if (contentLength) {
+        res.setHeader('Content-Length', contentLength);
+        console.log('[iMessage Attachment] Set Content-Length:', contentLength);
+      }
+      
+      if (contentDisposition) {
+        res.setHeader('Content-Disposition', contentDisposition);
+      }
+      
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       
-      // Stream the response using Node.js Readable.fromWeb (Node 18+)
-      if (attachmentResponse.body) {
-        const { Readable } = await import('stream');
-        const nodeStream = Readable.fromWeb(attachmentResponse.body as any);
-        nodeStream.pipe(res);
-      } else {
+      // Stream the response using pipeline for better error handling
+      if (!attachmentResponse.body) {
         throw new Error('No response body from BlueBubbles');
+      }
+      
+      const { Readable, pipeline } = await import('stream');
+      const { promisify } = await import('util');
+      const pipelineAsync = promisify(pipeline);
+      
+      try {
+        const nodeStream = Readable.fromWeb(attachmentResponse.body as any);
+        await pipelineAsync(nodeStream, res);
+        console.log('[iMessage Attachment] Successfully streamed attachment:', guid);
+      } catch (pipelineError: any) {
+        console.error('[iMessage Attachment] Pipeline error:', pipelineError);
+        // Don't try to send JSON response if headers already sent
+        if (!res.headersSent) {
+          return res.status(500).json({ message: 'Failed to stream attachment' });
+        }
       }
       
     } catch (error: any) {
