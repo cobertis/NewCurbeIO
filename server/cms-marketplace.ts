@@ -689,8 +689,9 @@ async function fetchSinglePage(
       household_income: quoteData.householdIncome,
       people_count: people.length,
       people: people.map((p: any) => ({
-        age: p.age,
+        dob: p.dob,
         gender: p.gender,
+        relationship: p.relationship,
         tobacco: p.uses_tobacco,
         aptc_eligible: p.aptc_eligible
       })),
