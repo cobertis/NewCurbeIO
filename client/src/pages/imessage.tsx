@@ -1374,13 +1374,17 @@ export default function IMessagePage() {
                                       )}>
                                         {message.attachments.map(attachment => {
                                           // WebM files can be audio-only but BlueBubbles returns them as video/webm
-                                          // Detect audio by checking if width/height are 0 or file is small
+                                          // Detect audio by:
+                                          // 1. Explicit width/height === 0 (BlueBubbles marks audio this way)
+                                          // 2. Missing width/height AND small file size (< 50KB)
+                                          // 3. Missing dimensions defaults to undefined, so use == to catch both 0 and undefined
+                                          const hasNoDimensions = attachment.width == 0 || attachment.height == 0 || 
+                                            (attachment.width === undefined && attachment.height === undefined);
                                           const isAudioWebm = attachment.mimeType === 'video/webm' && 
-                                            (attachment.width === 0 || attachment.height === 0 || 
-                                             attachment.fileSize < 100000); // < 100KB is likely audio
+                                            (hasNoDimensions || attachment.fileSize < 50000);
                                           
                                           return (
-                                            <div key={attachment.id}>
+                                            <div key={attachment.guid || attachment.url}>
                                               {attachment.mimeType.startsWith('image/') ? (
                                                 <ImessageAttachmentImage 
                                                   url={attachment.url}

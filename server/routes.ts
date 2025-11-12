@@ -1078,8 +1078,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             } catch (createError: any) {
               // If duplicate key error, the message already exists (race condition)
               if (createError.code === '23505') {
-                console.log('[BlueBubbles Webhook] Message already exists (race condition), fetching existing message');
-                newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
+                console.log('[BlueBubbles Webhook] Message already exists (race condition), skipping broadcast');
+                // Skip the rest - don't broadcast duplicates
+                break;
               } else {
                 // Re-throw other errors
                 throw createError;
@@ -1087,7 +1088,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
           }
           
-          // Only proceed if we have a message (could be undefined if both create and fetch failed)
+          // Only proceed if we have a NEW message (not a duplicate)
           if (newMessage) {
             // Update conversation last message
             // CRITICAL: Convert dateSent from ISO string to Date object (mapper returns strings)

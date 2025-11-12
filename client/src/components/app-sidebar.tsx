@@ -59,6 +59,27 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import type { User, BulkvsThread } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 
+// Component to show unread iMessage count
+function ImessageUnreadBadge() {
+  const { data: conversations } = useQuery({
+    queryKey: ['/api/imessage/conversations'],
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+
+  const unreadCount = (conversations as any[])?.reduce((total, conv) => total + (conv.unreadCount || 0), 0) || 0;
+
+  if (unreadCount === 0) return null;
+
+  return (
+    <Badge 
+      variant="destructive" 
+      className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
+    >
+      {unreadCount > 99 ? '99+' : unreadCount}
+    </Badge>
+  );
+}
+
 // Menu items for superadmin (COMPLETE LIST)
 const superadminMenuItems = [
   {
@@ -548,6 +569,7 @@ export function AppSidebar() {
                         >
                           <MessageCircle className="h-5 w-5 shrink-0" />
                           <span className="flex-1">iMessage</span>
+                          <ImessageUnreadBadge />
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
