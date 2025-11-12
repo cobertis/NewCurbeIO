@@ -118,6 +118,8 @@ interface MessageAttachment {
   fileSize: number;
   url: string;
   thumbnailUrl?: string;
+  width?: number;
+  height?: number;
 }
 
 interface MessageReaction {
@@ -1370,30 +1372,38 @@ export default function IMessagePage() {
                                         "rounded-3xl overflow-hidden inline-block bg-gray-200 dark:bg-gray-700 flex flex-col gap-1 p-1.5",
                                         message.text ? "mt-2" : ""
                                       )}>
-                                        {message.attachments.map(attachment => (
-                                          <div key={attachment.id}>
-                                            {attachment.mimeType.startsWith('image/') ? (
-                                              <ImessageAttachmentImage 
-                                                url={attachment.url}
-                                                alt={attachment.fileName}
-                                              />
-                                            ) : attachment.mimeType.startsWith('video/') ? (
-                                              <ImessageAttachmentVideo 
-                                                url={attachment.url}
-                                                fileName={attachment.fileName}
-                                              />
-                                            ) : attachment.mimeType.startsWith('audio/') ? (
-                                              <ImessageAudioMessage
-                                                url={attachment.url}
-                                                fileName={attachment.fileName}
-                                              />
-                                            ) : (
-                                              <ImessageAttachmentFile 
-                                                attachment={attachment}
-                                              />
-                                            )}
-                                          </div>
-                                        ))}
+                                        {message.attachments.map(attachment => {
+                                          // WebM files can be audio-only but BlueBubbles returns them as video/webm
+                                          // Detect audio by checking if width/height are 0 or file is small
+                                          const isAudioWebm = attachment.mimeType === 'video/webm' && 
+                                            (attachment.width === 0 || attachment.height === 0 || 
+                                             attachment.fileSize < 100000); // < 100KB is likely audio
+                                          
+                                          return (
+                                            <div key={attachment.id}>
+                                              {attachment.mimeType.startsWith('image/') ? (
+                                                <ImessageAttachmentImage 
+                                                  url={attachment.url}
+                                                  alt={attachment.fileName}
+                                                />
+                                              ) : attachment.mimeType.startsWith('audio/') || isAudioWebm ? (
+                                                <ImessageAudioMessage
+                                                  url={attachment.url}
+                                                  fileName={attachment.fileName}
+                                                />
+                                              ) : attachment.mimeType.startsWith('video/') ? (
+                                                <ImessageAttachmentVideo 
+                                                  url={attachment.url}
+                                                  fileName={attachment.fileName}
+                                                />
+                                              ) : (
+                                                <ImessageAttachmentFile 
+                                                  attachment={attachment}
+                                                />
+                                              )}
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     )}
 
