@@ -159,17 +159,38 @@ export default function Companies() {
       }
       return response.json();
     },
-    onSuccess: async () => {
-      if (selectedCompany) {
-        await queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
-        await queryClient.refetchQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+    onMutate: async ({ companyId, featureId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/companies", companyId, "features"] });
+      
+      // Get current features
+      const previousFeatures = queryClient.getQueryData<{ features: Feature[] }>(["/api/companies", companyId, "features"]);
+      
+      // Get the feature details
+      const allFeatures = queryClient.getQueryData<{ features: Feature[] }>(["/api/features"]);
+      const featureToAdd = allFeatures?.features.find(f => f.id === featureId);
+      
+      // Optimistically update cache
+      if (previousFeatures && featureToAdd) {
+        queryClient.setQueryData(["/api/companies", companyId, "features"], {
+          features: [...previousFeatures.features, featureToAdd]
+        });
       }
+      
+      return { previousFeatures };
+    },
+    onSuccess: async (_, { companyId }) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "features"] });
       toast({
         title: "Feature Added",
         description: "The feature has been added to the company",
       });
     },
-    onError: () => {
+    onError: (_, { companyId }, context) => {
+      // Rollback on error
+      if (context?.previousFeatures) {
+        queryClient.setQueryData(["/api/companies", companyId, "features"], context.previousFeatures);
+      }
       toast({
         title: "Error",
         description: "Failed to add feature",
@@ -190,17 +211,34 @@ export default function Companies() {
       }
       return response.json();
     },
-    onSuccess: async () => {
-      if (selectedCompany) {
-        await queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
-        await queryClient.refetchQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+    onMutate: async ({ companyId, featureId }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/companies", companyId, "features"] });
+      
+      // Get current features
+      const previousFeatures = queryClient.getQueryData<{ features: Feature[] }>(["/api/companies", companyId, "features"]);
+      
+      // Optimistically update cache
+      if (previousFeatures) {
+        queryClient.setQueryData(["/api/companies", companyId, "features"], {
+          features: previousFeatures.features.filter(f => f.id !== featureId)
+        });
       }
+      
+      return { previousFeatures };
+    },
+    onSuccess: async (_, { companyId }) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "features"] });
       toast({
         title: "Feature Removed",
         description: "The feature has been removed from the company",
       });
     },
-    onError: () => {
+    onError: (_, { companyId }, context) => {
+      // Rollback on error
+      if (context?.previousFeatures) {
+        queryClient.setQueryData(["/api/companies", companyId, "features"], context.previousFeatures);
+      }
       toast({
         title: "Error",
         description: "Failed to remove feature",
