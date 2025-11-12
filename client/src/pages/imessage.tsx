@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -534,11 +535,11 @@ export default function IMessagePage() {
                 ))}
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {groupedMessages.map(group => (
                   <div key={group.date}>
-                    <div className="flex items-center justify-center my-4">
-                      <span className="px-3 py-1 text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-full">
+                    <div className="flex items-center justify-center my-3">
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
                         {formatDateSeparator(group.date)}
                       </span>
                     </div>
@@ -574,7 +575,7 @@ export default function IMessagePage() {
                               </div>
                             )}
                             
-                            <div className={cn("max-w-[70%] relative", message.isFromMe && "text-right")}>
+                            <div className={cn("max-w-[65%] relative", message.isFromMe && "text-right")}>
                               {/* Reply indicator */}
                               {replyToMessage && (
                                 <div className={cn(
@@ -586,129 +587,147 @@ export default function IMessagePage() {
                                 </div>
                               )}
 
-                              {/* Message bubble */}
-                              <div
-                                className={cn(
-                                  "relative inline-block px-4 py-2 rounded-2xl",
-                                  message.isFromMe
-                                    ? "bg-blue-500 text-white"
-                                    : "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100",
-                                  isFirstInGroup && isLastInGroup && "rounded-2xl",
-                                  isFirstInGroup && !isLastInGroup && (message.isFromMe ? "rounded-tr-md" : "rounded-tl-md"),
-                                  !isFirstInGroup && !isLastInGroup && (message.isFromMe ? "rounded-r-md" : "rounded-l-md"),
-                                  !isFirstInGroup && isLastInGroup && (message.isFromMe ? "rounded-br-md" : "rounded-bl-md"),
-                                  message.effectId && MESSAGE_EFFECTS[message.effectId]?.className,
-                                  isSelectionMode && selectedMessages.has(message.id) && "ring-2 ring-blue-400"
-                                )}
-                                onClick={() => {
-                                  if (isSelectionMode) {
-                                    setSelectedMessages(prev => {
-                                      const newSet = new Set(prev);
-                                      if (newSet.has(message.id)) {
-                                        newSet.delete(message.id);
-                                      } else {
-                                        newSet.add(message.id);
+                              {/* Message bubble with context menu */}
+                              <ContextMenu>
+                                <ContextMenuTrigger>
+                                  <div
+                                    className={cn(
+                                      "relative inline-block px-4 py-2.5 rounded-2xl",
+                                      message.isFromMe
+                                        ? "text-white"
+                                        : "text-black dark:text-gray-100",
+                                      isSelectionMode && selectedMessages.has(message.id) && "ring-2 ring-blue-400"
+                                    )}
+                                    style={message.isFromMe ? { backgroundColor: '#007AFF' } : { backgroundColor: '#E5E5EA' }}
+                                    onClick={() => {
+                                      if (isSelectionMode) {
+                                        setSelectedMessages(prev => {
+                                          const newSet = new Set(prev);
+                                          if (newSet.has(message.id)) {
+                                            newSet.delete(message.id);
+                                          } else {
+                                            newSet.add(message.id);
+                                          }
+                                          return newSet;
+                                        });
                                       }
-                                      return newSet;
-                                    });
-                                  }
-                                }}
-                                onContextMenu={(e) => {
-                                  e.preventDefault();
-                                  // Open context menu for reactions
-                                }}
-                              >
-                                {/* Message text */}
-                                <p className="break-words whitespace-pre-wrap">{message.text}</p>
-                                
-                                {/* Attachments */}
-                                {message.hasAttachments && message.attachments.length > 0 && (
-                                  <div className="mt-2 space-y-2">
-                                    {message.attachments.map(attachment => (
-                                      <div key={attachment.id} className="rounded-lg overflow-hidden">
-                                        {attachment.mimeType.startsWith('image/') ? (
-                                          <img 
-                                            src={attachment.url} 
-                                            alt={attachment.fileName}
-                                            className="max-w-full rounded-lg"
-                                          />
-                                        ) : (
-                                          <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
-                                            <FileText className="h-4 w-4" />
-                                            <span className="text-sm">{attachment.fileName}</span>
-                                            <Button size="icon" variant="ghost" className="h-6 w-6">
-                                              <Download className="h-3 w-3" />
-                                            </Button>
+                                    }}
+                                  >
+                                    {/* Message text */}
+                                    <p className="break-words whitespace-pre-wrap">{message.text}</p>
+                                    
+                                    {/* Attachments */}
+                                    {message.hasAttachments && message.attachments.length > 0 && (
+                                      <div className="mt-2 space-y-2">
+                                        {message.attachments.map(attachment => (
+                                          <div key={attachment.id} className="rounded-lg overflow-hidden">
+                                            {attachment.mimeType.startsWith('image/') ? (
+                                              <img 
+                                                src={attachment.url} 
+                                                alt={attachment.fileName}
+                                                className="max-w-full rounded-lg"
+                                              />
+                                            ) : (
+                                              <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
+                                                <FileText className="h-4 w-4" />
+                                                <span className="text-sm">{attachment.fileName}</span>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6">
+                                                  <Download className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            )}
                                           </div>
-                                        )}
+                                        ))}
                                       </div>
-                                    ))}
-                                  </div>
-                                )}
+                                    )}
 
-                                {/* Reactions */}
-                                {message.reactions.length > 0 && (
-                                  <div className="absolute -bottom-3 right-2 flex gap-1">
-                                    {Array.from(new Set(message.reactions.map(r => r.reaction))).map(reaction => (
-                                      <span
-                                        key={reaction}
-                                        className="bg-white dark:bg-gray-700 rounded-full px-1.5 py-0.5 text-xs shadow-sm border border-gray-200 dark:border-gray-600"
-                                      >
-                                        {reaction}
-                                        {message.reactions.filter(r => r.reaction === reaction).length > 1 && (
-                                          <span className="ml-1 text-gray-500">
-                                            {message.reactions.filter(r => r.reaction === reaction).length}
+                                    {/* Reactions */}
+                                    {message.reactions.length > 0 && (
+                                      <div className="absolute -bottom-3 right-2 flex gap-1">
+                                        {Array.from(new Set(message.reactions.map(r => r.reaction))).map(reaction => (
+                                          <span
+                                            key={reaction}
+                                            className="bg-white dark:bg-gray-700 rounded-full px-1.5 py-0.5 text-xs shadow-sm border border-gray-200 dark:border-gray-600"
+                                          >
+                                            {reaction}
+                                            {message.reactions.filter(r => r.reaction === reaction).length > 1 && (
+                                              <span className="ml-1 text-gray-500">
+                                                {message.reactions.filter(r => r.reaction === reaction).length}
+                                              </span>
+                                            )}
                                           </span>
-                                        )}
-                                      </span>
-                                    ))}
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
+                                </ContextMenuTrigger>
+                                <ContextMenuContent className="w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                                  {/* Tapback submenu */}
+                                  <ContextMenuSub>
+                                    <ContextMenuSubTrigger className="cursor-pointer">
+                                      Tapback
+                                    </ContextMenuSubTrigger>
+                                    <ContextMenuSubContent className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                                      <div className="flex gap-1 p-2">
+                                        {TAPBACK_REACTIONS.map(({ emoji, label }) => (
+                                          <Button
+                                            key={emoji}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            onClick={() => addReactionMutation.mutate({ messageId: message.guid, reaction: emoji })}
+                                            title={label}
+                                          >
+                                            {emoji}
+                                          </Button>
+                                        ))}
+                                      </div>
+                                    </ContextMenuSubContent>
+                                  </ContextMenuSub>
+                                  
+                                  {/* Reply option */}
+                                  <ContextMenuItem
+                                    className="cursor-pointer"
+                                    onClick={() => setReplyingToMessage(message)}
+                                  >
+                                    <Reply className="h-4 w-4 mr-2" />
+                                    Reply
+                                  </ContextMenuItem>
+                                  
+                                  {/* Copy option */}
+                                  <ContextMenuItem
+                                    className="cursor-pointer"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(message.text);
+                                      toast({
+                                        title: "Copied to clipboard",
+                                        description: "Message text copied successfully"
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy
+                                  </ContextMenuItem>
+                                  
+                                  {/* Delete option */}
+                                  <ContextMenuItem
+                                    className="cursor-pointer text-red-600 dark:text-red-400"
+                                    onClick={() => deleteMessageMutation.mutate(message.guid)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </ContextMenuItem>
+                                </ContextMenuContent>
+                              </ContextMenu>
 
-                              {/* Message time and status */}
+                              {/* Message time - only on last message in group */}
                               {isLastInGroup && (
-                                <div className={cn("flex items-center gap-1 mt-1", message.isFromMe ? "justify-end" : "justify-start")}>
+                                <div className={cn("mt-1", message.isFromMe ? "text-right" : "text-left")}>
                                   <span className="text-xs text-gray-500">
                                     {formatMessageTime(message.dateCreated)}
                                   </span>
-                                  {status && message.isFromMe && (
-                                    <status.icon className={cn("h-3 w-3", status.className)} />
-                                  )}
                                 </div>
                               )}
-
-                              {/* Quick reaction menu on hover */}
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn(
-                                      "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6",
-                                      message.isFromMe ? "-left-8" : "-right-8"
-                                    )}
-                                  >
-                                    <Smile className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-2" side={message.isFromMe ? "left" : "right"}>
-                                  <div className="flex gap-1">
-                                    {TAPBACK_REACTIONS.map(({ emoji, label }) => (
-                                      <Button
-                                        key={emoji}
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => addReactionMutation.mutate({ messageId: message.guid, reaction: emoji })}
-                                        title={label}
-                                      >
-                                        {emoji}
-                                      </Button>
-                                    ))}
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
                             </div>
 
                             {message.isFromMe && <div className="w-8" />}
