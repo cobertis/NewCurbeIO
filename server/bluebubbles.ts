@@ -241,6 +241,21 @@ export class BlueBubblesClient {
     return this.request('/api/v1/server/info');
   }
 
+  async getAttachmentStream(guid: string): Promise<Response> {
+    // Download attachment from BlueBubbles server
+    const urlWithAuth = new URL(`${this.baseUrl}/api/v1/attachment/${encodeURIComponent(guid)}`);
+    urlWithAuth.searchParams.set('password', this.password);
+
+    const response = await fetch(urlWithAuth.toString());
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`BlueBubbles API error: ${response.status} - ${errorText}`);
+    }
+
+    return response;
+  }
+
   static createFromSettings(settings: CompanySettings): BlueBubblesClient | null {
     const imessageSettings = settings.imessageSettings as {
       serverUrl?: string;
@@ -325,6 +340,13 @@ export const blueBubblesClient = {
       throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
     }
     return blueBubblesClientInstance.unsendMessage(messageGuid, partIndex);
+  },
+  
+  getAttachmentStream: async (guid: string): Promise<Response> => {
+    if (!blueBubblesClientInstance) {
+      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    }
+    return blueBubblesClientInstance.getAttachmentStream(guid);
   },
   
   initialize: (settings: CompanySettings): boolean => {

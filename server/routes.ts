@@ -1113,24 +1113,61 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // Attachment serving endpoint  
-  // GET /api/imessage/attachments/:id - Serve iMessage attachment
-  app.get("/api/imessage/attachments/:id", requireActiveCompany, async (req: Request, res: Response) => {
+  // GET /api/imessage/attachments/:guid - Proxy attachment from BlueBubbles server
+  app.get("/api/imessage/attachments/:guid", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const { id } = req.params;
-      const filePath = path.join(process.cwd(), 'uploads', 'imessage', id);
+      const { guid } = req.params;
       
-      // Check if file exists
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ message: "Attachment not found" });
+      // Get company settings to initialize BlueBubbles client
+      const companySettings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = companySettings?.imessageSettings as any;
+      
+      if (!imessageSettings?.isEnabled || !imessageSettings?.serverUrl) {
+        return res.status(403).json({ message: "iMessage feature not enabled" });
       }
       
-      // Send file
-      res.sendFile(filePath);
+      // Initialize BlueBubbles client
+      const { blueBubblesClient } = await import("./bluebubbles");
+      if (companySettings) {
+        blueBubblesClient.initialize(companySettings);
+      }
+      
+      // Stream attachment from BlueBubbles
+      const attachmentResponse = await blueBubblesClient.getAttachmentStream(guid);
+      
+      // Forward headers
+      const contentType = attachmentResponse.headers.get('content-type');
+      const contentLength = attachmentResponse.headers.get('content-length');
+      
+      if (contentType) res.setHeader('Content-Type', contentType);
+      if (contentLength) res.setHeader('Content-Length', contentLength);
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      
+      // Stream the response
+      if (attachmentResponse.body) {
+        const reader = attachmentResponse.body.getReader();
+        const stream = new ReadableStream({
+          async start(controller) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+            controller.close();
+          }
+        });
+        
+        // Convert to Node.js stream and pipe
+        const nodeStream = require('stream').Readable.from(stream);
+        nodeStream.pipe(res);
+      } else {
+        throw new Error('No response body from BlueBubbles');
+      }
       
     } catch (error: any) {
       console.error("Error serving iMessage attachment:", error);
@@ -1201,7 +1238,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (offset) options.offset = parseInt(offset as string);
       
       const messages = await storage.getImessageMessagesByConversation(id, options);
-      res.json(messages);
+      
+      // Transform attachment data to frontend format
+      const transformedMessages = messages.map(message => {
+        if (message.hasAttachments && message.attachments && Array.isArray(message.attachments)) {
+          const transformedAttachments = message.attachments.map((att: any) => ({
+            id: att.guid || att.id,
+            mimeType: att.mimeType,
+            fileName: att.transferName || att.fileName || 'attachment',
+            fileSize: att.totalBytes || att.fileSize || 0,
+            url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+            thumbnailUrl: undefined
+          }));
+          
+          return {
+            ...message,
+            attachments: transformedAttachments
+          };
+        }
+        return message;
+      });
+      
+      res.json(transformedMessages);
     } catch (error: any) {
       console.error("Error fetching iMessage messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
