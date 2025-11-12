@@ -25,7 +25,7 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon
+  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin
 } from "lucide-react";
 import type { User } from "@shared/schema";
 
@@ -396,7 +396,7 @@ export default function IMessagePage() {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
   // State
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -1310,21 +1310,20 @@ export default function IMessagePage() {
 
           {/* Message Input */}
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
-            <div className="flex items-end gap-2">
-              {/* Attachment button - simplified */}
+            <div className="flex items-center gap-2">
+              {/* Microphone button */}
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="rounded-full"
-                onClick={() => fileInputRef.current?.click()}
-                data-testid="attachment-button"
+                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                data-testid="mic-button"
               >
-                <Paperclip className="h-5 w-5" />
+                <Mic className="h-5 w-5" />
               </Button>
 
               {/* Message input */}
-              <div className="flex-1 relative">
-                <textarea
+              <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
+                <input
                   ref={messageInputRef}
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
@@ -1336,27 +1335,56 @@ export default function IMessagePage() {
                       handleSendMessage();
                     }
                   }}
-                  placeholder="iMessage"
+                  placeholder="Type a message"
                   className={cn(
-                    "w-full px-4 py-2 rounded-full resize-none",
-                    "bg-gray-100 dark:bg-gray-800 border-0",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500",
+                    "flex-1 bg-transparent border-0 outline-none",
                     "placeholder:text-gray-500"
                   )}
-                  rows={1}
                   data-testid="message-input"
                 />
               </div>
 
+              {/* Image/Gallery button */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="gallery-button"
+              >
+                <ImageIcon className="h-5 w-5" />
+              </Button>
+
+              {/* Emoji button */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                data-testid="emoji-button"
+              >
+                <Smile className="h-5 w-5" />
+              </Button>
+
               {/* Send button */}
               <Button
                 size="icon"
-                className="rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+                variant="ghost"
+                className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
                 onClick={handleSendMessage}
                 disabled={!messageText.trim() && attachments.length === 0}
                 data-testid="send-button"
               >
-                <Send className="h-4 w-4" />
+                <Send className="h-5 w-5" />
+              </Button>
+
+              {/* Location button */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                data-testid="location-button"
+              >
+                <MapPin className="h-5 w-5" />
               </Button>
             </div>
           </div>
