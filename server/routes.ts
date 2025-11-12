@@ -22304,11 +22304,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         webhookSecret?: string;
       } || {};
 
-      // NEVER send password or webhookSecret to frontend for security
+      // Send password to superadmin (admin settings, not public-facing)
+      // Never send webhookSecret (internal system secret)
       res.json({
         serverUrl: imessageSettings.serverUrl || "",
+        password: imessageSettings.password || "",
         isEnabled: imessageSettings.isEnabled || false,
-        hasPassword: !!(imessageSettings.password),
         hasWebhookSecret: !!(imessageSettings.webhookSecret),
       });
     } catch (error: any) {
@@ -22409,11 +22410,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
 
-      // NEVER send password or webhookSecret in response
+      // Send password to superadmin, never send webhookSecret
       res.json({
         serverUrl: updatedImessageSettings.serverUrl,
+        password: updatedImessageSettings.password,
         isEnabled: updatedImessageSettings.isEnabled,
-        hasPassword: !!updatedImessageSettings.password,
         hasWebhookSecret: !!updatedImessageSettings.webhookSecret,
       });
     } catch (error: any) {

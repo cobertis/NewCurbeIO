@@ -427,6 +427,8 @@ export default function Companies() {
   });
 
   const handleSaveImessageSettings = imessageForm.handleSubmit((data) => {
+    // Reset password visibility when saving
+    setShowPassword(false);
     saveImessageSettingsMutation.mutate(data);
   });
 
