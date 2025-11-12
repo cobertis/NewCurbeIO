@@ -1606,13 +1606,18 @@ export default function IMessagePage() {
                     ? "bg-red-500 text-white hover:bg-red-600" 
                     : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 )}
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onMouseLeave={() => {
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  startRecording();
+                }}
+                onPointerUp={(e) => {
+                  e.preventDefault();
                   if (isRecording) stopRecording();
                 }}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
+                onPointerCancel={(e) => {
+                  e.preventDefault();
+                  if (isRecording) stopRecording();
+                }}
                 data-testid="mic-button"
               >
                 <Mic className="h-5 w-5" />
