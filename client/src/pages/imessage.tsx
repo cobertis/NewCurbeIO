@@ -561,6 +561,7 @@ export default function IMessagePage() {
   const waveformBufferRef = useRef<number[]>(new Array(100).fill(0));
   const waveformIndexRef = useRef(0); // How many values captured so far
   const frameCountRef = useRef(0); // For throttled UI updates
+  const lastCaptureTimeRef = useRef(0); // Timestamp of last capture
   const waveformPreviewRef = useRef<number[]>([]); // Frozen snapshot for preview
   const waveformPreviewIndexRef = useRef(0); // How many samples in preview
 
@@ -987,22 +988,32 @@ export default function IMessagePage() {
   const analyzeAudio = useCallback(() => {
     if (!analyserRef.current) return;
     
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
+    const now = Date.now();
+    const timeSinceLastCapture = now - lastCaptureTimeRef.current;
     
-    // Calculate average volume for this moment
-    const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-    const normalizedValue = Math.max(0.05, average / 255); // Normalize to 0-1, min 0.05
+    // Capture sample every 500ms so 100 samples = ~50 seconds of audio
+    const CAPTURE_INTERVAL_MS = 500;
     
-    // Update buffer (circular if we exceed 100 samples)
-    const currentIndex = waveformIndexRef.current % 100;
-    waveformBufferRef.current[currentIndex] = normalizedValue;
-    waveformIndexRef.current++;
-    
-    // Throttle React re-renders: only update UI every 5 frames (~12 updates/sec instead of 60)
-    frameCountRef.current++;
-    if (frameCountRef.current % 5 === 0) {
+    if (timeSinceLastCapture >= CAPTURE_INTERVAL_MS) {
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(dataArray);
+      
+      // Calculate average volume with amplification for visible fluctuations
+      const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+      
+      // Amplify the signal: multiply by 3 and clamp between 0.1 and 1
+      let normalizedValue = (average / 255) * 3;
+      normalizedValue = Math.max(0.1, Math.min(1, normalizedValue));
+      
+      // Update buffer (circular if we exceed 100 samples)
+      const currentIndex = waveformIndexRef.current % 100;
+      waveformBufferRef.current[currentIndex] = normalizedValue;
+      waveformIndexRef.current++;
+      
+      // Update UI on each capture
       setWaveformRenderKey(prev => prev + 1);
+      
+      lastCaptureTimeRef.current = now;
     }
     
     animationFrameRef.current = requestAnimationFrame(analyzeAudio);
@@ -1087,6 +1098,7 @@ export default function IMessagePage() {
       waveformBufferRef.current = new Array(100).fill(0);
       waveformIndexRef.current = 0;
       frameCountRef.current = 0;
+      lastCaptureTimeRef.current = Date.now(); // Initialize for immediate first capture
       setWaveformRenderKey(0);
     } catch (error) {
       console.error('Error starting recording:', error);
