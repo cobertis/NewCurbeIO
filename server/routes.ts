@@ -844,6 +844,70 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Handle incoming message
           const messageData = payload.data || payload;
           
+          // Check if this is a reaction (tapback)
+          // BlueBubbles sends reactions as messages with associatedMessageType: "2006" (add) or "2005" (remove)
+          const isReaction = messageData.associatedMessageType === "2006" || messageData.associatedMessageType === "2005" || messageData.associatedMessageType === 2006 || messageData.associatedMessageType === 2005;
+          
+          if (isReaction) {
+            // This is a reaction, not a regular message
+            const associatedMessageGuid = messageData.associatedMessageGuid;
+            const reactionText = messageData.text || '';
+            
+            // Parse reaction emoji from text like "Reacted 👍 to 'message text'"
+            const reactionMatch = reactionText.match(/Reacted (.+?) to/);
+            const reactionEmoji = reactionMatch ? reactionMatch[1].trim() : null;
+            
+            if (reactionEmoji && associatedMessageGuid) {
+              // Find the original message
+              const originalMessage = await storage.getImessageMessageByGuid(company.id, associatedMessageGuid);
+              
+              if (originalMessage) {
+                // Add or remove reaction
+                if (messageData.associatedMessageType === "2006" || messageData.associatedMessageType === 2006) {
+                  // Add reaction
+                  await storage.addImessageReaction({
+                    companyId: company.id,
+                    messageId: originalMessage.id,
+                    reaction: reactionEmoji,
+                    senderHandle: messageData.handle?.address || messageData.from || 'Unknown',
+                  });
+                  
+                  console.log(`[BlueBubbles Webhook] Added reaction ${reactionEmoji} to message ${associatedMessageGuid}`);
+                  
+                  // Broadcast reaction update
+                  const conversation = await storage.getImessageConversation(originalMessage.conversationId);
+                  if (conversation) {
+                    broadcastImessageReaction(company.id, conversation.id, originalMessage.guid, reactionEmoji);
+                  }
+                } else {
+                  // Remove reaction (type 2005)
+                  await storage.removeImessageReaction({
+                    companyId: company.id,
+                    messageId: originalMessage.id,
+                    reaction: reactionEmoji,
+                    senderHandle: messageData.handle?.address || messageData.from || 'Unknown',
+                  });
+                  
+                  console.log(`[BlueBubbles Webhook] Removed reaction ${reactionEmoji} from message ${associatedMessageGuid}`);
+                  
+                  // Broadcast reaction update
+                  const conversation = await storage.getImessageConversation(originalMessage.conversationId);
+                  if (conversation) {
+                    broadcastImessageReaction(company.id, conversation.id, originalMessage.guid, reactionEmoji);
+                  }
+                }
+              } else {
+                console.log(`[BlueBubbles Webhook] Original message not found for reaction: ${associatedMessageGuid}`);
+              }
+            } else {
+              console.log(`[BlueBubbles Webhook] Could not parse reaction emoji from: "${reactionText}"`);
+            }
+            
+            // Don't create a message for reactions - just return success
+            break;
+          }
+          
+          // Regular message processing (not a reaction)
           // Find or create conversation
           // BlueBubbles sends chat info in chats array
           const chatData = messageData.chats?.[0] || {};
