@@ -389,12 +389,14 @@ export default function IMessagePage() {
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
+    console.log('[iMessage WebSocket] Received:', message.type, message);
+    
     switch (message.type) {
-      case 'imessage:new-message':
+      case 'imessage_message':
         // Merge message into cache instead of invalidating to prevent flicker
-        if (message.conversationId === selectedConversationId && message.message) {
+        if (message.conversationId && message.message) {
           queryClient.setQueryData<ImessageMessage[]>(
-            [`/api/imessage/conversations/${selectedConversationId}/messages`],
+            [`/api/imessage/conversations/${message.conversationId}/messages`],
             (old) => {
               if (!old) return [message.message];
               // Check if message already exists (dedup by GUID)
@@ -404,10 +406,14 @@ export default function IMessagePage() {
               return [...old, message.message];
             }
           );
-        }
-        queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
-        if (soundEnabled && message.conversationId === selectedConversationId) {
-          playSound('receive');
+          
+          // Update conversation list to show latest message
+          queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+          
+          // Play sound if enabled and message is in selected conversation
+          if (soundEnabled && message.conversationId === selectedConversationId && !message.message.isFromMe) {
+            playSound('receive');
+          }
         }
         break;
       case 'imessage:typing-start':
