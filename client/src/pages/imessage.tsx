@@ -1596,34 +1596,7 @@ export default function IMessagePage() {
             )}
 
             <div className="flex items-center gap-2">
-              {/* Microphone button */}
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className={cn(
-                  "rounded-full transition-colors",
-                  isRecording 
-                    ? "bg-red-500 text-white hover:bg-red-600" 
-                    : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                )}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  startRecording();
-                }}
-                onPointerUp={(e) => {
-                  e.preventDefault();
-                  if (isRecording) stopRecording();
-                }}
-                onPointerCancel={(e) => {
-                  e.preventDefault();
-                  if (isRecording) stopRecording();
-                }}
-                data-testid="mic-button"
-              >
-                <Mic className="h-5 w-5" />
-              </Button>
-
-              {/* Message input */}
+              {/* Message input with microphone button inside */}
               <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
                 <input
                   ref={messageInputRef}
@@ -1637,14 +1610,41 @@ export default function IMessagePage() {
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Type a message"
+                  placeholder="iMessage"
                   className={cn(
-                    "flex-1 bg-transparent border-0 outline-none",
+                    "flex-1 bg-transparent border-0 outline-none pr-2",
                     "placeholder:text-gray-500"
                   )}
                   disabled={isRecording}
                   data-testid="message-input"
                 />
+                
+                {/* Microphone button - inside input on the right */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className={cn(
+                    "h-8 w-8 rounded-full transition-colors flex-shrink-0",
+                    isRecording 
+                      ? "bg-red-500 text-white hover:bg-red-600" 
+                      : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  )}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    startRecording();
+                  }}
+                  onPointerUp={(e) => {
+                    e.preventDefault();
+                    if (isRecording) stopRecording();
+                  }}
+                  onPointerCancel={(e) => {
+                    e.preventDefault();
+                    if (isRecording) stopRecording();
+                  }}
+                  data-testid="mic-button"
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
               </div>
 
               {/* Image/Gallery button */}
