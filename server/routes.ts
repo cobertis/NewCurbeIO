@@ -22661,9 +22661,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/imessage/webhook - Receive incoming messages from BlueBubbles
-  app.post("/api/imessage/webhook", async (req: Request, res: Response) => {
+  // POST /api/imessage/webhook/:companySlug - Receive incoming messages from BlueBubbles
+  app.post("/api/imessage/webhook/:companySlug", async (req: Request, res: Response) => {
     try {
+      const { companySlug } = req.params;
+      
+      // Find company by slug
+      const company = await storage.getCompanyBySlug(companySlug);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
       // Validate webhook secret
       const webhookSecret = req.headers['x-webhook-secret'] as string;
       
@@ -22671,19 +22679,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(401).json({ message: "Missing webhook secret" });
       }
       
-      // Find company by webhook secret
-      const allSettings = await storage.getAllCompanySettings();
-      const companySettings = allSettings.find((s: any) => {
-        const imessageSettings = s.imessageSettings as { webhookSecret?: string };
-        return imessageSettings?.webhookSecret === webhookSecret;
-      });
-
+      // Get company settings
+      const companySettings = await storage.getCompanySettings(company.id);
       if (!companySettings) {
+        return res.status(404).json({ message: "Company settings not found" });
+      }
+
+      // Verify webhook secret
+      const imessageSettings = companySettings.imessageSettings as { webhookSecret?: string };
+      if (!imessageSettings?.webhookSecret || imessageSettings.webhookSecret !== webhookSecret) {
         return res.status(401).json({ message: "Invalid webhook secret" });
       }
 
       // Check if company has iMessage feature enabled
-      const hasFeature = await storage.hasFeature(companySettings.companyId, 'imessage');
+      const hasFeature = await storage.hasFeature(company.id, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled" });
       }
@@ -22696,13 +22705,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Find or create conversation
         let conversation = await storage.findImessageConversationByChatGuid(
-          companySettings.companyId,
+          company.id,
           messageData.chatGuid
         );
 
         if (!conversation) {
           conversation = await storage.createImessageConversation({
-            companyId: companySettings.companyId,
+            companyId: company.id,
             chatGuid: messageData.chatGuid,
             displayName: messageData.handle?.displayName,
             contactPhone: messageData.handle?.address,
@@ -22717,7 +22726,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
         } else {
           // Update conversation
-          await storage.updateImessageConversation(conversation.id, companySettings.companyId, {
+          await storage.updateImessageConversation(conversation.id, company.id, {
             lastMessageText: messageData.text,
             lastMessageAt: new Date(messageData.dateCreated),
             lastMessageFromMe: messageData.isFromMe,
@@ -22728,7 +22737,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Create message
         await storage.createImessageMessage({
           conversationId: conversation.id,
-          companyId: companySettings.companyId,
+          companyId: company.id,
           messageGuid: messageData.guid,
           chatGuid: messageData.chatGuid,
           text: messageData.text,
@@ -22750,7 +22759,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (type === "read-receipt") {
         const { messageGuid, dateRead } = data;
         await storage.updateImessageMessageByGuid(
-          companySettings.companyId,
+          company.id,
           messageGuid,
           {
             dateRead: new Date(dateRead),

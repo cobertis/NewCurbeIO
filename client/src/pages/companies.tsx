@@ -384,13 +384,13 @@ export default function Companies() {
     }
   }, [currentImessageSettings, imessageForm]);
 
-  // Set webhook URL when component mounts
+  // Set webhook URL when selected company changes
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && selectedCompany?.slug) {
       const domain = window.location.origin;
-      setWebhookUrl(`${domain}/api/imessage/webhook`);
+      setWebhookUrl(`${domain}/api/imessage/webhook/${selectedCompany.slug}`);
     }
-  }, []);
+  }, [selectedCompany]);
 
   // Save iMessage settings mutation
   const saveImessageSettingsMutation = useMutation({
