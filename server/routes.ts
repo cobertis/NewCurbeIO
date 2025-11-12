@@ -889,6 +889,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           } else {
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
+              // Transform attachments to use backend URLs instead of BlueBubbles absolute URLs
+              const transformedAttachments = (messageData.attachments || []).map((att: any) => ({
+                guid: att.guid,
+                mimeType: att.mimeType,
+                fileName: att.transferName || att.fileName || 'attachment',
+                fileSize: att.totalBytes || att.totalBytes || 0,
+                width: att.width,
+                height: att.height,
+                // CRITICAL: Use backend-relative URL, not BlueBubbles absolute URL
+                url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+              }));
+              
               newMessage = await storage.createImessageMessage({
                 companyId: company.id,
                 conversationId: conversation.id,
@@ -901,14 +913,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 dateSent: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
                 dateRead: messageData.dateRead ? new Date(messageData.dateRead) : null,
                 dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : null,
-                attachments: messageData.attachments || [],
+                attachments: transformedAttachments,
                 metadata: {
                   associatedMessageGuid: messageData.associatedMessageGuid || null,
                   associatedMessageType: messageData.associatedMessageType || null,
                 },
                 status: "sent",
                 isImessage: true,
-                hasAttachments: (messageData.attachments || []).length > 0,
+                hasAttachments: transformedAttachments.length > 0,
               });
             } catch (createError: any) {
               // If duplicate key error, the message already exists (race condition)
@@ -1152,19 +1164,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(attachmentResponse.status).json({ message: 'Failed to fetch attachment from BlueBubbles' });
       }
       
-      // Forward headers from BlueBubbles response
+      // If BlueBubbles returned JSON, it's likely an error message - log it
       const contentType = attachmentResponse.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const jsonBody = await attachmentResponse.clone().json();
+        console.error('[iMessage Attachment] BlueBubbles returned JSON instead of image:', jsonBody);
+        return res.status(500).json({ message: 'BlueBubbles returned error: ' + JSON.stringify(jsonBody) });
+      }
+      
+      // Forward headers from BlueBubbles response
       const contentLength = attachmentResponse.headers.get('content-length');
       const contentDisposition = attachmentResponse.headers.get('content-disposition');
       
-      if (contentType) {
-        res.setHeader('Content-Type', contentType);
-        console.log('[iMessage Attachment] Set Content-Type:', contentType);
-      } else {
-        // Fallback to image/png for images if header missing
-        res.setHeader('Content-Type', 'image/png');
-        console.log('[iMessage Attachment] No Content-Type from BlueBubbles, using fallback: image/png');
-      }
+      // Use contentType from above (already checked for JSON)
+      res.setHeader('Content-Type', contentType || 'image/png');
+      console.log('[iMessage Attachment] Set Content-Type:', contentType || 'image/png');
       
       if (contentLength) {
         res.setHeader('Content-Length', contentLength);

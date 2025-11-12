@@ -242,17 +242,21 @@ export class BlueBubblesClient {
   }
 
   async getAttachmentStream(guid: string): Promise<Response> {
-    // Download attachment from BlueBubbles server
-    const urlWithAuth = new URL(`${this.baseUrl}/api/v1/attachment/${encodeURIComponent(guid)}`);
+    // Download attachment from BlueBubbles server using /download endpoint for binary data
+    const urlWithAuth = new URL(`${this.baseUrl}/api/v1/attachment/${encodeURIComponent(guid)}/download`);
     urlWithAuth.searchParams.set('password', this.password);
+
+    console.log('[BlueBubbles] Downloading attachment from:', urlWithAuth.toString().replace(this.password, '***'));
 
     const response = await fetch(urlWithAuth.toString());
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('[BlueBubbles] Attachment download failed:', response.status, errorText);
       throw new Error(`BlueBubbles API error: ${response.status} - ${errorText}`);
     }
 
+    console.log('[BlueBubbles] Attachment downloaded successfully. Content-Type:', response.headers.get('content-type'));
     return response;
   }
 
