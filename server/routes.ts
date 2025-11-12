@@ -991,12 +991,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           let newMessage;
           if (existingMessage) {
             // Update existing message (reconcile clientGuid message with BlueBubbles GUID)
-            await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, {
+            // Only include date fields if webhook provides new data (to avoid "toISOString is not a function" errors)
+            const updateData: any = {
               messageGuid: messageGuid, // Update to real BlueBubbles GUID (correct field name)
-              dateRead: messageData.dateRead ? new Date(messageData.dateRead) : (existingMessage.dateRead ? new Date(existingMessage.dateRead) : null),
-              dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : (existingMessage.dateDelivered ? new Date(existingMessage.dateDelivered) : null),
               status: 'sent'
-            });
+            };
+            
+            // Only update dates if webhook provides new data
+            if (messageData.dateRead) {
+              updateData.dateRead = new Date(messageData.dateRead);
+            }
+            if (messageData.dateDelivered) {
+              updateData.dateDelivered = new Date(messageData.dateDelivered);
+            }
+            
+            await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, updateData);
             newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
             console.log(`[BlueBubbles Webhook] Updated existing message from clientGuid to BlueBubbles GUID`);
           } else {
