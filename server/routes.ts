@@ -840,22 +840,49 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       switch (eventType) {
         case 'message':
         case 'new-message':
+        case 'updated-message': // BlueBubbles sends reactions as updated-message
         case 'message.received': {
           // Handle incoming message
           const messageData = payload.data || payload;
           
           // Check if this is a reaction (tapback)
-          // BlueBubbles sends reactions as messages with associatedMessageType: "2006" (add) or "2005" (remove)
-          const isReaction = messageData.associatedMessageType === "2006" || messageData.associatedMessageType === "2005" || messageData.associatedMessageType === 2006 || messageData.associatedMessageType === 2005;
+          // BlueBubbles sends reactions with associatedMessageType as strings: "like", "love", "laugh", "dislike", "emphasize", "question"
+          // Or as numbers: 2000-2006
+          const reactionTypes = ["like", "love", "laugh", "dislike", "emphasize", "question", "2000", "2001", "2002", "2003", "2004", "2005", "2006"];
+          const isReaction = messageData.associatedMessageGuid && messageData.associatedMessageType && 
+            (reactionTypes.includes(String(messageData.associatedMessageType)) || 
+             messageData.associatedMessageType >= 2000 && messageData.associatedMessageType <= 2006);
           
           if (isReaction) {
             // This is a reaction, not a regular message
             const associatedMessageGuid = messageData.associatedMessageGuid;
+            const reactionType = messageData.associatedMessageType;
             const reactionText = messageData.text || '';
             
-            // Parse reaction emoji from text like "Reacted 👍 to 'message text'"
-            const reactionMatch = reactionText.match(/Reacted (.+?) to/);
-            const reactionEmoji = reactionMatch ? reactionMatch[1].trim() : null;
+            // Map BlueBubbles reaction types to emojis
+            const reactionEmojiMap: Record<string, string> = {
+              'like': '❤️',        // Heart (liked)
+              'love': '❤️',        // Heart
+              'laugh': '😂',       // Laughing face (haha)
+              'emphasize': '!!',   // Double exclamation
+              'dislike': '👎',     // Thumbs down
+              'question': '?'      // Question mark
+            };
+            
+            // Get emoji from type mapping OR parse from text (fallback)
+            let reactionEmoji = reactionEmojiMap[String(reactionType)];
+            
+            if (!reactionEmoji) {
+              // Fallback: Parse reaction emoji from text like "Liked 'message'" or "Reacted 👍 to 'message'"
+              const reactedMatch = reactionText.match(/Reacted (.+?) to/);
+              const likedMatch = reactionText.match(/^(Liked|Loved|Laughed at|Emphasized|Disliked|Questioned)/);
+              
+              if (reactedMatch) {
+                reactionEmoji = reactedMatch[1].trim();
+              } else if (likedMatch && reactionEmojiMap[likedMatch[1].toLowerCase()]) {
+                reactionEmoji = reactionEmojiMap[likedMatch[1].toLowerCase()];
+              }
+            }
             
             if (reactionEmoji && associatedMessageGuid) {
               // Find the original message
