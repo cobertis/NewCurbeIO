@@ -424,8 +424,16 @@ export default function IMessagePage() {
       });
     },
     onSuccess: (response: any, variables, context) => {
-      // Replace optimistic message with real message from server
-      // DO NOT INVALIDATE - this causes flicker
+      // For attachments, DON'T replace the optimistic message here
+      // Let the webhook handle it so we don't lose the blob URL temporarily
+      if (variables.attachments && variables.attachments.length > 0) {
+        console.log('[iMessage] Skipping onSuccess update for attachment - webhook will handle it');
+        // Only invalidate conversations list (for last message preview)
+        queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+        return;
+      }
+      
+      // For text-only messages, replace optimistic message with real message from server
       const realMessage = response?.message;
       const clientGuid = context?.clientGuid;
       
