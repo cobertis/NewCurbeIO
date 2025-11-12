@@ -159,9 +159,10 @@ export default function Companies() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       if (selectedCompany) {
-        queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
       }
       toast({
         title: "Feature Added",
@@ -189,9 +190,10 @@ export default function Companies() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       if (selectedCompany) {
-        queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/companies", selectedCompany.id, "features"] });
       }
       toast({
         title: "Feature Removed",
