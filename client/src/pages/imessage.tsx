@@ -108,6 +108,89 @@ const MESSAGE_EFFECTS = {
 
 type MessageEffectKey = keyof typeof MESSAGE_EFFECTS;
 
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 10) / 10 + ' ' + sizes[i];
+}
+
+// Helper function to get file type display name
+function getFileTypeDisplay(mimeType: string): string {
+  const typeMap: { [key: string]: string } = {
+    'application/pdf': 'PDF Document',
+    'application/msword': 'Word Document',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word Document',
+    'application/vnd.ms-excel': 'Excel Spreadsheet',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel Spreadsheet',
+    'application/vnd.ms-powerpoint': 'PowerPoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PowerPoint',
+    'text/plain': 'Text File',
+    'application/zip': 'ZIP Archive',
+    'application/x-rar-compressed': 'RAR Archive',
+  };
+  return typeMap[mimeType] || 'Document';
+}
+
+// Component to display file attachments (PDF, docs, etc.)
+function ImessageAttachmentFile({ attachment }: { attachment: MessageAttachment }) {
+  const fileType = getFileTypeDisplay(attachment.mimeType);
+  const fileSize = formatFileSize(attachment.fileSize);
+  const isPdf = attachment.mimeType === 'application/pdf';
+  
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(attachment.url, {
+        credentials: 'include',
+      });
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = attachment.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+    }
+  };
+
+  return (
+    <div 
+      className="flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors shadow-sm"
+      style={{ maxWidth: '320px' }}
+      onClick={handleDownload}
+      data-testid="attachment-file"
+    >
+      {/* File icon with thumbnail effect */}
+      <div className="flex-shrink-0 w-14 h-16 bg-white dark:bg-gray-700 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center">
+        {isPdf ? (
+          <>
+            <FileText className="h-7 w-7 text-red-500 mb-1" />
+            <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase">PDF</span>
+          </>
+        ) : (
+          <FileText className="h-7 w-7 text-blue-500" />
+        )}
+      </div>
+      
+      {/* File info */}
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-[15px] text-gray-900 dark:text-white truncate leading-tight">
+          {attachment.fileName}
+        </p>
+        <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">
+          {fileType} · {fileSize}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // Component to handle authenticated video loading with thumbnail and play button
 function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -1023,13 +1106,9 @@ export default function IMessagePage() {
                                                 fileName={attachment.fileName}
                                               />
                                             ) : (
-                                              <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
-                                                <FileText className="h-4 w-4" />
-                                                <span className="text-sm">{attachment.fileName}</span>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6">
-                                                  <Download className="h-3 w-3" />
-                                                </Button>
-                                              </div>
+                                              <ImessageAttachmentFile 
+                                                attachment={attachment}
+                                              />
                                             )}
                                           </div>
                                         ))}
