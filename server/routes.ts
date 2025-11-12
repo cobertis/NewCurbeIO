@@ -1555,12 +1555,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           isFromMe: true,
           dateCreated: new Date().toISOString(),
           dateSent: new Date().toISOString(),
-          dateDelivered: undefined,
-          dateRead: undefined,
+          dateDelivered: null, // Use null instead of undefined for Drizzle
+          dateRead: null, // Use null instead of undefined for Drizzle
           senderAddress: conversation.participants[0] || '',
-          senderName: undefined,
+          senderName: null, // Use null instead of undefined
           hasAttachments: uploadedFiles.length > 0,
-          effect: effect || undefined,
+          effect: effect || null, // Use null instead of undefined
           status: 'sending'
         });
         
