@@ -546,8 +546,17 @@ export default function IMessagePage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isConnected, setIsConnected] = useState(true); // BlueBubbles is working, webhooks are arriving
-  const [isRecording, setIsRecording] = useState(false);
+  // Audio recording state machine: idle | recording | preview
+  const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'preview'>('idle');
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string; duration: number } | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [waveformBars, setWaveformBars] = useState<number[]>([0, 0, 0, 0, 0]); // 5 bars for waveform
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -968,9 +977,32 @@ export default function IMessagePage() {
     setAttachments(prev => [...prev, ...files]);
   };
 
+  // Audio waveform analysis
+  const analyzeAudio = useCallback(() => {
+    if (!analyserRef.current) return;
+    
+    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(dataArray);
+    
+    // Sample 5 different frequency ranges for the 5 bars
+    const barCount = 5;
+    const samplesPerBar = Math.floor(dataArray.length / barCount);
+    const bars: number[] = [];
+    
+    for (let i = 0; i < barCount; i++) {
+      const start = i * samplesPerBar;
+      const end = start + samplesPerBar;
+      const slice = dataArray.slice(start, end);
+      const average = slice.reduce((a, b) => a + b, 0) / slice.length;
+      bars.push(average / 255); // Normalize to 0-1
+    }
+    
+    setWaveformBars(bars);
+    animationFrameRef.current = requestAnimationFrame(analyzeAudio);
+  }, []);
+
   // Audio recording functions
   const startRecording = async () => {
-    // Validate that a conversation is selected
     if (!selectedConversationId) {
       toast({
         title: "No conversation selected",
@@ -982,6 +1014,21 @@ export default function IMessagePage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      
+      // Setup Web Audio API for waveform visualization
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      analyser.fftSize = 256;
+      
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      
+      // Start analyzing audio for waveform
+      analyzeAudio();
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -994,27 +1041,36 @@ export default function IMessagePage() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
         
-        // Automatically send the audio message
-        if (selectedConversationId && audioFile.size > 0) {
-          const clientGuid = crypto.randomUUID();
-          sendMessageMutation.mutate({
-            text: '',
-            replyToMessageId: replyingToMessage?.guid,
-            attachments: [audioFile],
-            clientGuid
-          });
+        // Save current waveform as static preview
+        const previewWaveform = [...waveformBars];
+        
+        // Transition to preview mode (do NOT auto-send)
+        setAudioPreview({
+          blob: audioBlob,
+          url: audioUrl,
+          duration: recordingDuration
+        });
+        setRecordingState('preview');
+        
+        // Stop audio analysis
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
         }
-
-        // Stop all tracks to release microphone
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+        }
+        
+        // Release microphone
         stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        setRecordingDuration(0);
+        
+        // Reset waveform to static preview
+        setWaveformBars(previewWaveform.map(v => v || 0.5)); // Ensure some visual
       };
 
       mediaRecorder.start();
-      setIsRecording(true);
+      setRecordingState('recording');
       setRecordingDuration(0);
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -1027,25 +1083,85 @@ export default function IMessagePage() {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && recordingState === 'recording') {
       mediaRecorderRef.current.stop();
     }
   };
 
   const cancelRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      mediaRecorderRef.current = null;
+    if (recordingState === 'recording') {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current = null;
+      }
       audioChunksRef.current = [];
-      setIsRecording(false);
+      setRecordingState('idle');
       setRecordingDuration(0);
+      setWaveformBars([0, 0, 0, 0, 0]);
     }
+  };
+
+  const playPreview = () => {
+    if (!audioPreview || !audioPreviewRef.current) return;
+    
+    if (isPlayingPreview) {
+      audioPreviewRef.current.pause();
+      setIsPlayingPreview(false);
+    } else {
+      audioPreviewRef.current.play();
+      setIsPlayingPreview(true);
+    }
+  };
+
+  const sendAudioPreview = async () => {
+    if (!audioPreview || !selectedConversationId) return;
+
+    const audioFile = new File([audioPreview.blob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
+    const clientGuid = crypto.randomUUID();
+    
+    sendMessageMutation.mutate({
+      text: '',
+      replyToMessageId: replyingToMessage?.guid,
+      attachments: [audioFile],
+      clientGuid
+    });
+
+    // Clean up preview
+    URL.revokeObjectURL(audioPreview.url);
+    setAudioPreview(null);
+    setRecordingState('idle');
+    setRecordingDuration(0);
+    setWaveformBars([0, 0, 0, 0, 0]);
+    setIsPlayingPreview(false);
+  };
+
+  const cancelPreview = () => {
+    if (audioPreview) {
+      URL.revokeObjectURL(audioPreview.url);
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+        audioPreviewRef.current = null;
+      }
+    }
+    setAudioPreview(null);
+    setRecordingState('idle');
+    setRecordingDuration(0);
+    setWaveformBars([0, 0, 0, 0, 0]);
+    setIsPlayingPreview(false);
   };
 
   // Recording duration timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isRecording) {
+    if (recordingState === 'recording') {
       interval = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
@@ -1053,7 +1169,16 @@ export default function IMessagePage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRecording]);
+  }, [recordingState]);
+
+  // Audio preview element for playback
+  useEffect(() => {
+    if (audioPreview && !audioPreviewRef.current) {
+      const audio = new Audio(audioPreview.url);
+      audio.onended = () => setIsPlayingPreview(false);
+      audioPreviewRef.current = audio;
+    }
+  }, [audioPreview]);
 
   const groupedMessages = useMemo(() => {
     if (!messages) return [];
@@ -1574,135 +1699,208 @@ export default function IMessagePage() {
 
           {/* Message Input */}
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
-            {/* Recording indicator */}
-            {isRecording && (
-              <div className="mb-3 flex items-center gap-3 text-red-500">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                  <span className="font-medium">Recording...</span>
+            {/* STATE 1: IDLE - Normal message input */}
+            {recordingState === 'idle' && (
+              <div className="flex items-center gap-2">
+                {/* Message input with microphone button inside */}
+                <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
+                  <input
+                    ref={messageInputRef}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onFocus={handleTyping}
+                    onBlur={handleStopTyping}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder="iMessage"
+                    className={cn(
+                      "flex-1 bg-transparent border-0 outline-none pr-2",
+                      "placeholder:text-gray-500"
+                    )}
+                    data-testid="message-input"
+                  />
+                  
+                  {/* Audio waveform button - inside input on the right */}
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    className="h-8 w-8 rounded-full transition-colors flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      startRecording();
+                    }}
+                    data-testid="mic-button"
+                  >
+                    <svg 
+                      width="16" 
+                      height="16" 
+                      viewBox="0 0 16 16" 
+                      fill="none" 
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                    >
+                      <rect x="2" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
+                      <rect x="5" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
+                      <rect x="8" y="5" width="1.5" height="6" rx="0.75" fill="currentColor" opacity="0.8"/>
+                      <rect x="11" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
+                      <rect x="14" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
+                    </svg>
+                  </Button>
                 </div>
-                <span className="text-sm">
-                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={cancelRecording}
-                  className="ml-auto text-xs"
+
+                {/* Image/Gallery button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="gallery-button"
                 >
-                  Cancel
+                  <ImageIcon className="h-5 w-5" />
+                </Button>
+
+                {/* Emoji button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  data-testid="emoji-button"
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
+
+                {/* Send button */}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                  onClick={handleSendMessage}
+                  disabled={!messageText.trim() && attachments.length === 0}
+                  data-testid="send-button"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+
+                {/* Location button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  data-testid="location-button"
+                >
+                  <MapPin className="h-5 w-5" />
                 </Button>
               </div>
             )}
 
-            <div className="flex items-center gap-2">
-              {/* Message input with microphone button inside */}
-              <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
-                <input
-                  ref={messageInputRef}
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  onFocus={handleTyping}
-                  onBlur={handleStopTyping}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  placeholder="iMessage"
-                  className={cn(
-                    "flex-1 bg-transparent border-0 outline-none pr-2",
-                    "placeholder:text-gray-500"
-                  )}
-                  disabled={isRecording}
-                  data-testid="message-input"
-                />
-                
-                {/* Audio waveform button - inside input on the right */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className={cn(
-                    "h-8 w-8 rounded-full transition-colors flex-shrink-0",
-                    isRecording 
-                      ? "bg-red-500 text-white hover:bg-red-600" 
-                      : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  )}
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    startRecording();
-                  }}
-                  onPointerUp={(e) => {
-                    e.preventDefault();
-                    if (isRecording) stopRecording();
-                  }}
-                  onPointerCancel={(e) => {
-                    e.preventDefault();
-                    if (isRecording) stopRecording();
-                  }}
-                  data-testid="mic-button"
+            {/* STATE 2: RECORDING - Red recording UI with animated waveform */}
+            {recordingState === 'recording' && (
+              <div className="bg-red-500 rounded-2xl px-6 py-4 flex items-center gap-4">
+                {/* Animated waveform bars - 60 thin bars */}
+                <div className="flex-1 flex items-center justify-center gap-0.5 h-10">
+                  {Array.from({ length: 60 }).map((_, i) => {
+                    // Use waveformBars array cyclically or generate varied heights
+                    const heightIndex = i % waveformBars.length;
+                    const baseHeight = waveformBars[heightIndex] || 0.3;
+                    // Add some variation for visual effect
+                    const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
+                    
+                    return (
+                      <div
+                        key={i}
+                        className="w-0.5 bg-red-700 rounded-full transition-all duration-100"
+                        style={{ 
+                          height: `${Math.max(20, height * 100)}%`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Timer */}
+                <span className="text-white font-mono text-sm font-medium min-w-[40px]">
+                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                </span>
+
+                {/* Stop button (square icon) */}
+                <Button
+                  size="icon"
+                  className="rounded-full bg-red-200 hover:bg-red-300 text-white h-10 w-10"
+                  onClick={stopRecording}
+                  data-testid="stop-recording-button"
                 >
-                  <svg 
-                    width="16" 
-                    height="16" 
-                    viewBox="0 0 16 16" 
-                    fill="none" 
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
-                  >
-                    <rect x="2" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
-                    <rect x="5" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
-                    <rect x="8" y="5" width="1.5" height="6" rx="0.75" fill="currentColor" opacity="0.8"/>
-                    <rect x="11" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
-                    <rect x="14" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
-                  </svg>
+                  <div className="w-4 h-4 bg-white rounded-sm" />
                 </Button>
               </div>
+            )}
 
-              {/* Image/Gallery button */}
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                onClick={() => fileInputRef.current?.click()}
-                data-testid="gallery-button"
-              >
-                <ImageIcon className="h-5 w-5" />
-              </Button>
+            {/* STATE 3: PREVIEW - Gray preview UI with play/pause and send */}
+            {recordingState === 'preview' && audioPreview && (
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
+                {/* X button (cancel) */}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 h-10 w-10"
+                  onClick={cancelPreview}
+                  data-testid="cancel-preview-button"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
 
-              {/* Emoji button */}
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                data-testid="emoji-button"
-              >
-                <Smile className="h-5 w-5" />
-              </Button>
+                {/* Play/Pause button */}
+                <Button
+                  size="icon"
+                  className="rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 h-10 w-10"
+                  onClick={playPreview}
+                  data-testid="play-preview-button"
+                >
+                  {isPlayingPreview ? (
+                    <Pause className="h-5 w-5" />
+                  ) : (
+                    <Play className="h-5 w-5 ml-0.5" />
+                  )}
+                </Button>
 
-              {/* Send button */}
-              <Button
-                size="icon"
-                variant="ghost"
-                className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                onClick={handleSendMessage}
-                disabled={!messageText.trim() && attachments.length === 0}
-                data-testid="send-button"
-              >
-                <Send className="h-5 w-5" />
-              </Button>
+                {/* Static waveform bars - 60 thin bars */}
+                <div className="flex-1 flex items-center justify-center gap-0.5 h-10">
+                  {Array.from({ length: 60 }).map((_, i) => {
+                    const heightIndex = i % waveformBars.length;
+                    const baseHeight = waveformBars[heightIndex] || 0.3;
+                    const height = Math.max(0.2, baseHeight + (Math.sin(i * 0.3) * 0.2));
+                    
+                    return (
+                      <div
+                        key={i}
+                        className="w-0.5 bg-gray-600 dark:bg-gray-500 rounded-full"
+                        style={{ 
+                          height: `${Math.max(20, height * 100)}%`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
 
-              {/* Location button */}
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                data-testid="location-button"
-              >
-                <MapPin className="h-5 w-5" />
-              </Button>
-            </div>
+                {/* Timer showing duration */}
+                <span className="text-gray-600 dark:text-gray-400 font-mono text-sm font-medium min-w-[40px]">
+                  {Math.floor(audioPreview.duration / 60)}:{(audioPreview.duration % 60).toString().padStart(2, '0')}
+                </span>
+
+                {/* Send button (blue up arrow) */}
+                <Button
+                  size="icon"
+                  className="rounded-full bg-blue-500 hover:bg-blue-600 text-white h-10 w-10"
+                  onClick={sendAudioPreview}
+                  data-testid="send-audio-button"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       ) : (
