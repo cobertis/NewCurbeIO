@@ -104,24 +104,6 @@ interface MarketplaceApiResponse {
 }
 
 /**
- * Calculate age from date of birth
- */
-function calculateAge(dateOfBirth: string, effectiveDate?: string): number {
-  // CRITICAL: Calculate age on the effective date, NOT today
-  // The CMS API uses the age field to determine premiums and APTC
-  const referenceDate = effectiveDate ? new Date(effectiveDate) : new Date();
-  const birthDate = new Date(dateOfBirth);
-  let age = referenceDate.getFullYear() - birthDate.getFullYear();
-  const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
-  
-  if (monthDiff < 0 || (monthDiff === 0 && referenceDate.getDate() < birthDate.getDate())) {
-    age--;
-  }
-  
-  return age;
-}
-
-/**
  * Format gender for CMS API (expects "Male" or "Female")
  */
 function formatGenderForCMS(gender?: string): string {
@@ -172,9 +154,6 @@ export async function fetchHouseholdEligibility(
   }
 
   const year = yearOverride || new Date().getFullYear();
-  
-  // CRITICAL FIX: Use effective date for age calculation (same as fetchSinglePage)
-  const effectiveDateForAge = quoteData.effectiveDate || `${year}-01-01`;
   
   // Build people array - use DOB directly per CMS spec
   const people = [];
