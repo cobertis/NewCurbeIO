@@ -178,7 +178,7 @@ export async function fetchHouseholdEligibility(
   // Build people array - pass data exactly as-is to CMS API
   const people = [];
   
-  // Add client
+  // Add client (always the primary applicant)
   const clientAge = calculateAge(quoteData.client.dateOfBirth, effectiveDateForAge);
   people.push({
     age: clientAge,
@@ -186,6 +186,7 @@ export async function fetchHouseholdEligibility(
     has_mec: false,
     gender: formatGenderForCMS(quoteData.client.gender),
     uses_tobacco: quoteData.client.usesTobacco || false,
+    relationship: 'Self', // Primary applicant
   });
   
   // Add spouses
@@ -199,11 +200,12 @@ export async function fetchHouseholdEligibility(
         has_mec: false,
         gender: formatGenderForCMS(spouse.gender),
         uses_tobacco: spouse.usesTobacco || false,
+        relationship: 'Spouse', // Spouse relationship
       });
     });
   }
   
-  // Add dependents
+  // Add dependents (children)
   if (quoteData.dependents && quoteData.dependents.length > 0) {
     quoteData.dependents.forEach(dependent => {
       const needsInsurance = dependent.isApplicant !== false;
@@ -214,6 +216,7 @@ export async function fetchHouseholdEligibility(
         has_mec: false,
         gender: formatGenderForCMS(dependent.gender),
         uses_tobacco: dependent.usesTobacco || false,
+        relationship: 'Child', // Child relationship (CRITICAL for Medicaid-denied cases)
       });
     });
   }
