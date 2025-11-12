@@ -1091,7 +1091,9 @@ export default function IMessagePage() {
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      // Start recording with timeslice for reliable data capture
+      // Capture data every 100ms to ensure no data loss
+      mediaRecorder.start(100);
       setRecordingState('recording');
       setRecordingDuration(0);
       // Reset waveform buffer for new recording
