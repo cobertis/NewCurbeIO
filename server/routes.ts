@@ -1101,14 +1101,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             broadcastImessageMessage(company.id, conversation.id, newMessage);
             
             // Send browser notification if enabled
-            if (!newMessage.fromMe) {
+            // CRITICAL: Use isFromMe (not fromMe) - mapper transforms the field name
+            if (!newMessage.isFromMe) {
               // Create notifications for all company users
               const companyUsers = await storage.getUsersByCompany(company.id);
               for (const user of companyUsers) {
                 await storage.createNotification({
                   userId: user.id,
                   type: 'imessage',
-                  title: `New iMessage from ${newMessage.senderName || newMessage.senderHandle}`,
+                  title: `New iMessage from ${newMessage.senderName || newMessage.senderAddress}`,
                   message: newMessage.text || 'New message',
                   isRead: false,
                   data: JSON.stringify({
