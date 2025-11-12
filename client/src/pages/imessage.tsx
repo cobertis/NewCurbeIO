@@ -25,7 +25,7 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin
+  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause
 } from "lucide-react";
 import type { User } from "@shared/schema";
 
@@ -378,6 +378,137 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// Component to display audio messages with waveform visualization
+function ImessageAudioMessage({ url, fileName }: { url: string; fileName: string }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  // Fetch audio with credentials
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    
+    fetch(url, {
+      credentials: 'include',
+    })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      })
+      .catch((err) => {
+        console.error('[iMessage] Failed to load audio:', url, err);
+      });
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [blobUrl]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return '0:00';
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Generate random waveform bars for visualization
+  const waveformBars = useMemo(() => {
+    return Array.from({ length: 40 }, () => Math.random() * 100);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 min-w-[280px] max-w-[320px] p-2">
+      {blobUrl && (
+        <audio ref={audioRef} src={blobUrl} preload="metadata" />
+      )}
+      
+      {/* Play/Pause Button */}
+      <Button
+        size="icon"
+        onClick={togglePlay}
+        className="rounded-full h-9 w-9 flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white"
+        disabled={!blobUrl}
+      >
+        {isPlaying ? (
+          <Pause className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4 ml-0.5" />
+        )}
+      </Button>
+
+      {/* Waveform Visualization */}
+      <div className="flex-1 flex items-center gap-[2px] h-8">
+        {waveformBars.map((height, i) => {
+          const progress = duration > 0 ? currentTime / duration : 0;
+          const isActive = i < waveformBars.length * progress;
+          
+          return (
+            <div
+              key={i}
+              className={cn(
+                "w-[3px] rounded-full transition-colors",
+                isActive ? "bg-blue-500" : "bg-gray-400"
+              )}
+              style={{ 
+                height: `${Math.max(10, height * 0.6)}%`,
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Duration */}
+      <span className="text-xs text-gray-600 dark:text-gray-400 font-mono flex-shrink-0 w-10 text-right">
+        {formatTime(isPlaying ? currentTime : duration)}
+      </span>
+    </div>
   );
 }
 
@@ -1215,6 +1346,11 @@ export default function IMessagePage() {
                                               />
                                             ) : attachment.mimeType.startsWith('video/') ? (
                                               <ImessageAttachmentVideo 
+                                                url={attachment.url}
+                                                fileName={attachment.fileName}
+                                              />
+                                            ) : attachment.mimeType.startsWith('audio/') ? (
+                                              <ImessageAudioMessage
                                                 url={attachment.url}
                                                 fileName={attachment.fileName}
                                               />
