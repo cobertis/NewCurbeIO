@@ -107,10 +107,10 @@ type MessageEffectKey = keyof typeof MESSAGE_EFFECTS;
 
 // Component to handle authenticated image loading
 function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
-  const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
-  const [error, setError] = React.useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let objectUrl: string | null = null;
     
     fetch(url, {
