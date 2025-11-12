@@ -206,9 +206,8 @@ export default function Companies() {
     },
     onSuccess: async (_, { companyId }) => {
       console.log(`[FEATURE-TOGGLE] onSuccess called, invalidating cache`);
-      // Refetch to ensure UI is updated with server data
+      // Invalidate will automatically trigger a refetch
       await queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "features"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/companies", companyId, "features"] });
       toast({
         title: "Feature Added",
         description: "The feature has been added to the company",
@@ -259,9 +258,8 @@ export default function Companies() {
       return { previousFeatures };
     },
     onSuccess: async (_, { companyId }) => {
-      // Refetch to ensure UI is updated with server data
+      // Invalidate will automatically trigger a refetch
       await queryClient.invalidateQueries({ queryKey: ["/api/companies", companyId, "features"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/companies", companyId, "features"] });
       toast({
         title: "Feature Removed",
         description: "The feature has been removed from the company",
@@ -381,7 +379,8 @@ export default function Companies() {
 
   // Update form when settings load
   useEffect(() => {
-    if (currentImessageSettings) {
+    // Only reset when we actually have settings data loaded
+    if (imessageSettingsData && currentImessageSettings) {
       imessageForm.reset({
         serverUrl: currentImessageSettings.serverUrl || "",
         password: currentImessageSettings.password || "",
@@ -389,7 +388,7 @@ export default function Companies() {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentImessageSettings]);
+  }, [imessageSettingsData]);
 
   // Set webhook URL when selected company changes
   useEffect(() => {
