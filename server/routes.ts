@@ -1077,6 +1077,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Return file info for sending via BlueBubbles
       const attachmentUrl = `/uploads/imessage/${file.filename}`;
       
+      console.log('[iMessage] File uploaded successfully:', file.filename, 'Size:', file.size);
+      
       res.json({
         success: true,
         attachment: {
@@ -1086,6 +1088,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           size: file.size,
           originalName: file.originalname,
         },
+        // Version marker to confirm updated code is running
+        serverVersion: `v2-${Date.now()}`,
       });
       
     } catch (error: any) {

@@ -145,6 +145,11 @@ export class BlueBubblesClient {
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);
     urlWithAuth.searchParams.set('password', this.password);
 
+    console.log('[iMessage] Sending attachment with tempGuid:', tempGuid);
+    console.log('[iMessage] ChatGuid:', chatGuid);
+    console.log('[iMessage] File:', fileName, 'Size:', fileBuffer.length);
+    console.log('[iMessage] BlueBubbles URL:', urlWithAuth.toString().replace(this.password, '***'));
+
     const response = await fetch(urlWithAuth.toString(), {
       method: 'POST',
       body: formData,
@@ -152,10 +157,13 @@ export class BlueBubblesClient {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('[iMessage] BlueBubbles error response:', response.status, errorText);
       throw new Error(`BlueBubbles API error: ${response.status} - ${errorText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('[iMessage] Attachment sent successfully:', result);
+    return result;
   }
 
   async sendReaction(params: SendReactionRequest): Promise<SendMessageResponse> {
