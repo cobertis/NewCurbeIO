@@ -936,6 +936,8 @@ export interface IStorage {
   getImessageConversation(id: string): Promise<ImessageConversation | undefined>;
   getImessageConversationsByCompany(companyId: string, options?: { archived?: boolean; search?: string }): Promise<ImessageConversation[]>;
   getImessageConversationByHandle(companyId: string, handle: string): Promise<ImessageConversation | undefined>;
+  getImessageConversationByChatGuid(companyId: string, chatGuid: string): Promise<ImessageConversation | undefined>;
+  findImessageConversationByChatGuid(companyId: string, chatGuid: string): Promise<ImessageConversation | undefined>;
   createImessageConversation(data: InsertImessageConversation): Promise<ImessageConversation>;
   updateImessageConversation(id: string, data: Partial<InsertImessageConversation>): Promise<ImessageConversation | undefined>;
   deleteImessageConversation(id: string): Promise<boolean>;
@@ -947,6 +949,8 @@ export interface IStorage {
   getImessageMessagesByConversation(conversationId: string, options?: { limit?: number; offset?: number }): Promise<ImessageMessage[]>;
   createImessageMessage(data: InsertImessageMessage): Promise<ImessageMessage>;
   updateImessageMessageStatus(id: string, status: string, deliveredAt?: Date, readAt?: Date): Promise<void>;
+  updateImessageMessageReadStatus(messageGuid: string, readAt: Date): Promise<void>;
+  getImessageUnreadCount(conversationId: string): Promise<number>;
   searchImessageMessages(companyId: string, query: string): Promise<ImessageMessage[]>;
   addMessageReaction(messageId: string, userId: string, reaction: string): Promise<void>;
   removeMessageReaction(messageId: string, userId: string, reaction: string): Promise<void>;
@@ -8199,6 +8203,11 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  // Alias for findImessageConversationByChatGuid (for backward compatibility)
+  async getImessageConversationByChatGuid(companyId: string, chatGuid: string): Promise<ImessageConversation | undefined> {
+    return this.findImessageConversationByChatGuid(companyId, chatGuid);
+  }
+
   async createImessageConversation(data: InsertImessageConversation): Promise<ImessageConversation> {
     const result = await db
       .insert(imessageConversations)
@@ -8343,6 +8352,31 @@ export class DbStorage implements IStorage {
       .update(imessageMessages)
       .set(updateData)
       .where(eq(imessageMessages.id, id));
+  }
+  
+  async updateImessageMessageReadStatus(messageGuid: string, readAt: Date): Promise<void> {
+    await db
+      .update(imessageMessages)
+      .set({
+        dateRead: readAt,
+        isRead: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(imessageMessages.messageGuid, messageGuid));
+  }
+  
+  async getImessageUnreadCount(conversationId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(imessageMessages)
+      .where(
+        and(
+          eq(imessageMessages.conversationId, conversationId),
+          eq(imessageMessages.isRead, false),
+          eq(imessageMessages.fromMe, false)
+        )
+      );
+    return result[0]?.count || 0;
   }
   
   async searchImessageMessages(companyId: string, query: string): Promise<ImessageMessage[]> {

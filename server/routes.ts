@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -106,6 +106,10 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 // Security constants for BulkVS MMS media uploads
 const ALLOWED_MMS_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime'];
 const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
+
+// Security constants for iMessage attachments
+const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4'];
+const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
   const user = await storage.getUser(userId);
@@ -844,7 +848,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const chatGuid = messageData.chatGuid || messageData.chat_guid || messageData.conversationId;
           const participants = messageData.participants || [messageData.handle || messageData.from];
           
-          let conversation = await storage.getImessageConversationByChatGuid(chatGuid);
+          let conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (!conversation) {
             // Create new conversation
             conversation = await storage.createImessageConversation({
@@ -854,41 +858,65 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               displayName: participants[0] || 'Unknown',
               lastMessageAt: new Date(),
               unreadCount: 1,
+              status: "active",
+              isPinned: false,
+              isGroup: participants.length > 1,
+              isImessage: true,
             });
           }
           
           // Store the message
           const newMessage = await storage.createImessageMessage({
+            companyId: company.id,
             conversationId: conversation.id,
-            guid: messageData.guid || `msg_${Date.now()}`,
+            chatGuid,
+            messageGuid: messageData.guid || messageData.message_guid || `msg_${Date.now()}`,
             text: messageData.text || messageData.message || '',
-            sender: messageData.handle?.address || messageData.from || 'Unknown',
-            isFromMe: messageData.isFromMe || false,
-            dateCreated: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
+            senderHandle: messageData.handle?.address || messageData.from || 'Unknown',
+            senderName: messageData.handle?.name || null,
+            fromMe: messageData.isFromMe || messageData.fromMe || false,
+            dateSent: messageData.dateCreated ? new Date(messageData.dateCreated) : new Date(),
             dateRead: messageData.dateRead ? new Date(messageData.dateRead) : null,
             dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : null,
             attachments: messageData.attachments || [],
-            associatedMessageGuid: messageData.associatedMessageGuid || null,
-            associatedMessageType: messageData.associatedMessageType || null,
+            metadata: {
+              associatedMessageGuid: messageData.associatedMessageGuid || null,
+              associatedMessageType: messageData.associatedMessageType || null,
+            },
+            status: "sent",
+            isImessage: true,
+            hasAttachments: (messageData.attachments || []).length > 0,
           });
           
           // Update conversation last message
           await storage.updateImessageConversation(conversation.id, {
-            lastMessageAt: newMessage.dateCreated,
+            lastMessageAt: newMessage.dateSent,
             lastMessageText: newMessage.text,
-            unreadCount: conversation.unreadCount + (newMessage.isFromMe ? 0 : 1),
+            unreadCount: conversation.unreadCount + (newMessage.fromMe ? 0 : 1),
           });
           
           // Broadcast to WebSocket clients
           broadcastImessageMessage(company.id, conversation.id, newMessage);
           
           // Send browser notification if enabled
-          if (!newMessage.isFromMe) {
-            await notificationService.sendImessageNotification(company.id, {
-              conversationId: conversation.id,
-              senderName: newMessage.sender,
-              messageText: newMessage.text,
-            });
+          if (!newMessage.fromMe) {
+            // Create notifications for all company users
+            const companyUsers = await storage.getUsersByCompany(company.id);
+            for (const user of companyUsers) {
+              await storage.createNotification({
+                userId: user.id,
+                type: 'imessage',
+                title: `New iMessage from ${newMessage.senderName || newMessage.senderHandle}`,
+                message: newMessage.text || 'New message',
+                isRead: false,
+                data: JSON.stringify({
+                  conversationId: conversation.id,
+                  messageId: newMessage.id,
+                }),
+              });
+            }
+            // Broadcast notification update to all clients
+            broadcastNotificationUpdate(company.id);
           }
           
           break;
@@ -901,7 +929,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const chatGuid = typingData.chatGuid || typingData.chat_guid;
           const isTyping = typingData.typing || typingData.isTyping;
           
-          const conversation = await storage.getImessageConversationByChatGuid(chatGuid);
+          const conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (conversation) {
             broadcastImessageTyping(company.id, conversation.id, typingData.handle || 'Unknown', isTyping);
           }
@@ -928,7 +956,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const chatGuid = readData.chatGuid || readData.chat_guid;
           const messageGuids = readData.messageGuids || readData.messages || [];
           
-          const conversation = await storage.getImessageConversationByChatGuid(chatGuid);
+          const conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (conversation) {
             // Mark messages as read
             for (const guid of messageGuids) {
