@@ -975,7 +975,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // This handles the case where we sent a message with clientGuid and webhook arrives with real BlueBubbles GUID
           if (!existingMessage && messageData.isFromMe) {
             // Find recent "sending" status message in this conversation (within last 10 seconds)
-            const recentMessages = await storage.getImessageMessages(conversation.id, 10);
+            const recentMessages = await storage.getImessageMessages(conversation.id, company.id, 10, 0);
             const pendingMessage = recentMessages.find((msg: any) => 
               msg.status === 'sending' && 
               msg.text === (messageData.text || messageData.message || '') &&
@@ -991,10 +991,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           let newMessage;
           if (existingMessage) {
             // Update existing message (reconcile clientGuid message with BlueBubbles GUID)
-            await storage.updateImessageMessageByGuid(company.id, existingMessage.messageGuid, {
+            await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, {
               messageGuid: messageGuid, // Update to real BlueBubbles GUID (correct field name)
-              dateRead: messageData.dateRead ? new Date(messageData.dateRead) : existingMessage.dateRead,
-              dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : existingMessage.dateDelivered,
+              dateRead: messageData.dateRead ? new Date(messageData.dateRead) : (existingMessage.dateRead ? new Date(existingMessage.dateRead) : null),
+              dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : (existingMessage.dateDelivered ? new Date(existingMessage.dateDelivered) : null),
               status: 'sent'
             });
             newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
