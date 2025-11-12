@@ -108,6 +108,93 @@ const MESSAGE_EFFECTS = {
 
 type MessageEffectKey = keyof typeof MESSAGE_EFFECTS;
 
+// Component to handle authenticated video loading with thumbnail and play button
+function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: string }) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    
+    fetch(url, {
+      credentials: 'include', // Include session cookies
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      })
+      .catch((err) => {
+        console.error('[iMessage] Failed to load video:', url, err);
+        setError(true);
+      });
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [url]);
+
+  if (error) {
+    return <div className="text-xs text-gray-500">Failed to load video</div>;
+  }
+
+  if (!blobUrl) {
+    return <div className="h-32 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />;
+  }
+
+  return (
+    <>
+      {/* Video thumbnail with play button */}
+      <div 
+        className="relative group cursor-pointer max-w-[250px]"
+        onClick={() => setIsOpen(true)}
+        data-testid="video-thumbnail"
+      >
+        {/* Video element for thumbnail (paused at first frame) */}
+        <video
+          src={blobUrl}
+          className="rounded-lg max-h-[150px] w-full object-cover bg-black"
+          preload="metadata"
+        />
+        
+        {/* Play button overlay - always visible */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="bg-white/90 dark:bg-gray-800/90 rounded-full p-3 shadow-lg group-hover:scale-110 transition-transform">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-20" />
+              <svg className="h-8 w-8 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Full-size video dialog */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-black/95">
+          <video
+            ref={videoRef}
+            src={blobUrl}
+            controls
+            autoPlay
+            className="w-full h-full max-h-[85vh] object-contain"
+          >
+            Your browser does not support the video tag.
+          </video>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // Component to handle authenticated image loading with thumbnail and full-size preview
 function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -927,6 +1014,11 @@ export default function IMessagePage() {
                                               <ImessageAttachmentImage 
                                                 url={attachment.url}
                                                 alt={attachment.fileName}
+                                              />
+                                            ) : attachment.mimeType.startsWith('video/') ? (
+                                              <ImessageAttachmentVideo 
+                                                url={attachment.url}
+                                                fileName={attachment.fileName}
                                               />
                                             ) : (
                                               <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
