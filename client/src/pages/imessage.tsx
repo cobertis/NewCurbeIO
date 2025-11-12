@@ -121,6 +121,7 @@ export default function IMessagePage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // State
@@ -835,7 +836,7 @@ export default function IMessagePage() {
                       variant="ghost"
                       className="w-full justify-start"
                       onClick={() => {
-                        fileInputRef.current?.click();
+                        cameraInputRef.current?.click();
                         setShowAttachmentDialog(false);
                       }}
                     >
@@ -956,6 +957,14 @@ export default function IMessagePage() {
         type="file"
         multiple
         accept=".pdf,.doc,.docx,.txt,.rtf,.pages,.odt"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*,video/*"
+        capture="environment"
         onChange={handleFileSelect}
         className="hidden"
       />
