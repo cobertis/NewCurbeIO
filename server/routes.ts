@@ -1190,8 +1190,36 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // Multer config for iMessage attachments
+  const imessageUpload = multer({
+    storage: multer.diskStorage({
+      destination: 'uploads/imessage',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+      }
+    }),
+    limits: { 
+      fileSize: 25 * 1024 * 1024 // 25MB limit for iMessage attachments
+    },
+    fileFilter: (req, file, cb) => {
+      // Allow common iMessage attachment types
+      const allowedMimes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
+        'video/mp4', 'video/quicktime', 'video/mov',
+        'application/pdf', 'text/plain',
+        'audio/mpeg', 'audio/wav', 'audio/m4a'
+      ];
+      if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type for iMessage'));
+      }
+    }
+  });
+  
   // 3. POST /api/imessage/messages/send - Send an iMessage
-  app.post("/api/imessage/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
+  app.post("/api/imessage/messages/send", imessageUpload.array('attachments', 10), requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
       if (!user || !user.companyId) {
@@ -1211,13 +1239,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         blueBubblesClient.initialize(companySettings);
       }
       
-      const { conversationId, to, text, attachments, replyToGuid, effect } = req.body;
+      const { conversationId, to, text, replyToGuid, effect } = req.body;
+      const uploadedFiles = (req as any).files as Express.Multer.File[] || [];
       
       if (!conversationId && !to) {
         return res.status(400).json({ message: "Either conversationId or to is required" });
       }
       
-      if (!text && (!attachments || attachments.length === 0)) {
+      if (!text && uploadedFiles.length === 0) {
         return res.status(400).json({ message: "Either text or attachments required" });
       }
       
@@ -1249,32 +1278,99 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Use BlueBubbles client to send message
+      const filePaths: string[] = [];
       try {
-        const sendResult = await blueBubblesClient.sendMessage({
-          chatGuid: conversation.chatGuid,
-          message: text || "",
-          method: 'private-api',
-          effectId: effect
-        });
+        let message: any = null;
         
-        // Store message in database
-        const message = await storage.createImessageMessage({
-          conversationId: conversation.id,
-          companyId: user.companyId,
-          chatGuid: conversation.chatGuid,
-          isImessage: true,
-          messageGuid: sendResult.data.guid || `temp_${Date.now()}`,
-          text: text || "",
-          fromMe: true,
-          dateSent: new Date(sendResult.data.dateCreated),
-          dateDelivered: null,
-          dateRead: null,
-          status: 'sent',
-          hasAttachments: false,
-          attachments: attachments || [],
-          replyToGuid,
-          effect
-        });
+        // Step 1: Send text message first (if exists)
+        if (text && text.trim()) {
+          const sendResult = await blueBubblesClient.sendMessage({
+            chatGuid: conversation.chatGuid,
+            message: text,
+            method: 'private-api',
+            effectId: effect
+          });
+          
+          // Store text message in database
+          message = await storage.createImessageMessage({
+            conversationId: conversation.id,
+            companyId: user.companyId,
+            chatGuid: conversation.chatGuid,
+            isImessage: true,
+            messageGuid: sendResult.data.guid || `temp_${Date.now()}`,
+            text: text,
+            fromMe: true,
+            dateSent: new Date(sendResult.data.dateCreated),
+            dateDelivered: null,
+            dateRead: null,
+            status: 'sent',
+            hasAttachments: uploadedFiles.length > 0,
+            attachments: [],
+            replyToGuid,
+            effect
+          });
+        }
+        
+        // Step 2: Send each attachment one by one
+        for (const file of uploadedFiles) {
+          filePaths.push(file.path);
+          
+          console.log(`[iMessage] Sending attachment: ${file.originalname}`);
+          const attachmentResult = await blueBubblesClient.sendAttachment(
+            conversation.chatGuid,
+            file.path
+          );
+          
+          // Store attachment message in database if we didn't already create a text message
+          if (!message) {
+            message = await storage.createImessageMessage({
+              conversationId: conversation.id,
+              companyId: user.companyId,
+              chatGuid: conversation.chatGuid,
+              isImessage: true,
+              messageGuid: attachmentResult.data.guid || `temp_${Date.now()}`,
+              text: '',
+              fromMe: true,
+              dateSent: new Date(attachmentResult.data.dateCreated),
+              dateDelivered: null,
+              dateRead: null,
+              status: 'sent',
+              hasAttachments: true,
+              attachments: [{
+                filename: file.originalname,
+                mimeType: file.mimetype,
+                size: file.size
+              }],
+              replyToGuid,
+              effect
+            });
+          }
+        }
+        
+        // If we only had attachments and no text, create a message record
+        if (!message && uploadedFiles.length > 0) {
+          message = await storage.createImessageMessage({
+            conversationId: conversation.id,
+            companyId: user.companyId,
+            chatGuid: conversation.chatGuid,
+            isImessage: true,
+            messageGuid: `temp_${Date.now()}`,
+            text: '',
+            fromMe: true,
+            dateSent: new Date(),
+            dateDelivered: null,
+            dateRead: null,
+            status: 'sent',
+            hasAttachments: true,
+            attachments: uploadedFiles.map(f => ({
+              filename: f.originalname,
+              mimeType: f.mimetype,
+              size: f.size
+            })),
+            replyToGuid,
+            effect
+          });
+        }
         
         // Broadcast update via WebSocket
         const { broadcastImessageUpdate } = await import("./websocket");
@@ -1288,6 +1384,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (sendError: any) {
         console.error("[iMessage] Failed to send:", sendError);
         return res.status(500).json({ message: sendError.message || "Failed to send message" });
+      } finally {
+        // Clean up temporary files
+        for (const filePath of filePaths) {
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`[iMessage] Cleaned up temp file: ${filePath}`);
+          } catch (cleanupError) {
+            console.error(`[iMessage] Failed to cleanup temp file ${filePath}:`, cleanupError);
+          }
+        }
       }
     } catch (error: any) {
       console.error("Error sending iMessage:", error);
