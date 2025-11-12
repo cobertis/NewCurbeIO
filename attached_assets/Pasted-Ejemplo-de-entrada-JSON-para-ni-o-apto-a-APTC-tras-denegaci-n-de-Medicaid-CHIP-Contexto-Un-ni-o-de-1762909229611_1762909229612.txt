@@ -1,0 +1,83 @@
+Ejemplo de entrada JSON para niño apto a APTC tras denegación de Medicaid/CHIP
+
+Contexto: Un niño de 2 años en un hogar de ingresos bajos o moderados típicamente califica para Medicaid/CHIP debido a los límites de ingreso más altos que aplican a los menores
+coveraz.org
+. Por ejemplo, una familia con ingresos ~150% FPL podría tener a los padres elegibles para créditos fiscales (APTC) pero a sus hijos elegibles para Medicaid/CHIP
+coveraz.org
+. En la API del Marketplace, si un menor aparece elegible para Medicaid/CHIP, el cálculo de APTC para él será $0 (pues se asume que obtendrá cobertura pública). Para forzar que el niño sea considerado elegible a APTC (p.ej. porque el estado ya le negó Medicaid/CHIP recientemente), se deben ajustar ciertos campos en la solicitud JSON. No existe un campo explícito "medicaid_denied" en la API pública, sino que debemos indicarlo mediante las banderas apropiadas en el objeto person del niño. En resumen:
+
+Marcar al niño como elegible para APTC: Establecer "aptc_eligible": true en el objeto de la persona del niño. Esto indica a la API que considere a esta persona para créditos fiscales adelantados
+developer.cms.gov
+. Equivale a atestar que el menor no tiene otra cobertura asequible y que, pese a su edad/ingreso, debe recibir APTC (como cuando se marca la casilla de “denegado por Medicaid/CHIP” en la aplicación
+cms.gov
+). Si no se pone en true, la API por defecto lo tratará como elegible a Medicaid/CHIP y su APTC saldrá 0.
+
+Indicar que no tiene cobertura pública vigente: Asegurarse de poner "has_mec": false para el niño. La bandera MEC (“Minimum Essential Coverage”) señala si la persona ya tiene cobertura de Medicaid/CHIP u otro seguro mínimo esencial
+developer.cms.gov
+. Debe ser false porque el niño no tiene Medicaid/CHIP activo (fue denegado, por eso está buscando APTC). No confundir este campo con la elegibilidad; si se pusiera true, la API lo excluiría del cálculo de APTC por asumir que ya cuenta con cobertura pública
+developer.cms.gov
+.
+
+Relacionar correctamente al niño en el hogar: Usar "relationship": "Child" para la persona del niño, indicando que es hijo dependiente del solicitante principal
+developer.cms.gov
+developer.cms.gov
+. El adulto principal (p. ej. el padre/madre que solicita) debe figurar con "relationship": "Self". Esto ayuda a la API a determinar la composición del hogar. Si el solicitante principal está incluido en people, marque su relación como Self (y opcionalmente puede marcarse is_parent: true en el adulto, aunque si se especifican las relaciones, no es obligatorio).
+
+Estructura mínima del objeto household: Debe incluir al menos el ingreso anual del hogar (income) y la lista de personas (people). En people, incluir cada miembro que solicita cobertura o que se evalúa para elegibilidad:
+
+Para el niño de 2 años: proporcionar su fecha de nacimiento (dob) o edad (age) para que la API lo identifique como menor; los campos "aptc_eligible": true, "has_mec": false, "relationship": "Child", y cualquier otro relevante (p.ej. gender, uses_tobacco si se desea, aunque no son obligatorios para elegibilidad).
+
+Para el adulto (si lo incluye en la solicitud): su dob/age, "aptc_eligible": true (asumiendo que también califica a APTC), "has_mec": false (no tiene cobertura alternativa), "relationship": "Self". Si no hay cónyuge, puede omitirse has_married_couple o dejarlo en false.
+
+Otros campos necesarios en la solicitud: Fuera del objeto household, se deben especificar "market": "Individual" (mercado individual) y el objeto "place" con la ubicación: estado (state), código de condado FIPS (countyfips) y ZIP code (zipcode). La elegibilidad Medicaid/CHIP varía por estado, por lo que asegúrese de usar el estado correcto para que la API aplique los umbrales correspondientes
+developer.cms.gov
+. También incluya "year" del periodo de cobertura deseado (p. ej. 2024 o 2025).
+
+A continuación se muestra un JSON de ejemplo completo con estos campos. Incluimos comentarios // en cada campo para explicar su propósito; estos comentarios deben removerse al usar el JSON en la solicitud real.:
+
+{
+  "household": {
+    "income": 20000,  // Ingreso anual del hogar en dólares (ej.: 20000 USD)
+    "people": [
+      {
+        "dob": "2023-01-01",    // Fecha de nacimiento del niño (2 años de edad aprox)
+        "aptc_eligible": true, // Marcar true: el niño es elegible para APTC (p.ej. denegado por Medicaid):contentReference[oaicite:9]{index=9}
+        "has_mec": false,      // No tiene cobertura Esencial (no tiene Medicaid/CHIP actualmente):contentReference[oaicite:10]{index=10}
+        "relationship": "Child"// Relación con el solicitante principal: es su "Hijo/a":contentReference[oaicite:11]{index=11}
+      },
+      {
+        "dob": "1985-07-15",   // Fecha de nacimiento del adulto solicitante (ejemplo)
+        "aptc_eligible": true, // Adulto elegible para APTC (ingreso dentro de rango, sin otras coberturas)
+        "has_mec": false,      // No tiene otra cobertura (ni Medicaid, Medicare, etc.)
+        "relationship": "Self" // Es el solicitante principal ("Self" indica que es él/ella mismo):contentReference[oaicite:12]{index=12}
+        // "is_parent": true   // (Opcional) Podría indicarse que este adulto es padre/madre de alguien en el hogar.
+      }
+    ]
+    // "has_married_couple": false  // (Opcional) No hay pareja casada en este hogar, se puede omitir o dejar en false.
+  },
+  "market": "Individual",      // Mercado Individual (cobertura individual/familiar, no es SHOP)
+  "place": {
+    "state": "FL",             // Estado de residencia (ejemplo: Florida)
+    "countyfips": "12086",     // Código FIPS del condado (ej.: 12086 para Miami-Dade, FL)
+    "zipcode": "33130"         // Código postal del domicilio (ejemplo en concordancia con el condado)
+  },
+  "year": 2024                 // Año del plan/coverage a cotizar (ejemplo: 2024)
+}
+
+
+Cómo funciona: En este ejemplo, el niño tiene aptc_eligible: true y has_mec: false. Así, aunque con ingresos de $20,000 en Florida normalmente sería elegible a Medicaid/CHIP por su edad, la API lo tratará como elegible para créditos APTC dado que no tiene cobertura pública vigente y se le marcó explícitamente como apto para APTC. De este modo, al solicitar un cálculo de elegibilidad o cotización de planes, no verá aptc: 0 para el menor, sino que obtendrá un crédito fiscal aplicado también a su prima. En otras palabras, estamos reflejando la situación de un menor rechazado por Medicaid/CHIP ante la API del Marketplace, lo que le permite acceder a subsidios
+cms.gov
+.
+
+Finalmente, verifique en la respuesta de la API que el campo de salida is_medicaid_chip venga false para el niño, y que se calcule un monto de "aptc" positivo asociado a él. Si aún apareciera is_medicaid_chip: true o APTC = 0 para el menor, revise que aptc_eligible: true y has_mec: false estén correctamente establecidos para ese dependiente, y que la información de ingreso/ubicación sea correcta (p. ej. usar el estado apropiado)
+developer.cms.gov
+. Con la estructura mostrada arriba, el niño de 2 años será considerado elegible para APTC en la evaluación de la API, evitando su clasificación solo como Medicaid/CHIP.
+
+Fuentes: La documentación oficial de CMS Developer especifica el uso de aptc_eligible y has_mec en el objeto persona
+developer.cms.gov
+developer.cms.gov
+, así como los valores válidos para relationship (incluyendo "Child" para dependientes)
+developer.cms.gov
+. Además, CMS indica que en la aplicación del Mercado se debe marcar a individuos con denegación estatal de Medicaid/CHIP para que califiquen a APTC
+cms.gov
+ – justamente lo que replicamos aquí a nivel de API. Este enfoque garantiza que un menor sin Medicaid/CHIP activo pueda obtener ayuda de costo vía APTC.
