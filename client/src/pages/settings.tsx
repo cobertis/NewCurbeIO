@@ -451,6 +451,7 @@ export default function Settings() {
     if (location === "/settings/sessions") return "sessions";
     if (location === "/settings/notifications") return "notifications";
     if (location === "/settings/team") return "team";
+    if (location === "/settings/imessage") return "imessage";
     return "profile"; // default
   };
 
@@ -471,7 +472,7 @@ export default function Settings() {
   const availableTabs = useMemo(() => {
     const baseTabs = ["profile", "security", "sessions", "preferences", "notifications", "automations"];
     if (isAdmin) {
-      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications", "automations"];
+      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications", "automations", "imessage"];
     }
     return baseTabs;
   }, [isAdmin]);
