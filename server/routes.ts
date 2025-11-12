@@ -991,8 +991,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           let newMessage;
           if (existingMessage) {
             // Update existing message (reconcile clientGuid message with BlueBubbles GUID)
-            await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, {
-              guid: messageGuid, // Update to real BlueBubbles GUID
+            await storage.updateImessageMessageByGuid(company.id, existingMessage.messageGuid, {
+              messageGuid: messageGuid, // Update to real BlueBubbles GUID (correct field name)
               dateRead: messageData.dateRead ? new Date(messageData.dateRead) : existingMessage.dateRead,
               dateDelivered: messageData.dateDelivered ? new Date(messageData.dateDelivered) : existingMessage.dateDelivered,
               status: 'sent'
