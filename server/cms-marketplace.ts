@@ -163,7 +163,7 @@ export async function fetchHouseholdEligibility(
     }>;
   },
   yearOverride?: number
-): Promise<{ aptc: number; csr: string } | null> {
+): Promise<{ aptc: number; csr: string; is_medicaid_chip?: boolean } | null> {
   const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
   
   if (!apiKey) {
@@ -268,10 +268,11 @@ export async function fetchHouseholdEligibility(
     
     if (data.estimates && data.estimates.length > 0) {
       const estimate = data.estimates[0];
-      console.log(`[CMS_MARKETPLACE_ELIGIBILITY] ✅ APTC: $${estimate.aptc}, CSR: ${estimate.csr}`);
+      console.log(`[CMS_MARKETPLACE_ELIGIBILITY] ✅ APTC: $${estimate.aptc}, CSR: ${estimate.csr}, is_medicaid_chip: ${estimate.is_medicaid_chip}`);
       return {
         aptc: estimate.aptc,
         csr: estimate.csr,
+        is_medicaid_chip: estimate.is_medicaid_chip,
       };
     }
     
@@ -345,10 +346,23 @@ export async function fetchMarketplacePlans(
   const targetYear = yearOverride || new Date().getFullYear();
   console.log(`[CMS_MARKETPLACE] 🚀 Fetching plans - Page ${page}, PageSize ${pageSize}, Year ${targetYear}`);
   
-  // Skip eligibility endpoint - let /plans/search calculate APTC automatically
-  // The /plans/search endpoint will calculate APTC based on aptc_eligible: true
-  console.log('[CMS_MARKETPLACE] 📊 Skipping eligibility endpoint - letting /plans/search calculate APTC');
-  let eligibility = null;
+  // Step 1: ALWAYS call /households/eligibility/estimates to get authoritative APTC
+  // This endpoint returns APTC even when income < 138% FPL (Medicaid expansion threshold)
+  // It also returns is_medicaid_chip flag which we'll document in the response
+  console.log('[CMS_MARKETPLACE] 📊 Step 1: Fetching eligibility from /households/eligibility/estimates...');
+  let eligibility: { aptc: number; csr: string; is_medicaid_chip?: boolean } | null = null;
+  
+  try {
+    eligibility = await fetchHouseholdEligibility(quoteData, yearOverride);
+    if (eligibility) {
+      console.log(`[CMS_MARKETPLACE] ✅ Eligibility: APTC=$${eligibility.aptc}, CSR=${eligibility.csr}, is_medicaid_chip=${eligibility.is_medicaid_chip}`);
+    } else {
+      console.log('[CMS_MARKETPLACE] ⚠️ Eligibility endpoint returned null');
+    }
+  } catch (error) {
+    console.error('[CMS_MARKETPLACE] ❌ Error fetching eligibility:', error);
+    // Continue anyway - /plans/search might still work without APTC override
+  }
   
   // CRITICAL FIX - Keep fetching CMS pages until we have enough filtered results
   // OR we've exhausted all available CMS data
@@ -370,7 +384,10 @@ export async function fetchMarketplacePlans(
     cmsFetchCount++;
     console.log(`[CMS_MARKETPLACE] 📄 Fetching CMS batch #${cmsFetchCount} (offset=${cmsOffset})...`);
     
-    const apiResponse = await fetchSinglePage(quoteData, cmsOffset, yearOverride, filters);
+    // Step 2: Use the APTC from eligibility endpoint as aptc_override in /plans/search
+    // This forces the CMS API to apply APTC even when is_medicaid_chip: true
+    const aptcToUse = eligibility?.aptc;
+    const apiResponse = await fetchSinglePage(quoteData, cmsOffset, yearOverride, filters, aptcToUse);
     
     if (apiResponse.plans && apiResponse.plans.length > 0) {
       // Add to all CMS plans collection
@@ -456,6 +473,7 @@ export async function fetchMarketplacePlans(
   console.log(`[CMS_MARKETPLACE] ✅ Final totals: ${allCmsPlans.length} CMS plans fetched, ${filteredAccumulator.length} passed filters`);
   console.log(`[CMS_MARKETPLACE] ✅ household_aptc: $${eligibility?.aptc || 'NOT AVAILABLE'}`);
   console.log(`[CMS_MARKETPLACE] ✅ household_csr: ${eligibility?.csr || 'NOT AVAILABLE'}`);
+  console.log(`[CMS_MARKETPLACE] ✅ is_medicaid_chip: ${eligibility?.is_medicaid_chip ?? 'NOT AVAILABLE'}`);
   
   // Step 3: Calculate pagination on the already-filtered results
   const totalFilteredPlans = filteredAccumulator.length;
@@ -478,6 +496,7 @@ export async function fetchMarketplacePlans(
     year: year,
     household_aptc: eligibility?.aptc,
     household_csr: eligibility?.csr,
+    is_medicaid_chip: eligibility?.is_medicaid_chip, // Document Medicaid eligibility flag
     totalCmsPlans: totalCmsPlans, // Add for transparency
   };
 }
