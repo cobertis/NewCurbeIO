@@ -105,6 +105,48 @@ const MESSAGE_EFFECTS = {
 
 type MessageEffectKey = keyof typeof MESSAGE_EFFECTS;
 
+// Component to handle authenticated image loading
+function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
+  const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
+  const [error, setError] = React.useState(false);
+
+  React.useEffect(() => {
+    let objectUrl: string | null = null;
+    
+    fetch(url, {
+      credentials: 'include', // Include session cookies
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      })
+      .catch((err) => {
+        console.error('[iMessage] Failed to load attachment:', url, err);
+        setError(true);
+      });
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [url]);
+
+  if (error) {
+    return <div className="text-xs text-gray-500">Failed to load image</div>;
+  }
+
+  if (!blobUrl) {
+    return <div className="h-32 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />;
+  }
+
+  return <img src={blobUrl} alt={alt} className="max-w-full rounded-lg" />;
+}
+
 const TAPBACK_REACTIONS = [
   { emoji: '❤️', label: 'Love' },
   { emoji: '👍', label: 'Like' },
@@ -617,27 +659,12 @@ export default function IMessagePage() {
                                     {/* Attachments */}
                                     {message.hasAttachments && message.attachments.length > 0 && (
                                       <div className="mt-2 space-y-2">
-                                        {message.attachments.map(attachment => {
-                                          console.log('[iMessage] Rendering attachment:', {
-                                            id: attachment.id,
-                                            fileName: attachment.fileName,
-                                            url: attachment.url,
-                                            mimeType: attachment.mimeType
-                                          });
-                                          return (
+                                        {message.attachments.map(attachment => (
                                           <div key={attachment.id} className="rounded-lg overflow-hidden">
                                             {attachment.mimeType.startsWith('image/') ? (
-                                              <img 
-                                                src={attachment.url} 
+                                              <ImessageAttachmentImage 
+                                                url={attachment.url}
                                                 alt={attachment.fileName}
-                                                className="max-w-full rounded-lg"
-                                                onError={(e) => {
-                                                  console.error('[iMessage] Image failed to load:', attachment.url);
-                                                  console.error('[iMessage] Error:', e);
-                                                }}
-                                                onLoad={() => {
-                                                  console.log('[iMessage] Image loaded successfully:', attachment.url);
-                                                }}
                                               />
                                             ) : (
                                               <div className="flex items-center gap-2 p-2 bg-white/10 rounded">
@@ -649,8 +676,7 @@ export default function IMessagePage() {
                                               </div>
                                             )}
                                           </div>
-                                          );
-                                        })}
+                                        ))}
                                       </div>
                                     )}
 
