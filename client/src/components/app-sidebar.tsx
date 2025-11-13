@@ -209,6 +209,11 @@ const marketingMenuItems = [
     icon: Mail,
   },
   {
+    title: "Blacklist",
+    url: "/blacklist",
+    icon: Shield,
+  },
+  {
     title: "Referrals",
     url: "/referrals",
     icon: UserPlus,

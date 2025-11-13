@@ -42,6 +42,7 @@ import Settings from "@/pages/settings";
 import AuditLogs from "@/pages/audit-logs";
 import Support from "@/pages/support";
 import Contacts from "@/pages/contacts";
+import Blacklist from "@/pages/blacklist";
 import Campaigns from "@/pages/campaigns";
 import CampaignStats from "@/pages/campaign-stats";
 import SmsCampaignStats from "@/pages/sms-campaign-stats";
@@ -1244,6 +1245,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Contacts />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/blacklist">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Blacklist />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
