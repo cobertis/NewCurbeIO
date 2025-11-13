@@ -70,6 +70,8 @@ import IntegrationsPage from "@/pages/integrations";
 import Leads from "@/pages/leads";
 import Tasks from "@/pages/tasks";
 import IMessagePage from "@/pages/imessage";
+import ImessageCampaigns from "@/pages/imessage-campaigns";
+import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -108,6 +110,7 @@ const getPageTitle = (path: string): string => {
     '/birthday-images': 'Birthday Images',
     '/sms': 'SMS',
     '/imessage': 'iMessage',
+    '/imessage-campaigns': 'iMessage Campaigns',
     '/settings/imessage': 'Settings - iMessage',
   };
   
@@ -117,6 +120,10 @@ const getPageTitle = (path: string): string => {
   
   if (path.startsWith('/sms-campaigns/') && path.includes('/stats')) {
     return 'SMS Campaign Statistics';
+  }
+  
+  if (path.startsWith('/imessage-campaigns/')) {
+    return 'Campaign Details';
   }
   
   return routes[path] || 'Dashboard';
@@ -1280,6 +1287,20 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IMessagePage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/imessage-campaigns/:id">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ImessageCampaignDetail />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/imessage-campaigns">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ImessageCampaigns />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
