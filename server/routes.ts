@@ -1010,6 +1010,104 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   
   // ==================== iMESSAGE API ENDPOINTS ====================
   
+  /**
+   * MIME type to extension normalization map
+   * Maps common MIME types to their correct file extensions
+   */
+  const MIME_TO_EXTENSION: Record<string, string> = {
+    // Video
+    'video/quicktime': 'mov',
+    'video/mp4': 'mp4',
+    'video/x-m4v': 'm4v',
+    
+    // Audio
+    'audio/x-caf': 'caf',
+    'audio/mp4': 'm4a',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/webm': 'webm',
+    'audio/ogg': 'ogg',
+    
+    // Images
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/heic': 'heic',
+    'image/heif': 'heif',
+    'image/webp': 'webp',
+    
+    // Documents
+    'application/pdf': 'pdf',
+  };
+
+  /**
+   * Downloads attachment from BlueBubbles and saves it permanently to local storage
+   * Returns the local file path relative to server root
+   */
+  async function downloadAndSaveAttachment(
+    companySettings: any,
+    attachment: { guid: string; mimeType: string; transferName?: string; fileName?: string }
+  ): Promise<string> {
+    try {
+      // Initialize BlueBubbles client
+      const { blueBubblesClient } = await import("./bluebubbles");
+      blueBubblesClient.initialize(companySettings);
+      
+      // Download attachment stream from BlueBubbles
+      const attachmentResponse = await blueBubblesClient.getAttachmentStream(attachment.guid);
+      
+      if (!attachmentResponse.ok || !attachmentResponse.body) {
+        throw new Error(`Failed to download attachment from BlueBubbles: ${attachmentResponse.status}`);
+      }
+      
+      // Determine file extension with normalization
+      let ext = 'bin';
+      if (attachment.mimeType) {
+        // First try exact MIME type match
+        const normalizedExt = MIME_TO_EXTENSION[attachment.mimeType.toLowerCase()];
+        if (normalizedExt) {
+          ext = normalizedExt;
+          console.log(`[iMessage Attachment] Normalized MIME type ${attachment.mimeType} → .${ext}`);
+        } else {
+          // Fallback to MIME subtype (e.g., "image/png" → "png")
+          const parts = attachment.mimeType.split('/');
+          ext = parts[1] || 'bin';
+          console.log(`[iMessage Attachment] Using MIME subtype as extension: .${ext}`);
+        }
+      } else if (attachment.transferName || attachment.fileName) {
+        const filename = attachment.transferName || attachment.fileName || '';
+        const extMatch = filename.match(/\.([^.]+)$/);
+        if (extMatch) {
+          ext = extMatch[1];
+          console.log(`[iMessage Attachment] Using extension from filename: .${ext}`);
+        }
+      }
+      
+      // Create uploads/imessage directory if it doesn't exist
+      const uploadDir = path.join('uploads', 'imessage');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      // Save file with GUID as filename
+      const filename = `${attachment.guid}.${ext}`;
+      const filePath = path.join(uploadDir, filename);
+      
+      // Convert stream to buffer and write to disk
+      const buffer = await attachmentResponse.arrayBuffer();
+      fs.writeFileSync(filePath, Buffer.from(buffer));
+      
+      console.log(`[iMessage Attachment] Downloaded and saved to local storage: ${filePath}`);
+      
+      return filePath;
+    } catch (error: any) {
+      console.error(`[iMessage Attachment] Failed to download and save attachment ${attachment.guid}:`, error);
+      throw error;
+    }
+  }
+  
   // CRITICAL: BlueBubbles Webhook Endpoint
   // POST /api/imessage/webhook/:companySlug - Receive webhooks from BlueBubbles server
   app.post("/api/imessage/webhook/:companySlug", async (req: Request, res: Response) => {
@@ -1262,16 +1360,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
             
             // CRITICAL: Always update attachments for ALL message types (replies, regular messages, etc.)
-            // Transform attachments using same pattern as CREATE path to ensure consistency
-            const transformedAttachments = (messageData.attachments || []).map((att: any) => ({
-              guid: att.guid,
-              mimeType: att.mimeType,
-              fileName: att.transferName || att.fileName || 'attachment',
-              fileSize: att.totalBytes || 0,
-              width: att.width,
-              height: att.height,
-              url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
-            }));
+            // Download and save attachments to local storage immediately
+            const transformedAttachments = await Promise.all(
+              (messageData.attachments || []).map(async (att: any) => {
+                try {
+                  // Download and save attachment to local storage
+                  await downloadAndSaveAttachment(companySettings, {
+                    guid: att.guid,
+                    mimeType: att.mimeType,
+                    transferName: att.transferName,
+                    fileName: att.fileName
+                  });
+                  
+                  return {
+                    guid: att.guid,
+                    mimeType: att.mimeType,
+                    fileName: att.transferName || att.fileName || 'attachment',
+                    fileSize: att.totalBytes || 0,
+                    width: att.width,
+                    height: att.height,
+                    url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+                  };
+                } catch (error: any) {
+                  console.error(`[BlueBubbles Webhook] Failed to download attachment ${att.guid}:`, error);
+                  // Return attachment metadata anyway so message isn't lost
+                  return {
+                    guid: att.guid,
+                    mimeType: att.mimeType,
+                    fileName: att.transferName || att.fileName || 'attachment',
+                    fileSize: att.totalBytes || 0,
+                    width: att.width,
+                    height: att.height,
+                    url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+                  };
+                }
+              })
+            );
             updateData.attachments = transformedAttachments;
             updateData.hasAttachments = transformedAttachments.length > 0;
             
@@ -1294,17 +1418,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
-              // Transform attachments to use backend URLs instead of BlueBubbles absolute URLs
-              const transformedAttachments = (messageData.attachments || []).map((att: any) => ({
-                guid: att.guid,
-                mimeType: att.mimeType,
-                fileName: att.transferName || att.fileName || 'attachment',
-                fileSize: att.totalBytes || 0,
-                width: att.width,
-                height: att.height,
-                // CRITICAL: Use backend-relative URL, not BlueBubbles absolute URL
-                url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
-              }));
+              // Download and save attachments to local storage immediately
+              const transformedAttachments = await Promise.all(
+                (messageData.attachments || []).map(async (att: any) => {
+                  try {
+                    // Download and save attachment to local storage
+                    await downloadAndSaveAttachment(companySettings, {
+                      guid: att.guid,
+                      mimeType: att.mimeType,
+                      transferName: att.transferName,
+                      fileName: att.fileName
+                    });
+                    
+                    return {
+                      guid: att.guid,
+                      mimeType: att.mimeType,
+                      fileName: att.transferName || att.fileName || 'attachment',
+                      fileSize: att.totalBytes || 0,
+                      width: att.width,
+                      height: att.height,
+                      url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+                    };
+                  } catch (error: any) {
+                    console.error(`[BlueBubbles Webhook] Failed to download attachment ${att.guid}:`, error);
+                    // Return attachment metadata anyway so message isn't lost
+                    return {
+                      guid: att.guid,
+                      mimeType: att.mimeType,
+                      fileName: att.transferName || att.fileName || 'attachment',
+                      fileSize: att.totalBytes || 0,
+                      width: att.width,
+                      height: att.height,
+                      url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+                    };
+                  }
+                })
+              );
               
               newMessage = await storage.createImessageMessage({
                 companyId: company.id,
@@ -1606,7 +1755,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // Attachment serving endpoint  
-  // GET /api/imessage/attachments/:guid - Proxy attachment from BlueBubbles server
+  // GET /api/imessage/attachments/:guid - Serve attachment from local storage
   app.get("/api/imessage/attachments/:guid", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -1616,23 +1765,86 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { guid } = req.params;
       
-      // Get company settings to initialize BlueBubbles client
+      // Try to find the attachment file in local storage
+      // We need to check for various possible extensions since GUID doesn't include extension
+      const uploadDir = path.join('uploads', 'imessage');
+      const possibleExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'mov', 'm4v', 'caf', 'mp3', 'wav', 'm4a', 'heic', 'heif', 'pdf', 'bin'];
+      
+      let filePath: string | null = null;
+      let mimeType = 'application/octet-stream';
+      
+      // Check for file with any of the possible extensions
+      for (const ext of possibleExtensions) {
+        const testPath = path.join(uploadDir, `${guid}.${ext}`);
+        if (fs.existsSync(testPath)) {
+          filePath = testPath;
+          
+          // Determine MIME type from extension
+          const mimeTypes: Record<string, string> = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'mp4': 'video/mp4',
+            'mov': 'video/quicktime',
+            'm4v': 'video/mp4',
+            'caf': 'audio/x-caf',
+            'mp3': 'audio/mpeg',
+            'wav': 'audio/wav',
+            'm4a': 'audio/mp4',
+            'heic': 'image/heic',
+            'heif': 'image/heif',
+            'pdf': 'application/pdf'
+          };
+          mimeType = mimeTypes[ext] || 'application/octet-stream';
+          break;
+        }
+      }
+      
+      // If file found locally, serve it directly
+      if (filePath) {
+        console.log(`[iMessage Attachment] Serving from local storage: ${filePath}`);
+        
+        // Set headers for local file
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+        
+        // Get file stats for Content-Length
+        const stats = fs.statSync(filePath);
+        res.setHeader('Content-Length', stats.size);
+        
+        // Stream file from local storage
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+        
+        fileStream.on('error', (streamError: any) => {
+          console.error('[iMessage Attachment] Stream error:', streamError);
+          if (!res.headersSent) {
+            res.status(500).json({ message: 'Failed to stream attachment from local storage' });
+          }
+        });
+        
+        return;
+      }
+      
+      // If file not found locally, try to fetch from BlueBubbles as fallback (for old attachments)
+      console.log(`[iMessage Attachment] File not found in local storage: ${guid}, attempting BlueBubbles fallback`);
+      
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
       
       if (!imessageSettings?.isEnabled || !imessageSettings?.serverUrl) {
-        return res.status(403).json({ message: "iMessage feature not enabled" });
+        return res.status(404).json({ message: "Attachment not found" });
       }
       
       // Initialize BlueBubbles client
       const { blueBubblesClient } = await import("./bluebubbles");
-      if (companySettings) {
-        blueBubblesClient.initialize(companySettings);
-      }
+      blueBubblesClient.initialize(companySettings);
       
       // Stream attachment from BlueBubbles
       const attachmentResponse = await blueBubblesClient.getAttachmentStream(guid);
-      
+    
       console.log('[iMessage Attachment] BlueBubbles response status:', attachmentResponse.status);
       console.log('[iMessage Attachment] Headers:', {
         contentType: attachmentResponse.headers.get('content-type'),
@@ -1653,46 +1865,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(500).json({ message: 'BlueBubbles returned error: ' + JSON.stringify(jsonBody) });
       }
       
-      // Forward headers from BlueBubbles response
-      const contentLength = attachmentResponse.headers.get('content-length');
-      const contentDisposition = attachmentResponse.headers.get('content-disposition');
+      // HEALING MECHANISM: Download and persist attachment to local storage for future use
+      console.log('[iMessage Attachment] Persisting attachment from BlueBubbles to heal old attachment:', guid);
       
-      // Use contentType from above (already checked for JSON)
-      res.setHeader('Content-Type', contentType || 'image/png');
-      console.log('[iMessage Attachment] Set Content-Type:', contentType || 'image/png');
-      
-      if (contentLength) {
-        res.setHeader('Content-Length', contentLength);
-        console.log('[iMessage Attachment] Set Content-Length:', contentLength);
-      }
-      
-      if (contentDisposition) {
-        res.setHeader('Content-Disposition', contentDisposition);
-      }
-      
-      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-      
-      // Stream the response using pipeline for better error handling
-      if (!attachmentResponse.body) {
-        throw new Error('No response body from BlueBubbles');
-      }
-      
-      const { Readable, pipeline } = await import('stream');
-      const { promisify } = await import('util');
-      const pipelineAsync = promisify(pipeline);
-      
-      try {
-        const nodeStream = Readable.fromWeb(attachmentResponse.body as any);
-        await pipelineAsync(nodeStream, res);
-        console.log('[iMessage Attachment] Successfully streamed attachment:', guid);
-      } catch (pipelineError: any) {
-        console.error('[iMessage Attachment] Pipeline error:', pipelineError);
-        // Don't try to send JSON response if headers already sent
-        if (!res.headersSent) {
-          return res.status(500).json({ message: 'Failed to stream attachment' });
+      // Determine file extension with normalization
+      let ext = 'bin';
+      if (contentType) {
+        // First try exact MIME type match
+        const normalizedExt = MIME_TO_EXTENSION[contentType.toLowerCase()];
+        if (normalizedExt) {
+          ext = normalizedExt;
+          console.log(`[iMessage Attachment] Normalized MIME type ${contentType} → .${ext}`);
+        } else {
+          // Fallback to MIME subtype (e.g., "image/png" → "png")
+          const parts = contentType.split('/');
+          ext = parts[1]?.split(';')[0] || 'bin'; // Remove any charset or other params
+          console.log(`[iMessage Attachment] Using MIME subtype as extension: .${ext}`);
         }
       }
       
+      // Create uploads/imessage directory if it doesn't exist
+      const uploadDir = path.join('uploads', 'imessage');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      
+      // Save file with GUID and normalized extension
+      const filename = `${guid}.${ext}`;
+      const savedFilePath = path.join(uploadDir, filename);
+      
+      // Download to buffer and save to disk
+      const buffer = await attachmentResponse.arrayBuffer();
+      fs.writeFileSync(savedFilePath, Buffer.from(buffer));
+      
+      console.log(`[iMessage Attachment] ✓ Healed old attachment - saved to local storage: ${savedFilePath}`);
+      
+      // Now serve the file from local storage
+      res.setHeader('Content-Type', contentType || 'application/octet-stream');
+      res.setHeader('Content-Length', buffer.byteLength);
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      
+      // Stream the saved file to response
+      const fileStream = fs.createReadStream(savedFilePath);
+      fileStream.pipe(res);
+      
+      fileStream.on('error', (streamError: any) => {
+        console.error('[iMessage Attachment] Stream error:', streamError);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Failed to stream attachment from local storage' });
+        }
+      });
     } catch (error: any) {
       console.error("Error serving iMessage attachment:", error);
       res.status(500).json({ message: "Failed to serve attachment" });
