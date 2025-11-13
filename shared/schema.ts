@@ -3826,6 +3826,14 @@ export const imessageCampaigns = pgTable("imessage_campaigns", {
   scheduleType: text("schedule_type").notNull().default("immediate"), // immediate, scheduled
   scheduledAt: timestamp("scheduled_at"), // When to start sending
   
+  // Campaign Studio fields
+  templateId: varchar("template_id").references(() => campaignTemplates.id, { onDelete: "set null" }),
+  hasVariants: boolean("has_variants").notNull().default(false),
+  abTestMetric: text("ab_test_metric"), // response_rate, conversion_rate
+  abTestMinSample: integer("ab_test_min_sample"),
+  personalizedFields: jsonb("personalized_fields").default(sql`'[]'::jsonb`),
+  complianceScore: integer("compliance_score"), // 0-100
+  
   // Metadata
   createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -3948,3 +3956,310 @@ export type InsertImessageCampaignRun = z.infer<typeof insertImessageCampaignRun
 
 export type ImessageCampaignMessage = typeof imessageCampaignMessages.$inferSelect;
 export type InsertImessageCampaignMessage = z.infer<typeof insertImessageCampaignMessageSchema>;
+
+// =====================================================
+// CAMPAIGN STUDIO TABLES
+// =====================================================
+
+// 1. Campaign Template Categories
+export const campaignTemplateCategories = pgTable("campaign_template_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }), // null = global category
+  name: text("name").notNull(),
+  description: text("description"),
+  icon: text("icon"), // Icon identifier (e.g., Lucide icon name)
+  displayOrder: integer("display_order").notNull().default(0),
+  isSystem: boolean("is_system").notNull().default(false), // System categories cannot be deleted
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("campaign_template_categories_company_idx").on(table.companyId),
+  systemIdx: index("campaign_template_categories_system_idx").on(table.isSystem),
+}));
+
+// 2. Campaign Templates
+export const campaignTemplates = pgTable("campaign_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  categoryId: varchar("category_id").references(() => campaignTemplateCategories.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  messageBody: text("message_body").notNull(),
+  placeholders: jsonb("placeholders").default(sql`'[]'::jsonb`), // Array of placeholder names used in template
+  mediaUrls: jsonb("media_urls").default(sql`'[]'::jsonb`), // Array of media URLs
+  isSystem: boolean("is_system").notNull().default(false), // System templates cannot be deleted
+  usageCount: integer("usage_count").notNull().default(0), // How many times this template has been used
+  performanceScore: numeric("performance_score"), // Average performance score (0-100)
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("campaign_templates_company_idx").on(table.companyId),
+  categoryIdx: index("campaign_templates_category_idx").on(table.categoryId),
+  isSystemIdx: index("campaign_templates_system_idx").on(table.isSystem),
+  companySystemIdx: index("campaign_templates_company_system_idx").on(table.companyId, table.isSystem),
+}));
+
+// 3. Campaign Variants (A/B Testing)
+export const campaignVariants = pgTable("campaign_variants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => imessageCampaigns.id, { onDelete: "cascade" }),
+  variantLetter: text("variant_letter").notNull(), // A, B, C, D, E
+  messageBody: text("message_body").notNull(),
+  mediaUrls: jsonb("media_urls").default(sql`'[]'::jsonb`),
+  splitPercentage: integer("split_percentage").notNull(), // 0-100
+  sentCount: integer("sent_count").notNull().default(0),
+  responseCount: integer("response_count").notNull().default(0),
+  responseRate: numeric("response_rate"), // Calculated response rate
+  conversionCount: integer("conversion_count").notNull().default(0),
+  isWinner: boolean("is_winner").notNull().default(false), // Winning variant in A/B test
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  campaignIdx: index("campaign_variants_campaign_idx").on(table.campaignId),
+  winnerIdx: index("campaign_variants_winner_idx").on(table.isWinner),
+  uniqueVariant: unique("campaign_variants_campaign_variant_unique").on(table.campaignId, table.variantLetter),
+}));
+
+// 4. Campaign Schedules (1:1 with campaigns)
+export const campaignSchedules = pgTable("campaign_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().unique().references(() => imessageCampaigns.id, { onDelete: "cascade" }),
+  scheduleType: text("schedule_type").notNull().default("immediate"), // immediate, scheduled, recurring
+  startDate: date("start_date"),
+  startTime: text("start_time"), // HH:MM format (using text for time)
+  timezone: text("timezone").default("UTC"),
+  recurrenceRule: jsonb("recurrence_rule"), // Cron-like rules for recurring campaigns
+  endDate: date("end_date"),
+  quietHoursStart: text("quiet_hours_start"), // HH:MM format
+  quietHoursEnd: text("quiet_hours_end"), // HH:MM format
+  rateLimit: integer("rate_limit"), // Messages per hour
+  throttleDelayMin: integer("throttle_delay_min"), // Minimum delay in seconds between messages
+  throttleDelayMax: integer("throttle_delay_max"), // Maximum delay in seconds between messages
+  respectContactTimezone: boolean("respect_contact_timezone").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  campaignIdx: uniqueIndex("campaign_schedules_campaign_idx").on(table.campaignId),
+  scheduleTypeIdx: index("campaign_schedules_type_idx").on(table.scheduleType),
+}));
+
+// 5. Campaign Followups
+export const campaignFollowups = pgTable("campaign_followups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => imessageCampaigns.id, { onDelete: "cascade" }),
+  sequence: integer("sequence").notNull(), // Order of followup (1, 2, 3, etc.)
+  triggerType: text("trigger_type").notNull(), // no_response, response_positive, response_negative, time_delay
+  waitDays: integer("wait_days").notNull().default(0),
+  waitHours: integer("wait_hours").notNull().default(0),
+  messageBody: text("message_body").notNull(),
+  mediaUrls: jsonb("media_urls").default(sql`'[]'::jsonb`),
+  targetSegment: text("target_segment").notNull().default("all"), // responded, not_responded, all
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  campaignIdx: index("campaign_followups_campaign_idx").on(table.campaignId),
+  triggerTypeIdx: index("campaign_followups_trigger_idx").on(table.triggerType),
+  isActiveIdx: index("campaign_followups_active_idx").on(table.isActive),
+}));
+
+// 6. Campaign Analytics (Time-series snapshots)
+export const campaignAnalytics = pgTable("campaign_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => imessageCampaigns.id, { onDelete: "cascade" }),
+  snapshotType: text("snapshot_type").notNull(), // hourly, daily, final
+  snapshotAt: timestamp("snapshot_at").notNull(),
+  totalSent: integer("total_sent").notNull().default(0),
+  totalDelivered: integer("total_delivered").notNull().default(0),
+  totalFailed: integer("total_failed").notNull().default(0),
+  totalResponded: integer("total_responded").notNull().default(0),
+  responseRate: numeric("response_rate"), // Calculated percentage
+  avgResponseTime: integer("avg_response_time"), // Average time to response in minutes
+  conversions: integer("conversions").notNull().default(0),
+  revenue: numeric("revenue"), // Revenue generated from campaign
+  topPerformingVariant: varchar("top_performing_variant"), // Variant ID with best performance
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  campaignIdx: index("campaign_analytics_campaign_idx").on(table.campaignId),
+  snapshotTypeIdx: index("campaign_analytics_snapshot_type_idx").on(table.snapshotType),
+  campaignSnapshotIdx: index("campaign_analytics_campaign_snapshot_idx").on(table.campaignId, table.snapshotAt),
+}));
+
+// 7. Campaign Placeholders (Dynamic field mapping)
+export const campaignPlaceholders = pgTable("campaign_placeholders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }), // null = system placeholder
+  name: text("name").notNull(), // e.g., "firstName"
+  label: text("label").notNull(), // e.g., "First Name" (display name)
+  fieldPath: text("field_path").notNull(), // e.g., "contact.firstName" (JSON path to data)
+  fallbackValue: text("fallback_value"), // Default value if field is empty
+  dataType: text("data_type").notNull().default("string"), // string, number, date
+  isSystem: boolean("is_system").notNull().default(false), // System placeholders cannot be deleted
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("campaign_placeholders_company_idx").on(table.companyId),
+  isSystemIdx: index("campaign_placeholders_system_idx").on(table.isSystem),
+  isActiveIdx: index("campaign_placeholders_active_idx").on(table.isActive),
+  companySystemActiveIdx: index("campaign_placeholders_company_system_active_idx").on(table.companyId, table.isSystem, table.isActive),
+}));
+
+// =====================================================
+// CAMPAIGN STUDIO ZOD SCHEMAS
+// =====================================================
+
+// Campaign Template Categories
+export const insertCampaignTemplateCategorySchema = createInsertSchema(campaignTemplateCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  companyId: z.string().uuid().optional().nullable(),
+  name: z.string().min(1, "Category name is required").max(100),
+  description: z.string().optional().nullable(),
+  icon: z.string().optional().nullable(),
+  displayOrder: z.number().int().nonnegative().default(0),
+  isSystem: z.boolean().default(false),
+});
+
+// Campaign Templates
+export const insertCampaignTemplateSchema = createInsertSchema(campaignTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  usageCount: true,
+  performanceScore: true,
+}).extend({
+  companyId: z.string().uuid(),
+  categoryId: z.string().uuid().optional().nullable(),
+  name: z.string().min(1, "Template name is required").max(200),
+  description: z.string().optional().nullable(),
+  messageBody: z.string().min(1, "Message body is required"),
+  placeholders: z.array(z.string()).default([]),
+  mediaUrls: z.array(z.string().url()).default([]),
+  isSystem: z.boolean().default(false),
+  createdBy: z.string().uuid().optional().nullable(),
+});
+
+// Campaign Variants
+export const insertCampaignVariantSchema = createInsertSchema(campaignVariants).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  sentCount: true,
+  responseCount: true,
+  responseRate: true,
+  conversionCount: true,
+}).extend({
+  campaignId: z.string().uuid(),
+  variantLetter: z.enum(["A", "B", "C", "D", "E"]),
+  messageBody: z.string().min(1, "Message body is required"),
+  mediaUrls: z.array(z.string().url()).default([]),
+  splitPercentage: z.number().int().min(0).max(100),
+  isWinner: z.boolean().default(false),
+});
+
+// Campaign Schedules
+export const insertCampaignScheduleSchema = createInsertSchema(campaignSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  campaignId: z.string().uuid(),
+  scheduleType: z.enum(["immediate", "scheduled", "recurring"]).default("immediate"),
+  startDate: z.string().optional().nullable(), // ISO date string
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().nullable(), // HH:MM format
+  timezone: z.string().default("UTC"),
+  recurrenceRule: z.record(z.any()).optional().nullable(),
+  endDate: z.string().optional().nullable(),
+  quietHoursStart: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().nullable(),
+  quietHoursEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().nullable(),
+  rateLimit: z.number().int().positive().optional().nullable(),
+  throttleDelayMin: z.number().int().nonnegative().optional().nullable(),
+  throttleDelayMax: z.number().int().nonnegative().optional().nullable(),
+  respectContactTimezone: z.boolean().default(false),
+});
+
+// Campaign Followups
+export const insertCampaignFollowupSchema = createInsertSchema(campaignFollowups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  campaignId: z.string().uuid(),
+  sequence: z.number().int().positive(),
+  triggerType: z.enum(["no_response", "response_positive", "response_negative", "time_delay"]),
+  waitDays: z.number().int().nonnegative().default(0),
+  waitHours: z.number().int().nonnegative().default(0),
+  messageBody: z.string().min(1, "Message body is required"),
+  mediaUrls: z.array(z.string().url()).default([]),
+  targetSegment: z.enum(["responded", "not_responded", "all"]).default("all"),
+  isActive: z.boolean().default(true),
+});
+
+// Campaign Analytics
+export const insertCampaignAnalyticsSchema = createInsertSchema(campaignAnalytics).omit({
+  id: true,
+  createdAt: true,
+  responseRate: true,
+}).extend({
+  campaignId: z.string().uuid(),
+  snapshotType: z.enum(["hourly", "daily", "final"]),
+  snapshotAt: z.string(), // ISO timestamp string
+  totalSent: z.number().int().nonnegative().default(0),
+  totalDelivered: z.number().int().nonnegative().default(0),
+  totalFailed: z.number().int().nonnegative().default(0),
+  totalResponded: z.number().int().nonnegative().default(0),
+  avgResponseTime: z.number().int().nonnegative().optional().nullable(),
+  conversions: z.number().int().nonnegative().default(0),
+  revenue: z.number().nonnegative().optional().nullable(),
+  topPerformingVariant: z.string().uuid().optional().nullable(),
+});
+
+// Campaign Placeholders
+export const insertCampaignPlaceholderSchema = createInsertSchema(campaignPlaceholders).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  companyId: z.string().uuid().optional().nullable(),
+  name: z.string().min(1, "Placeholder name is required").max(50),
+  label: z.string().min(1, "Label is required").max(100),
+  fieldPath: z.string().min(1, "Field path is required"),
+  fallbackValue: z.string().optional().nullable(),
+  dataType: z.enum(["string", "number", "date"]).default("string"),
+  isSystem: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+});
+
+// =====================================================
+// CAMPAIGN STUDIO TYPES
+// =====================================================
+
+// Campaign Template Categories
+export type CampaignTemplateCategory = typeof campaignTemplateCategories.$inferSelect;
+export type InsertCampaignTemplateCategory = z.infer<typeof insertCampaignTemplateCategorySchema>;
+
+// Campaign Templates
+export type CampaignTemplate = typeof campaignTemplates.$inferSelect;
+export type InsertCampaignTemplate = z.infer<typeof insertCampaignTemplateSchema>;
+
+// Campaign Variants
+export type CampaignVariant = typeof campaignVariants.$inferSelect;
+export type InsertCampaignVariant = z.infer<typeof insertCampaignVariantSchema>;
+
+// Campaign Schedules
+export type CampaignSchedule = typeof campaignSchedules.$inferSelect;
+export type InsertCampaignSchedule = z.infer<typeof insertCampaignScheduleSchema>;
+
+// Campaign Followups
+export type CampaignFollowup = typeof campaignFollowups.$inferSelect;
+export type InsertCampaignFollowup = z.infer<typeof insertCampaignFollowupSchema>;
+
+// Campaign Analytics
+export type CampaignAnalytics = typeof campaignAnalytics.$inferSelect;
+export type InsertCampaignAnalytics = z.infer<typeof insertCampaignAnalyticsSchema>;
+
+// Campaign Placeholders
+export type CampaignPlaceholder = typeof campaignPlaceholders.$inferSelect;
+export type InsertCampaignPlaceholder = z.infer<typeof insertCampaignPlaceholderSchema>;
