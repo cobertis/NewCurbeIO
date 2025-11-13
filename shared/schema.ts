@@ -3804,3 +3804,147 @@ export type InsertImessageConversation = z.infer<typeof insertImessageConversati
 
 export type ImessageMessage = typeof imessageMessages.$inferSelect;
 export type InsertImessageMessage = z.infer<typeof insertImessageMessageSchema>;
+
+// =====================================================
+// IMESSAGE CAMPAIGNS (Premium Feature)
+// =====================================================
+
+export const imessageCampaigns = pgTable("imessage_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  
+  // Message content
+  messageBody: text("message_body").notNull(), // The predetermined message text
+  
+  // Target audience
+  targetListId: varchar("target_list_id").references(() => contactLists.id, { onDelete: "set null" }), // null = all contacts
+  
+  // Status and scheduling
+  status: text("status").notNull().default("draft"), // draft, scheduled, running, paused, completed, stopped, failed
+  scheduleType: text("schedule_type").notNull().default("immediate"), // immediate, scheduled
+  scheduledAt: timestamp("scheduled_at"), // When to start sending
+  
+  // Metadata
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("imessage_campaigns_company_idx").on(table.companyId),
+  statusIdx: index("imessage_campaigns_status_idx").on(table.status),
+  companyStatusIdx: index("imessage_campaigns_company_status_idx").on(table.companyId, table.status),
+}));
+
+export const imessageCampaignRuns = pgTable("imessage_campaign_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  campaignId: varchar("campaign_id").notNull().references(() => imessageCampaigns.id, { onDelete: "cascade" }),
+  runNumber: integer("run_number").notNull(), // Sequential run number for this campaign
+  
+  // Run metadata
+  initiatedBy: varchar("initiated_by").references(() => users.id, { onDelete: "set null" }),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  status: text("status").notNull().default("running"), // running, paused, completed, stopped, failed
+  
+  // Statistics
+  totalContacts: integer("total_contacts").notNull().default(0),
+  sentCount: integer("sent_count").notNull().default(0),
+  deliveredCount: integer("delivered_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  skippedCount: integer("skipped_count").notNull().default(0), // Blacklisted or invalid
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  campaignIdx: index("imessage_campaign_runs_campaign_idx").on(table.campaignId),
+  statusIdx: index("imessage_campaign_runs_status_idx").on(table.status),
+  uniqueRunNumber: unique("imessage_campaign_runs_campaign_run_unique").on(table.campaignId, table.runNumber),
+}));
+
+export const imessageCampaignMessages = pgTable("imessage_campaign_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("run_id").notNull().references(() => imessageCampaignRuns.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").notNull().references(() => manualContacts.id, { onDelete: "cascade" }),
+  
+  // iMessage details
+  chatGuid: text("chat_guid"), // iMessage chat GUID (e.g., "iMessage;-;+13105551234")
+  phone: text("phone").notNull(), // Normalized phone number
+  messageGuid: text("message_guid"), // BlueBubbles message GUID (returned after sending)
+  
+  // Delivery status
+  sendStatus: text("send_status").notNull().default("pending"), // pending, queued, sent, delivered, failed, skipped
+  attemptedAt: timestamp("attempted_at"),
+  deliveredAt: timestamp("delivered_at"),
+  failureReason: text("failure_reason"),
+  retryCount: integer("retry_count").notNull().default(0),
+  
+  // Additional metadata
+  metadata: jsonb("metadata").default({}), // Any extra data (e.g., user agent, device info)
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  runIdx: index("imessage_campaign_messages_run_idx").on(table.runId),
+  statusIdx: index("imessage_campaign_messages_status_idx").on(table.sendStatus),
+  runStatusIdx: index("imessage_campaign_messages_run_status_idx").on(table.runId, table.sendStatus),
+  contactIdx: index("imessage_campaign_messages_contact_idx").on(table.contactId),
+  uniqueRecipient: unique("imessage_campaign_messages_run_contact_unique").on(table.runId, table.contactId),
+}));
+
+// Zod validation schemas
+export const insertImessageCampaignSchema = createInsertSchema(imessageCampaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  companyId: z.string().uuid(),
+  name: z.string().min(1, "Campaign name is required").max(200),
+  description: z.string().optional().nullable(),
+  messageBody: z.string().min(1, "Message body is required"),
+  targetListId: z.string().uuid().optional().nullable(),
+  status: z.enum(["draft", "scheduled", "running", "paused", "completed", "stopped", "failed"]).default("draft"),
+  scheduleType: z.enum(["immediate", "scheduled"]).default("immediate"),
+  scheduledAt: z.string().optional().nullable(), // ISO date string
+  createdBy: z.string().uuid().optional().nullable(),
+});
+
+export const insertImessageCampaignRunSchema = createInsertSchema(imessageCampaignRuns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  campaignId: z.string().uuid(),
+  runNumber: z.number().int().positive(),
+  initiatedBy: z.string().uuid().optional().nullable(),
+  status: z.enum(["running", "paused", "completed", "stopped", "failed"]).default("running"),
+  totalContacts: z.number().int().nonnegative().default(0),
+  sentCount: z.number().int().nonnegative().default(0),
+  deliveredCount: z.number().int().nonnegative().default(0),
+  failedCount: z.number().int().nonnegative().default(0),
+  skippedCount: z.number().int().nonnegative().default(0),
+});
+
+export const insertImessageCampaignMessageSchema = createInsertSchema(imessageCampaignMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  runId: z.string().uuid(),
+  contactId: z.string().uuid(),
+  chatGuid: z.string().optional().nullable(),
+  phone: z.string().min(1, "Phone number is required"),
+  messageGuid: z.string().optional().nullable(),
+  sendStatus: z.enum(["pending", "queued", "sent", "delivered", "failed", "skipped"]).default("pending"),
+  retryCount: z.number().int().nonnegative().default(0),
+});
+
+// Types
+export type ImessageCampaign = typeof imessageCampaigns.$inferSelect;
+export type InsertImessageCampaign = z.infer<typeof insertImessageCampaignSchema>;
+
+export type ImessageCampaignRun = typeof imessageCampaignRuns.$inferSelect;
+export type InsertImessageCampaignRun = z.infer<typeof insertImessageCampaignRunSchema>;
+
+export type ImessageCampaignMessage = typeof imessageCampaignMessages.$inferSelect;
+export type InsertImessageCampaignMessage = z.infer<typeof insertImessageCampaignMessageSchema>;
