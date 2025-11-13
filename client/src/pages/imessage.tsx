@@ -25,7 +25,7 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause, AudioWaveform
+  Smile, Image as ImageIcon, FileText, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause, AudioWaveform, Mic, MicOff, Square, Circle
 } from "lucide-react";
 import type { User } from "@shared/schema";
 
@@ -480,6 +480,24 @@ export default function IMessagePage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isConnected, setIsConnected] = useState(true);
+
+  // Voice recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
+  const [recordingWaveform, setRecordingWaveform] = useState<number[]>([]);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+  
+  // Voice recording refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -943,6 +961,222 @@ export default function IMessagePage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setAttachments(prev => [...prev, ...files]);
+  };
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Initialize audio context and analyzer
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.7;
+      analyserRef.current = analyser;
+      
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      sourceRef.current = source;
+      
+      // Initialize MediaRecorder
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : 'audio/webm';
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        audioBitsPerSecond: 128000
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        setRecordedAudio(audioBlob);
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      // Start recording
+      mediaRecorder.start(100); // Collect data every 100ms
+      setIsRecording(true);
+      setRecordingDuration(0);
+      setRecordingWaveform([]);
+      
+      // Start duration timer
+      const startTime = Date.now();
+      recordingIntervalRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setRecordingDuration(elapsed);
+        
+        // Stop at 5 minutes
+        if (elapsed >= 300) {
+          stopRecording();
+        }
+      }, 100);
+      
+      // Start waveform visualization
+      visualizeWaveform();
+      
+    } catch (error: any) {
+      console.error('Failed to start recording:', error);
+      toast({
+        title: "Recording Failed",
+        description: error.message === 'Permission denied' 
+          ? "Microphone permission was denied. Please enable it in your browser settings."
+          : "Failed to access microphone. Please check your device settings.",
+        variant: "destructive",
+        duration: 3000
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    // Cleanup audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    
+    setIsRecording(false);
+  };
+
+  const cancelRecording = () => {
+    stopRecording();
+    setRecordedAudio(null);
+    setRecordingDuration(0);
+    setRecordingWaveform([]);
+    setPreviewCurrentTime(0);
+    setIsPlayingPreview(false);
+  };
+
+  const visualizeWaveform = () => {
+    if (!analyserRef.current) return;
+    
+    const analyser = analyserRef.current;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    const draw = () => {
+      if (!isRecording || !analyserRef.current) return;
+      
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Sample 40 bars from the frequency data
+      const bars = [];
+      const barCount = 40;
+      const step = Math.floor(bufferLength / barCount);
+      
+      for (let i = 0; i < barCount; i++) {
+        const value = dataArray[i * step];
+        bars.push(value);
+      }
+      
+      setRecordingWaveform(bars);
+      
+      animationFrameRef.current = requestAnimationFrame(draw);
+    };
+    
+    draw();
+  };
+
+  const formatRecordingTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const playPreview = () => {
+    if (!recordedAudio) return;
+    
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+    }
+    
+    const audio = new Audio(URL.createObjectURL(recordedAudio));
+    previewAudioRef.current = audio;
+    
+    audio.addEventListener('timeupdate', () => {
+      setPreviewCurrentTime(audio.currentTime);
+    });
+    
+    audio.addEventListener('ended', () => {
+      setIsPlayingPreview(false);
+      setPreviewCurrentTime(0);
+    });
+    
+    audio.play();
+    setIsPlayingPreview(true);
+  };
+
+  const pausePreview = () => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      setIsPlayingPreview(false);
+    }
+  };
+
+  const sendVoiceMessage = async () => {
+    if (!recordedAudio || !selectedConversationId) return;
+    
+    try {
+      // Create file from recorded audio
+      const timestamp = Date.now();
+      const fileName = `Voice Message ${timestamp}.webm`;
+      const file = new File([recordedAudio], fileName, { type: recordedAudio.type });
+      
+      // Add to attachments array for sending
+      const tempAttachments = [file];
+      
+      // Send message with audio attachment
+      await sendMessageMutation.mutateAsync({
+        conversationId: selectedConversationId,
+        text: '',
+        attachments: tempAttachments,
+        metadata: {
+          waveform: recordingWaveform,
+          duration: recordingDuration * 1000 // Convert to milliseconds
+        }
+      });
+      
+      // Clear recording state
+      cancelRecording();
+      
+    } catch (error: any) {
+      console.error('Failed to send voice message:', error);
+      toast({
+        title: "Send Failed",
+        description: "Failed to send voice message. Please try again.",
+        variant: "destructive",
+        duration: 3000
+      });
+    }
   };
 
   const groupedMessages = useMemo(() => {
@@ -1496,73 +1730,217 @@ export default function IMessagePage() {
 
           {/* Message Input */}
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
-            <div className="flex items-center gap-2">
-              {/* Text input */}
-              <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
-                <input
-                  ref={messageInputRef}
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  onFocus={handleTyping}
-                  onBlur={handleStopTyping}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  placeholder="iMessage"
-                  className={cn(
-                    "flex-1 bg-transparent border-0 outline-none",
-                    "placeholder:text-gray-500"
-                  )}
-                  data-testid="message-input"
-                />
+            {/* Show recording interface when recording or have recorded audio */}
+            {(isRecording || recordedAudio) ? (
+              <div className="flex items-center gap-3">
+                {/* Recording interface */}
+                {isRecording ? (
+                  <>
+                    {/* Cancel button */}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      onClick={cancelRecording}
+                      data-testid="cancel-recording-button"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+
+                    {/* Waveform visualization during recording */}
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 flex items-center gap-3">
+                      {/* Recording indicator */}
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                      
+                      {/* Waveform bars */}
+                      <div className="flex-1 flex items-center gap-[2px] h-8">
+                        {Array.from({ length: 40 }, (_, i) => {
+                          const height = recordingWaveform[i] || 10;
+                          return (
+                            <div
+                              key={i}
+                              className="w-[3px] bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-100"
+                              style={{ 
+                                height: `${Math.max(10, (height / 255) * 100)}%`,
+                                opacity: height > 100 ? 0.9 : 0.6
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Duration */}
+                      <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
+                        {formatRecordingTime(recordingDuration)}
+                      </span>
+                    </div>
+
+                    {/* Stop button */}
+                    <Button
+                      size="icon"
+                      className="rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+                      onClick={stopRecording}
+                      data-testid="stop-recording-button"
+                    >
+                      <Square className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : recordedAudio ? (
+                  <>
+                    {/* Playback interface after recording */}
+                    {/* Delete button */}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="rounded-full text-gray-500 hover:text-red-500 dark:hover:text-red-400"
+                      onClick={cancelRecording}
+                      data-testid="delete-recording-button"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+
+                    {/* Playback waveform */}
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 flex items-center gap-3">
+                      {/* Play/Pause button */}
+                      <Button
+                        size="icon"
+                        className="h-8 w-8 rounded-full bg-gray-600 hover:bg-gray-700 text-white"
+                        onClick={isPlayingPreview ? pausePreview : playPreview}
+                        data-testid="preview-play-button"
+                      >
+                        {isPlayingPreview ? (
+                          <Pause className="h-3.5 w-3.5" />
+                        ) : (
+                          <Play className="h-3.5 w-3.5 ml-0.5" />
+                        )}
+                      </Button>
+                      
+                      {/* Static waveform with progress */}
+                      <div className="flex-1 flex items-center gap-[2px] h-8">
+                        {recordingWaveform.map((height, i) => {
+                          const progress = recordingDuration > 0 
+                            ? previewCurrentTime / recordingDuration 
+                            : 0;
+                          const isPlayed = i < recordingWaveform.length * progress;
+                          
+                          return (
+                            <div
+                              key={i}
+                              className={cn(
+                                "w-[3px] rounded-full transition-colors",
+                                isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
+                              )}
+                              style={{ 
+                                height: `${Math.max(10, (height / 255) * 60)}%`
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Duration */}
+                      <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
+                        {formatRecordingTime(recordingDuration)}
+                      </span>
+                    </div>
+
+                    {/* Send button */}
+                    <Button
+                      size="icon"
+                      className="rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+                      onClick={sendVoiceMessage}
+                      data-testid="send-voice-button"
+                    >
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  </>
+                ) : null}
               </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {/* Text input */}
+                <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
+                  <input
+                    ref={messageInputRef}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onFocus={handleTyping}
+                    onBlur={handleStopTyping}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder="iMessage"
+                    className={cn(
+                      "flex-1 bg-transparent border-0 outline-none",
+                      "placeholder:text-gray-500"
+                    )}
+                    data-testid="message-input"
+                  />
+                </div>
 
-              {/* Image/Gallery button */}
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                onClick={() => fileInputRef.current?.click()}
-                data-testid="gallery-button"
-              >
-                <ImageIcon className="h-5 w-5" />
-              </Button>
+                {/* Microphone button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className={cn(
+                    "rounded-full transition-colors",
+                    isRecording 
+                      ? "text-blue-500 hover:text-blue-600" 
+                      : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  )}
+                  onClick={startRecording}
+                  data-testid="microphone-button"
+                >
+                  <Mic className="h-5 w-5" />
+                </Button>
 
-              {/* Emoji button */}
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                data-testid="emoji-button"
-              >
-                <Smile className="h-5 w-5" />
-              </Button>
+                {/* Image/Gallery button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="gallery-button"
+                >
+                  <ImageIcon className="h-5 w-5" />
+                </Button>
 
-              {/* Send button */}
-              <Button
-                size="icon"
-                variant="ghost"
-                className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                onClick={handleSendMessage}
-                disabled={!messageText.trim() && attachments.length === 0}
-                data-testid="send-button"
-              >
-                <Send className="h-5 w-5" />
-              </Button>
+                {/* Emoji button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  data-testid="emoji-button"
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
 
-              {/* Location button */}
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                data-testid="location-button"
-              >
-                <MapPin className="h-5 w-5" />
-              </Button>
-            </div>
+                {/* Send button */}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                  onClick={handleSendMessage}
+                  disabled={!messageText.trim() && attachments.length === 0}
+                  data-testid="send-button"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+
+                {/* Location button */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  data-testid="location-button"
+                >
+                  <MapPin className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       ) : (
