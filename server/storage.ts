@@ -8625,13 +8625,14 @@ export class DbStorage implements IStorage {
     // Fetch matching contacts in bulk
     const contactsMap = new Map<string, ManualContact>();
     if (allPhones.size > 0) {
+      const phonesArray = Array.from(allPhones);
       const contacts = await db
         .select()
         .from(manualContacts)
         .where(
           and(
             eq(manualContacts.companyId, companyId),
-            sql`${manualContacts.phone} = ANY(${Array.from(allPhones)})`
+            inArray(manualContacts.phone, phonesArray)
           )
         );
       
