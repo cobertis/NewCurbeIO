@@ -445,7 +445,7 @@ function ImessageAudioMessage({
       </Button>
 
       {/* Waveform Visualization - Professional spaced design */}
-      <div className="flex-1 flex items-center justify-center gap-[2px] h-12 py-1 min-w-0">
+      <div className="flex-1 flex items-center justify-between gap-0 h-12 py-1 min-w-0">
         {waveformBars.map((height, i) => {
           const progress = duration > 0 ? currentTime / duration : 0;
           const isActive = i < waveformBars.length * progress;
@@ -460,7 +460,7 @@ function ImessageAudioMessage({
                   : "bg-gray-300 dark:bg-gray-600"
               )}
               style={{ 
-                width: '3px',
+                width: '2px',
                 height: `${height}%`
               }}
             />
@@ -2110,7 +2110,7 @@ export default function IMessagePage() {
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
                       {/* Waveform bars - Professional spaced design */}
-                      <div className="flex-1 flex items-end justify-center gap-[2px]" style={{ 
+                      <div className="flex-1 flex items-end justify-between gap-0" style={{ 
                         height: '40px'
                       }}>
                         {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => (
@@ -2118,7 +2118,7 @@ export default function IMessagePage() {
                             key={i}
                             className="bg-blue-500 rounded-full"
                             style={{ 
-                              width: '3px',
+                              width: '2px',
                               height: amplitude > 0 ? `${Math.max(10, Math.min(40, (amplitude / 255) * 38))}px` : '10px'
                             }}
                           />
@@ -2173,7 +2173,7 @@ export default function IMessagePage() {
                       
                       {/* Static waveform with progress indicator */}
                       <div className="flex-1 relative">
-                        <div className="flex items-end justify-center gap-[2px]" style={{ 
+                        <div className="flex items-end justify-between gap-0" style={{ 
                           height: '40px'
                         }}>
                           {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => {
@@ -2190,7 +2190,7 @@ export default function IMessagePage() {
                                   isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
                                 )}
                                 style={{ 
-                                  width: '3px',
+                                  width: '2px',
                                   height: amplitude > 0 ? `${Math.max(10, Math.min(40, (amplitude / 255) * 38))}px` : '10px'
                                 }}
                               />
