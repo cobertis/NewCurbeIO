@@ -941,7 +941,6 @@ export default function Contacts() {
                       <TableHead>Phone</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Lists</TableHead>
-                      <TableHead>Created</TableHead>
                       <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -997,9 +996,6 @@ export default function Contacts() {
                           ) : (
                             <span className="text-muted-foreground text-sm">No lists</span>
                           )}
-                        </TableCell>
-                        <TableCell data-testid={`text-contact-created-${contact.id}`}>
-                          {new Date(contact.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
