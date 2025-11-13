@@ -212,6 +212,7 @@ const marketingMenuItems = [
     title: "Blacklist",
     url: "/blacklist",
     icon: Shield,
+    tone: "destructive" as const,
   },
   {
     title: "Referrals",
@@ -546,7 +547,7 @@ export function AppSidebar() {
                 <SidebarMenu className="space-y-1">
                   {marketingMenuItems
                     .filter((item: any) => !item.featureKey || enabledFeatures.has(item.featureKey))
-                    .map((item) => (
+                    .map((item: any) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
@@ -554,9 +555,13 @@ export function AppSidebar() {
                         data-testid={`link-${item.title.toLowerCase()}`}
                         className={`
                           h-11 rounded-md transition-colors
-                          ${location === item.url 
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          ${item.tone === 'destructive' 
+                            ? (location === item.url 
+                              ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90 font-medium' 
+                              : 'text-destructive hover:bg-destructive/10')
+                            : (location === item.url 
+                              ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent')
                           }
                         `}
                       >
