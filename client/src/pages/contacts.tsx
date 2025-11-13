@@ -705,6 +705,9 @@ export default function Contacts() {
                   </button>
                   
                   <div className="flex items-center gap-1">
+                    <Badge variant="secondary" data-testid={`badge-count-${list.id}`}>
+                      {(list as any).memberCount || 0}
+                    </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
