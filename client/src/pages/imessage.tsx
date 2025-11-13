@@ -2066,9 +2066,9 @@ export default function IMessagePage() {
               </div>
             )}
 
-            {/* STATE 2: HOLDING - iPhone-style swipe gestures */}
+            {/* STATE 2: HOLDING - iPhone-style (NO waveform, timer only) */}
             {recordingState === 'holding' && (
-              <div className="relative bg-white dark:bg-gray-900 rounded-lg px-6 py-4 flex items-center gap-4 border border-gray-300 dark:border-gray-700 shadow-md">
+              <div className="relative bg-white dark:bg-gray-900 rounded-full px-6 py-3 flex items-center gap-4 shadow-lg">
                 {/* Slide to cancel text - LEFT side */}
                 <div 
                   className={cn(
@@ -2083,44 +2083,20 @@ export default function IMessagePage() {
                   )}
                 </div>
 
-                {/* Waveform visualization (similar to locked state) */}
-                <div className="flex-1 flex items-center gap-0.5 h-10 relative" key={waveformRenderKey}>
-                  {waveformBufferRef.current.map((value, i) => {
-                    const totalSamples = waveformIndexRef.current;
-                    const hasData = totalSamples >= 100 ? true : i < totalSamples;
-                    const height = hasData ? Math.max(0.08, value) : 0.08;
-                    const position = i / 100;
-                    const baseOpacity = hasData ? 0.6 : 0.15;
-                    const flowingOpacity = baseOpacity + (Math.sin(position * Math.PI) * 0.4);
-                    
-                    return (
-                      <div
-                        key={`holding-bar-${i}`}
-                        className="relative w-1"
-                        style={{ height: '100%' }}
-                      >
-                        <div
-                          className={cn(
-                            "absolute bottom-0 w-full rounded-t-sm transition-all duration-100",
-                            gestureDeltaX < CANCEL_THRESHOLD * 0.7 
-                              ? "bg-gradient-to-t from-red-700 via-red-600 to-red-500 dark:from-red-600 dark:via-red-500 dark:to-red-400"
-                              : "bg-gradient-to-t from-blue-700 via-blue-600 to-blue-500 dark:from-blue-600 dark:via-blue-500 dark:to-blue-400"
-                          )}
-                          style={{ 
-                            height: `${height * 100}%`,
-                            opacity: flowingOpacity,
-                            boxShadow: hasData ? '0 0 4px rgba(59, 130, 246, 0.3)' : 'none'
-                          }}
-                        />
-                      </div>
-                    );
-                  })}
+                {/* Simple pulsing indicator (like iPhone) */}
+                <div className="flex-1 flex items-center justify-center gap-3">
+                  <div className={cn(
+                    "w-3 h-3 rounded-full animate-pulse",
+                    gestureDeltaX < CANCEL_THRESHOLD * 0.7
+                      ? "bg-red-600 dark:bg-red-400"
+                      : "bg-blue-600 dark:bg-blue-400"
+                  )} />
+                  
+                  {/* Timer */}
+                  <span className="text-gray-700 dark:text-gray-300 font-mono text-base font-medium tabular-nums">
+                    {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                  </span>
                 </div>
-
-                {/* Timer */}
-                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px] tabular-nums">
-                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                </span>
 
                 {/* Animated microphone button - follows finger horizontally */}
                 <div 
@@ -2167,60 +2143,23 @@ export default function IMessagePage() {
               </div>
             )}
 
-            {/* STATE 3: LOCKED - Recording locked, user can release finger */}
+            {/* STATE 3: LOCKED - iPhone-style (NO waveform, timer only) */}
             {recordingState === 'locked' && (
-              <div className="bg-white dark:bg-gray-900 rounded-lg px-6 py-4 flex items-center gap-4 border border-gray-300 dark:border-gray-700 shadow-md">
-                {/* Innovative waveform with 3D depth effect */}
-                <div className="flex-1 flex items-center gap-0.5 h-10 relative" key={waveformRenderKey}>
-                  {waveformBufferRef.current.map((value, i) => {
-                    const totalSamples = waveformIndexRef.current;
-                    const hasData = totalSamples >= 100 ? true : i < totalSamples;
-                    const height = hasData ? Math.max(0.08, value) : 0.08;
-                    
-                    // Novel visual effect: gradient opacity flow from left to right
-                    const position = i / 100;
-                    const baseOpacity = hasData ? 0.6 : 0.15;
-                    const flowingOpacity = baseOpacity + (Math.sin(position * Math.PI) * 0.4);
-                    
-                    // 3D-like depth with gradient and shadow
-                    return (
-                      <div
-                        key={`recording-bar-${i}`}
-                        className="relative w-1"
-                        style={{ height: '100%' }}
-                      >
-                        {/* Main bar with gradient for 3D effect */}
-                        <div
-                          className="absolute bottom-0 w-full bg-gradient-to-t from-red-700 via-red-600 to-red-500 dark:from-red-600 dark:via-red-500 dark:to-red-400 rounded-t-sm transition-all duration-100"
-                          style={{ 
-                            height: `${height * 100}%`,
-                            opacity: flowingOpacity,
-                            boxShadow: hasData ? '0 0 4px rgba(220, 38, 38, 0.3)' : 'none'
-                          }}
-                        />
-                        {/* Highlight line for depth */}
-                        {hasData && height > 0.3 && (
-                          <div
-                            className="absolute bottom-0 w-full bg-gradient-to-t from-transparent to-red-300/40 dark:to-red-200/30 rounded-t-sm pointer-events-none"
-                            style={{ 
-                              height: `${height * 100}%`,
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+              <div className="bg-white dark:bg-gray-900 rounded-full px-6 py-3 flex items-center gap-4 shadow-lg">
+                {/* Simple pulsing indicator (like iPhone locked state) */}
+                <div className="flex-1 flex items-center justify-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-red-600 dark:bg-red-400 animate-pulse" />
+                  
+                  {/* Timer */}
+                  <span className="text-gray-700 dark:text-gray-300 font-mono text-base font-medium tabular-nums">
+                    {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                  </span>
                 </div>
-
-                {/* Timer */}
-                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px] tabular-nums">
-                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                </span>
 
                 {/* Stop button */}
                 <Button
                   size="icon"
-                  className="rounded-full bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white h-9 w-9 transition-colors"
+                  className="rounded-full bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white h-9 w-9 transition-colors flex-shrink-0"
                   onClick={stopRecording}
                   data-testid="stop-recording-button"
                 >
