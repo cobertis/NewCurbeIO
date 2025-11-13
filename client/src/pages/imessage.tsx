@@ -988,6 +988,11 @@ export default function IMessagePage() {
     // Generate clientGuid that will be used for optimistic update
     const clientGuid = crypto.randomUUID();
 
+    // If replying to an unread message, mark conversation as read
+    if (replyingToMessage && !replyingToMessage.dateRead) {
+      markAsReadMutation.mutate(selectedConversationId);
+    }
+
     sendMessageMutation.mutate({
       text: messageText,
       replyToMessageId: replyingToMessage?.guid, // Use GUID instead of ID
