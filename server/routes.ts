@@ -9792,9 +9792,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined;
       const dateTo = req.query.dateTo ? new Date(req.query.dateTo as string) : undefined;
 
-      // Detect "__none" sentinel value for contacts without any list
+      // Detect special sentinel values for filtering
       const includeUnassignedOnly = listId === "__none";
-      const actualListId = includeUnassignedOnly ? undefined : listId;
+      const includeBlacklistOnly = listId === "__blacklist";
+      const actualListId = (includeUnassignedOnly || includeBlacklistOnly) ? undefined : listId;
 
       const result = await storage.listContacts({
         companyId: currentUser.companyId!,
@@ -9803,6 +9804,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         search,
         listId: actualListId,
         includeUnassignedOnly,
+        includeBlacklistOnly,
         sortBy,
         sortOrder,
         dateFrom,
@@ -10585,9 +10587,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         includeUnassignedOnly: true,
       });
       
+      // Get count of contacts in blacklist
+      const blacklistCount = await storage.listContacts({
+        companyId: currentUser.companyId!,
+        page: 1,
+        limit: 1,
+        includeBlacklistOnly: true,
+      });
+      
       res.json({ 
         lists,
-        unassignedCount: unassignedCount.total 
+        unassignedCount: unassignedCount.total,
+        blacklistCount: blacklistCount.total 
       });
     } catch (error) {
       console.error("[CONTACT LISTS] Error fetching lists:", error);

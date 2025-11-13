@@ -7855,12 +7855,13 @@ export class DbStorage implements IStorage {
     search?: string;
     listId?: string;
     includeUnassignedOnly?: boolean;
+    includeBlacklistOnly?: boolean;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     dateFrom?: Date;
     dateTo?: Date;
   }): Promise<{ contacts: ManualContact[]; total: number; page: number; limit: number }> {
-    const { companyId, page, limit, search, listId, includeUnassignedOnly, sortBy = 'createdAt', sortOrder = 'desc', dateFrom, dateTo } = params;
+    const { companyId, page, limit, search, listId, includeUnassignedOnly, includeBlacklistOnly, sortBy = 'createdAt', sortOrder = 'desc', dateFrom, dateTo } = params;
     const offset = (page - 1) * limit;
     
     // Build where conditions
@@ -7899,6 +7900,19 @@ export class DbStorage implements IStorage {
       )`;
       conditions.push(notExistsCondition as any);
       query = query.where(and(...conditions) as any) as any;
+    } else if (includeBlacklistOnly) {
+      // Show only contacts that are in blacklist using EXISTS subquery
+      const existsBlacklistCondition = sql`EXISTS (
+        SELECT 1 FROM ${blacklistEntries} 
+        WHERE ${blacklistEntries.companyId} = ${companyId}
+        AND ${blacklistEntries.isActive} = true
+        AND (
+          ${blacklistEntries.identifier} = ${manualContacts.phone}
+          OR (${manualContacts.email} IS NOT NULL AND ${blacklistEntries.identifier} = ${manualContacts.email})
+        )
+      )`;
+      conditions.push(existsBlacklistCondition as any);
+      query = query.where(and(...conditions) as any) as any;
     } else if (listId) {
       // Show contacts in a specific list using INNER JOIN
       query = query
@@ -7926,6 +7940,23 @@ export class DbStorage implements IStorage {
         .where(and(
           ...conditions,
           notExistsCondition
+        ) as any);
+    } else if (includeBlacklistOnly) {
+      const existsBlacklistCondition = sql`EXISTS (
+        SELECT 1 FROM ${blacklistEntries} 
+        WHERE ${blacklistEntries.companyId} = ${companyId}
+        AND ${blacklistEntries.isActive} = true
+        AND (
+          ${blacklistEntries.identifier} = ${manualContacts.phone}
+          OR (${manualContacts.email} IS NOT NULL AND ${blacklistEntries.identifier} = ${manualContacts.email})
+        )
+      )`;
+      countQuery = db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(manualContacts)
+        .where(and(
+          ...conditions,
+          existsBlacklistCondition
         ) as any);
     } else if (listId) {
       countQuery = db

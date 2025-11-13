@@ -76,6 +76,7 @@ import {
   CheckSquare,
   Square,
   AlertCircle,
+  Shield,
 } from "lucide-react";
 import { type ManualContact, type ContactList, type User } from "@shared/schema";
 import { formatForDisplay, formatForStorage } from "@shared/phone";
@@ -159,7 +160,7 @@ export default function Contacts() {
   });
 
   // Fetch contact lists
-  const { data: listsData } = useQuery<{ lists: ContactList[]; unassignedCount: number }>({
+  const { data: listsData } = useQuery<{ lists: ContactList[]; unassignedCount: number; blacklistCount: number }>({
     queryKey: ["/api/contact-lists"],
   });
 
@@ -168,6 +169,7 @@ export default function Contacts() {
   const totalPages = Math.ceil(total / limit);
   const lists = listsData?.lists || [];
   const unassignedCount = listsData?.unassignedCount || 0;
+  const blacklistCount = listsData?.blacklistCount || 0;
 
   // Create contact form
   const addForm = useForm<ContactFormValues>({
@@ -612,6 +614,25 @@ export default function Contacts() {
                   <span className="font-medium">No List</span>
                 </div>
                 <Badge variant="secondary">{unassignedCount}</Badge>
+              </button>
+
+              {/* Blacklist */}
+              <button
+                onClick={() => setSelectedListFilter("__blacklist")}
+                className={`w-full flex items-center justify-between p-3 rounded-md text-left transition-colors ${
+                  selectedListFilter === "__blacklist"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "text-destructive hover:bg-destructive/10"
+                }`}
+                data-testid="button-filter-blacklist"
+              >
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  <span className="font-medium">Blacklist</span>
+                </div>
+                <Badge variant={selectedListFilter === "__blacklist" ? "secondary" : "destructive"}>
+                  {blacklistCount}
+                </Badge>
               </button>
 
               {/* Individual Lists */}
