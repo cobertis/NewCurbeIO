@@ -1853,50 +1853,69 @@ export default function IMessagePage() {
                         )}
                       </Button>
                       
-                      {/* Static waveform with progress - full width responsive */}
-                      <div className="flex-1 flex items-center gap-[1px] h-8 px-1">
-                        {recordingWaveform.length > 0 ? (
-                          recordingWaveform.map((height, i) => {
-                            const progress = recordingDuration > 0 
-                              ? previewCurrentTime / recordingDuration 
-                              : 0;
-                            const isPlayed = i < recordingWaveform.length * progress;
-                            
-                            return (
+                      {/* Static waveform with progress indicator */}
+                      <div className="flex-1 relative">
+                        <div className="flex items-center gap-[1px] h-8 px-1">
+                          {recordingWaveform.length > 0 ? (
+                            recordingWaveform.map((height, i) => {
+                              const progress = recordingDuration > 0 
+                                ? previewCurrentTime / recordingDuration 
+                                : 0;
+                              const isPlayed = i < recordingWaveform.length * progress;
+                              
+                              return (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "flex-1 rounded-full transition-colors duration-200",
+                                    isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
+                                  )}
+                                  style={{ 
+                                    height: `${Math.max(8, Math.min(100, (height / 255) * 60))}%`,
+                                    minWidth: '1px',
+                                    maxWidth: '3px'
+                                  }}
+                                />
+                              );
+                            })
+                          ) : (
+                            // Show default bars if no waveform
+                            Array.from({ length: 80 }, (_, i) => (
                               <div
                                 key={i}
-                                className={cn(
-                                  "flex-1 rounded-full transition-colors",
-                                  isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
-                                )}
+                                className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full"
                                 style={{ 
-                                  height: `${Math.max(8, Math.min(100, (height / 255) * 60))}%`,
+                                  height: '10%',
+                                  opacity: 0.3,
                                   minWidth: '1px',
                                   maxWidth: '3px'
                                 }}
                               />
-                            );
-                          })
-                        ) : (
-                          // Show default bars if no waveform
-                          Array.from({ length: 80 }, (_, i) => (
-                            <div
-                              key={i}
-                              className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full"
-                              style={{ 
-                                height: '10%',
-                                opacity: 0.3,
-                                minWidth: '1px',
-                                maxWidth: '3px'
-                              }}
-                            />
-                          ))
+                            ))
+                          )}
+                        </div>
+                        
+                        {/* Progress line indicator */}
+                        {isPlayingPreview && recordingDuration > 0 && (
+                          <div 
+                            className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg transition-all duration-100"
+                            style={{ 
+                              left: `${(previewCurrentTime / recordingDuration) * 100}%`,
+                              boxShadow: '0 0 8px rgba(255, 255, 255, 0.8)'
+                            }}
+                          >
+                            {/* Playhead dot */}
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md" />
+                          </div>
                         )}
                       </div>
                       
-                      {/* Duration */}
-                      <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
-                        {formatRecordingTime(recordingDuration)}
+                      {/* Duration with current time */}
+                      <span className="text-sm font-mono text-gray-600 dark:text-gray-400 min-w-[65px] text-right">
+                        {isPlayingPreview 
+                          ? `${formatRecordingTime(Math.floor(previewCurrentTime))} / ${formatRecordingTime(recordingDuration)}`
+                          : formatRecordingTime(recordingDuration)
+                        }
                       </span>
                     </div>
 
