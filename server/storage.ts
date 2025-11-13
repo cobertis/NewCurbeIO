@@ -2678,10 +2678,27 @@ export class DbStorage implements IStorage {
   
   // ==================== CONTACT LISTS ====================
   
-  async getAllContactLists(createdBy?: string): Promise<ContactList[]> {
+  async getAllContactLists(companyId?: string, createdBy?: string): Promise<ContactList[]> {
     let lists: ContactList[];
     
-    if (createdBy) {
+    if (companyId) {
+      // Filter by company - join with users table to get lists created by users in this company
+      lists = await db.select({
+        id: contactLists.id,
+        name: contactLists.name,
+        description: contactLists.description,
+        createdBy: contactLists.createdBy,
+        createdAt: contactLists.createdAt,
+        updatedAt: contactLists.updatedAt,
+      })
+        .from(contactLists)
+        .innerJoin(users, eq(contactLists.createdBy, users.id))
+        .where(createdBy 
+          ? and(eq(users.companyId, companyId), eq(contactLists.createdBy, createdBy))
+          : eq(users.companyId, companyId)
+        )
+        .orderBy(desc(contactLists.createdAt)) as any;
+    } else if (createdBy) {
       lists = await db.select().from(contactLists)
         .where(eq(contactLists.createdBy, createdBy))
         .orderBy(desc(contactLists.createdAt));
@@ -7878,7 +7895,7 @@ export class DbStorage implements IStorage {
         sql`NOT EXISTS (
           SELECT 1 FROM ${contactListMembers} 
           WHERE ${contactListMembers.userId} = ${manualContacts.userId}
-          AND ${contactListMembers.companyId} = ${companyId}
+          AND ${contactListMembers.companyId} = ${sql.raw(`'${companyId}'`)}
         )` as any
       );
       query = query.where(and(...conditions) as any) as any;
@@ -7906,7 +7923,7 @@ export class DbStorage implements IStorage {
           sql`NOT EXISTS (
             SELECT 1 FROM ${contactListMembers} 
             WHERE ${contactListMembers.userId} = ${manualContacts.userId}
-            AND ${contactListMembers.companyId} = ${companyId}
+            AND ${contactListMembers.companyId} = ${sql.raw(`'${companyId}'`)}
           )`
         ) as any);
     } else if (listId) {

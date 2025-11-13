@@ -10575,7 +10575,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      const lists = await storage.getAllContactLists();
+      const lists = await storage.getAllContactLists(currentUser.companyId!);
       
       // Get count of contacts without any list assignment
       const unassignedCount = await storage.listContacts({
@@ -10590,6 +10590,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         unassignedCount: unassignedCount.total 
       });
     } catch (error) {
+      console.error("[CONTACT LISTS] Error fetching lists:", error);
       res.status(500).json({ message: "Failed to fetch contact lists" });
     }
   });
