@@ -413,15 +413,14 @@ function ImessageAudioMessage({
   // Use real waveform if available, otherwise generate random bars
   const waveformBars = useMemo(() => {
     if (waveform && waveform.length > 0) {
-      // Use real waveform data (scale from 0-255 to more visible range)
-      return waveform.map(val => {
-        // Normalize to 0-100 range with minimum height
+      // Use real waveform data (scale from 0-255 to 0-100 range)
+      return waveform.slice(0, 45).map(val => {
         const normalized = (val / 255) * 100;
-        return Math.max(15, normalized);
+        return Math.max(20, normalized);
       });
     }
     // Fallback: generate random waveform bars with varied heights
-    return Array.from({ length: 60 }, () => Math.random() * 80 + 20);
+    return Array.from({ length: 45 }, () => Math.random() * 70 + 30);
   }, [waveform]);
 
   return (
@@ -445,8 +444,8 @@ function ImessageAudioMessage({
         )}
       </Button>
 
-      {/* Waveform Visualization */}
-      <div className="flex-1 flex items-center justify-center gap-[1px] h-12 py-1 min-w-0">
+      {/* Waveform Visualization - Professional spaced design */}
+      <div className="flex-1 flex items-center justify-center gap-[2px] h-12 py-1 min-w-0">
         {waveformBars.map((height, i) => {
           const progress = duration > 0 ? currentTime / duration : 0;
           const isActive = i < waveformBars.length * progress;
@@ -455,15 +454,14 @@ function ImessageAudioMessage({
             <div
               key={i}
               className={cn(
-                "flex-1 rounded-full transition-all duration-150",
+                "rounded-full transition-all duration-150",
                 isActive 
                   ? "bg-blue-500 dark:bg-blue-400" 
                   : "bg-gray-300 dark:bg-gray-600"
               )}
               style={{ 
-                height: `${height}%`,
-                minWidth: '2px',
-                maxWidth: '4px'
+                width: '3px',
+                height: `${height}%`
               }}
             />
           );
@@ -524,7 +522,7 @@ export default function IMessagePage() {
   const [recordingWaveform, setRecordingWaveform] = useState<number[]>([]); // Progressive bars array
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
-  const DISPLAY_BAR_COUNT = 64; // Fixed number of bars that fill 100% width
+  const DISPLAY_BAR_COUNT = 45; // Fixed number of bars - less bars = more spaced professional look
   
   // Voice recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -2111,17 +2109,17 @@ export default function IMessagePage() {
                       {/* Recording indicator */}
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
-                      {/* Waveform bars - ALWAYS fills entire width */}
-                      <div className="flex-1 grid items-end gap-[1px]" style={{ 
-                        height: '40px',
-                        gridTemplateColumns: `repeat(${DISPLAY_BAR_COUNT}, minmax(0, 1fr))`
+                      {/* Waveform bars - Professional spaced design */}
+                      <div className="flex-1 flex items-end justify-center gap-[2px]" style={{ 
+                        height: '40px'
                       }}>
                         {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => (
                           <div
                             key={i}
-                            className="bg-blue-500 rounded-full w-full"
+                            className="bg-blue-500 rounded-full"
                             style={{ 
-                              height: amplitude > 0 ? `${Math.max(8, Math.min(40, (amplitude / 255) * 36))}px` : '8px'
+                              width: '3px',
+                              height: amplitude > 0 ? `${Math.max(10, Math.min(40, (amplitude / 255) * 38))}px` : '10px'
                             }}
                           />
                         ))}
@@ -2175,9 +2173,8 @@ export default function IMessagePage() {
                       
                       {/* Static waveform with progress indicator */}
                       <div className="flex-1 relative">
-                        <div className="grid items-end gap-[1px]" style={{ 
-                          height: '40px',
-                          gridTemplateColumns: `repeat(${DISPLAY_BAR_COUNT}, minmax(0, 1fr))`
+                        <div className="flex items-end justify-center gap-[2px]" style={{ 
+                          height: '40px'
                         }}>
                           {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => {
                             const progress = recordingDuration > 0 
@@ -2189,11 +2186,12 @@ export default function IMessagePage() {
                               <div
                                 key={i}
                                 className={cn(
-                                  "rounded-full transition-colors duration-200 w-full",
+                                  "rounded-full transition-colors duration-200",
                                   isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
                                 )}
                                 style={{ 
-                                  height: amplitude > 0 ? `${Math.max(8, Math.min(40, (amplitude / 255) * 36))}px` : '8px'
+                                  width: '3px',
+                                  height: amplitude > 0 ? `${Math.max(10, Math.min(40, (amplitude / 255) * 38))}px` : '10px'
                                 }}
                               />
                             );
