@@ -161,6 +161,8 @@ import {
   type InsertBulkvsMessage,
   type ManualContact,
   type InsertManualContact,
+  type ContactEngagement,
+  type InsertContactEngagement,
   type UnifiedContact,
   type Task,
   type InsertTask,
@@ -249,6 +251,7 @@ import {
   bulkvsThreads,
   bulkvsMessages,
   manualContacts,
+  contactEngagements,
   tasks,
   imessageConversations,
   imessageMessages
@@ -960,7 +963,44 @@ export interface IStorage {
   createManualContact(data: InsertManualContact): Promise<ManualContact>;
   getManualContacts(companyId: string): Promise<ManualContact[]>;
   getManualContact(id: string): Promise<ManualContact | undefined>;
+  updateManualContact(id: string, data: Partial<InsertManualContact>): Promise<ManualContact | undefined>;
   deleteManualContact(id: string): Promise<void>;
+  
+  // Enhanced Contact Management
+  listContacts(params: {
+    companyId: string;
+    page: number;
+    limit: number;
+    search?: string;
+    listId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<{ contacts: ManualContact[]; total: number; page: number; limit: number }>;
+  
+  filterContacts(params: {
+    companyId: string;
+    searchTerm?: string;
+    listIds?: string[];
+    dateRange?: { from: Date; to: Date };
+  }): Promise<ManualContact[]>;
+  
+  bulkDeleteContacts(companyId: string, contactIds: string[]): Promise<{ deleted: number }>;
+  bulkAddToList(companyId: string, contactIds: string[], listId: string): Promise<{ added: number }>;
+  bulkRemoveFromList(companyId: string, contactIds: string[], listId: string): Promise<{ removed: number }>;
+  moveContactsBetweenLists(companyId: string, contactIds: string[], fromListId: string, toListId: string): Promise<{ moved: number }>;
+  exportContactsCSV(companyId: string, contactIds?: string[]): Promise<string>;
+  importContactsCSV(companyId: string, csvData: string, userId: string): Promise<{
+    imported: number;
+    duplicates: number;
+    errors: string[];
+    preview?: ManualContact[];
+  }>;
+  
+  // Contact Engagements
+  createContactEngagement(data: InsertContactEngagement): Promise<ContactEngagement>;
+  getContactEngagements(contactId: string): Promise<ContactEngagement[]>;
   
   // Unified Contacts
   getUnifiedContacts(params?: { companyId?: string; userId?: string; origin?: string; status?: string; productType?: string }): Promise<UnifiedContact[]>;
@@ -7733,6 +7773,409 @@ export class DbStorage implements IStorage {
     await db
       .delete(manualContacts)
       .where(eq(manualContacts.id, id));
+  }
+
+  async updateManualContact(id: string, data: Partial<InsertManualContact>): Promise<ManualContact | undefined> {
+    // Normalize phone if provided
+    const updateData = {
+      ...data,
+      phone: data.phone ? formatForStorage(data.phone) : undefined,
+      updatedAt: new Date(),
+    };
+    
+    const result = await db
+      .update(manualContacts)
+      .set(updateData)
+      .where(eq(manualContacts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async listContacts(params: {
+    companyId: string;
+    page: number;
+    limit: number;
+    search?: string;
+    listId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<{ contacts: ManualContact[]; total: number; page: number; limit: number }> {
+    const { companyId, page, limit, search, listId, sortBy = 'createdAt', sortOrder = 'desc', dateFrom, dateTo } = params;
+    const offset = (page - 1) * limit;
+    
+    // Build where conditions
+    const conditions = [eq(manualContacts.companyId, companyId)];
+    
+    if (search) {
+      conditions.push(
+        or(
+          like(manualContacts.firstName, `%${search}%`),
+          like(manualContacts.lastName, `%${search}%`),
+          like(manualContacts.email, `%${search}%`),
+          like(manualContacts.phone, `%${search}%`)
+        ) as any
+      );
+    }
+    
+    if (dateFrom) {
+      conditions.push(gte(manualContacts.createdAt, dateFrom));
+    }
+    
+    if (dateTo) {
+      conditions.push(lt(manualContacts.createdAt, dateTo));
+    }
+    
+    // If filtering by list, join with contactListMembers
+    let query = db.select({ contact: manualContacts }).from(manualContacts);
+    
+    if (listId) {
+      query = query
+        .innerJoin(contactListMembers, eq(contactListMembers.userId, manualContacts.userId))
+        .where(and(
+          ...conditions,
+          eq(contactListMembers.listId, listId)
+        ) as any) as any;
+    } else {
+      query = query.where(and(...conditions) as any) as any;
+    }
+    
+    // Get total count
+    const countResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(manualContacts)
+      .where(and(...conditions) as any);
+    const total = countResult[0]?.count || 0;
+    
+    // Apply sorting
+    const sortColumn = sortBy === 'name' 
+      ? manualContacts.firstName 
+      : sortBy === 'email' 
+      ? manualContacts.email 
+      : sortBy === 'phone' 
+      ? manualContacts.phone 
+      : manualContacts.createdAt;
+    
+    const sortedQuery = sortOrder === 'asc' 
+      ? query.orderBy(sortColumn)
+      : query.orderBy(desc(sortColumn));
+    
+    // Apply pagination
+    const results = await sortedQuery.limit(limit).offset(offset);
+    const contacts = results.map(r => (r as any).contact || r);
+    
+    return { contacts, total, page, limit };
+  }
+
+  async filterContacts(params: {
+    companyId: string;
+    searchTerm?: string;
+    listIds?: string[];
+    dateRange?: { from: Date; to: Date };
+  }): Promise<ManualContact[]> {
+    const { companyId, searchTerm, listIds, dateRange } = params;
+    
+    const conditions = [eq(manualContacts.companyId, companyId)];
+    
+    if (searchTerm) {
+      conditions.push(
+        or(
+          like(manualContacts.firstName, `%${searchTerm}%`),
+          like(manualContacts.lastName, `%${searchTerm}%`),
+          like(manualContacts.email, `%${searchTerm}%`),
+          like(manualContacts.phone, `%${searchTerm}%`)
+        ) as any
+      );
+    }
+    
+    if (dateRange) {
+      conditions.push(
+        and(
+          gte(manualContacts.createdAt, dateRange.from),
+          lt(manualContacts.createdAt, dateRange.to)
+        ) as any
+      );
+    }
+    
+    let query = db.select().from(manualContacts);
+    
+    if (listIds && listIds.length > 0) {
+      query = query
+        .innerJoin(contactListMembers, eq(contactListMembers.userId, manualContacts.userId))
+        .where(and(
+          ...conditions,
+          inArray(contactListMembers.listId, listIds)
+        ) as any) as any;
+    } else {
+      query = query.where(and(...conditions) as any) as any;
+    }
+    
+    const results = await query;
+    return results.map(r => (r as any).manualContacts || r);
+  }
+
+  async bulkDeleteContacts(companyId: string, contactIds: string[]): Promise<{ deleted: number }> {
+    if (!contactIds.length) return { deleted: 0 };
+    
+    const result = await db
+      .delete(manualContacts)
+      .where(and(
+        eq(manualContacts.companyId, companyId),
+        inArray(manualContacts.id, contactIds)
+      ));
+    
+    // Return the number of deleted contacts
+    return { deleted: contactIds.length };
+  }
+
+  async bulkAddToList(companyId: string, contactIds: string[], listId: string): Promise<{ added: number }> {
+    if (!contactIds.length) return { added: 0 };
+    
+    // Get the users associated with these contacts
+    const contacts = await db
+      .select({ userId: manualContacts.userId })
+      .from(manualContacts)
+      .where(and(
+        eq(manualContacts.companyId, companyId),
+        inArray(manualContacts.id, contactIds)
+      ));
+    
+    // Get existing members to avoid duplicates
+    const existing = await db
+      .select({ userId: contactListMembers.userId })
+      .from(contactListMembers)
+      .where(eq(contactListMembers.listId, listId));
+    
+    const existingUserIds = new Set(existing.map(e => e.userId));
+    const toAdd = contacts
+      .filter(c => !existingUserIds.has(c.userId))
+      .map(c => ({
+        listId,
+        userId: c.userId,
+      }));
+    
+    if (toAdd.length > 0) {
+      await db.insert(contactListMembers).values(toAdd);
+    }
+    
+    return { added: toAdd.length };
+  }
+
+  async bulkRemoveFromList(companyId: string, contactIds: string[], listId: string): Promise<{ removed: number }> {
+    if (!contactIds.length) return { removed: 0 };
+    
+    // Get the users associated with these contacts
+    const contacts = await db
+      .select({ userId: manualContacts.userId })
+      .from(manualContacts)
+      .where(and(
+        eq(manualContacts.companyId, companyId),
+        inArray(manualContacts.id, contactIds)
+      ));
+    
+    const userIds = contacts.map(c => c.userId);
+    
+    if (userIds.length > 0) {
+      await db
+        .delete(contactListMembers)
+        .where(and(
+          eq(contactListMembers.listId, listId),
+          inArray(contactListMembers.userId, userIds)
+        ));
+    }
+    
+    return { removed: userIds.length };
+  }
+
+  async moveContactsBetweenLists(
+    companyId: string, 
+    contactIds: string[], 
+    fromListId: string, 
+    toListId: string
+  ): Promise<{ moved: number }> {
+    const removed = await this.bulkRemoveFromList(companyId, contactIds, fromListId);
+    const added = await this.bulkAddToList(companyId, contactIds, toListId);
+    return { moved: added.added };
+  }
+
+  async exportContactsCSV(companyId: string, contactIds?: string[]): Promise<string> {
+    let query = db
+      .select()
+      .from(manualContacts)
+      .where(eq(manualContacts.companyId, companyId));
+    
+    if (contactIds && contactIds.length > 0) {
+      query = query.where(and(
+        eq(manualContacts.companyId, companyId),
+        inArray(manualContacts.id, contactIds)
+      )) as any;
+    }
+    
+    const contacts = await query;
+    
+    // Build CSV
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Notes', 'Created At'];
+    const rows = contacts.map(contact => [
+      contact.firstName,
+      contact.lastName,
+      contact.email || '',
+      formatForDisplay(contact.phone),
+      contact.notes || '',
+      contact.createdAt.toISOString(),
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    return csvContent;
+  }
+
+  async importContactsCSV(
+    companyId: string, 
+    csvData: string, 
+    userId: string
+  ): Promise<{
+    imported: number;
+    duplicates: number;
+    errors: string[];
+    preview?: ManualContact[];
+  }> {
+    const errors: string[] = [];
+    const preview: ManualContact[] = [];
+    let imported = 0;
+    let duplicates = 0;
+    
+    try {
+      // Parse CSV (simple implementation - can be enhanced with csv-parse library)
+      const lines = csvData.split('\n').filter(line => line.trim());
+      const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      // Map headers to fields
+      const fieldMap: Record<string, string> = {
+        'first name': 'firstName',
+        'firstname': 'firstName',
+        'last name': 'lastName',
+        'lastname': 'lastName',
+        'email': 'email',
+        'phone': 'phone',
+        'notes': 'notes',
+      };
+      
+      const columnIndexes: Record<string, number> = {};
+      headers.forEach((header, index) => {
+        const field = fieldMap[header];
+        if (field) {
+          columnIndexes[field] = index;
+        }
+      });
+      
+      // Process data rows
+      for (let i = 1; i < lines.length && i <= 5; i++) { // Preview first 5 rows
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        
+        const contact: any = {
+          companyId,
+          userId,
+          firstName: values[columnIndexes['firstName']] || '',
+          lastName: values[columnIndexes['lastName']] || '',
+          email: values[columnIndexes['email']] || null,
+          phone: values[columnIndexes['phone']] || '',
+          notes: values[columnIndexes['notes']] || null,
+        };
+        
+        // Validate required fields
+        if (!contact.firstName || !contact.lastName || !contact.phone) {
+          errors.push(`Row ${i}: Missing required fields`);
+          continue;
+        }
+        
+        // Normalize phone
+        contact.phone = formatForStorage(contact.phone);
+        
+        // Check for duplicates
+        const existing = await db
+          .select()
+          .from(manualContacts)
+          .where(and(
+            eq(manualContacts.companyId, companyId),
+            or(
+              and(
+                eq(manualContacts.email, contact.email),
+                sql`${contact.email} IS NOT NULL`
+              ),
+              eq(manualContacts.phone, contact.phone)
+            )
+          ))
+          .limit(1);
+        
+        if (existing.length > 0) {
+          duplicates++;
+          continue;
+        }
+        
+        preview.push(contact as ManualContact);
+      }
+      
+      // Actually import all valid rows
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        
+        const contact: any = {
+          companyId,
+          userId,
+          firstName: values[columnIndexes['firstName']] || '',
+          lastName: values[columnIndexes['lastName']] || '',
+          email: values[columnIndexes['email']] || null,
+          phone: values[columnIndexes['phone']] || '',
+          notes: values[columnIndexes['notes']] || null,
+        };
+        
+        // Validate and import
+        if (!contact.firstName || !contact.lastName || !contact.phone) {
+          continue;
+        }
+        
+        contact.phone = formatForStorage(contact.phone);
+        
+        try {
+          await db.insert(manualContacts).values(contact);
+          imported++;
+        } catch (error) {
+          // Duplicate or other error
+          duplicates++;
+        }
+      }
+      
+    } catch (error: any) {
+      errors.push(`CSV parsing error: ${error.message}`);
+    }
+    
+    return {
+      imported,
+      duplicates,
+      errors,
+      preview: preview.slice(0, 5), // Return first 5 for preview
+    };
+  }
+
+  // Contact Engagements
+  async createContactEngagement(data: InsertContactEngagement): Promise<ContactEngagement> {
+    const result = await db
+      .insert(contactEngagements)
+      .values(data as any)
+      .returning();
+    return result[0];
+  }
+
+  async getContactEngagements(contactId: string): Promise<ContactEngagement[]> {
+    return db
+      .select()
+      .from(contactEngagements)
+      .where(eq(contactEngagements.contactId, contactId))
+      .orderBy(desc(contactEngagements.engagementDate));
   }
   
   // ==================== UNIFIED CONTACTS ====================

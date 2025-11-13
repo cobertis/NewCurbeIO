@@ -9695,6 +9695,295 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ==================== COMPREHENSIVE CONTACT MANAGEMENT ROUTES ====================
+
+  // Get paginated contacts with filters (replaces the basic get all)
+  app.get("/api/contacts/list", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can access
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 25;
+      const search = req.query.search as string;
+      const listId = req.query.listId as string;
+      const sortBy = req.query.sortBy as string;
+      const sortOrder = req.query.sortOrder as 'asc' | 'desc';
+      const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined;
+      const dateTo = req.query.dateTo ? new Date(req.query.dateTo as string) : undefined;
+
+      const result = await storage.listContacts({
+        companyId: currentUser.companyId!,
+        page,
+        limit,
+        search,
+        listId,
+        sortBy,
+        sortOrder,
+        dateFrom,
+        dateTo,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("[CONTACTS] Error listing contacts:", error);
+      res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  // Create new contact (enhanced version)
+  app.post("/api/contacts/create", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can create contacts
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const validation = insertManualContactSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: validation.error.errors
+      });
+    }
+
+    try {
+      const contact = await storage.createManualContact({
+        ...validation.data,
+        companyId: currentUser.companyId!,
+        userId: currentUser.id,
+      });
+      
+      res.status(201).json(contact);
+    } catch (error: any) {
+      console.error("[CONTACTS] Error creating contact:", error);
+      if (error.code === '23505') {
+        res.status(409).json({ message: "Contact with this email or phone already exists" });
+      } else {
+        res.status(500).json({ message: "Failed to create contact" });
+      }
+    }
+  });
+
+  // Get single contact by ID
+  app.get("/api/contacts/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can access
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const contact = await storage.getManualContact(req.params.id);
+      
+      if (!contact) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+      
+      // Check company access
+      if (contact.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json(contact);
+    } catch (error) {
+      console.error("[CONTACTS] Error fetching contact:", error);
+      res.status(500).json({ message: "Failed to fetch contact" });
+    }
+  });
+
+  // Update contact
+  app.put("/api/contacts/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can update
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      // Check if contact exists and belongs to company
+      const existing = await storage.getManualContact(req.params.id);
+      if (!existing || existing.companyId !== currentUser.companyId) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+
+      const contact = await storage.updateManualContact(req.params.id, req.body);
+      res.json(contact);
+    } catch (error: any) {
+      console.error("[CONTACTS] Error updating contact:", error);
+      if (error.code === '23505') {
+        res.status(409).json({ message: "Contact with this email or phone already exists" });
+      } else {
+        res.status(500).json({ message: "Failed to update contact" });
+      }
+    }
+  });
+
+  // Delete single contact
+  app.delete("/api/contacts/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can delete
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      // Check if contact exists and belongs to company
+      const existing = await storage.getManualContact(req.params.id);
+      if (!existing || existing.companyId !== currentUser.companyId) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+
+      await storage.deleteManualContact(req.params.id);
+      res.json({ message: "Contact deleted successfully" });
+    } catch (error) {
+      console.error("[CONTACTS] Error deleting contact:", error);
+      res.status(500).json({ message: "Failed to delete contact" });
+    }
+  });
+
+  // Bulk delete contacts
+  app.post("/api/contacts/bulk-delete", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { contactIds } = req.body;
+    
+    if (!Array.isArray(contactIds) || contactIds.length === 0) {
+      return res.status(400).json({ message: "Invalid contact IDs" });
+    }
+
+    try {
+      const result = await storage.bulkDeleteContacts(currentUser.companyId!, contactIds);
+      res.json(result);
+    } catch (error) {
+      console.error("[CONTACTS] Error bulk deleting contacts:", error);
+      res.status(500).json({ message: "Failed to delete contacts" });
+    }
+  });
+
+  // Import contacts from CSV with preview
+  app.post("/api/contacts/import-csv", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { csvData, preview = false } = req.body;
+    
+    if (!csvData) {
+      return res.status(400).json({ message: "CSV data is required" });
+    }
+
+    try {
+      const result = await storage.importContactsCSV(
+        currentUser.companyId!,
+        csvData,
+        currentUser.id
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error("[CONTACTS] Error importing CSV:", error);
+      res.status(500).json({ message: "Failed to import contacts" });
+    }
+  });
+
+  // Export contacts to CSV
+  app.get("/api/contacts/export-csv", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const contactIds = req.query.contactIds 
+        ? (req.query.contactIds as string).split(',')
+        : undefined;
+      
+      const csv = await storage.exportContactsCSV(currentUser.companyId!, contactIds);
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="contacts-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("[CONTACTS] Error exporting CSV:", error);
+      res.status(500).json({ message: "Failed to export contacts" });
+    }
+  });
+
+  // Bulk list operations
+  app.post("/api/contacts/bulk-list-operations", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { operation, contactIds, listId, fromListId, toListId } = req.body;
+    
+    if (!Array.isArray(contactIds) || contactIds.length === 0) {
+      return res.status(400).json({ message: "Invalid contact IDs" });
+    }
+
+    try {
+      let result;
+      
+      switch (operation) {
+        case 'add':
+          if (!listId) {
+            return res.status(400).json({ message: "List ID is required" });
+          }
+          result = await storage.bulkAddToList(currentUser.companyId!, contactIds, listId);
+          break;
+          
+        case 'remove':
+          if (!listId) {
+            return res.status(400).json({ message: "List ID is required" });
+          }
+          result = await storage.bulkRemoveFromList(currentUser.companyId!, contactIds, listId);
+          break;
+          
+        case 'move':
+          if (!fromListId || !toListId) {
+            return res.status(400).json({ message: "From and To list IDs are required" });
+          }
+          result = await storage.moveContactsBetweenLists(
+            currentUser.companyId!,
+            contactIds,
+            fromListId,
+            toListId
+          );
+          break;
+          
+        default:
+          return res.status(400).json({ message: "Invalid operation" });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("[CONTACTS] Error performing bulk list operation:", error);
+      res.status(500).json({ message: "Failed to perform operation" });
+    }
+  });
+
   // Import contacts from CSV (superadmin only)
   app.post("/api/contacts/import", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;

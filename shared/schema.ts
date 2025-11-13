@@ -998,8 +998,12 @@ export const contactListMembers = pgTable("contact_list_members", {
   listId: varchar("list_id").notNull().references(() => contactLists.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   addedAt: timestamp("added_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   uniqueListUser: unique().on(table.listId, table.userId),
+  // Performance indexes
+  listIdIndex: index("contact_list_members_list_id_idx").on(table.listId),
+  userIdIndex: index("contact_list_members_user_id_idx").on(table.userId),
 }));
 
 export const contactListMemberSchema = createInsertSchema(contactListMembers).omit({
@@ -3265,7 +3269,52 @@ export const manualContacts = pgTable("manual_contacts", {
   
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraints
+  uniqueCompanyEmail: uniqueIndex("manual_contacts_company_email_unique").on(table.companyId, table.email).where(sql`${table.email} IS NOT NULL`),
+  uniqueCompanyPhone: uniqueIndex("manual_contacts_company_phone_unique").on(table.companyId, table.phone),
+  // Performance indexes
+  companyIdIndex: index("manual_contacts_company_id_idx").on(table.companyId),
+  emailIndex: index("manual_contacts_email_idx").on(table.email),
+  phoneIndex: index("manual_contacts_phone_idx").on(table.phone),
+}));
+
+// Contact Engagements - Track contact campaign history
+export const contactEngagements = pgTable("contact_engagements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").notNull().references(() => manualContacts.id, { onDelete: "cascade" }),
+  
+  campaignType: text("campaign_type").notNull(), // "email", "sms", "call", "meeting", etc.
+  campaignId: varchar("campaign_id"), // Reference to campaign ID (email/sms campaign)
+  campaignName: text("campaign_name"), // Campaign name for quick reference
+  
+  status: text("status").notNull(), // "sent", "opened", "clicked", "replied", "bounced", "unsubscribed"
+  engagementDate: timestamp("engagement_date", { withTimezone: true }).notNull(),
+  metadata: jsonb("metadata"), // Additional campaign-specific data
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  // Indexes for performance
+  contactIdIndex: index("contact_engagements_contact_id_idx").on(table.contactId),
+  companyIdIndex: index("contact_engagements_company_id_idx").on(table.companyId),
+  engagementDateIndex: index("contact_engagements_date_idx").on(table.engagementDate),
+}));
+
+// Insert schemas
+export const insertContactEngagementSchema = createInsertSchema(contactEngagements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  campaignType: z.enum(["email", "sms", "call", "meeting", "other"]),
+  status: z.enum(["sent", "opened", "clicked", "replied", "bounced", "unsubscribed"]),
+  metadata: z.record(z.any()).optional(),
 });
+
+export type ContactEngagement = typeof contactEngagements.$inferSelect;
+export type InsertContactEngagement = z.infer<typeof insertContactEngagementSchema>;
 
 // Insert schemas
 export const insertBulkvsPhoneNumberSchema = createInsertSchema(bulkvsPhoneNumbers).omit({
