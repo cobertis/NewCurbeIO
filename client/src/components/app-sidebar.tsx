@@ -545,6 +545,9 @@ export function AppSidebar() {
             {/* iMessage Section - Only show if feature is enabled */}
             {enabledFeatures.has("imessage") && (
               <SidebarGroup>
+                <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Premium Feature
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
