@@ -883,17 +883,8 @@ export default function IMessagePage() {
       return '';
     }
     
-    if (isToday(msgDate)) {
-      return format(msgDate, 'h:mm a');
-    } else if (isYesterday(msgDate)) {
-      return `Yesterday ${format(msgDate, 'h:mm a')}`;
-    } else if (isThisWeek(msgDate)) {
-      return format(msgDate, 'EEEE h:mm a');
-    } else if (isThisYear(msgDate)) {
-      return format(msgDate, 'MMM d, h:mm a');
-    } else {
-      return format(msgDate, 'MMM d, yyyy h:mm a');
-    }
+    // Always show only the time
+    return format(msgDate, 'h:mm a');
   };
 
   const formatDateSeparator = (date: string) => {
