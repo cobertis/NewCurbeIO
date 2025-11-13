@@ -2678,6 +2678,506 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // ==================== iMessage CAMPAIGNS ====================
+  
+  // 1. GET /api/imessage/campaigns - List all campaigns for logged-in user's company
+  app.get("/api/imessage/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const campaigns = await storage.getImessageCampaignsByCompany(user.companyId);
+      
+      // Enrich with basic stats from latest run if available
+      const enrichedCampaigns = await Promise.all(
+        campaigns.map(async (campaign) => {
+          const runs = await storage.getImessageCampaignRunsByCampaign(campaign.id);
+          const latestRun = runs[0]; // Already ordered by createdAt desc
+          
+          return {
+            ...campaign,
+            stats: latestRun ? {
+              totalContacts: latestRun.totalContacts,
+              sentCount: latestRun.sentCount,
+              deliveredCount: latestRun.deliveredCount,
+              failedCount: latestRun.failedCount,
+              skippedCount: latestRun.skippedCount,
+            } : null,
+            lastRunAt: latestRun?.startedAt || null,
+          };
+        })
+      );
+      
+      res.json(enrichedCampaigns);
+    } catch (error: any) {
+      console.error("Error listing iMessage campaigns:", error);
+      res.status(500).json({ message: "Failed to list campaigns" });
+    }
+  });
+  
+  // 2. POST /api/imessage/campaigns - Create new campaign
+  app.post("/api/imessage/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Validate request body
+      const validatedData = insertImessageCampaignSchema.parse({
+        ...req.body,
+        companyId: user.companyId,
+        createdBy: user.id,
+        status: 'draft', // Always start as draft
+      });
+      
+      const campaign = await storage.createImessageCampaign(validatedData);
+      res.status(201).json(campaign);
+    } catch (error: any) {
+      console.error("Error creating iMessage campaign:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create campaign" });
+    }
+  });
+  
+  // 3. GET /api/imessage/campaigns/:id - Get campaign details
+  app.get("/api/imessage/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json(campaign);
+    } catch (error: any) {
+      console.error("Error getting iMessage campaign:", error);
+      res.status(500).json({ message: "Failed to get campaign" });
+    }
+  });
+  
+  // 4. PATCH /api/imessage/campaigns/:id - Update campaign
+  app.patch("/api/imessage/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Only allow updates if status is 'draft' or 'paused'
+      if (campaign.status !== 'draft' && campaign.status !== 'paused') {
+        return res.status(400).json({ 
+          message: "Cannot update campaign with status: " + campaign.status + ". Only draft or paused campaigns can be updated." 
+        });
+      }
+      
+      // Validate partial data
+      const validatedData = insertImessageCampaignSchema.partial().parse(req.body);
+      
+      // Don't allow changing companyId or createdBy
+      const updateData = {
+        ...validatedData,
+        companyId: undefined,
+        createdBy: undefined,
+      };
+      
+      const updatedCampaign = await storage.updateImessageCampaign(id, updateData);
+      res.json(updatedCampaign);
+    } catch (error: any) {
+      console.error("Error updating iMessage campaign:", error);
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Invalid campaign data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update campaign" });
+    }
+  });
+  
+  // 5. DELETE /api/imessage/campaigns/:id - Delete campaign
+  app.delete("/api/imessage/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Only allow deletion if status is 'draft'
+      if (campaign.status !== 'draft') {
+        return res.status(400).json({ 
+          message: "Cannot delete campaign with status: " + campaign.status + ". Only draft campaigns can be deleted." 
+        });
+      }
+      
+      const deleted = await storage.deleteImessageCampaign(id);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete campaign" });
+      }
+      
+      res.json({ success: true, message: "Campaign deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting iMessage campaign:", error);
+      res.status(500).json({ message: "Failed to delete campaign" });
+    }
+  });
+  
+  // 6. POST /api/imessage/campaigns/:id/start - Start/execute campaign
+  app.post("/api/imessage/campaigns/:id/start", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Get contacts for the campaign
+      let contacts;
+      if (campaign.targetListId) {
+        // Get contacts from specific list
+        const listMembers = await storage.getListMembers(campaign.targetListId);
+        contacts = listMembers;
+      } else {
+        // Get all manual contacts for company
+        contacts = await storage.getManualContacts(user.companyId);
+      }
+      
+      // Filter out blacklisted contacts
+      const validContacts = [];
+      for (const contact of contacts) {
+        const isBlacklisted = await storage.isBlacklisted(user.companyId, contact.phone);
+        if (!isBlacklisted && contact.phone) {
+          validContacts.push(contact);
+        }
+      }
+      
+      if (validContacts.length === 0) {
+        return res.status(400).json({ message: "No valid contacts found for campaign" });
+      }
+      
+      // Change campaign status to 'running'
+      await storage.updateImessageCampaign(id, { status: 'running' });
+      
+      // Get next run number
+      const runNumber = await storage.getNextRunNumber(id);
+      
+      // Create new campaign run
+      const run = await storage.createImessageCampaignRun({
+        campaignId: id,
+        runNumber,
+        initiatedBy: user.id,
+        status: 'running',
+        totalContacts: validContacts.length,
+        sentCount: 0,
+        deliveredCount: 0,
+        failedCount: 0,
+        skippedCount: 0,
+      });
+      
+      // Bulk create campaign messages for all contacts
+      const campaignMessages = validContacts.map(contact => {
+        const normalizedPhone = formatForStorage(contact.phone);
+        const chatGuid = `iMessage;-;${normalizedPhone}`;
+        
+        return {
+          runId: run.id,
+          contactId: contact.id,
+          chatGuid,
+          phone: normalizedPhone,
+          sendStatus: 'pending' as const,
+          retryCount: 0,
+        };
+      });
+      
+      await storage.bulkCreateCampaignMessages(campaignMessages);
+      
+      res.json({
+        success: true,
+        run: {
+          ...run,
+          messagesCreated: campaignMessages.length,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error starting iMessage campaign:", error);
+      res.status(500).json({ message: "Failed to start campaign" });
+    }
+  });
+  
+  // 7. POST /api/imessage/campaigns/:id/pause - Pause campaign
+  app.post("/api/imessage/campaigns/:id/pause", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Only allow if status is 'running'
+      if (campaign.status !== 'running') {
+        return res.status(400).json({ 
+          message: "Can only pause running campaigns. Current status: " + campaign.status 
+        });
+      }
+      
+      // Get current run (most recent)
+      const runs = await storage.getImessageCampaignRunsByCampaign(id);
+      const currentRun = runs[0];
+      
+      // Update campaign status to 'paused'
+      await storage.updateImessageCampaign(id, { status: 'paused' });
+      
+      // Update current run status to 'paused'
+      if (currentRun && currentRun.status === 'running') {
+        await storage.updateImessageCampaignRun(currentRun.id, { status: 'paused' });
+      }
+      
+      res.json({ success: true, message: "Campaign paused successfully" });
+    } catch (error: any) {
+      console.error("Error pausing iMessage campaign:", error);
+      res.status(500).json({ message: "Failed to pause campaign" });
+    }
+  });
+  
+  // 8. POST /api/imessage/campaigns/:id/resume - Resume campaign
+  app.post("/api/imessage/campaigns/:id/resume", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Only allow if status is 'paused'
+      if (campaign.status !== 'paused') {
+        return res.status(400).json({ 
+          message: "Can only resume paused campaigns. Current status: " + campaign.status 
+        });
+      }
+      
+      // Get current run (most recent)
+      const runs = await storage.getImessageCampaignRunsByCampaign(id);
+      const currentRun = runs[0];
+      
+      // Update campaign status to 'running'
+      await storage.updateImessageCampaign(id, { status: 'running' });
+      
+      // Update current run status to 'running'
+      if (currentRun && currentRun.status === 'paused') {
+        await storage.updateImessageCampaignRun(currentRun.id, { status: 'running' });
+      }
+      
+      res.json({ success: true, message: "Campaign resumed successfully" });
+    } catch (error: any) {
+      console.error("Error resuming iMessage campaign:", error);
+      res.status(500).json({ message: "Failed to resume campaign" });
+    }
+  });
+  
+  // 9. POST /api/imessage/campaigns/:id/stop - Stop campaign
+  app.post("/api/imessage/campaigns/:id/stop", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Only allow if status is 'running' or 'paused'
+      if (campaign.status !== 'running' && campaign.status !== 'paused') {
+        return res.status(400).json({ 
+          message: "Can only stop running or paused campaigns. Current status: " + campaign.status 
+        });
+      }
+      
+      // Get current run (most recent)
+      const runs = await storage.getImessageCampaignRunsByCampaign(id);
+      const currentRun = runs[0];
+      
+      // Update campaign status to 'stopped'
+      await storage.updateImessageCampaign(id, { status: 'stopped' });
+      
+      // Update current run status to 'stopped' and set completedAt
+      if (currentRun && (currentRun.status === 'running' || currentRun.status === 'paused')) {
+        await storage.updateImessageCampaignRun(currentRun.id, { 
+          status: 'stopped',
+          completedAt: new Date(),
+        });
+      }
+      
+      res.json({ success: true, message: "Campaign stopped successfully" });
+    } catch (error: any) {
+      console.error("Error stopping iMessage campaign:", error);
+      res.status(500).json({ message: "Failed to stop campaign" });
+    }
+  });
+  
+  // 10. GET /api/imessage/campaigns/:id/runs - List all runs for a campaign
+  app.get("/api/imessage/campaigns/:id/runs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const campaign = await storage.getImessageCampaign(id);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Get all runs for the campaign (already ordered by runNumber desc via createdAt desc)
+      const runs = await storage.getImessageCampaignRunsByCampaign(id);
+      
+      res.json(runs);
+    } catch (error: any) {
+      console.error("Error listing campaign runs:", error);
+      res.status(500).json({ message: "Failed to list campaign runs" });
+    }
+  });
+  
+  // 11. GET /api/imessage/campaigns/runs/:runId - Get single run details with messages
+  app.get("/api/imessage/campaigns/runs/:runId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { runId } = req.params;
+      const { limit = '50', offset = '0' } = req.query;
+      
+      const run = await storage.getImessageCampaignRun(runId);
+      if (!run) {
+        return res.status(404).json({ message: "Campaign run not found" });
+      }
+      
+      // Get campaign to verify company ownership
+      const campaign = await storage.getImessageCampaign(run.campaignId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+      
+      // Verify run's campaign belongs to user's company
+      if (campaign.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Get messages with pagination
+      const messages = await storage.getImessageCampaignMessagesByRun(runId, {
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+      });
+      
+      // Calculate status stats
+      const allMessages = await storage.getImessageCampaignMessagesByRun(runId);
+      const statusStats = {
+        pending: allMessages.filter(m => m.sendStatus === 'pending').length,
+        queued: allMessages.filter(m => m.sendStatus === 'queued').length,
+        sent: allMessages.filter(m => m.sendStatus === 'sent').length,
+        delivered: allMessages.filter(m => m.sendStatus === 'delivered').length,
+        failed: allMessages.filter(m => m.sendStatus === 'failed').length,
+        skipped: allMessages.filter(m => m.sendStatus === 'skipped').length,
+      };
+      
+      res.json({
+        ...run,
+        statusStats,
+        messages,
+        messagesCount: allMessages.length,
+      });
+    } catch (error: any) {
+      console.error("Error getting campaign run details:", error);
+      res.status(500).json({ message: "Failed to get campaign run details" });
+    }
+  });
+  
   // ==================== CONSENT PUBLIC ENDPOINTS ====================
   
   // Rate limiting for consent endpoints to prevent brute force attacks
