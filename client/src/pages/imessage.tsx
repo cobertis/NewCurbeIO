@@ -246,7 +246,6 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
           className="rounded-2xl w-full object-cover bg-black"
           style={{ maxHeight: '250px', maxWidth: '200px' }}
           preload="metadata"
-          crossOrigin="use-credentials"
         />
         
         {/* Play button overlay - iMessage style (smaller, more subtle) */}
@@ -268,7 +267,6 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
             controls
             autoPlay
             className="w-full h-full max-h-[85vh] object-contain"
-            crossOrigin="use-credentials"
           >
             Your browser does not support the video tag.
           </video>
@@ -298,7 +296,6 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
           alt={alt} 
           className="rounded-2xl object-cover"
           style={{ maxHeight: '250px', maxWidth: '200px' }}
-          crossOrigin="use-credentials"
           onError={() => setError(true)}
           loading="lazy"
         />
@@ -319,7 +316,6 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
             src={url}
             alt={alt} 
             className="w-full h-full max-h-[85vh] object-contain"
-            crossOrigin="use-credentials"
           />
         </DialogContent>
       </Dialog>
@@ -408,7 +404,7 @@ function ImessageAudioMessage({
   return (
     <div className="flex items-center gap-2 min-w-[280px] max-w-[320px] p-2">
       {blobUrl && (
-        <audio ref={audioRef} src={blobUrl} preload="metadata" crossOrigin="use-credentials" />
+        <audio ref={audioRef} src={blobUrl} preload="metadata" />
       )}
       
       {/* Play/Pause Button */}
