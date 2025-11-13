@@ -488,22 +488,19 @@ export default function IMessagePage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
-  const [recordingWaveform, setRecordingWaveform] = useState<number[]>([]);
+  const [recordingWaveform, setRecordingWaveform] = useState<number[]>([]); // Progressive bars array
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+  const maxRecordingBars = 100; // Maximum bars to display
   
   // Voice recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null); // For duration timer
   const samplingIntervalRef = useRef<NodeJS.Timeout | null>(null); // For waveform sampling
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const waveformSamplesRef = useRef<number[]>([]); // Store time-based samples during recording
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -977,7 +974,6 @@ export default function IMessagePage() {
       
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
-      sourceRef.current = source;
       
       // Initialize MediaRecorder
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
@@ -1010,14 +1006,11 @@ export default function IMessagePage() {
       mediaRecorder.start(100); // Collect data every 100ms
       setIsRecording(true);
       setRecordingDuration(0);
-      setRecordingWaveform([]);
-      
-      // Reset waveform samples for new recording
-      waveformSamplesRef.current = [];
+      setRecordingWaveform([]); // Start with empty waveform
       
       // Start duration timer
       const startTime = Date.now();
-      recordingIntervalRef.current = setInterval(() => {
+      const durationInterval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         setRecordingDuration(elapsed);
         
@@ -1027,13 +1020,14 @@ export default function IMessagePage() {
         }
       }, 100);
       
-      // Start time-based waveform sampling (capture sample every 50ms)
+      // Store interval ref for cleanup
+      recordingIntervalRef.current = durationInterval;
+      
+      // Start progressive waveform sampling (adds one bar every 50ms - gives ~20 bars per second)
+      // For a 10 second recording: 200 bars, which will be displayed as maxRecordingBars (100)
       samplingIntervalRef.current = setInterval(() => {
         captureSample();
       }, 50);
-      
-      // Start real-time waveform visualization
-      visualizeWaveform();
       
     } catch (error: any) {
       console.error('Failed to start recording:', error);
@@ -1063,48 +1057,6 @@ export default function IMessagePage() {
       samplingIntervalRef.current = null;
     }
     
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    
-    // Process accumulated waveform samples into 100 bars for display
-    const samples = waveformSamplesRef.current;
-    const targetBarCount = 100;
-    
-    if (samples.length > 0) {
-      let processedBars: number[] = [];
-      
-      if (samples.length <= targetBarCount) {
-        // If we have fewer samples than bars, interpolate
-        processedBars = Array.from({ length: targetBarCount }, (_, i) => {
-          const position = (i / targetBarCount) * samples.length;
-          const lowerIndex = Math.floor(position);
-          const upperIndex = Math.min(lowerIndex + 1, samples.length - 1);
-          const fraction = position - lowerIndex;
-          
-          // Linear interpolation
-          const lowerValue = samples[lowerIndex];
-          const upperValue = samples[upperIndex];
-          return lowerValue + (upperValue - lowerValue) * fraction;
-        });
-      } else {
-        // If we have more samples than bars, downsample by averaging groups
-        const samplesPerBar = samples.length / targetBarCount;
-        processedBars = Array.from({ length: targetBarCount }, (_, i) => {
-          const startIdx = Math.floor(i * samplesPerBar);
-          const endIdx = Math.floor((i + 1) * samplesPerBar);
-          const group = samples.slice(startIdx, endIdx);
-          
-          // Average the group
-          const sum = group.reduce((acc, val) => acc + val, 0);
-          return sum / group.length;
-        });
-      }
-      
-      setRecordingWaveform(processedBars);
-    }
-    
     // Cleanup audio context
     if (audioContextRef.current) {
       audioContextRef.current.close();
@@ -1112,6 +1064,7 @@ export default function IMessagePage() {
     }
     
     setIsRecording(false);
+    // Note: recordingWaveform already contains all the progressive bars from captureSample
   };
 
   const cancelRecording = () => {
@@ -1121,10 +1074,9 @@ export default function IMessagePage() {
     setRecordingWaveform([]);
     setPreviewCurrentTime(0);
     setIsPlayingPreview(false);
-    waveformSamplesRef.current = []; // Clear samples
   };
 
-  // Capture audio level sample for time-based waveform
+  // Capture audio level sample for time-based waveform (adds one bar progressively)
   const captureSample = () => {
     if (!analyserRef.current) return;
     
@@ -1146,48 +1098,15 @@ export default function IMessagePage() {
     // Convert RMS to 0-255 scale for visualization
     const amplitude = Math.min(255, rms * 255 * 3); // Multiply by 3 for better visual range
     
-    // Store this sample
-    waveformSamplesRef.current.push(amplitude);
-  };
-
-  const visualizeWaveform = () => {
-    if (!analyserRef.current) return;
-    
-    const analyser = analyserRef.current;
-    analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.3;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    
-    const draw = () => {
-      if (!analyserRef.current) {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        return;
+    // Add this bar to the waveform progressively (left to right)
+    setRecordingWaveform(prev => {
+      // Limit to maximum bars to prevent overflow on very long recordings
+      if (prev.length >= maxRecordingBars) {
+        // Keep adding but maintain max length by shifting
+        return [...prev.slice(1), amplitude];
       }
-      
-      // Get frequency data for real-time visual feedback
-      analyser.getByteFrequencyData(dataArray);
-      
-      const bars: number[] = [];
-      const barCount = 100;
-      const step = Math.floor(bufferLength / barCount);
-      
-      for (let i = 0; i < barCount; i++) {
-        const index = i * step;
-        let value = dataArray[index];
-        const boost = i < barCount / 3 ? 1.5 : 1.0;
-        value = Math.min(255, value * boost);
-        bars.push(value);
-      }
-      
-      setRecordingWaveform(bars);
-      
-      animationFrameRef.current = requestAnimationFrame(draw);
-    };
-    
-    draw();
+      return [...prev, amplitude];
+    });
   };
 
   const formatRecordingTime = (seconds: number): string => {
@@ -1835,35 +1754,22 @@ export default function IMessagePage() {
                       {/* Recording indicator */}
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
-                      {/* Waveform bars - full width responsive */}
-                      <div className="flex-1 flex items-center justify-between gap-[0.5px]" style={{ height: '40px' }}>
-                        {recordingWaveform.length > 0 ? (
-                          recordingWaveform.map((height, i) => (
-                            <div
-                              key={i}
-                              className="bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-50"
-                              style={{ 
-                                width: '2px',
-                                height: `${Math.max(6, Math.min(40, (height / 255) * 40))}px`,
-                                opacity: height > 30 ? 1 : 0.4,
-                                alignSelf: 'center'
-                              }}
-                            />
-                          ))
-                        ) : (
-                          // Show default bars while initializing
-                          Array.from({ length: 100 }, (_, i) => (
-                            <div
-                              key={i}
-                              className="bg-gray-400 dark:bg-gray-500 rounded-full"
-                              style={{ 
-                                width: '2px',
-                                height: '6px',
-                                opacity: 0.3,
-                                alignSelf: 'center'
-                              }}
-                            />
-                          ))
+                      {/* Waveform bars - progressive display (builds left to right) */}
+                      <div className="flex-1 flex items-center gap-[0.5px]" style={{ height: '40px' }}>
+                        {recordingWaveform.map((height, i) => (
+                          <div
+                            key={i}
+                            className="bg-blue-500 rounded-full"
+                            style={{ 
+                              width: '2px',
+                              height: `${Math.max(8, Math.min(40, (height / 255) * 36))}px`,
+                              alignSelf: 'center'
+                            }}
+                          />
+                        ))}
+                        {/* Show empty space for remaining bars */}
+                        {recordingWaveform.length === 0 && (
+                          <span className="text-xs text-gray-500">Speak to start...</span>
                         )}
                       </div>
                       
@@ -1915,44 +1821,28 @@ export default function IMessagePage() {
                       
                       {/* Static waveform with progress indicator */}
                       <div className="flex-1 relative">
-                        <div className="flex items-center justify-between gap-[0.5px]" style={{ height: '40px' }}>
-                          {recordingWaveform.length > 0 ? (
-                            recordingWaveform.map((height, i) => {
-                              const progress = recordingDuration > 0 
-                                ? previewCurrentTime / recordingDuration 
-                                : 0;
-                              const isPlayed = i < recordingWaveform.length * progress;
-                              
-                              return (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    "rounded-full transition-colors duration-200",
-                                    isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
-                                  )}
-                                  style={{ 
-                                    width: '2px',
-                                    height: `${Math.max(6, Math.min(40, (height / 255) * 32))}px`,
-                                    alignSelf: 'center'
-                                  }}
-                                />
-                              );
-                            })
-                          ) : (
-                            // Show default bars if no waveform
-                            Array.from({ length: 100 }, (_, i) => (
+                        <div className="flex items-center gap-[0.5px]" style={{ height: '40px' }}>
+                          {recordingWaveform.map((height, i) => {
+                            const progress = recordingDuration > 0 
+                              ? previewCurrentTime / recordingDuration 
+                              : 0;
+                            const isPlayed = i < recordingWaveform.length * progress;
+                            
+                            return (
                               <div
                                 key={i}
-                                className="bg-gray-400 dark:bg-gray-500 rounded-full"
+                                className={cn(
+                                  "rounded-full transition-colors duration-200",
+                                  isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
+                                )}
                                 style={{ 
                                   width: '2px',
-                                  height: '6px',
-                                  opacity: 0.3,
+                                  height: `${Math.max(8, Math.min(40, (height / 255) * 36))}px`,
                                   alignSelf: 'center'
                                 }}
                               />
-                            ))
-                          )}
+                            );
+                          })}
                         </div>
                         
                         {/* Progress line indicator */}

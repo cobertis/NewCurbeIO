@@ -1,0 +1,176 @@
+Perfecto. Vamos a hacerlo **paso a paso** para que tu CRM tenga notas de voz al estilo iMessage: con animación en vivo, grabación progresiva y archivo final reproducible. Te dejo el plan y el código que puedes copiar directamente en Replit.
+
+---
+
+## 🧱 Estructura del proyecto
+
+Tendrás dos partes:
+
+1. **Frontend (React o HTML simple)**: captura y muestra el waveform.
+2. **Backend (Node + Express)**: recibe los fragmentos de audio y genera el archivo final.
+
+---
+
+## 🧩 1. Backend (server.js)
+
+Crea un archivo `server.js` en tu Replit y pega esto:
+
+```js
+import express from "express";
+import multer from "multer";
+import fs from "fs";
+import cors from "cors";
+import { exec } from "child_process";
+
+const app = express();
+const upload = multer();
+app.use(cors());
+
+// Carpeta para guardar las notas de voz
+const TEMP_PATH = "./voice_tmp";
+const FINAL_PATH = "./voice_final";
+if (!fs.existsSync(TEMP_PATH)) fs.mkdirSync(TEMP_PATH);
+if (!fs.existsSync(FINAL_PATH)) fs.mkdirSync(FINAL_PATH);
+
+// Recibir cada chunk mientras se graba
+app.post("/upload-chunk/:sessionId", upload.single("audio"), (req, res) => {
+  const { sessionId } = req.params;
+  const chunkFile = `${TEMP_PATH}/${sessionId}.webm`;
+  fs.appendFileSync(chunkFile, req.file.buffer);
+  res.sendStatus(200);
+});
+
+// Terminar grabación y convertir a mp3
+app.post("/finalize/:sessionId", (req, res) => {
+  const { sessionId } = req.params;
+  const input = `${TEMP_PATH}/${sessionId}.webm`;
+  const output = `${FINAL_PATH}/${sessionId}.mp3`;
+
+  exec(`ffmpeg -y -i ${input} -vn -ar 44100 -ac 2 -b:a 192k ${output}`, (err) => {
+    if (err) {
+      console.error("Error al convertir audio:", err);
+      return res.status(500).send("Error en ffmpeg");
+    }
+    fs.unlinkSync(input); // Borra el temporal
+    res.json({ url: `/voice/${sessionId}.mp3` });
+  });
+});
+
+// Servir los audios generados
+app.use("/voice", express.static(FINAL_PATH));
+
+app.listen(5000, () => console.log("Servidor corriendo en puerto 5000"));
+```
+
+### Instala las dependencias:
+
+```bash
+npm init -y
+npm install express multer cors
+apt install ffmpeg -y
+```
+
+Ejecuta el servidor con:
+
+```bash
+node server.js
+```
+
+---
+
+## 🎙️ 2. Frontend (index.html)
+
+Ahora crea un archivo `index.html` y pega esto:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Notas de Voz Curbe</title>
+  <script src="https://unpkg.com/wavesurfer.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    #waveform { width: 90%; height: 100px; margin: auto; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h2>🎤 Nota de Voz Estilo iMessage</h2>
+  <div id="waveform"></div>
+  <button id="start">Grabar</button>
+  <button id="stop" disabled>Detener</button>
+  <audio id="audio" controls></audio>
+
+  <script>
+    let mediaRecorder, sessionId, wavesurfer;
+    const backend = "http://localhost:5000"; // cambia esto por tu URL pública si usas Replit
+
+    async function startRecording() {
+      sessionId = Date.now().toString();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Crear waveform animado
+      wavesurfer = WaveSurfer.create({
+        container: '#waveform',
+        waveColor: '#0084ff',
+        progressColor: '#005bb5',
+        barWidth: 3,
+        height: 80,
+        responsive: true,
+      });
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+
+      function draw() {
+        requestAnimationFrame(draw);
+        analyser.getByteTimeDomainData(data);
+        wavesurfer.loadDecodedBuffer(source.buffer);
+      }
+      draw();
+
+      // Grabar audio
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = async (e) => {
+        const formData = new FormData();
+        formData.append("audio", e.data);
+        await fetch(`${backend}/upload-chunk/${sessionId}`, { method: "POST", body: formData });
+      };
+      mediaRecorder.start(500); // envía cada 0.5 segundos
+
+      document.getElementById("start").disabled = true;
+      document.getElementById("stop").disabled = false;
+    }
+
+    async function stopRecording() {
+      mediaRecorder.stop();
+      const res = await fetch(`${backend}/finalize/${sessionId}`, { method: "POST" });
+      const { url } = await res.json();
+      document.getElementById("audio").src = `${backend}${url}`;
+      document.getElementById("start").disabled = false;
+      document.getElementById("stop").disabled = true;
+    }
+
+    document.getElementById("start").onclick = startRecording;
+    document.getElementById("stop").onclick = stopRecording;
+  </script>
+</body>
+</html>
+```
+
+---
+
+## 🚀 Resultado
+
+Cuando hables:
+
+* Verás **ondas en vivo** moviéndose como en iMessage.
+* Los fragmentos se enviarán al servidor en tiempo real.
+* Al detener la grabación, el servidor creará un `.mp3` listo para reproducir.
+
+---
+
+¿Quieres que te lo adapte directamente para **React (con hooks y Tailwind)** y que se conecte a tu backend de Curbe (por ejemplo `api.curbe.io/voice`)?
+Así podrías integrarlo visualmente en tu dashboard de contactos.
