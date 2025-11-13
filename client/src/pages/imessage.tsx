@@ -1524,25 +1524,24 @@ export default function IMessagePage() {
       {isNewConversationMode ? (
         <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
           {/* New Message Header */}
-          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">New Message</h2>
-              <Button 
-                size="sm" 
-                variant="ghost"
+          <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+            <div className="px-4 py-2.5 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">New Message</h2>
+              <button 
                 onClick={() => {
                   setIsNewConversationMode(false);
                   setNewConversationPhone("");
                   setMessageText("");
                   setAttachments([]);
                 }}
+                className="text-sm text-blue-500 hover:text-blue-600"
                 data-testid="button-cancel-new-message"
               >
                 Cancel
-              </Button>
+              </button>
             </div>
-            <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-              <span className="text-gray-600 dark:text-gray-400">To:</span>
+            <div className="px-4 py-2 flex items-center gap-2">
+              <span className="text-sm text-gray-500">To:</span>
               <input
                 type="tel"
                 placeholder="Name or Number"
@@ -1551,7 +1550,7 @@ export default function IMessagePage() {
                   const formatted = formatPhoneInput(e.target.value);
                   setNewConversationPhone(formatted);
                 }}
-                className="flex-1 bg-transparent border-0 outline-none text-blue-500 placeholder:text-gray-400 caret-blue-500"
+                className="flex-1 bg-transparent border-0 outline-none text-sm placeholder:text-gray-400"
                 data-testid="input-new-message-phone"
                 autoFocus
               />
@@ -1559,12 +1558,7 @@ export default function IMessagePage() {
           </div>
 
           {/* Empty Messages Area */}
-          <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-            <div className="text-center text-gray-400">
-              <MessageSquare className="h-16 w-16 mx-auto mb-3 opacity-20" />
-              <p className="text-sm">Enter a phone number and start typing</p>
-            </div>
-          </div>
+          <div className="flex-1 bg-white dark:bg-gray-900"></div>
 
           {/* Attachments preview */}
           {attachments.length > 0 && (
