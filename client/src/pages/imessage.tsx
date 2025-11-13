@@ -1889,116 +1889,151 @@ export default function IMessagePage() {
               </div>
             )}
 
-            {/* STATE 2: RECORDING - Full width recording UI with progressive red waveform */}
+            {/* STATE 2: RECORDING - Novel waveform visualization */}
             {recordingState === 'recording' && (
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
-                {/* Progressive waveform bars - 100 bars showing recording progress */}
-                <div className="flex-1 flex items-center gap-0.5 h-10" key={waveformRenderKey}>
+              <div className="bg-white dark:bg-gray-900 rounded-lg px-6 py-4 flex items-center gap-4 border border-gray-300 dark:border-gray-700 shadow-md">
+                {/* Innovative waveform with 3D depth effect */}
+                <div className="flex-1 flex items-center gap-0.5 h-10 relative" key={waveformRenderKey}>
                   {waveformBufferRef.current.map((value, i) => {
-                    // For recordings under 100 samples: show progressive fill left-to-right
-                    // For longer recordings: all bars show data (circular buffer effect)
                     const totalSamples = waveformIndexRef.current;
                     const hasData = totalSamples >= 100 ? true : i < totalSamples;
+                    const height = hasData ? Math.max(0.08, value) : 0.08;
                     
-                    // Show real amplitude where recorded, flat line where not yet recorded
-                    const height = hasData ? Math.max(0.05, value) : 0.05;
+                    // Novel visual effect: gradient opacity flow from left to right
+                    const position = i / 100;
+                    const baseOpacity = hasData ? 0.6 : 0.15;
+                    const flowingOpacity = baseOpacity + (Math.sin(position * Math.PI) * 0.4);
                     
+                    // 3D-like depth with gradient and shadow
                     return (
                       <div
                         key={`recording-bar-${i}`}
-                        className="w-1 bg-red-500 rounded-full transition-all duration-75"
-                        style={{ 
-                          height: `${height * 100}%`,
-                          opacity: hasData ? 1 : 0.3
-                        }}
-                      />
+                        className="relative w-1"
+                        style={{ height: '100%' }}
+                      >
+                        {/* Main bar with gradient for 3D effect */}
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-red-700 via-red-600 to-red-500 dark:from-red-600 dark:via-red-500 dark:to-red-400 rounded-t-sm transition-all duration-100"
+                          style={{ 
+                            height: `${height * 100}%`,
+                            opacity: flowingOpacity,
+                            boxShadow: hasData ? '0 0 4px rgba(220, 38, 38, 0.3)' : 'none'
+                          }}
+                        />
+                        {/* Highlight line for depth */}
+                        {hasData && height > 0.3 && (
+                          <div
+                            className="absolute bottom-0 w-full bg-gradient-to-t from-transparent to-red-300/40 dark:to-red-200/30 rounded-t-sm pointer-events-none"
+                            style={{ 
+                              height: `${height * 100}%`,
+                            }}
+                          />
+                        )}
+                      </div>
                     );
                   })}
                 </div>
 
                 {/* Timer */}
-                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px]">
+                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px] tabular-nums">
                   {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                 </span>
 
-                {/* Stop button (square icon) */}
+                {/* Stop button */}
                 <Button
                   size="icon"
-                  className="rounded-full bg-red-500 hover:bg-red-600 text-white h-10 w-10"
+                  className="rounded-full bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white h-9 w-9 transition-colors"
                   onClick={stopRecording}
                   data-testid="stop-recording-button"
                 >
-                  <div className="w-4 h-4 bg-white rounded-sm" />
+                  <div className="w-3.5 h-3.5 bg-white rounded-sm" />
                 </Button>
               </div>
             )}
 
-            {/* STATE 3: PREVIEW - Full width preview UI with gray waveform */}
+            {/* STATE 3: PREVIEW - Novel waveform playback visualization */}
             {recordingState === 'preview' && audioPreview && (
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-6 py-4 flex items-center gap-4">
-                {/* X button (cancel) */}
+              <div className="bg-white dark:bg-gray-900 rounded-lg px-6 py-4 flex items-center gap-4 border border-gray-300 dark:border-gray-700 shadow-md">
+                {/* Cancel button */}
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 h-10 w-10"
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 h-9 w-9 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
                   onClick={cancelPreview}
                   data-testid="cancel-preview-button"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </Button>
 
                 {/* Play/Pause button */}
                 <Button
                   size="icon"
-                  className="rounded-full bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 h-10 w-10"
+                  className="rounded-full bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 text-white h-9 w-9 transition-colors"
                   onClick={playPreview}
                   data-testid="play-preview-button"
                 >
                   {isPlayingPreview ? (
-                    <Pause className="h-5 w-5" />
+                    <Pause className="h-4 w-4" />
                   ) : (
-                    <Play className="h-5 w-5 ml-0.5" />
+                    <Play className="h-4 w-4 ml-0.5" />
                   )}
                 </Button>
 
-                {/* Static waveform bars - 100 bars showing captured recording */}
-                <div className="flex-1 flex items-center gap-0.5 h-10">
+                {/* Interactive waveform with 3D layered effect */}
+                <div className="flex-1 flex items-center gap-0.5 h-10 relative group cursor-pointer">
                   {Array.from({ length: 100 }).map((_, i) => {
-                    // For recordings under 100 samples: only show captured bars
-                    // For longer recordings: all bars show data (circular buffer)
                     const totalSamples = waveformPreviewIndexRef.current;
                     const hasData = totalSamples >= 100 ? true : i < totalSamples;
-                    
-                    // Get value from frozen preview buffer
                     const value = hasData && waveformPreviewRef.current[i] ? waveformPreviewRef.current[i] : 0.1;
                     const height = Math.max(0.1, value);
                     
+                    // Novel visual: wave-like opacity flow
+                    const position = i / 100;
+                    const baseOpacity = hasData ? 0.6 : 0.15;
+                    const waveOpacity = baseOpacity + (Math.sin(position * Math.PI * 2) * 0.25);
+                    
+                    // Interactive hover brightening
                     return (
                       <div
                         key={`preview-bar-${i}`}
-                        className="w-1 bg-gray-600 dark:bg-gray-500 rounded-full"
-                        style={{ 
-                          height: `${height * 100}%`,
-                          opacity: hasData ? 1 : 0.3
-                        }}
-                      />
+                        className="relative w-1"
+                        style={{ height: '100%' }}
+                      >
+                        {/* Main bar with 3D gradient */}
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-gray-800 via-gray-700 to-gray-600 dark:from-gray-600 dark:via-gray-500 dark:to-gray-400 rounded-t-sm transition-all duration-200 group-hover:from-gray-900 group-hover:via-gray-800 group-hover:to-gray-700 dark:group-hover:from-gray-500 dark:group-hover:via-gray-400 dark:group-hover:to-gray-300"
+                          style={{ 
+                            height: `${height * 100}%`,
+                            opacity: waveOpacity
+                          }}
+                        />
+                        {/* Depth highlight */}
+                        {hasData && height > 0.3 && (
+                          <div
+                            className="absolute bottom-0 w-full bg-gradient-to-t from-transparent to-gray-400/30 dark:to-gray-200/20 rounded-t-sm pointer-events-none"
+                            style={{ 
+                              height: `${height * 100}%`,
+                            }}
+                          />
+                        )}
+                      </div>
                     );
                   })}
                 </div>
 
-                {/* Timer showing duration */}
-                <span className="text-gray-600 dark:text-gray-400 font-mono text-sm font-medium min-w-[40px]">
+                {/* Timer */}
+                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px] tabular-nums">
                   {Math.floor(audioPreview.duration / 60)}:{(audioPreview.duration % 60).toString().padStart(2, '0')}
                 </span>
 
-                {/* Send button (blue up arrow) */}
+                {/* Send button */}
                 <Button
                   size="icon"
-                  className="rounded-full bg-blue-500 hover:bg-blue-600 text-white h-10 w-10"
+                  className="rounded-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white h-9 w-9 transition-colors"
                   onClick={sendAudioPreview}
                   data-testid="send-audio-button"
                 >
-                  <Send className="h-5 w-5" />
+                  <Send className="h-4 w-4" />
                 </Button>
               </div>
             )}
