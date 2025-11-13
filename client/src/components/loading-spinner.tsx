@@ -12,10 +12,17 @@ export function LoadingSpinner({
   fullScreen = true,
   className 
 }: LoadingSpinnerProps) {
+  // Inline mode for buttons, dialogs, etc. - just the spinner icon
+  if (!fullScreen) {
+    return (
+      <Loader2 className={cn("animate-spin", className)} />
+    );
+  }
+
+  // Full screen mode for page loading
   return (
     <div className={cn(
-      "flex items-center justify-center",
-      fullScreen ? "min-h-screen" : "h-full w-full",
+      "flex items-center justify-center min-h-screen",
       className
     )}>
       <div className="flex flex-col items-center gap-4">

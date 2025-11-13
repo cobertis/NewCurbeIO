@@ -597,7 +597,7 @@ export default function Contacts() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading contacts..." fullScreen={false} />;
+    return <LoadingSpinner message="Loading contacts..." />;
   }
 
   return (
