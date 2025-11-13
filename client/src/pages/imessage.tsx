@@ -493,9 +493,10 @@ export default function IMessagePage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -1080,22 +1081,40 @@ export default function IMessagePage() {
     if (!analyserRef.current) return;
     
     const analyser = analyserRef.current;
-    const bufferLength = analyser.frequencyBinCount;
+    analyser.fftSize = 256;
+    const bufferLength = analyser.fftSize;
     const dataArray = new Uint8Array(bufferLength);
     
     const draw = () => {
       if (!isRecording || !analyserRef.current) return;
       
-      analyser.getByteFrequencyData(dataArray);
+      // Get time domain data for better voice visualization
+      analyser.getByteTimeDomainData(dataArray);
       
-      // Sample 40 bars from the frequency data
+      // Calculate RMS for more accurate voice level
+      let sumSquares = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        const normalizedValue = (dataArray[i] - 128) / 128;
+        sumSquares += normalizedValue * normalizedValue;
+      }
+      const rms = Math.sqrt(sumSquares / bufferLength);
+      const volumeLevel = Math.min(255, rms * 500); // Scale up for visibility
+      
+      // Generate 80 bars for full width visualization
       const bars = [];
-      const barCount = 40;
-      const step = Math.floor(bufferLength / barCount);
+      const barCount = 80;
       
       for (let i = 0; i < barCount; i++) {
-        const value = dataArray[i * step];
-        bars.push(value);
+        // Create a wave pattern that responds to voice
+        const position = (i / barCount) * bufferLength;
+        const dataIndex = Math.floor(position);
+        const amplitude = Math.abs(dataArray[dataIndex] - 128);
+        
+        // Add some randomness for natural look, but scale with volume
+        const randomFactor = 0.3 + (Math.random() * 0.7);
+        const barHeight = Math.min(255, amplitude * 2 * randomFactor + volumeLevel * 0.5);
+        
+        bars.push(barHeight);
       }
       
       setRecordingWaveform(bars);
@@ -1756,21 +1775,36 @@ export default function IMessagePage() {
                       {/* Recording indicator */}
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
-                      {/* Waveform bars */}
-                      <div className="flex-1 flex items-center gap-[2px] h-8">
-                        {Array.from({ length: 40 }, (_, i) => {
-                          const height = recordingWaveform[i] || 10;
-                          return (
+                      {/* Waveform bars - full width responsive */}
+                      <div className="flex-1 flex items-center gap-[1px] h-8 px-1">
+                        {recordingWaveform.length > 0 ? (
+                          recordingWaveform.map((height, i) => (
                             <div
                               key={i}
-                              className="w-[3px] bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-100"
+                              className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-75"
                               style={{ 
-                                height: `${Math.max(10, (height / 255) * 100)}%`,
-                                opacity: height > 100 ? 0.9 : 0.6
+                                height: `${Math.max(8, Math.min(100, (height / 255) * 90))}%`,
+                                opacity: height > 50 ? 0.9 : 0.5,
+                                minWidth: '1px',
+                                maxWidth: '3px'
                               }}
                             />
-                          );
-                        })}
+                          ))
+                        ) : (
+                          // Show default bars while initializing
+                          Array.from({ length: 80 }, (_, i) => (
+                            <div
+                              key={i}
+                              className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full"
+                              style={{ 
+                                height: '10%',
+                                opacity: 0.3,
+                                minWidth: '1px',
+                                maxWidth: '3px'
+                              }}
+                            />
+                          ))
+                        )}
                       </div>
                       
                       {/* Duration */}
@@ -1819,27 +1853,45 @@ export default function IMessagePage() {
                         )}
                       </Button>
                       
-                      {/* Static waveform with progress */}
-                      <div className="flex-1 flex items-center gap-[2px] h-8">
-                        {recordingWaveform.map((height, i) => {
-                          const progress = recordingDuration > 0 
-                            ? previewCurrentTime / recordingDuration 
-                            : 0;
-                          const isPlayed = i < recordingWaveform.length * progress;
-                          
-                          return (
+                      {/* Static waveform with progress - full width responsive */}
+                      <div className="flex-1 flex items-center gap-[1px] h-8 px-1">
+                        {recordingWaveform.length > 0 ? (
+                          recordingWaveform.map((height, i) => {
+                            const progress = recordingDuration > 0 
+                              ? previewCurrentTime / recordingDuration 
+                              : 0;
+                            const isPlayed = i < recordingWaveform.length * progress;
+                            
+                            return (
+                              <div
+                                key={i}
+                                className={cn(
+                                  "flex-1 rounded-full transition-colors",
+                                  isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
+                                )}
+                                style={{ 
+                                  height: `${Math.max(8, Math.min(100, (height / 255) * 60))}%`,
+                                  minWidth: '1px',
+                                  maxWidth: '3px'
+                                }}
+                              />
+                            );
+                          })
+                        ) : (
+                          // Show default bars if no waveform
+                          Array.from({ length: 80 }, (_, i) => (
                             <div
                               key={i}
-                              className={cn(
-                                "w-[3px] rounded-full transition-colors",
-                                isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
-                              )}
+                              className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full"
                               style={{ 
-                                height: `${Math.max(10, (height / 255) * 60)}%`
+                                height: '10%',
+                                opacity: 0.3,
+                                minWidth: '1px',
+                                maxWidth: '3px'
                               }}
                             />
-                          );
-                        })}
+                          ))
+                        )}
                       </div>
                       
                       {/* Duration */}
