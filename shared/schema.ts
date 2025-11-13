@@ -3980,7 +3980,7 @@ export const campaignTemplateCategories = pgTable("campaign_template_categories"
 // 2. Campaign Templates
 export const campaignTemplates = pgTable("campaign_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }), // null = system template (available to all companies)
   categoryId: varchar("category_id").references(() => campaignTemplateCategories.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description"),

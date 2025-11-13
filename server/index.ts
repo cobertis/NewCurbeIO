@@ -7,6 +7,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import "./stripe"; // Force Stripe initialization to show which mode we're using
 import { startReminderScheduler } from "./reminder-scheduler";
 import { startBirthdayScheduler } from "./birthday-scheduler";
+import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('CRITICAL: SESSION_SECRET environment variable must be set for production security');
@@ -129,6 +130,11 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Seed Campaign Studio system data on first run
+    seedCampaignStudioData().catch((error) => {
+      console.error("Error seeding Campaign Studio data:", error);
+    });
     
     // Start the reminder scheduler for snoozed reminders
     startReminderScheduler();

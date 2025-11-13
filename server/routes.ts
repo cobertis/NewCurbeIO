@@ -75,7 +75,10 @@ import {
   insertTaskSchema,
   updateTaskSchema,
   insertPolicyFolderSchema,
-  insertBlacklistEntrySchema
+  insertBlacklistEntrySchema,
+  insertCampaignTemplateCategorySchema,
+  insertCampaignTemplateSchema,
+  insertCampaignPlaceholderSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte } from "drizzle-orm";
@@ -25742,6 +25745,333 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error updating iMessage conversation:", error);
       res.status(500).json({ message: "Failed to update conversation" });
+    }
+  });
+
+  // ==================== CAMPAIGN STUDIO ROUTES ====================
+  
+  // Template Categories
+  app.get("/api/campaign-studio/categories", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const categories = await storage.getCampaignTemplateCategories(user.companyId);
+      res.json(categories);
+    } catch (error: any) {
+      console.error("Error fetching campaign categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.post("/api/campaign-studio/categories", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const parsed = insertCampaignTemplateCategorySchema.parse(req.body);
+      
+      const category = await storage.createCampaignTemplateCategory({
+        ...parsed,
+        companyId: user.companyId,
+        isSystem: false,
+      });
+      
+      res.status(201).json(category);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating campaign category:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.patch("/api/campaign-studio/categories/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const parsed = insertCampaignTemplateCategorySchema.partial().parse(req.body);
+      
+      const existingCategory = await db.query.campaignTemplateCategories.findFirst({
+        where: (categories, { eq }) => eq(categories.id, id),
+      });
+      
+      if (!existingCategory) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      if (existingCategory.isSystem) {
+        return res.status(403).json({ message: "Cannot modify system categories" });
+      }
+      
+      if (existingCategory.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Not authorized to modify this category" });
+      }
+      
+      const updated = await storage.updateCampaignTemplateCategory(id, parsed);
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating campaign category:", error);
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/campaign-studio/categories/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      const existingCategory = await db.query.campaignTemplateCategories.findFirst({
+        where: (categories, { eq }) => eq(categories.id, id),
+      });
+      
+      if (!existingCategory) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      if (existingCategory.isSystem) {
+        return res.status(403).json({ message: "Cannot delete system categories" });
+      }
+      
+      if (existingCategory.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Not authorized to delete this category" });
+      }
+      
+      const templatesInCategory = await db.query.campaignTemplates.findFirst({
+        where: (templates, { eq }) => eq(templates.categoryId, id),
+      });
+      
+      if (templatesInCategory) {
+        return res.status(400).json({ message: "Cannot delete category with templates. Please delete or move templates first." });
+      }
+      
+      await storage.deleteCampaignTemplateCategory(id);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting campaign category:", error);
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
+  // Templates
+  app.get("/api/campaign-studio/templates", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const categoryId = req.query.categoryId as string | undefined;
+      const templates = await storage.getCampaignTemplates(user.companyId, categoryId);
+      res.json(templates);
+    } catch (error: any) {
+      console.error("Error fetching campaign templates:", error);
+      res.status(500).json({ message: "Failed to fetch templates" });
+    }
+  });
+
+  app.get("/api/campaign-studio/templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const template = await storage.getCampaignTemplateById(id, user.companyId);
+      
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      res.json(template);
+    } catch (error: any) {
+      console.error("Error fetching campaign template:", error);
+      res.status(500).json({ message: "Failed to fetch template" });
+    }
+  });
+
+  app.post("/api/campaign-studio/templates", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const parsed = insertCampaignTemplateSchema.parse(req.body);
+      
+      const placeholderRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
+      const matches = [...parsed.messageBody.matchAll(placeholderRegex)];
+      const extractedPlaceholders = matches.map(m => m[1]);
+      
+      const template = await storage.createCampaignTemplate({
+        ...parsed,
+        companyId: user.companyId,
+        createdBy: user.id,
+        placeholders: extractedPlaceholders,
+        isSystem: false,
+      });
+      
+      res.status(201).json(template);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating campaign template:", error);
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  app.patch("/api/campaign-studio/templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const parsed = insertCampaignTemplateSchema.partial().parse(req.body);
+      
+      const existingTemplate = await storage.getCampaignTemplateById(id, user.companyId);
+      
+      if (!existingTemplate) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      if (existingTemplate.isSystem) {
+        return res.status(403).json({ message: "Cannot modify system templates" });
+      }
+      
+      let updateData = { ...parsed };
+      if (parsed.messageBody) {
+        const placeholderRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
+        const matches = [...parsed.messageBody.matchAll(placeholderRegex)];
+        const extractedPlaceholders = matches.map(m => m[1]);
+        updateData.placeholders = extractedPlaceholders;
+      }
+      
+      const updated = await storage.updateCampaignTemplate(id, user.companyId, updateData);
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating campaign template:", error);
+      res.status(500).json({ message: "Failed to update template" });
+    }
+  });
+
+  app.delete("/api/campaign-studio/templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      const existingTemplate = await storage.getCampaignTemplateById(id, user.companyId);
+      
+      if (!existingTemplate) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+      
+      if (existingTemplate.isSystem) {
+        return res.status(403).json({ message: "Cannot delete system templates" });
+      }
+      
+      await storage.deleteCampaignTemplate(id, user.companyId);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting campaign template:", error);
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  // Placeholders
+  app.get("/api/campaign-studio/placeholders", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const placeholders = await storage.getCampaignPlaceholders(user.companyId);
+      res.json(placeholders);
+    } catch (error: any) {
+      console.error("Error fetching campaign placeholders:", error);
+      res.status(500).json({ message: "Failed to fetch placeholders" });
+    }
+  });
+
+  app.post("/api/campaign-studio/placeholders", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const parsed = insertCampaignPlaceholderSchema.parse(req.body);
+      
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(parsed.name)) {
+        return res.status(400).json({ 
+          message: "Invalid placeholder name. Must be alphanumeric and start with a letter or underscore. Only underscores allowed as special characters." 
+        });
+      }
+      
+      const placeholder = await storage.createCampaignPlaceholder({
+        ...parsed,
+        companyId: user.companyId,
+        isSystem: false,
+      });
+      
+      res.status(201).json(placeholder);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error creating campaign placeholder:", error);
+      res.status(500).json({ message: "Failed to create placeholder" });
+    }
+  });
+
+  app.patch("/api/campaign-studio/placeholders/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const parsed = insertCampaignPlaceholderSchema.partial().parse(req.body);
+      
+      const existingPlaceholder = await db.query.campaignPlaceholders.findFirst({
+        where: (placeholders, { eq }) => eq(placeholders.id, id),
+      });
+      
+      if (!existingPlaceholder) {
+        return res.status(404).json({ message: "Placeholder not found" });
+      }
+      
+      if (existingPlaceholder.isSystem) {
+        return res.status(403).json({ message: "Cannot modify system placeholders" });
+      }
+      
+      if (existingPlaceholder.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Not authorized to modify this placeholder" });
+      }
+      
+      if (parsed.name && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(parsed.name)) {
+        return res.status(400).json({ 
+          message: "Invalid placeholder name. Must be alphanumeric and start with a letter or underscore. Only underscores allowed as special characters." 
+        });
+      }
+      
+      const updated = await storage.updateCampaignPlaceholder(id, user.companyId, parsed);
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating campaign placeholder:", error);
+      res.status(500).json({ message: "Failed to update placeholder" });
+    }
+  });
+
+  app.delete("/api/campaign-studio/placeholders/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      const existingPlaceholder = await db.query.campaignPlaceholders.findFirst({
+        where: (placeholders, { eq }) => eq(placeholders.id, id),
+      });
+      
+      if (!existingPlaceholder) {
+        return res.status(404).json({ message: "Placeholder not found" });
+      }
+      
+      if (existingPlaceholder.isSystem) {
+        return res.status(403).json({ message: "Cannot delete system placeholders" });
+      }
+      
+      if (existingPlaceholder.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Not authorized to delete this placeholder" });
+      }
+      
+      await storage.deleteCampaignPlaceholder(id, user.companyId);
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting campaign placeholder:", error);
+      res.status(500).json({ message: "Failed to delete placeholder" });
     }
   });
 

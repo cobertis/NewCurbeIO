@@ -178,7 +178,13 @@ import {
   type ImessageCampaignRun,
   type InsertImessageCampaignRun,
   type ImessageCampaignMessage,
-  type InsertImessageCampaignMessage
+  type InsertImessageCampaignMessage,
+  type CampaignTemplateCategory,
+  type InsertCampaignTemplateCategory,
+  type CampaignTemplate,
+  type InsertCampaignTemplate,
+  type CampaignPlaceholder,
+  type InsertCampaignPlaceholder
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -266,7 +272,10 @@ import {
   imessageMessages,
   imessageCampaigns,
   imessageCampaignRuns,
-  imessageCampaignMessages
+  imessageCampaignMessages,
+  campaignTemplateCategories,
+  campaignTemplates,
+  campaignPlaceholders
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -1090,6 +1099,26 @@ export interface IStorage {
   getPendingCampaignMessages(runId: string, limit?: number): Promise<ImessageCampaignMessage[]>;
   updateImessageCampaignMessage(id: string, data: Partial<InsertImessageCampaignMessage>): Promise<ImessageCampaignMessage | undefined>;
   bulkCreateCampaignMessages(messages: InsertImessageCampaignMessage[]): Promise<ImessageCampaignMessage[]>;
+  
+  // Campaign Template Categories
+  getCampaignTemplateCategories(companyId: string): Promise<CampaignTemplateCategory[]>;
+  createCampaignTemplateCategory(data: InsertCampaignTemplateCategory): Promise<CampaignTemplateCategory>;
+  updateCampaignTemplateCategory(id: string, data: Partial<InsertCampaignTemplateCategory>): Promise<CampaignTemplateCategory>;
+  deleteCampaignTemplateCategory(id: string): Promise<void>;
+  
+  // Campaign Templates
+  getCampaignTemplates(companyId: string, categoryId?: string): Promise<CampaignTemplate[]>;
+  getCampaignTemplateById(id: string, companyId: string): Promise<CampaignTemplate | undefined>;
+  createCampaignTemplate(data: InsertCampaignTemplate): Promise<CampaignTemplate>;
+  updateCampaignTemplate(id: string, companyId: string, data: Partial<InsertCampaignTemplate>): Promise<CampaignTemplate>;
+  deleteCampaignTemplate(id: string, companyId: string): Promise<void>;
+  incrementTemplateUsage(id: string): Promise<void>;
+  
+  // Campaign Placeholders
+  getCampaignPlaceholders(companyId: string): Promise<CampaignPlaceholder[]>;
+  createCampaignPlaceholder(data: InsertCampaignPlaceholder): Promise<CampaignPlaceholder>;
+  updateCampaignPlaceholder(id: string, companyId: string, data: Partial<InsertCampaignPlaceholder>): Promise<CampaignPlaceholder>;
+  deleteCampaignPlaceholder(id: string, companyId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -9648,6 +9677,196 @@ export class DbStorage implements IStorage {
     }
     const result = await db.insert(imessageCampaignMessages).values(messages).returning();
     return result;
+  }
+
+  // ==================== CAMPAIGN TEMPLATE CATEGORIES ====================
+
+  async getCampaignTemplateCategories(companyId: string): Promise<CampaignTemplateCategory[]> {
+    const result = await db
+      .select()
+      .from(campaignTemplateCategories)
+      .where(
+        or(
+          eq(campaignTemplateCategories.isSystem, true),
+          eq(campaignTemplateCategories.companyId, companyId)
+        )
+      )
+      .orderBy(campaignTemplateCategories.displayOrder, campaignTemplateCategories.name);
+    return result;
+  }
+
+  async createCampaignTemplateCategory(data: InsertCampaignTemplateCategory): Promise<CampaignTemplateCategory> {
+    // Force isSystem = false for tenant-scoped categories
+    const insertData = {
+      ...data,
+      isSystem: data.companyId === null ? data.isSystem : false,
+    };
+    
+    const result = await db.insert(campaignTemplateCategories).values(insertData).returning();
+    return result[0];
+  }
+
+  async updateCampaignTemplateCategory(id: string, data: Partial<InsertCampaignTemplateCategory>): Promise<CampaignTemplateCategory> {
+    const result = await db
+      .update(campaignTemplateCategories)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(campaignTemplateCategories.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCampaignTemplateCategory(id: string): Promise<void> {
+    await db.delete(campaignTemplateCategories).where(eq(campaignTemplateCategories.id, id));
+  }
+
+  // ==================== CAMPAIGN TEMPLATES ====================
+
+  async getCampaignTemplates(companyId: string, categoryId?: string): Promise<CampaignTemplate[]> {
+    let companyCondition = or(
+      eq(campaignTemplates.companyId, companyId),
+      and(isNull(campaignTemplates.companyId), eq(campaignTemplates.isSystem, true))
+    );
+    
+    let conditions = categoryId 
+      ? and(companyCondition, eq(campaignTemplates.categoryId, categoryId))
+      : companyCondition;
+
+    const result = await db
+      .select()
+      .from(campaignTemplates)
+      .where(conditions)
+      .orderBy(desc(campaignTemplates.usageCount), campaignTemplates.name);
+    return result;
+  }
+
+  async getCampaignTemplateById(id: string, companyId: string): Promise<CampaignTemplate | undefined> {
+    const result = await db
+      .select()
+      .from(campaignTemplates)
+      .where(
+        and(
+          eq(campaignTemplates.id, id),
+          or(
+            eq(campaignTemplates.companyId, companyId),
+            and(isNull(campaignTemplates.companyId), eq(campaignTemplates.isSystem, true))
+          )
+        )
+      );
+    return result[0];
+  }
+
+  async createCampaignTemplate(data: InsertCampaignTemplate): Promise<CampaignTemplate> {
+    // Force isSystem = false for tenant-scoped templates
+    const insertData = {
+      ...data,
+      isSystem: data.companyId === null ? data.isSystem : false,
+    };
+    
+    const result = await db.insert(campaignTemplates).values(insertData).returning();
+    return result[0];
+  }
+
+  async updateCampaignTemplate(id: string, companyId: string, data: Partial<InsertCampaignTemplate>): Promise<CampaignTemplate> {
+    const template = await this.getCampaignTemplateById(id, companyId);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+    if (template.isSystem) {
+      throw new Error("Cannot modify system templates");
+    }
+    
+    const result = await db
+      .update(campaignTemplates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(
+        and(
+          eq(campaignTemplates.id, id),
+          eq(campaignTemplates.companyId, companyId)
+        )
+      )
+      .returning();
+    return result[0];
+  }
+
+  async deleteCampaignTemplate(id: string, companyId: string): Promise<void> {
+    const template = await this.getCampaignTemplateById(id, companyId);
+    if (!template) {
+      throw new Error("Template not found");
+    }
+    if (template.isSystem) {
+      throw new Error("Cannot delete system templates");
+    }
+    
+    await db
+      .delete(campaignTemplates)
+      .where(
+        and(
+          eq(campaignTemplates.id, id),
+          eq(campaignTemplates.companyId, companyId)
+        )
+      );
+  }
+
+  async incrementTemplateUsage(id: string): Promise<void> {
+    await db
+      .update(campaignTemplates)
+      .set({ usageCount: sql`${campaignTemplates.usageCount} + 1` })
+      .where(eq(campaignTemplates.id, id));
+  }
+
+  // ==================== CAMPAIGN PLACEHOLDERS ====================
+
+  async getCampaignPlaceholders(companyId: string): Promise<CampaignPlaceholder[]> {
+    const result = await db
+      .select()
+      .from(campaignPlaceholders)
+      .where(
+        and(
+          or(
+            eq(campaignPlaceholders.isSystem, true),
+            eq(campaignPlaceholders.companyId, companyId)
+          ),
+          eq(campaignPlaceholders.isActive, true)
+        )
+      )
+      .orderBy(campaignPlaceholders.name);
+    return result;
+  }
+
+  async createCampaignPlaceholder(data: InsertCampaignPlaceholder): Promise<CampaignPlaceholder> {
+    // Force isSystem = false for tenant-scoped placeholders
+    const insertData = {
+      ...data,
+      isSystem: data.companyId === null ? data.isSystem : false,
+    };
+    
+    const result = await db.insert(campaignPlaceholders).values(insertData).returning();
+    return result[0];
+  }
+
+  async updateCampaignPlaceholder(id: string, companyId: string, data: Partial<InsertCampaignPlaceholder>): Promise<CampaignPlaceholder> {
+    const result = await db
+      .update(campaignPlaceholders)
+      .set(data)
+      .where(
+        and(
+          eq(campaignPlaceholders.id, id),
+          eq(campaignPlaceholders.companyId, companyId)
+        )
+      )
+      .returning();
+    return result[0];
+  }
+
+  async deleteCampaignPlaceholder(id: string, companyId: string): Promise<void> {
+    await db
+      .delete(campaignPlaceholders)
+      .where(
+        and(
+          eq(campaignPlaceholders.id, id),
+          eq(campaignPlaceholders.companyId, companyId)
+        )
+      );
   }
 }
 
