@@ -9146,9 +9146,14 @@ export class DbStorage implements IStorage {
     conversations.forEach(conv => {
       if (conv.participants && Array.isArray(conv.participants)) {
         conv.participants.forEach(p => {
-          // Normalize phone number for lookup
-          const normalized = formatForStorage(p);
-          if (normalized) allPhones.add(normalized);
+          try {
+            // Normalize phone number for lookup (skip invalid numbers)
+            const normalized = formatForStorage(p);
+            if (normalized) allPhones.add(normalized);
+          } catch (error) {
+            // Ignore invalid phone numbers silently
+            console.warn(`[iMessage] Skipping invalid phone number: ${p}`);
+          }
         });
       }
     });
@@ -9179,25 +9184,30 @@ export class DbStorage implements IStorage {
       // For 1-on-1 conversations, try to find matching contact
       if (!conv.isGroup && conv.participants && conv.participants.length > 0) {
         for (const participant of conv.participants) {
-          const normalizedPhone = formatForStorage(participant);
-          if (normalizedPhone) {
-            const contact = contactsMap.get(normalizedPhone);
-            if (contact) {
-              // Found a contact - use their name
-              const contactName = [contact.firstName, contact.lastName]
-                .filter(Boolean)
-                .join(' ')
-                .trim();
-              
-              if (contactName) {
-                return {
-                  ...conv,
-                  displayName: contactName,
-                  contactName: contactName,
-                  contactPhone: contact.phone
-                };
+          try {
+            const normalizedPhone = formatForStorage(participant);
+            if (normalizedPhone) {
+              const contact = contactsMap.get(normalizedPhone);
+              if (contact) {
+                // Found a contact - use their name
+                const contactName = [contact.firstName, contact.lastName]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim();
+                
+                if (contactName) {
+                  return {
+                    ...conv,
+                    displayName: contactName,
+                    contactName: contactName,
+                    contactPhone: contact.phone
+                  };
+                }
               }
             }
+          } catch (error) {
+            // Ignore invalid phone numbers silently
+            console.warn(`[iMessage] Skipping invalid participant phone: ${participant}`);
           }
         }
       }
