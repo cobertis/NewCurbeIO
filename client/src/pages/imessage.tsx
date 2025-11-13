@@ -636,6 +636,41 @@ export default function IMessagePage() {
     refetchInterval: 30000
   });
 
+  // Auto-open existing conversation when phone number matches
+  useEffect(() => {
+    if (isNewConversationMode && newConversationPhone && conversations) {
+      // Extract just digits from the input for comparison
+      const digitsOnly = newConversationPhone.replace(/\D/g, '');
+      
+      // Only check if we have at least 10 digits (complete phone number)
+      if (digitsOnly.length >= 10) {
+        // Find conversation that matches this phone number
+        const matchingConversation = conversations.find(conv => {
+          // Check if any participant matches the phone number
+          return conv.participants?.some(participant => {
+            const participantDigits = participant.replace(/\D/g, '');
+            // Match if the last 10 digits are the same (ignoring country code differences)
+            return participantDigits.slice(-10) === digitsOnly.slice(-10);
+          });
+        });
+
+        if (matchingConversation) {
+          // Open the existing conversation
+          setSelectedConversationId(matchingConversation.chatGuid);
+          setIsNewConversationMode(false);
+          setNewConversationPhone("");
+          setMessageText("");
+          setAttachments([]);
+          
+          // Focus the message input
+          setTimeout(() => {
+            messageInputRef.current?.focus();
+          }, 100);
+        }
+      }
+    }
+  }, [newConversationPhone, isNewConversationMode, conversations]);
+
   const { data: messages, isLoading: messagesLoading } = useQuery<ImessageMessage[]>({
     queryKey: selectedConversationId ? [`/api/imessage/conversations/${selectedConversationId}/messages`] : [''],
     enabled: !!selectedConversationId,
