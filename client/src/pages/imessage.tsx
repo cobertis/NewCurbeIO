@@ -1355,7 +1355,7 @@ export default function IMessagePage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : filteredConversations?.length === 0 ? (
+          ) : filteredConversations?.length === 0 && !isNewConversationMode ? (
             <div className="p-8 text-center text-gray-500">
               <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               <p className="font-medium">No conversations</p>
@@ -1363,6 +1363,48 @@ export default function IMessagePage() {
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {/* New Message item - shown when in new conversation mode */}
+              {isNewConversationMode && (
+                <div
+                  className="group relative flex items-center gap-2.5 py-2 px-3 bg-blue-500 dark:bg-blue-600 text-white cursor-pointer"
+                  data-testid="conversation-new-message"
+                >
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Avatar className="h-11 w-11">
+                      <AvatarFallback className="bg-white/20 text-white">
+                        <UserIcon className="h-6 w-6" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                      <p className="font-semibold text-[15px]">New Message</p>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-white hover:bg-white/20 shrink-0 -mr-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsNewConversationMode(false);
+                          setNewConversationPhone("");
+                          setMessageText("");
+                          setAttachments([]);
+                        }}
+                        data-testid="button-close-new-message-item"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {newConversationPhone && (
+                      <p className="text-sm text-white/90 truncate">
+                        {newConversationPhone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {filteredConversations?.map(conversation => (
                 <AlertDialog key={conversation.id}>
                   <ContextMenu>
