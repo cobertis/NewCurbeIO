@@ -1154,11 +1154,15 @@ export default function IMessagePage() {
       // Add to attachments array for sending
       const tempAttachments = [file];
       
+      // Generate a unique client GUID for this message
+      const clientGuid = crypto.randomUUID();
+      
       // Send message with audio attachment
       await sendMessageMutation.mutateAsync({
         conversationId: selectedConversationId,
         text: '',
         attachments: tempAttachments,
+        clientGuid: clientGuid,
         metadata: {
           waveform: recordingWaveform,
           duration: recordingDuration * 1000 // Convert to milliseconds
