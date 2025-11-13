@@ -161,6 +161,8 @@ import {
   type InsertBulkvsMessage,
   type ManualContact,
   type InsertManualContact,
+  type BlacklistEntry,
+  type InsertBlacklistEntry,
   type ContactEngagement,
   type InsertContactEngagement,
   type UnifiedContact,
@@ -251,6 +253,7 @@ import {
   bulkvsThreads,
   bulkvsMessages,
   manualContacts,
+  blacklistEntries,
   contactEngagements,
   tasks,
   imessageConversations,
@@ -965,6 +968,42 @@ export interface IStorage {
   getManualContact(id: string): Promise<ManualContact | undefined>;
   updateManualContact(id: string, data: Partial<InsertManualContact>): Promise<ManualContact | undefined>;
   deleteManualContact(id: string): Promise<void>;
+  
+  // Blacklist Management
+  addToBlacklist(data: {
+    companyId: string;
+    channel: "sms" | "imessage" | "email" | "all";
+    identifier: string;
+    reason: "stop" | "manual" | "bounced" | "complaint";
+    addedBy?: string;
+    sourceMessageId?: string;
+    notes?: string;
+    metadata?: Record<string, any>;
+  }): Promise<BlacklistEntry>;
+  removeFromBlacklist(params: {
+    companyId: string;
+    channel: string;
+    identifier: string;
+    removedBy?: string;
+  }): Promise<boolean>;
+  isBlacklisted(params: {
+    companyId: string;
+    channel: string;
+    identifier: string;
+  }): Promise<boolean>;
+  getBlacklistEntries(companyId: string, filters?: {
+    channel?: string;
+    isActive?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ entries: BlacklistEntry[]; total: number }>;
+  getBlacklistEntry(id: string): Promise<BlacklistEntry | undefined>;
+  getBlacklistEntryByIdentifier(params: {
+    companyId: string;
+    channel: string;
+    identifier: string;
+  }): Promise<BlacklistEntry | undefined>;
   
   // Enhanced Contact Management
   listContacts(params: {
@@ -8466,6 +8505,259 @@ export class DbStorage implements IStorage {
     }
     
     return unifiedContacts;
+  }
+
+  // ==================== BLACKLIST ====================
+
+  async addToBlacklist(data: {
+    companyId: string;
+    channel: "sms" | "imessage" | "email" | "all";
+    identifier: string;
+    reason: string;
+    addedBy?: string;
+    notes?: string;
+    metadata?: any;
+  }): Promise<BlacklistEntry> {
+    // Normalize identifier based on channel
+    let normalizedIdentifier = data.identifier;
+    
+    if (data.channel === "sms" || data.channel === "imessage") {
+      // For phone channels, use E.164 format
+      normalizedIdentifier = formatForStorage(data.identifier);
+    } else if (data.channel === "email") {
+      // For email, use lowercase trimmed format
+      normalizedIdentifier = data.identifier.toLowerCase().trim();
+    } else if (data.channel === "all") {
+      // For "all" channel, trim the identifier
+      normalizedIdentifier = data.identifier.trim();
+    }
+    
+    try {
+      // Check if an entry already exists (active or inactive)
+      const existingEntry = await db.select()
+        .from(blacklistEntries)
+        .where(and(
+          eq(blacklistEntries.companyId, data.companyId),
+          eq(blacklistEntries.channel, data.channel),
+          eq(blacklistEntries.identifier, normalizedIdentifier)
+        ))
+        .limit(1);
+      
+      if (existingEntry.length > 0) {
+        const entry = existingEntry[0];
+        
+        if (entry.isActive) {
+          // Entry is already active - throw meaningful error
+          throw new Error("Already blacklisted on this channel");
+        }
+        
+        // Entry exists but is inactive - reactivate it
+        const reactivated = await db.update(blacklistEntries)
+          .set({
+            isActive: true,
+            removedAt: null,
+            removedBy: null,
+            reason: data.reason,
+            addedBy: data.addedBy,
+            notes: data.notes,
+            metadata: data.metadata,
+            updatedAt: new Date(),
+          })
+          .where(eq(blacklistEntries.id, entry.id))
+          .returning();
+        
+        return reactivated[0];
+      }
+      
+      // No existing entry - create new one
+      const result = await db.insert(blacklistEntries).values({
+        companyId: data.companyId,
+        channel: data.channel,
+        identifier: normalizedIdentifier,
+        reason: data.reason,
+        addedBy: data.addedBy,
+        notes: data.notes,
+        metadata: data.metadata,
+        isActive: true,
+      }).returning();
+      
+      return result[0];
+    } catch (error: any) {
+      // Handle unique constraint violations gracefully
+      if (error.message === "Already blacklisted on this channel") {
+        throw error; // Re-throw our meaningful error
+      }
+      
+      // Check for database unique constraint errors
+      if (error.code === '23505' || error.message?.includes('unique constraint')) {
+        throw new Error("Already blacklisted on this channel");
+      }
+      
+      // Re-throw other errors
+      throw error;
+    }
+  }
+
+  async removeFromBlacklist(params: {
+    companyId: string;
+    channel: string;
+    identifier: string;
+    removedBy?: string;
+  }): Promise<boolean> {
+    // Normalize identifier based on channel
+    let normalizedIdentifier = params.identifier;
+    
+    if (params.channel === "sms" || params.channel === "imessage") {
+      normalizedIdentifier = formatForStorage(params.identifier);
+    } else if (params.channel === "email") {
+      normalizedIdentifier = params.identifier.toLowerCase().trim();
+    } else if (params.channel === "all") {
+      // For "all" channel, trim the identifier
+      normalizedIdentifier = params.identifier.trim();
+    }
+    
+    // Find and soft-delete the active entry
+    const result = await db.update(blacklistEntries)
+      .set({
+        isActive: false,
+        removedAt: new Date(),
+        removedBy: params.removedBy,
+      })
+      .where(and(
+        eq(blacklistEntries.companyId, params.companyId),
+        eq(blacklistEntries.channel, params.channel),
+        eq(blacklistEntries.identifier, normalizedIdentifier),
+        eq(blacklistEntries.isActive, true)
+      ))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  async isBlacklisted(params: {
+    companyId: string;
+    channel: string;
+    identifier: string;
+  }): Promise<boolean> {
+    // Normalize identifier based on channel
+    let normalizedIdentifier = params.identifier;
+    
+    if (params.channel === "sms" || params.channel === "imessage") {
+      normalizedIdentifier = formatForStorage(params.identifier);
+    } else if (params.channel === "email") {
+      normalizedIdentifier = params.identifier.toLowerCase().trim();
+    } else if (params.channel === "all") {
+      // For "all" channel, trim the identifier
+      normalizedIdentifier = params.identifier.trim();
+    }
+    
+    // Check for active entry matching companyId + channel + identifier
+    // Also check for channel="all" entries as fallback
+    const result = await db.select()
+      .from(blacklistEntries)
+      .where(and(
+        eq(blacklistEntries.companyId, params.companyId),
+        eq(blacklistEntries.isActive, true),
+        or(
+          and(
+            eq(blacklistEntries.channel, params.channel),
+            eq(blacklistEntries.identifier, normalizedIdentifier)
+          ),
+          and(
+            eq(blacklistEntries.channel, "all"),
+            eq(blacklistEntries.identifier, normalizedIdentifier)
+          )
+        )
+      ))
+      .limit(1);
+    
+    return result.length > 0;
+  }
+
+  async getBlacklistEntries(companyId: string, filters?: {
+    channel?: string;
+    isActive?: boolean;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ entries: BlacklistEntry[]; total: number }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 50;
+    const offset = (page - 1) * limit;
+    
+    // Build where conditions
+    const conditions = [eq(blacklistEntries.companyId, companyId)];
+    
+    if (filters?.channel) {
+      conditions.push(eq(blacklistEntries.channel, filters.channel));
+    }
+    
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(blacklistEntries.isActive, filters.isActive));
+    }
+    
+    if (filters?.search) {
+      conditions.push(
+        or(
+          like(blacklistEntries.identifier, `%${filters.search}%`),
+          like(blacklistEntries.notes, `%${filters.search}%`)
+        )!
+      );
+    }
+    
+    // Get total count
+    const countResult = await db.select({ count: sql<number>`count(*)` })
+      .from(blacklistEntries)
+      .where(and(...conditions));
+    const total = Number(countResult[0]?.count || 0);
+    
+    // Get entries with pagination
+    const entries = await db.select()
+      .from(blacklistEntries)
+      .where(and(...conditions))
+      .orderBy(desc(blacklistEntries.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return { entries, total };
+  }
+
+  async getBlacklistEntry(id: string): Promise<BlacklistEntry | undefined> {
+    const result = await db.select()
+      .from(blacklistEntries)
+      .where(eq(blacklistEntries.id, id));
+    
+    return result[0];
+  }
+
+  async getBlacklistEntryByIdentifier(params: {
+    companyId: string;
+    channel: string;
+    identifier: string;
+  }): Promise<BlacklistEntry | undefined> {
+    // Normalize identifier based on channel
+    let normalizedIdentifier = params.identifier;
+    
+    if (params.channel === "sms" || params.channel === "imessage") {
+      normalizedIdentifier = formatForStorage(params.identifier);
+    } else if (params.channel === "email") {
+      normalizedIdentifier = params.identifier.toLowerCase().trim();
+    } else if (params.channel === "all") {
+      // For "all" channel, trim the identifier
+      normalizedIdentifier = params.identifier.trim();
+    }
+    
+    // Only return active entries to avoid leaking soft-deleted rows
+    const result = await db.select()
+      .from(blacklistEntries)
+      .where(and(
+        eq(blacklistEntries.companyId, params.companyId),
+        eq(blacklistEntries.channel, params.channel),
+        eq(blacklistEntries.identifier, normalizedIdentifier),
+        eq(blacklistEntries.isActive, true)
+      ));
+    
+    return result[0];
   }
 
   // ==================== TASKS ====================

@@ -3279,6 +3279,59 @@ export const manualContacts = pgTable("manual_contacts", {
   phoneIndex: index("manual_contacts_phone_idx").on(table.phone),
 }));
 
+// =====================================================
+// BLACKLIST (Multi-channel communication blocking)
+// =====================================================
+
+export const blacklistEntries = pgTable("blacklist_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Multi-channel support
+  channel: text("channel").notNull(), // "sms", "imessage", "email", "all"
+  identifier: text("identifier").notNull(), // Normalized: E.164 for phone, lowercase trimmed for email
+  
+  // Lifecycle
+  isActive: boolean("is_active").notNull().default(true),
+  reason: text("reason").notNull(), // "stop", "manual", "bounced", "complaint"
+  
+  // Metadata
+  addedBy: varchar("added_by").references(() => users.id), // User who added (null for auto)
+  removedBy: varchar("removed_by").references(() => users.id), // User who removed
+  sourceMessageId: varchar("source_message_id"), // Link to message that triggered STOP
+  notes: text("notes"), // Admin notes
+  metadata: jsonb("metadata"), // Additional context
+  
+  // Timestamps
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
+}, (table) => ({
+  // Partial unique index: only one active entry per company+channel+identifier
+  uniqueActiveEntry: uniqueIndex("blacklist_active_unique").on(table.companyId, table.channel, table.identifier).where(sql`${table.isActive} = true`),
+  // Performance indexes
+  companyIdIndex: index("blacklist_company_id_idx").on(table.companyId),
+  identifierIndex: index("blacklist_identifier_idx").on(table.identifier),
+  channelIndex: index("blacklist_channel_idx").on(table.channel),
+  isActiveIndex: index("blacklist_is_active_idx").on(table.isActive),
+}));
+
+// Insert schemas
+export const insertBlacklistEntrySchema = createInsertSchema(blacklistEntries).omit({
+  id: true,
+  createdAt: true,
+  removedAt: true,
+}).extend({
+  channel: z.enum(["sms", "imessage", "email", "all"]),
+  identifier: z.string().min(1, "Identifier is required"),
+  reason: z.enum(["stop", "manual", "bounced", "complaint"]),
+  isActive: z.boolean().default(true),
+  notes: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export type BlacklistEntry = typeof blacklistEntries.$inferSelect;
+export type InsertBlacklistEntry = z.infer<typeof insertBlacklistEntrySchema>;
+
 // Contact Engagements - Track contact campaign history
 export const contactEngagements = pgTable("contact_engagements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

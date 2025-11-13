@@ -74,7 +74,8 @@ import {
   insertManualContactSchema,
   insertTaskSchema,
   updateTaskSchema,
-  insertPolicyFolderSchema
+  insertPolicyFolderSchema,
+  insertBlacklistEntrySchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte } from "drizzle-orm";
@@ -99,6 +100,7 @@ import { formatForStorage, formatForDisplay } from "@shared/phone";
 import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
+import { blacklistService } from "./services/blacklist-service";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -10040,6 +10042,142 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error("[IMPORT CONTACTS] Error:", error);
       res.status(500).json({ message: "Failed to import contacts" });
+    }
+  });
+
+  // =====================================================
+  // BLACKLIST ENDPOINTS
+  // =====================================================
+
+  // GET /api/blacklist - List blacklist entries (admin + superadmin)
+  app.get("/api/blacklist", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Require admin or superadmin role
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Access denied. Admin or superadmin role required." });
+    }
+
+    try {
+      const { channel, isActive, search, page, limit } = req.query;
+
+      // Parse query parameters
+      const filters = {
+        channel: channel as string | undefined,
+        isActive: isActive === "true" ? true : isActive === "false" ? false : undefined,
+        search: search as string | undefined,
+        page: page ? parseInt(page as string, 10) : undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+      };
+
+      // Get blacklist entries for current user's company
+      const result = await blacklistService.getBlacklistEntries(
+        currentUser.companyId!,
+        filters
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("[BLACKLIST] Error fetching blacklist entries:", error);
+      res.status(500).json({ message: "Failed to fetch blacklist entries" });
+    }
+  });
+
+  // POST /api/blacklist - Add to blacklist (admin + superadmin)
+  app.post("/api/blacklist", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Require admin or superadmin role
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Access denied. Admin or superadmin role required." });
+    }
+
+    try {
+      // Dedicated validation schema that ONLY accepts user-controlled fields
+      const addBlacklistEntrySchema = z.object({
+        channel: z.enum(["sms", "imessage", "email", "all"]),
+        identifier: z.string().min(1, "Identifier is required"),
+        reason: z.enum(["stop", "manual", "bounced", "complaint"]),
+        notes: z.string().optional(),
+        metadata: z.record(z.any()).optional()
+      });
+
+      // Validate request body with dedicated schema
+      const validation = addBlacklistEntrySchema.safeParse(req.body);
+
+      if (!validation.success) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: validation.error.errors,
+        });
+      }
+
+      const { channel, identifier, reason, notes, metadata } = validation.data;
+
+      // Add to blacklist with server-side injected fields
+      const entry = await blacklistService.addToBlacklist({
+        companyId: currentUser.companyId!,
+        channel,
+        identifier,
+        reason,
+        addedBy: currentUser.id,
+        notes,
+        metadata,
+      });
+
+      res.status(201).json(entry);
+    } catch (error: any) {
+      console.error("[BLACKLIST] Error adding to blacklist:", error);
+      
+      // Handle duplicate errors gracefully with 409 Conflict
+      if (error.message === "Already blacklisted on this channel") {
+        return res.status(409).json({ message: "Already blacklisted" });
+      }
+      
+      res.status(500).json({ message: "Failed to add to blacklist" });
+    }
+  });
+
+  // DELETE /api/blacklist/:id - Remove from blacklist (admin + superadmin)
+  app.delete("/api/blacklist/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Require admin or superadmin role
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Access denied. Admin or superadmin role required." });
+    }
+
+    try {
+      const entryId = req.params.id;
+
+      // Get the blacklist entry to verify it belongs to the user's company
+      const entry = await storage.getBlacklistEntry(entryId);
+
+      if (!entry) {
+        return res.status(404).json({ message: "Blacklist entry not found" });
+      }
+
+      // Verify entry belongs to user's company
+      if (entry.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Access denied. Entry does not belong to your company." });
+      }
+
+      // Remove from blacklist
+      const success = await blacklistService.removeFromBlacklist({
+        companyId: currentUser.companyId!,
+        channel: entry.channel,
+        identifier: entry.identifier,
+        removedBy: currentUser.id,
+      });
+
+      if (!success) {
+        return res.status(404).json({ message: "Failed to remove entry from blacklist" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[BLACKLIST] Error removing from blacklist:", error);
+      res.status(500).json({ message: "Failed to remove from blacklist" });
     }
   });
 
