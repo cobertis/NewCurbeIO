@@ -1251,20 +1251,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               updateData.dateDelivered = new Date(messageData.dateDelivered);
             }
             
-            // CRITICAL: Update attachments with BlueBubbles GUIDs (so frontend can load images)
-            if (messageData.attachments && messageData.attachments.length > 0) {
-              const transformedAttachments = messageData.attachments.map((att: any) => ({
-                guid: att.guid,
-                mimeType: att.mimeType,
-                fileName: att.transferName || att.fileName || 'attachment',
-                fileSize: att.totalBytes || 0,
-                width: att.width,
-                height: att.height,
-                url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
-              }));
-              updateData.attachments = transformedAttachments;
-              updateData.hasAttachments = true;
-            }
+            // CRITICAL: Always update attachments for ALL message types (replies, regular messages, etc.)
+            // Transform attachments using same pattern as CREATE path to ensure consistency
+            const transformedAttachments = (messageData.attachments || []).map((att: any) => ({
+              guid: att.guid,
+              mimeType: att.mimeType,
+              fileName: att.transferName || att.fileName || 'attachment',
+              fileSize: att.totalBytes || 0,
+              width: att.width,
+              height: att.height,
+              url: att.guid ? `/api/imessage/attachments/${att.guid}` : undefined,
+            }));
+            updateData.attachments = transformedAttachments;
+            updateData.hasAttachments = transformedAttachments.length > 0;
             
             await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, updateData);
             newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
@@ -1277,7 +1276,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 guid: att.guid,
                 mimeType: att.mimeType,
                 fileName: att.transferName || att.fileName || 'attachment',
-                fileSize: att.totalBytes || att.totalBytes || 0,
+                fileSize: att.totalBytes || 0,
                 width: att.width,
                 height: att.height,
                 // CRITICAL: Use backend-relative URL, not BlueBubbles absolute URL
