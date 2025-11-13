@@ -94,6 +94,14 @@ const contactFormSchema = insertManualContactSchema.extend({
 
 type ContactFormValues = z.infer<typeof contactFormSchema>;
 
+// List form schema
+const listFormSchema = z.object({
+  name: z.string().min(1, "List name is required"),
+  description: z.string().optional(),
+});
+
+type ListFormValues = z.infer<typeof listFormSchema>;
+
 export default function Contacts() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,6 +119,13 @@ export default function Contacts() {
   const [csvContent, setCsvContent] = useState<string>("");
   const [importPreview, setImportPreview] = useState<any>(null);
   const [selectedListFilter, setSelectedListFilter] = useState<string>("all");
+  
+  // List management states
+  const [isCreateListOpen, setIsCreateListOpen] = useState(false);
+  const [isEditListOpen, setIsEditListOpen] = useState(false);
+  const [isDeleteListOpen, setIsDeleteListOpen] = useState(false);
+  const [editingList, setEditingList] = useState<ContactList | null>(null);
+  const [deletingListId, setDeletingListId] = useState<string | null>(null);
 
   // Session query
   const { data: sessionData } = useQuery<{ user: User }>({
@@ -118,24 +133,6 @@ export default function Contacts() {
   });
 
   const currentUser = sessionData?.user;
-
-  // Access control
-  if (currentUser && currentUser.role !== "superadmin" && currentUser.role !== "admin") {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Only admins and superadmins can access contact management.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   // Debounced search
   useEffect(() => {
@@ -185,6 +182,20 @@ export default function Contacts() {
   // Edit contact form
   const editForm = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
+  });
+
+  // Create list form
+  const createListForm = useForm<ListFormValues>({
+    resolver: zodResolver(listFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
+
+  // Edit list form
+  const editListForm = useForm<ListFormValues>({
+    resolver: zodResolver(listFormSchema),
   });
 
   // Mutations
@@ -303,6 +314,79 @@ export default function Contacts() {
     },
   });
 
+  // List mutations
+  const createListMutation = useMutation({
+    mutationFn: (data: ListFormValues) =>
+      apiRequest("POST", "/api/contact-lists", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setIsCreateListOpen(false);
+      createListForm.reset();
+      toast({
+        title: "Success",
+        description: "List created successfully",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create list",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  const updateListMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ListFormValues }) =>
+      apiRequest("PATCH", `/api/contact-lists/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setIsEditListOpen(false);
+      setEditingList(null);
+      toast({
+        title: "Success",
+        description: "List updated successfully",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update list",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  const deleteListMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest("DELETE", `/api/contact-lists/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setIsDeleteListOpen(false);
+      setDeletingListId(null);
+      if (selectedListFilter === deletingListId) {
+        setSelectedListFilter("all");
+      }
+      toast({
+        title: "Success",
+        description: "List deleted successfully",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete list",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
   // Handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -411,8 +495,52 @@ export default function Contacts() {
     }
   };
 
+  // List handlers
+  const handleCreateList = (values: ListFormValues) => {
+    createListMutation.mutate(values);
+  };
+
+  const handleEditList = (list: ContactList) => {
+    setEditingList(list);
+    editListForm.reset({
+      name: list.name,
+      description: list.description || "",
+    });
+    setIsEditListOpen(true);
+  };
+
+  const handleUpdateList = (values: ListFormValues) => {
+    if (editingList) {
+      updateListMutation.mutate({ id: editingList.id, data: values });
+    }
+  };
+
+  const handleDeleteList = () => {
+    if (deletingListId) {
+      deleteListMutation.mutate(deletingListId);
+    }
+  };
+
   const isAllSelected = contacts.length > 0 && selectedContacts.size === contacts.length;
   const isPartiallySelected = selectedContacts.size > 0 && selectedContacts.size < contacts.length;
+
+  // Access control - check after all hooks
+  if (currentUser && currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Access Denied</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Only admins and superadmins can access contact management.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <LoadingSpinner message="Loading contacts..." fullScreen={false} />;
@@ -433,7 +561,110 @@ export default function Contacts() {
         </Badge>
       </div>
 
-      <Card>
+      <div className="flex gap-6 flex-col lg:flex-row">
+        {/* Left Sidebar - Contact Lists */}
+        <div className="w-full lg:w-80 flex-shrink-0">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Contact Lists</CardTitle>
+                <Button
+                  size="sm"
+                  onClick={() => setIsCreateListOpen(true)}
+                  data-testid="button-create-list"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {/* All Contacts */}
+              <button
+                onClick={() => setSelectedListFilter("all")}
+                className={`w-full flex items-center justify-between p-3 rounded-md text-left transition-colors ${
+                  selectedListFilter === "all"
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-muted"
+                }`}
+                data-testid="button-filter-all"
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <span className="font-medium">All Contacts</span>
+                </div>
+                <Badge variant="secondary">{total}</Badge>
+              </button>
+
+              {/* Individual Lists */}
+              {lists.map((list) => (
+                <div
+                  key={list.id}
+                  className={`group flex items-center justify-between p-3 rounded-md transition-colors ${
+                    selectedListFilter === list.id
+                      ? "bg-primary/10"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  <button
+                    onClick={() => setSelectedListFilter(list.id)}
+                    className="flex-1 flex items-center gap-2 text-left min-w-0"
+                    data-testid={`button-filter-list-${list.id}`}
+                  >
+                    <ListPlus className="h-4 w-4 flex-shrink-0" />
+                    <span className="font-medium truncate">{list.name}</span>
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          data-testid={`button-list-menu-${list.id}`}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleEditList(list)}
+                          data-testid={`button-edit-list-${list.id}`}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setDeletingListId(list.id);
+                            setIsDeleteListOpen(true);
+                          }}
+                          className="text-destructive"
+                          data-testid={`button-delete-list-${list.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
+
+              {lists.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  <ListPlus className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No lists yet</p>
+                  <p className="text-xs mt-1">Create your first list to get started</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content - Contacts Table */}
+        <div className="flex-1 min-w-0">
+          <Card>
         <CardHeader>
           <div className="space-y-4">
             {/* Action buttons and search */}
@@ -482,22 +713,6 @@ export default function Contacts() {
             {/* Filters and bulk actions */}
             <div className="flex flex-wrap gap-3 items-center justify-between">
               <div className="flex gap-2 items-center">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                
-                <Select value={selectedListFilter} onValueChange={setSelectedListFilter}>
-                  <SelectTrigger className="w-[200px]" data-testid="select-filter-list">
-                    <SelectValue placeholder="Filter by list" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All contacts</SelectItem>
-                    {lists.map(list => (
-                      <SelectItem key={list.id} value={list.id}>
-                        {list.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
                 <Select value={limit.toString()} onValueChange={(v) => setLimit(Number(v))}>
                   <SelectTrigger className="w-[120px]" data-testid="select-items-per-page">
                     <SelectValue />
@@ -682,6 +897,8 @@ export default function Contacts() {
           )}
         </CardContent>
       </Card>
+        </div>
+      </div>
 
       {/* Add Contact Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -1063,6 +1280,165 @@ export default function Contacts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create List Dialog */}
+      <Dialog open={isCreateListOpen} onOpenChange={setIsCreateListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New List</DialogTitle>
+            <DialogDescription>
+              Create a new contact list to organize your contacts
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...createListForm}>
+            <form onSubmit={createListForm.handleSubmit(handleCreateList)} className="space-y-4">
+              <FormField
+                control={createListForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>List Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-create-list-name" placeholder="e.g. VIP Clients" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={createListForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} data-testid="input-create-list-description" placeholder="Add a description for this list" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateListOpen(false)}
+                  data-testid="button-cancel-create-list"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={createListMutation.isPending}
+                  data-testid="button-submit-create-list"
+                >
+                  {createListMutation.isPending ? (
+                    <LoadingSpinner className="h-4 w-4" />
+                  ) : (
+                    "Create List"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit List Dialog */}
+      <Dialog open={isEditListOpen} onOpenChange={setIsEditListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit List</DialogTitle>
+            <DialogDescription>
+              Update the name and description of your list
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...editListForm}>
+            <form onSubmit={editListForm.handleSubmit(handleUpdateList)} className="space-y-4">
+              <FormField
+                control={editListForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>List Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} data-testid="input-edit-list-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editListForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} data-testid="input-edit-list-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditListOpen(false)}
+                  data-testid="button-cancel-edit-list"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateListMutation.isPending}
+                  data-testid="button-submit-edit-list"
+                >
+                  {updateListMutation.isPending ? (
+                    <LoadingSpinner className="h-4 w-4" />
+                  ) : (
+                    "Update List"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete List Dialog */}
+      <AlertDialog open={isDeleteListOpen} onOpenChange={setIsDeleteListOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete List</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this list? This will not delete the contacts themselves, only the list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-list">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteList}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteListMutation.isPending}
+              data-testid="button-confirm-delete-list"
+            >
+              {deleteListMutation.isPending ? (
+                <LoadingSpinner className="h-4 w-4" />
+              ) : (
+                "Delete List"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
