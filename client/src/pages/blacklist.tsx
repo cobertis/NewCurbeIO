@@ -53,16 +53,10 @@ import { Search, Plus, Shield, Ban, CheckCircle2, XCircle } from "lucide-react";
 import { formatForDisplay } from "@shared/phone";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { insertBlacklistEntrySchema, type BlacklistEntry } from "@shared/schema";
+import type { z } from "zod";
 
-const addBlacklistSchema = z.object({
-  channel: z.enum(["sms", "imessage", "email", "all"]),
-  identifier: z.string().min(1, "Phone number or email is required"),
-  reason: z.enum(["stop", "manual", "bounced", "complaint"]),
-  notes: z.string().optional(),
-});
-
-type AddBlacklistValues = z.infer<typeof addBlacklistSchema>;
+type AddBlacklistValues = z.infer<typeof insertBlacklistEntrySchema>;
 
 export default function Blacklist() {
   const { toast } = useToast();
@@ -72,12 +66,12 @@ export default function Blacklist() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [removeEntryId, setRemoveEntryId] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery<{ entries: any[]; total: number }>({
+  const { data, isLoading } = useQuery<{ entries: BlacklistEntry[]; total: number }>({
     queryKey: ["/api/blacklist", { channel: channelFilter === "all" ? undefined : channelFilter, isActive: statusFilter === "active", search: searchQuery }],
   });
 
   const addForm = useForm<AddBlacklistValues>({
-    resolver: zodResolver(addBlacklistSchema),
+    resolver: zodResolver(insertBlacklistEntrySchema),
     defaultValues: {
       channel: "sms",
       reason: "manual",
@@ -103,16 +97,16 @@ export default function Blacklist() {
       toast({
         title: "Added to blacklist",
         description: "The entry has been blacklisted successfully.",
+        duration: 3000,
       });
-      setTimeout(() => toast({ title: "", description: "", variant: "default" }), 3000);
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to add to blacklist",
+        duration: 3000,
       });
-      setTimeout(() => toast({ title: "", description: "", variant: "default" }), 3000);
     },
   });
 
@@ -131,16 +125,16 @@ export default function Blacklist() {
       toast({
         title: "Removed from blacklist",
         description: "The entry has been removed successfully.",
+        duration: 3000,
       });
-      setTimeout(() => toast({ title: "", description: "", variant: "default" }), 3000);
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
         title: "Error",
         description: error.message || "Failed to remove from blacklist",
+        duration: 3000,
       });
-      setTimeout(() => toast({ title: "", description: "", variant: "default" }), 3000);
     },
   });
 
@@ -253,7 +247,7 @@ export default function Blacklist() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {entries.map((entry: any) => (
+                    {entries.map((entry: BlacklistEntry) => (
                       <TableRow key={entry.id} data-testid={`row-blacklist-${entry.id}`}>
                         <TableCell className="font-medium">
                           {entry.channel === "sms" || entry.channel === "imessage"
