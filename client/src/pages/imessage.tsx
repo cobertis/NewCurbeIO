@@ -907,6 +907,46 @@ export default function IMessagePage() {
     }
   });
 
+  const pinConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest('PUT', `/api/imessage/conversations/${conversationId}/pin`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+      toast({
+        title: "Conversación fijada",
+        description: "La conversación se ha fijado al inicio"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al fijar conversación",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const unpinConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest('PUT', `/api/imessage/conversations/${conversationId}/unpin`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+      toast({
+        title: "Conversación desfijada",
+        description: "La conversación ya no está fijada"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al desfijar conversación",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   // Helper functions
   const playSound = (type: 'send' | 'receive') => {
     if (!soundEnabled) return;
@@ -1261,11 +1301,24 @@ export default function IMessagePage() {
 
   const filteredConversations = useMemo(() => {
     if (!conversations) return [];
-    return conversations.filter(conv => 
-      !conversationSearch || 
-      conv.displayName.toLowerCase().includes(conversationSearch.toLowerCase()) ||
-      conv.participants.some(p => p.toLowerCase().includes(conversationSearch.toLowerCase()))
-    );
+    
+    // Filter and sort: pinned first, then by lastMessageAt
+    return conversations
+      .filter(conv => 
+        !conversationSearch || 
+        conv.displayName.toLowerCase().includes(conversationSearch.toLowerCase()) ||
+        conv.participants.some(p => p.toLowerCase().includes(conversationSearch.toLowerCase()))
+      )
+      .sort((a, b) => {
+        // Sort by isPinned first (pinned conversations at top)
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        
+        // Then sort by lastMessageAt (most recent first)
+        const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+        const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+        return bTime - aTime;
+      });
   }, [conversations, conversationSearch]);
 
   // Auto-scroll to bottom on new messages
@@ -1327,96 +1380,114 @@ export default function IMessagePage() {
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-800">
               {filteredConversations?.map(conversation => (
-                <div
-                  key={conversation.id}
-                  className={cn(
-                    "group relative flex items-center gap-2.5 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer",
-                    selectedConversationId === conversation.id && "bg-blue-50 dark:bg-blue-950 hover:bg-blue-50 dark:hover:bg-blue-950"
-                  )}
-                  onClick={() => setSelectedConversationId(conversation.id)}
-                  data-testid={`conversation-${conversation.id}`}
-                >
-                  {/* Unread indicator - BEFORE avatar like iOS */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {conversation.unreadCount > 0 && (
-                      <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" data-testid={`unread-indicator-${conversation.id}`} />
-                    )}
-                    <Avatar className="h-11 w-11">
-                      <AvatarImage src={conversation.avatarUrl} />
-                      <AvatarFallback 
-                        className="text-white font-semibold flex items-center justify-center"
-                        style={{ backgroundColor: getAvatarColorFromString(conversation.chatGuid || conversation.displayName) }}
-                      >
-                        {getInitials(conversation.displayName) ? (
-                          getInitials(conversation.displayName)
-                        ) : (
-                          <UserIcon className="h-5 w-5" />
+                <AlertDialog key={conversation.id}>
+                  <ContextMenu>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        className={cn(
+                          "group relative flex items-center gap-2.5 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer",
+                          selectedConversationId === conversation.id && "bg-blue-50 dark:bg-blue-950 hover:bg-blue-50 dark:hover:bg-blue-950"
                         )}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                      <p className="font-semibold text-[15px] truncate flex-1 min-w-0">{conversation.displayName}</p>
-                      {conversation.lastMessageAt && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 tabular-nums">
-                          {formatMessageTime(new Date(conversation.lastMessageAt).toISOString())}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 flex-1 min-w-0 leading-tight">
-                        {conversation.lastMessageText || "No messages yet"}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Dropdown Menu */}
-                  <AlertDialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                          data-testid={`button-conversation-actions-${conversation.id}`}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem className="text-red-600 dark:text-red-400" onSelect={(e) => e.preventDefault()}>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Conversation
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        onClick={() => setSelectedConversationId(conversation.id)}
+                        data-testid={`conversation-${conversation.id}`}
+                      >
+                        {/* Unread indicator - BEFORE avatar like iOS */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {conversation.unreadCount > 0 && (
+                            <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" data-testid={`unread-indicator-${conversation.id}`} />
+                          )}
+                          <Avatar className="h-11 w-11">
+                            <AvatarImage src={conversation.avatarUrl} />
+                            <AvatarFallback 
+                              className="text-white font-semibold flex items-center justify-center"
+                              style={{ backgroundColor: getAvatarColorFromString(conversation.chatGuid || conversation.displayName) }}
+                            >
+                              {getInitials(conversation.displayName) ? (
+                                getInitials(conversation.displayName)
+                              ) : (
+                                <UserIcon className="h-5 w-5" />
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              <p className="font-semibold text-[15px] truncate">{conversation.displayName}</p>
+                              {conversation.isPinned && (
+                                <Pin className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 shrink-0" data-testid={`pin-indicator-${conversation.id}`} />
+                              )}
+                            </div>
+                            {conversation.lastMessageAt && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 tabular-nums">
+                                {formatMessageTime(new Date(conversation.lastMessageAt).toISOString())}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 flex-1 min-w-0 leading-tight">
+                              {conversation.lastMessageText || "No messages yet"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </ContextMenuTrigger>
                     
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Conversation</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this conversation with {conversation.displayName}? This action cannot be undone and will remove all messages.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteConversationMutation.mutate(conversation.id)}
-                          disabled={deleteConversationMutation.isPending}
-                          className="bg-red-600 hover:bg-red-700"
-                          data-testid={`button-confirm-delete-${conversation.id}`}
+                    <ContextMenuContent>
+                      {conversation.isPinned ? (
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            unpinConversationMutation.mutate(conversation.id);
+                          }}
                         >
-                          {deleteConversationMutation.isPending ? "Deleting..." : "Delete"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                          <Pin className="h-4 w-4 mr-2" />
+                          Desfijar conversación
+                        </ContextMenuItem>
+                      ) : (
+                        <ContextMenuItem
+                          className="cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            pinConversationMutation.mutate(conversation.id);
+                          }}
+                        >
+                          <Pin className="h-4 w-4 mr-2" />
+                          Fijar conversación
+                        </ContextMenuItem>
+                      )}
+                      
+                      <AlertDialogTrigger asChild>
+                        <ContextMenuItem className="cursor-pointer text-red-600 dark:text-red-400" onSelect={(e) => e.preventDefault()}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Eliminar conversación
+                        </ContextMenuItem>
+                      </AlertDialogTrigger>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                  
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Eliminar conversación</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        ¿Estás seguro de que quieres eliminar esta conversación con {conversation.displayName}? Esta acción no se puede deshacer y eliminará todos los mensajes.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deleteConversationMutation.mutate(conversation.id)}
+                        disabled={deleteConversationMutation.isPending}
+                        className="bg-red-600 hover:bg-red-700"
+                        data-testid={`button-confirm-delete-${conversation.id}`}
+                      >
+                        {deleteConversationMutation.isPending ? "Eliminando..." : "Eliminar"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               ))}
             </div>
           )}
@@ -1509,24 +1580,6 @@ export default function IMessagePage() {
                             )}
                           >
                             <div className={cn("max-w-[65%] relative group/message", message.isFromMe && "text-right")}>
-                              {/* Delete button - visible on hover */}
-                              {!message.isFromMe && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="absolute -left-8 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover/message:opacity-100 transition-opacity"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (window.confirm('¿Eliminar este mensaje?')) {
-                                      deleteMessageMutation.mutate(message.guid);
-                                    }
-                                  }}
-                                  data-testid={`button-delete-${message.id}`}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                                </Button>
-                              )}
-                              
                               {/* Reply indicator */}
                               {replyToMessage && (
                                 <div className={cn(
@@ -1705,23 +1758,6 @@ export default function IMessagePage() {
                                 <span className="text-[11px] text-gray-400 dark:text-gray-500">
                                   {formatMessageTime(message.dateCreated)}
                                 </span>
-                                {/* Delete button for sent messages */}
-                                {message.isFromMe && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-4 w-4 opacity-0 group-hover/message:opacity-100 transition-opacity"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (window.confirm('¿Eliminar este mensaje?')) {
-                                        deleteMessageMutation.mutate(message.guid);
-                                      }
-                                    }}
-                                    data-testid={`button-delete-${message.id}`}
-                                  >
-                                    <Trash2 className="h-3 w-3 text-red-500" />
-                                  </Button>
-                                )}
                               </div>
                             </div>
                           </div>

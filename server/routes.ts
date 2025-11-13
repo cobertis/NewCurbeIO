@@ -2178,6 +2178,58 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // PUT /api/imessage/conversations/:id/pin - Pin conversation
+  app.put("/api/imessage/conversations/:id/pin", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify conversation belongs to company
+      const conversation = await storage.getImessageConversation(id);
+      if (!conversation || conversation.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Update conversation to set isPinned to true
+      const updated = await storage.updateImessageConversation(id, user.companyId, { isPinned: true });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error pinning conversation:", error);
+      res.status(500).json({ message: "Failed to pin conversation" });
+    }
+  });
+  
+  // PUT /api/imessage/conversations/:id/unpin - Unpin conversation
+  app.put("/api/imessage/conversations/:id/unpin", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify conversation belongs to company
+      const conversation = await storage.getImessageConversation(id);
+      if (!conversation || conversation.companyId !== user.companyId) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Update conversation to set isPinned to false
+      const updated = await storage.updateImessageConversation(id, user.companyId, { isPinned: false });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error unpinning conversation:", error);
+      res.status(500).json({ message: "Failed to unpin conversation" });
+    }
+  });
+  
   // 6. DELETE /api/imessage/conversations/:id - Delete conversation
   app.delete("/api/imessage/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
