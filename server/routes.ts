@@ -1319,11 +1319,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Only proceed if we have a NEW message (not a duplicate)
           if (newMessage) {
+            // Generate preview text (like iOS Messages app)
+            let previewText = '';
+            if (newMessage.text && newMessage.text.trim()) {
+              // Normalize whitespace: collapse multiline to single line (like iOS)
+              const normalizedText = newMessage.text.replace(/\s+/g, ' ').trim();
+              // Truncate text to 100 graphemes (emoji-safe) for preview
+              // Using Array.from() respects grapheme clusters (emojis, combined characters)
+              const graphemes = Array.from(normalizedText);
+              previewText = graphemes.slice(0, 100).join('');
+            } else if (newMessage.hasAttachments) {
+              // Show attachment indicator if no text
+              const firstAttachment = newMessage.attachments?.[0];
+              if (firstAttachment?.mimeType?.startsWith('image/')) {
+                previewText = '📷 Photo';
+              } else if (firstAttachment?.mimeType?.startsWith('video/')) {
+                previewText = '🎥 Video';
+              } else if (firstAttachment?.mimeType?.startsWith('audio/')) {
+                previewText = '🎵 Audio';
+              } else {
+                previewText = '📎 Attachment';
+              }
+            }
+            
             // Update conversation last message
             // CRITICAL: Convert dateSent from ISO string to Date object (mapper returns strings)
             await storage.updateImessageConversation(conversation.id, {
               lastMessageAt: newMessage.dateSent ? new Date(newMessage.dateSent) : new Date(),
-              lastMessageText: newMessage.text,
+              lastMessageText: previewText,
               unreadCount: await storage.recalculateImessageUnreadCount(conversation.id),
             });
             

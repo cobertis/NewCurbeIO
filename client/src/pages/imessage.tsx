@@ -1357,12 +1357,12 @@ export default function IMessagePage() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0">
                         {conversation.lastMessageText || "No messages yet"}
                       </p>
                       {conversation.unreadCount > 0 && (
-                        <Badge className="bg-blue-500 text-white ml-2">
+                        <Badge className="bg-blue-500 text-white shrink-0">
                           {conversation.unreadCount}
                         </Badge>
                       )}
