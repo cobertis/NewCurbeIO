@@ -1154,7 +1154,8 @@ export default function IMessagePage() {
       audioChunksRef.current = [];
       setRecordingState('idle');
       setRecordingDuration(0);
-      setWaveformBars([0, 0, 0, 0, 0]);
+      waveformBufferRef.current = new Array(100).fill(0);
+      waveformIndexRef.current = 0;
     }
   };
 
@@ -1329,18 +1330,18 @@ export default function IMessagePage() {
                 <div
                   key={conversation.id}
                   className={cn(
-                    "group relative flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer",
+                    "group relative flex items-center gap-2.5 py-2 px-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer",
                     selectedConversationId === conversation.id && "bg-blue-50 dark:bg-blue-950 hover:bg-blue-50 dark:hover:bg-blue-950"
                   )}
                   onClick={() => setSelectedConversationId(conversation.id)}
                   data-testid={`conversation-${conversation.id}`}
                 >
                   {/* Unread indicator - BEFORE avatar like iOS */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {conversation.unreadCount > 0 && (
                       <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" data-testid={`unread-indicator-${conversation.id}`} />
                     )}
-                    <Avatar className="h-12 w-12">
+                    <Avatar className="h-11 w-11">
                       <AvatarImage src={conversation.avatarUrl} />
                       <AvatarFallback 
                         className="text-white font-semibold flex items-center justify-center"
@@ -1349,14 +1350,14 @@ export default function IMessagePage() {
                         {getInitials(conversation.displayName) ? (
                           getInitials(conversation.displayName)
                         ) : (
-                          <UserIcon className="h-6 w-6" />
+                          <UserIcon className="h-5 w-5" />
                         )}
                       </AvatarFallback>
                     </Avatar>
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-0.5">
                       <p className="font-semibold text-[15px] truncate">{conversation.displayName}</p>
                       {conversation.lastMessageAt && (
                         <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 ml-2">
@@ -1566,7 +1567,7 @@ export default function IMessagePage() {
                                             (hasNoDimensions || attachment.fileSize < 50000);
                                           
                                           return (
-                                            <div key={attachment.guid || attachment.url}>
+                                            <div key={attachment.url}>
                                               {(attachment.mimeType?.startsWith('image/') ?? false) ? (
                                                 <ImessageAttachmentImage 
                                                   url={attachment.url}
