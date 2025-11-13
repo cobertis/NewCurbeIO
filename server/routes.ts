@@ -9792,12 +9792,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined;
       const dateTo = req.query.dateTo ? new Date(req.query.dateTo as string) : undefined;
 
+      // Detect "__none" sentinel value for contacts without any list
+      const includeUnassignedOnly = listId === "__none";
+      const actualListId = includeUnassignedOnly ? undefined : listId;
+
       const result = await storage.listContacts({
         companyId: currentUser.companyId!,
         page,
         limit,
         search,
-        listId,
+        listId: actualListId,
+        includeUnassignedOnly,
         sortBy,
         sortOrder,
         dateFrom,
