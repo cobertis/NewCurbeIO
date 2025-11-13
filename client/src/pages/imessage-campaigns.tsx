@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { CampaignFormDialog } from "@/components/campaigns/campaign-form-dialog";
+import { CampaignBuilderWizard } from "@/components/campaigns/campaign-builder-wizard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -719,11 +719,11 @@ export default function ImessageCampaigns() {
         </Card>
       )}
 
-      {/* Campaign Form Dialog */}
-      <CampaignFormDialog
+      {/* Campaign Builder Wizard */}
+      <CampaignBuilderWizard
         open={isFormOpen}
         onOpenChange={handleFormClose}
-        campaign={editingCampaign}
+        editingCampaign={editingCampaign}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns"] });
         }}
