@@ -669,7 +669,7 @@ export default function IMessagePage() {
 
         if (matchingConversation) {
           // Open the existing conversation
-          setSelectedConversationId(matchingConversation.chatGuid);
+          setSelectedConversationId(matchingConversation.id);
           setIsNewConversationMode(false);
           setNewConversationPhone("");
           setMessageText("");
