@@ -2087,9 +2087,10 @@ export default function IMessagePage() {
                         {recordingWaveform.map((height, i) => (
                           <div
                             key={i}
-                            className="bg-blue-500 rounded-full"
+                            className="bg-blue-500 rounded-full flex-1"
                             style={{ 
-                              width: '2px',
+                              minWidth: '2px',
+                              maxWidth: '4px',
                               height: `${Math.max(8, Math.min(40, (height / 255) * 36))}px`,
                               alignSelf: 'center'
                             }}
