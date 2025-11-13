@@ -20,7 +20,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
-import { storeImage, getImage, hasImage } from "@/lib/image-storage";
 import { 
   Search, Send, Paperclip, MoreVertical, Phone, Video, Info,
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
@@ -227,79 +226,11 @@ function ImessageAttachmentFile({ attachment }: { attachment: MessageAttachment 
   );
 }
 
-// Component to handle authenticated video loading with thumbnail and play button
-// Uses IndexedDB for permanent local storage with graceful fallback
+// Component to handle authenticated video loading
+// Uses direct server URLs - browser handles caching and authentication via cookies
 function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: string }) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [error, setError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    let objectUrl: string | null = null;
-
-    async function loadVideo() {
-      let blob: Blob | null = null;
-      
-      // Try IndexedDB first
-      try {
-        const cachedBlob = await getImage(url);
-        if (cachedBlob) {
-          console.log('[iMessage] Video loaded from IndexedDB cache:', url);
-          blob = cachedBlob;
-          objectUrl = URL.createObjectURL(blob);
-          setBlobUrl(objectUrl);
-          return;
-        }
-      } catch (cacheErr) {
-        console.warn('[iMessage] IndexedDB unavailable for video, falling back to network:', cacheErr);
-      }
-      
-      // Fetch from server
-      try {
-        const response = await fetch(url, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        
-        blob = await response.blob();
-        
-        // Try to cache
-        try {
-          await storeImage(url, blob);
-          console.log('[iMessage] Video stored in IndexedDB:', url);
-        } catch (storeErr) {
-          console.warn('[iMessage] Could not cache video:', storeErr);
-        }
-        
-        objectUrl = URL.createObjectURL(blob);
-        setBlobUrl(objectUrl);
-        
-      } catch (fetchErr) {
-        console.error('[iMessage] Failed to load video:', url, fetchErr);
-        setError(true);
-      }
-    }
-
-    loadVideo();
-
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [url]);
-
-  if (error) {
-    return <div className="text-xs text-gray-500">Failed to load video</div>;
-  }
-
-  if (!blobUrl) {
-    return <div className="h-32 w-48 bg-gray-200 dark:bg-gray-700 rounded-2xl animate-pulse" />;
-  }
 
   return (
     <>
@@ -311,10 +242,11 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
       >
         {/* Video element for thumbnail (paused at first frame) */}
         <video
-          src={blobUrl}
+          src={url}
           className="rounded-2xl w-full object-cover bg-black"
           style={{ maxHeight: '250px', maxWidth: '200px' }}
           preload="metadata"
+          crossOrigin="use-credentials"
         />
         
         {/* Play button overlay - iMessage style (smaller, more subtle) */}
@@ -332,10 +264,11 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
         <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-black/95">
           <video
             ref={videoRef}
-            src={blobUrl}
+            src={url}
             controls
             autoPlay
             className="w-full h-full max-h-[85vh] object-contain"
+            crossOrigin="use-credentials"
           >
             Your browser does not support the video tag.
           </video>
@@ -345,84 +278,12 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
   );
 }
 
-// Component to handle authenticated image loading with thumbnail and full-size preview
-// Uses IndexedDB for permanent local storage with graceful fallback
+// Component to handle authenticated image loading
+// Uses direct server URLs - browser handles caching and authentication via cookies
+// This prevents images from disappearing during React re-renders
 function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [error, setError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    let objectUrl: string | null = null;
-
-    async function loadImage() {
-      let blob: Blob | null = null;
-      
-      // Try IndexedDB first (best case - instant load)
-      try {
-        const cachedBlob = await getImage(url);
-        if (cachedBlob) {
-          console.log('[iMessage] Image loaded from IndexedDB cache:', url);
-          blob = cachedBlob;
-          objectUrl = URL.createObjectURL(blob);
-          setBlobUrl(objectUrl);
-          return; // Success - we're done
-        }
-      } catch (cacheErr) {
-        console.warn('[iMessage] IndexedDB unavailable, falling back to network:', cacheErr);
-        // Continue to network fetch - don't fail here
-      }
-      
-      // Fetch from server (either cache miss or cache unavailable)
-      try {
-        console.log('[iMessage] Fetching image from server:', url);
-        const response = await fetch(url, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        
-        blob = await response.blob();
-        
-        // Try to cache for next time (but don't fail if this doesn't work)
-        try {
-          await storeImage(url, blob);
-          console.log('[iMessage] Image stored in IndexedDB:', url);
-        } catch (storeErr) {
-          console.warn('[iMessage] Could not cache image (quota/private mode):', storeErr);
-          // Not critical - image still works without caching
-        }
-        
-        // Display the image
-        objectUrl = URL.createObjectURL(blob);
-        setBlobUrl(objectUrl);
-        
-      } catch (fetchErr) {
-        console.error('[iMessage] Failed to load image:', url, fetchErr);
-        setError(true);
-      }
-    }
-
-    loadImage();
-
-    // Cleanup: revoke blob URL when component unmounts
-    // (but image stays in IndexedDB permanently if it was cached)
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [url]);
-
-  if (error) {
-    return <div className="text-xs text-gray-500">Failed to load image</div>;
-  }
-
-  if (!blobUrl) {
-    return <div className="h-32 w-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />;
-  }
+  const [error, setError] = useState(false);
 
   return (
     <>
@@ -433,10 +294,13 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
         data-testid="attachment-thumbnail"
       >
         <img 
-          src={blobUrl} 
+          src={url}
           alt={alt} 
           className="rounded-2xl object-cover"
           style={{ maxHeight: '250px', maxWidth: '200px' }}
+          crossOrigin="use-credentials"
+          onError={() => setError(true)}
+          loading="lazy"
         />
         {/* Eye icon overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all rounded-2xl flex items-center justify-center">
@@ -452,9 +316,10 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-black/95">
           <img 
-            src={blobUrl} 
+            src={url}
             alt={alt} 
             className="w-full h-full max-h-[85vh] object-contain"
+            crossOrigin="use-credentials"
           />
         </DialogContent>
       </Dialog>
@@ -478,60 +343,9 @@ function ImessageAudioMessage({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
-  // Fetch audio with credentials - uses IndexedDB for permanent caching
+  // Use direct URL - browser handles caching and auth via cookies
   useEffect(() => {
-    let objectUrl: string | null = null;
-
-    async function loadAudio() {
-      let blob: Blob | null = null;
-      
-      // Try IndexedDB first
-      try {
-        const cachedBlob = await getImage(url);
-        if (cachedBlob) {
-          console.log('[iMessage] Audio loaded from IndexedDB cache:', url);
-          blob = cachedBlob;
-          objectUrl = URL.createObjectURL(blob);
-          setBlobUrl(objectUrl);
-          return;
-        }
-      } catch (cacheErr) {
-        console.warn('[iMessage] IndexedDB unavailable for audio, falling back to network:', cacheErr);
-      }
-      
-      // Fetch from server
-      try {
-        const response = await fetch(url, {
-          credentials: 'include',
-        });
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        blob = await response.blob();
-        
-        // Try to cache
-        try {
-          await storeImage(url, blob);
-          console.log('[iMessage] Audio stored in IndexedDB:', url);
-        } catch (storeErr) {
-          console.warn('[iMessage] Could not cache audio:', storeErr);
-        }
-        
-        objectUrl = URL.createObjectURL(blob);
-        setBlobUrl(objectUrl);
-        
-      } catch (fetchErr) {
-        console.error('[iMessage] Failed to load audio:', url, fetchErr);
-      }
-    }
-
-    loadAudio();
-
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
+    setBlobUrl(url);
   }, [url]);
 
   useEffect(() => {
@@ -594,7 +408,7 @@ function ImessageAudioMessage({
   return (
     <div className="flex items-center gap-2 min-w-[280px] max-w-[320px] p-2">
       {blobUrl && (
-        <audio ref={audioRef} src={blobUrl} preload="metadata" />
+        <audio ref={audioRef} src={blobUrl} preload="metadata" crossOrigin="use-credentials" />
       )}
       
       {/* Play/Pause Button */}
