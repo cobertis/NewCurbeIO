@@ -497,9 +497,8 @@ export default function IMessagePage() {
   const [isConnected, setIsConnected] = useState(true);
   
   // New conversation state
-  const [showNewConversation, setShowNewConversation] = useState(false);
+  const [isNewConversationMode, setIsNewConversationMode] = useState(false);
   const [newConversationPhone, setNewConversationPhone] = useState("");
-  const [newConversationMessage, setNewConversationMessage] = useState("");
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -844,8 +843,24 @@ export default function IMessagePage() {
 
   // New conversation mutation
   const sendNewConversationMutation = useMutation({
-    mutationFn: async ({ to, text }: { to: string; text: string }) => {
+    mutationFn: async ({ to, text, attachments }: { to: string; text: string; attachments?: File[] }) => {
       const clientGuid = `temp-${Date.now()}-${Math.random()}`;
+      
+      // Handle attachments if present
+      if (attachments && attachments.length > 0) {
+        const formData = new FormData();
+        formData.append('to', to);
+        formData.append('text', text);
+        formData.append('clientGuid', clientGuid);
+        attachments.forEach(file => formData.append('attachments', file));
+        
+        return fetch('/api/imessage/messages/send', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        }).then(res => res.json());
+      }
+      
       return apiRequest('POST', '/api/imessage/messages/send', {
         to,
         text,
@@ -856,10 +871,11 @@ export default function IMessagePage() {
       // Refresh conversations list
       queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
       
-      // Clear form and close sheet
+      // Exit new conversation mode
+      setIsNewConversationMode(false);
       setNewConversationPhone("");
-      setNewConversationMessage("");
-      setShowNewConversation(false);
+      setMessageText("");
+      setAttachments([]);
       
       toast({
         title: "Message sent",
@@ -1307,7 +1323,13 @@ export default function IMessagePage() {
               size="icon" 
               variant="ghost" 
               className="rounded-full"
-              onClick={() => setShowNewConversation(true)}
+              onClick={() => {
+                setIsNewConversationMode(true);
+                setSelectedConversationId(null);
+                setNewConversationPhone("");
+                setMessageText("");
+                setAttachments([]);
+              }}
               data-testid="button-new-conversation"
             >
               <Plus className="h-4 w-4" />
@@ -1456,7 +1478,183 @@ export default function IMessagePage() {
       </div>
 
       {/* Main Chat Area */}
-      {selectedConversation ? (
+      {isNewConversationMode ? (
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+          {/* New Message Header */}
+          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">New Message</h2>
+              <Button 
+                size="sm" 
+                variant="ghost"
+                onClick={() => {
+                  setIsNewConversationMode(false);
+                  setNewConversationPhone("");
+                  setMessageText("");
+                  setAttachments([]);
+                }}
+                data-testid="button-cancel-new-message"
+              >
+                Cancel
+              </Button>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 font-medium">To:</span>
+              <Input
+                type="tel"
+                placeholder="+1 (305) 555-0123"
+                value={newConversationPhone}
+                onChange={(e) => setNewConversationPhone(e.target.value)}
+                className="flex-1 border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-blue-500 px-0"
+                data-testid="input-new-message-phone"
+              />
+            </div>
+          </div>
+
+          {/* Empty Messages Area */}
+          <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+            <div className="text-center text-gray-400">
+              <MessageSquare className="h-16 w-16 mx-auto mb-3 opacity-20" />
+              <p className="text-sm">Enter a phone number and start typing</p>
+            </div>
+          </div>
+
+          {/* Attachments preview */}
+          {attachments.length > 0 && (
+            <div className="px-6 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                {attachments.map((file, idx) => (
+                  <div key={idx} className="relative group">
+                    <div className="h-16 w-16 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                      {file.type.startsWith('image/') ? (
+                        <img 
+                          src={URL.createObjectURL(file)} 
+                          alt={file.name}
+                          className="h-full w-full object-cover rounded-lg"
+                        />
+                      ) : (
+                        <FileText className="h-6 w-6 text-gray-500" />
+                      )}
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      className="absolute -top-2 -right-2 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Message Input */}
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-2">
+              {/* Attachment button */}
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="attach-button"
+              >
+                <Paperclip className="h-5 w-5" />
+              </Button>
+
+              {/* Message input */}
+              <Input
+                ref={messageInputRef}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newConversationPhone && (messageText.trim() || attachments.length > 0)) {
+                    e.preventDefault();
+                    sendNewConversationMutation.mutate({
+                      to: newConversationPhone,
+                      text: messageText,
+                      attachments: attachments.length > 0 ? attachments : undefined
+                    });
+                  }
+                }}
+                placeholder="iMessage"
+                className="flex-1 border-0 bg-gray-100 dark:bg-gray-800 rounded-full px-4 focus-visible:ring-2 focus-visible:ring-blue-500"
+                disabled={sendNewConversationMutation.isPending}
+                data-testid="message-input"
+              />
+
+              {/* Emoji picker */}
+              <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0"
+                    data-testid="emoji-button"
+                  >
+                    <Smile className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  side="top" 
+                  align="end" 
+                  className="w-full p-0 border-0"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <Picker
+                    data={data}
+                    onEmojiSelect={(emoji: any) => {
+                      const cursorPosition = messageInputRef.current?.selectionStart || messageText.length;
+                      const textBeforeCursor = messageText.slice(0, cursorPosition);
+                      const textAfterCursor = messageText.slice(cursorPosition);
+                      const newText = textBeforeCursor + emoji.native + textAfterCursor;
+                      setMessageText(newText);
+                      setShowEmojiPicker(false);
+                      
+                      setTimeout(() => {
+                        messageInputRef.current?.focus();
+                        const newCursorPosition = cursorPosition + emoji.native.length;
+                        messageInputRef.current?.setSelectionRange(newCursorPosition, newCursorPosition);
+                      }, 0);
+                    }}
+                    theme="auto"
+                    previewPosition="none"
+                    skinTonePosition="none"
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {/* Send button */}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                onClick={() => {
+                  if (newConversationPhone && (messageText.trim() || attachments.length > 0)) {
+                    sendNewConversationMutation.mutate({
+                      to: newConversationPhone,
+                      text: messageText,
+                      attachments: attachments.length > 0 ? attachments : undefined
+                    });
+                  }
+                }}
+                disabled={!newConversationPhone || (!messageText.trim() && attachments.length === 0) || sendNewConversationMutation.isPending}
+                data-testid="send-button"
+              >
+                {sendNewConversationMutation.isPending ? (
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : selectedConversation ? (
         <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
           {/* Chat Header */}
           <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
@@ -2087,91 +2285,6 @@ export default function IMessagePage() {
         className="hidden"
         data-testid="file-input"
       />
-
-      {/* New Conversation Sheet */}
-      <Sheet open={showNewConversation} onOpenChange={setShowNewConversation}>
-        <SheetContent side="right" className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>New Message</SheetTitle>
-            <SheetDescription>
-              Send an iMessage to a new contact
-            </SheetDescription>
-          </SheetHeader>
-          
-          <div className="mt-6 space-y-4">
-            {/* Phone number input */}
-            <div className="space-y-2">
-              <label htmlFor="phone" className="text-sm font-medium">
-                To:
-              </label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+1 (305) 555-0123"
-                value={newConversationPhone}
-                onChange={(e) => setNewConversationPhone(e.target.value)}
-                className="w-full"
-                data-testid="input-new-conversation-phone"
-              />
-              <p className="text-xs text-gray-500">
-                Enter phone number with country code (e.g., +1 for US)
-              </p>
-            </div>
-
-            {/* Message input */}
-            <div className="space-y-2">
-              <label htmlFor="message" className="text-sm font-medium">
-                Message:
-              </label>
-              <textarea
-                id="message"
-                placeholder="Type your message..."
-                value={newConversationMessage}
-                onChange={(e) => setNewConversationMessage(e.target.value)}
-                className="w-full min-h-[120px] p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                data-testid="input-new-conversation-message"
-              />
-            </div>
-
-            {/* Send button */}
-            <div className="flex gap-2 pt-4">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowNewConversation(false)}
-                data-testid="button-cancel-new-conversation"
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
-                onClick={() => {
-                  if (newConversationPhone && newConversationMessage) {
-                    sendNewConversationMutation.mutate({
-                      to: newConversationPhone,
-                      text: newConversationMessage
-                    });
-                  }
-                }}
-                disabled={!newConversationPhone || !newConversationMessage || sendNewConversationMutation.isPending}
-                data-testid="button-send-new-conversation"
-              >
-                {sendNewConversationMutation.isPending ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Send
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
 
     </div>
   );
