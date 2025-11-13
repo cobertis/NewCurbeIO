@@ -1234,9 +1234,10 @@ export default function IMessagePage() {
     
     // Add this bar to the waveform progressively (left to right)
     setRecordingWaveform(prev => {
-      // Limit to maximum bars to prevent overflow on very long recordings
-      if (prev.length >= maxRecordingBars) {
-        // Keep adding but maintain max length by shifting
+      // Limit to ~200 samples (about 10 seconds at 20 samples/sec) to prevent overflow
+      const MAX_SAMPLES = 200;
+      if (prev.length >= MAX_SAMPLES) {
+        // Keep adding but maintain max length by shifting (rolling window)
         return [...prev.slice(1), amplitude];
       }
       return [...prev, amplitude];

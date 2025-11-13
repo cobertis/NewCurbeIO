@@ -8603,22 +8603,88 @@ export class DbStorage implements IStorage {
   }
   
   async getImessageConversationsByCompany(companyId: string, options?: { archived?: boolean; search?: string }): Promise<ImessageConversation[]> {
-    let query = db
+    // Fetch conversations
+    const conversations = await db
       .select()
       .from(imessageConversations)
-      .where(eq(imessageConversations.companyId, companyId));
+      .where(eq(imessageConversations.companyId, companyId))
+      .orderBy(desc(imessageConversations.updatedAt));
     
-    // Add search filter if provided
-    if (options?.search) {
-      query = query.where(
-        or(
-          sql`${imessageConversations.displayName} ILIKE ${'%' + options.search + '%'}`,
-          sql`array_to_string(${imessageConversations.participants}, ',') ILIKE ${'%' + options.search + '%'}`
-        )
-      );
+    // Extract all unique phone numbers from participants for contact lookup
+    const allPhones = new Set<string>();
+    conversations.forEach(conv => {
+      if (conv.participants && Array.isArray(conv.participants)) {
+        conv.participants.forEach(p => {
+          // Normalize phone number for lookup
+          const normalized = formatForStorage(p);
+          if (normalized) allPhones.add(normalized);
+        });
+      }
+    });
+    
+    // Fetch matching contacts in bulk
+    const contactsMap = new Map<string, ManualContact>();
+    if (allPhones.size > 0) {
+      const contacts = await db
+        .select()
+        .from(manualContacts)
+        .where(
+          and(
+            eq(manualContacts.companyId, companyId),
+            sql`${manualContacts.phone} = ANY(${Array.from(allPhones)})`
+          )
+        );
+      
+      contacts.forEach(contact => {
+        if (contact.phone) {
+          contactsMap.set(contact.phone, contact);
+        }
+      });
     }
     
-    return query.orderBy(desc(imessageConversations.updatedAt));
+    // Enrich conversations with contact names
+    const enrichedConversations = conversations.map(conv => {
+      // For 1-on-1 conversations, try to find matching contact
+      if (!conv.isGroup && conv.participants && conv.participants.length > 0) {
+        for (const participant of conv.participants) {
+          const normalizedPhone = formatForStorage(participant);
+          if (normalizedPhone) {
+            const contact = contactsMap.get(normalizedPhone);
+            if (contact) {
+              // Found a contact - use their name
+              const contactName = [contact.firstName, contact.lastName]
+                .filter(Boolean)
+                .join(' ')
+                .trim();
+              
+              if (contactName) {
+                return {
+                  ...conv,
+                  displayName: contactName,
+                  contactName: contactName,
+                  contactPhone: contact.phone
+                };
+              }
+            }
+          }
+        }
+      }
+      
+      return conv;
+    });
+    
+    // Apply search filter on enriched conversations
+    if (options?.search) {
+      const searchLower = options.search.toLowerCase();
+      return enrichedConversations.filter(conv => {
+        const displayNameMatch = conv.displayName?.toLowerCase().includes(searchLower);
+        const participantsMatch = conv.participants?.some(p => p.toLowerCase().includes(searchLower));
+        const contactNameMatch = conv.contactName?.toLowerCase().includes(searchLower);
+        return displayNameMatch || participantsMatch || contactNameMatch;
+      });
+    }
+    
+    return enrichedConversations;
   }
   
   async getImessageConversationByHandle(companyId: string, handle: string): Promise<ImessageConversation | undefined> {
