@@ -3274,6 +3274,7 @@ export const manualContacts = pgTable("manual_contacts", {
   email: text("email"),
   phone: text("phone").notNull(), // E.164 or 11-digit format
   
+  status: text("status").notNull().default("Regular contact"), // Contact status: Regular contact, Contacted, Not Contacted, Blacklist
   notes: text("notes"), // Optional notes about contact
   
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -3433,6 +3434,7 @@ export const insertManualContactSchema = createInsertSchema(manualContacts).omit
   lastName: z.string().min(1, "Last name is required").max(100),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().min(10, "Phone number is required"),
+  status: z.enum(["Regular contact", "Contacted", "Not Contacted", "Blacklist"]).default("Regular contact"),
   notes: z.string().max(500).optional(),
 });
 

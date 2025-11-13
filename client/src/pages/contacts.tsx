@@ -182,6 +182,7 @@ export default function Contacts() {
       lastName: "",
       phone: "",
       email: "",
+      status: "Regular contact",
       notes: "",
     },
   });
@@ -877,6 +878,7 @@ export default function Contacts() {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Lists</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="w-24">Actions</TableHead>
@@ -903,6 +905,19 @@ export default function Contacts() {
                         </TableCell>
                         <TableCell data-testid={`text-contact-phone-${contact.id}`}>
                           {formatForDisplay(contact.phone)}
+                        </TableCell>
+                        <TableCell data-testid={`text-contact-status-${contact.id}`}>
+                          <Badge 
+                            variant={
+                              contact.status === "Blacklist" ? "destructive" :
+                              contact.status === "Contacted" ? "default" :
+                              contact.status === "Not Contacted" ? "outline" :
+                              "secondary"
+                            }
+                            className="text-xs"
+                          >
+                            {contact.status}
+                          </Badge>
                         </TableCell>
                         <TableCell className="max-w-xs" data-testid={`text-contact-lists-${contact.id}`}>
                           {(contact as any).lists && (contact as any).lists.length > 0 ? (
@@ -1095,6 +1110,30 @@ export default function Contacts() {
               
               <FormField
                 control={addForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-add-status">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Regular contact">Regular contact</SelectItem>
+                        <SelectItem value="Contacted">Contacted</SelectItem>
+                        <SelectItem value="Not Contacted">Not Contacted</SelectItem>
+                        <SelectItem value="Blacklist">Blacklist</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={addForm.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
@@ -1203,6 +1242,30 @@ export default function Contacts() {
                     <FormControl>
                       <Input {...field} type="email" data-testid="input-edit-email" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-status">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Regular contact">Regular contact</SelectItem>
+                        <SelectItem value="Contacted">Contacted</SelectItem>
+                        <SelectItem value="Not Contacted">Not Contacted</SelectItem>
+                        <SelectItem value="Blacklist">Blacklist</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
