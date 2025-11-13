@@ -31,6 +31,7 @@ import {
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import type { User } from "@shared/schema";
+import { formatPhoneInput } from "@shared/phone";
 
 // Helper function to generate consistent color from string
 function getAvatarColorFromString(str: string): string {
@@ -1481,7 +1482,7 @@ export default function IMessagePage() {
       {isNewConversationMode ? (
         <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
           {/* New Message Header */}
-          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
+          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">New Message</h2>
               <Button 
@@ -1498,15 +1499,19 @@ export default function IMessagePage() {
                 Cancel
               </Button>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500 font-medium">To:</span>
-              <Input
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+              <span className="text-gray-600 dark:text-gray-400">To:</span>
+              <input
                 type="tel"
-                placeholder="+1 (305) 555-0123"
+                placeholder="Name or Number"
                 value={newConversationPhone}
-                onChange={(e) => setNewConversationPhone(e.target.value)}
-                className="flex-1 border-0 border-b rounded-none focus-visible:ring-0 focus-visible:border-blue-500 px-0"
+                onChange={(e) => {
+                  const formatted = formatPhoneInput(e.target.value);
+                  setNewConversationPhone(formatted);
+                }}
+                className="flex-1 bg-transparent border-0 outline-none text-blue-500 placeholder:text-gray-400 caret-blue-500"
                 data-testid="input-new-message-phone"
+                autoFocus
               />
             </div>
           </div>
