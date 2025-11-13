@@ -1104,7 +1104,7 @@ export default function Contacts() {
                   data-testid="button-submit-add"
                 >
                   {createContactMutation.isPending ? (
-                    <LoadingSpinner className="h-4 w-4" />
+                    <LoadingSpinner className="h-4 w-4" fullScreen={false} />
                   ) : (
                     "Add Contact"
                   )}
@@ -1219,7 +1219,7 @@ export default function Contacts() {
                   data-testid="button-submit-edit"
                 >
                   {updateContactMutation.isPending ? (
-                    <LoadingSpinner className="h-4 w-4" />
+                    <LoadingSpinner className="h-4 w-4" fullScreen={false} />
                   ) : (
                     "Update Contact"
                   )}
@@ -1271,7 +1271,7 @@ export default function Contacts() {
               data-testid="button-confirm-bulk-delete"
             >
               {bulkDeleteMutation.isPending ? (
-                <LoadingSpinner className="h-4 w-4" />
+                <LoadingSpinner className="h-4 w-4" fullScreen={false} />
               ) : (
                 `Delete ${selectedContacts.size} Contacts`
               )}
@@ -1325,7 +1325,7 @@ export default function Contacts() {
               data-testid="button-confirm-bulk-add"
             >
               {bulkAddToListMutation.isPending ? (
-                <LoadingSpinner className="h-4 w-4" />
+                <LoadingSpinner className="h-4 w-4" fullScreen={false} />
               ) : (
                 `Add to List`
               )}
@@ -1442,7 +1442,7 @@ export default function Contacts() {
               data-testid="button-confirm-import"
             >
               {importCsvMutation.isPending ? (
-                <LoadingSpinner className="h-4 w-4" />
+                <LoadingSpinner className="h-4 w-4" fullScreen={false} />
               ) : (
                 "Import Contacts"
               )}
@@ -1506,7 +1506,7 @@ export default function Contacts() {
                   data-testid="button-submit-create-list"
                 >
                   {createListMutation.isPending ? (
-                    <LoadingSpinner className="h-4 w-4" />
+                    <LoadingSpinner className="h-4 w-4" fullScreen={false} />
                   ) : (
                     "Create List"
                   )}
@@ -1572,7 +1572,7 @@ export default function Contacts() {
                   data-testid="button-submit-edit-list"
                 >
                   {updateListMutation.isPending ? (
-                    <LoadingSpinner className="h-4 w-4" />
+                    <LoadingSpinner className="h-4 w-4" fullScreen={false} />
                   ) : (
                     "Update List"
                   )}
@@ -1601,7 +1601,7 @@ export default function Contacts() {
               data-testid="button-confirm-delete-list"
             >
               {deleteListMutation.isPending ? (
-                <LoadingSpinner className="h-4 w-4" />
+                <LoadingSpinner className="h-4 w-4" fullScreen={false} />
               ) : (
                 "Delete List"
               )}
