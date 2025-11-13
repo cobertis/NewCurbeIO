@@ -1357,10 +1357,10 @@ export default function IMessagePage() {
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <p className="font-semibold text-[15px] truncate">{conversation.displayName}</p>
+                    <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                      <p className="font-semibold text-[15px] truncate flex-1 min-w-0">{conversation.displayName}</p>
                       {conversation.lastMessageAt && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 ml-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 tabular-nums">
                           {formatMessageTime(new Date(conversation.lastMessageAt).toISOString())}
                         </span>
                       )}
