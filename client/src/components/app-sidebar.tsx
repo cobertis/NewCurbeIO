@@ -527,6 +527,32 @@ export function AppSidebar() {
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === "/imessage-campaigns"}
+                        data-testid="link-campaigns"
+                        className={`
+                          h-11 rounded-md transition-colors
+                          ${location === "/imessage-campaigns"
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          }
+                        `}
+                      >
+                        <Link 
+                          href="/imessage-campaigns" 
+                          className="flex items-center gap-3 px-3 w-full"
+                          onMouseEnter={() => handlePrefetch("/imessage-campaigns")}
+                          onFocus={() => handlePrefetch("/imessage-campaigns")}
+                          onTouchStart={() => handlePrefetch("/imessage-campaigns")}
+                          onClick={() => handlePrefetch("/imessage-campaigns")}
+                        >
+                          <Send className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">Campaigns</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
