@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
+import { storeImage, getImage, hasImage } from "@/lib/image-storage";
 import { 
   Search, Send, Paperclip, MoreVertical, Phone, Video, Info,
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
@@ -66,9 +67,6 @@ function getInitials(name: string): string {
   
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
-
-// Global cache for blob URLs to prevent them from being revoked on re-renders
-const blobUrlCache = new Map<string, string>();
 
 // Updated interface types for BlueBubbles integration
 interface ImessageConversation {
@@ -230,6 +228,7 @@ function ImessageAttachmentFile({ attachment }: { attachment: MessageAttachment 
 }
 
 // Component to handle authenticated video loading with thumbnail and play button
+// Uses IndexedDB for permanent local storage with graceful fallback
 function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -237,32 +236,61 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    // Check if we already have this URL in cache
-    if (blobUrlCache.has(url)) {
-      setBlobUrl(blobUrlCache.get(url)!);
-      return;
-    }
-    
-    fetch(url, {
-      credentials: 'include', // Include session cookies
-    })
-      .then(async (response) => {
+    let objectUrl: string | null = null;
+
+    async function loadVideo() {
+      let blob: Blob | null = null;
+      
+      // Try IndexedDB first
+      try {
+        const cachedBlob = await getImage(url);
+        if (cachedBlob) {
+          console.log('[iMessage] Video loaded from IndexedDB cache:', url);
+          blob = cachedBlob;
+          objectUrl = URL.createObjectURL(blob);
+          setBlobUrl(objectUrl);
+          return;
+        }
+      } catch (cacheErr) {
+        console.warn('[iMessage] IndexedDB unavailable for video, falling back to network:', cacheErr);
+      }
+      
+      // Fetch from server
+      try {
+        const response = await fetch(url, {
+          credentials: 'include',
+        });
+        
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
         
-        // Store in cache so it persists across re-renders
-        blobUrlCache.set(url, objectUrl);
+        blob = await response.blob();
+        
+        // Try to cache
+        try {
+          await storeImage(url, blob);
+          console.log('[iMessage] Video stored in IndexedDB:', url);
+        } catch (storeErr) {
+          console.warn('[iMessage] Could not cache video:', storeErr);
+        }
+        
+        objectUrl = URL.createObjectURL(blob);
         setBlobUrl(objectUrl);
-      })
-      .catch((err) => {
-        console.error('[iMessage] Failed to load video:', url, err);
+        
+      } catch (fetchErr) {
+        console.error('[iMessage] Failed to load video:', url, fetchErr);
         setError(true);
-      });
+      }
+    }
 
-    // DO NOT revoke the blob URL - keep it cached for reuse
+    loadVideo();
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
   }, [url]);
 
   if (error) {
@@ -318,38 +346,74 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
 }
 
 // Component to handle authenticated image loading with thumbnail and full-size preview
+// Uses IndexedDB for permanent local storage with graceful fallback
 function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Check if we already have this URL in cache
-    if (blobUrlCache.has(url)) {
-      setBlobUrl(blobUrlCache.get(url)!);
-      return;
-    }
-    
-    fetch(url, {
-      credentials: 'include', // Include session cookies
-    })
-      .then(async (response) => {
+    let objectUrl: string | null = null;
+
+    async function loadImage() {
+      let blob: Blob | null = null;
+      
+      // Try IndexedDB first (best case - instant load)
+      try {
+        const cachedBlob = await getImage(url);
+        if (cachedBlob) {
+          console.log('[iMessage] Image loaded from IndexedDB cache:', url);
+          blob = cachedBlob;
+          objectUrl = URL.createObjectURL(blob);
+          setBlobUrl(objectUrl);
+          return; // Success - we're done
+        }
+      } catch (cacheErr) {
+        console.warn('[iMessage] IndexedDB unavailable, falling back to network:', cacheErr);
+        // Continue to network fetch - don't fail here
+      }
+      
+      // Fetch from server (either cache miss or cache unavailable)
+      try {
+        console.log('[iMessage] Fetching image from server:', url);
+        const response = await fetch(url, {
+          credentials: 'include',
+        });
+        
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
         
-        // Store in cache so it persists across re-renders
-        blobUrlCache.set(url, objectUrl);
+        blob = await response.blob();
+        
+        // Try to cache for next time (but don't fail if this doesn't work)
+        try {
+          await storeImage(url, blob);
+          console.log('[iMessage] Image stored in IndexedDB:', url);
+        } catch (storeErr) {
+          console.warn('[iMessage] Could not cache image (quota/private mode):', storeErr);
+          // Not critical - image still works without caching
+        }
+        
+        // Display the image
+        objectUrl = URL.createObjectURL(blob);
         setBlobUrl(objectUrl);
-      })
-      .catch((err) => {
-        console.error('[iMessage] Failed to load attachment:', url, err);
+        
+      } catch (fetchErr) {
+        console.error('[iMessage] Failed to load image:', url, fetchErr);
         setError(true);
-      });
+      }
+    }
 
-    // DO NOT revoke the blob URL - keep it cached for reuse
+    loadImage();
+
+    // Cleanup: revoke blob URL when component unmounts
+    // (but image stays in IndexedDB permanently if it was cached)
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
   }, [url]);
 
   if (error) {
@@ -414,31 +478,60 @@ function ImessageAudioMessage({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
-  // Fetch audio with credentials
+  // Fetch audio with credentials - uses IndexedDB for permanent caching
   useEffect(() => {
-    // Check if we already have this URL in cache
-    if (blobUrlCache.has(url)) {
-      setBlobUrl(blobUrlCache.get(url)!);
-      return;
-    }
-    
-    fetch(url, {
-      credentials: 'include',
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        
-        // Store in cache so it persists across re-renders
-        blobUrlCache.set(url, objectUrl);
-        setBlobUrl(objectUrl);
-      })
-      .catch((err) => {
-        console.error('[iMessage] Failed to load audio:', url, err);
-      });
+    let objectUrl: string | null = null;
 
-    // DO NOT revoke the blob URL - keep it cached for reuse
+    async function loadAudio() {
+      let blob: Blob | null = null;
+      
+      // Try IndexedDB first
+      try {
+        const cachedBlob = await getImage(url);
+        if (cachedBlob) {
+          console.log('[iMessage] Audio loaded from IndexedDB cache:', url);
+          blob = cachedBlob;
+          objectUrl = URL.createObjectURL(blob);
+          setBlobUrl(objectUrl);
+          return;
+        }
+      } catch (cacheErr) {
+        console.warn('[iMessage] IndexedDB unavailable for audio, falling back to network:', cacheErr);
+      }
+      
+      // Fetch from server
+      try {
+        const response = await fetch(url, {
+          credentials: 'include',
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        blob = await response.blob();
+        
+        // Try to cache
+        try {
+          await storeImage(url, blob);
+          console.log('[iMessage] Audio stored in IndexedDB:', url);
+        } catch (storeErr) {
+          console.warn('[iMessage] Could not cache audio:', storeErr);
+        }
+        
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+        
+      } catch (fetchErr) {
+        console.error('[iMessage] Failed to load audio:', url, fetchErr);
+      }
+    }
+
+    loadAudio();
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
   }, [url]);
 
   useEffect(() => {
