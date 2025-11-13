@@ -25,7 +25,7 @@ import {
   Download, Reply, Trash2, Copy, Forward, Pin, Archive, Heart,
   ThumbsUp, ThumbsDown, Laugh, AlertCircle, HelpCircle, CheckCheck,
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
-  Smile, Image as ImageIcon, FileText, Mic, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause, AudioWaveform
+  Smile, Image as ImageIcon, FileText, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause, AudioWaveform
 } from "lucide-react";
 import type { User } from "@shared/schema";
 
@@ -549,11 +549,6 @@ export default function IMessagePage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const cancelledSessionsRef = useRef<Set<number>>(new Set());
-  const currentRecordingSessionRef = useRef<number | null>(null);
-  const recordingSessionIdRef = useRef<number>(0);
 
   // State
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -567,44 +562,7 @@ export default function IMessagePage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [isConnected, setIsConnected] = useState(true); // BlueBubbles is working, webhooks are arriving
-  // Audio recording state machine: idle | holding | locked | preview
-  // - idle: not recording
-  // - holding: user is holding mic button and can swipe to cancel/lock
-  // - locked: recording locked, user can release finger
-  // - preview: recording stopped, showing preview
-  const [recordingState, setRecordingState] = useState<'idle' | 'holding' | 'locked' | 'preview'>('idle');
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [audioPreview, setAudioPreview] = useState<{ blob: Blob; url: string; duration: number } | null>(null);
-  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
-  const [waveformRenderKey, setWaveformRenderKey] = useState(0); // Trigger re-renders periodically
-  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  // Fixed-size buffer for performance
-  const waveformBufferRef = useRef<number[]>(new Array(100).fill(0));
-  const waveformIndexRef = useRef(0); // How many values captured so far
-  const frameCountRef = useRef(0); // For throttled UI updates
-  const lastCaptureTimeRef = useRef(0); // Timestamp of last capture
-  const waveformPreviewRef = useRef<number[]>([]); // Frozen snapshot for preview
-  const waveformPreviewIndexRef = useRef(0); // How many samples in preview
-  
-  // Gesture tracking for iPhone-style slide gestures
-  const [gestureStartX, setGestureStartX] = useState(0);
-  const [gestureStartY, setGestureStartY] = useState(0);
-  const [gestureDeltaX, setGestureDeltaX] = useState(0);
-  const [gestureDeltaY, setGestureDeltaY] = useState(0);
-  
-  // Gesture thresholds
-  const CANCEL_THRESHOLD = -100; // Swipe left 100px to cancel
-  const LOCK_THRESHOLD = -80; // Swipe up 80px to lock
-
-  // Touch device detection for dual-mode recording
-  const isTouchDevice = useMemo(() => {
-    return ('maxTouchPoints' in navigator) && navigator.maxTouchPoints > 0;
-  }, []);
+  const [isConnected, setIsConnected] = useState(true);
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -1064,310 +1022,6 @@ export default function IMessagePage() {
     const files = Array.from(e.target.files || []);
     setAttachments(prev => [...prev, ...files]);
   };
-
-  // Audio waveform analysis - captures waveform progressively with fixed buffer
-  const analyzeAudio = useCallback(() => {
-    if (!analyserRef.current) return;
-    
-    const now = Date.now();
-    const timeSinceLastCapture = now - lastCaptureTimeRef.current;
-    
-    // Capture sample every 500ms so 100 samples = ~50 seconds of audio
-    const CAPTURE_INTERVAL_MS = 500;
-    
-    if (timeSinceLastCapture >= CAPTURE_INTERVAL_MS) {
-      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-      analyserRef.current.getByteFrequencyData(dataArray);
-      
-      // Calculate average volume with amplification for visible fluctuations
-      const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-      
-      // Amplify the signal: multiply by 3 and clamp between 0.1 and 1
-      let normalizedValue = (average / 255) * 3;
-      normalizedValue = Math.max(0.1, Math.min(1, normalizedValue));
-      
-      // Update buffer (circular if we exceed 100 samples)
-      const currentIndex = waveformIndexRef.current % 100;
-      waveformBufferRef.current[currentIndex] = normalizedValue;
-      waveformIndexRef.current++;
-      
-      // Update UI on each capture
-      setWaveformRenderKey(prev => prev + 1);
-      
-      lastCaptureTimeRef.current = now;
-    }
-    
-    animationFrameRef.current = requestAnimationFrame(analyzeAudio);
-  }, []);
-
-  // Audio recording functions
-  const startRecording = async () => {
-    if (!selectedConversationId) {
-      toast({
-        title: "No conversation selected",
-        description: "Please select a conversation before recording a voice message",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // Increment session ID for this recording
-      const currentSessionId = ++recordingSessionIdRef.current;
-      currentRecordingSessionRef.current = currentSessionId; // Track current session
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      
-      // Setup Web Audio API for waveform visualization
-      const audioContext = new AudioContext();
-      const analyser = audioContext.createAnalyser();
-      const source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyser);
-      analyser.fftSize = 256;
-      
-      audioContextRef.current = audioContext;
-      analyserRef.current = analyser;
-      
-      // Start analyzing audio for waveform
-      analyzeAudio();
-
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        // Capture cancellation state BEFORE session guard
-        // This allows cleanup to happen for ALL sessions (old and current)
-        const wasCancelled = cancelledSessionsRef.current.has(currentSessionId);
-        
-        // Always clean up THIS session's ID from the set (prevents unbounded growth)
-        cancelledSessionsRef.current.delete(currentSessionId);
-        
-        // THEN check if this is an old session
-        if (currentSessionId !== recordingSessionIdRef.current) {
-          // Old session - cleanup done, but don't touch audioChunksRef or create preview
-          console.log('[Recording] Ignoring onstop from old session', currentSessionId);
-          return;
-        }
-        
-        // Now handle CURRENT session - use captured wasCancelled value
-        if (wasCancelled) {
-          audioChunksRef.current = [];
-          return; // No preview
-        }
-        
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        // Freeze waveform buffer for preview (clone to prevent mutation)
-        waveformPreviewRef.current = [...waveformBufferRef.current];
-        waveformPreviewIndexRef.current = waveformIndexRef.current; // Capture sample count
-        
-        // Get actual audio duration from the blob
-        const audio = new Audio(audioUrl);
-        audio.addEventListener('loadedmetadata', () => {
-          const actualDuration = Math.floor(audio.duration);
-          
-          // Transition to preview mode (do NOT auto-send)
-          setAudioPreview({
-            blob: audioBlob,
-            url: audioUrl,
-            duration: actualDuration
-          });
-          setRecordingState('preview');
-        });
-        
-        // Stop audio analysis
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        if (audioContextRef.current) {
-          audioContextRef.current.close();
-        }
-        
-        // Release microphone
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      // Start recording with timeslice for reliable data capture
-      // Capture data every 100ms to ensure no data loss
-      mediaRecorder.start(100);
-      setRecordingState('holding'); // Start in 'holding' state (can swipe to cancel/lock)
-      setRecordingDuration(0);
-      // Reset waveform buffer for new recording
-      waveformBufferRef.current = new Array(100).fill(0);
-      waveformIndexRef.current = 0;
-      frameCountRef.current = 0;
-      lastCaptureTimeRef.current = Date.now(); // Initialize for immediate first capture
-      setWaveformRenderKey(0);
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      toast({
-        title: "Microphone access denied",
-        description: "Please allow microphone access to record audio messages",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && (recordingState === 'holding' || recordingState === 'locked')) {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  const cancelRecording = () => {
-    if (recordingState === 'holding' || recordingState === 'locked') {
-      // Mark current session as cancelled
-      if (currentRecordingSessionRef.current !== null) {
-        cancelledSessionsRef.current.add(currentRecordingSessionRef.current);
-      }
-      
-      // Stop MediaRecorder (will trigger onstop)
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
-      
-      // Stop audio analysis
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      
-      // Stop all media stream tracks
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      
-      // Clear refs and state
-      mediaRecorderRef.current = null;
-      streamRef.current = null;
-      audioChunksRef.current = [];
-      setRecordingState('idle');
-      setRecordingDuration(0);
-      // Clean up gesture tracking in ALL exit paths
-      setGestureDeltaX(0);
-      setGestureDeltaY(0);
-      waveformBufferRef.current = new Array(100).fill(0);
-      waveformIndexRef.current = 0;
-    }
-  };
-
-  const playPreview = () => {
-    if (!audioPreview || !audioPreviewRef.current) return;
-    
-    if (isPlayingPreview) {
-      audioPreviewRef.current.pause();
-      setIsPlayingPreview(false);
-    } else {
-      audioPreviewRef.current.play();
-      setIsPlayingPreview(true);
-    }
-  };
-
-  const sendAudioPreview = async () => {
-    if (!audioPreview || !selectedConversationId) return;
-
-    const audioFile = new File([audioPreview.blob], `voice-message-${Date.now()}.webm`, { type: 'audio/webm' });
-    const clientGuid = crypto.randomUUID();
-    
-    sendMessageMutation.mutate({
-      text: '',
-      replyToMessageId: replyingToMessage?.guid,
-      attachments: [audioFile],
-      clientGuid
-    });
-
-    // Clean up preview
-    URL.revokeObjectURL(audioPreview.url);
-    setAudioPreview(null);
-    setRecordingState('idle');
-    setRecordingDuration(0);
-    waveformBufferRef.current = new Array(100).fill(0);
-    waveformIndexRef.current = 0;
-    waveformPreviewRef.current = [];
-    waveformPreviewIndexRef.current = 0;
-    setIsPlayingPreview(false);
-  };
-
-  const cancelPreview = () => {
-    if (audioPreview) {
-      URL.revokeObjectURL(audioPreview.url);
-      if (audioPreviewRef.current) {
-        audioPreviewRef.current.pause();
-        audioPreviewRef.current = null;
-      }
-    }
-    setAudioPreview(null);
-    setRecordingState('idle');
-    setRecordingDuration(0);
-    waveformBufferRef.current = new Array(100).fill(0);
-    waveformIndexRef.current = 0;
-    waveformPreviewRef.current = [];
-    waveformPreviewIndexRef.current = 0;
-    setIsPlayingPreview(false);
-  };
-
-  // Recording duration timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (recordingState === 'holding' || recordingState === 'locked') {
-      interval = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [recordingState]);
-
-  // Audio preview element for playback
-  useEffect(() => {
-    if (audioPreview && !audioPreviewRef.current) {
-      const audio = new Audio(audioPreview.url);
-      audio.onended = () => setIsPlayingPreview(false);
-      audioPreviewRef.current = audio;
-    }
-  }, [audioPreview]);
-
-  // Cleanup on component unmount - prevent memory leaks
-  useEffect(() => {
-    return () => {
-      // Stop any active recording
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
-      // Stop all media stream tracks
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      // Stop audio analysis
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      // Clean up preview audio
-      if (audioPreview) {
-        URL.revokeObjectURL(audioPreview.url);
-      }
-      if (audioPreviewRef.current) {
-        audioPreviewRef.current.pause();
-      }
-      // Clean up gesture tracking (Issue 3 fix)
-      // Note: Can't call setState in cleanup, but gesture state will be cleared when component unmounts
-    };
-  }, []);
 
   const groupedMessages = useMemo(() => {
     if (!messages) return [];
@@ -1920,381 +1574,73 @@ export default function IMessagePage() {
 
           {/* Message Input */}
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800">
-            {/* STATE 1: IDLE - Normal message input */}
-            {recordingState === 'idle' && (
-              <div className="flex items-center gap-2">
-                {/* Message input with microphone button inside */}
-                <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
-                  <input
-                    ref={messageInputRef}
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onFocus={handleTyping}
-                    onBlur={handleStopTyping}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder="iMessage"
-                    className={cn(
-                      "flex-1 bg-transparent border-0 outline-none pr-2",
-                      "placeholder:text-gray-500"
-                    )}
-                    data-testid="message-input"
-                  />
-                  
-                  {/* Audio waveform button - inside input on the right */}
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-8 w-8 rounded-full transition-colors flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    onPointerDown={(e) => {
+            <div className="flex items-center gap-2">
+              {/* Text input */}
+              <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
+                <input
+                  ref={messageInputRef}
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onFocus={handleTyping}
+                  onBlur={handleStopTyping}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      
-                      // Desktop: go directly to locked state with visible stop button
-                      if (!isTouchDevice) {
-                        startRecording();
-                        setRecordingState('locked');
-                        return;
-                      }
-                      
-                      // Mobile: existing gesture-based flow
-                      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-                      // Record start position for gesture tracking
-                      setGestureStartX(e.clientX);
-                      setGestureStartY(e.clientY);
-                      setGestureDeltaX(0);
-                      setGestureDeltaY(0);
-                      // Start recording
-                      startRecording();
-                    }}
-                    onPointerMove={(e) => {
-                      if (!isTouchDevice) return; // Skip gestures for desktop
-                      
-                      if (recordingState === 'holding') {
-                        const deltaX = e.clientX - gestureStartX;
-                        const deltaY = e.clientY - gestureStartY;
-                        
-                        // CRITICAL: Check lock FIRST (priority over cancel)
-                        if (deltaY < LOCK_THRESHOLD) {
-                          setRecordingState('locked');
-                          setGestureDeltaX(0); // RESET deltas after locking
-                          setGestureDeltaY(0);
-                          return; // Exit, don't check cancel
-                        }
-                        
-                        // Only check cancel if NOT locked
-                        if (deltaX < CANCEL_THRESHOLD) {
-                          cancelRecording();
-                          return;
-                        }
-                        
-                        // Update visual position for smooth animation
-                        setGestureDeltaX(deltaX);
-                        setGestureDeltaY(deltaY);
-                      }
-                      // If locked state, IGNORE all gestures (don't update deltas, don't check cancel)
-                    }}
-                    onPointerUp={(e) => {
-                      if (!isTouchDevice) return; // Skip for desktop - use stop button instead
-                      
-                      // CRITICAL: Release pointer capture FIRST (before checking state)
-                      // This ensures cleanup happens even if state changed (e.g., after cancel)
-                      if (e.target && (e.target as HTMLElement).releasePointerCapture) {
-                        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-                      }
-                      
-                      // ONLY stop if in 'holding' state (not locked!)
-                      // iOS Behavior: After lock, finger can be lifted and recording CONTINUES
-                      // until explicit stop button is pressed
-                      if (recordingState === 'holding') {
-                        // Released without locking = stop and preview
-                        stopRecording();
-                      }
-                      // If locked, do NOTHING on pointer up - user must click stop button
-                      
-                      // Reset gesture tracking in ALL exit paths
-                      setGestureDeltaX(0);
-                      setGestureDeltaY(0);
-                    }}
-                    data-testid="mic-button"
-                  >
-                    <svg 
-                      width="16" 
-                      height="16" 
-                      viewBox="0 0 16 16" 
-                      fill="none" 
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                    >
-                      <rect x="2" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
-                      <rect x="5" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
-                      <rect x="8" y="5" width="1.5" height="6" rx="0.75" fill="currentColor" opacity="0.8"/>
-                      <rect x="11" y="2" width="1.5" height="12" rx="0.75" fill="currentColor"/>
-                      <rect x="14" y="4" width="1.5" height="8" rx="0.75" fill="currentColor" opacity="0.6"/>
-                    </svg>
-                  </Button>
-                </div>
-
-                {/* Image/Gallery button */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="gallery-button"
-                >
-                  <ImageIcon className="h-5 w-5" />
-                </Button>
-
-                {/* Emoji button */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="emoji-button"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
-
-                {/* Send button */}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                  onClick={handleSendMessage}
-                  disabled={!messageText.trim() && attachments.length === 0}
-                  data-testid="send-button"
-                >
-                  <Send className="h-5 w-5" />
-                </Button>
-
-                {/* Location button */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="location-button"
-                >
-                  <MapPin className="h-5 w-5" />
-                </Button>
-              </div>
-            )}
-
-            {/* STATE 2: HOLDING - iPhone-style (NO waveform, timer only) */}
-            {recordingState === 'holding' && (
-              <div className="relative bg-white dark:bg-gray-900 rounded-full px-6 py-3 flex items-center gap-4 shadow-lg">
-                {/* Slide to cancel text - LEFT side */}
-                <div 
-                  className={cn(
-                    "absolute left-6 flex items-center gap-2 text-sm font-medium transition-all duration-200",
-                    gestureDeltaX < CANCEL_THRESHOLD * 0.5 ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
-                  )}
-                >
-                  <span>←</span>
-                  <span>Slide to cancel</span>
-                  {gestureDeltaX < CANCEL_THRESHOLD * 0.7 && (
-                    <X className="h-5 w-5 text-red-600 dark:text-red-400 animate-pulse" />
-                  )}
-                </div>
-
-                {/* Simple pulsing indicator (like iPhone) */}
-                <div className="flex-1 flex items-center justify-center gap-3">
-                  <div className={cn(
-                    "w-3 h-3 rounded-full animate-pulse",
-                    gestureDeltaX < CANCEL_THRESHOLD * 0.7
-                      ? "bg-red-600 dark:bg-red-400"
-                      : "bg-blue-600 dark:bg-blue-400"
-                  )} />
-                  
-                  {/* Timer */}
-                  <span className="text-gray-700 dark:text-gray-300 font-mono text-base font-medium tabular-nums">
-                    {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                  </span>
-                </div>
-
-                {/* Animated microphone button - follows finger horizontally */}
-                <div 
-                  className="relative"
-                  style={{
-                    transform: `translateX(${Math.max(CANCEL_THRESHOLD, gestureDeltaX)}px)`,
-                    transition: 'transform 0.05s ease-out'
+                      handleSendMessage();
+                    }
                   }}
-                >
-                  {/* Lock icon - shown above mic button */}
-                  <div 
-                    className={cn(
-                      "absolute -top-12 left-1/2 -translate-x-1/2 transition-all duration-200",
-                      gestureDeltaY < LOCK_THRESHOLD * 0.7 
-                        ? "text-blue-600 dark:text-blue-400 scale-125" 
-                        : "text-gray-400 dark:text-gray-500"
-                    )}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 11l7-7 7 7M5 19l7-7 7 7" />
-                      </svg>
-                      {gestureDeltaY < LOCK_THRESHOLD * 0.7 && (
-                        <span className="text-xs font-medium">Lock</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Mic button */}
-                  <Button
-                    size="icon"
-                    className={cn(
-                      "rounded-full h-11 w-11 transition-all duration-200",
-                      gestureDeltaX < CANCEL_THRESHOLD * 0.7
-                        ? "bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-                        : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700",
-                      "text-white shadow-lg"
-                    )}
-                    data-testid="holding-mic-button"
-                  >
-                    <Mic className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* STATE 3: LOCKED - Desktop: RED waveform + timer + stop button */}
-            {recordingState === 'locked' && (
-              <div className="bg-white dark:bg-gray-900 rounded-lg px-6 py-4 flex items-center gap-4 border border-gray-300 dark:border-gray-700 shadow-md">
-                {/* RED waveform visualization (like screenshots) */}
-                <div className="flex-1 flex items-center gap-0.5 h-10 relative" key={waveformRenderKey}>
-                  {waveformBufferRef.current.map((value, i) => {
-                    const totalSamples = waveformIndexRef.current;
-                    const hasData = totalSamples >= 100 ? true : i < totalSamples;
-                    const height = hasData ? Math.max(0.08, value) : 0.08;
-                    const position = i / 100;
-                    const baseOpacity = hasData ? 0.6 : 0.15;
-                    const flowingOpacity = baseOpacity + (Math.sin(position * Math.PI) * 0.4);
-                    
-                    return (
-                      <div
-                        key={`recording-bar-${i}`}
-                        className="relative w-1"
-                        style={{ height: '100%' }}
-                      >
-                        <div
-                          className="absolute bottom-0 w-full bg-gradient-to-t from-red-700 via-red-600 to-red-500 dark:from-red-600 dark:via-red-500 dark:to-red-400 rounded-t-sm transition-all duration-100"
-                          style={{ 
-                            height: `${height * 100}%`,
-                            opacity: flowingOpacity,
-                            boxShadow: hasData ? '0 0 4px rgba(220, 38, 38, 0.3)' : 'none'
-                          }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Timer */}
-                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px] tabular-nums">
-                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                </span>
-
-                {/* STOP button - prominently visible */}
-                <Button
-                  size="icon"
-                  className="rounded-full bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white h-9 w-9 transition-colors flex-shrink-0"
-                  onClick={stopRecording}
-                  data-testid="stop-recording-button"
-                >
-                  <div className="w-3.5 h-3.5 bg-white rounded-sm" />
-                </Button>
-              </div>
-            )}
-
-            {/* STATE 3: PREVIEW - Novel waveform playback visualization */}
-            {recordingState === 'preview' && audioPreview && (
-              <div className="bg-white dark:bg-gray-900 rounded-lg px-6 py-4 flex items-center gap-4 border border-gray-300 dark:border-gray-700 shadow-md">
-                {/* Cancel button */}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 h-9 w-9 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                  onClick={cancelPreview}
-                  data-testid="cancel-preview-button"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-
-                {/* Play/Pause button */}
-                <Button
-                  size="icon"
-                  className="rounded-full bg-gray-700 hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 text-white h-9 w-9 transition-colors"
-                  onClick={playPreview}
-                  data-testid="play-preview-button"
-                >
-                  {isPlayingPreview ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4 ml-0.5" />
+                  placeholder="iMessage"
+                  className={cn(
+                    "flex-1 bg-transparent border-0 outline-none",
+                    "placeholder:text-gray-500"
                   )}
-                </Button>
-
-                {/* Interactive waveform with 3D layered effect */}
-                <div className="flex-1 flex items-center gap-0.5 h-10 relative group cursor-pointer">
-                  {Array.from({ length: 100 }).map((_, i) => {
-                    const totalSamples = waveformPreviewIndexRef.current;
-                    const hasData = totalSamples >= 100 ? true : i < totalSamples;
-                    const value = hasData && waveformPreviewRef.current[i] ? waveformPreviewRef.current[i] : 0.1;
-                    const height = Math.max(0.1, value);
-                    
-                    // Novel visual: wave-like opacity flow
-                    const position = i / 100;
-                    const baseOpacity = hasData ? 0.6 : 0.15;
-                    const waveOpacity = baseOpacity + (Math.sin(position * Math.PI * 2) * 0.25);
-                    
-                    // Interactive hover brightening
-                    return (
-                      <div
-                        key={`preview-bar-${i}`}
-                        className="relative w-1"
-                        style={{ height: '100%' }}
-                      >
-                        {/* Main bar with 3D gradient */}
-                        <div
-                          className="absolute bottom-0 w-full bg-gradient-to-t from-gray-800 via-gray-700 to-gray-600 dark:from-gray-600 dark:via-gray-500 dark:to-gray-400 rounded-t-sm transition-all duration-200 group-hover:from-gray-900 group-hover:via-gray-800 group-hover:to-gray-700 dark:group-hover:from-gray-500 dark:group-hover:via-gray-400 dark:group-hover:to-gray-300"
-                          style={{ 
-                            height: `${height * 100}%`,
-                            opacity: waveOpacity
-                          }}
-                        />
-                        {/* Depth highlight */}
-                        {hasData && height > 0.3 && (
-                          <div
-                            className="absolute bottom-0 w-full bg-gradient-to-t from-transparent to-gray-400/30 dark:to-gray-200/20 rounded-t-sm pointer-events-none"
-                            style={{ 
-                              height: `${height * 100}%`,
-                            }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Timer */}
-                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px] tabular-nums">
-                  {Math.floor(audioPreview.duration / 60)}:{(audioPreview.duration % 60).toString().padStart(2, '0')}
-                </span>
-
-                {/* Send button */}
-                <Button
-                  size="icon"
-                  className="rounded-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white h-9 w-9 transition-colors"
-                  onClick={sendAudioPreview}
-                  data-testid="send-audio-button"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                  data-testid="message-input"
+                />
               </div>
-            )}
+
+              {/* Image/Gallery button */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="gallery-button"
+              >
+                <ImageIcon className="h-5 w-5" />
+              </Button>
+
+              {/* Emoji button */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                data-testid="emoji-button"
+              >
+                <Smile className="h-5 w-5" />
+              </Button>
+
+              {/* Send button */}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="rounded-full text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                onClick={handleSendMessage}
+                disabled={!messageText.trim() && attachments.length === 0}
+                data-testid="send-button"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+
+              {/* Location button */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                data-testid="location-button"
+              >
+                <MapPin className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
