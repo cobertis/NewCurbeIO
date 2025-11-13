@@ -381,7 +381,9 @@ function ImessageAudioMessage({
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play();
+      audio.play().catch(err => {
+        console.error('Audio play error:', err);
+      });
     }
     setIsPlaying(!isPlaying);
   };
@@ -396,15 +398,19 @@ function ImessageAudioMessage({
   // Use real waveform if available, otherwise generate random bars
   const waveformBars = useMemo(() => {
     if (waveform && waveform.length > 0) {
-      // Use real waveform data (normalized to 0-100)
-      return waveform.map(val => (val / 255) * 100);
+      // Use real waveform data (scale from 0-255 to more visible range)
+      return waveform.map(val => {
+        // Normalize to 0-100 range with minimum height
+        const normalized = (val / 255) * 100;
+        return Math.max(15, normalized);
+      });
     }
-    // Fallback: generate random waveform bars
-    return Array.from({ length: 40 }, () => Math.random() * 100);
+    // Fallback: generate random waveform bars with varied heights
+    return Array.from({ length: 60 }, () => Math.random() * 80 + 20);
   }, [waveform]);
 
   return (
-    <div className="flex items-center gap-2 min-w-[280px] max-w-[320px] p-2">
+    <div className="flex items-center gap-3 w-full max-w-md px-3 py-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
       {blobUrl && (
         <audio ref={audioRef} src={blobUrl} preload="metadata" />
       )}
@@ -413,18 +419,19 @@ function ImessageAudioMessage({
       <Button
         size="icon"
         onClick={togglePlay}
-        className="rounded-full h-9 w-9 flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white"
+        className="rounded-full h-10 w-10 flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
         disabled={!blobUrl}
+        data-testid="audio-play-button"
       >
         {isPlaying ? (
-          <Pause className="h-4 w-4" />
+          <Pause className="h-5 w-5" fill="white" />
         ) : (
-          <Play className="h-4 w-4 ml-0.5" />
+          <Play className="h-5 w-5 ml-0.5" fill="white" />
         )}
       </Button>
 
       {/* Waveform Visualization */}
-      <div className="flex-1 flex items-center gap-[2px] h-8">
+      <div className="flex-1 flex items-center justify-center gap-[1px] h-12 py-1">
         {waveformBars.map((height, i) => {
           const progress = duration > 0 ? currentTime / duration : 0;
           const isActive = i < waveformBars.length * progress;
@@ -433,11 +440,15 @@ function ImessageAudioMessage({
             <div
               key={i}
               className={cn(
-                "w-[3px] rounded-full transition-colors",
-                isActive ? "bg-blue-500" : "bg-gray-400"
+                "flex-1 rounded-full transition-all duration-150",
+                isActive 
+                  ? "bg-blue-500 dark:bg-blue-400" 
+                  : "bg-gray-300 dark:bg-gray-600"
               )}
               style={{ 
-                height: `${Math.max(10, height * 0.6)}%`,
+                height: `${height}%`,
+                minWidth: '2px',
+                maxWidth: '4px'
               }}
             />
           );
@@ -445,7 +456,7 @@ function ImessageAudioMessage({
       </div>
 
       {/* Duration */}
-      <span className="text-xs text-gray-600 dark:text-gray-400 font-mono flex-shrink-0 w-10 text-right">
+      <span className="text-sm text-gray-600 dark:text-gray-400 font-mono flex-shrink-0 min-w-[45px] text-right">
         {formatTime(isPlaying ? currentTime : duration)}
       </span>
     </div>
