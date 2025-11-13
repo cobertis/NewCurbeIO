@@ -1933,6 +1933,43 @@ export default function IMessagePage() {
               </div>
             ) : (
               <div className="flex items-center gap-2">
+                {/* Microphone button - moved to first */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className={cn(
+                    "rounded-full transition-colors",
+                    isRecording 
+                      ? "text-blue-500 hover:text-blue-600" 
+                      : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  )}
+                  onClick={startRecording}
+                  data-testid="microphone-button"
+                >
+                  <Mic className="h-5 w-5" />
+                </Button>
+
+                {/* Image/Gallery button - moved to second */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="gallery-button"
+                >
+                  <ImageIcon className="h-5 w-5" />
+                </Button>
+
+                {/* Location button - moved to third */}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  data-testid="location-button"
+                >
+                  <MapPin className="h-5 w-5" />
+                </Button>
+
                 {/* Text input */}
                 <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
                   <input
@@ -1956,33 +1993,6 @@ export default function IMessagePage() {
                   />
                 </div>
 
-                {/* Microphone button */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className={cn(
-                    "rounded-full transition-colors",
-                    isRecording 
-                      ? "text-blue-500 hover:text-blue-600" 
-                      : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  )}
-                  onClick={startRecording}
-                  data-testid="microphone-button"
-                >
-                  <Mic className="h-5 w-5" />
-                </Button>
-
-                {/* Image/Gallery button */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="gallery-button"
-                >
-                  <ImageIcon className="h-5 w-5" />
-                </Button>
-
                 {/* Emoji button */}
                 <Button 
                   size="icon" 
@@ -2003,16 +2013,6 @@ export default function IMessagePage() {
                   data-testid="send-button"
                 >
                   <Send className="h-5 w-5" />
-                </Button>
-
-                {/* Location button */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="location-button"
-                >
-                  <MapPin className="h-5 w-5" />
                 </Button>
               </div>
             )}
