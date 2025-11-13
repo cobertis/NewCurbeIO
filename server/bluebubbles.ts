@@ -172,10 +172,17 @@ export class BlueBubblesClient {
     formData.append('attachment', blob, fileName);
     formData.append('name', fileName);
     
-    // Mark as audio message (voice memo) if it's a CAF file
-    // BlueBubbles requires payloadJson with nested metadata to trigger voice memo code path
+    // CRITICAL: Mark as audio message (voice memo) for iMessage
+    // BlueBubbles requires BOTH:
+    // 1. isAudioMessage as top-level FormData field
+    // 2. isAudioMessage inside payloadJson for Private API
     if (isAudioMessage && audioMetadata) {
+      // Add isAudioMessage as separate top-level field
+      formData.append('isAudioMessage', 'true');
+      
+      // Add metadata as payloadJson with isAudioMessage flag inside
       const payloadJson = {
+        text: '', // CORRECT field name for BlueBubbles
         metadata: {
           duration: audioMetadata.duration,
           waveform: audioMetadata.waveform,
@@ -184,12 +191,11 @@ export class BlueBubblesClient {
           codec: audioMetadata.codec,
           sampleRate: audioMetadata.sampleRate
         },
-        isAudioMessage: true
+        isAudioMessage: true // CRITICAL: BlueBubbles Private API needs this inside payloadJson too
       };
       
-      // CRITICAL: Send as payloadJson (not flat fields) to avoid MP3 conversion
       formData.append('payloadJson', JSON.stringify(payloadJson));
-      console.log(`[iMessage] Sending voice memo via payloadJson: ${audioMetadata.codec} @ ${audioMetadata.sampleRate}Hz, duration: ${audioMetadata.duration}ms, waveform: ${audioMetadata.waveform.length} samples`);
+      console.log(`[iMessage] Sending voice memo: ${audioMetadata.codec} @ ${audioMetadata.sampleRate}Hz, duration: ${audioMetadata.duration}ms, waveform: ${audioMetadata.waveform.length} samples`);
     }
 
     const urlWithAuth = new URL(`${this.baseUrl}/api/v1/message/attachment`);

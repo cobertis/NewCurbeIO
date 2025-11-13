@@ -1178,6 +1178,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             return res.status(400).json({ message: 'Invalid payload: missing chat GUID' });
           }
           
+          // CRITICAL: Short-circuit for self-sent messages - don't store duplicates
+          // This prevents ANY database operations for messages we sent ourselves
+          if (messageData.isFromMe) {
+            const messageGuid = messageData.guid || messageData.message_guid || `msg_${Date.now()}`;
+            console.log(`[BlueBubbles Webhook] Ignoring self-sent message (isFromMe=true): ${messageGuid}`);
+            return res.json({ success: true, message: 'Self-sent message ignored' });
+          }
+          
           let conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (!conversation) {
             // Create new conversation
@@ -1235,6 +1243,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
           
           let newMessage;
+          let shouldBroadcastAsNew = true; // Flag to control broadcast behavior
+          
           if (existingMessage) {
             // Update existing message (reconcile clientGuid message with BlueBubbles GUID)
             // Only include date fields if webhook provides new data (to avoid "toISOString is not a function" errors)
@@ -1268,7 +1278,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await storage.updateImessageMessageByGuid(company.id, existingMessage.guid, updateData);
             newMessage = await storage.getImessageMessageByGuid(company.id, messageGuid);
             console.log(`[BlueBubbles Webhook] Updated existing message from clientGuid to BlueBubbles GUID`);
+            
+            // CRITICAL: If this is our own message (isFromMe), don't broadcast as new
+            // This prevents duplicate messages when BlueBubbles echoes our sent messages
+            if (messageData.isFromMe) {
+              shouldBroadcastAsNew = false;
+              console.log(`[BlueBubbles Webhook] Message is from us (isFromMe=true) - skipping new message broadcast`);
+            }
           } else {
+            // CRITICAL: Check if message is from us BEFORE creating to prevent duplicate broadcasts
+            if (messageData.isFromMe) {
+              shouldBroadcastAsNew = false;
+              console.log(`[BlueBubbles Webhook] New message is from us (isFromMe=true) - will not broadcast as incoming`);
+            }
+            
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
               // Transform attachments to use backend URLs instead of BlueBubbles absolute URLs
@@ -1342,37 +1365,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
             }
             
-            // Update conversation last message
-            // CRITICAL: Convert dateSent from ISO string to Date object (mapper returns strings)
-            await storage.updateImessageConversation(conversation.id, {
-              lastMessageAt: newMessage.dateSent ? new Date(newMessage.dateSent) : new Date(),
-              lastMessageText: previewText,
-              unreadCount: await storage.recalculateImessageUnreadCount(conversation.id),
-            });
-            
-            // Broadcast to WebSocket clients
-            broadcastImessageMessage(company.id, conversation.id, newMessage);
-            
-            // Send browser notification if enabled
-            // CRITICAL: Use isFromMe (not fromMe) - mapper transforms the field name
-            if (!newMessage.isFromMe) {
-              // Create notifications for all company users
-              const companyUsers = await storage.getUsersByCompany(company.id);
-              for (const user of companyUsers) {
-                await storage.createNotification({
-                  userId: user.id,
-                  type: 'imessage',
-                  title: `New iMessage from ${newMessage.senderName || newMessage.senderAddress}`,
-                  message: newMessage.text || 'New message',
-                  isRead: false,
-                  data: JSON.stringify({
-                    conversationId: conversation.id,
-                    messageId: newMessage.id,
-                  }),
-                });
+            // CRITICAL: Only broadcast as new message if it's truly incoming (not our echo)
+            // When isFromMe=true: NO conversation updates, NO notifications, NO broadcasts
+            if (shouldBroadcastAsNew) {
+              // CRITICAL: Convert dateSent from ISO string to Date object (mapper returns strings)
+              await storage.updateImessageConversation(conversation.id, {
+                lastMessageAt: newMessage.dateSent ? new Date(newMessage.dateSent) : new Date(),
+                lastMessageText: previewText,
+                unreadCount: await storage.recalculateImessageUnreadCount(conversation.id),
+              });
+              
+              // Broadcast to WebSocket clients
+              broadcastImessageMessage(company.id, conversation.id, newMessage);
+              
+              // Send browser notification if enabled
+              // CRITICAL: Use isFromMe (not fromMe) - mapper transforms the field name
+              if (!newMessage.isFromMe) {
+                // Create notifications for all company users
+                const companyUsers = await storage.getUsersByCompany(company.id);
+                for (const user of companyUsers) {
+                  await storage.createNotification({
+                    userId: user.id,
+                    type: 'imessage',
+                    title: `New iMessage from ${newMessage.senderName || newMessage.senderAddress}`,
+                    message: newMessage.text || 'New message',
+                    isRead: false,
+                    data: JSON.stringify({
+                      conversationId: conversation.id,
+                      messageId: newMessage.id,
+                    }),
+                  });
+                }
+                // Broadcast notification update to all clients
+                broadcastNotificationUpdate(company.id);
               }
-              // Broadcast notification update to all clients
-              broadcastNotificationUpdate(company.id);
+            } else {
+              // For our own messages (echoed by BlueBubbles), just broadcast a status update
+              // This updates the existing message in the UI without duplicating it
+              console.log(`[BlueBubbles Webhook] Broadcasting status update for our own message`);
+              // TODO: Could add a lightweight status update broadcast here if needed
             }
           }
           
@@ -1508,22 +1539,64 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No file uploaded" });
       }
       
-      // Return file info for sending via BlueBubbles
-      const attachmentUrl = `/uploads/imessage/${file.filename}`;
+      const filePath = file.path;
+      let finalFilePath = filePath;
+      let finalMimeType = file.mimetype;
+      let finalFilename = file.filename;
+      let audioMetadata: AudioMetadata | undefined;
       
-      console.log('[iMessage] File uploaded successfully:', file.filename, 'Size:', file.size);
+      // CRITICAL: Detect audio files and convert to CAF for iMessage voice memos
+      if (file.mimetype.startsWith('audio/')) {
+        console.log('[iMessage Audio] Detected audio file, converting to CAF format...');
+        try {
+          const conversionResult = await convertWebMToCAF(filePath);
+          finalFilePath = conversionResult.path;
+          finalFilename = path.basename(finalFilePath);
+          finalMimeType = 'audio/x-caf';
+          audioMetadata = conversionResult.metadata;
+          
+          console.log(`[iMessage Audio] ✓ Conversion complete: ${finalFilename}`);
+          console.log(`[iMessage Audio] ✓ Duration: ${audioMetadata.duration}ms, Waveform: ${audioMetadata.waveform.length} samples`);
+        } catch (conversionError: any) {
+          console.error('[iMessage Audio] Conversion failed:', conversionError.message);
+          // Clean up original file on conversion failure
+          try {
+            await fsPromises.unlink(filePath);
+          } catch (unlinkErr) {
+            console.warn('[iMessage Audio] Could not delete failed upload');
+          }
+          return res.status(500).json({ message: `Audio conversion failed: ${conversionError.message}` });
+        }
+      } else {
+        console.log('[iMessage] Non-audio file uploaded:', file.filename, 'Type:', file.mimetype);
+      }
+      
+      // Return file info for sending via BlueBubbles
+      const attachmentUrl = `/uploads/imessage/${finalFilename}`;
+      
+      console.log('[iMessage] File ready for sending:', finalFilename, 'Type:', finalMimeType);
       
       res.json({
         success: true,
         attachment: {
-          id: file.filename,
+          id: finalFilename,
           url: attachmentUrl,
-          mimeType: file.mimetype,
+          mimeType: finalMimeType,
           size: file.size,
           originalName: file.originalname,
+          // Include audio metadata for voice memos
+          ...(audioMetadata && {
+            audioMetadata: {
+              duration: audioMetadata.duration,
+              waveform: audioMetadata.waveform,
+              uti: audioMetadata.uti,
+              codec: audioMetadata.codec,
+              sampleRate: audioMetadata.sampleRate,
+            }
+          })
         },
         // Version marker to confirm updated code is running
-        serverVersion: `v2-${Date.now()}`,
+        serverVersion: `v3-audio-${Date.now()}`,
       });
       
     } catch (error: any) {
