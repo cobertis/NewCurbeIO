@@ -10349,12 +10349,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== CONTACT LISTS ENDPOINTS ====================
 
-  // Get all contact lists (superadmin only)
+  // Get all contact lists (admin and superadmin)
   app.get("/api/contact-lists", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10365,12 +10365,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Get contact list by ID (superadmin only)
+  // Get contact list by ID (admin and superadmin)
   app.get("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10384,12 +10384,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Create contact list (superadmin only)
+  // Create contact list (admin and superadmin)
   app.post("/api/contact-lists", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10411,12 +10411,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Update contact list (superadmin only)
+  // Update contact list (admin and superadmin)
   app.patch("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10437,12 +10437,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Delete contact list (superadmin only)
+  // Delete contact list (admin and superadmin)
   app.delete("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10458,12 +10458,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Get members of a contact list (superadmin only)
+  // Get members of a contact list (admin and superadmin)
   app.get("/api/contact-lists/:id/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10474,12 +10474,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Add member to contact list (superadmin only)
+  // Add member to contact list (admin and superadmin)
   app.post("/api/contact-lists/:id/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10496,12 +10496,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Remove member from contact list (superadmin only)
+  // Remove member from contact list (admin and superadmin)
   app.delete("/api/contact-lists/:id/members/:userId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
@@ -10517,12 +10517,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Bulk move contacts between lists (superadmin only)
+  // Bulk move contacts between lists (admin and superadmin)
   app.post("/api/contact-lists/bulk-move", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
 
     try {
