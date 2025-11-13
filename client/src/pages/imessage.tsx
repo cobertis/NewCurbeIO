@@ -2082,24 +2082,22 @@ export default function IMessagePage() {
                       {/* Recording indicator */}
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
-                      {/* Waveform bars - progressive display (builds left to right) */}
-                      <div className="flex-1 flex items-center gap-[0.5px]" style={{ height: '40px' }}>
-                        {recordingWaveform.map((height, i) => (
-                          <div
-                            key={i}
-                            className="bg-blue-500 rounded-full flex-1"
-                            style={{ 
-                              minWidth: '2px',
-                              maxWidth: '4px',
-                              height: `${Math.max(8, Math.min(40, (height / 255) * 36))}px`,
-                              alignSelf: 'center'
-                            }}
-                          />
-                        ))}
-                        {/* Show empty space for remaining bars */}
-                        {recordingWaveform.length === 0 && (
-                          <span className="text-xs text-gray-500">Speak to start...</span>
-                        )}
+                      {/* Waveform bars - fills entire width */}
+                      <div className="flex-1 flex items-center gap-[1px]" style={{ height: '40px' }}>
+                        {Array.from({ length: 60 }).map((_, i) => {
+                          const height = recordingWaveform[i] || 0;
+                          return (
+                            <div
+                              key={i}
+                              className="bg-blue-500 rounded-full flex-1"
+                              style={{ 
+                                height: height > 0 ? `${Math.max(8, Math.min(40, (height / 255) * 36))}px` : '8px',
+                                alignSelf: 'center',
+                                minWidth: '1px'
+                              }}
+                            />
+                          );
+                        })}
                       </div>
                       
                       {/* Duration */}
