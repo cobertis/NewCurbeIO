@@ -75,7 +75,7 @@ interface ImessageConversation {
   displayName: string;
   participants: string[];
   lastMessageText?: string;
-  lastMessageTime?: string;
+  lastMessageAt?: string | Date;
   unreadCount: number;
   isPinned: boolean;
   isArchived: boolean;
@@ -1335,42 +1335,39 @@ export default function IMessagePage() {
                   onClick={() => setSelectedConversationId(conversation.id)}
                   data-testid={`conversation-${conversation.id}`}
                 >
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={conversation.avatarUrl} />
-                    <AvatarFallback 
-                      className="text-white font-semibold flex items-center justify-center"
-                      style={{ backgroundColor: getAvatarColorFromString(conversation.chatGuid || conversation.displayName) }}
-                    >
-                      {getInitials(conversation.displayName) ? (
-                        getInitials(conversation.displayName)
-                      ) : (
-                        <UserIcon className="h-6 w-6" />
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
+                  {/* Unread indicator - BEFORE avatar like iOS */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {conversation.unreadCount > 0 && (
+                      <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" data-testid={`unread-indicator-${conversation.id}`} />
+                    )}
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={conversation.avatarUrl} />
+                      <AvatarFallback 
+                        className="text-white font-semibold flex items-center justify-center"
+                        style={{ backgroundColor: getAvatarColorFromString(conversation.chatGuid || conversation.displayName) }}
+                      >
+                        {getInitials(conversation.displayName) ? (
+                          getInitials(conversation.displayName)
+                        ) : (
+                          <UserIcon className="h-6 w-6" />
+                        )}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                  
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        {conversation.unreadCount > 0 && (
-                          <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" data-testid={`unread-indicator-${conversation.id}`} />
-                        )}
-                        <p className="font-medium truncate">{conversation.displayName}</p>
-                      </div>
-                      {conversation.lastMessageTime && (
-                        <span className="text-xs text-gray-500 shrink-0">
-                          {formatMessageTime(conversation.lastMessageTime)}
+                      <p className="font-semibold text-[15px] truncate">{conversation.displayName}</p>
+                      {conversation.lastMessageAt && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 ml-2">
+                          {formatMessageTime(new Date(conversation.lastMessageAt).toISOString())}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0 leading-snug">
                         {conversation.lastMessageText || "No messages yet"}
                       </p>
-                      {conversation.unreadCount > 0 && (
-                        <Badge className="bg-blue-500 text-white shrink-0">
-                          {conversation.unreadCount}
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   
