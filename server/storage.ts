@@ -7991,8 +7991,40 @@ export class DbStorage implements IStorage {
       : query.orderBy(desc(sortColumn));
     
     // Apply pagination
-    const results = await sortedQuery.limit(limit).offset(offset);
-    const contacts = results.map(r => (r as any).contact || r);
+    const paginatedResults = await sortedQuery.limit(limit).offset(offset);
+    const contactsData = paginatedResults.map(r => (r as any).contact || r);
+    
+    // Get contact IDs for fetching their lists
+    const contactIds = contactsData.map(c => c.id);
+    
+    // Fetch lists for each contact in a single query
+    const contactListsData = contactIds.length > 0 ? await db
+      .select({
+        contactId: contactListMembers.contactId,
+        listId: contactLists.id,
+        listName: contactLists.name,
+      })
+      .from(contactListMembers)
+      .innerJoin(contactLists, eq(contactLists.id, contactListMembers.listId))
+      .where(inArray(contactListMembers.contactId, contactIds)) : [];
+    
+    // Group lists by contact ID
+    const listsByContact = contactListsData.reduce((acc, item) => {
+      if (!acc[item.contactId]) {
+        acc[item.contactId] = [];
+      }
+      acc[item.contactId].push({
+        id: item.listId,
+        name: item.listName,
+      });
+      return acc;
+    }, {} as Record<string, Array<{ id: string; name: string }>>);
+    
+    // Attach lists to contacts
+    const contacts = contactsData.map(contact => ({
+      ...contact,
+      lists: listsByContact[contact.id] || [],
+    }));
     
     return { contacts, total, page, limit };
   }

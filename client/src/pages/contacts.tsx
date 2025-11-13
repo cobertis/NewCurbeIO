@@ -874,7 +874,7 @@ export default function Contacts() {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
-                      <TableHead>Notes</TableHead>
+                      <TableHead>Lists</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
@@ -901,8 +901,23 @@ export default function Contacts() {
                         <TableCell data-testid={`text-contact-phone-${contact.id}`}>
                           {formatForDisplay(contact.phone)}
                         </TableCell>
-                        <TableCell className="max-w-xs truncate" data-testid={`text-contact-notes-${contact.id}`}>
-                          {contact.notes || "—"}
+                        <TableCell className="max-w-xs" data-testid={`text-contact-lists-${contact.id}`}>
+                          {(contact as any).lists && (contact as any).lists.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {(contact as any).lists.map((list: { id: string; name: string }) => (
+                                <Badge 
+                                  key={list.id} 
+                                  variant="secondary"
+                                  className="text-xs"
+                                  data-testid={`badge-list-${contact.id}-${list.id}`}
+                                >
+                                  {list.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">No lists</span>
+                          )}
                         </TableCell>
                         <TableCell data-testid={`text-contact-created-${contact.id}`}>
                           {new Date(contact.createdAt).toLocaleDateString()}
