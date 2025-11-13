@@ -7891,13 +7891,13 @@ export class DbStorage implements IStorage {
     // Handle different filtering scenarios
     if (includeUnassignedOnly) {
       // Show only contacts NOT in any list using NOT EXISTS subquery
-      conditions.push(
-        sql`NOT EXISTS (
-          SELECT 1 FROM ${contactListMembers} 
-          WHERE ${contactListMembers.userId} = ${manualContacts.userId}
-          AND ${contactListMembers.companyId} = ${sql.raw(`'${companyId}'`)}
-        )` as any
-      );
+      // Note: notExists is not available in Drizzle, so we use raw SQL with parameterized value
+      const notExistsCondition = sql`NOT EXISTS (
+        SELECT 1 FROM ${contactListMembers} 
+        WHERE ${contactListMembers.userId} = ${manualContacts.userId}
+        AND ${contactListMembers.companyId} = ${companyId}
+      )`;
+      conditions.push(notExistsCondition as any);
       query = query.where(and(...conditions) as any) as any;
     } else if (listId) {
       // Show contacts in a specific list using INNER JOIN
@@ -7915,16 +7915,17 @@ export class DbStorage implements IStorage {
     // Get total count with same filtering logic
     let countQuery;
     if (includeUnassignedOnly) {
+      const notExistsCondition = sql`NOT EXISTS (
+        SELECT 1 FROM ${contactListMembers} 
+        WHERE ${contactListMembers.userId} = ${manualContacts.userId}
+        AND ${contactListMembers.companyId} = ${companyId}
+      )`;
       countQuery = db
         .select({ count: sql<number>`count(*)::int` })
         .from(manualContacts)
         .where(and(
           ...conditions,
-          sql`NOT EXISTS (
-            SELECT 1 FROM ${contactListMembers} 
-            WHERE ${contactListMembers.userId} = ${manualContacts.userId}
-            AND ${contactListMembers.companyId} = ${sql.raw(`'${companyId}'`)}
-          )`
+          notExistsCondition
         ) as any);
     } else if (listId) {
       countQuery = db
