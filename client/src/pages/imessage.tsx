@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -494,6 +495,11 @@ export default function IMessagePage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isConnected, setIsConnected] = useState(true);
+  
+  // New conversation state
+  const [showNewConversation, setShowNewConversation] = useState(false);
+  const [newConversationPhone, setNewConversationPhone] = useState("");
+  const [newConversationMessage, setNewConversationMessage] = useState("");
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -830,6 +836,39 @@ export default function IMessagePage() {
     onError: (error: any) => {
       toast({
         title: "Failed to delete conversation",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // New conversation mutation
+  const sendNewConversationMutation = useMutation({
+    mutationFn: async ({ to, text }: { to: string; text: string }) => {
+      const clientGuid = `temp-${Date.now()}-${Math.random()}`;
+      return apiRequest('POST', '/api/imessage/messages/send', {
+        to,
+        text,
+        clientGuid
+      });
+    },
+    onSuccess: () => {
+      // Refresh conversations list
+      queryClient.invalidateQueries({ queryKey: ['/api/imessage/conversations'] });
+      
+      // Clear form and close sheet
+      setNewConversationPhone("");
+      setNewConversationMessage("");
+      setShowNewConversation(false);
+      
+      toast({
+        title: "Message sent",
+        description: "Your message has been sent successfully"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to send message",
         description: error.message,
         variant: "destructive"
       });
@@ -1264,7 +1303,13 @@ export default function IMessagePage() {
         <div className="p-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-semibold">Messages</h1>
-            <Button size="icon" variant="ghost" className="rounded-full">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="rounded-full"
+              onClick={() => setShowNewConversation(true)}
+              data-testid="button-new-conversation"
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -2042,6 +2087,91 @@ export default function IMessagePage() {
         className="hidden"
         data-testid="file-input"
       />
+
+      {/* New Conversation Sheet */}
+      <Sheet open={showNewConversation} onOpenChange={setShowNewConversation}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>New Message</SheetTitle>
+            <SheetDescription>
+              Send an iMessage to a new contact
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="mt-6 space-y-4">
+            {/* Phone number input */}
+            <div className="space-y-2">
+              <label htmlFor="phone" className="text-sm font-medium">
+                To:
+              </label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1 (305) 555-0123"
+                value={newConversationPhone}
+                onChange={(e) => setNewConversationPhone(e.target.value)}
+                className="w-full"
+                data-testid="input-new-conversation-phone"
+              />
+              <p className="text-xs text-gray-500">
+                Enter phone number with country code (e.g., +1 for US)
+              </p>
+            </div>
+
+            {/* Message input */}
+            <div className="space-y-2">
+              <label htmlFor="message" className="text-sm font-medium">
+                Message:
+              </label>
+              <textarea
+                id="message"
+                placeholder="Type your message..."
+                value={newConversationMessage}
+                onChange={(e) => setNewConversationMessage(e.target.value)}
+                className="w-full min-h-[120px] p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                data-testid="input-new-conversation-message"
+              />
+            </div>
+
+            {/* Send button */}
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowNewConversation(false)}
+                data-testid="button-cancel-new-conversation"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                onClick={() => {
+                  if (newConversationPhone && newConversationMessage) {
+                    sendNewConversationMutation.mutate({
+                      to: newConversationPhone,
+                      text: newConversationMessage
+                    });
+                  }
+                }}
+                disabled={!newConversationPhone || !newConversationMessage || sendNewConversationMutation.isPending}
+                data-testid="button-send-new-conversation"
+              >
+                {sendNewConversationMutation.isPending ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Send
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
     </div>
   );
