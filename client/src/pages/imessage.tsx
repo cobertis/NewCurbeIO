@@ -67,6 +67,9 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Global cache for blob URLs to prevent them from being revoked on re-renders
+const blobUrlCache = new Map<string, string>();
+
 // Updated interface types for BlueBubbles integration
 interface ImessageConversation {
   id: string;
@@ -234,7 +237,11 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    let objectUrl: string | null = null;
+    // Check if we already have this URL in cache
+    if (blobUrlCache.has(url)) {
+      setBlobUrl(blobUrlCache.get(url)!);
+      return;
+    }
     
     fetch(url, {
       credentials: 'include', // Include session cookies
@@ -244,7 +251,10 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
           throw new Error(`HTTP ${response.status}`);
         }
         const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        
+        // Store in cache so it persists across re-renders
+        blobUrlCache.set(url, objectUrl);
         setBlobUrl(objectUrl);
       })
       .catch((err) => {
@@ -252,11 +262,7 @@ function ImessageAttachmentVideo({ url, fileName }: { url: string; fileName: str
         setError(true);
       });
 
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
+    // DO NOT revoke the blob URL - keep it cached for reuse
   }, [url]);
 
   if (error) {
@@ -318,7 +324,11 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    let objectUrl: string | null = null;
+    // Check if we already have this URL in cache
+    if (blobUrlCache.has(url)) {
+      setBlobUrl(blobUrlCache.get(url)!);
+      return;
+    }
     
     fetch(url, {
       credentials: 'include', // Include session cookies
@@ -328,7 +338,10 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
           throw new Error(`HTTP ${response.status}`);
         }
         const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        
+        // Store in cache so it persists across re-renders
+        blobUrlCache.set(url, objectUrl);
         setBlobUrl(objectUrl);
       })
       .catch((err) => {
@@ -336,11 +349,7 @@ function ImessageAttachmentImage({ url, alt }: { url: string; alt: string }) {
         setError(true);
       });
 
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
+    // DO NOT revoke the blob URL - keep it cached for reuse
   }, [url]);
 
   if (error) {
@@ -407,7 +416,11 @@ function ImessageAudioMessage({
 
   // Fetch audio with credentials
   useEffect(() => {
-    let objectUrl: string | null = null;
+    // Check if we already have this URL in cache
+    if (blobUrlCache.has(url)) {
+      setBlobUrl(blobUrlCache.get(url)!);
+      return;
+    }
     
     fetch(url, {
       credentials: 'include',
@@ -415,16 +428,17 @@ function ImessageAudioMessage({
       .then(async (response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
+        const objectUrl = URL.createObjectURL(blob);
+        
+        // Store in cache so it persists across re-renders
+        blobUrlCache.set(url, objectUrl);
         setBlobUrl(objectUrl);
       })
       .catch((err) => {
         console.error('[iMessage] Failed to load audio:', url, err);
       });
 
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+    // DO NOT revoke the blob URL - keep it cached for reuse
   }, [url]);
 
   useEffect(() => {
