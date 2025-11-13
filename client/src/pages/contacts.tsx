@@ -67,6 +67,7 @@ import {
   Trash2, 
   MoreHorizontal,
   Users,
+  User as UserIcon,
   ChevronLeft,
   ChevronRight,
   ListPlus,
@@ -158,7 +159,7 @@ export default function Contacts() {
   });
 
   // Fetch contact lists
-  const { data: listsData } = useQuery<{ lists: ContactList[] }>({
+  const { data: listsData } = useQuery<{ lists: ContactList[]; unassignedCount: number }>({
     queryKey: ["/api/contact-lists"],
   });
 
@@ -166,6 +167,7 @@ export default function Contacts() {
   const total = contactsData?.total || 0;
   const totalPages = Math.ceil(total / limit);
   const lists = listsData?.lists || [];
+  const unassignedCount = listsData?.unassignedCount || 0;
 
   // Create contact form
   const addForm = useForm<ContactFormValues>({
@@ -593,6 +595,23 @@ export default function Contacts() {
                   <span className="font-medium">All Contacts</span>
                 </div>
                 <Badge variant="secondary">{total}</Badge>
+              </button>
+
+              {/* No List - Unassigned Contacts */}
+              <button
+                onClick={() => setSelectedListFilter("__none")}
+                className={`w-full flex items-center justify-between p-3 rounded-md text-left transition-colors ${
+                  selectedListFilter === "__none"
+                    ? "bg-primary/10 text-primary"
+                    : "hover:bg-muted"
+                }`}
+                data-testid="button-filter-nolist"
+              >
+                <div className="flex items-center gap-2">
+                  <UserIcon className="h-4 w-4" />
+                  <span className="font-medium">No List</span>
+                </div>
+                <Badge variant="secondary">{unassignedCount}</Badge>
               </button>
 
               {/* Individual Lists */}
