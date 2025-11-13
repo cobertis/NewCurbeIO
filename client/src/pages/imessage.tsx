@@ -500,8 +500,10 @@ export default function IMessagePage() {
   const streamRef = useRef<MediaStream | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const samplingIntervalRef = useRef<NodeJS.Timeout | null>(null); // For waveform sampling
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const waveformSamplesRef = useRef<number[]>([]); // Store time-based samples during recording
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -1010,6 +1012,9 @@ export default function IMessagePage() {
       setRecordingDuration(0);
       setRecordingWaveform([]);
       
+      // Reset waveform samples for new recording
+      waveformSamplesRef.current = [];
+      
       // Start duration timer
       const startTime = Date.now();
       recordingIntervalRef.current = setInterval(() => {
@@ -1022,7 +1027,12 @@ export default function IMessagePage() {
         }
       }, 100);
       
-      // Start waveform visualization
+      // Start time-based waveform sampling (capture sample every 50ms)
+      samplingIntervalRef.current = setInterval(() => {
+        captureSample();
+      }, 50);
+      
+      // Start real-time waveform visualization
       visualizeWaveform();
       
     } catch (error: any) {
@@ -1048,9 +1058,51 @@ export default function IMessagePage() {
       recordingIntervalRef.current = null;
     }
     
+    if (samplingIntervalRef.current) {
+      clearInterval(samplingIntervalRef.current);
+      samplingIntervalRef.current = null;
+    }
+    
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
+    }
+    
+    // Process accumulated waveform samples into 100 bars for display
+    const samples = waveformSamplesRef.current;
+    const targetBarCount = 100;
+    
+    if (samples.length > 0) {
+      let processedBars: number[] = [];
+      
+      if (samples.length <= targetBarCount) {
+        // If we have fewer samples than bars, interpolate
+        processedBars = Array.from({ length: targetBarCount }, (_, i) => {
+          const position = (i / targetBarCount) * samples.length;
+          const lowerIndex = Math.floor(position);
+          const upperIndex = Math.min(lowerIndex + 1, samples.length - 1);
+          const fraction = position - lowerIndex;
+          
+          // Linear interpolation
+          const lowerValue = samples[lowerIndex];
+          const upperValue = samples[upperIndex];
+          return lowerValue + (upperValue - lowerValue) * fraction;
+        });
+      } else {
+        // If we have more samples than bars, downsample by averaging groups
+        const samplesPerBar = samples.length / targetBarCount;
+        processedBars = Array.from({ length: targetBarCount }, (_, i) => {
+          const startIdx = Math.floor(i * samplesPerBar);
+          const endIdx = Math.floor((i + 1) * samplesPerBar);
+          const group = samples.slice(startIdx, endIdx);
+          
+          // Average the group
+          const sum = group.reduce((acc, val) => acc + val, 0);
+          return sum / group.length;
+        });
+      }
+      
+      setRecordingWaveform(processedBars);
     }
     
     // Cleanup audio context
@@ -1069,6 +1121,33 @@ export default function IMessagePage() {
     setRecordingWaveform([]);
     setPreviewCurrentTime(0);
     setIsPlayingPreview(false);
+    waveformSamplesRef.current = []; // Clear samples
+  };
+
+  // Capture audio level sample for time-based waveform
+  const captureSample = () => {
+    if (!analyserRef.current) return;
+    
+    const analyser = analyserRef.current;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    // Use time domain data for RMS calculation (better loudness metric)
+    analyser.getByteTimeDomainData(dataArray);
+    
+    // Calculate RMS (Root Mean Square) for perceived loudness
+    let sumSquares = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const normalized = (dataArray[i] - 128) / 128; // Normalize to -1 to 1
+      sumSquares += normalized * normalized;
+    }
+    const rms = Math.sqrt(sumSquares / bufferLength);
+    
+    // Convert RMS to 0-255 scale for visualization
+    const amplitude = Math.min(255, rms * 255 * 3); // Multiply by 3 for better visual range
+    
+    // Store this sample
+    waveformSamplesRef.current.push(amplitude);
   };
 
   const visualizeWaveform = () => {
@@ -1076,12 +1155,11 @@ export default function IMessagePage() {
     
     const analyser = analyserRef.current;
     analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.3; // Less smoothing for faster response
+    analyser.smoothingTimeConstant = 0.3;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     
     const draw = () => {
-      // Check if analyser still exists (don't check isRecording as it may not update in closure)
       if (!analyserRef.current) {
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current);
@@ -1089,30 +1167,18 @@ export default function IMessagePage() {
         return;
       }
       
-      // Get frequency data for better voice visualization
+      // Get frequency data for real-time visual feedback
       analyser.getByteFrequencyData(dataArray);
       
-      // Calculate average volume
-      let sum = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        sum += dataArray[i];
-      }
-      const average = sum / bufferLength;
-      
-      // Generate bars - sample evenly across frequency spectrum
       const bars: number[] = [];
-      const barCount = 100; // More bars for fuller width
+      const barCount = 100;
       const step = Math.floor(bufferLength / barCount);
       
       for (let i = 0; i < barCount; i++) {
         const index = i * step;
-        // Get value from frequency data
         let value = dataArray[index];
-        
-        // Boost lower frequencies (voice range) and add volume component
         const boost = i < barCount / 3 ? 1.5 : 1.0;
-        value = Math.min(255, value * boost + average * 0.3);
-        
+        value = Math.min(255, value * boost);
         bars.push(value);
       }
       
@@ -1770,7 +1836,7 @@ export default function IMessagePage() {
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
                       {/* Waveform bars - full width responsive */}
-                      <div className="flex-1 flex items-center justify-between gap-[0.5px] h-10">
+                      <div className="flex-1 flex items-center justify-between gap-[0.5px]" style={{ height: '40px' }}>
                         {recordingWaveform.length > 0 ? (
                           recordingWaveform.map((height, i) => (
                             <div
@@ -1778,8 +1844,9 @@ export default function IMessagePage() {
                               className="bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-50"
                               style={{ 
                                 width: '2px',
-                                height: `${Math.max(15, Math.min(100, (height / 255) * 100))}%`,
-                                opacity: height > 30 ? 1 : 0.4
+                                height: `${Math.max(6, Math.min(40, (height / 255) * 40))}px`,
+                                opacity: height > 30 ? 1 : 0.4,
+                                alignSelf: 'center'
                               }}
                             />
                           ))
@@ -1791,8 +1858,9 @@ export default function IMessagePage() {
                               className="bg-gray-400 dark:bg-gray-500 rounded-full"
                               style={{ 
                                 width: '2px',
-                                height: '15%',
-                                opacity: 0.3
+                                height: '6px',
+                                opacity: 0.3,
+                                alignSelf: 'center'
                               }}
                             />
                           ))
@@ -1847,7 +1915,7 @@ export default function IMessagePage() {
                       
                       {/* Static waveform with progress indicator */}
                       <div className="flex-1 relative">
-                        <div className="flex items-center justify-between gap-[0.5px] h-10">
+                        <div className="flex items-center justify-between gap-[0.5px]" style={{ height: '40px' }}>
                           {recordingWaveform.length > 0 ? (
                             recordingWaveform.map((height, i) => {
                               const progress = recordingDuration > 0 
@@ -1864,7 +1932,8 @@ export default function IMessagePage() {
                                   )}
                                   style={{ 
                                     width: '2px',
-                                    height: `${Math.max(15, Math.min(100, (height / 255) * 80))}%`
+                                    height: `${Math.max(6, Math.min(40, (height / 255) * 32))}px`,
+                                    alignSelf: 'center'
                                   }}
                                 />
                               );
@@ -1877,8 +1946,9 @@ export default function IMessagePage() {
                                 className="bg-gray-400 dark:bg-gray-500 rounded-full"
                                 style={{ 
                                   width: '2px',
-                                  height: '15%',
-                                  opacity: 0.3
+                                  height: '6px',
+                                  opacity: 0.3,
+                                  alignSelf: 'center'
                                 }}
                               />
                             ))
