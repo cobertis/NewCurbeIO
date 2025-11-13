@@ -675,6 +675,60 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a new iMessage is received
+   */
+  async sendImessageNotification(companyId: string, data: {
+    conversationId: string;
+    senderName: string;
+    messageText: string;
+    hasAttachments?: boolean;
+    attachments?: any[];
+  }) {
+    // Get all users in the company
+    const users = await storage.getUsersByCompany(companyId);
+    
+    // Determine message preview
+    let messagePreview = "";
+    if (data.hasAttachments && data.attachments && data.attachments.length > 0) {
+      const attachment = data.attachments[0];
+      const mimeType = attachment.mimeType || "";
+      
+      if (mimeType.startsWith("image/")) {
+        messagePreview = "📷 Photo";
+      } else if (mimeType.startsWith("audio/") || mimeType === "video/webm" && (attachment.width === 0 || attachment.height === 0)) {
+        messagePreview = "🎵 Audio Message";
+      } else if (mimeType.startsWith("video/")) {
+        messagePreview = "🎥 Video";
+      } else if (mimeType.includes("pdf")) {
+        messagePreview = "📄 PDF Document";
+      } else {
+        messagePreview = "📎 Attachment";
+      }
+      
+      // Add text if present
+      if (data.messageText) {
+        messagePreview += `: ${data.messageText}`;
+      }
+    } else {
+      messagePreview = data.messageText || "New message";
+    }
+    
+    // Create notification for each user
+    const notifications: InsertNotification[] = users.map((user: any) => ({
+      userId: user.id,
+      type: "imessage_received",
+      title: `iMessage from ${data.senderName}`,
+      message: messagePreview,
+      link: `/imessage?conversation=${data.conversationId}`,
+      isRead: false,
+    }));
+    
+    const result = await Promise.all(notifications.map((n: InsertNotification) => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    return result;
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {

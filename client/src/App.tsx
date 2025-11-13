@@ -893,8 +893,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                   markAsRead(notification.id);
                                 }
                                 if (notification.link) {
-                                  setLocation(notification.link);
+                                  // Close notifications panel first
                                   setNotificationsOpen(false);
+                                  // Navigate after a small delay to ensure sheet closes smoothly
+                                  setTimeout(() => {
+                                    setLocation(notification.link);
+                                  }, 100);
                                 }
                               }}
                               className="px-4 py-2.5 transition-colors cursor-pointer hover:bg-muted/50"

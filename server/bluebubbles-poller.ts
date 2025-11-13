@@ -151,6 +151,8 @@ async function pollBlueBubblesForCompany(companyId: string) {
                 conversationId: conversation.id,
                 senderName: newMessage.sender,
                 messageText: newMessage.text,
+                hasAttachments: message.attachments && message.attachments.length > 0,
+                attachments: message.attachments || [],
               });
             }
           }
