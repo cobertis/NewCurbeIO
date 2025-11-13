@@ -1365,7 +1365,7 @@ export default function IMessagePage() {
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex-1 min-w-0 leading-snug">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 flex-1 min-w-0 leading-tight">
                         {conversation.lastMessageText || "No messages yet"}
                       </p>
                     </div>
