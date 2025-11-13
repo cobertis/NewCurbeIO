@@ -601,6 +601,11 @@ export default function IMessagePage() {
   const CANCEL_THRESHOLD = -100; // Swipe left 100px to cancel
   const LOCK_THRESHOLD = -80; // Swipe up 80px to lock
 
+  // Touch device detection for dual-mode recording
+  const isTouchDevice = useMemo(() => {
+    return ('maxTouchPoints' in navigator) && navigator.maxTouchPoints > 0;
+  }, []);
+
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
     console.log('[iMessage WebSocket] Received:', message.type, message);
@@ -1947,7 +1952,15 @@ export default function IMessagePage() {
                     className="h-8 w-8 rounded-full transition-colors flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                     onPointerDown={(e) => {
                       e.preventDefault();
-                      // Capture pointer for reliable tracking even if cursor moves outside button
+                      
+                      // Desktop: go directly to locked state with visible stop button
+                      if (!isTouchDevice) {
+                        startRecording();
+                        setRecordingState('locked');
+                        return;
+                      }
+                      
+                      // Mobile: existing gesture-based flow
                       (e.target as HTMLElement).setPointerCapture(e.pointerId);
                       // Record start position for gesture tracking
                       setGestureStartX(e.clientX);
@@ -1958,6 +1971,8 @@ export default function IMessagePage() {
                       startRecording();
                     }}
                     onPointerMove={(e) => {
+                      if (!isTouchDevice) return; // Skip gestures for desktop
+                      
                       if (recordingState === 'holding') {
                         const deltaX = e.clientX - gestureStartX;
                         const deltaY = e.clientY - gestureStartY;
@@ -1983,6 +1998,8 @@ export default function IMessagePage() {
                       // If locked state, IGNORE all gestures (don't update deltas, don't check cancel)
                     }}
                     onPointerUp={(e) => {
+                      if (!isTouchDevice) return; // Skip for desktop - use stop button instead
+                      
                       // CRITICAL: Release pointer capture FIRST (before checking state)
                       // This ensures cleanup happens even if state changed (e.g., after cancel)
                       if (e.target && (e.target as HTMLElement).releasePointerCapture) {
@@ -2143,20 +2160,44 @@ export default function IMessagePage() {
               </div>
             )}
 
-            {/* STATE 3: LOCKED - iPhone-style (NO waveform, timer only) */}
+            {/* STATE 3: LOCKED - Desktop: RED waveform + timer + stop button */}
             {recordingState === 'locked' && (
-              <div className="bg-white dark:bg-gray-900 rounded-full px-6 py-3 flex items-center gap-4 shadow-lg">
-                {/* Simple pulsing indicator (like iPhone locked state) */}
-                <div className="flex-1 flex items-center justify-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-red-600 dark:bg-red-400 animate-pulse" />
-                  
-                  {/* Timer */}
-                  <span className="text-gray-700 dark:text-gray-300 font-mono text-base font-medium tabular-nums">
-                    {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                  </span>
+              <div className="bg-white dark:bg-gray-900 rounded-lg px-6 py-4 flex items-center gap-4 border border-gray-300 dark:border-gray-700 shadow-md">
+                {/* RED waveform visualization (like screenshots) */}
+                <div className="flex-1 flex items-center gap-0.5 h-10 relative" key={waveformRenderKey}>
+                  {waveformBufferRef.current.map((value, i) => {
+                    const totalSamples = waveformIndexRef.current;
+                    const hasData = totalSamples >= 100 ? true : i < totalSamples;
+                    const height = hasData ? Math.max(0.08, value) : 0.08;
+                    const position = i / 100;
+                    const baseOpacity = hasData ? 0.6 : 0.15;
+                    const flowingOpacity = baseOpacity + (Math.sin(position * Math.PI) * 0.4);
+                    
+                    return (
+                      <div
+                        key={`recording-bar-${i}`}
+                        className="relative w-1"
+                        style={{ height: '100%' }}
+                      >
+                        <div
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-red-700 via-red-600 to-red-500 dark:from-red-600 dark:via-red-500 dark:to-red-400 rounded-t-sm transition-all duration-100"
+                          style={{ 
+                            height: `${height * 100}%`,
+                            opacity: flowingOpacity,
+                            boxShadow: hasData ? '0 0 4px rgba(220, 38, 38, 0.3)' : 'none'
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Stop button */}
+                {/* Timer */}
+                <span className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium min-w-[40px] tabular-nums">
+                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                </span>
+
+                {/* STOP button - prominently visible */}
                 <Button
                   size="icon"
                   className="rounded-full bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white h-9 w-9 transition-colors flex-shrink-0"
