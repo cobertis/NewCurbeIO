@@ -47,7 +47,7 @@ The frontend utilizes Wouter for routing and TanStack Query for state management
 - **Agent Assignment System:** Flexible reassignment for quotes and policies.
 - **Policy Renewal System:** Automated renewal period activation with CMS Marketplace integration.
 - **Landing Page Builder System:** A SmartBio/Lynku.id-style bio link page creator with a 3-column editor, drag & drop, real-time mobile preview, and modern gradient themes.
-- **Unified Contacts Directory:** Comprehensive contact management system with deduplication, filtering, and CSV export. Includes contact list management with member assignment and a "No List" filter to view contacts not assigned to any list.
+- **Unified Contacts Directory:** Comprehensive contact management system with deduplication, filtering, and CSV export. Includes contact list management with member assignment, a "No List" filter to view contacts not assigned to any list, and a "Blacklist" filter to view contacts that are in the blacklist (styled in red for visibility).
 - **Tasks & Reminders Management System:** Unified task management with assignment, priority levels, status tracking, due dates, and advanced filtering.
 - **Birthday Automation System:** Automated birthday greetings via Twilio SMS/MMS.
 - **Navigation Prefetch System:** Preloads page data before navigation.
