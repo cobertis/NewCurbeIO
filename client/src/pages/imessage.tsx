@@ -31,7 +31,7 @@ import {
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import type { User } from "@shared/schema";
-import { formatPhoneInput } from "@shared/phone";
+import { formatPhoneInput, formatForDisplay, isValidPhoneNumber } from "@shared/phone";
 
 // Helper function to generate consistent color from string
 function getAvatarColorFromString(str: string): string {
@@ -69,6 +69,19 @@ function getInitials(name: string): string {
   }
   
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// Helper function to format display names (formats phone numbers, leaves regular names as-is)
+function formatDisplayName(name: string | null | undefined): string {
+  if (!name) return '';
+  
+  // Check if it's a phone number pattern
+  if (isValidPhoneNumber(name)) {
+    return formatForDisplay(name);
+  }
+  
+  // Otherwise return as-is (it's a contact name)
+  return name;
 }
 
 // Updated interface types for BlueBubbles integration
@@ -1433,7 +1446,7 @@ export default function IMessagePage() {
                     </div>
                     {newConversationPhone && (
                       <p className="text-sm text-white/90 truncate">
-                        {newConversationPhone}
+                        {formatDisplayName(newConversationPhone)}
                       </p>
                     )}
                   </div>
@@ -1475,7 +1488,7 @@ export default function IMessagePage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-baseline justify-between gap-2 mb-0.5">
                             <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                              <p className="font-semibold text-[15px] truncate">{conversation.displayName}</p>
+                              <p className="font-semibold text-[15px] truncate">{formatDisplayName(conversation.displayName)}</p>
                               {conversation.isPinned && (
                                 <Pin className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 shrink-0" data-testid={`pin-indicator-${conversation.id}`} />
                               )}
@@ -1533,7 +1546,7 @@ export default function IMessagePage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Eliminar conversación</AlertDialogTitle>
                       <AlertDialogDescription>
-                        ¿Estás seguro de que quieres eliminar esta conversación con {conversation.displayName}? Esta acción no se puede deshacer y eliminará todos los mensajes.
+                        ¿Estás seguro de que quieres eliminar esta conversación con {formatDisplayName(conversation.displayName)}? Esta acción no se puede deshacer y eliminará todos los mensajes.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -1735,7 +1748,7 @@ export default function IMessagePage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{selectedConversation.displayName}</p>
+                  <p className="font-semibold">{formatDisplayName(selectedConversation.displayName)}</p>
                   {currentTypingUsers.length > 0 && (
                     <p className="text-sm text-gray-500 flex items-center gap-1">
                       <span className="flex gap-0.5">
