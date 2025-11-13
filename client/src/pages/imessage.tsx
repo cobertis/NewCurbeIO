@@ -410,17 +410,28 @@ function ImessageAudioMessage({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Use real waveform if available, otherwise generate random bars
+  // Use real waveform if available, otherwise generate random bars - WhatsApp uses 64 bars
   const waveformBars = useMemo(() => {
     if (waveform && waveform.length > 0) {
-      // Use real waveform data (scale from 0-255 to 0-100 range)
-      return waveform.slice(0, 45).map(val => {
-        const normalized = (val / 255) * 100;
-        return Math.max(20, normalized);
-      });
+      // Resample to 64 bars if needed
+      const targetBars = 64;
+      if (waveform.length === targetBars) {
+        return waveform;
+      }
+      // Resample
+      const resampled: number[] = [];
+      const step = waveform.length / targetBars;
+      for (let i = 0; i < targetBars; i++) {
+        const start = Math.floor(i * step);
+        const end = Math.floor((i + 1) * step);
+        const slice = waveform.slice(start, end);
+        const avg = slice.length > 0 ? slice.reduce((a, b) => a + b, 0) / slice.length : 0;
+        resampled.push(avg);
+      }
+      return resampled;
     }
-    // Fallback: generate random waveform bars with varied heights
-    return Array.from({ length: 45 }, () => Math.random() * 70 + 30);
+    // Fallback: generate 64 random bars (WhatsApp standard)
+    return Array.from({ length: 64 }, () => Math.floor(Math.random() * 90) + 20);
   }, [waveform]);
 
   return (
@@ -444,24 +455,26 @@ function ImessageAudioMessage({
         )}
       </Button>
 
-      {/* Waveform Visualization - Professional spaced design */}
-      <div className="flex-1 flex items-center justify-between gap-0 h-12 py-1 min-w-0">
-        {waveformBars.map((height, i) => {
+      {/* Waveform Visualization - WhatsApp style: 64 bars */}
+      <div className="flex-1 flex items-center gap-[2px] min-w-0" style={{ height: '32px' }}>
+        {waveformBars.map((amp, i) => {
           const progress = duration > 0 ? currentTime / duration : 0;
           const isActive = i < waveformBars.length * progress;
+          const height = Math.max(5, Math.min(32, (amp / 255) * 32));
           
           return (
             <div
               key={i}
               className={cn(
-                "rounded-full transition-all duration-150",
+                "flex-1 rounded-sm transition-colors duration-150",
                 isActive 
                   ? "bg-blue-500 dark:bg-blue-400" 
                   : "bg-gray-300 dark:bg-gray-600"
               )}
               style={{ 
-                width: '2px',
-                height: `${height}%`
+                minWidth: '2px',
+                maxWidth: '3px',
+                height: `${height}px`
               }}
             />
           );
@@ -522,7 +535,7 @@ export default function IMessagePage() {
   const [recordingWaveform, setRecordingWaveform] = useState<number[]>([]); // Progressive bars array
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
-  const DISPLAY_BAR_COUNT = 45; // Fixed number of bars - less bars = more spaced professional look
+  const DISPLAY_BAR_COUNT = 64; // WhatsApp standard: 64 bars
   
   // Voice recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -2109,17 +2122,18 @@ export default function IMessagePage() {
                       {/* Recording indicator */}
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
-                      {/* Waveform bars - Professional spaced design */}
-                      <div className="flex-1 flex items-end justify-between gap-0" style={{ 
-                        height: '40px'
+                      {/* Waveform bars - WhatsApp style */}
+                      <div className="flex-1 flex items-center gap-[2px]" style={{ 
+                        height: '32px'
                       }}>
                         {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => (
                           <div
                             key={i}
-                            className="bg-blue-500 rounded-full"
+                            className="flex-1 bg-blue-500 rounded-sm"
                             style={{ 
-                              width: '2px',
-                              height: amplitude > 0 ? `${Math.max(10, Math.min(40, (amplitude / 255) * 38))}px` : '10px'
+                              minWidth: '2px',
+                              maxWidth: '3px',
+                              height: amplitude > 0 ? `${Math.max(5, Math.min(32, (amplitude / 255) * 32))}px` : '5px'
                             }}
                           />
                         ))}
@@ -2171,10 +2185,10 @@ export default function IMessagePage() {
                         )}
                       </Button>
                       
-                      {/* Static waveform with progress indicator */}
+                      {/* Static waveform with progress indicator - WhatsApp style */}
                       <div className="flex-1 relative">
-                        <div className="flex items-end justify-between gap-0" style={{ 
-                          height: '40px'
+                        <div className="flex items-center gap-[2px]" style={{ 
+                          height: '32px'
                         }}>
                           {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => {
                             const progress = recordingDuration > 0 
@@ -2186,12 +2200,13 @@ export default function IMessagePage() {
                               <div
                                 key={i}
                                 className={cn(
-                                  "rounded-full transition-colors duration-200",
+                                  "flex-1 rounded-sm transition-colors duration-200",
                                   isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
                                 )}
                                 style={{ 
-                                  width: '2px',
-                                  height: amplitude > 0 ? `${Math.max(10, Math.min(40, (amplitude / 255) * 38))}px` : '10px'
+                                  minWidth: '2px',
+                                  maxWidth: '3px',
+                                  height: amplitude > 0 ? `${Math.max(5, Math.min(32, (amplitude / 255) * 32))}px` : '5px'
                                 }}
                               />
                             );
