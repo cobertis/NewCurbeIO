@@ -66,16 +66,17 @@ function ImessageUnreadBadge() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  const unreadCount = (conversations as any[])?.reduce((total, conv) => total + (conv.unreadCount || 0), 0) || 0;
+  // Count conversations with unread messages (NOT total messages) - same as SMS
+  const unreadConversationCount = ((conversations as any[])?.filter((conv: any) => conv.unreadCount > 0) ?? []).length;
 
-  if (unreadCount === 0) return null;
+  if (unreadConversationCount === 0) return null;
 
   return (
     <Badge 
       variant="destructive" 
       className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
     >
-      {unreadCount > 99 ? '99+' : unreadCount}
+      {unreadConversationCount > 99 ? '99+' : unreadConversationCount}
     </Badge>
   );
 }
