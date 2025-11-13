@@ -1350,9 +1350,14 @@ export default function IMessagePage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="font-medium truncate">{conversation.displayName}</p>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {conversation.unreadCount > 0 && (
+                          <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" data-testid={`unread-indicator-${conversation.id}`} />
+                        )}
+                        <p className="font-medium truncate">{conversation.displayName}</p>
+                      </div>
                       {conversation.lastMessageTime && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 shrink-0">
                           {formatMessageTime(conversation.lastMessageTime)}
                         </span>
                       )}
