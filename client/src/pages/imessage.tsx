@@ -1508,7 +1508,25 @@ export default function IMessagePage() {
                               !isFirstInGroup && "mt-0.5"
                             )}
                           >
-                            <div className={cn("max-w-[65%] relative", message.isFromMe && "text-right")}>
+                            <div className={cn("max-w-[65%] relative group/message", message.isFromMe && "text-right")}>
+                              {/* Delete button - visible on hover */}
+                              {!message.isFromMe && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="absolute -left-8 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover/message:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm('¿Eliminar este mensaje?')) {
+                                      deleteMessageMutation.mutate(message.guid);
+                                    }
+                                  }}
+                                  data-testid={`button-delete-${message.id}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                </Button>
+                              )}
+                              
                               {/* Reply indicator */}
                               {replyToMessage && (
                                 <div className={cn(
@@ -1682,14 +1700,29 @@ export default function IMessagePage() {
                                 </ContextMenuContent>
                               </ContextMenu>
 
-                              {/* Message time - only on last message in group */}
-                              {isLastInGroup && (
-                                <div className={cn("mt-1", message.isFromMe ? "text-right" : "text-left")}>
-                                  <span className="text-xs text-gray-500">
-                                    {formatMessageTime(message.dateCreated)}
-                                  </span>
-                                </div>
-                              )}
+                              {/* Message time - ALWAYS visible */}
+                              <div className={cn("mt-0.5 flex items-center gap-1.5", message.isFromMe ? "justify-end" : "justify-start")}>
+                                <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                                  {formatMessageTime(message.dateCreated)}
+                                </span>
+                                {/* Delete button for sent messages */}
+                                {message.isFromMe && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-4 w-4 opacity-0 group-hover/message:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm('¿Eliminar este mensaje?')) {
+                                        deleteMessageMutation.mutate(message.guid);
+                                      }
+                                    }}
+                                    data-testid={`button-delete-${message.id}`}
+                                  >
+                                    <Trash2 className="h-3 w-3 text-red-500" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
