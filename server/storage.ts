@@ -8119,7 +8119,7 @@ export class DbStorage implements IStorage {
     const addedIds: string[] = [];
     const skippedIds: string[] = [];
     
-    const toAdd: { listId: string; contactId: string }[] = [];
+    const toAdd: { id: string; listId: string; contactId: string }[] = [];
     
     for (const contactId of validContactIds) {
       if (existingContactIds.has(contactId)) {
@@ -8127,6 +8127,7 @@ export class DbStorage implements IStorage {
       } else {
         addedIds.push(contactId);
         toAdd.push({
+          id: crypto.randomUUID(),
           listId,
           contactId,
         });
