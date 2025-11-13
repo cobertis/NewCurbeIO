@@ -1084,40 +1084,45 @@ export default function IMessagePage() {
     if (!analyserRef.current) return;
     
     const analyser = analyserRef.current;
-    analyser.fftSize = 256;
-    const bufferLength = analyser.fftSize;
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.3; // Less smoothing for faster response
+    const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     
     const draw = () => {
-      if (!isRecording || !analyserRef.current) return;
-      
-      // Get time domain data for better voice visualization
-      analyser.getByteTimeDomainData(dataArray);
-      
-      // Calculate RMS for more accurate voice level
-      let sumSquares = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        const normalizedValue = (dataArray[i] - 128) / 128;
-        sumSquares += normalizedValue * normalizedValue;
+      // Check if analyser still exists (don't check isRecording as it may not update in closure)
+      if (!analyserRef.current) {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        return;
       }
-      const rms = Math.sqrt(sumSquares / bufferLength);
-      const volumeLevel = Math.min(255, rms * 500); // Scale up for visibility
       
-      // Generate 80 bars for full width visualization
-      const bars = [];
-      const barCount = 80;
+      // Get frequency data for better voice visualization
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Calculate average volume
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      const average = sum / bufferLength;
+      
+      // Generate bars - sample evenly across frequency spectrum
+      const bars: number[] = [];
+      const barCount = 100; // More bars for fuller width
+      const step = Math.floor(bufferLength / barCount);
       
       for (let i = 0; i < barCount; i++) {
-        // Create a wave pattern that responds to voice
-        const position = (i / barCount) * bufferLength;
-        const dataIndex = Math.floor(position);
-        const amplitude = Math.abs(dataArray[dataIndex] - 128);
+        const index = i * step;
+        // Get value from frequency data
+        let value = dataArray[index];
         
-        // Add some randomness for natural look, but scale with volume
-        const randomFactor = 0.3 + (Math.random() * 0.7);
-        const barHeight = Math.min(255, amplitude * 2 * randomFactor + volumeLevel * 0.5);
+        // Boost lower frequencies (voice range) and add volume component
+        const boost = i < barCount / 3 ? 1.5 : 1.0;
+        value = Math.min(255, value * boost + average * 0.3);
         
-        bars.push(barHeight);
+        bars.push(value);
       }
       
       setRecordingWaveform(bars);
@@ -1774,31 +1779,29 @@ export default function IMessagePage() {
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
                       {/* Waveform bars - full width responsive */}
-                      <div className="flex-1 flex items-center gap-[1px] h-8 px-1">
+                      <div className="flex-1 flex items-center justify-between gap-[0.5px] h-10">
                         {recordingWaveform.length > 0 ? (
                           recordingWaveform.map((height, i) => (
                             <div
                               key={i}
-                              className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-75"
+                              className="bg-gray-400 dark:bg-gray-500 rounded-full transition-all duration-50"
                               style={{ 
-                                height: `${Math.max(8, Math.min(100, (height / 255) * 90))}%`,
-                                opacity: height > 50 ? 0.9 : 0.5,
-                                minWidth: '1px',
-                                maxWidth: '3px'
+                                width: '2px',
+                                height: `${Math.max(15, Math.min(100, (height / 255) * 100))}%`,
+                                opacity: height > 30 ? 1 : 0.4
                               }}
                             />
                           ))
                         ) : (
                           // Show default bars while initializing
-                          Array.from({ length: 80 }, (_, i) => (
+                          Array.from({ length: 100 }, (_, i) => (
                             <div
                               key={i}
-                              className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full"
+                              className="bg-gray-400 dark:bg-gray-500 rounded-full"
                               style={{ 
-                                height: '10%',
-                                opacity: 0.3,
-                                minWidth: '1px',
-                                maxWidth: '3px'
+                                width: '2px',
+                                height: '15%',
+                                opacity: 0.3
                               }}
                             />
                           ))
@@ -1853,7 +1856,7 @@ export default function IMessagePage() {
                       
                       {/* Static waveform with progress indicator */}
                       <div className="flex-1 relative">
-                        <div className="flex items-center gap-[1px] h-8 px-1">
+                        <div className="flex items-center justify-between gap-[0.5px] h-10">
                           {recordingWaveform.length > 0 ? (
                             recordingWaveform.map((height, i) => {
                               const progress = recordingDuration > 0 
@@ -1865,28 +1868,26 @@ export default function IMessagePage() {
                                 <div
                                   key={i}
                                   className={cn(
-                                    "flex-1 rounded-full transition-colors duration-200",
+                                    "rounded-full transition-colors duration-200",
                                     isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
                                   )}
                                   style={{ 
-                                    height: `${Math.max(8, Math.min(100, (height / 255) * 60))}%`,
-                                    minWidth: '1px',
-                                    maxWidth: '3px'
+                                    width: '2px',
+                                    height: `${Math.max(15, Math.min(100, (height / 255) * 80))}%`
                                   }}
                                 />
                               );
                             })
                           ) : (
                             // Show default bars if no waveform
-                            Array.from({ length: 80 }, (_, i) => (
+                            Array.from({ length: 100 }, (_, i) => (
                               <div
                                 key={i}
-                                className="flex-1 bg-gray-400 dark:bg-gray-500 rounded-full"
+                                className="bg-gray-400 dark:bg-gray-500 rounded-full"
                                 style={{ 
-                                  height: '10%',
-                                  opacity: 0.3,
-                                  minWidth: '1px',
-                                  maxWidth: '3px'
+                                  width: '2px',
+                                  height: '15%',
+                                  opacity: 0.3
                                 }}
                               />
                             ))
