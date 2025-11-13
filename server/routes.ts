@@ -1884,13 +1884,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       
-      // Create uploads/imessage directory if it doesn't exist
-      const uploadDir = path.join('uploads', 'imessage');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      
-      // Save file with GUID and normalized extension
+      // Save file with GUID and normalized extension (uploadDir already declared and created above)
       const filename = `${guid}.${ext}`;
       const savedFilePath = path.join(uploadDir, filename);
       
