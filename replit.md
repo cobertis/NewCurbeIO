@@ -13,7 +13,9 @@ Design style: Extremely professional corporate design - NO bright colors, NO emo
 ALWAYS use the standardized `LoadingSpinner` component for all loading states across the application.
 - User strongly prefers consistent loading indicators across all pages
 - Shows large, centered spinner (h-12 w-12) with descriptive text
-- `fullScreen={true}` (default) for pages, `fullScreen={false}` for sheets/dialogs
+- `fullScreen={true}` (default) for full page loading states
+- `fullScreen={false}` REQUIRED for: buttons, dialogs, sheets, inline components - prevents full-screen overlay
+- CRITICAL: All button loading states MUST use `fullScreen={false}` to avoid UI-blocking overlays
 - Apply consistently across ALL pages, sheets, dialogs, and async components
 - This ensures a uniform user experience throughout the entire application
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
