@@ -1,11 +1,14 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
+import { blacklistService } from "./services/blacklist-service";
 
 interface EmailOptions {
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
+  companyId?: string;
+  skipBlacklistCheck?: boolean;
 }
 
 class EmailService {
@@ -69,6 +72,20 @@ class EmailService {
     }
 
     try {
+      // Check blacklist before sending (if companyId provided and not skipping check)
+      if (options.companyId && !options.skipBlacklistCheck) {
+        const emailsToCheck = Array.isArray(options.to) ? options.to : [options.to];
+        
+        // Check each email against blacklist
+        for (const email of emailsToCheck) {
+          await blacklistService.assertNotBlacklisted({
+            companyId: options.companyId,
+            channel: "email",
+            identifier: email
+          });
+        }
+      }
+      
       // Always use SMTP_USER as the from email (it's properly configured)
       const fromEmail = process.env.SMTP_USER;
       const fromName = process.env.SMTP_FROM_NAME || "Curbe.io";
@@ -96,11 +113,17 @@ class EmailService {
       console.log(`Email sent successfully to ${options.to}`);
       return true;
     } catch (error: any) {
-      console.error("Failed to send email - ERROR DETAILS:");
-      console.error("Error message:", error.message);
-      console.error("Error code:", error.code);
-      console.error("Error response:", error.response);
-      console.error("Full error:", JSON.stringify(error, null, 2));
+      // Log blacklist rejections distinctly
+      if (error.message?.includes('blacklisted')) {
+        const emails = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+        console.log(`[BLACKLIST] Blocked outbound email to ${emails} on email`);
+      } else {
+        console.error("Failed to send email - ERROR DETAILS:");
+        console.error("Error message:", error.message);
+        console.error("Error code:", error.code);
+        console.error("Error response:", error.response);
+        console.error("Full error:", JSON.stringify(error, null, 2));
+      }
       return false;
     }
   }

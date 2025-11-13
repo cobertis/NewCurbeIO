@@ -101,6 +101,7 @@ export class EmailCampaignService {
             subject: campaign.subject,
             html: personalizedHtml,
             text: personalizedText,
+            companyId: user.companyId || undefined,
           });
 
           if (emailSent) {

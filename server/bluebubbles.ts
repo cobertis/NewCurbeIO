@@ -1,4 +1,18 @@
 import type { CompanySettings } from "@shared/schema";
+import { blacklistService } from "./services/blacklist-service";
+
+/**
+ * Extract phone number from iMessage chatGuid
+ * Format: "iMessage;-;+13105551234" or "SMS;-;+13105551234"
+ * Returns the phone number or null if not found
+ */
+function extractPhoneFromChatGuid(chatGuid: string): string | null {
+  const parts = chatGuid.split(';-;');
+  if (parts.length >= 2) {
+    return parts[1];
+  }
+  return null;
+}
 
 interface BlueBubblesConfig {
   serverUrl: string;
@@ -103,7 +117,21 @@ export class BlueBubblesClient {
     return response.json();
   }
 
-  async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
+  async sendMessage(request: SendMessageRequest, companyId?: string): Promise<SendMessageResponse> {
+    // Check blacklist before sending (if companyId provided)
+    if (companyId) {
+      const recipientPhone = extractPhoneFromChatGuid(request.chatGuid);
+      if (recipientPhone) {
+        await blacklistService.assertNotBlacklisted({
+          companyId,
+          channel: "imessage",
+          identifier: recipientPhone
+        });
+      } else {
+        console.warn(`[iMessage] Could not extract phone number from chatGuid: ${request.chatGuid}`);
+      }
+    }
+    
     const payload: any = {
       chatGuid: request.chatGuid,
       message: request.message,
@@ -136,8 +164,23 @@ export class BlueBubblesClient {
       uti: string;
       codec: string;
       sampleRate: number;
-    }
+    },
+    companyId?: string
   ): Promise<SendMessageResponse> {
+    // Check blacklist before sending (if companyId provided)
+    if (companyId) {
+      const recipientPhone = extractPhoneFromChatGuid(chatGuid);
+      if (recipientPhone) {
+        await blacklistService.assertNotBlacklisted({
+          companyId,
+          channel: "imessage",
+          identifier: recipientPhone
+        });
+      } else {
+        console.warn(`[iMessage] Could not extract phone number from chatGuid: ${chatGuid}`);
+      }
+    }
+    
     // BlueBubbles expects a file path or Buffer, not a File object
     // When called from our API, we'll pass the file path from multer upload
     const formData = new FormData();
@@ -340,11 +383,11 @@ let blueBubblesClientInstance: BlueBubblesClient | null = null;
 
 // Export a singleton getter that creates/returns the client
 export const blueBubblesClient = {
-  sendMessage: async (request: SendMessageRequest): Promise<SendMessageResponse> => {
+  sendMessage: async (request: SendMessageRequest, companyId?: string): Promise<SendMessageResponse> => {
     if (!blueBubblesClientInstance) {
       throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
     }
-    return blueBubblesClientInstance.sendMessage(request);
+    return blueBubblesClientInstance.sendMessage(request, companyId);
   },
   
   sendAttachment: async (
@@ -359,12 +402,13 @@ export const blueBubblesClient = {
       uti: string;
       codec: string;
       sampleRate: number;
-    }
+    },
+    companyId?: string
   ): Promise<SendMessageResponse> => {
     if (!blueBubblesClientInstance) {
       throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
     }
-    return blueBubblesClientInstance.sendAttachment(chatGuid, attachmentPath, tempGuid, isAudioMessage, audioMetadata);
+    return blueBubblesClientInstance.sendAttachment(chatGuid, attachmentPath, tempGuid, isAudioMessage, audioMetadata, companyId);
   },
   
   getChats: async (offset = 0, limit = 100): Promise<{ data: Chat[] }> => {

@@ -118,6 +118,21 @@ const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/heic', 'image/heif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/x-caf'];
 const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
+/**
+ * Detect STOP keywords in incoming messages for regulatory compliance
+ * 
+ * Checks if the message contains any unsubscribe/STOP keywords that require
+ * immediate blacklisting per telecommunications regulations.
+ * 
+ * @param messageBody - The message text to check
+ * @returns true if STOP keyword detected, false otherwise
+ */
+function detectStopKeyword(messageBody: string): boolean {
+  const stopKeywords = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"];
+  const normalizedBody = messageBody.trim().toUpperCase();
+  return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
+}
+
 // Verify ffmpeg is available at startup
 (async () => {
   try {
@@ -485,6 +500,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           subject,
           html: htmlContent,
           text: textContent,
+          skipBlacklistCheck: true, // System payment notification email
         });
         
         if (emailSent) {
@@ -588,6 +604,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           subject,
           html: htmlContent,
           text: textContent,
+          skipBlacklistCheck: true, // System payment notification email
         });
         
         if (emailSent) {
@@ -653,6 +670,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         subject: template.subject.replace(/\{\{company_name\}\}/g, companyName),
         html: htmlContent,
         text: textContent || `Please activate your account by clicking this link: ${activationLink}`,
+        skipBlacklistCheck: true, // System activation email
       });
 
       return emailSent;
@@ -858,10 +876,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.log(`[BIRTHDAY MMS] MMS delivered successfully. Sending follow-up SMS...`);
             
             try {
+              // Fetch greeting history to get companyId for blacklist check
+              const greetingHistory = await storage.getBirthdayGreetingHistory(pendingMessage.greetingHistoryId);
+              const companyId = greetingHistory?.companyId;
+              
               // Send the SMS text message
               const smsResult = await twilioService.sendSMS(
                 pendingMessage.recipientPhone,
-                pendingMessage.smsBody
+                pendingMessage.smsBody,
+                undefined,
+                companyId
               );
               
               if (smsResult) {
@@ -956,7 +980,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Store incoming message
-      await storage.createIncomingSmsMessage({
+      const savedMessage = await storage.createIncomingSmsMessage({
         twilioMessageSid: MessageSid,
         fromPhone: From,
         toPhone: To,
@@ -965,6 +989,50 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId: matchedUser?.companyId || null,
         isRead: false
       });
+      
+      // STOP Detection - Auto-blacklist for regulatory compliance
+      if (detectStopKeyword(Body)) {
+        console.log(`[TWILIO STOP] STOP keyword detected from ${From}: "${Body}"`);
+        
+        try {
+          // Only blacklist if we have a company context
+          if (matchedUser?.companyId) {
+            // Add to blacklist immediately (regulatory requirement)
+            await blacklistService.addToBlacklist({
+              companyId: matchedUser.companyId,
+              channel: "sms",
+              identifier: From,
+              reason: "stop",
+              sourceMessageId: savedMessage.id,
+              notes: `Auto-blacklisted via STOP keyword: "${Body}"`
+            });
+            
+            console.log(`[TWILIO STOP] Successfully blacklisted ${From} for company ${matchedUser.companyId}`);
+            
+            // Notify company admins about the blacklist action
+            const companyUsers = await storage.getUsersByCompany(matchedUser.companyId);
+            const adminUsers = companyUsers.filter(u => u.role === 'admin' || u.role === 'superadmin');
+            
+            for (const admin of adminUsers) {
+              await storage.createNotification({
+                userId: admin.id,
+                type: "system",
+                title: "Phone Number Blacklisted",
+                message: `${From} was automatically blacklisted after sending STOP`,
+                link: "/contacts",
+                isRead: false
+              });
+            }
+            
+            console.log(`[TWILIO STOP] Created ${adminUsers.length} admin notification(s) for blacklist action`);
+          } else {
+            console.log(`[TWILIO STOP] No company context for ${From}, blacklist skipped`);
+          }
+        } catch (error) {
+          // Log error but don't fail webhook (regulatory compliance: always process STOP)
+          console.error(`[TWILIO STOP] Error adding to blacklist:`, error);
+        }
+      }
       
       // Create notifications for superadmins
       try {
@@ -2149,7 +2217,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
           
           console.log(`[iMessage] Sending text message via BlueBubbles`);
-          sendResult = await blueBubblesClient.sendMessage(sendPayload);
+          sendResult = await blueBubblesClient.sendMessage(sendPayload, user.companyId);
           console.log(`[iMessage] BlueBubbles response:`, sendResult);
         }
         
@@ -2253,7 +2321,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             actualFilePath,
             clientGuid, // Send clientGuid for webhook reconciliation
             isVoiceMemo, // Mark as audio message if CAF
-            audioMetadata // Send audio metadata for voice memos (guaranteed non-null if isVoiceMemo=true)
+            audioMetadata, // Send audio metadata for voice memos (guaranteed non-null if isVoiceMemo=true)
+            user.companyId
           );
           
           // If no text message was sent, use attachment result as primary
@@ -4046,6 +4115,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           subject: template.subject,
           html: htmlContent,
           text: textContent,
+          skipBlacklistCheck: true, // System OTP email
         });
       } else if (method === "sms") {
         await twilioService.sendOTPSMS(user.phone!, code);
@@ -4282,6 +4352,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           subject: template.subject,
           html: htmlContent,
           text: textContent,
+          skipBlacklistCheck: true, // System OTP email
         });
       } else if (method === "sms") {
         await twilioService.sendOTPSMS(user.phone!, code);
@@ -4501,6 +4572,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         subject: template.subject.replace(/\{\{company_name\}\}/g, companyName),
         html: htmlContent,
         text: textContent || `Reset your password by clicking this link: ${resetLink}`,
+        skipBlacklistCheck: true, // System password reset email
       });
 
       if (!emailSent) {
@@ -9534,7 +9606,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           try {
             const result = await twilioService.sendSMS(
               recipient.phone!,
-              campaign.message
+              campaign.message,
+              undefined,
+              currentUser.companyId
             );
 
             if (result) {
@@ -10866,7 +10940,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Send SMS via Twilio
       try {
-        const twilioResult = await twilioService.sendSMS(toPhone, message);
+        const twilioResult = await twilioService.sendSMS(toPhone, message, undefined, companyId || undefined);
         
         if (twilioResult) {
           // Update with Twilio SID and status
@@ -15242,6 +15316,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           to: target,
           subject: emailSubject,
           html: htmlContent,
+          companyId: currentUser.companyId,
         });
         console.log('[CONSENT EMAIL] Send result:', sent);
         
@@ -15266,7 +15341,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           : `Hello ${quote.clientFirstName},\n\nTo continue we need your consent, please sign at the following link:\n\n${consentUrl}\n\nThank you\n\n${company.name}`;
         
         try {
-          const result = await twilioService.sendSMS(target, smsMessage);
+          const result = await twilioService.sendSMS(target, smsMessage, undefined, currentUser.companyId);
           
           if (!result) {
             await storage.createConsentEvent(consentId, 'failed', { channel, target, error: 'SMS delivery failed' }, currentUser.id);
@@ -20497,6 +20572,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           to: target,
           subject: emailSubject,
           html: htmlContent,
+          companyId: currentUser.companyId,
         });
         console.log('[CONSENT EMAIL] Send result:', sent);
         
@@ -20521,7 +20597,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           : `Hello ${policy.clientFirstName},\n\nTo continue we need your consent, please sign at the following link:\n\n${consentUrl}\n\nThank you\n\n${company.name}`;
         
         try {
-          const result = await twilioService.sendSMS(target, smsMessage);
+          const result = await twilioService.sendSMS(target, smsMessage, undefined, currentUser.companyId);
           
           if (!result) {
             await storage.createPolicyConsentEvent(consentId, 'failed', { channel, target, error: 'SMS delivery failed' }, currentUser.id);
@@ -23218,6 +23294,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deliveredAt: new Date(),
         });
         
+        // STOP Detection - Auto-blacklist for regulatory compliance
+        if (body && detectStopKeyword(body)) {
+          console.log(`[BULKVS STOP] STOP keyword detected from ${from}: "${body}"`);
+          
+          try {
+            // Add to blacklist immediately (regulatory requirement)
+            await blacklistService.addToBlacklist({
+              companyId: phoneNumber.companyId,
+              channel: "sms",
+              identifier: from,
+              reason: "stop",
+              sourceMessageId: message.id,
+              notes: `Auto-blacklisted via STOP keyword: "${body}"`
+            });
+            
+            console.log(`[BULKVS STOP] Successfully blacklisted ${from} for company ${phoneNumber.companyId}`);
+            
+            // Notify company admins about the blacklist action
+            const companyUsers = await storage.getUsersByCompany(phoneNumber.companyId);
+            const adminUsers = companyUsers.filter(u => u.role === 'admin' || u.role === 'superadmin');
+            
+            for (const admin of adminUsers) {
+              await storage.createNotification({
+                userId: admin.id,
+                type: "system",
+                title: "Phone Number Blacklisted",
+                message: `${from} was automatically blacklisted after sending STOP`,
+                link: "/contacts",
+                isRead: false
+              });
+            }
+            
+            console.log(`[BULKVS STOP] Created ${adminUsers.length} admin notification(s) for blacklist action`);
+          } catch (error) {
+            // Log error but don't fail webhook (regulatory compliance: always process STOP)
+            console.error(`[BULKVS STOP] Error adding to blacklist:`, error);
+          }
+        }
+        
         // Increment unread count
         await storage.incrementThreadUnread(thread.id);
         
@@ -23323,6 +23438,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           providerMsgId: providerMsgId || null,
           deliveredAt: new Date(),
         });
+        
+        // STOP Detection - Auto-blacklist for regulatory compliance
+        if (body && detectStopKeyword(body)) {
+          console.log(`[BULKVS STOP] STOP keyword detected from ${from}: "${body}"`);
+          
+          try {
+            // Add to blacklist immediately (regulatory requirement)
+            await blacklistService.addToBlacklist({
+              companyId: phoneNumber.companyId,
+              channel: "sms",
+              identifier: from,
+              reason: "stop",
+              sourceMessageId: message.id,
+              notes: `Auto-blacklisted via STOP keyword: "${body}"`
+            });
+            
+            console.log(`[BULKVS STOP] Successfully blacklisted ${from} for company ${phoneNumber.companyId}`);
+            
+            // Notify company admins about the blacklist action
+            const companyUsers = await storage.getUsersByCompany(phoneNumber.companyId);
+            const adminUsers = companyUsers.filter(u => u.role === 'admin' || u.role === 'superadmin');
+            
+            for (const admin of adminUsers) {
+              await storage.createNotification({
+                userId: admin.id,
+                type: "system",
+                title: "Phone Number Blacklisted",
+                message: `${from} was automatically blacklisted after sending STOP`,
+                link: "/contacts",
+                isRead: false
+              });
+            }
+            
+            console.log(`[BULKVS STOP] Created ${adminUsers.length} admin notification(s) for blacklist action`);
+          } catch (error) {
+            // Log error but don't fail webhook (regulatory compliance: always process STOP)
+            console.error(`[BULKVS STOP] Error adding to blacklist:`, error);
+          }
+        }
         
         // Increment unread count
         await storage.incrementThreadUnread(thread.id);
@@ -23517,7 +23671,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         to: thread!.externalPhone,
         body: body || undefined,
         mediaUrl: mediaUrl || undefined,
-      });
+      }, user.companyId);
       
       console.log("[BulkVS] Message sent:", sendResult);
       
@@ -24182,7 +24336,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const mmsResult = await twilioService.sendMMS(
               birthday.phone,
               imageUrl,
-              pendingMessage.id
+              pendingMessage.id,
+              user.companyId
             );
             
             if (mmsResult) {
@@ -24201,7 +24356,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           } else {
             // No image, send SMS directly
             console.log(`[TEST] Sending SMS (no image)`);
-            const smsResult = await twilioService.sendSMS(birthday.phone, messageBody);
+            const smsResult = await twilioService.sendSMS(birthday.phone, messageBody, undefined, user.companyId);
             
             if (smsResult) {
               twilioMessageSid = smsResult.sid;

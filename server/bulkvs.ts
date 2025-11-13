@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import { formatForBulkVS } from "@shared/phone";
+import { blacklistService } from "./services/blacklist-service";
 
 const BULKVS_API_BASE = "https://portal.bulkvs.com/api/v1.0";
 
@@ -225,10 +226,19 @@ class BulkVSClient {
     to: string;
     body?: string;
     mediaUrl?: string;
-  }) {
+  }, companyId?: string) {
     if (!this.isConfigured()) throw new Error("BulkVS not configured");
     
     try {
+      // Check blacklist before sending (if companyId provided)
+      if (companyId) {
+        await blacklistService.assertNotBlacklisted({
+          companyId,
+          channel: "sms",
+          identifier: payload.to
+        });
+      }
+      
       // Normalize phone numbers to 11-digit format (1NXXNXXXXXX) for BulkVS API
       const normalizedFrom = formatForBulkVS(payload.from);
       const normalizedTo = formatForBulkVS(payload.to);
@@ -267,7 +277,12 @@ class BulkVSClient {
       
       return response.data;
     } catch (error: any) {
-      console.error("[BulkVS] messageSend error:", error.response?.data || error.message);
+      // Log blacklist rejections distinctly
+      if (error.message?.includes('blacklisted')) {
+        console.log(`[BLACKLIST] Blocked outbound message to ${payload.to} on sms`);
+      } else {
+        console.error("[BulkVS] messageSend error:", error.response?.data || error.message);
+      }
       throw error;
     }
   }

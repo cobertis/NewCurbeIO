@@ -363,7 +363,8 @@ export function startBirthdayScheduler() {
                   const mmsResult = await twilioService.sendMMS(
                     birthday.phone,
                     imageUrl,
-                    pendingMessage.id
+                    pendingMessage.id,
+                    company.id
                   );
 
                   if (mmsResult) {
@@ -385,7 +386,7 @@ export function startBirthdayScheduler() {
                 } else {
                   // NO IMAGE: Send SMS directly (old behavior)
                   console.log(`[BIRTHDAY SCHEDULER] No image selected, sending SMS only`);
-                  const smsResult = await twilioService.sendSMS(birthday.phone, messageBody);
+                  const smsResult = await twilioService.sendSMS(birthday.phone, messageBody, undefined, company.id);
                   
                   if (smsResult) {
                     twilioMessageSid = smsResult.sid;
