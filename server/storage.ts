@@ -1012,6 +1012,7 @@ export interface IStorage {
     limit: number;
     search?: string;
     listId?: string;
+    includeUnassignedOnly?: boolean;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     dateFrom?: Date;
@@ -7836,12 +7837,13 @@ export class DbStorage implements IStorage {
     limit: number;
     search?: string;
     listId?: string;
+    includeUnassignedOnly?: boolean;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     dateFrom?: Date;
     dateTo?: Date;
   }): Promise<{ contacts: ManualContact[]; total: number; page: number; limit: number }> {
-    const { companyId, page, limit, search, listId, sortBy = 'createdAt', sortOrder = 'desc', dateFrom, dateTo } = params;
+    const { companyId, page, limit, search, listId, includeUnassignedOnly, sortBy = 'createdAt', sortOrder = 'desc', dateFrom, dateTo } = params;
     const offset = (page - 1) * limit;
     
     // Build where conditions
@@ -7866,10 +7868,22 @@ export class DbStorage implements IStorage {
       conditions.push(lt(manualContacts.createdAt, dateTo));
     }
     
-    // If filtering by list, join with contactListMembers
+    // Build base query
     let query = db.select({ contact: manualContacts }).from(manualContacts);
     
-    if (listId) {
+    // Handle different filtering scenarios
+    if (includeUnassignedOnly) {
+      // Show only contacts NOT in any list using NOT EXISTS subquery
+      conditions.push(
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${contactListMembers} 
+          WHERE ${contactListMembers.userId} = ${manualContacts.userId}
+          AND ${contactListMembers.companyId} = ${companyId}
+        )` as any
+      );
+      query = query.where(and(...conditions) as any) as any;
+    } else if (listId) {
+      // Show contacts in a specific list using INNER JOIN
       query = query
         .innerJoin(contactListMembers, eq(contactListMembers.userId, manualContacts.userId))
         .where(and(
@@ -7877,14 +7891,41 @@ export class DbStorage implements IStorage {
           eq(contactListMembers.listId, listId)
         ) as any) as any;
     } else {
+      // Show all contacts
       query = query.where(and(...conditions) as any) as any;
     }
     
-    // Get total count
-    const countResult = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(manualContacts)
-      .where(and(...conditions) as any);
+    // Get total count with same filtering logic
+    let countQuery;
+    if (includeUnassignedOnly) {
+      countQuery = db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(manualContacts)
+        .where(and(
+          ...conditions,
+          sql`NOT EXISTS (
+            SELECT 1 FROM ${contactListMembers} 
+            WHERE ${contactListMembers.userId} = ${manualContacts.userId}
+            AND ${contactListMembers.companyId} = ${companyId}
+          )`
+        ) as any);
+    } else if (listId) {
+      countQuery = db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(manualContacts)
+        .innerJoin(contactListMembers, eq(contactListMembers.userId, manualContacts.userId))
+        .where(and(
+          ...conditions,
+          eq(contactListMembers.listId, listId)
+        ) as any);
+    } else {
+      countQuery = db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(manualContacts)
+        .where(and(...conditions) as any);
+    }
+    
+    const countResult = await countQuery;
     const total = countResult[0]?.count || 0;
     
     // Apply sorting
