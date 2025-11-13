@@ -27,6 +27,8 @@ import {
   Check, Clock, Volume2, VolumeX, RefreshCw, X, ChevronDown,
   Smile, Image as ImageIcon, FileText, Camera, Plus, MessageCircle, MessageSquare, Eye, User as UserIcon, MapPin, Play, Pause, AudioWaveform, Mic, MicOff, Square, Circle
 } from "lucide-react";
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 import type { User } from "@shared/schema";
 
 // Helper function to generate consistent color from string
@@ -475,6 +477,7 @@ export default function IMessagePage() {
   const [replyingToMessage, setReplyingToMessage] = useState<ImessageMessage | null>(null);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<string, TypingIndicator>>(new Map());
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -1178,14 +1181,9 @@ export default function IMessagePage() {
       
       // Send message with audio attachment
       await sendMessageMutation.mutateAsync({
-        conversationId: selectedConversationId,
         text: '',
         attachments: tempAttachments,
-        clientGuid: clientGuid,
-        metadata: {
-          waveform: recordingWaveform,
-          duration: recordingDuration * 1000 // Convert to milliseconds
-        }
+        clientGuid: clientGuid
       });
       
       // Clear recording state
@@ -1970,7 +1968,7 @@ export default function IMessagePage() {
                   <MapPin className="h-5 w-5" />
                 </Button>
 
-                {/* Text input */}
+                {/* Text input with emoji picker */}
                 <div className="flex-1 relative bg-gray-100 dark:bg-gray-800 rounded-full flex items-center px-4 py-2">
                   <input
                     ref={messageInputRef}
@@ -1986,22 +1984,55 @@ export default function IMessagePage() {
                     }}
                     placeholder="iMessage"
                     className={cn(
-                      "flex-1 bg-transparent border-0 outline-none",
+                      "flex-1 bg-transparent border-0 outline-none pr-2",
                       "placeholder:text-gray-500"
                     )}
                     data-testid="message-input"
                   />
+                  
+                  {/* Emoji picker button inside input */}
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0"
+                        data-testid="emoji-button"
+                      >
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent 
+                      side="top" 
+                      align="end" 
+                      className="w-full p-0 border-0"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <Picker
+                        data={data}
+                        onEmojiSelect={(emoji: any) => {
+                          const cursorPosition = messageInputRef.current?.selectionStart || messageText.length;
+                          const textBeforeCursor = messageText.slice(0, cursorPosition);
+                          const textAfterCursor = messageText.slice(cursorPosition);
+                          const newText = textBeforeCursor + emoji.native + textAfterCursor;
+                          setMessageText(newText);
+                          setShowEmojiPicker(false);
+                          
+                          // Focus back on input
+                          setTimeout(() => {
+                            messageInputRef.current?.focus();
+                            const newCursorPosition = cursorPosition + emoji.native.length;
+                            messageInputRef.current?.setSelectionRange(newCursorPosition, newCursorPosition);
+                          }, 0);
+                        }}
+                        theme="auto"
+                        previewPosition="none"
+                        skinTonePosition="none"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-
-                {/* Emoji button */}
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  data-testid="emoji-button"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
 
                 {/* Send button */}
                 <Button
