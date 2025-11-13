@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatPhoneInput } from "@shared/phone";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -729,7 +730,15 @@ export default function Contacts() {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="(555) 123-4567" data-testid="input-add-phone" />
+                      <Input 
+                        {...field} 
+                        placeholder="+1 (555) 123-4567" 
+                        data-testid="input-add-phone"
+                        onChange={(e) => {
+                          const formatted = formatPhoneInput(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -837,7 +846,14 @@ export default function Contacts() {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-edit-phone" />
+                      <Input 
+                        {...field} 
+                        data-testid="input-edit-phone"
+                        onChange={(e) => {
+                          const formatted = formatPhoneInput(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
