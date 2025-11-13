@@ -521,7 +521,7 @@ export default function IMessagePage() {
   const [recordingWaveform, setRecordingWaveform] = useState<number[]>([]); // Progressive bars array
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
-  const maxRecordingBars = 100; // Maximum bars to display
+  const DISPLAY_BAR_COUNT = 64; // Fixed number of bars that fill 100% width
   
   // Voice recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -531,6 +531,25 @@ export default function IMessagePage() {
   const samplingIntervalRef = useRef<NodeJS.Timeout | null>(null); // For waveform sampling
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Helper function to resample waveform to fixed bar count
+  const resampleWaveform = (input: number[], targetCount: number): number[] => {
+    if (input.length === 0) return Array(targetCount).fill(0);
+    if (input.length === targetCount) return input;
+    
+    const output: number[] = [];
+    const step = input.length / targetCount;
+    
+    for (let i = 0; i < targetCount; i++) {
+      const start = Math.floor(i * step);
+      const end = Math.floor((i + 1) * step);
+      const slice = input.slice(start, end);
+      const avg = slice.length > 0 ? slice.reduce((a, b) => a + b, 0) / slice.length : 0;
+      output.push(avg);
+    }
+    
+    return output;
+  };
 
   // WebSocket message handler - define before using in useWebSocket
   const handleWebSocketMessage = useCallback((message: any) => {
@@ -2082,22 +2101,20 @@ export default function IMessagePage() {
                       {/* Recording indicator */}
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
-                      {/* Waveform bars - fills entire width */}
-                      <div className="flex-1 flex items-center gap-[1px]" style={{ height: '40px' }}>
-                        {Array.from({ length: 60 }).map((_, i) => {
-                          const height = recordingWaveform[i] || 0;
-                          return (
-                            <div
-                              key={i}
-                              className="bg-blue-500 rounded-full flex-1"
-                              style={{ 
-                                height: height > 0 ? `${Math.max(8, Math.min(40, (height / 255) * 36))}px` : '8px',
-                                alignSelf: 'center',
-                                minWidth: '1px'
-                              }}
-                            />
-                          );
-                        })}
+                      {/* Waveform bars - ALWAYS fills entire width */}
+                      <div className="flex-1 grid items-end gap-[1px]" style={{ 
+                        height: '40px',
+                        gridTemplateColumns: `repeat(${DISPLAY_BAR_COUNT}, minmax(0, 1fr))`
+                      }}>
+                        {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => (
+                          <div
+                            key={i}
+                            className="bg-blue-500 rounded-full w-full"
+                            style={{ 
+                              height: amplitude > 0 ? `${Math.max(8, Math.min(40, (amplitude / 255) * 36))}px` : '8px'
+                            }}
+                          />
+                        ))}
                       </div>
                       
                       {/* Duration */}
@@ -2148,24 +2165,25 @@ export default function IMessagePage() {
                       
                       {/* Static waveform with progress indicator */}
                       <div className="flex-1 relative">
-                        <div className="flex items-center gap-[0.5px]" style={{ height: '40px' }}>
-                          {recordingWaveform.map((height, i) => {
+                        <div className="grid items-end gap-[1px]" style={{ 
+                          height: '40px',
+                          gridTemplateColumns: `repeat(${DISPLAY_BAR_COUNT}, minmax(0, 1fr))`
+                        }}>
+                          {resampleWaveform(recordingWaveform, DISPLAY_BAR_COUNT).map((amplitude, i) => {
                             const progress = recordingDuration > 0 
                               ? previewCurrentTime / recordingDuration 
                               : 0;
-                            const isPlayed = i < recordingWaveform.length * progress;
+                            const isPlayed = i < DISPLAY_BAR_COUNT * progress;
                             
                             return (
                               <div
                                 key={i}
                                 className={cn(
-                                  "rounded-full transition-colors duration-200",
+                                  "rounded-full transition-colors duration-200 w-full",
                                   isPlayed ? "bg-blue-500" : "bg-gray-400 dark:bg-gray-500"
                                 )}
                                 style={{ 
-                                  width: '2px',
-                                  height: `${Math.max(8, Math.min(40, (height / 255) * 36))}px`,
-                                  alignSelf: 'center'
+                                  height: amplitude > 0 ? `${Math.max(8, Math.min(40, (amplitude / 255) * 36))}px` : '8px'
                                 }}
                               />
                             );
