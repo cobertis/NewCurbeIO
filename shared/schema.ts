@@ -4263,3 +4263,99 @@ export type InsertCampaignAnalytics = z.infer<typeof insertCampaignAnalyticsSche
 // Campaign Placeholders
 export type CampaignPlaceholder = typeof campaignPlaceholders.$inferSelect;
 export type InsertCampaignPlaceholder = z.infer<typeof insertCampaignPlaceholderSchema>;
+
+// =====================================================
+// CAMPAIGN WIZARD COMPREHENSIVE PAYLOAD SCHEMA
+// =====================================================
+
+// Payload for creating a campaign with all advanced features
+export const createCampaignWithDetailsSchema = z.object({
+  // Main campaign fields
+  campaign: z.object({
+    name: z.string().min(1, "Campaign name is required").max(200),
+    description: z.string().optional().nullable(),
+    messageBody: z.string().min(1, "Message body is required").max(500),
+    targetListId: z.string().uuid().optional().nullable(),
+    templateId: z.string().uuid().optional().nullable(),
+    hasVariants: z.boolean().default(false),
+    abTestMetric: z.enum(["response_rate", "conversion_rate", "click_rate"]).optional().nullable(),
+    abTestMinSample: z.number().int().positive().optional().nullable(),
+    personalizedFields: z.array(z.string()).default([]),
+    complianceScore: z.number().int().min(0).max(100).optional().nullable(),
+  }),
+  
+  // Schedule configuration (optional - defaults to immediate if not provided)
+  schedule: z.object({
+    scheduleType: z.enum(["immediate", "scheduled", "recurring"]).default("immediate"),
+    startDate: z.string().optional().nullable(),
+    startTime: z.string().optional().nullable(),
+    timezone: z.string().default("UTC"),
+    recurrenceRule: z.record(z.any()).optional().nullable(),
+    endDate: z.string().optional().nullable(),
+    quietHoursStart: z.string().optional().nullable(),
+    quietHoursEnd: z.string().optional().nullable(),
+    rateLimit: z.number().int().positive().optional().nullable(),
+    throttleDelayMin: z.number().int().nonnegative().optional().nullable(),
+    throttleDelayMax: z.number().int().nonnegative().optional().nullable(),
+    respectContactTimezone: z.boolean().default(false),
+  }).optional(),
+  
+  // A/B test variants (only if hasVariants is true)
+  variants: z.array(z.object({
+    variantLetter: z.enum(["A", "B", "C", "D", "E"]),
+    messageBody: z.string().min(1, "Message body is required"),
+    mediaUrls: z.array(z.string().url()).default([]),
+    splitPercentage: z.number().int().min(0).max(100),
+  })).optional().default([]),
+  
+  // Follow-up sequences
+  followups: z.array(z.object({
+    sequence: z.number().int().positive(),
+    triggerType: z.enum(["no_response", "response_positive", "response_negative", "time_delay"]),
+    waitDays: z.number().int().nonnegative().default(0),
+    waitHours: z.number().int().nonnegative().default(0),
+    messageBody: z.string().min(1, "Message body is required"),
+    mediaUrls: z.array(z.string().url()).default([]),
+    targetSegment: z.enum(["responded", "not_responded", "all"]).default("all"),
+    isActive: z.boolean().default(true),
+  })).optional().default([]),
+}).refine((data) => {
+  // Validate: if hasVariants is true, variants array must not be empty
+  if (data.campaign.hasVariants && data.variants.length === 0) {
+    return false;
+  }
+  return true;
+}, {
+  message: "At least one variant is required when A/B testing is enabled",
+  path: ["variants"],
+}).refine((data) => {
+  // Validate: variant split percentages must total 100
+  if (data.variants.length > 0) {
+    const total = data.variants.reduce((sum, v) => sum + v.splitPercentage, 0);
+    return total === 100;
+  }
+  return true;
+}, {
+  message: "Variant split percentages must total 100%",
+  path: ["variants"],
+}).refine((data) => {
+  // Validate: scheduled campaigns must have startDate and startTime
+  if (data.schedule?.scheduleType === "scheduled" && (!data.schedule.startDate || !data.schedule.startTime)) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Scheduled campaigns must have start date and time",
+  path: ["schedule"],
+}).refine((data) => {
+  // Validate: recurring campaigns must have recurrenceRule
+  if (data.schedule?.scheduleType === "recurring" && !data.schedule.recurrenceRule) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Recurring campaigns must have a recurrence rule",
+  path: ["schedule", "recurrenceRule"],
+});
+
+export type CreateCampaignWithDetails = z.infer<typeof createCampaignWithDetailsSchema>;

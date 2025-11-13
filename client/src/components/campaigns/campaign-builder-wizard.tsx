@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { type ImessageCampaign, type ContactList } from "@shared/schema";
+import { type ImessageCampaign, type ContactList, type CreateCampaignWithDetails } from "@shared/schema";
 import { z } from "zod";
 import {
   Dialog,
@@ -93,7 +93,7 @@ const campaignWizardSchema = z.object({
     messageBody: z.string().max(500),
     trafficPercentage: z.number().min(0).max(100),
   })).optional(),
-  testMetric: z.enum(["open_rate", "click_rate", "reply_rate"]).optional(),
+  testMetric: z.enum(["response_rate", "conversion_rate", "click_rate"]).optional(),
   minSampleSize: z.number().min(10).optional(),
   
   // Step 4: Schedule & Automation
@@ -208,14 +208,97 @@ export function CampaignBuilderWizard({
     }
   }, [open, editingCampaign, form]);
 
+  // Helper function to extract placeholders from message body
+  const extractPlaceholders = (text: string): string[] => {
+    const matches = text.match(/\{\{([^}]+)\}\}/g) || [];
+    return matches.map(m => m.replace(/[{}]/g, '').trim());
+  };
+
+  // Helper to convert simple recurrence pattern to RFC 5545-like object
+  const buildRecurrenceRule = (pattern: string | undefined): Record<string, any> | null => {
+    if (!pattern) return null;
+    
+    // Explicit mapping to RFC 5545-like format (backend expects lowercase after 'by')
+    switch (pattern.toLowerCase()) {
+      case "daily":
+        return {
+          frequency: "DAILY",
+          interval: 1,
+        };
+      
+      case "weekly":
+        return {
+          frequency: "WEEKLY",
+          interval: 1,
+          byweekday: ["MO", "TU", "WE", "TH", "FR"], // lowercase after 'by'
+        };
+      
+      case "biweekly":
+        return {
+          frequency: "WEEKLY",
+          interval: 2,
+          byweekday: ["MO", "TU", "WE", "TH", "FR"], // lowercase after 'by'
+        };
+      
+      case "monthly":
+        return {
+          frequency: "MONTHLY",
+          interval: 1,
+          bymonthday: [1], // lowercase after 'by'
+        };
+      
+      default:
+        return null;
+    }
+  };
+
   // Create/update mutation
   const saveMutation = useMutation({
     mutationFn: (data: CampaignWizardFormValues) => {
-      const payload = {
-        name: data.name,
-        description: data.description || null,
-        messageBody: data.messageBody,
-        targetListId: data.targetListId === "all" || !data.targetListId ? null : data.targetListId,
+      // Build complete payload matching CreateCampaignWithDetails structure
+      const payload: CreateCampaignWithDetails = {
+        campaign: {
+          name: data.name,
+          description: data.description || null,
+          messageBody: data.messageBody,
+          targetListId: data.targetListId === "all" || !data.targetListId ? null : data.targetListId,
+          templateId: data.templateId || null,
+          hasVariants: data.abTestingEnabled || false,
+          abTestMetric: data.testMetric || null,
+          abTestMinSample: data.minSampleSize || null,
+          personalizedFields: extractPlaceholders(data.messageBody),
+          complianceScore: null,
+        },
+        schedule: {
+          scheduleType: data.scheduleType || "immediate",
+          startDate: data.scheduledAt ? format(data.scheduledAt, "yyyy-MM-dd") : null,
+          startTime: data.scheduledAt ? format(data.scheduledAt, "HH:mm") : null,
+          timezone: data.timezone || "UTC",
+          recurrenceRule: data.scheduleType === "recurring" ? buildRecurrenceRule(data.recurringPattern) : null,
+          endDate: null,
+          rateLimit: data.throttleEnabled ? data.messagesPerHour : null,
+          quietHoursStart: data.deliveryWindowStart || null,
+          quietHoursEnd: data.deliveryWindowEnd || null,
+          throttleDelayMin: null,
+          throttleDelayMax: null,
+          respectContactTimezone: false,
+        },
+        variants: data.abTestingEnabled && data.variants ? data.variants.map((v, index) => ({
+          variantLetter: String.fromCharCode(65 + index),
+          messageBody: v.messageBody,
+          mediaUrls: [],
+          splitPercentage: v.trafficPercentage,
+        })) : [],
+        followups: data.followUps ? data.followUps.map((f, index) => ({
+          sequence: index + 1,
+          triggerType: f.trigger === "no_response" ? "no_response" : "time_delay",
+          waitDays: Math.floor((f.delayHours || 0) / 24),
+          waitHours: (f.delayHours || 0) % 24,
+          messageBody: f.messageBody,
+          mediaUrls: [],
+          targetSegment: "all",
+          isActive: true,
+        })) : [],
       };
 
       if (editingCampaign) {
@@ -1010,9 +1093,9 @@ function ABTestingStep({ form }: ABTestingStepProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="open_rate">Open Rate</SelectItem>
+                          <SelectItem value="response_rate">Response Rate</SelectItem>
+                          <SelectItem value="conversion_rate">Conversion Rate</SelectItem>
                           <SelectItem value="click_rate">Click Rate</SelectItem>
-                          <SelectItem value="reply_rate">Reply Rate</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

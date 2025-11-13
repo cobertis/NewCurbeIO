@@ -184,7 +184,14 @@ import {
   type CampaignTemplate,
   type InsertCampaignTemplate,
   type CampaignPlaceholder,
-  type InsertCampaignPlaceholder
+  type InsertCampaignPlaceholder,
+  type CreateCampaignWithDetails,
+  type CampaignVariant,
+  type InsertCampaignVariant,
+  type CampaignSchedule,
+  type InsertCampaignSchedule,
+  type CampaignFollowup,
+  type InsertCampaignFollowup
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -275,7 +282,10 @@ import {
   imessageCampaignMessages,
   campaignTemplateCategories,
   campaignTemplates,
-  campaignPlaceholders
+  campaignPlaceholders,
+  campaignVariants,
+  campaignSchedules,
+  campaignFollowups
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -1080,9 +1090,11 @@ export interface IStorage {
   
   // iMessage Campaigns
   createImessageCampaign(data: InsertImessageCampaign): Promise<ImessageCampaign>;
+  createImessageCampaignWithDetails(companyId: string, userId: string, data: CreateCampaignWithDetails): Promise<ImessageCampaign>;
   getImessageCampaign(id: string): Promise<ImessageCampaign | undefined>;
   getImessageCampaignsByCompany(companyId: string): Promise<ImessageCampaign[]>;
   updateImessageCampaign(id: string, data: Partial<InsertImessageCampaign>): Promise<ImessageCampaign | undefined>;
+  updateImessageCampaignWithDetails(campaignId: string, companyId: string, data: CreateCampaignWithDetails): Promise<ImessageCampaign>;
   deleteImessageCampaign(id: string): Promise<boolean>;
   
   // iMessage Campaign Runs
@@ -9585,6 +9597,172 @@ export class DbStorage implements IStorage {
   async deleteImessageCampaign(id: string): Promise<boolean> {
     const result = await db.delete(imessageCampaigns).where(eq(imessageCampaigns.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async createImessageCampaignWithDetails(
+    companyId: string,
+    userId: string,
+    data: CreateCampaignWithDetails
+  ): Promise<ImessageCampaign> {
+    return await db.transaction(async (tx) => {
+      const campaignData = {
+        companyId,
+        createdBy: userId,
+        name: data.campaign.name,
+        description: data.campaign.description || null,
+        messageBody: data.campaign.messageBody,
+        targetListId: data.campaign.targetListId || null,
+        status: "draft" as const,
+        scheduleType: data.schedule?.scheduleType || "immediate" as const,
+        templateId: data.campaign.templateId || null,
+        hasVariants: data.campaign.hasVariants || false,
+        abTestMetric: data.campaign.abTestMetric || null,
+        abTestMinSample: data.campaign.abTestMinSample || null,
+        personalizedFields: data.campaign.personalizedFields || [],
+        complianceScore: data.campaign.complianceScore || null,
+      };
+
+      const [campaign] = await tx.insert(imessageCampaigns).values(campaignData).returning();
+
+      const scheduleData = {
+        campaignId: campaign.id,
+        scheduleType: data.schedule?.scheduleType || "immediate" as const,
+        startDate: data.schedule?.startDate || null,
+        startTime: data.schedule?.startTime || null,
+        timezone: data.schedule?.timezone || "UTC",
+        recurrenceRule: data.schedule?.recurrenceRule || null,
+        endDate: data.schedule?.endDate || null,
+        quietHoursStart: data.schedule?.quietHoursStart || null,
+        quietHoursEnd: data.schedule?.quietHoursEnd || null,
+        rateLimit: data.schedule?.rateLimit || null,
+        throttleDelayMin: data.schedule?.throttleDelayMin || null,
+        throttleDelayMax: data.schedule?.throttleDelayMax || null,
+        respectContactTimezone: data.schedule?.respectContactTimezone || false,
+      };
+      await tx.insert(campaignSchedules).values(scheduleData);
+
+      if (data.variants && data.variants.length > 0) {
+        const variantsData = data.variants.map(variant => ({
+          campaignId: campaign.id,
+          variantLetter: variant.variantLetter,
+          messageBody: variant.messageBody,
+          mediaUrls: variant.mediaUrls || [],
+          splitPercentage: variant.splitPercentage,
+        }));
+        await tx.insert(campaignVariants).values(variantsData);
+      }
+
+      if (data.followups && data.followups.length > 0) {
+        const followupsData = data.followups.map(followup => ({
+          campaignId: campaign.id,
+          sequence: followup.sequence,
+          triggerType: followup.triggerType,
+          waitDays: followup.waitDays || 0,
+          waitHours: followup.waitHours || 0,
+          messageBody: followup.messageBody,
+          mediaUrls: followup.mediaUrls || [],
+          targetSegment: followup.targetSegment || "all" as const,
+          isActive: followup.isActive !== undefined ? followup.isActive : true,
+        }));
+        await tx.insert(campaignFollowups).values(followupsData);
+      }
+
+      return campaign;
+    });
+  }
+
+  async updateImessageCampaignWithDetails(
+    campaignId: string,
+    companyId: string,
+    data: CreateCampaignWithDetails
+  ): Promise<ImessageCampaign> {
+    return await db.transaction(async (tx) => {
+      const campaignData = {
+        name: data.campaign.name,
+        description: data.campaign.description || null,
+        messageBody: data.campaign.messageBody,
+        targetListId: data.campaign.targetListId || null,
+        templateId: data.campaign.templateId || null,
+        hasVariants: data.campaign.hasVariants || false,
+        abTestMetric: data.campaign.abTestMetric || null,
+        abTestMinSample: data.campaign.abTestMinSample || null,
+        personalizedFields: data.campaign.personalizedFields || [],
+        complianceScore: data.campaign.complianceScore || null,
+        updatedAt: new Date(),
+      };
+
+      const [campaign] = await tx
+        .update(imessageCampaigns)
+        .set(campaignData)
+        .where(and(eq(imessageCampaigns.id, campaignId), eq(imessageCampaigns.companyId, companyId)))
+        .returning();
+
+      if (!campaign) {
+        throw new Error("Campaign not found or access denied");
+      }
+
+      const existingSchedule = await tx
+        .select()
+        .from(campaignSchedules)
+        .where(eq(campaignSchedules.campaignId, campaignId))
+        .limit(1);
+
+      const scheduleData = {
+        campaignId: campaign.id,
+        scheduleType: data.schedule?.scheduleType || "immediate" as const,
+        startDate: data.schedule?.startDate || null,
+        startTime: data.schedule?.startTime || null,
+        timezone: data.schedule?.timezone || "UTC",
+        recurrenceRule: data.schedule?.recurrenceRule || null,
+        endDate: data.schedule?.endDate || null,
+        quietHoursStart: data.schedule?.quietHoursStart || null,
+        quietHoursEnd: data.schedule?.quietHoursEnd || null,
+        rateLimit: data.schedule?.rateLimit || null,
+        throttleDelayMin: data.schedule?.throttleDelayMin || null,
+        throttleDelayMax: data.schedule?.throttleDelayMax || null,
+        respectContactTimezone: data.schedule?.respectContactTimezone || false,
+        updatedAt: new Date(),
+      };
+
+      if (existingSchedule.length > 0) {
+        await tx
+          .update(campaignSchedules)
+          .set(scheduleData)
+          .where(eq(campaignSchedules.campaignId, campaignId));
+      } else {
+        await tx.insert(campaignSchedules).values(scheduleData);
+      }
+
+      await tx.delete(campaignVariants).where(eq(campaignVariants.campaignId, campaignId));
+      if (data.variants && data.variants.length > 0) {
+        const variantsData = data.variants.map(variant => ({
+          campaignId: campaign.id,
+          variantLetter: variant.variantLetter,
+          messageBody: variant.messageBody,
+          mediaUrls: variant.mediaUrls || [],
+          splitPercentage: variant.splitPercentage,
+        }));
+        await tx.insert(campaignVariants).values(variantsData);
+      }
+
+      await tx.delete(campaignFollowups).where(eq(campaignFollowups.campaignId, campaignId));
+      if (data.followups && data.followups.length > 0) {
+        const followupsData = data.followups.map(followup => ({
+          campaignId: campaign.id,
+          sequence: followup.sequence,
+          triggerType: followup.triggerType,
+          waitDays: followup.waitDays || 0,
+          waitHours: followup.waitHours || 0,
+          messageBody: followup.messageBody,
+          mediaUrls: followup.mediaUrls || [],
+          targetSegment: followup.targetSegment || "all" as const,
+          isActive: followup.isActive !== undefined ? followup.isActive : true,
+        }));
+        await tx.insert(campaignFollowups).values(followupsData);
+      }
+
+      return campaign;
+    });
   }
 
   // ==================== iMessage CAMPAIGN RUNS ====================

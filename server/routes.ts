@@ -78,7 +78,9 @@ import {
   insertBlacklistEntrySchema,
   insertCampaignTemplateCategorySchema,
   insertCampaignTemplateSchema,
-  insertCampaignPlaceholderSchema
+  insertCampaignPlaceholderSchema,
+  insertImessageCampaignSchema,
+  createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte } from "drizzle-orm";
@@ -2728,15 +2730,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Validate request body
-      const validatedData = insertImessageCampaignSchema.parse({
-        ...req.body,
-        companyId: user.companyId,
-        createdBy: user.id,
-        status: 'draft', // Always start as draft
-      });
+      // Validate request body using createCampaignWithDetailsSchema
+      const validatedData = createCampaignWithDetailsSchema.parse(req.body);
       
-      const campaign = await storage.createImessageCampaign(validatedData);
+      const campaign = await storage.createImessageCampaignWithDetails(
+        user.companyId,
+        user.id,
+        validatedData
+      );
       res.status(201).json(campaign);
     } catch (error: any) {
       console.error("Error creating iMessage campaign:", error);
@@ -2801,17 +2802,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       
-      // Validate partial data
-      const validatedData = insertImessageCampaignSchema.partial().parse(req.body);
+      // Validate request body using createCampaignWithDetailsSchema
+      const validatedData = createCampaignWithDetailsSchema.parse(req.body);
       
-      // Don't allow changing companyId or createdBy
-      const updateData = {
-        ...validatedData,
-        companyId: undefined,
-        createdBy: undefined,
-      };
-      
-      const updatedCampaign = await storage.updateImessageCampaign(id, updateData);
+      const updatedCampaign = await storage.updateImessageCampaignWithDetails(
+        id,
+        user.companyId,
+        validatedData
+      );
       res.json(updatedCampaign);
     } catch (error: any) {
       console.error("Error updating iMessage campaign:", error);
