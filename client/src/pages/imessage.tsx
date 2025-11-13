@@ -513,6 +513,9 @@ export default function IMessagePage() {
   // New conversation state
   const [isNewConversationMode, setIsNewConversationMode] = useState(false);
   const [newConversationPhone, setNewConversationPhone] = useState("");
+  
+  // Contact info sheet state
+  const [showContactInfo, setShowContactInfo] = useState(false);
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -1768,7 +1771,13 @@ export default function IMessagePage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{formatDisplayName(selectedConversation.displayName)}</p>
+                  <p 
+                    className="font-semibold cursor-pointer hover:text-blue-500 transition-colors" 
+                    onClick={() => setShowContactInfo(true)}
+                    data-testid="button-show-contact-info"
+                  >
+                    {formatDisplayName(selectedConversation.displayName)}
+                  </p>
                   {currentTypingUsers.length > 0 && (
                     <p className="text-sm text-gray-500 flex items-center gap-1">
                       <span className="flex gap-0.5">
@@ -2378,6 +2387,118 @@ export default function IMessagePage() {
         data-testid="file-input"
       />
 
+      {/* Contact Info Sheet */}
+      <Sheet open={showContactInfo} onOpenChange={setShowContactInfo}>
+        <SheetContent className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Contact Information</SheetTitle>
+            <SheetDescription>
+              Details for this conversation
+            </SheetDescription>
+          </SheetHeader>
+          
+          <ContactInfoContent 
+            phone={selectedConversation?.contactPhone || selectedConversation?.participants?.[0]} 
+            displayName={selectedConversation?.displayName}
+          />
+        </SheetContent>
+      </Sheet>
+
+    </div>
+  );
+}
+
+// Contact Info Component
+function ContactInfoContent({ phone, displayName }: { phone?: string; displayName?: string }) {
+  const { data: contact, isLoading } = useQuery({
+    queryKey: ['/api/contacts/search-by-phone', phone],
+    enabled: !!phone && isValidPhoneNumber(phone),
+  });
+
+  if (isLoading) {
+    return <LoadingSpinner fullScreen={false} text="Loading contact..." />;
+  }
+
+  if (!contact || (Array.isArray(contact) && contact.length === 0)) {
+    return (
+      <div className="mt-6 space-y-4">
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <UserIcon className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+            <p className="text-sm text-gray-500">No contact information available</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{displayName || phone}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const contactData = Array.isArray(contact) ? contact[0] : contact;
+
+  return (
+    <div className="mt-6 space-y-6">
+      {/* Avatar */}
+      <div className="flex items-center justify-center">
+        <Avatar className="h-24 w-24">
+          <AvatarFallback 
+            className="text-white font-semibold text-2xl flex items-center justify-center"
+            style={{ backgroundColor: getAvatarColorFromString(contactData.phone || contactData.email || '') }}
+          >
+            {getInitials(contactData.firstName || contactData.lastName || displayName || '')}
+          </AvatarFallback>
+        </Avatar>
+      </div>
+
+      {/* Name */}
+      <div className="text-center">
+        <h3 className="text-xl font-semibold">
+          {[contactData.firstName, contactData.lastName].filter(Boolean).join(' ') || displayName || 'Unknown Contact'}
+        </h3>
+      </div>
+
+      {/* Contact Details */}
+      <div className="space-y-4">
+        {contactData.phone && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
+            <p className="text-sm">{formatForDisplay(contactData.phone)}</p>
+          </div>
+        )}
+
+        {contactData.email && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
+            <p className="text-sm">{contactData.email}</p>
+          </div>
+        )}
+
+        {contactData.notes && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Notes</label>
+            <p className="text-sm text-gray-600 dark:text-gray-300">{contactData.notes}</p>
+          </div>
+        )}
+
+        {contactData.createdAt && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Added</label>
+            <p className="text-sm">{format(new Date(contactData.createdAt), 'PPP')}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="pt-4 space-y-2">
+        <Button 
+          className="w-full" 
+          variant="outline"
+          onClick={() => window.location.href = `/contacts?id=${contactData.id}`}
+          data-testid="button-view-full-contact"
+        >
+          <UserIcon className="h-4 w-4 mr-2" />
+          View Full Contact
+        </Button>
+      </div>
     </div>
   );
 }
