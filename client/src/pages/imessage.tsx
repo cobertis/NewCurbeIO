@@ -411,7 +411,7 @@ function ImessageAudioMessage({
   }, [waveform]);
 
   return (
-    <div className="flex items-center gap-3 w-full max-w-md px-3 py-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
+    <div className="flex items-center gap-3 w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
       {blobUrl && (
         <audio ref={audioRef} src={blobUrl} preload="metadata" />
       )}
@@ -432,7 +432,7 @@ function ImessageAudioMessage({
       </Button>
 
       {/* Waveform Visualization */}
-      <div className="flex-1 flex items-center justify-center gap-[1px] h-12 py-1">
+      <div className="flex-1 flex items-center justify-center gap-[1px] h-12 py-1 min-w-0">
         {waveformBars.map((height, i) => {
           const progress = duration > 0 ? currentTime / duration : 0;
           const isActive = i < waveformBars.length * progress;
