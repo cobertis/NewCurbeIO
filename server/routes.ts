@@ -113,7 +113,7 @@ const ALLOWED_MMS_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/m
 const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Security constants for iMessage attachments
-const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/x-caf'];
+const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/heic', 'image/heif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/x-caf'];
 const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Verify ffmpeg is available at startup
@@ -1051,12 +1051,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     attachment: { guid: string; mimeType: string; transferName?: string; fileName?: string }
   ): Promise<string> {
     try {
+      console.log(`[iMessage Attachment] Starting download for GUID: ${attachment.guid}, MIME: ${attachment.mimeType}`);
+      
       // Initialize BlueBubbles client
       const { blueBubblesClient } = await import("./bluebubbles");
       blueBubblesClient.initialize(companySettings);
       
       // Download attachment stream from BlueBubbles
       const attachmentResponse = await blueBubblesClient.getAttachmentStream(attachment.guid);
+      console.log(`[iMessage Attachment] BlueBubbles response status: ${attachmentResponse.status}`);
       
       if (!attachmentResponse.ok || !attachmentResponse.body) {
         throw new Error(`Failed to download attachment from BlueBubbles: ${attachmentResponse.status}`);
