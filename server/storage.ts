@@ -172,7 +172,13 @@ import {
   type ImessageConversation,
   type InsertImessageConversation,
   type ImessageMessage,
-  type InsertImessageMessage
+  type InsertImessageMessage,
+  type ImessageCampaign,
+  type InsertImessageCampaign,
+  type ImessageCampaignRun,
+  type InsertImessageCampaignRun,
+  type ImessageCampaignMessage,
+  type InsertImessageCampaignMessage
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -257,7 +263,10 @@ import {
   contactEngagements,
   tasks,
   imessageConversations,
-  imessageMessages
+  imessageMessages,
+  imessageCampaigns,
+  imessageCampaignRuns,
+  imessageCampaignMessages
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -1059,6 +1068,28 @@ export interface IStorage {
     hideCompleted?: boolean;
     search?: string;
   }): Promise<Task[]>;
+  
+  // iMessage Campaigns
+  createImessageCampaign(data: InsertImessageCampaign): Promise<ImessageCampaign>;
+  getImessageCampaign(id: string): Promise<ImessageCampaign | undefined>;
+  getImessageCampaignsByCompany(companyId: string): Promise<ImessageCampaign[]>;
+  updateImessageCampaign(id: string, data: Partial<InsertImessageCampaign>): Promise<ImessageCampaign | undefined>;
+  deleteImessageCampaign(id: string): Promise<boolean>;
+  
+  // iMessage Campaign Runs
+  createImessageCampaignRun(data: InsertImessageCampaignRun): Promise<ImessageCampaignRun>;
+  getImessageCampaignRun(id: string): Promise<ImessageCampaignRun | undefined>;
+  getImessageCampaignRunsByCampaign(campaignId: string): Promise<ImessageCampaignRun[]>;
+  getNextRunNumber(campaignId: string): Promise<number>;
+  updateImessageCampaignRun(id: string, data: Partial<InsertImessageCampaignRun>): Promise<ImessageCampaignRun | undefined>;
+  
+  // iMessage Campaign Messages
+  createImessageCampaignMessage(data: InsertImessageCampaignMessage): Promise<ImessageCampaignMessage>;
+  getImessageCampaignMessage(id: string): Promise<ImessageCampaignMessage | undefined>;
+  getImessageCampaignMessagesByRun(runId: string, filters?: { status?: string; limit?: number; offset?: number }): Promise<ImessageCampaignMessage[]>;
+  getPendingCampaignMessages(runId: string, limit?: number): Promise<ImessageCampaignMessage[]>;
+  updateImessageCampaignMessage(id: string, data: Partial<InsertImessageCampaignMessage>): Promise<ImessageCampaignMessage | undefined>;
+  bulkCreateCampaignMessages(messages: InsertImessageCampaignMessage[]): Promise<ImessageCampaignMessage[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -9486,6 +9517,137 @@ export class DbStorage implements IStorage {
   // Helper for webhook - get all company settings
   async getAllCompanySettings(): Promise<CompanySettings[]> {
     return db.select().from(companySettings);
+  }
+
+  // ==================== iMessage CAMPAIGNS ====================
+
+  async createImessageCampaign(data: InsertImessageCampaign): Promise<ImessageCampaign> {
+    const result = await db.insert(imessageCampaigns).values(data).returning();
+    return result[0];
+  }
+
+  async getImessageCampaign(id: string): Promise<ImessageCampaign | undefined> {
+    const result = await db.select().from(imessageCampaigns).where(eq(imessageCampaigns.id, id));
+    return result[0];
+  }
+
+  async getImessageCampaignsByCompany(companyId: string): Promise<ImessageCampaign[]> {
+    return db.select().from(imessageCampaigns).where(eq(imessageCampaigns.companyId, companyId)).orderBy(desc(imessageCampaigns.createdAt));
+  }
+
+  async updateImessageCampaign(id: string, data: Partial<InsertImessageCampaign>): Promise<ImessageCampaign | undefined> {
+    const result = await db.update(imessageCampaigns)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(imessageCampaigns.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteImessageCampaign(id: string): Promise<boolean> {
+    const result = await db.delete(imessageCampaigns).where(eq(imessageCampaigns.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // ==================== iMessage CAMPAIGN RUNS ====================
+
+  async createImessageCampaignRun(data: InsertImessageCampaignRun): Promise<ImessageCampaignRun> {
+    const result = await db.insert(imessageCampaignRuns).values(data).returning();
+    return result[0];
+  }
+
+  async getImessageCampaignRun(id: string): Promise<ImessageCampaignRun | undefined> {
+    const result = await db.select().from(imessageCampaignRuns).where(eq(imessageCampaignRuns.id, id));
+    return result[0];
+  }
+
+  async getImessageCampaignRunsByCampaign(campaignId: string): Promise<ImessageCampaignRun[]> {
+    return db.select().from(imessageCampaignRuns).where(eq(imessageCampaignRuns.campaignId, campaignId)).orderBy(desc(imessageCampaignRuns.createdAt));
+  }
+
+  async getNextRunNumber(campaignId: string): Promise<number> {
+    const result = await db
+      .select({ maxRunNumber: sql<number>`COALESCE(MAX(${imessageCampaignRuns.runNumber}), 0)` })
+      .from(imessageCampaignRuns)
+      .where(eq(imessageCampaignRuns.campaignId, campaignId));
+    return (result[0]?.maxRunNumber || 0) + 1;
+  }
+
+  async updateImessageCampaignRun(id: string, data: Partial<InsertImessageCampaignRun>): Promise<ImessageCampaignRun | undefined> {
+    const result = await db.update(imessageCampaignRuns)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(imessageCampaignRuns.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // ==================== iMessage CAMPAIGN MESSAGES ====================
+
+  async createImessageCampaignMessage(data: InsertImessageCampaignMessage): Promise<ImessageCampaignMessage> {
+    const result = await db.insert(imessageCampaignMessages).values(data).returning();
+    return result[0];
+  }
+
+  async getImessageCampaignMessage(id: string): Promise<ImessageCampaignMessage | undefined> {
+    const result = await db.select().from(imessageCampaignMessages).where(eq(imessageCampaignMessages.id, id));
+    return result[0];
+  }
+
+  async getImessageCampaignMessagesByRun(runId: string, filters?: { status?: string; limit?: number; offset?: number }): Promise<ImessageCampaignMessage[]> {
+    let query = db.select().from(imessageCampaignMessages).where(eq(imessageCampaignMessages.runId, runId));
+
+    if (filters?.status) {
+      query = query.where(
+        and(
+          eq(imessageCampaignMessages.runId, runId),
+          eq(imessageCampaignMessages.sendStatus, filters.status)
+        )
+      ) as any;
+    }
+
+    query = query.orderBy(desc(imessageCampaignMessages.createdAt)) as any;
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
+    }
+
+    return query;
+  }
+
+  async getPendingCampaignMessages(runId: string, limit?: number): Promise<ImessageCampaignMessage[]> {
+    let query = db.select().from(imessageCampaignMessages)
+      .where(
+        and(
+          eq(imessageCampaignMessages.runId, runId),
+          eq(imessageCampaignMessages.sendStatus, 'pending')
+        )
+      )
+      .orderBy(imessageCampaignMessages.createdAt);
+
+    if (limit) {
+      query = query.limit(limit) as any;
+    }
+
+    return query;
+  }
+
+  async updateImessageCampaignMessage(id: string, data: Partial<InsertImessageCampaignMessage>): Promise<ImessageCampaignMessage | undefined> {
+    const result = await db.update(imessageCampaignMessages)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(imessageCampaignMessages.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async bulkCreateCampaignMessages(messages: InsertImessageCampaignMessage[]): Promise<ImessageCampaignMessage[]> {
+    if (messages.length === 0) {
+      return [];
+    }
+    const result = await db.insert(imessageCampaignMessages).values(messages).returning();
+    return result;
   }
 }
 
