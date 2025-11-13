@@ -462,10 +462,10 @@ export interface IStorage {
   deleteContactList(id: string): Promise<boolean>;
   
   // Contact List Members
-  getListMembers(listId: string): Promise<User[]>;
-  addMemberToList(listId: string, userId: string): Promise<ContactListMember>;
-  removeMemberFromList(listId: string, userId: string): Promise<boolean>;
-  getListsForUser(userId: string): Promise<ContactList[]>;
+  getListMembers(listId: string): Promise<ManualContact[]>;
+  addMemberToList(listId: string, contactId: string): Promise<ContactListMember>;
+  removeMemberFromList(listId: string, contactId: string): Promise<boolean>;
+  getListsForContact(contactId: string): Promise<ContactList[]>;
   
   // SMS Campaigns
   getAllSmsCampaigns(): Promise<SmsCampaign[]>;
@@ -1028,6 +1028,7 @@ export interface IStorage {
   
   bulkDeleteContacts(companyId: string, contactIds: string[]): Promise<{ deleted: number }>;
   bulkAddToList(companyId: string, contactIds: string[], listId: string): Promise<{ added: number }>;
+  bulkAddContactsToList(companyId: string, listId: string, contactIds: string[]): Promise<{ addedIds: string[]; skippedIds: string[] }>;
   bulkRemoveFromList(companyId: string, contactIds: string[], listId: string): Promise<{ removed: number }>;
   moveContactsBetweenLists(companyId: string, contactIds: string[], fromListId: string, toListId: string): Promise<{ moved: number }>;
   exportContactsCSV(companyId: string, contactIds?: string[]): Promise<string>;
@@ -1036,6 +1037,7 @@ export interface IStorage {
     duplicates: number;
     errors: string[];
     preview?: ManualContact[];
+    importedContactIds?: string[];
   }>;
   
   // Contact Engagements
@@ -2748,36 +2750,36 @@ export class DbStorage implements IStorage {
   
   // ==================== CONTACT LIST MEMBERS ====================
   
-  async getListMembers(listId: string): Promise<User[]> {
-    const members = await db.select({ user: users })
+  async getListMembers(listId: string): Promise<ManualContact[]> {
+    const members = await db.select({ contact: manualContacts })
       .from(contactListMembers)
-      .innerJoin(users, eq(contactListMembers.userId, users.id))
+      .innerJoin(manualContacts, eq(contactListMembers.contactId, manualContacts.id))
       .where(eq(contactListMembers.listId, listId));
-    return members.map(m => m.user);
+    return members.map(m => m.contact);
   }
   
-  async addMemberToList(listId: string, userId: string): Promise<ContactListMember> {
+  async addMemberToList(listId: string, contactId: string): Promise<ContactListMember> {
     const result = await db.insert(contactListMembers)
-      .values({ listId, userId })
+      .values({ listId, contactId })
       .onConflictDoNothing()
       .returning();
     return result[0];
   }
   
-  async removeMemberFromList(listId: string, userId: string): Promise<boolean> {
+  async removeMemberFromList(listId: string, contactId: string): Promise<boolean> {
     const result = await db.delete(contactListMembers)
       .where(and(
         eq(contactListMembers.listId, listId),
-        eq(contactListMembers.userId, userId)
+        eq(contactListMembers.contactId, contactId)
       ));
     return result.rowCount ? result.rowCount > 0 : false;
   }
   
-  async getListsForUser(userId: string): Promise<ContactList[]> {
+  async getListsForContact(contactId: string): Promise<ContactList[]> {
     const lists = await db.select({ list: contactLists })
       .from(contactListMembers)
       .innerJoin(contactLists, eq(contactListMembers.listId, contactLists.id))
-      .where(eq(contactListMembers.userId, userId));
+      .where(eq(contactListMembers.contactId, contactId));
     return lists.map(l => l.list);
   }
   
@@ -7895,8 +7897,7 @@ export class DbStorage implements IStorage {
       // Note: notExists is not available in Drizzle, so we use raw SQL with parameterized value
       const notExistsCondition = sql`NOT EXISTS (
         SELECT 1 FROM ${contactListMembers} 
-        WHERE ${contactListMembers.userId} = ${manualContacts.userId}
-        AND ${contactListMembers.companyId} = ${companyId}
+        WHERE ${contactListMembers.contactId} = ${manualContacts.id}
       )`;
       conditions.push(notExistsCondition as any);
       query = query.where(and(...conditions) as any) as any;
@@ -7916,7 +7917,7 @@ export class DbStorage implements IStorage {
     } else if (listId) {
       // Show contacts in a specific list using INNER JOIN
       query = query
-        .innerJoin(contactListMembers, eq(contactListMembers.userId, manualContacts.userId))
+        .innerJoin(contactListMembers, eq(contactListMembers.contactId, manualContacts.id))
         .where(and(
           ...conditions,
           eq(contactListMembers.listId, listId)
@@ -7931,8 +7932,7 @@ export class DbStorage implements IStorage {
     if (includeUnassignedOnly) {
       const notExistsCondition = sql`NOT EXISTS (
         SELECT 1 FROM ${contactListMembers} 
-        WHERE ${contactListMembers.userId} = ${manualContacts.userId}
-        AND ${contactListMembers.companyId} = ${companyId}
+        WHERE ${contactListMembers.contactId} = ${manualContacts.id}
       )`;
       countQuery = db
         .select({ count: sql<number>`count(*)::int` })
@@ -7962,7 +7962,7 @@ export class DbStorage implements IStorage {
       countQuery = db
         .select({ count: sql<number>`count(*)::int` })
         .from(manualContacts)
-        .innerJoin(contactListMembers, eq(contactListMembers.userId, manualContacts.userId))
+        .innerJoin(contactListMembers, eq(contactListMembers.contactId, manualContacts.id))
         .where(and(
           ...conditions,
           eq(contactListMembers.listId, listId)
@@ -8031,7 +8031,7 @@ export class DbStorage implements IStorage {
     
     if (listIds && listIds.length > 0) {
       query = query
-        .innerJoin(contactListMembers, eq(contactListMembers.userId, manualContacts.userId))
+        .innerJoin(contactListMembers, eq(contactListMembers.contactId, manualContacts.id))
         .where(and(
           ...conditions,
           inArray(contactListMembers.listId, listIds)
@@ -8061,27 +8061,29 @@ export class DbStorage implements IStorage {
   async bulkAddToList(companyId: string, contactIds: string[], listId: string): Promise<{ added: number }> {
     if (!contactIds.length) return { added: 0 };
     
-    // Get the users associated with these contacts
+    // Verify all contacts belong to this company
     const contacts = await db
-      .select({ userId: manualContacts.userId })
+      .select({ id: manualContacts.id })
       .from(manualContacts)
       .where(and(
         eq(manualContacts.companyId, companyId),
         inArray(manualContacts.id, contactIds)
       ));
     
+    const validContactIds = contacts.map(c => c.id);
+    
     // Get existing members to avoid duplicates
     const existing = await db
-      .select({ userId: contactListMembers.userId })
+      .select({ contactId: contactListMembers.contactId })
       .from(contactListMembers)
       .where(eq(contactListMembers.listId, listId));
     
-    const existingUserIds = new Set(existing.map(e => e.userId));
-    const toAdd = contacts
-      .filter(c => !existingUserIds.has(c.userId))
-      .map(c => ({
+    const existingContactIds = new Set(existing.map(e => e.contactId));
+    const toAdd = validContactIds
+      .filter(id => !existingContactIds.has(id))
+      .map(contactId => ({
         listId,
-        userId: c.userId,
+        contactId,
       }));
     
     if (toAdd.length > 0) {
@@ -8091,30 +8093,78 @@ export class DbStorage implements IStorage {
     return { added: toAdd.length };
   }
 
-  async bulkRemoveFromList(companyId: string, contactIds: string[], listId: string): Promise<{ removed: number }> {
-    if (!contactIds.length) return { removed: 0 };
+  async bulkAddContactsToList(companyId: string, listId: string, contactIds: string[]): Promise<{ addedIds: string[]; skippedIds: string[] }> {
+    if (!contactIds.length) return { addedIds: [], skippedIds: [] };
     
-    // Get the users associated with these contacts
+    // Verify all contacts belong to this company
     const contacts = await db
-      .select({ userId: manualContacts.userId })
+      .select({ id: manualContacts.id })
       .from(manualContacts)
       .where(and(
         eq(manualContacts.companyId, companyId),
         inArray(manualContacts.id, contactIds)
       ));
     
-    const userIds = contacts.map(c => c.userId);
+    const validContactIds = contacts.map(c => c.id);
     
-    if (userIds.length > 0) {
+    // Get existing members to avoid duplicates
+    const existing = await db
+      .select({ contactId: contactListMembers.contactId })
+      .from(contactListMembers)
+      .where(eq(contactListMembers.listId, listId));
+    
+    const existingContactIds = new Set(existing.map(e => e.contactId));
+    
+    // Separate contacts into those to add and those to skip (duplicates)
+    const addedIds: string[] = [];
+    const skippedIds: string[] = [];
+    
+    const toAdd: { listId: string; contactId: string }[] = [];
+    
+    for (const contactId of validContactIds) {
+      if (existingContactIds.has(contactId)) {
+        skippedIds.push(contactId);
+      } else {
+        addedIds.push(contactId);
+        toAdd.push({
+          listId,
+          contactId,
+        });
+      }
+    }
+    
+    // Insert new memberships
+    if (toAdd.length > 0) {
+      await db.insert(contactListMembers).values(toAdd);
+    }
+    
+    return { addedIds, skippedIds };
+  }
+
+  async bulkRemoveFromList(companyId: string, contactIds: string[], listId: string): Promise<{ removed: number }> {
+    if (!contactIds.length) return { removed: 0 };
+    
+    // Verify all contacts belong to this company
+    const contacts = await db
+      .select({ id: manualContacts.id })
+      .from(manualContacts)
+      .where(and(
+        eq(manualContacts.companyId, companyId),
+        inArray(manualContacts.id, contactIds)
+      ));
+    
+    const validContactIds = contacts.map(c => c.id);
+    
+    if (validContactIds.length > 0) {
       await db
         .delete(contactListMembers)
         .where(and(
           eq(contactListMembers.listId, listId),
-          inArray(contactListMembers.userId, userIds)
+          inArray(contactListMembers.contactId, validContactIds)
         ));
     }
     
-    return { removed: userIds.length };
+    return { removed: validContactIds.length };
   }
 
   async moveContactsBetweenLists(
@@ -8171,9 +8221,11 @@ export class DbStorage implements IStorage {
     duplicates: number;
     errors: string[];
     preview?: ManualContact[];
+    importedContactIds?: string[];
   }> {
     const errors: string[] = [];
     const preview: ManualContact[] = [];
+    const importedContactIds: string[] = [];
     let imported = 0;
     let duplicates = 0;
     
@@ -8270,8 +8322,11 @@ export class DbStorage implements IStorage {
         contact.phone = formatForStorage(contact.phone);
         
         try {
-          await db.insert(manualContacts).values(contact);
-          imported++;
+          const result = await db.insert(manualContacts).values(contact).returning({ id: manualContacts.id });
+          if (result.length > 0) {
+            imported++;
+            importedContactIds.push(result[0].id);
+          }
         } catch (error) {
           // Duplicate or other error
           duplicates++;
@@ -8287,6 +8342,7 @@ export class DbStorage implements IStorage {
       duplicates,
       errors,
       preview: preview.slice(0, 5), // Return first 5 for preview
+      importedContactIds,
     };
   }
 

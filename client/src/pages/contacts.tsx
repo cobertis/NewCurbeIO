@@ -121,6 +121,7 @@ export default function Contacts() {
   const [csvContent, setCsvContent] = useState<string>("");
   const [importPreview, setImportPreview] = useState<any>(null);
   const [selectedListFilter, setSelectedListFilter] = useState<string>("all");
+  const [selectedListForImport, setSelectedListForImport] = useState<string>("");
   
   // List management states
   const [isCreateListOpen, setIsCreateListOpen] = useState(false);
@@ -128,6 +129,8 @@ export default function Contacts() {
   const [isDeleteListOpen, setIsDeleteListOpen] = useState(false);
   const [editingList, setEditingList] = useState<ContactList | null>(null);
   const [deletingListId, setDeletingListId] = useState<string | null>(null);
+  const [isBulkAddToListOpen, setIsBulkAddToListOpen] = useState(false);
+  const [selectedListForBulkAdd, setSelectedListForBulkAdd] = useState<string>("");
 
   // Session query
   const { data: sessionData } = useQuery<{ user: User }>({
@@ -293,18 +296,53 @@ export default function Contacts() {
     },
   });
 
-  const importCsvMutation = useMutation({
-    mutationFn: (csvData: string) =>
-      apiRequest("POST", "/api/contacts/import-csv", { csvData }),
+  const bulkAddToListMutation = useMutation({
+    mutationFn: ({ listId, contactIds }: { listId: string; contactIds: string[] }) =>
+      apiRequest("POST", `/api/contact-lists/${listId}/members/bulk-add`, { contactIds }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setSelectedContacts(new Set());
+      setIsBulkAddToListOpen(false);
+      setSelectedListForBulkAdd("");
+      toast({
+        title: "Success",
+        description: `${data.addedCount} contacts added to list. ${data.skippedCount} already in list.`,
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add contacts to list",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  const importCsvMutation = useMutation({
+    mutationFn: ({ csvData, listId }: { csvData: string; listId?: string }) =>
+      apiRequest("POST", "/api/contacts/import-csv", { csvData, listId }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
       setIsImportDialogOpen(false);
       setCsvFile(null);
       setCsvContent("");
       setImportPreview(null);
+      setSelectedListForImport("");
+      
+      let description = `Imported ${data.imported} contacts. ${data.duplicates} duplicates skipped.`;
+      if (data.addedToListCount !== undefined) {
+        const selectedList = lists.find(l => l.id === selectedListForImport);
+        const listName = selectedList?.name || "the list";
+        description += ` ${data.addedToListCount} added to ${listName}.`;
+      }
+      
       toast({
         title: "Success",
-        description: `Imported ${data.imported} contacts. ${data.duplicates} duplicates skipped.`,
+        description,
         duration: 3000,
       });
     },
@@ -443,6 +481,15 @@ export default function Contacts() {
     bulkDeleteMutation.mutate(Array.from(selectedContacts));
   };
 
+  const handleBulkAddToList = () => {
+    if (selectedListForBulkAdd) {
+      bulkAddToListMutation.mutate({
+        listId: selectedListForBulkAdd,
+        contactIds: Array.from(selectedContacts),
+      });
+    }
+  };
+
   const handleExportCsv = async () => {
     try {
       const params = selectedContacts.size > 0
@@ -495,7 +542,10 @@ export default function Contacts() {
 
   const handleImportCsv = () => {
     if (csvContent) {
-      importCsvMutation.mutate(csvContent);
+      importCsvMutation.mutate({
+        csvData: csvContent,
+        listId: selectedListForImport || undefined,
+      });
     }
   };
 
@@ -772,6 +822,15 @@ export default function Contacts() {
                   <span className="text-sm text-muted-foreground">
                     {selectedContacts.size} selected
                   </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsBulkAddToListOpen(true)}
+                    data-testid="button-bulk-add-to-list"
+                  >
+                    <ListPlus className="h-4 w-4 mr-1" />
+                    Add to List
+                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -1221,6 +1280,60 @@ export default function Contacts() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Bulk Add to List Dialog */}
+      <Dialog open={isBulkAddToListOpen} onOpenChange={setIsBulkAddToListOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add {selectedContacts.size} Contacts to List</DialogTitle>
+            <DialogDescription>
+              Select a list to add the selected contacts to
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select List</label>
+              <Select value={selectedListForBulkAdd} onValueChange={setSelectedListForBulkAdd}>
+                <SelectTrigger data-testid="select-bulk-add-list">
+                  <SelectValue placeholder="Choose a list..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {lists.map((list) => (
+                    <SelectItem key={list.id} value={list.id}>
+                      {list.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsBulkAddToListOpen(false);
+                setSelectedListForBulkAdd("");
+              }}
+              data-testid="button-cancel-bulk-add"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkAddToList}
+              disabled={!selectedListForBulkAdd || bulkAddToListMutation.isPending}
+              data-testid="button-confirm-bulk-add"
+            >
+              {bulkAddToListMutation.isPending ? (
+                <LoadingSpinner className="h-4 w-4" />
+              ) : (
+                `Add to List`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Import CSV Dialog */}
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -1266,6 +1379,23 @@ export default function Contacts() {
                 <li>• Required fields: First Name, Last Name, Phone</li>
                 <li>• Duplicates will be automatically detected and skipped</li>
               </ul>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Add imported contacts to a list (optional)</label>
+              <Select value={selectedListForImport} onValueChange={setSelectedListForImport}>
+                <SelectTrigger data-testid="select-import-list">
+                  <SelectValue placeholder="Choose a list (optional)..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None - Don't add to a list</SelectItem>
+                  {lists.map((list) => (
+                    <SelectItem key={list.id} value={list.id}>
+                      {list.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             {importPreview && (

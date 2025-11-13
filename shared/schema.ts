@@ -996,14 +996,14 @@ export type InsertContactList = z.infer<typeof contactListSchema>;
 export const contactListMembers = pgTable("contact_list_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   listId: varchar("list_id").notNull().references(() => contactLists.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").notNull().references(() => manualContacts.id, { onDelete: "cascade" }),
   addedAt: timestamp("added_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
-  uniqueListUser: unique().on(table.listId, table.userId),
+  uniqueListContact: unique().on(table.listId, table.contactId),
   // Performance indexes
   listIdIndex: index("contact_list_members_list_id_idx").on(table.listId),
-  userIdIndex: index("contact_list_members_user_id_idx").on(table.userId),
+  contactIdIndex: index("contact_list_members_contact_id_idx").on(table.contactId),
 }));
 
 export const contactListMemberSchema = createInsertSchema(contactListMembers).omit({
@@ -1013,6 +1013,15 @@ export const contactListMemberSchema = createInsertSchema(contactListMembers).om
 
 export type ContactListMember = typeof contactListMembers.$inferSelect;
 export type InsertContactListMember = z.infer<typeof contactListMemberSchema>;
+
+// Bulk add to list response schema
+export const bulkAddToListResponseSchema = z.object({
+  addedCount: z.number(),
+  skippedCount: z.number(),
+  duplicates: z.array(z.string()),
+});
+
+export type BulkAddToListResponse = z.infer<typeof bulkAddToListResponseSchema>;
 
 // =====================================================
 // EMAIL CAMPAIGNS

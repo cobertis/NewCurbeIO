@@ -9966,7 +9966,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const { csvData, preview = false } = req.body;
+    const { csvData, preview = false, listId } = req.body;
     
     if (!csvData) {
       return res.status(400).json({ message: "CSV data is required" });
@@ -9979,7 +9979,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         currentUser.id
       );
       
-      res.json(result);
+      // If listId is provided, add imported contacts to the list
+      let addedToListCount = 0;
+      if (listId && result.importedContactIds && result.importedContactIds.length > 0) {
+        // Verify list exists and belongs to user's company
+        const list = await storage.getContactList(listId);
+        if (list) {
+          const listCreator = await storage.getUser(list.createdBy);
+          if (listCreator && listCreator.companyId === currentUser.companyId) {
+            const bulkAddResult = await storage.bulkAddContactsToList(
+              currentUser.companyId!,
+              listId,
+              result.importedContactIds
+            );
+            addedToListCount = bulkAddResult.addedIds.length;
+          }
+        }
+      }
+      
+      res.json({
+        ...result,
+        ...(listId && { addedToListCount }),
+      });
     } catch (error) {
       console.error("[CONTACTS] Error importing CSV:", error);
       res.status(500).json({ message: "Failed to import contacts" });
@@ -10737,8 +10758,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // Remove member from contact list (admin and superadmin)
-  app.delete("/api/contact-lists/:id/members/:userId", requireActiveCompany, async (req: Request, res: Response) => {
+  // Bulk add contacts to list (admin and superadmin)
+  app.post("/api/contact-lists/:listId/members/bulk-add", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
     if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
@@ -10746,7 +10767,54 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      const deleted = await storage.removeMemberFromList(req.params.id, req.params.userId);
+      const { listId } = req.params;
+      const { contactIds } = req.body;
+
+      // Validate contactIds array
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({ message: "Contact IDs array is required" });
+      }
+
+      // Verify list exists and belongs to user's company
+      const list = await storage.getContactList(listId);
+      if (!list) {
+        return res.status(404).json({ message: "Contact list not found" });
+      }
+
+      // Get the list creator to verify company ownership
+      const listCreator = await storage.getUser(list.createdBy);
+      if (!listCreator || listCreator.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - List does not belong to your company" });
+      }
+
+      // Perform bulk add
+      const result = await storage.bulkAddContactsToList(
+        currentUser.companyId!,
+        listId,
+        contactIds
+      );
+
+      res.json({
+        addedCount: result.addedIds.length,
+        skippedCount: result.skippedIds.length,
+        duplicates: result.skippedIds,
+      });
+    } catch (error) {
+      console.error("[CONTACT-LISTS] Error bulk adding contacts:", error);
+      res.status(500).json({ message: "Failed to add contacts to list" });
+    }
+  });
+
+  // Remove member from contact list (admin and superadmin)
+  app.delete("/api/contact-lists/:id/members/:contactId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
+    }
+
+    try {
+      const deleted = await storage.removeMemberFromList(req.params.id, req.params.contactId);
       
       if (!deleted) {
         return res.status(404).json({ message: "Member not found in list" });
@@ -10767,20 +10835,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      const { userIds, targetListId } = req.body;
+      const { contactIds, targetListId } = req.body;
 
-      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-        return res.status(400).json({ message: "User IDs array is required" });
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({ message: "Contact IDs array is required" });
       }
 
       if (!targetListId) {
         return res.status(400).json({ message: "Target list ID is required" });
       }
 
-      // Add users to target list (onConflictDoNothing handles duplicates)
+      // Add contacts to target list (onConflictDoNothing handles duplicates)
       let movedCount = 0;
-      for (const userId of userIds) {
-        const result = await storage.addMemberToList(targetListId, userId);
+      for (const contactId of contactIds) {
+        const result = await storage.addMemberToList(targetListId, contactId);
         if (result) {
           movedCount++;
         }
@@ -10789,7 +10857,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ 
         message: `${movedCount} contacts moved successfully`,
         movedCount,
-        totalRequested: userIds.length
+        totalRequested: contactIds.length
       });
     } catch (error) {
       console.error("Error moving contacts:", error);
