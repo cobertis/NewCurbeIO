@@ -1279,14 +1279,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             return res.status(400).json({ message: 'Invalid payload: missing chat GUID' });
           }
           
-          // CRITICAL: Short-circuit for self-sent messages - don't store duplicates
-          // This prevents ANY database operations for messages we sent ourselves
-          if (messageData.isFromMe) {
-            const messageGuid = messageData.guid || messageData.message_guid || `msg_${Date.now()}`;
-            console.log(`[BlueBubbles Webhook] Ignoring self-sent message (isFromMe=true): ${messageGuid}`);
-            return res.json({ success: true, message: 'Self-sent message ignored' });
-          }
-          
           let conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (!conversation) {
             // Create new conversation
@@ -1315,22 +1307,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (!existingMessage && messageData.isFromMe) {
             // Get tempGuid from webhook (BlueBubbles sends this back)
             const tempGuid = messageData.tempGuid || messageData.temp_guid;
+            console.log(`[BlueBubbles Webhook] Self-sent message - searching for pending message with tempGuid: ${tempGuid}`);
             
             // Find recent "sending" status message in this conversation (within last 30 seconds)
             const recentMessages = await storage.getImessageMessages(conversation.id, company.id, 50, 0);
+            console.log(`[BlueBubbles Webhook] Found ${recentMessages.length} recent messages in conversation`);
             
             // CRITICAL: Match by tempGuid in metadata (works for both text AND images)
             const pendingMessage = recentMessages.find((msg: any) => {
               if (msg.status !== 'sending' || !msg.isFromMe) return false;
               
+              console.log(`[BlueBubbles Webhook] Checking message ${msg.messageGuid}: metadata.clientGuid=${msg.metadata?.clientGuid}, tempGuid=${tempGuid}`);
+              
               // Primary match: tempGuid in metadata (works for images and text)
               if (tempGuid && msg.metadata?.clientGuid === tempGuid) {
+                console.log(`[BlueBubbles Webhook] ✓ Match found by tempGuid!`);
                 return true;
               }
               
               // Fallback match: text comparison (for legacy messages without tempGuid)
               // Only use for text messages (images have empty text)
               if (msg.text && messageData.text && msg.text === messageData.text) {
+                console.log(`[BlueBubbles Webhook] ✓ Match found by text!`);
                 return true;
               }
               
@@ -1340,6 +1338,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (pendingMessage) {
               console.log(`[BlueBubbles Webhook] Found pending message with clientGuid: ${tempGuid || 'text-based match'}`);
               existingMessage = pendingMessage;
+            } else {
+              console.log(`[BlueBubbles Webhook] ⚠ No pending message found for tempGuid: ${tempGuid}`);
             }
           }
           
