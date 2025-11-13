@@ -131,6 +131,10 @@ export default function Contacts() {
   const [deletingListId, setDeletingListId] = useState<string | null>(null);
   const [isBulkAddToListOpen, setIsBulkAddToListOpen] = useState(false);
   const [selectedListForBulkAdd, setSelectedListForBulkAdd] = useState<string>("");
+  
+  // Blacklist management
+  const [isBlacklistDialogOpen, setIsBlacklistDialogOpen] = useState(false);
+  const [blacklistingContact, setBlacklistingContact] = useState<ManualContact | null>(null);
 
   // Session query
   const { data: sessionData } = useQuery<{ user: User }>({
@@ -268,6 +272,30 @@ export default function Contacts() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete contact",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
+  const addToBlacklistMutation = useMutation({
+    mutationFn: (data: { channel: string; identifier: string; reason: string; notes?: string }) =>
+      apiRequest("POST", "/api/blacklist", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/contact-lists"] });
+      setIsBlacklistDialogOpen(false);
+      setBlacklistingContact(null);
+      toast({
+        title: "Success",
+        description: "Contact added to blacklist successfully",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add to blacklist",
         variant: "destructive",
         duration: 3000,
       });
@@ -460,6 +488,7 @@ export default function Contacts() {
       lastName: contact.lastName,
       phone: formatForDisplay(contact.phone),
       email: contact.email || "",
+      status: (contact.status || "Regular contact") as "Regular contact" | "Contacted" | "Not Contacted" | "Blacklist",
       notes: contact.notes || "",
     });
     setIsEditDialogOpen(true);
@@ -487,6 +516,38 @@ export default function Contacts() {
       bulkAddToListMutation.mutate({
         listId: selectedListForBulkAdd,
         contactIds: Array.from(selectedContacts),
+      });
+    }
+  };
+
+  const handleAddToBlacklist = (contact: ManualContact) => {
+    setBlacklistingContact(contact);
+    setIsBlacklistDialogOpen(true);
+  };
+
+  const confirmAddToBlacklist = async () => {
+    if (blacklistingContact) {
+      const normalizedPhone = formatForStorage(blacklistingContact.phone);
+      
+      // Add to blacklist
+      addToBlacklistMutation.mutate({
+        channel: "all",
+        identifier: normalizedPhone,
+        reason: "manual",
+        notes: `Manually blacklisted contact: ${blacklistingContact.firstName} ${blacklistingContact.lastName}`,
+      });
+      
+      // Update contact status to "Blacklist"
+      updateContactMutation.mutate({
+        id: blacklistingContact.id,
+        data: {
+          firstName: blacklistingContact.firstName,
+          lastName: blacklistingContact.lastName,
+          phone: blacklistingContact.phone,
+          email: blacklistingContact.email || "",
+          status: "Blacklist",
+          notes: blacklistingContact.notes || "",
+        }
       });
     }
   };
@@ -958,6 +1019,13 @@ export default function Contacts() {
                               >
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleAddToBlacklist(contact)}
+                                data-testid={`button-blacklist-contact-${contact.id}`}
+                              >
+                                <Shield className="h-4 w-4 mr-2" />
+                                Add to Blacklist
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => setDeleteContactId(contact.id)}
@@ -1685,6 +1753,33 @@ export default function Contacts() {
                 <LoadingSpinner className="h-4 w-4" fullScreen={false} />
               ) : (
                 "Delete List"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add to Blacklist Dialog */}
+      <AlertDialog open={isBlacklistDialogOpen} onOpenChange={setIsBlacklistDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add to Blacklist</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to add {blacklistingContact?.firstName} {blacklistingContact?.lastName} to the blacklist? This will block all future communications with this contact.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-blacklist">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmAddToBlacklist}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={addToBlacklistMutation.isPending}
+              data-testid="button-confirm-blacklist"
+            >
+              {addToBlacklistMutation.isPending ? (
+                <LoadingSpinner className="h-4 w-4" fullScreen={false} />
+              ) : (
+                "Add to Blacklist"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
