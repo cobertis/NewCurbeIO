@@ -2198,23 +2198,26 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
       // Save primary client data to quotes table
       if (memberType === 'primary') {
         onSave({
-          clientFirstName: data.firstName,
-          clientMiddleName: data.middleName,
-          clientLastName: data.lastName,
-          clientSecondLastName: data.secondLastName,
-          clientEmail: data.email,
-          clientPhone: data.phone,
-          clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
-          clientSsn: normalizeSSN(data.ssn),
-          clientGender: data.gender,
-          clientIsApplicant: data.isApplicant,
-          clientTobaccoUser: data.tobaccoUser,
-          clientPregnant: data.pregnant,
-          clientPreferredLanguage: data.preferredLanguage,
-          clientCountryOfBirth: data.countryOfBirth,
-          clientMaritalStatus: data.maritalStatus,
-          clientWeight: data.weight,
-          clientHeight: data.height,
+          quoteId: quoteId,
+          data: {
+            clientFirstName: data.firstName,
+            clientMiddleName: data.middleName,
+            clientLastName: data.lastName,
+            clientSecondLastName: data.secondLastName,
+            clientEmail: data.email,
+            clientPhone: data.phone,
+            clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
+            clientSsn: normalizeSSN(data.ssn),
+            clientGender: data.gender,
+            clientIsApplicant: data.isApplicant,
+            clientTobaccoUser: data.tobaccoUser,
+            clientPregnant: data.pregnant,
+            clientPreferredLanguage: data.preferredLanguage,
+            clientCountryOfBirth: data.countryOfBirth,
+            clientMaritalStatus: data.maritalStatus,
+            clientWeight: data.weight,
+            clientHeight: data.height,
+          }
         });
       }
       
@@ -2245,7 +2248,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
           memberBasicData.relation = (data as any).relation;
         }
         
-        const memberResponse = await fetch(`/api/policies/${quote.id}/members/${currentMemberId}`, {
+        const memberResponse = await fetch(`/api/policies/${quoteId}/members/${currentMemberId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -2258,7 +2261,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
       }
     
       // Ensure member exists and get memberId
-      const ensureResponse = await fetch(`/api/policies/${quote.id}/ensure-member`, {
+      const ensureResponse = await fetch(`/api/policies/${quoteId}/ensure-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2386,8 +2389,8 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
       }
       
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quoteId, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quoteId, 'members'] });
       if (currentMemberId) {
         queryClient.invalidateQueries({ queryKey: ['/api/policies/members', currentMemberId, 'income'] });
         queryClient.invalidateQueries({ queryKey: ['/api/policies/members', currentMemberId, 'immigration'] });
