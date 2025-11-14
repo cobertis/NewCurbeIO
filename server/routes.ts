@@ -101,7 +101,7 @@ import { fetchMarketplacePlans, buildCMSPayloadFromPolicy } from "./cms-marketpl
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 import { bulkVSClient } from "./bulkvs";
-import { formatForStorage, formatForDisplay } from "@shared/phone";
+import { formatForStorage, formatForDisplay, formatE164 } from "@shared/phone";
 import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
@@ -2986,14 +2986,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Bulk create campaign messages for all contacts
       const campaignMessages = validContacts.map(contact => {
-        const normalizedPhone = formatForStorage(contact.phone);
+        const normalizedPhone = formatE164(contact.phone);
         const chatGuid = `iMessage;-;${normalizedPhone}`;
         
         return {
           runId: run.id,
           contactId: contact.id,
           chatGuid,
-          phone: normalizedPhone,
+          phone: formatForStorage(contact.phone),
           sendStatus: 'pending' as const,
           retryCount: 0,
         };
