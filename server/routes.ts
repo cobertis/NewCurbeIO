@@ -18795,8 +18795,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Check if annualIncome is empty/null - treat as DELETE request
+      // Allow zero values (0, 0.00) to be saved - only delete if truly empty
       const annualIncomeValue = req.body.annualIncome?.toString().trim();
-      if (!annualIncomeValue || annualIncomeValue === '' || annualIncomeValue === '0' || annualIncomeValue === '0.00') {
+      if (!annualIncomeValue || annualIncomeValue === '') {
         // Delete the income record
         const deleted = await storage.deletePolicyMemberIncome(memberId, policy.companyId);
         
