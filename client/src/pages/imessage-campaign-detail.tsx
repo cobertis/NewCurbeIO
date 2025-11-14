@@ -119,24 +119,22 @@ export default function ImessageCampaignDetail() {
   const { data: campaignData, isLoading: isLoadingCampaign } = useQuery<{
     campaign: ImessageCampaign & { targetListName?: string };
   }>({
-    queryKey: ["/api/imessage/campaigns", campaignId],
+    queryKey: [`/api/imessage/campaigns/${campaignId}`],
     enabled: !!campaignId,
   });
 
   // Fetch campaign runs
-  const { data: runsData, isLoading: isLoadingRuns } = useQuery<{
-    runs: Array<ImessageCampaignRun>;
-  }>({
-    queryKey: ["/api/imessage/campaigns", campaignId, "runs"],
+  const { data: runsData, isLoading: isLoadingRuns } = useQuery<ImessageCampaignRun[]>({
+    queryKey: [`/api/imessage/campaigns/${campaignId}/runs`],
     enabled: !!campaignId,
   });
 
   // Fetch run details (messages) for selected run
   const { data: runDetailsData } = useQuery<{
     messages: Array<ImessageCampaignMessage & { contactName?: string }>;
-    stats: { sent: number; delivered: number; failed: number; pending: number; skipped: number };
+    statusStats: { sent: number; delivered: number; failed: number; pending: number; skipped: number };
   }>({
-    queryKey: ["/api/imessage/campaigns/runs", selectedRunId],
+    queryKey: [`/api/imessage/campaigns/runs/${selectedRunId}`],
     enabled: !!selectedRunId,
   });
 
@@ -146,9 +144,9 @@ export default function ImessageCampaignDetail() {
   });
 
   const campaign = campaignData?.campaign;
-  const runs = runsData?.runs || [];
+  const runs = runsData || [];
   const runMessages = runDetailsData?.messages || [];
-  const runStats = runDetailsData?.stats || { sent: 0, delivered: 0, failed: 0, pending: 0, skipped: 0 };
+  const runStats = runDetailsData?.statusStats || { sent: 0, delivered: 0, failed: 0, pending: 0, skipped: 0 };
   const lists = listsData?.lists || [];
 
   // Helper to get list name
@@ -162,7 +160,7 @@ export default function ImessageCampaignDetail() {
   const startMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/imessage/campaigns/${campaignId}/start`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns", campaignId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/campaigns/${campaignId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns"] });
       toast({
         title: "Success",
@@ -184,7 +182,7 @@ export default function ImessageCampaignDetail() {
   const pauseMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/imessage/campaigns/${campaignId}/pause`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns", campaignId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/campaigns/${campaignId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns"] });
       toast({
         title: "Success",
@@ -206,7 +204,7 @@ export default function ImessageCampaignDetail() {
   const resumeMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/imessage/campaigns/${campaignId}/resume`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns", campaignId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/campaigns/${campaignId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns"] });
       toast({
         title: "Success",
@@ -228,7 +226,7 @@ export default function ImessageCampaignDetail() {
   const stopMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/imessage/campaigns/${campaignId}/stop`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns", campaignId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/imessage/campaigns/${campaignId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns"] });
       toast({
         title: "Success",
@@ -624,7 +622,7 @@ export default function ImessageCampaignDetail() {
         onOpenChange={setIsFormOpen}
         campaign={campaign}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns", campaignId] });
+          queryClient.invalidateQueries({ queryKey: [`/api/imessage/campaigns/${campaignId}`] });
           queryClient.invalidateQueries({ queryKey: ["/api/imessage/campaigns"] });
         }}
       />
