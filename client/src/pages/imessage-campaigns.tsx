@@ -725,7 +725,7 @@ export default function ImessageCampaigns() {
                               Stop
                             </DropdownMenuItem>
                           )}
-                          {campaign.status === "draft" && (
+                          {(campaign.status === "draft" || campaign.status === "completed" || campaign.status === "stopped") && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleDelete(campaign)} className="text-destructive">

@@ -1578,11 +1578,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               if (messageText === 'stop') {
                 console.log(`[iMessage Auto-Response] STOP detected from ${senderPhone}`);
                 
-                // Add to blacklist
+                // Add to blacklist (remove + prefix if present)
                 try {
+                  const phoneForStorage = senderPhone.replace(/^\+/, '');
                   await blacklistService.addToBlacklist({
                     companyId: company.id,
-                    phone: senderPhone,
+                    phone: phoneForStorage,
                     channel: 'imessage',
                     reason: 'User requested opt-out via STOP keyword',
                     addedBy: 'system'
@@ -1603,11 +1604,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               } else if (messageText === 'start') {
                 console.log(`[iMessage Auto-Response] START detected from ${senderPhone}`);
                 
-                // Remove from blacklist
+                // Remove from blacklist (remove + prefix if present)
                 try {
+                  const phoneForStorage = senderPhone.replace(/^\+/, '');
                   await blacklistService.removeFromBlacklist({
                     companyId: company.id,
-                    phone: senderPhone,
+                    phone: phoneForStorage,
                     channel: 'imessage'
                   });
                   

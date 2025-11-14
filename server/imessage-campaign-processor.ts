@@ -47,7 +47,14 @@ async function processRun(run: ImessageCampaignRun) {
         status: 'completed',
         completedAt: new Date()
       });
+      
+      // Also update campaign status to completed
+      await storage.updateImessageCampaign(run.campaignId, {
+        status: 'completed'
+      });
+      
       console.log(`[CAMPAIGN PROCESSOR] Run ${run.runNumber} completed`);
+      console.log(`[CAMPAIGN PROCESSOR] Campaign ${run.campaignId} marked as completed`);
     }
     return;
   }
