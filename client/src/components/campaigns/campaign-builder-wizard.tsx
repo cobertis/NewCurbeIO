@@ -50,6 +50,23 @@ import { Progress } from "@/components/ui/progress";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Check,
   ChevronRight,
   ChevronLeft,
@@ -69,6 +86,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Trash2,
+  Edit,
+  MoreVertical,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -504,12 +523,74 @@ function TemplateSelectionStep({
   onSelectTemplate,
   isLoading,
 }: TemplateSelectionStepProps) {
+  const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
 
   const filteredTemplates = useMemo(() => {
     if (selectedCategory === "all") return templates;
     return templates.filter((t) => t.categoryId === selectedCategory);
   }, [templates, selectedCategory]);
+
+  // Create template mutation
+  const createTemplateMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("POST", "/api/campaign-studio/templates", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaign-studio/templates"] });
+      setIsTemplateDialogOpen(false);
+      setEditingTemplate(null);
+      toast({ title: "Template created successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to create template", variant: "destructive" });
+    },
+  });
+
+  // Update template mutation
+  const updateTemplateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      apiRequest("PATCH", `/api/campaign-studio/templates/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaign-studio/templates"] });
+      setIsTemplateDialogOpen(false);
+      setEditingTemplate(null);
+      toast({ title: "Template updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update template", variant: "destructive" });
+    },
+  });
+
+  // Delete template mutation
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/campaign-studio/templates/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/campaign-studio/templates"] });
+      setDeletingTemplateId(null);
+      toast({ title: "Template deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete template", variant: "destructive" });
+    },
+  });
+
+  const handleCreateTemplate = () => {
+    setEditingTemplate(null);
+    setIsTemplateDialogOpen(true);
+  };
+
+  const handleEditTemplate = (template: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTemplate(template);
+    setIsTemplateDialogOpen(true);
+  };
+
+  const handleDeleteTemplate = (templateId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingTemplateId(templateId);
+  };
 
   if (isLoading) {
     return (
@@ -521,11 +602,23 @@ function TemplateSelectionStep({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">Choose a Template</h3>
-        <p className="text-sm text-muted-foreground">
-          Start with a pre-built template or create from scratch
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Choose a Template</h3>
+          <p className="text-sm text-muted-foreground">
+            Start with a pre-built template or create from scratch
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleCreateTemplate}
+          data-testid="button-create-template"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New Template
+        </Button>
       </div>
 
       {/* Category Tabs */}
@@ -585,7 +678,7 @@ function TemplateSelectionStep({
           <Card
             key={template.id}
             className={cn(
-              "cursor-pointer transition-all hover:shadow-md border-2",
+              "cursor-pointer transition-all hover:shadow-md border-2 group relative",
               selectedTemplate === template.id ? "border-primary bg-primary/5" : "border-border"
             )}
             onClick={() => onSelectTemplate(template.id, template)}
@@ -601,9 +694,44 @@ function TemplateSelectionStep({
                     </CardDescription>
                   )}
                 </div>
-                {selectedTemplate === template.id && (
-                  <Check className="h-5 w-5 text-primary" data-testid={`icon-selected-${template.id}`} />
-                )}
+                <div className="flex items-center gap-2">
+                  {selectedTemplate === template.id && (
+                    <Check className="h-5 w-5 text-primary" data-testid={`icon-selected-${template.id}`} />
+                  )}
+                  {/* Only show edit/delete for company templates (not system templates) */}
+                  {template.scope === "company" && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          data-testid={`button-menu-${template.id}`}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => handleEditTemplate(template, e)}
+                          data-testid={`button-edit-${template.id}`}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Template
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => handleDeleteTemplate(template.id, e)}
+                          className="text-destructive"
+                          data-testid={`button-delete-${template.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Template
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -626,7 +754,239 @@ function TemplateSelectionStep({
           <p className="text-muted-foreground">No templates found in this category</p>
         </div>
       )}
+
+      {/* Template Create/Edit Dialog */}
+      <TemplateFormDialog
+        open={isTemplateDialogOpen}
+        onOpenChange={setIsTemplateDialogOpen}
+        template={editingTemplate}
+        categories={categories}
+        onSave={(data) => {
+          if (editingTemplate) {
+            updateTemplateMutation.mutate({ id: editingTemplate.id, data });
+          } else {
+            createTemplateMutation.mutate(data);
+          }
+        }}
+        isLoading={createTemplateMutation.isPending || updateTemplateMutation.isPending}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingTemplateId} onOpenChange={() => setDeletingTemplateId(null)}>
+        <AlertDialogContent data-testid="dialog-delete-template">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this template? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingTemplateId) {
+                  deleteTemplateMutation.mutate(deletingTemplateId);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteTemplateMutation.isPending && <LoadingSpinner fullScreen={false} className="mr-2 h-4 w-4" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+// =====================================================
+// Template Form Dialog Component
+// =====================================================
+interface TemplateFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  template: any;
+  categories: any[];
+  onSave: (data: any) => void;
+  isLoading: boolean;
+}
+
+function TemplateFormDialog({
+  open,
+  onOpenChange,
+  template,
+  categories,
+  onSave,
+  isLoading,
+}: TemplateFormDialogProps) {
+  const templateFormSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    description: z.string().optional(),
+    categoryId: z.string().min(1, "Category is required"),
+    messageBody: z.string().min(1, "Message is required").max(500, "Message too long"),
+  });
+
+  const templateForm = useForm({
+    resolver: zodResolver(templateFormSchema),
+    defaultValues: {
+      name: template?.name || "",
+      description: template?.description || "",
+      categoryId: template?.categoryId || "",
+      messageBody: template?.messageBody || "",
+    },
+  });
+
+  // Reset form when template changes
+  useEffect(() => {
+    if (template) {
+      templateForm.reset({
+        name: template.name,
+        description: template.description || "",
+        categoryId: template.categoryId,
+        messageBody: template.messageBody,
+      });
+    } else {
+      templateForm.reset({
+        name: "",
+        description: "",
+        categoryId: "",
+        messageBody: "",
+      });
+    }
+  }, [template, templateForm]);
+
+  const handleSave = (data: any) => {
+    onSave(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl" data-testid="dialog-template-form">
+        <DialogHeader>
+          <DialogTitle>
+            {template ? "Edit Template" : "Create New Template"}
+          </DialogTitle>
+          <DialogDescription>
+            {template ? "Update your template details" : "Create a reusable template for your campaigns"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...templateForm}>
+          <form onSubmit={templateForm.handleSubmit(handleSave)} className="space-y-4">
+            <FormField
+              control={templateForm.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Template Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="e.g., Welcome Message"
+                      data-testid="input-template-name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={templateForm.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Brief description of this template"
+                      data-testid="input-template-description"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={templateForm.control}
+              name="categoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-template-category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories.map((cat: any) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={templateForm.control}
+              name="messageBody"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Message Template *</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      placeholder="Enter your message template... Use {{placeholders}} for personalization"
+                      rows={6}
+                      className="resize-none font-mono text-sm"
+                      data-testid="input-template-message"
+                    />
+                  </FormControl>
+                  <div className="flex justify-between items-center">
+                    <FormDescription className="text-xs">
+                      Use placeholders like: {"{{firstName}}"}, {"{{policyNumber}}"}
+                    </FormDescription>
+                    <span className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/500
+                    </span>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
+                data-testid="button-cancel-template"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading}
+                data-testid="button-save-template"
+              >
+                {isLoading && <LoadingSpinner fullScreen={false} className="mr-2 h-4 w-4" />}
+                {template ? "Update Template" : "Create Template"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
