@@ -3483,17 +3483,15 @@ function ReminderForm({ reminder, onSubmit, onCancel, isPending }: ReminderFormP
   );
 }
 
-// Add Member Sheet Component - NUEVO DISEÑO que funciona como Edit Member
-interface AddMemberSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+// Add Member Inline Component - Renders inline within Family Members card
+interface AddMemberInlineProps {
   quote: QuoteWithArrays;
-  onSave: (data: any) => void;
+  onClose: () => void;
+  onSave: (data: any, options?: any) => void;
   isPending: boolean;
 }
 
-function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMemberSheetProps) {
-  const { toast } = useToast();
+function AddMemberInline({ quote, onClose, onSave, isPending }: AddMemberInlineProps) {
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
 
   const addMemberSchema = dependentSchema;
@@ -3535,56 +3533,25 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
     defaultValues,
   });
 
-  // Reset cuando se abre
-  useEffect(() => {
-    if (open) {
-      addMemberForm.reset(defaultValues);
-    }
-  }, [open]);
-
-  const handleSave = async (data: z.infer<typeof addMemberSchema>) => {
+  const handleSave = (data: z.infer<typeof addMemberSchema>) => {
     setCountryPopoverOpen(false);
-    
-    toast({
-      title: "Saving...",
-      description: "Please wait while we save the member information.",
-      duration: 10000,
+    onSave(data, {
+      onSuccess: () => {
+        addMemberForm.reset(defaultValues);
+        onClose();
+      }
     });
-    
-    try {
-      await onSave(data);
-      toast({
-        title: "Success",
-        description: "Member has been added successfully.",
-        duration: 3000,
-      });
-      onOpenChange(false);
-    } catch (error) {
-      console.error('[AddMemberSheet] Error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save member information. Please try again.",
-        variant: "destructive",
-        duration: 3000,
-      });
-    }
+  };
+
+  const handleCancel = () => {
+    addMemberForm.reset(defaultValues);
+    onClose();
   };
   
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => {
-      if (!isOpen && !isPending) {
-        onOpenChange(false);
-      }
-    }}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto" side="right">
-        <SheetHeader className="pb-4">
-          <SheetTitle>Add Family Member</SheetTitle>
-          <SheetDescription>
-            Fill in all required information for the new family member
-          </SheetDescription>
-        </SheetHeader>
-        <Form {...addMemberForm}>
-          <form onSubmit={addMemberForm.handleSubmit(handleSave)} className="space-y-4">
+    <div className="bg-muted/20 border-t" data-testid="add-member-inline">
+      <Form {...addMemberForm}>
+        <form onSubmit={addMemberForm.handleSubmit(handleSave)} className="p-6 space-y-4">
             <Accordion type="single" collapsible defaultValue="basic" className="w-full">
               {/* Basic Info Section */}
               <AccordionItem value="basic">
@@ -4182,11 +4149,12 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
               </AccordionItem>
             </Accordion>
 
-            <div className="flex justify-end gap-2 mt-6">
+            {/* Form Actions */}
+            <div className="flex gap-2 justify-end pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={handleCancel}
                 disabled={isPending}
                 data-testid="button-cancel-member"
               >
@@ -4203,14 +4171,13 @@ function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMem
                     Saving...
                   </>
                 ) : (
-                  'Save Member'
+                  'Add Member'
                 )}
               </Button>
             </div>
           </form>
-      </Form>
-    </SheetContent>
-  </Sheet>
+        </Form>
+      </div>
   );
 }
 
@@ -8782,6 +8749,17 @@ export default function PoliciesPage() {
                     Add Member
                   </Button>
                 </CardHeader>
+
+                {/* Add Member Inline Editor */}
+                {addingMember && (
+                  <AddMemberInline
+                    quote={viewingQuote}
+                    onClose={() => setAddingMember(false)}
+                    onSave={addMemberMutation.mutate}
+                    isPending={addMemberMutation.isPending}
+                  />
+                )}
+
                 <CardContent className="p-0">
                   <div className="border-t">
                     {/* Primary Applicant */}
@@ -9721,21 +9699,6 @@ export default function PoliciesPage() {
               onOpenChange={(open) => setPaymentMethodsSheet({open})}
               quote={viewingQuote}
               paymentMethodId={paymentMethodsSheet.paymentMethodId}
-            />
-
-            <AddMemberSheet
-              open={addingMember}
-              onOpenChange={setAddingMember}
-              quote={viewingQuote}
-              onSave={(data) => {
-                return new Promise((resolve, reject) => {
-                  addMemberMutation.mutate(data, {
-                    onSuccess: (result) => resolve(result),
-                    onError: (error) => reject(error),
-                  });
-                });
-              }}
-              isPending={addMemberMutation.isPending}
             />
 
             {/* Delete Member Confirmation Dialog */}
