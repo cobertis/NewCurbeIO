@@ -615,6 +615,7 @@ export default function ImessageCampaigns() {
                   <TableHead>Campaign</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Target</TableHead>
+                  <TableHead>Progress</TableHead>
                   <TableHead>Message</TableHead>
                   <TableHead>Last Run</TableHead>
                   <TableHead className="text-center">Runs</TableHead>
@@ -642,6 +643,31 @@ export default function ImessageCampaigns() {
                         <Users className="h-3 w-3 mr-1" />
                         {getListName(campaign.targetListId)}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {(campaign as any).stats ? (
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium" data-testid={`text-progress-${campaign.id}`}>
+                            {(campaign as any).stats.sentCount}/{(campaign as any).stats.totalContacts}
+                          </div>
+                          <div className="w-32 bg-muted rounded-full h-2">
+                            <div
+                              className={cn(
+                                "h-2 rounded-full transition-all",
+                                campaign.status === "running" ? "bg-blue-500" : "bg-green-500"
+                              )}
+                              style={{
+                                width: `${Math.min(
+                                  ((campaign as any).stats.sentCount / (campaign as any).stats.totalContacts) * 100,
+                                  100
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-xs">
                       <p className="text-sm truncate" data-testid={`text-message-${campaign.id}`}>
