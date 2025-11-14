@@ -5329,11 +5329,18 @@ export class DbStorage implements IStorage {
     memberData: Partial<InsertPolicyMember>
   ): Promise<{ member: PolicyMember; wasCreated: boolean }> {
     // Only update if we can definitively identify the same person
-    // Require either SSN OR complete name+DOB match to prevent overwriting different people
+    // Require either REAL SSN OR complete name+DOB match to prevent overwriting different people
     let existingMember: PolicyMember | undefined;
     
-    // Match by SSN (most reliable identifier)
-    if (memberData.ssn) {
+    // Match by SSN (most reliable identifier) - but only if it's a real SSN, not a placeholder
+    // Exclude common placeholder values like "000-00-0000", "999-99-9999", etc.
+    const isRealSSN = memberData.ssn && 
+                      memberData.ssn !== '000-00-0000' && 
+                      memberData.ssn !== '999-99-9999' &&
+                      !memberData.ssn.startsWith('000-') &&
+                      !memberData.ssn.startsWith('999-');
+    
+    if (isRealSSN) {
       const members = await db
         .select()
         .from(policyMembers)
