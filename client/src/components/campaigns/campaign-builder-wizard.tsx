@@ -1485,7 +1485,7 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
                 <CardTitle className="text-sm">Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted rounded-lg p-3 text-sm">
+                <div className="bg-muted rounded-lg p-3 text-sm whitespace-pre-wrap">
                   {messageBody.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => {
                     const placeholder = placeholders.find((p: any) => p.key === key);
                     return placeholder?.example || `{{${key}}}`;
