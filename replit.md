@@ -95,6 +95,12 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
   - **Superadmins:** Can edit/delete any template including global system templates
   - **Security:** Dual-layer protection (endpoint + storage) prevents cross-tenant access
   - **Fetch logic:** Superadmins use ID-only lookup for system templates; regular users use company-scoped lookup
+- **Local File Upload for Campaign Media:** Replaced URL-only input with local file upload system:
+  - **Backend:** New endpoint `POST /api/imessage/campaigns/upload-media` accepts multimedia files up to 100MB
+  - **Frontend:** New `MediaUploadField` component with file selection, validation, preview, and progress indicators
+  - **Supported formats:** Images (JPG, PNG, GIF, HEIC), Videos (MP4, MOV, M4V), Audio (MP3, M4A, WAV, CAF)
+  - **File storage:** Campaign media stored in `uploads/imessage/campaigns/` directory
+  - **User experience:** Real-time upload feedback, image preview, file size display, and retry on failure
 - **Multi-tenant Architecture Confirmed:**
   - iMessage campaigns are company-scoped (all users in a company can view their company's campaigns)
   - Campaign templates support both global system templates (shared) and company-specific templates (isolated)
