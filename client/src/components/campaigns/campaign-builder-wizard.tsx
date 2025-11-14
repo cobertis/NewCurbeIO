@@ -108,7 +108,7 @@ const campaignWizardSchema = z.object({
   name: z.string().min(1, "Campaign name is required").max(200),
   description: z.string().optional(),
   messageBody: z.string().min(1, "Message is required").max(500, "Message must be 500 characters or less"),
-  mediaUrl: z.string().url().optional().or(z.literal("")),
+  mediaUrl: z.string().optional(),
   targetListId: z.string().optional(),
   
   // Step 3: A/B Testing
@@ -1123,6 +1123,221 @@ function TemplateFormDialog({
 }
 
 // =====================================================
+// MEDIA UPLOAD FIELD
+// =====================================================
+interface MediaUploadFieldProps {
+  form: any;
+}
+
+function MediaUploadField({ form }: MediaUploadFieldProps) {
+  const { toast } = useToast();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const mediaUrl = form.watch("mediaUrl");
+
+  // Handle file selection
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Maximum file size is 100MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file type
+    const validTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/heic', 'image/heif',
+      'video/mp4', 'video/quicktime', 'video/x-m4v',
+      'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-caf', 'audio/x-m4a'
+    ];
+    
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image, video, or audio file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPreview(null);
+    }
+
+    // Upload file
+    await uploadFile(file);
+  };
+
+  const uploadFile = async (file: File) => {
+    try {
+      setIsUploading(true);
+
+      const formData = new FormData();
+      formData.append('media', file);
+
+      const response = await fetch('/api/imessage/campaigns/upload-media', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+
+      const data = await response.json();
+      
+      // Update form with uploaded file URL
+      form.setValue('mediaUrl', data.mediaUrl);
+
+      toast({
+        title: "File uploaded",
+        description: `${file.name} uploaded successfully`,
+      });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
+      setSelectedFile(null);
+      setPreview(null);
+      // Reset file input to allow retry with same file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemove = () => {
+    setSelectedFile(null);
+    setPreview(null);
+    form.setValue('mediaUrl', '');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+      <div className="flex items-center gap-2">
+        <Image className="h-4 w-4 text-muted-foreground" />
+        <Label className="text-sm font-medium">Media Attachments (Optional)</Label>
+      </div>
+
+      <div className="space-y-3">
+        {/* File Input */}
+        <div>
+          <Input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*,audio/*"
+            onChange={handleFileSelect}
+            disabled={isUploading || !!mediaUrl}
+            className="cursor-pointer"
+            data-testid="input-media-file"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Upload an image, video, or audio file (max 100MB)
+          </p>
+        </div>
+
+        {/* Loading State */}
+        {isUploading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <LoadingSpinner fullScreen={false} className="h-4 w-4" />
+            Uploading...
+          </div>
+        )}
+
+        {/* Preview */}
+        {preview && mediaUrl && (
+          <div className="relative">
+            <img
+              src={preview}
+              alt="Preview"
+              className="w-full max-w-xs rounded-lg border"
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="absolute top-2 right-2"
+              onClick={handleRemove}
+              data-testid="button-remove-media"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* File Info (non-image files) */}
+        {selectedFile && !preview && mediaUrl && (
+          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+            <div className="flex items-center gap-2">
+              {selectedFile.type.startsWith('video/') && <Video className="h-4 w-4" />}
+              {selectedFile.type.startsWith('audio/') && <Mic className="h-4 w-4" />}
+              <div className="text-sm">
+                <p className="font-medium">{selectedFile.name}</p>
+                <p className="text-muted-foreground">
+                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleRemove}
+              data-testid="button-remove-media"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Supported Formats Info */}
+        <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-900">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">Supported Media Types:</p>
+              <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-200">
+                <li><strong>Images:</strong> JPG, PNG, GIF, HEIC</li>
+                <li><strong>Videos:</strong> MP4, MOV, M4V (max 100MB)</li>
+                <li><strong>Audio:</strong> MP3, M4A, WAV, CAF (voice memos)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
 // STEP 2: Content Editor
 // =====================================================
 interface ContentEditorStepProps {
@@ -1344,64 +1559,7 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
           </div>
 
           {/* Media Section */}
-          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Image className="h-4 w-4 text-muted-foreground" />
-              <Label className="text-sm font-medium">Media Attachments (Optional)</Label>
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="mediaUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Image / Video / Audio URL</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <Input
-                        {...field}
-                        type="url"
-                        placeholder="https://example.com/image.jpg"
-                        data-testid="input-media-url"
-                      />
-                      <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Image className="h-3 w-3" />
-                          <span>.jpg, .png, .gif</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Video className="h-3 w-3" />
-                          <span>.mp4, .mov</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Mic className="h-3 w-3" />
-                          <span>.mp3, .m4a, .wav</span>
-                        </div>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Add a URL to any media file: image, video, or audio recording
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-900">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">Supported Media Types:</p>
-                  <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-200">
-                    <li><strong>Images:</strong> JPG, PNG, GIF, HEIC</li>
-                    <li><strong>Videos:</strong> MP4, MOV, M4V (max 100MB)</li>
-                    <li><strong>Audio:</strong> MP3, M4A, WAV, CAF (voice memos)</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+          <MediaUploadField form={form} />
 
           <FormField
             control={form.control}

@@ -122,6 +122,7 @@ const MAX_MMS_SIZE = 5 * 1024 * 1024; // 5MB
 // Security constants for iMessage attachments
 const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/heic', 'image/heif', 'video/mp4', 'video/quicktime', 'audio/mpeg', 'audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav', 'audio/m4a', 'audio/mp3', 'audio/x-caf'];
 const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_CAMPAIGN_MEDIA_SIZE = 100 * 1024 * 1024; // 100MB for campaign attachments
 
 /**
  * Detect STOP keywords in incoming messages for regulatory compliance
@@ -2758,7 +2759,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const campaignMediaUpload = multer({
         storage: campaignMediaStorage,
-        limits: { fileSize: MAX_IMESSAGE_SIZE }, // 100MB limit
+        limits: { fileSize: MAX_CAMPAIGN_MEDIA_SIZE }, // 100MB limit
         fileFilter: (req, file, cb) => {
           if (!ALLOWED_IMESSAGE_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('Invalid file type. Allowed: images, videos, and audio files.'));
