@@ -11066,8 +11066,8 @@ export default function QuotesPage() {
                                   {...field}
                                   type="tel" 
                                   data-testid="input-client-phone" 
-                                  placeholder="(555) 123-4567"
-                                  maxLength={14}
+                                  placeholder="+1 (555) 123-4567"
+                                  maxLength={17}
                                   onChange={(e) => {
                                     const formatted = formatPhoneInput(e.target.value);
                                     field.onChange(formatted);
@@ -11505,9 +11505,9 @@ export default function QuotesPage() {
                                     <Input 
                                       {...field}
                                       type="tel"
-                                      placeholder="(555) 123-4567" 
+                                      placeholder="+1 (555) 123-4567" 
                                       data-testid={`input-spouse-phone-${index}`}
-                                      maxLength={14}
+                                      maxLength={17}
                                       onChange={(e) => {
                                         const formatted = formatPhoneInput(e.target.value);
                                         field.onChange(formatted);
@@ -11834,9 +11834,9 @@ export default function QuotesPage() {
                                     <Input 
                                       {...field}
                                       type="tel"
-                                      placeholder="(555) 123-4567" 
+                                      placeholder="+1 (555) 123-4567" 
                                       data-testid={`input-dependent-phone-${index}`}
-                                      maxLength={14}
+                                      maxLength={17}
                                       onChange={(e) => {
                                         const formatted = formatPhoneInput(e.target.value);
                                         field.onChange(formatted);
