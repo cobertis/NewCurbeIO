@@ -18378,57 +18378,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // Create new member
-  app.post("/api/policies/:policyId/members", requireActiveCompany, async (req: Request, res: Response) => {
-    const currentUser = req.user!;
-    const { policyId } = req.params;
-    
-    try {
-      // Validate policy exists and user has access
-      const policy = await storage.getPolicy(policyId);
-      if (!policy) {
-        return res.status(404).json({ message: "Policy not found" });
-      }
-      
-      // Check company ownership
-      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
-        return res.status(403).json({ message: "Forbidden - access denied" });
-      }
-      
-      // Validate request body
-      const validatedData = insertPolicyMemberSchema.parse({
-        ...req.body,
-        policyId,
-      });
-      
-      // SSN stored as plain text (no encryption)
-      const member = await storage.createPolicyMember(validatedData);
-      
-      await logger.logCrud({
-        req,
-        operation: "create",
-        entity: "policy_member",
-        entityId: member.id,
-        companyId: currentUser.companyId || undefined,
-        metadata: {
-          policyId,
-          createdBy: currentUser.email,
-        },
-      });
-      
-      res.status(201).json({ member });
-    } catch (error: any) {
-      console.error("Error creating policy member:", error);
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
-      }
-      res.status(400).json({ message: error.message || "Failed to create policy member" });
-    }
-  });
-  
   // Update member
   app.patch("/api/policies/:policyId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
