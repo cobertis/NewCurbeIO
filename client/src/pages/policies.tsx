@@ -1906,6 +1906,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
 // Inline Member Editor Component - Renders inline expansion panel with accordion sections
 interface InlineMemberEditorProps {
+  quoteId: string;
   quote: QuoteWithArrays;
   memberType: 'primary' | 'spouse' | 'dependent';
   memberIndex?: number;
@@ -1914,7 +1915,7 @@ interface InlineMemberEditorProps {
   isPending: boolean;
 }
 
-function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, isPending }: InlineMemberEditorProps) {
+function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, onSave, isPending }: InlineMemberEditorProps) {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
@@ -1929,15 +1930,15 @@ function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, i
 
   // Fetch policy members to get member IDs
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
-    queryKey: ['/api/policies', quote?.id, 'members'],
+    queryKey: ['/api/policies', quoteId, 'members'],
     queryFn: async () => {
-      const res = await fetch(`/api/policies/${quote?.id}/members`, {
+      const res = await fetch(`/api/policies/${quoteId}/members`, {
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to fetch members');
       return res.json();
     },
-    enabled: !!quote?.id,
+    enabled: !!quoteId,
   });
 
   // Find the current member ID
@@ -2101,7 +2102,7 @@ function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, i
       } : null;
     }
     return null;
-  }, [quote?.id, memberType, memberIndex, membersData, incomeData, immigrationData]);
+  }, [quoteId, memberType, memberIndex, membersData, incomeData, immigrationData]);
   
   const editForm = useForm({
     resolver: zodResolver(editMemberSchema),
@@ -2171,11 +2172,11 @@ function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, i
 
   const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
     // BUG FIX 1: Early validation - don't attempt save without required data
-    if (!quote?.id) {
+    if (!quoteId) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Cannot save: Policy ID is missing.",
+        description: "Cannot save: Quote ID is missing.",
         duration: 3000,
       });
       return;
@@ -8901,8 +8902,9 @@ export default function PoliciesPage() {
                     </div>
 
                     {/* Primary Member Inline Editor */}
-                    {expandedMemberId === `primary-${viewingQuote.id}` && (
+                    {expandedMemberId === `primary-${viewingQuote.id}` && viewingQuote?.id && (
                       <InlineMemberEditor
+                        quoteId={viewingQuote.id}
                         quote={viewingQuote}
                         memberType="primary"
                         onClose={() => setExpandedMemberId(null)}
@@ -9006,8 +9008,9 @@ export default function PoliciesPage() {
                         </div>
                         
                         {/* Spouse Inline Editor */}
-                        {expandedMemberId === `spouse-${index}` && (
+                        {expandedMemberId === `spouse-${index}` && viewingQuote?.id && (
                           <InlineMemberEditor
+                            quoteId={viewingQuote.id}
                             quote={viewingQuote}
                             memberType="spouse"
                             memberIndex={index}
@@ -9114,8 +9117,9 @@ export default function PoliciesPage() {
                         </div>
                         
                         {/* Dependent Inline Editor */}
-                        {expandedMemberId === `dependent-${index}` && (
+                        {expandedMemberId === `dependent-${index}` && viewingQuote?.id && (
                           <InlineMemberEditor
+                            quoteId={viewingQuote.id}
                             quote={viewingQuote}
                             memberType="dependent"
                             memberIndex={index}
