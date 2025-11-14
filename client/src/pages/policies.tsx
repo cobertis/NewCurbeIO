@@ -1572,6 +1572,7 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="spouse">Spouse</SelectItem>
                           <SelectItem value="child">Child</SelectItem>
                           <SelectItem value="parent">Parent</SelectItem>
                           <SelectItem value="sibling">Sibling</SelectItem>
@@ -2771,6 +2772,7 @@ function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, i
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
+                              <SelectItem value="spouse">Spouse</SelectItem>
                               <SelectItem value="child">Child</SelectItem>
                               <SelectItem value="parent">Parent</SelectItem>
                               <SelectItem value="sibling">Sibling</SelectItem>
@@ -3874,6 +3876,7 @@ function AddMemberInline({ quote, onClose, onSave, isPending }: AddMemberInlineP
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
+                              <SelectItem value="spouse">Spouse</SelectItem>
                               <SelectItem value="child">Child</SelectItem>
                               <SelectItem value="parent">Parent</SelectItem>
                               <SelectItem value="sibling">Sibling</SelectItem>
@@ -14941,6 +14944,7 @@ export default function PoliciesPage() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
+                                      <SelectItem value="spouse">Spouse</SelectItem>
                                       <SelectItem value="child">Child</SelectItem>
                                       <SelectItem value="parent">Parent</SelectItem>
                                       <SelectItem value="sibling">Sibling</SelectItem>
