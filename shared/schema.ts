@@ -1512,6 +1512,8 @@ export const insertQuoteSchema = createInsertSchema(quotes).omit({
   // Override date fields to accept yyyy-MM-dd strings instead of Date objects
   effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format"),
   clientDateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),
+  specialEnrollmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),
+  cancellationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in yyyy-MM-dd format").optional(),
   // Override spouses and dependents to use proper validation
   spouses: z.array(spouseSchema).optional(),
   dependents: z.array(dependentSchema).optional(),

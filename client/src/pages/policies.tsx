@@ -135,6 +135,15 @@ const formatDateForInput = (date: string | null | undefined): string => {
   return dateOnly;
 };
 
+// Helper to ensure date is in yyyy-MM-dd format for backend (no time component)
+// This prevents schema validation errors that require strict yyyy-MM-dd format
+const formatDateForBackend = (date: string | null | undefined): string | null => {
+  if (!date) return null;
+  // Extract YYYY-MM-DD from any date format (handles both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss.sssZ")
+  const dateOnly = date.split('T')[0];
+  return dateOnly;
+};
+
 // Helper to format date for display (converts yyyy-MM-dd to display format like MM/dd/yyyy)
 const formatDateForDisplay = (date: string | null | undefined, formatStr: string = "MM/dd/yyyy"): string => {
   if (!date) return '';
@@ -2187,26 +2196,23 @@ function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, i
       // Save primary client data to quotes table
       if (memberType === 'primary') {
         onSave({
-          quoteId: quote.id,
-          data: {
-            clientFirstName: data.firstName,
-            clientMiddleName: data.middleName,
-            clientLastName: data.lastName,
-            clientSecondLastName: data.secondLastName,
-            clientEmail: data.email,
-            clientPhone: data.phone,
-            clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
-            clientSsn: normalizeSSN(data.ssn),
-            clientGender: data.gender,
-            clientIsApplicant: data.isApplicant,
-            clientTobaccoUser: data.tobaccoUser,
-            clientPregnant: data.pregnant,
-            clientPreferredLanguage: data.preferredLanguage,
-            clientCountryOfBirth: data.countryOfBirth,
-            clientMaritalStatus: data.maritalStatus,
-            clientWeight: data.weight,
-            clientHeight: data.height,
-          }
+          clientFirstName: data.firstName,
+          clientMiddleName: data.middleName,
+          clientLastName: data.lastName,
+          clientSecondLastName: data.secondLastName,
+          clientEmail: data.email,
+          clientPhone: data.phone,
+          clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
+          clientSsn: normalizeSSN(data.ssn),
+          clientGender: data.gender,
+          clientIsApplicant: data.isApplicant,
+          clientTobaccoUser: data.tobaccoUser,
+          clientPregnant: data.pregnant,
+          clientPreferredLanguage: data.preferredLanguage,
+          clientCountryOfBirth: data.countryOfBirth,
+          clientMaritalStatus: data.maritalStatus,
+          clientWeight: data.weight,
+          clientHeight: data.height,
         });
       }
       
@@ -5462,9 +5468,7 @@ export default function PoliciesPage() {
   const setDefaultPaymentMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
       if (!viewingQuote?.id) return;
-      return apiRequest(`/api/policies/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`, {
-        method: 'POST',
-      });
+      return apiRequest('POST', `/api/policies/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`);
     },
     onSuccess: () => {
       if (selectedPolicyId) {
@@ -5574,8 +5578,8 @@ export default function PoliciesPage() {
       // Clean up data to avoid sending undefined or empty string fields
       const cleanedData = {
         ...restData,
-        effectiveDate: data.effectiveDate,
-        clientDateOfBirth: data.clientDateOfBirth || undefined,
+        effectiveDate: formatDateForBackend(data.effectiveDate),
+        clientDateOfBirth: formatDateForBackend(data.clientDateOfBirth),
         clientSsn: normalizeSSN(data.clientSsn),
         // Ensure all client fields have proper defaults
         clientPreferredLanguage: data.clientPreferredLanguage || "",
@@ -5601,11 +5605,13 @@ export default function PoliciesPage() {
         country: data.country || "United States",
         spouses: data.spouses?.map((spouse: any) => ({
           ...spouse,
+          dateOfBirth: formatDateForBackend(spouse.dateOfBirth),
           ssn: normalizeSSN(spouse.ssn),
           countryOfBirth: spouse.countryOfBirth || "",
         })) || [],
         dependents: data.dependents?.map((dependent: any) => ({
           ...dependent,
+          dateOfBirth: formatDateForBackend(dependent.dateOfBirth),
           ssn: normalizeSSN(dependent.ssn),
           countryOfBirth: dependent.countryOfBirth || "",
         })) || [],
@@ -5982,7 +5988,7 @@ export default function PoliciesPage() {
             secondLastName: data.secondLastName || null,
             email: data.email || null,
             phone: data.phone || null,
-            dateOfBirth: data.dateOfBirth || null,
+            dateOfBirth: formatDateForBackend(data.dateOfBirth),
             ssn: normalizeSSN(data.ssn) || null,
             gender: data.gender || null,
             isApplicant: data.isApplicant || false,
@@ -6154,33 +6160,67 @@ export default function PoliciesPage() {
   const handleAddSpouse = () => {
     appendSpouse({
       firstName: "",
+      middleName: "",
       lastName: "",
+      secondLastName: "",
       dateOfBirth: "",
       ssn: "",
       gender: "",
+      phone: "",
+      email: "",
       isApplicant: true,
       isPrimaryDependent: false,
       tobaccoUser: false,
       pregnant: false,
+      preferredLanguage: "",
+      countryOfBirth: "",
+      maritalStatus: "",
+      weight: "",
+      height: "",
+      employerName: "",
+      employerPhone: "",
+      position: "",
+      annualIncome: "",
       selfEmployed: false,
       incomeFrequency: "monthly",
+      immigrationStatus: "",
+      naturalizationNumber: "",
+      uscisNumber: "",
+      immigrationStatusCategory: "",
     });
   };
 
   const handleAddDependent = () => {
     appendDependent({
       firstName: "",
+      middleName: "",
       lastName: "",
+      secondLastName: "",
       dateOfBirth: "",
       ssn: "",
       gender: "",
       relation: "",
+      phone: "",
+      email: "",
       isApplicant: true,
       isPrimaryDependent: false,
       tobaccoUser: false,
       pregnant: false,
+      preferredLanguage: "",
+      countryOfBirth: "",
+      maritalStatus: "",
+      weight: "",
+      height: "",
+      employerName: "",
+      employerPhone: "",
+      position: "",
+      annualIncome: "",
       selfEmployed: false,
       incomeFrequency: "monthly",
+      immigrationStatus: "",
+      naturalizationNumber: "",
+      uscisNumber: "",
+      immigrationStatusCategory: "",
     });
   };
 
@@ -6297,7 +6337,7 @@ export default function PoliciesPage() {
     const matchesState = !filters.state || quote.physical_state === filters.state;
     
     // Zip code filter
-    const matchesZipCode = !filters.zipCode || quote.physical_postal_code.includes(filters.zipCode);
+    const matchesZipCode = !filters.zipCode || quote.physical_postal_code?.includes(filters.zipCode);
     
     // Assigned to filter (agentId)
     const matchesAssignedTo = !filters.assignedTo || quote.agentId === filters.assignedTo;
@@ -6431,7 +6471,7 @@ export default function PoliciesPage() {
           <Form {...paymentForm}>
             <form onSubmit={paymentForm.handleSubmit((data) => {
               onSave({
-                effectiveDate: data.firstPaymentDate || undefined,
+                effectiveDate: formatDateForBackend(data.firstPaymentDate),
               });
             })} className="space-y-6 py-6">
               <FormField
@@ -6863,7 +6903,7 @@ export default function PoliciesPage() {
           setPaymentTab('card');
           cardForm.reset({
             companyId: pm.companyId,
-            policyId: pm.policyId,
+            policyId: pm.quoteId,
             paymentType: 'card',
             cardNumber: pm.cardNumber || '',
             cardHolderName: pm.cardHolderName || '',
@@ -6876,7 +6916,7 @@ export default function PoliciesPage() {
           setPaymentTab('bank_account');
           bankAccountForm.reset({
             companyId: pm.companyId,
-            policyId: pm.policyId,
+            policyId: pm.quoteId,
             paymentType: 'bank_account',
             bankName: pm.bankName || '',
             accountNumber: pm.accountNumber || '',
@@ -7339,18 +7379,18 @@ export default function PoliciesPage() {
     const dependentsFromMembers = allFamilyMembers.filter(m => m.role !== 'spouse'); // Everyone else is a dependent
     
     // CRITICAL: Ensure spouses and dependents are always arrays, never undefined
-    const viewingQuoteWithMembers = {
+    const viewingQuoteWithMembers: QuoteWithArrays = {
       ...viewingQuote,
-      spouses: spousesFromMembers.length > 0 ? spousesFromMembers : (viewingQuote?.spouses ?? []),
-      dependents: dependentsFromMembers.length > 0 ? dependentsFromMembers : (viewingQuote?.dependents ?? []),
+      spouses: spousesFromMembers.length > 0 ? spousesFromMembers as Spouse[] : ((viewingQuote?.spouses as Spouse[]) ?? []),
+      dependents: dependentsFromMembers.length > 0 ? dependentsFromMembers as Dependent[] : ((viewingQuote?.dependents as Dependent[]) ?? []),
     };
     
     const product = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType);
     // Use agent from quoteDetail if available, otherwise fallback to agents list
     const agent = quoteDetail?.policy?.agent || agents.find(a => a.id === viewingQuote.agentId);
     const totalApplicants = 1 + 
-      (viewingQuoteWithMembers.spouses?.filter((s: any) => s.isApplicant).length || 0) + 
-      (viewingQuoteWithMembers.dependents?.filter((d: any) => d.isApplicant).length || 0);
+      (viewingQuoteWithMembers.spouses?.filter((s) => s.isApplicant).length || 0) + 
+      (viewingQuoteWithMembers.dependents?.filter((d) => d.isApplicant).length || 0);
     const totalFamilyMembers = 1 + 
       (viewingQuoteWithMembers.spouses?.length || 0) + 
       (viewingQuoteWithMembers.dependents?.length || 0);
@@ -7359,7 +7399,7 @@ export default function PoliciesPage() {
       viewingQuoteWithMembers,
       ...(viewingQuoteWithMembers.spouses || []),
       ...(viewingQuoteWithMembers.dependents || [])
-    ].filter((m: any) => m.isPrimaryDependent === true).length;
+    ].filter((m) => m.isPrimaryDependent === true).length;
 
     // Calculate formatted income
     const totalHouseholdIncome = (householdIncomeData as any)?.totalIncome || 0;
@@ -12443,12 +12483,12 @@ export default function PoliciesPage() {
                         memberId: manualPlanData.memberId || null,
                         npnMarketplace: manualPlanData.npnMarketplace || null,
                         saleType: manualPlanData.saleType || null,
-                        effectiveDate: manualPlanData.effectiveDate,
+                        effectiveDate: formatDateForBackend(manualPlanData.effectiveDate),
                         marketplaceId: manualPlanData.marketplaceId || null,
                         ffmMarketplace: manualPlanData.ffmMarketplace || null,
                         specialEnrollmentReason: manualPlanData.specialEnrollmentReason || null,
-                        cancellationDate: manualPlanData.cancellationDate || null,
-                        specialEnrollmentDate: manualPlanData.specialEnrollmentDate || null,
+                        cancellationDate: formatDateForBackend(manualPlanData.cancellationDate),
+                        specialEnrollmentDate: formatDateForBackend(manualPlanData.specialEnrollmentDate),
                       });
                     }
                     
