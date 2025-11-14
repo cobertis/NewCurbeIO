@@ -3843,9 +3843,6 @@ export const imessageCampaigns = pgTable("imessage_campaigns", {
   
   // Campaign Studio fields
   templateId: varchar("template_id").references(() => campaignTemplates.id, { onDelete: "set null" }),
-  hasVariants: boolean("has_variants").notNull().default(false),
-  abTestMetric: text("ab_test_metric"), // response_rate, conversion_rate
-  abTestMinSample: integer("ab_test_min_sample"),
   personalizedFields: jsonb("personalized_fields").default(sql`'[]'::jsonb`),
   complianceScore: integer("compliance_score"), // 0-100
   
@@ -4292,9 +4289,6 @@ export const createCampaignWithDetailsSchema = z.object({
     messageBody: z.string().min(1, "Message body is required").max(500),
     targetListId: z.string().uuid("Please select a valid contact list"),
     templateId: z.string().uuid().optional().nullable(),
-    hasVariants: z.boolean().default(false),
-    abTestMetric: z.enum(["response_rate", "conversion_rate", "click_rate"]).optional().nullable(),
-    abTestMinSample: z.number().int().positive().optional().nullable(),
     personalizedFields: z.array(z.string()).default([]),
     complianceScore: z.number().int().min(0).max(100).optional().nullable(),
   }),
@@ -4315,14 +4309,6 @@ export const createCampaignWithDetailsSchema = z.object({
     respectContactTimezone: z.boolean().default(false),
   }).optional(),
   
-  // A/B test variants (only if hasVariants is true)
-  variants: z.array(z.object({
-    variantLetter: z.enum(["A", "B", "C", "D", "E"]),
-    messageBody: z.string().min(1, "Message body is required"),
-    mediaUrls: z.array(z.string().url()).default([]),
-    splitPercentage: z.number().int().min(0).max(100),
-  })).optional().default([]),
-  
   // Follow-up sequences
   followups: z.array(z.object({
     sequence: z.number().int().positive(),
@@ -4334,25 +4320,6 @@ export const createCampaignWithDetailsSchema = z.object({
     targetSegment: z.enum(["responded", "not_responded", "all"]).default("all"),
     isActive: z.boolean().default(true),
   })).optional().default([]),
-}).refine((data) => {
-  // Validate: if hasVariants is true, variants array must not be empty
-  if (data.campaign.hasVariants && data.variants.length === 0) {
-    return false;
-  }
-  return true;
-}, {
-  message: "At least one variant is required when A/B testing is enabled",
-  path: ["variants"],
-}).refine((data) => {
-  // Validate: variant split percentages must total 100
-  if (data.variants.length > 0) {
-    const total = data.variants.reduce((sum, v) => sum + v.splitPercentage, 0);
-    return total === 100;
-  }
-  return true;
-}, {
-  message: "Variant split percentages must total 100%",
-  path: ["variants"],
 }).refine((data) => {
   // Validate: scheduled campaigns must have startDate and startTime
   if (data.schedule?.scheduleType === "scheduled" && (!data.schedule.startDate || !data.schedule.startTime)) {

@@ -111,18 +111,7 @@ const campaignWizardSchema = z.object({
   mediaUrl: z.string().optional(),
   targetListId: z.string().min(1, "Please select a contact list"),
   
-  // Step 3: A/B Testing
-  abTestingEnabled: z.boolean().default(false),
-  variants: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    messageBody: z.string().max(500),
-    trafficPercentage: z.number().min(0).max(100),
-  })).optional(),
-  testMetric: z.enum(["response_rate", "conversion_rate", "click_rate"]).optional(),
-  minSampleSize: z.number().min(10).optional(),
-  
-  // Step 4: Schedule & Automation
+  // Step 3: Schedule & Automation
   scheduleType: z.enum(["immediate", "scheduled", "recurring"]).default("immediate"),
   scheduledAt: z.date().optional(),
   recurringPattern: z.string().optional(),
@@ -158,7 +147,7 @@ export function CampaignBuilderWizard({
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
-  const totalSteps = 5;
+  const totalSteps = 4;
 
   // Form setup
   const form = useForm<CampaignWizardFormValues>({
@@ -169,8 +158,6 @@ export function CampaignBuilderWizard({
       messageBody: "",
       mediaUrl: "",
       targetListId: "",
-      abTestingEnabled: false,
-      variants: [],
       scheduleType: "immediate",
       throttleEnabled: false,
       messagesPerHour: 100,
@@ -220,8 +207,6 @@ export function CampaignBuilderWizard({
         messageBody: "",
         mediaUrl: "",
         targetListId: "",
-        abTestingEnabled: false,
-        variants: [],
         scheduleType: "immediate",
         throttleEnabled: false,
         messagesPerHour: 100,
@@ -305,9 +290,6 @@ export function CampaignBuilderWizard({
           messageBody: data.messageBody,
           targetListId: data.targetListId,
           templateId: data.templateId || null,
-          hasVariants: data.abTestingEnabled || false,
-          abTestMetric: data.testMetric || null,
-          abTestMinSample: data.minSampleSize || null,
           personalizedFields: extractPlaceholders(data.messageBody),
           complianceScore: null,
         },
@@ -325,12 +307,7 @@ export function CampaignBuilderWizard({
           throttleDelayMax: null,
           respectContactTimezone: false,
         },
-        variants: data.abTestingEnabled && data.variants ? data.variants.map((v, index) => ({
-          variantLetter: String.fromCharCode(65 + index) as "A" | "B" | "C" | "D" | "E",
-          messageBody: v.messageBody,
-          mediaUrls: [],
-          splitPercentage: v.trafficPercentage,
-        })) : [],
+        variants: [],
         followups: data.followUps ? data.followUps.map((f, index) => ({
           sequence: index + 1,
           triggerType: f.trigger === "no_response" ? "no_response" : "time_delay",
@@ -381,10 +358,8 @@ export function CampaignBuilderWizard({
     } else if (currentStep === 2) {
       isValid = await form.trigger(["name", "messageBody", "targetListId"]);
     } else if (currentStep === 3) {
-      isValid = true; // A/B testing is optional
-    } else if (currentStep === 4) {
       isValid = await form.trigger(["scheduleType"]);
-    } else if (currentStep === 5) {
+    } else if (currentStep === 4) {
       isValid = await form.trigger();
     }
 
@@ -421,9 +396,8 @@ export function CampaignBuilderWizard({
             <Badge variant="outline" className="text-sm" data-testid="badge-step-indicator">
               {currentStep === 1 && "Template Selection"}
               {currentStep === 2 && "Content Editor"}
-              {currentStep === 3 && "A/B Testing"}
-              {currentStep === 4 && "Schedule & Automation"}
-              {currentStep === 5 && "Review & Launch"}
+              {currentStep === 3 && "Schedule & Automation"}
+              {currentStep === 4 && "Review & Launch"}
             </Badge>
           </div>
           <Progress value={progressPercentage} className="mt-4" data-testid="progress-wizard" />
@@ -460,14 +434,10 @@ export function CampaignBuilderWizard({
               )}
 
               {currentStep === 3 && (
-                <ABTestingStep form={form} />
-              )}
-
-              {currentStep === 4 && (
                 <ScheduleAutomationStep form={form} />
               )}
 
-              {currentStep === 5 && (
+              {currentStep === 4 && (
                 <ReviewLaunchStep form={form} lists={lists} />
               )}
             </div>
@@ -1673,276 +1643,7 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
 }
 
 // =====================================================
-// STEP 3: A/B Testing
-// =====================================================
-interface ABTestingStepProps {
-  form: any;
-}
-
-function ABTestingStep({ form }: ABTestingStepProps) {
-  const abTestingEnabled = form.watch("abTestingEnabled");
-  const variants = form.watch("variants") || [];
-
-  const addVariant = () => {
-    const variantCount = variants.length;
-    if (variantCount >= 3) {
-      return; // Max 3 variants (A, B, C)
-    }
-
-    const newVariant = {
-      id: `variant-${Date.now()}`,
-      name: String.fromCharCode(66 + variantCount), // B, C
-      messageBody: form.getValues("messageBody") || "",
-      trafficPercentage: 0,
-    };
-
-    form.setValue("variants", [...variants, newVariant]);
-  };
-
-  const removeVariant = (id: string) => {
-    form.setValue("variants", variants.filter((v: any) => v.id !== id));
-  };
-
-  const updateVariant = (id: string, field: string, value: any) => {
-    const updated = variants.map((v: any) =>
-      v.id === id ? { ...v, [field]: value } : v
-    );
-    form.setValue("variants", updated);
-  };
-
-  // Auto-distribute traffic
-  const distributeTraffic = () => {
-    const totalVariants = variants.length + 1; // +1 for control (A)
-    const percentageEach = Math.floor(100 / totalVariants);
-    const remainder = 100 - (percentageEach * totalVariants);
-
-    const updated = variants.map((v: any, index: number) => ({
-      ...v,
-      trafficPercentage: percentageEach + (index === 0 ? remainder : 0),
-    }));
-
-    form.setValue("variants", updated);
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-2">A/B Testing Configuration</h3>
-        <p className="text-sm text-muted-foreground">
-          Test different message variants to optimize your campaign performance
-        </p>
-      </div>
-
-      {/* Enable A/B Testing Toggle */}
-      <FormField
-        control={form.control}
-        name="abTestingEnabled"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <FormLabel className="text-base">Enable A/B Testing</FormLabel>
-              <FormDescription>
-                Compare multiple message variants to find the best performing version
-              </FormDescription>
-            </div>
-            <FormControl>
-              <Switch
-                checked={field.value}
-                onCheckedChange={field.onChange}
-                data-testid="switch-ab-testing"
-              />
-            </FormControl>
-          </FormItem>
-        )}
-      />
-
-      {abTestingEnabled && (
-        <div className="space-y-4">
-          {/* Control Variant (A) */}
-          <Card className="border-primary/50">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Variant A (Control)
-              </CardTitle>
-              <CardDescription>
-                Original message from Step 2
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-muted rounded p-3 text-sm">
-                {form.watch("messageBody") || "No message set"}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Additional Variants */}
-          {variants.map((variant: any) => (
-            <Card key={variant.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Variant {variant.name}</CardTitle>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeVariant(variant.id)}
-                    data-testid={`button-remove-variant-${variant.id}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea
-                  value={variant.messageBody}
-                  onChange={(e) => updateVariant(variant.id, "messageBody", e.target.value)}
-                  placeholder="Enter variant message..."
-                  rows={4}
-                  className="resize-none"
-                  data-testid={`input-variant-${variant.id}`}
-                />
-                <div className="text-xs text-muted-foreground">
-                  {variant.messageBody.length}/500 characters
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {/* Add Variant Button */}
-          {variants.length < 3 && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addVariant}
-              className="w-full"
-              data-testid="button-add-variant"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Variant {String.fromCharCode(66 + variants.length)}
-            </Button>
-          )}
-
-          {/* Test Configuration */}
-          {variants.length > 0 && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="testMetric"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Success Metric</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-test-metric">
-                            <SelectValue placeholder="Select metric" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="response_rate">Response Rate</SelectItem>
-                          <SelectItem value="conversion_rate">Conversion Rate</SelectItem>
-                          <SelectItem value="click_rate">Click Rate</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="minSampleSize"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Minimum Sample Size</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="10"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          placeholder="100"
-                          data-testid="input-sample-size"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Messages per variant before declaring a winner
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Traffic Split */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Traffic Split</CardTitle>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={distributeTraffic}
-                      data-testid="button-distribute-traffic"
-                    >
-                      Auto-Distribute
-                    </Button>
-                  </div>
-                  <CardDescription>
-                    Allocate percentage of traffic to each variant
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Variant A (Control)</span>
-                      <span className="font-medium">
-                        {100 - variants.reduce((sum: number, v: any) => sum + (v.trafficPercentage || 0), 0)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {variants.map((variant: any) => (
-                    <div key={variant.id} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>Variant {variant.name}</span>
-                        <span className="font-medium">{variant.trafficPercentage || 0}%</span>
-                      </div>
-                      <Slider
-                        value={[variant.trafficPercentage || 0]}
-                        onValueChange={([value]) => updateVariant(variant.id, "trafficPercentage", value)}
-                        max={100}
-                        step={5}
-                        data-testid={`slider-traffic-${variant.id}`}
-                      />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </div>
-      )}
-
-      {!abTestingEnabled && (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <BarChart3 className="h-12 w-12 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground text-center">
-              Enable A/B testing to compare different message variants<br />
-              and optimize your campaign performance
-            </p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-// =====================================================
-// STEP 4: Schedule & Automation
+// STEP 3: Schedule & Automation
 // =====================================================
 interface ScheduleAutomationStepProps {
   form: any;
@@ -2401,15 +2102,6 @@ function ReviewLaunchStep({ form }: ReviewLaunchStepProps, lists: ContactList[])
                 <span className="col-span-2 font-medium capitalize">
                   {formValues.scheduleType}
                 </span>
-
-                {formValues.abTestingEnabled && (
-                  <>
-                    <span className="text-muted-foreground">Variants:</span>
-                    <span className="col-span-2 font-medium">
-                      {(formValues.variants?.length || 0) + 1} ({String.fromCharCode(65, ...(formValues.variants || []).map((_: any, i: number) => 66 + i))})
-                    </span>
-                  </>
-                )}
               </div>
             </CardContent>
           </Card>
