@@ -1112,6 +1112,14 @@ export interface IStorage {
   updateImessageCampaignMessage(id: string, data: Partial<InsertImessageCampaignMessage>): Promise<ImessageCampaignMessage | undefined>;
   bulkCreateCampaignMessages(messages: InsertImessageCampaignMessage[]): Promise<ImessageCampaignMessage[]>;
   
+  // iMessage Campaign Processing
+  getActiveImessageCampaignRuns(): Promise<ImessageCampaignRun[]>;
+  getContactById(id: string): Promise<ManualContact | undefined>;
+  getCampaignSchedule(campaignId: string): Promise<CampaignSchedule | undefined>;
+  incrementRunSentCount(runId: string): Promise<void>;
+  incrementRunDeliveredCount(runId: string): Promise<void>;
+  incrementRunFailedCount(runId: string): Promise<void>;
+  
   // Campaign Template Categories
   getCampaignTemplateCategories(companyId: string): Promise<CampaignTemplateCategory[]>;
   createCampaignTemplateCategory(data: InsertCampaignTemplateCategory): Promise<CampaignTemplateCategory>;
@@ -9872,6 +9880,62 @@ export class DbStorage implements IStorage {
     }
     const result = await db.insert(imessageCampaignMessages).values(messages).returning();
     return result;
+  }
+
+  // ==================== IMESSAGE CAMPAIGN PROCESSING ====================
+
+  async getActiveImessageCampaignRuns(): Promise<ImessageCampaignRun[]> {
+    const result = await db
+      .select()
+      .from(imessageCampaignRuns)
+      .where(eq(imessageCampaignRuns.status, 'running'));
+    return result;
+  }
+
+  async getContactById(id: string): Promise<ManualContact | undefined> {
+    const result = await db
+      .select()
+      .from(manualContacts)
+      .where(eq(manualContacts.id, id));
+    return result[0];
+  }
+
+  async getCampaignSchedule(campaignId: string): Promise<CampaignSchedule | undefined> {
+    const result = await db
+      .select()
+      .from(campaignSchedules)
+      .where(eq(campaignSchedules.campaignId, campaignId));
+    return result[0];
+  }
+
+  async incrementRunSentCount(runId: string): Promise<void> {
+    await db
+      .update(imessageCampaignRuns)
+      .set({
+        sentCount: sql`${imessageCampaignRuns.sentCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(imessageCampaignRuns.id, runId));
+  }
+
+  async incrementRunDeliveredCount(runId: string): Promise<void> {
+    await db
+      .update(imessageCampaignRuns)
+      .set({
+        deliveredCount: sql`${imessageCampaignRuns.deliveredCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(imessageCampaignRuns.id, runId));
+  }
+
+  async incrementRunFailedCount(runId: string): Promise<void> {
+    await db
+      .update(imessageCampaignRuns)
+      .set({
+        failedCount: sql`${imessageCampaignRuns.failedCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(imessageCampaignRuns.id, runId));
   }
 
   // ==================== CAMPAIGN TEMPLATE CATEGORIES ====================

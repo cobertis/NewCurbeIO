@@ -7,6 +7,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import "./stripe"; // Force Stripe initialization to show which mode we're using
 import { startReminderScheduler } from "./reminder-scheduler";
 import { startBirthdayScheduler } from "./birthday-scheduler";
+import { startImessageCampaignProcessor } from "./imessage-campaign-processor";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 
 if (!process.env.SESSION_SECRET) {
@@ -141,5 +142,8 @@ app.use((req, res, next) => {
     
     // Start the birthday scheduler for automated birthday greetings
     startBirthdayScheduler();
+    
+    // Start the iMessage campaign processor for automated campaign message delivery
+    startImessageCampaignProcessor();
   });
 })();
