@@ -2731,6 +2731,80 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // 1.5 POST /api/imessage/campaigns/upload-media - Upload media file for campaign
+  app.post("/api/imessage/campaigns/upload-media", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Setup multer for file upload
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'imessage', 'campaigns');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      const campaignMediaStorage = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `campaign-${uniqueSuffix}${ext}`);
+        },
+      });
+      
+      const campaignMediaUpload = multer({
+        storage: campaignMediaStorage,
+        limits: { fileSize: MAX_IMESSAGE_SIZE }, // 100MB limit
+        fileFilter: (req, file, cb) => {
+          if (!ALLOWED_IMESSAGE_MIME_TYPES.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type. Allowed: images, videos, and audio files.'));
+          }
+          cb(null, true);
+        },
+      });
+      
+      await new Promise<void>((resolve, reject) => {
+        campaignMediaUpload.single('media')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 100MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+      
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Return file info
+      const mediaUrl = `/uploads/imessage/campaigns/${file.filename}`;
+      
+      console.log('[Campaign Media] File uploaded:', file.filename, 'Type:', file.mimetype, 'Size:', file.size);
+      
+      res.json({
+        success: true,
+        mediaUrl,
+        filename: file.filename,
+        mimeType: file.mimetype,
+        size: file.size,
+      });
+    } catch (error: any) {
+      console.error("Error uploading campaign media:", error);
+      res.status(500).json({ message: error.message || "Failed to upload media" });
+    }
+  });
+  
   // 2. POST /api/imessage/campaigns - Create new campaign
   app.post("/api/imessage/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
     try {
