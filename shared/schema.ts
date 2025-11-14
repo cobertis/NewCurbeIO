@@ -4320,6 +4320,14 @@ export const createCampaignWithDetailsSchema = z.object({
     targetSegment: z.enum(["responded", "not_responded", "all"]).default("all"),
     isActive: z.boolean().default(true),
   })).optional().default([]),
+  
+  // A/B Testing variants (optional - for advanced campaigns)
+  variants: z.array(z.object({
+    variantLetter: z.enum(["A", "B", "C", "D", "E"]),
+    messageBody: z.string().min(1, "Message body is required"),
+    mediaUrls: z.array(z.string().url()).default([]),
+    splitPercentage: z.number().int().min(0).max(100),
+  })).optional().default([]),
 }).refine((data) => {
   // Validate: scheduled campaigns must have startDate and startTime
   if (data.schedule?.scheduleType === "scheduled" && (!data.schedule.startDate || !data.schedule.startTime)) {

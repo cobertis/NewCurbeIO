@@ -2021,7 +2021,7 @@ function ScheduleAutomationStep({ form }: ScheduleAutomationStepProps) {
 }
 
 // =====================================================
-// STEP 5: Review & Launch
+// STEP 4: Review & Launch
 // =====================================================
 interface ReviewLaunchStepProps {
   form: any;
