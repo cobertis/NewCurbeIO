@@ -544,14 +544,30 @@ function TemplateSelectionStep({
   // Create template mutation
   const createTemplateMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/campaign-studio/templates", data),
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/campaign-studio/templates"] });
       setIsTemplateDialogOpen(false);
       setEditingTemplate(null);
-      toast({ title: "Template created successfully" });
+      
+      // Switch to the category of the newly created template to make it visible
+      if (response?.categoryId) {
+        setSelectedCategory(response.categoryId);
+      } else {
+        // If no categoryId, show all templates
+        setSelectedCategory("all");
+      }
+      
+      toast({ 
+        title: "Template created successfully",
+        duration: 3000,
+      });
     },
     onError: () => {
-      toast({ title: "Failed to create template", variant: "destructive" });
+      toast({ 
+        title: "Failed to create template", 
+        variant: "destructive",
+        duration: 3000,
+      });
     },
   });
 
