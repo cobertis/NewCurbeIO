@@ -901,10 +901,19 @@ function TemplateFormDialog({
   };
 
   const handleSave = (data: any) => {
-    // Auto-assign to first category if available
+    // Get category ID: use existing template category or first available category
+    const categoryId = template?.categoryId || categories[0]?.id;
+    
+    // Validate that we have a category
+    if (!categoryId) {
+      console.error("No category available for template");
+      return;
+    }
+    
+    // Auto-assign category
     const dataWithCategory = {
       ...data,
-      categoryId: template?.categoryId || categories[0]?.id || null,
+      categoryId,
     };
     onSave(dataWithCategory);
   };
@@ -1054,7 +1063,7 @@ function TemplateFormDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || (!template && categories.length === 0)}
                 data-testid="button-save-template"
               >
                 {isLoading && <LoadingSpinner fullScreen={false} className="mr-2 h-4 w-4" />}
