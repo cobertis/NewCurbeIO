@@ -1581,12 +1581,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (messageText === 'stop') {
               console.log(`[iMessage Auto-Response] STOP detected from ${senderPhone}`);
               
-              // Add to blacklist (remove + prefix if present)
+              // Add to blacklist (service handles normalization)
               try {
-                const phoneForStorage = senderPhone.replace(/^\+/, '');
                 await blacklistService.addToBlacklist({
                   companyId: company.id,
-                  phone: phoneForStorage,
+                  phone: senderPhone,
                   channel: 'imessage',
                   reason: 'User requested opt-out via STOP keyword',
                   addedBy: 'system'
@@ -1607,12 +1606,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             } else if (messageText === 'start') {
               console.log(`[iMessage Auto-Response] START detected from ${senderPhone}`);
               
-              // Remove from blacklist (remove + prefix if present)
+              // Remove from blacklist (service handles normalization)
               try {
-                const phoneForStorage = senderPhone.replace(/^\+/, '');
                 await blacklistService.removeFromBlacklist({
                   companyId: company.id,
-                  phone: phoneForStorage,
+                  phone: senderPhone,
                   channel: 'imessage'
                 });
                 
@@ -2974,11 +2972,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       
-      // Only allow deletion if status is 'draft'
-      if (campaign.status !== 'draft') {
-        return res.status(400).json({ 
-          message: "Cannot delete campaign with status: " + campaign.status + ". Only draft campaigns can be deleted." 
-        });
+      // If campaign is running, stop any active runs first
+      if (campaign.status === 'running') {
+        const runs = await storage.getImessageCampaignRuns(id);
+        for (const run of runs) {
+          if (run.status === 'running' || run.status === 'pending') {
+            await storage.updateImessageCampaignRun(run.id, {
+              status: 'stopped',
+              completedAt: new Date(),
+            });
+          }
+        }
       }
       
       const deleted = await storage.deleteImessageCampaign(id);
