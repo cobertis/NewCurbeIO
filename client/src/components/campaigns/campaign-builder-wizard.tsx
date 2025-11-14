@@ -214,7 +214,22 @@ export function CampaignBuilderWizard({
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (open && !editingCampaign) {
-      form.reset();
+      form.reset({
+        name: "",
+        description: "",
+        messageBody: "",
+        mediaUrl: "",
+        targetListId: "all",
+        abTestingEnabled: false,
+        variants: [],
+        scheduleType: "immediate",
+        throttleEnabled: false,
+        messagesPerHour: 100,
+        deliveryWindowStart: "09:00",
+        deliveryWindowEnd: "17:00",
+        timezone: "America/New_York",
+        followUps: [],
+      });
       setCurrentStep(1);
       setSelectedTemplate(null);
     } else if (open && editingCampaign) {
@@ -364,7 +379,7 @@ export function CampaignBuilderWizard({
     if (currentStep === 1) {
       isValid = true; // Template selection is optional
     } else if (currentStep === 2) {
-      isValid = await form.trigger(["name", "messageBody", "targetListId"]);
+      isValid = await form.trigger(["name", "messageBody"]);
     } else if (currentStep === 3) {
       isValid = true; // A/B testing is optional
     } else if (currentStep === 4) {
