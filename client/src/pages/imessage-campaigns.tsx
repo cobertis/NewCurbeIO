@@ -410,18 +410,18 @@ export default function ImessageCampaigns() {
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="text-page-title">
+          <h1 className="text-2xl font-bold tracking-tight" data-testid="text-page-title">
             iMessage Campaigns
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground">
             Create and manage automated iMessage marketing campaigns
           </p>
         </div>
-        <Button onClick={() => { setEditingCampaign(null); setIsFormOpen(true); }} size="lg" data-testid="button-new-campaign">
+        <Button onClick={() => { setEditingCampaign(null); setIsFormOpen(true); }} data-testid="button-new-campaign">
           <Plus className="h-4 w-4 mr-2" />
           New Campaign
         </Button>

@@ -2852,7 +2852,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       
-      res.json(campaign);
+      // Return wrapped response for consistency with other endpoints
+      res.json({ campaign });
     } catch (error: any) {
       console.error("Error getting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to get campaign" });
