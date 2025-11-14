@@ -392,8 +392,8 @@ export function CampaignBuilderWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[1024px] h-[90vh] overflow-hidden flex flex-col p-0" data-testid="dialog-campaign-wizard">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="w-[1024px] h-[90vh] min-w-[1024px] max-w-[1024px] min-h-[90vh] max-h-[90vh] overflow-hidden flex flex-col p-0" data-testid="dialog-campaign-wizard">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle data-testid="text-wizard-title">
@@ -457,7 +457,7 @@ export function CampaignBuilderWizard({
               )}
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t bg-muted/30">
+            <DialogFooter className="px-6 py-4 border-t bg-muted/30 flex-shrink-0">
               <div className="flex items-center justify-between w-full">
                 <Button
                   type="button"
