@@ -4960,6 +4960,8 @@ export default function PoliciesPage() {
   // Delete address dialog state
   const [deletingAddress, setDeletingAddress] = useState<'mailing' | 'billing' | null>(null);
   
+  // Delete plan dialog state
+  const [deletingPlan, setDeletingPlan] = useState<{ id: string; name: string } | null>(null);
   
   // Advanced filters state
   const [filters, setFilters] = useState({
@@ -9393,25 +9395,10 @@ export default function PoliciesPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={async () => {
-                            if (!confirm('Are you sure you want to remove this plan?')) return;
-                            try {
-                              await apiRequest("DELETE", `/api/policies/${viewingQuote.id}/plans/${policyPlan.id}`);
-                              queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                              toast({
-                                title: "Success",
-                                description: "Plan has been removed.",
-                                duration: 3000,
-                              });
-                            } catch (error: any) {
-                              toast({
-                                title: "Error",
-                                description: error.message || "Failed to remove plan.",
-                                variant: "destructive",
-                                duration: 3000,
-                              });
-                            }
-                          }}
+                          onClick={() => setDeletingPlan({ 
+                            id: policyPlan.id, 
+                            name: policyPlan.planName || 'this plan' 
+                          })}
                           data-testid={`button-remove-plan-${policyPlan.id}`}
                         >
                           <X className="h-4 w-4 mr-2" />
@@ -10455,6 +10442,59 @@ export default function PoliciesPage() {
                     data-testid="button-confirm-delete-member"
                   >
                     {deleteMemberMutation.isPending ? 'Deleting...' : 'Delete Member'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Plan Confirmation Dialog */}
+            <AlertDialog open={!!deletingPlan} onOpenChange={(open) => !open && setDeletingPlan(null)}>
+              <AlertDialogContent data-testid="dialog-delete-plan">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove Plan?</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div>
+                      {deletingPlan && (
+                        <>
+                          <p>
+                            Are you sure you want to remove <strong>{deletingPlan.name}</strong> from this policy?
+                          </p>
+                          <p className="mt-4">
+                            This will remove the plan details and pricing information. You can add a new plan later if needed.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-delete-plan">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      if (deletingPlan) {
+                        try {
+                          await apiRequest("DELETE", `/api/policies/${viewingQuote.id}/plans/${deletingPlan.id}`);
+                          queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                          setDeletingPlan(null);
+                          toast({
+                            title: "Success",
+                            description: "Plan has been removed.",
+                            duration: 3000,
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "Error",
+                            description: error.message || "Failed to remove plan.",
+                            variant: "destructive",
+                            duration: 3000,
+                          });
+                        }
+                      }
+                    }}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid="button-confirm-delete-plan"
+                  >
+                    Remove Plan
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
