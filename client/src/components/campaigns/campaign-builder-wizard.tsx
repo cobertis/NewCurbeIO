@@ -828,6 +828,9 @@ function TemplateFormDialog({
   onSave,
   isLoading,
 }: TemplateFormDialogProps) {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const templateTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const templateFormSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
@@ -844,6 +847,17 @@ function TemplateFormDialog({
       messageBody: template?.messageBody || "",
     },
   });
+
+  // Common placeholders for templates
+  const commonPlaceholders = [
+    { key: "firstName", label: "First Name" },
+    { key: "lastName", label: "Last Name" },
+    { key: "email", label: "Email" },
+    { key: "phoneNumber", label: "Phone" },
+    { key: "companyName", label: "Company" },
+    { key: "policyNumber", label: "Policy #" },
+    { key: "agentName", label: "Agent Name" },
+  ];
 
   // Reset form when template changes
   useEffect(() => {
@@ -863,6 +877,32 @@ function TemplateFormDialog({
       });
     }
   }, [template, templateForm]);
+
+  const insertTemplatePlaceholder = (placeholder: string) => {
+    const currentText = templateForm.getValues("messageBody") || "";
+    templateForm.setValue("messageBody", currentText + `{{${placeholder}}}`);
+  };
+
+  const insertTemplateEmoji = (emoji: any) => {
+    const currentText = templateForm.getValues("messageBody") || "";
+    const textarea = templateTextareaRef.current;
+    
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newText = currentText.substring(0, start) + emoji.native + currentText.substring(end);
+      templateForm.setValue("messageBody", newText);
+      
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.native.length;
+        textarea.focus();
+      }, 0);
+    } else {
+      templateForm.setValue("messageBody", currentText + emoji.native);
+    }
+    
+    setShowEmojiPicker(false);
+  };
 
   const handleSave = (data: any) => {
     onSave(data);
@@ -950,26 +990,81 @@ function TemplateFormDialog({
                 <FormItem>
                   <FormLabel>Message Template *</FormLabel>
                   <FormControl>
-                    <Textarea
-                      {...field}
-                      placeholder="Enter your message template... Use {{placeholders}} for personalization"
-                      rows={6}
-                      className="resize-none font-mono text-sm"
-                      data-testid="input-template-message"
-                    />
+                    <div className="relative">
+                      <Textarea
+                        {...field}
+                        ref={templateTextareaRef}
+                        placeholder="Enter your message template... Use {{placeholders}} for personalization"
+                        rows={6}
+                        className="resize-none font-mono text-sm pr-12"
+                        data-testid="input-template-message"
+                      />
+                      <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-2 h-8 w-8 p-0"
+                            data-testid="button-template-emoji-picker"
+                          >
+                            <Smile className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0 border-0" align="end">
+                          <Picker
+                            data={data}
+                            onEmojiSelect={insertTemplateEmoji}
+                            theme="light"
+                            previewPosition="none"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </FormControl>
-                  <div className="flex justify-between items-center">
-                    <FormDescription className="text-xs">
-                      Use placeholders like: {"{{firstName}}"}, {"{{policyNumber}}"}
-                    </FormDescription>
+                  <div className="flex justify-between items-center mt-2">
+                    <FormMessage />
                     <span className="text-xs text-muted-foreground">
                       {field.value?.length || 0}/500
                     </span>
                   </div>
-                  <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Placeholders for Templates */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Insert Placeholders</Label>
+              <div className="flex flex-wrap gap-2">
+                {commonPlaceholders.map((p) => (
+                  <Button
+                    key={p.key}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => insertTemplatePlaceholder(p.key)}
+                    data-testid={`button-template-placeholder-${p.key}`}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Media Info for Templates */}
+            <div className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 p-3 rounded border border-amber-200 dark:border-amber-900">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-900 dark:text-amber-100 mb-1">Media Attachments:</p>
+                  <p className="text-amber-800 dark:text-amber-200">
+                    You can add images, videos, or audio recordings when you use this template to create a campaign. 
+                    Templates store the message text and placeholders only.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <DialogFooter>
               <Button
