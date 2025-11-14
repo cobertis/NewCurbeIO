@@ -25856,7 +25856,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const user = req.user!;
       const categoryId = req.query.categoryId as string | undefined;
+      console.log("[Campaign Templates GET] Fetching for companyId:", user.companyId, "categoryId:", categoryId || "all");
       const templates = await storage.getCampaignTemplates(user.companyId, categoryId);
+      console.log("[Campaign Templates GET] Found", templates.length, "templates. IDs:", templates.map(t => `${t.id.substring(0,8)}...${t.name}`).join(", "));
       res.json(templates);
     } catch (error: any) {
       console.error("Error fetching campaign templates:", error);
