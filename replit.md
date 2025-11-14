@@ -97,6 +97,12 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
   - **UI Changes:** Removed "All Contacts" option from dropdown, added asterisk to label, shows contact count for each list: `{list.name} ({memberCount} contacts)`
   - **Step Validation:** Added targetListId to Step 2 validation to block progression without selection
   - **Breaking Change:** Campaigns now always require a specific contact list; removed fallback to all company contacts
+- **A/B Testing Removal:** Completely removed A/B testing functionality from Campaign Builder as per user request
+  - **Wizard Structure:** Reduced from 5 steps to 4 steps (Template → Content → Schedule → Review)
+  - **Frontend:** Removed ABTestingStep component, abTestingEnabled, variants, testMetric, and minSampleSize fields from schema
+  - **Backend:** Removed hasVariants, abTestMetric, and abTestMinSample fields from imessageCampaigns schema
+  - **Preserved:** campaignVariants table retained in database for historical data
+  - **Impact:** Simplified campaign creation workflow, more focused on core messaging functionality
 - **System Template Management:** Implemented secure multi-tenant template deletion system with defense-in-depth:
   - **Regular users:** Can only edit/delete templates belonging to their company
   - **Superadmins:** Can edit/delete any template including global system templates
