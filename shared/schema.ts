@@ -1443,7 +1443,7 @@ export const quotes = pgTable("quotes", {
   aptcCapturedAt: timestamp("aptc_captured_at"), // When APTC was captured
   
   // Additional Policy/Quote Fields
-  memberId: varchar("member_id"), // Primary member/client ID reference
+  memberId: varchar("member_id").references((): AnyPgColumn => quoteMembers.id, { onDelete: "set null" }), // Primary member/client ID reference
   npnMarketplace: text("npn_marketplace"), // NPN for marketplace transactions
   saleType: text("sale_type"), // Type of sale (new, renewal, etc.)
   marketplaceId: text("marketplace_id"), // External marketplace identifier
@@ -1533,7 +1533,7 @@ export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 export const quoteMembers = pgTable("quote_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }),
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references((): AnyPgColumn => quotes.id, { onDelete: "cascade" }),
   
   // Member role and identification
   role: text("role").notNull(), // client, spouse, dependent
