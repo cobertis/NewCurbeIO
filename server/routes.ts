@@ -2711,11 +2711,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               skippedCount: latestRun.skippedCount,
             } : null,
             lastRunAt: latestRun?.startedAt || null,
+            runsCount: runs.length,
           };
         })
       );
       
-      res.json(enrichedCampaigns);
+      // Calculate stats across all campaigns
+      const stats = {
+        total: campaigns.length,
+        active: campaigns.filter(c => c.status === 'running').length,
+        completed: campaigns.filter(c => c.status === 'completed').length,
+        draft: campaigns.filter(c => c.status === 'draft').length,
+      };
+      
+      res.json({ campaigns: enrichedCampaigns, stats });
     } catch (error: any) {
       console.error("Error listing iMessage campaigns:", error);
       res.status(500).json({ message: "Failed to list campaigns" });
