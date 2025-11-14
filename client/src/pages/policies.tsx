@@ -2603,23 +2603,26 @@ function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, i
       // Save primary client data to quotes table
       if (memberType === 'primary') {
         onSave({
-          clientFirstName: data.firstName,
-          clientMiddleName: data.middleName,
-          clientLastName: data.lastName,
-          clientSecondLastName: data.secondLastName,
-          clientEmail: data.email,
-          clientPhone: data.phone,
-          clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
-          clientSsn: normalizeSSN(data.ssn),
-          clientGender: data.gender,
-          clientIsApplicant: data.isApplicant,
-          clientTobaccoUser: data.tobaccoUser,
-          clientPregnant: data.pregnant,
-          clientPreferredLanguage: data.preferredLanguage,
-          clientCountryOfBirth: data.countryOfBirth,
-          clientMaritalStatus: data.maritalStatus,
-          clientWeight: data.weight,
-          clientHeight: data.height,
+          quoteId: quote.id,
+          data: {
+            clientFirstName: data.firstName,
+            clientMiddleName: data.middleName,
+            clientLastName: data.lastName,
+            clientSecondLastName: data.secondLastName,
+            clientEmail: data.email,
+            clientPhone: data.phone,
+            clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
+            clientSsn: normalizeSSN(data.ssn),
+            clientGender: data.gender,
+            clientIsApplicant: data.isApplicant,
+            clientTobaccoUser: data.tobaccoUser,
+            clientPregnant: data.pregnant,
+            clientPreferredLanguage: data.preferredLanguage,
+            clientCountryOfBirth: data.countryOfBirth,
+            clientMaritalStatus: data.maritalStatus,
+            clientWeight: data.weight,
+            clientHeight: data.height,
+          }
         });
       }
       
