@@ -3910,44 +3910,7 @@ interface AddMemberSheetProps {
 
 function AddMemberSheet({ open, onOpenChange, quote, onSave, isPending }: AddMemberSheetProps) {
   const { toast } = useToast();
-  const [memberTab, setMemberTab] = useTabsState(["basic", "income", "immigration"], "basic");
   const [isSaving, setIsSaving] = useState(false);
-  const [createdMemberId, setCreatedMemberId] = useState<string | null>(null);
-  
-  // Queries para Income e Immigration (igual que Edit Member)
-  const { data: incomeData, isLoading: incomeLoading } = useQuery<{ income: any }>({
-    queryKey: ['/api/policies/members', createdMemberId, 'income'],
-    queryFn: async () => {
-      const res = await fetch(`/api/policies/members/${createdMemberId}/income`, {
-        credentials: 'include',
-      });
-      if (res.status === 404) {
-        return { income: null };
-      }
-      if (!res.ok) {
-        throw new Error('Failed to fetch income data');
-      }
-      return await res.json();
-    },
-    enabled: !!createdMemberId && memberTab === 'income',
-  });
-
-  const { data: immigrationData, isLoading: immigrationLoading } = useQuery<{ immigration: any }>({
-    queryKey: ['/api/policies/members', createdMemberId, 'immigration'],
-    queryFn: async () => {
-      const res = await fetch(`/api/policies/members/${createdMemberId}/immigration`, {
-        credentials: 'include',
-      });
-      if (res.status === 404) {
-        return { immigration: null };
-      }
-      if (!res.ok) {
-        throw new Error('Failed to fetch immigration data');
-      }
-      return await res.json();
-    },
-    enabled: !!createdMemberId && memberTab === 'immigration',
-  });
 
   const addMemberSchema = dependentSchema;
 
