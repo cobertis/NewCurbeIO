@@ -2964,16 +2964,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Access denied" });
       }
       
-      // Get contacts for the campaign
-      let contacts;
-      if (campaign.targetListId) {
-        // Get contacts from specific list
-        const listMembers = await storage.getListMembers(campaign.targetListId);
-        contacts = listMembers;
-      } else {
-        // Get all manual contacts for company
-        contacts = await storage.getManualContacts(user.companyId);
-      }
+      // Get contacts for the campaign from the specified list
+      // Note: targetListId is now required - campaigns must target a specific list
+      const contacts = await storage.getListMembers(campaign.targetListId);
       
       // Filter out blacklisted contacts
       const validContacts = [];

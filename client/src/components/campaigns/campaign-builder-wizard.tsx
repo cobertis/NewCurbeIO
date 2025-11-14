@@ -109,7 +109,7 @@ const campaignWizardSchema = z.object({
   description: z.string().optional(),
   messageBody: z.string().min(1, "Message is required").max(500, "Message must be 500 characters or less"),
   mediaUrl: z.string().optional(),
-  targetListId: z.string().optional(),
+  targetListId: z.string().min(1, "Please select a contact list"),
   
   // Step 3: A/B Testing
   abTestingEnabled: z.boolean().default(false),
@@ -168,7 +168,7 @@ export function CampaignBuilderWizard({
       description: "",
       messageBody: "",
       mediaUrl: "",
-      targetListId: "all",
+      targetListId: "",
       abTestingEnabled: false,
       variants: [],
       scheduleType: "immediate",
@@ -219,7 +219,7 @@ export function CampaignBuilderWizard({
         description: "",
         messageBody: "",
         mediaUrl: "",
-        targetListId: "all",
+        targetListId: "",
         abTestingEnabled: false,
         variants: [],
         scheduleType: "immediate",
@@ -238,7 +238,7 @@ export function CampaignBuilderWizard({
         name: editingCampaign.name,
         description: editingCampaign.description || "",
         messageBody: editingCampaign.messageBody,
-        targetListId: editingCampaign.targetListId || "all",
+        targetListId: editingCampaign.targetListId || "",
         scheduleType: "immediate",
         throttleEnabled: false,
         messagesPerHour: 100,
@@ -303,7 +303,7 @@ export function CampaignBuilderWizard({
           name: data.name,
           description: data.description || null,
           messageBody: data.messageBody,
-          targetListId: data.targetListId === "all" || !data.targetListId ? null : data.targetListId,
+          targetListId: data.targetListId,
           templateId: data.templateId || null,
           hasVariants: data.abTestingEnabled || false,
           abTestMetric: data.testMetric || null,
@@ -379,7 +379,7 @@ export function CampaignBuilderWizard({
     if (currentStep === 1) {
       isValid = true; // Template selection is optional
     } else if (currentStep === 2) {
-      isValid = await form.trigger(["name", "messageBody"]);
+      isValid = await form.trigger(["name", "messageBody", "targetListId"]);
     } else if (currentStep === 3) {
       isValid = true; // A/B testing is optional
     } else if (currentStep === 4) {
@@ -1566,18 +1566,17 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
             name="targetListId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Target Audience</FormLabel>
+                <FormLabel>Target Audience *</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-target-list">
-                      <SelectValue placeholder="All Contacts" />
+                      <SelectValue placeholder="Select a contact list" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="all">All Contacts</SelectItem>
-                    {lists.map((list) => (
+                    {lists.map((list: any) => (
                       <SelectItem key={list.id} value={list.id}>
-                        {list.name}
+                        {list.name} ({list.memberCount || 0} {list.memberCount === 1 ? 'contact' : 'contacts'})
                       </SelectItem>
                     ))}
                   </SelectContent>
