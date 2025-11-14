@@ -19,6 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save, Lock, Folder as FolderIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
@@ -2309,6 +2310,1191 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
   );
 }
 
+// Inline Member Editor Component - Renders inline expansion panel with accordion sections
+interface InlineMemberEditorProps {
+  quote: QuoteWithArrays;
+  memberType: 'primary' | 'spouse' | 'dependent';
+  memberIndex?: number;
+  onClose: () => void;
+  onSave: (data: Partial<Quote>) => void;
+  isPending: boolean;
+}
+
+function InlineMemberEditor({ quote, memberType, memberIndex, onClose, onSave, isPending }: InlineMemberEditorProps) {
+  const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+  const [countryPopoverOpen, setCountryPopoverOpen] = useState(false);
+  const hasInitializedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  const editMemberSchema = memberType === 'dependent' ? dependentSchema : familyMemberSchema;
+
+  // Track current member identity for change detection
+  const memberIdentity = `${memberType}-${memberIndex ?? 'primary'}`;
+  const previousMemberIdentityRef = useRef(memberIdentity);
+
+  // Fetch policy members to get member IDs
+  const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
+    queryKey: ['/api/policies', quote?.id, 'members'],
+    queryFn: async () => {
+      const res = await fetch(`/api/policies/${quote?.id}/members`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch members');
+      return res.json();
+    },
+    enabled: !!quote?.id,
+  });
+
+  // Find the current member ID
+  const currentMemberId = useMemo(() => {
+    if (!membersData?.members) return null;
+    
+    if (memberType === 'primary') {
+      return membersData.members.find(m => m.role === 'client')?.id;
+    } else if (memberType === 'spouse' && memberIndex !== undefined) {
+      const spouses = membersData.members.filter(m => m.role === 'spouse');
+      return spouses[memberIndex]?.id;
+    } else if (memberType === 'dependent' && memberIndex !== undefined) {
+      const dependents = membersData.members.filter(m => m.role === 'dependent');
+      return dependents[memberIndex]?.id;
+    }
+    return null;
+  }, [membersData, memberType, memberIndex]);
+
+  // Fetch income data - BUG FIX 1: Guard against null currentMemberId
+  const { data: incomeData, isLoading: isLoadingIncome } = useQuery<{ income: any }>({
+    queryKey: ['/api/policies/members', currentMemberId, 'income'],
+    queryFn: async () => {
+      const res = await fetch(`/api/policies/members/${currentMemberId}/income`, {
+        credentials: 'include',
+      });
+      if (res.status === 404) return { income: null };
+      if (!res.ok) throw new Error('Failed to fetch income data');
+      return res.json();
+    },
+    enabled: !!currentMemberId,
+  });
+
+  // Fetch immigration data - BUG FIX 1: Guard against null currentMemberId
+  const { data: immigrationData, isLoading: isLoadingImmigration } = useQuery<{ immigration: any }>({
+    queryKey: ['/api/policies/members', currentMemberId, 'immigration'],
+    queryFn: async () => {
+      const res = await fetch(`/api/policies/members/${currentMemberId}/immigration`, {
+        credentials: 'include',
+      });
+      if (res.status === 404) return { immigration: null };
+      if (!res.ok) throw new Error('Failed to fetch immigration data');
+      return res.json();
+    },
+    enabled: !!currentMemberId,
+  });
+
+  const isLoadingMemberData = isLoadingMembers || isLoadingIncome || isLoadingImmigration;
+  const isMemberDataReady = !isLoadingMembers && (!currentMemberId || (!isLoadingIncome && !isLoadingImmigration));
+
+  // Build member data for form
+  const memberData = useMemo(() => {
+    if (!quote || !memberType || !membersData?.members) return null;
+    
+    const income = incomeData?.income || {};
+    const immigration = immigrationData?.immigration || {};
+    
+    if (memberType === 'primary') {
+      return {
+        firstName: quote.clientFirstName || '',
+        middleName: quote.clientMiddleName || '',
+        lastName: quote.clientLastName || '',
+        secondLastName: quote.clientSecondLastName || '',
+        email: quote.clientEmail || '',
+        phone: quote.clientPhone || '',
+        dateOfBirth: formatDateForInput(quote.clientDateOfBirth) || '',
+        ssn: normalizeSSN(quote.clientSsn) || '',
+        gender: quote.clientGender || '',
+        isApplicant: quote.clientIsApplicant ?? true,
+        tobaccoUser: quote.clientTobaccoUser ?? false,
+        pregnant: quote.clientPregnant ?? false,
+        preferredLanguage: quote.clientPreferredLanguage || '',
+        countryOfBirth: quote.clientCountryOfBirth || '',
+        maritalStatus: quote.clientMaritalStatus || '',
+        weight: quote.clientWeight || '',
+        height: quote.clientHeight || '',
+        employerName: income.employerName || '',
+        employerPhone: income.employerPhone || '',
+        position: income.position || '',
+        annualIncome: income.annualIncome || '',
+        incomeFrequency: income.incomeFrequency || 'annually',
+        selfEmployed: income.selfEmployed ?? false,
+        immigrationStatus: immigration.immigrationStatus || '',
+        naturalizationNumber: immigration.naturalizationNumber || '',
+        uscisNumber: immigration.uscisNumber || '',
+        immigrationStatusCategory: immigration.immigrationStatusCategory || '',
+      };
+    } else if (memberType === 'spouse' && memberIndex !== undefined) {
+      const spouses = membersData.members.filter(m => m.role === 'spouse');
+      let spouse = spouses[memberIndex];
+      if (!spouse && quote.spouses && quote.spouses[memberIndex]) {
+        spouse = quote.spouses[memberIndex];
+      }
+      
+      return spouse ? {
+        firstName: spouse.firstName || '',
+        middleName: spouse.middleName || '',
+        lastName: spouse.lastName || '',
+        secondLastName: spouse.secondLastName || '',
+        email: spouse.email || '',
+        phone: spouse.phone || '',
+        dateOfBirth: formatDateForInput(spouse.dateOfBirth) || '',
+        ssn: normalizeSSN(spouse.ssn) || '',
+        gender: spouse.gender || '',
+        isApplicant: spouse.isApplicant ?? false,
+        isPrimaryDependent: spouse.isPrimaryDependent ?? false,
+        tobaccoUser: spouse.tobaccoUser ?? false,
+        pregnant: spouse.pregnant ?? false,
+        preferredLanguage: spouse.preferredLanguage || '',
+        countryOfBirth: spouse.countryOfBirth || '',
+        maritalStatus: spouse.maritalStatus || '',
+        weight: spouse.weight || '',
+        height: spouse.height || '',
+        employerName: income.employerName || '',
+        employerPhone: income.employerPhone || '',
+        position: income.position || '',
+        annualIncome: income.annualIncome || '',
+        incomeFrequency: income.incomeFrequency || 'annually',
+        selfEmployed: income.selfEmployed ?? false,
+        immigrationStatus: immigration.immigrationStatus || '',
+        naturalizationNumber: immigration.naturalizationNumber || '',
+        uscisNumber: immigration.uscisNumber || '',
+        immigrationStatusCategory: immigration.immigrationStatusCategory || '',
+      } : null;
+    } else if (memberType === 'dependent' && memberIndex !== undefined) {
+      const dependents = membersData.members.filter(m => m.role === 'dependent');
+      let dependent = dependents[memberIndex];
+      if (!dependent && quote.dependents && quote.dependents[memberIndex]) {
+        dependent = quote.dependents[memberIndex];
+      }
+      
+      return dependent ? {
+        firstName: dependent.firstName || '',
+        middleName: dependent.middleName || '',
+        lastName: dependent.lastName || '',
+        secondLastName: dependent.secondLastName || '',
+        email: dependent.email || '',
+        phone: dependent.phone || '',
+        dateOfBirth: formatDateForInput(dependent.dateOfBirth) || '',
+        ssn: normalizeSSN(dependent.ssn) || '',
+        gender: dependent.gender || '',
+        isApplicant: dependent.isApplicant ?? false,
+        isPrimaryDependent: dependent.isPrimaryDependent ?? false,
+        tobaccoUser: dependent.tobaccoUser ?? false,
+        pregnant: dependent.pregnant ?? false,
+        preferredLanguage: dependent.preferredLanguage || '',
+        countryOfBirth: dependent.countryOfBirth || '',
+        maritalStatus: dependent.maritalStatus || '',
+        weight: dependent.weight || '',
+        height: dependent.height || '',
+        relation: dependent.relation || '',
+        employerName: income.employerName || '',
+        employerPhone: income.employerPhone || '',
+        position: income.position || '',
+        annualIncome: income.annualIncome || '',
+        incomeFrequency: income.incomeFrequency || 'annually',
+        selfEmployed: income.selfEmployed ?? false,
+        immigrationStatus: immigration.immigrationStatus || '',
+        naturalizationNumber: immigration.naturalizationNumber || '',
+        uscisNumber: immigration.uscisNumber || '',
+        immigrationStatusCategory: immigration.immigrationStatusCategory || '',
+      } : null;
+    }
+    return null;
+  }, [quote?.id, memberType, memberIndex, membersData, incomeData, immigrationData]);
+  
+  const editForm = useForm({
+    resolver: zodResolver(editMemberSchema),
+    defaultValues: memberData || {},
+    shouldUnregister: false,
+  });
+
+  // Save original values for cancel
+  const originalValuesRef = useRef(memberData);
+
+  // Reset form when data is ready
+  useEffect(() => {
+    if (isMemberDataReady && memberData && !hasInitializedRef.current) {
+      editForm.reset(memberData, { keepDirty: false });
+      originalValuesRef.current = memberData;
+      hasInitializedRef.current = true;
+    }
+  }, [isMemberDataReady, memberData, editForm]);
+
+  // BUG FIX 3: Detect member changes and reset state
+  useEffect(() => {
+    const currentIdentity = memberIdentity;
+    const previousIdentity = previousMemberIdentityRef.current;
+
+    // If member identity changed (switching between members)
+    if (currentIdentity !== previousIdentity) {
+      // Warn if switching during save
+      if (isSaving) {
+        toast({
+          variant: "destructive",
+          title: "Save Canceled",
+          description: "Switched to different member. Previous save operation was canceled.",
+          duration: 3000,
+        });
+      }
+
+      // Cancel any in-flight operations
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+
+      // Reset all state
+      setIsSaving(false);
+      setCountryPopoverOpen(false);
+      hasInitializedRef.current = false;
+
+      // Reset form to clean state
+      if (memberData) {
+        editForm.reset(memberData, { keepDirty: false });
+        originalValuesRef.current = memberData;
+      }
+
+      // Update ref
+      previousMemberIdentityRef.current = currentIdentity;
+    }
+  }, [memberIdentity, isSaving, memberData, editForm, toast]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const handleSave = async (data: z.infer<typeof editMemberSchema>) => {
+    // BUG FIX 1: Early validation - don't attempt save without required data
+    if (!quote?.id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Cannot save: Policy ID is missing.",
+        duration: 3000,
+      });
+      return;
+    }
+
+    setCountryPopoverOpen(false);
+    setIsSaving(true);
+    
+    // Create new abort controller for this save operation
+    abortControllerRef.current = new AbortController();
+    
+    toast({
+      title: "Saving...",
+      description: "Please wait while we save the member information.",
+      duration: 10000,
+    });
+    
+    try {
+      // Save primary client data to quotes table
+      if (memberType === 'primary') {
+        onSave({
+          clientFirstName: data.firstName,
+          clientMiddleName: data.middleName,
+          clientLastName: data.lastName,
+          clientSecondLastName: data.secondLastName,
+          clientEmail: data.email,
+          clientPhone: data.phone,
+          clientDateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
+          clientSsn: normalizeSSN(data.ssn),
+          clientGender: data.gender,
+          clientIsApplicant: data.isApplicant,
+          clientTobaccoUser: data.tobaccoUser,
+          clientPregnant: data.pregnant,
+          clientPreferredLanguage: data.preferredLanguage,
+          clientCountryOfBirth: data.countryOfBirth,
+          clientMaritalStatus: data.maritalStatus,
+          clientWeight: data.weight,
+          clientHeight: data.height,
+        });
+      }
+      
+      // Update normalized quote_members table
+      if (currentMemberId) {
+        const memberBasicData: any = {
+          firstName: data.firstName,
+          middleName: data.middleName,
+          lastName: data.lastName,
+          secondLastName: data.secondLastName,
+          email: data.email,
+          phone: data.phone,
+          dateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
+          ssn: normalizeSSN(data.ssn),
+          gender: data.gender,
+          isApplicant: data.isApplicant,
+          isPrimaryDependent: data.isPrimaryDependent,
+          tobaccoUser: data.tobaccoUser,
+          pregnant: data.pregnant,
+          preferredLanguage: data.preferredLanguage,
+          countryOfBirth: data.countryOfBirth,
+          maritalStatus: data.maritalStatus,
+          weight: data.weight,
+          height: data.height,
+        };
+        
+        if (memberType === 'dependent') {
+          memberBasicData.relation = (data as any).relation;
+        }
+        
+        const memberResponse = await fetch(`/api/policies/${quote.id}/members/${currentMemberId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(memberBasicData),
+        });
+        
+        if (!memberResponse.ok) {
+          throw new Error('Failed to update member');
+        }
+      }
+    
+      // Ensure member exists and get memberId
+      const ensureResponse = await fetch(`/api/policies/${quote.id}/ensure-member`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          role: memberType === 'primary' ? 'client' : memberType,
+          memberData: {
+            firstName: data.firstName,
+            middleName: data.middleName || null,
+            lastName: data.lastName,
+            secondLastName: data.secondLastName || null,
+            email: data.email || null,
+            phone: data.phone || null,
+            dateOfBirth: data.dateOfBirth ? data.dateOfBirth.split('T')[0] : null,
+            ssn: normalizeSSN(data.ssn) || null,
+            gender: data.gender || null,
+            isApplicant: data.isApplicant || false,
+            isPrimaryDependent: data.isPrimaryDependent || false,
+            tobaccoUser: data.tobaccoUser || false,
+            pregnant: data.pregnant || false,
+            preferredLanguage: data.preferredLanguage || null,
+            countryOfBirth: data.countryOfBirth || null,
+            maritalStatus: data.maritalStatus || null,
+            weight: data.weight || null,
+            height: data.height || null,
+            relation: memberType === 'dependent' ? ((data as any).relation || null) : undefined,
+          },
+        }),
+      });
+      
+      if (!ensureResponse.ok) {
+        throw new Error('Failed to ensure member');
+      }
+      
+      const { memberId } = await ensureResponse.json();
+      
+      // Calculate total annual income
+      let totalAnnualIncome = null;
+      if (data.annualIncome !== undefined && data.annualIncome !== null && data.annualIncome !== '') {
+        const amount = parseFloat(data.annualIncome);
+        if (!isNaN(amount) && amount >= 0) {
+          const frequency = data.incomeFrequency || 'annually';
+          switch (frequency) {
+            case 'weekly':
+              totalAnnualIncome = (amount * 52).toFixed(2);
+              break;
+            case 'biweekly':
+              totalAnnualIncome = (amount * 26).toFixed(2);
+              break;
+            case 'monthly':
+              totalAnnualIncome = (amount * 12).toFixed(2);
+              break;
+            case 'annually':
+            default:
+              totalAnnualIncome = amount.toFixed(2);
+              break;
+          }
+        }
+      }
+      
+      // Save income and immigration in parallel
+      const savePromises = [];
+      
+      // Income save
+      const incomePayload = {
+        employerName: data.employerName || null,
+        employerPhone: data.employerPhone || null,
+        position: data.position || null,
+        annualIncome: data.annualIncome || null,
+        incomeFrequency: data.incomeFrequency || 'annually',
+        totalAnnualIncome: totalAnnualIncome,
+        selfEmployed: data.selfEmployed || false,
+      };
+      
+      const hasIncome = data.employerName || data.position || data.annualIncome;
+      if (hasIncome) {
+        savePromises.push(
+          fetch(`/api/policies/members/${memberId}/income`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(incomePayload),
+          })
+        );
+      } else if (incomeData?.income?.id) {
+        savePromises.push(
+          fetch(`/api/policies/members/${memberId}/income/${incomeData.income.id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+        );
+      }
+      
+      // Immigration save
+      const immigrationPayload = {
+        immigrationStatus: data.immigrationStatus || null,
+        naturalizationNumber: data.naturalizationNumber || null,
+        uscisNumber: data.uscisNumber || null,
+        immigrationStatusCategory: data.immigrationStatusCategory || null,
+      };
+      
+      const hasImmigration = data.immigrationStatus || data.uscisNumber || data.naturalizationNumber;
+      if (hasImmigration) {
+        savePromises.push(
+          fetch(`/api/policies/members/${memberId}/immigration`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(immigrationPayload),
+          })
+        );
+      } else if (immigrationData?.immigration?.id) {
+        savePromises.push(
+          fetch(`/api/policies/members/${memberId}/immigration/${immigrationData.immigration.id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+        );
+      }
+      
+      // Wait for all saves to complete
+      const responses = await Promise.all(savePromises);
+      const failedResponse = responses.find(r => !r.ok);
+      if (failedResponse) {
+        throw new Error('Failed to save member data');
+      }
+      
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'members'] });
+      if (currentMemberId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/members', currentMemberId, 'income'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/members', currentMemberId, 'immigration'] });
+      }
+      
+      toast({
+        title: "Saved",
+        description: "Member information has been updated successfully.",
+        duration: 3000,
+      });
+      
+      // Update original values and close
+      originalValuesRef.current = data;
+      onClose();
+    } catch (error: any) {
+      // BUG FIX 2: Improved error handling with retry guidance
+      // Check if error was due to abort (member switch)
+      if (error.name === 'AbortError') {
+        return; // Silent - already showed warning in useEffect
+      }
+
+      toast({
+        variant: "destructive",
+        title: "Error Saving Member",
+        description: error.message || "Failed to save member data. You can edit and retry, or cancel to discard changes.",
+        duration: 5000,
+      });
+      // Form stays open on error so user can retry or cancel
+    } finally {
+      // BUG FIX 2: Always reset isSaving state
+      setIsSaving(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleCancel = () => {
+    // BUG FIX 2: Cancel any in-flight operations
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // Reset to original values
+    if (originalValuesRef.current) {
+      editForm.reset(originalValuesRef.current, { keepDirty: false });
+    }
+    
+    // Clear saving state
+    setIsSaving(false);
+    
+    onClose();
+  };
+
+  if (isLoadingMemberData) {
+    return (
+      <div className="bg-muted/20 p-6 border-t" data-testid="inline-editor-loading">
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading member data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-muted/20 border-t" data-testid="inline-member-editor">
+      <Form {...editForm}>
+        <form onSubmit={editForm.handleSubmit(handleSave)} className="p-6 space-y-4">
+          <Accordion type="single" collapsible defaultValue="basic" className="w-full">
+            {/* Basic Info Section */}
+            <AccordionItem value="basic">
+              <AccordionTrigger className="text-base font-semibold" data-testid="accordion-basic-info">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Basic Information
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+                  {/* First Name */}
+                  <FormField
+                    control={editForm.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-firstname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Middle Name */}
+                  <FormField
+                    control={editForm.control}
+                    name="middleName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Middle Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-middlename" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Last Name */}
+                  <FormField
+                    control={editForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-lastname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Second Last Name */}
+                  <FormField
+                    control={editForm.control}
+                    name="secondLastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Second Last Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} data-testid="input-secondlastname" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Date of Birth */}
+                  <FormField
+                    control={editForm.control}
+                    name="dateOfBirth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input {...field} type="date" data-testid="input-dob" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* SSN */}
+                  <FormField
+                    control={editForm.control}
+                    name="ssn"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SSN <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(formatSSN(e.target.value))}
+                            placeholder="XXX-XX-XXXX"
+                            data-testid="input-ssn"
+                            className="font-mono"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Gender */}
+                  <FormField
+                    control={editForm.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender <span className="text-destructive">*</span></FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-gender">
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Phone */}
+                  <FormField
+                    control={editForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                            placeholder="(999) 999-9999"
+                            data-testid="input-phone"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Email */}
+                  <FormField
+                    control={editForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="email" data-testid="input-email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Marital Status */}
+                  <FormField
+                    control={editForm.control}
+                    name="maritalStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Marital Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-maritalstatus">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="single">Single</SelectItem>
+                            <SelectItem value="married">Married</SelectItem>
+                            <SelectItem value="divorced">Divorced</SelectItem>
+                            <SelectItem value="widowed">Widowed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Country of Birth */}
+                  <FormField
+                    control={editForm.control}
+                    name="countryOfBirth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country of Birth</FormLabel>
+                        <Popover open={countryPopoverOpen} onOpenChange={setCountryPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between font-normal"
+                                data-testid="select-countryofbirth"
+                              >
+                                {field.value || "Select country"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search country..." />
+                              <CommandList>
+                                <CommandEmpty>No country found.</CommandEmpty>
+                                <CommandGroup>
+                                  {COUNTRIES.map((country) => (
+                                    <CommandItem
+                                      key={country}
+                                      value={country}
+                                      onSelect={() => {
+                                        field.onChange(country);
+                                        setCountryPopoverOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={`mr-2 h-4 w-4 ${
+                                          field.value === country ? "opacity-100" : "opacity-0"
+                                        }`}
+                                      />
+                                      {country}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Preferred Language */}
+                  <FormField
+                    control={editForm.control}
+                    name="preferredLanguage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Preferred Language</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-preferredlanguage">
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="english">English</SelectItem>
+                            <SelectItem value="spanish">Spanish</SelectItem>
+                            <SelectItem value="french">French</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Weight */}
+                  <FormField
+                    control={editForm.control}
+                    name="weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Weight (Lbs)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" placeholder="150" data-testid="input-weight" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Height */}
+                  <FormField
+                    control={editForm.control}
+                    name="height"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Height (Ft)</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="5'10&quot;" data-testid="input-height" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Relation (only for dependents) */}
+                  {memberType === 'dependent' && (
+                    <FormField
+                      control={editForm.control}
+                      name={"relation" as any}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Relation <span className="text-destructive">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-relation">
+                                <SelectValue placeholder="Select relation" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="child">Child</SelectItem>
+                              <SelectItem value="parent">Parent</SelectItem>
+                              <SelectItem value="sibling">Sibling</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Checkboxes */}
+                  <div className="lg:col-span-2 space-y-3">
+                    <FormField
+                      control={editForm.control}
+                      name="isApplicant"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-isapplicant"
+                            />
+                          </FormControl>
+                          <FormLabel className="cursor-pointer">Is Applicant</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="isPrimaryDependent"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-is-dependent"
+                            />
+                          </FormControl>
+                          <FormLabel className="cursor-pointer">Dependent</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="tobaccoUser"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-tobacco"
+                            />
+                          </FormControl>
+                          <FormLabel className="cursor-pointer">Tobacco User</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="pregnant"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-pregnant"
+                            />
+                          </FormControl>
+                          <FormLabel className="cursor-pointer">Pregnant</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Income Section */}
+            <AccordionItem value="income">
+              <AccordionTrigger className="text-base font-semibold" data-testid="accordion-income">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Income & Employment
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+                  {/* Employer Name */}
+                  <FormField
+                    control={editForm.control}
+                    name="employerName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Employer or company name" data-testid="input-employer-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Position */}
+                  <FormField
+                    control={editForm.control}
+                    name="position"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Position / Title</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Job title or occupation" data-testid="input-position" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Employer Phone */}
+                  <FormField
+                    control={editForm.control}
+                    name="employerPhone"
+                    render={({ field }) => (
+                      <FormItem className="lg:col-span-2">
+                        <FormLabel>Employer Contact</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field}
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(formatPhoneNumber(e.target.value))}
+                            placeholder="(999) 999-9999"
+                            data-testid="input-employer-phone"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Income Frequency */}
+                  <FormField
+                    control={editForm.control}
+                    name="incomeFrequency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pay Period</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || "annually"}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-income-frequency">
+                              <SelectValue placeholder="How often are you paid?" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="annually">Annually (1 time/year)</SelectItem>
+                            <SelectItem value="monthly">Monthly (12 times/year)</SelectItem>
+                            <SelectItem value="biweekly">Biweekly (26 times/year)</SelectItem>
+                            <SelectItem value="weekly">Weekly (52 times/year)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Income Amount */}
+                  <IncomeField control={editForm.control} frequency={editForm.watch('incomeFrequency') || 'annually'} />
+
+                  {/* Self Employed */}
+                  <FormField
+                    control={editForm.control}
+                    name="selfEmployed"
+                    render={({ field }) => (
+                      <FormItem className="lg:col-span-2 flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-self-employed"
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Self-employed or independent contractor</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Immigration Section */}
+            <AccordionItem value="immigration">
+              <AccordionTrigger className="text-base font-semibold" data-testid="accordion-immigration">
+                <div className="flex items-center gap-2">
+                  <Plane className="h-4 w-4" />
+                  Immigration Status
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+                  {/* Immigration Status */}
+                  <FormField
+                    control={editForm.control}
+                    name="immigrationStatus"
+                    render={({ field }) => (
+                      <FormItem className="lg:col-span-2">
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-immigration-status">
+                              <SelectValue placeholder="Select immigration status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="asylum">Asylum</SelectItem>
+                            <SelectItem value="citizen">U.S. Citizen</SelectItem>
+                            <SelectItem value="humanitarian_parole">Humanitarian Parole</SelectItem>
+                            <SelectItem value="resident">Permanent Resident</SelectItem>
+                            <SelectItem value="temporary_protected_status">Temporary Protected Status (TPS)</SelectItem>
+                            <SelectItem value="work_authorization">Work Authorization</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Naturalization Number (only if citizen) */}
+                  {editForm.watch('immigrationStatus') === 'citizen' && (
+                    <FormField
+                      control={editForm.control}
+                      name="naturalizationNumber"
+                      render={({ field }) => (
+                        <FormItem className="lg:col-span-2">
+                          <FormLabel>Naturalization Certificate #</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Enter certificate number" data-testid="input-naturalization-number" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* USCIS Number */}
+                  <FormField
+                    control={editForm.control}
+                    name="uscisNumber"
+                    render={({ field }) => (
+                      <FormItem className="lg:col-span-2">
+                        <FormLabel>USCIS Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="9-digit number (optional)" data-testid="input-uscis-number" className="font-mono" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Immigration Status Category */}
+                  <FormField
+                    control={editForm.control}
+                    name="immigrationStatusCategory"
+                    render={({ field }) => (
+                      <FormItem className="lg:col-span-2">
+                        <FormLabel>Status Category</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., I-94, Parole, etc." data-testid="input-immigration-category" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          {/* Save/Cancel Buttons */}
+          <div className="flex gap-2 justify-end pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving || isPending}
+              data-testid="button-cancel-inline-edit"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSaving || isPending}
+              data-testid="button-save-inline-edit"
+            >
+              {isSaving || isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}
+
 // Helper function to generate time options in 15-minute intervals
 const generateTimeOptions = () => {
   const options = [];
@@ -3756,6 +4942,7 @@ export default function PoliciesPage() {
   
   // Edit states
   const [editingMember, setEditingMember] = useState<{ type: 'primary' | 'spouse' | 'dependent', index?: number } | null>(null);
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [addingMember, setAddingMember] = useState(false);
   const [editingAddresses, setEditingAddresses] = useState<'physical' | 'mailing' | 'billing' | null>(null);
   const [editingPayment, setEditingPayment] = useState(false);
@@ -8335,7 +9522,10 @@ export default function PoliciesPage() {
                           size="sm" 
                           variant="ghost" 
                           className="h-7 w-7 p-0" 
-                          onClick={() => setEditingMember({ type: 'primary' })}
+                          onClick={() => {
+                            const memberId = `primary-${viewingQuote.id}`;
+                            setExpandedMemberId(expandedMemberId === memberId ? null : memberId);
+                          }}
                           data-testid="button-view-primary"
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -8344,186 +9534,231 @@ export default function PoliciesPage() {
                       </div>
                     </div>
 
+                    {/* Primary Member Inline Editor */}
+                    {expandedMemberId === `primary-${viewingQuote.id}` && (
+                      <InlineMemberEditor
+                        quote={viewingQuote}
+                        memberType="primary"
+                        onClose={() => setExpandedMemberId(null)}
+                        onSave={updateQuoteMutation.mutate}
+                        isPending={updateQuoteMutation.isPending}
+                      />
+                    )}
+
                     {/* Spouses */}
                     {(viewingQuoteWithMembers.spouses || []).map((spouse: any, index: number) => (
-                      <div key={`spouse-${spouse.id || index}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b hover-elevate items-center">
-                        <Avatar className="h-9 w-9 border-2 border-muted">
-                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
-                            {spouse.firstName?.[0]}{spouse.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
-                          <div>
-                            <p className="font-semibold text-sm truncate">
-                              {[
-                                spouse.firstName,
-                                spouse.middleName,
-                                spouse.lastName,
-                                spouse.secondLastName
-                              ].filter(Boolean).join(' ')}
-                            </p>
-                            <div className="flex gap-1 mt-0.5 flex-wrap">
-                              <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
-                              {spouse.isApplicant && (
-                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
-                              )}
-                              {spouse.isPrimaryDependent && (
-                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
-                              )}
+                      <React.Fragment key={`spouse-${spouse.id || index}`}>
+                        <div className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b hover-elevate items-center">
+                          <Avatar className="h-9 w-9 border-2 border-muted">
+                            <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
+                              {spouse.firstName?.[0]}{spouse.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
+                            <div>
+                              <p className="font-semibold text-sm truncate">
+                                {[
+                                  spouse.firstName,
+                                  spouse.middleName,
+                                  spouse.lastName,
+                                  spouse.secondLastName
+                                ].filter(Boolean).join(' ')}
+                              </p>
+                              <div className="flex gap-1 mt-0.5 flex-wrap">
+                                <Badge variant="outline" className="text-xs h-4 px-1.5">Spouse</Badge>
+                                {spouse.isApplicant && (
+                                  <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
+                                )}
+                                {spouse.isPrimaryDependent && (
+                                  <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
+                              <div>
+                                <span className="text-muted-foreground">DOB:</span>
+                                <p className="font-medium">
+                                  {spouse.dateOfBirth ? formatDateForDisplay(spouse.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Age:</span>
+                                <p className="font-medium">{calculateAge(spouse.dateOfBirth) || 0} yrs</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Gender:</span>
+                                <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">SSN:</span>
+                                <p className="font-mono font-medium">
+                                  {spouse.ssn || 'N/A'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Immigration:</span>
+                                <p className="font-medium text-xs">{getImmigrationStatusDisplay(spouse.immigration)}</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Income:</span>
+                                <p className="font-medium text-xs">
+                                  {spouse.income?.totalAnnualIncome 
+                                    ? `$${parseFloat(spouse.income.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                    : '-'}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
-                            <div>
-                              <span className="text-muted-foreground">DOB:</span>
-                              <p className="font-medium">
-                                {spouse.dateOfBirth ? formatDateForDisplay(spouse.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Age:</span>
-                              <p className="font-medium">{calculateAge(spouse.dateOfBirth) || 0} yrs</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Gender:</span>
-                              <p className="font-medium">{spouse.gender ? spouse.gender.charAt(0).toUpperCase() + spouse.gender.slice(1) : 'N/A'}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">SSN:</span>
-                              <p className="font-mono font-medium">
-                                {spouse.ssn || 'N/A'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(spouse.immigration)}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Income:</span>
-                              <p className="font-medium text-xs">
-                                {spouse.income?.totalAnnualIncome 
-                                  ? `$${parseFloat(spouse.income.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                                  : '-'}
-                              </p>
-                            </div>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0" 
+                              onClick={() => {
+                                const memberId = `spouse-${index}`;
+                                setExpandedMemberId(expandedMemberId === memberId ? null : memberId);
+                              }}
+                              data-testid={`button-view-spouse-${index}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                              onClick={() => setDeletingMember({ 
+                                id: spouse.id, 
+                                name: `${spouse.firstName} ${spouse.lastName}`,
+                                role: 'Spouse',
+                                index: index
+                              })}
+                              data-testid={`button-delete-spouse-${index}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 w-7 p-0" 
-                            onClick={() => setEditingMember({ type: 'spouse', index })}
-                            data-testid={`button-view-spouse-${index}`}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
-                            onClick={() => setDeletingMember({ 
-                              id: spouse.id, 
-                              name: `${spouse.firstName} ${spouse.lastName}`,
-                              role: 'Spouse',
-                              index: index
-                            })}
-                            data-testid={`button-delete-spouse-${index}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
+                        
+                        {/* Spouse Inline Editor */}
+                        {expandedMemberId === `spouse-${index}` && (
+                          <InlineMemberEditor
+                            quote={viewingQuote}
+                            memberType="spouse"
+                            memberIndex={index}
+                            onClose={() => setExpandedMemberId(null)}
+                            onSave={updateQuoteMutation.mutate}
+                            isPending={updateQuoteMutation.isPending}
+                          />
+                        )}
+                      </React.Fragment>
                     ))}
 
                     {/* Dependents */}
                     {(viewingQuoteWithMembers.dependents || []).map((dependent: any, index: number) => (
-                      <div key={`dependent-${dependent.id || index}`} className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
-                        <Avatar className="h-9 w-9 border-2 border-muted">
-                          <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
-                            {dependent.firstName?.[0]}{dependent.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
-                          <div>
-                            <p className="font-semibold text-sm truncate">
-                              {[
-                                dependent.firstName,
-                                dependent.middleName,
-                                dependent.lastName,
-                                dependent.secondLastName
-                              ].filter(Boolean).join(' ')}
-                            </p>
-                            <div className="flex gap-1 mt-0.5 flex-wrap">
-                              <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
-                              {dependent.isApplicant && (
-                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
-                              )}
-                              {dependent.isPrimaryDependent && (
-                                <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
-                              )}
+                      <React.Fragment key={`dependent-${dependent.id || index}`}>
+                        <div className="grid grid-cols-[auto_1fr_80px] gap-3 p-3 border-b last:border-b-0 hover-elevate items-center">
+                          <Avatar className="h-9 w-9 border-2 border-muted">
+                            <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-xs">
+                              {dependent.firstName?.[0]}{dependent.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-2 min-w-0">
+                            <div>
+                              <p className="font-semibold text-sm truncate">
+                                {[
+                                  dependent.firstName,
+                                  dependent.middleName,
+                                  dependent.lastName,
+                                  dependent.secondLastName
+                                ].filter(Boolean).join(' ')}
+                              </p>
+                              <div className="flex gap-1 mt-0.5 flex-wrap">
+                                <Badge variant="outline" className="text-xs h-4 px-1.5">{dependent.relation || 'Dependent'}</Badge>
+                                {dependent.isApplicant && (
+                                  <Badge variant="default" className="text-xs h-4 px-1.5 bg-blue-600 hover:bg-blue-700">Applicant</Badge>
+                                )}
+                                {dependent.isPrimaryDependent && (
+                                  <Badge variant="default" className="text-xs h-4 px-1.5 bg-green-600 hover:bg-green-700">Dependent</Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
+                              <div>
+                                <span className="text-muted-foreground">DOB:</span>
+                                <p className="font-medium">
+                                  {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Age:</span>
+                                <p className="font-medium">{calculateAge(dependent.dateOfBirth) || 0} yrs</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Gender:</span>
+                                <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">SSN:</span>
+                                <p className="font-mono font-medium">
+                                  {dependent.ssn || 'N/A'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Immigration:</span>
+                                <p className="font-medium text-xs">{getImmigrationStatusDisplay(dependent.immigration)}</p>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Income:</span>
+                                <p className="font-medium text-xs">
+                                  {dependent.income?.totalAnnualIncome 
+                                    ? `$${parseFloat(dependent.income.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                                    : '-'}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 text-xs">
-                            <div>
-                              <span className="text-muted-foreground">DOB:</span>
-                              <p className="font-medium">
-                                {dependent.dateOfBirth ? formatDateForDisplay(dependent.dateOfBirth, "MMM dd, yyyy") : 'N/A'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Age:</span>
-                              <p className="font-medium">{calculateAge(dependent.dateOfBirth) || 0} yrs</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Gender:</span>
-                              <p className="font-medium">{dependent.gender ? dependent.gender.charAt(0).toUpperCase() + dependent.gender.slice(1) : 'N/A'}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">SSN:</span>
-                              <p className="font-mono font-medium">
-                                {dependent.ssn || 'N/A'}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Immigration:</span>
-                              <p className="font-medium text-xs">{getImmigrationStatusDisplay(dependent.immigration)}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Income:</span>
-                              <p className="font-medium text-xs">
-                                {dependent.income?.totalAnnualIncome 
-                                  ? `$${parseFloat(dependent.income.totalAnnualIncome).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                                  : '-'}
-                              </p>
-                            </div>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0" 
+                              onClick={() => {
+                                const memberId = `dependent-${index}`;
+                                setExpandedMemberId(expandedMemberId === memberId ? null : memberId);
+                              }}
+                              data-testid={`button-view-dependent-${index}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
+                              onClick={() => setDeletingMember({ 
+                                id: dependent.id, 
+                                name: `${dependent.firstName} ${dependent.lastName}`,
+                                role: dependent.relation || 'Dependent',
+                                index: index
+                              })}
+                              data-testid={`button-delete-dependent-${index}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 w-7 p-0" 
-                            onClick={() => setEditingMember({ type: 'dependent', index })}
-                            data-testid={`button-view-dependent-${index}`}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 w-7 p-0 text-destructive hover:text-destructive" 
-                            onClick={() => setDeletingMember({ 
-                              id: dependent.id, 
-                              name: `${dependent.firstName} ${dependent.lastName}`,
-                              role: dependent.relation || 'Dependent',
-                              index: index
-                            })}
-                            data-testid={`button-delete-dependent-${index}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
+                        
+                        {/* Dependent Inline Editor */}
+                        {expandedMemberId === `dependent-${index}` && (
+                          <InlineMemberEditor
+                            quote={viewingQuote}
+                            memberType="dependent"
+                            memberIndex={index}
+                            onClose={() => setExpandedMemberId(null)}
+                            onSave={updateQuoteMutation.mutate}
+                            isPending={updateQuoteMutation.isPending}
+                          />
+                        )}
+                      </React.Fragment>
                     ))}
                   </div>
                 </CardContent>
