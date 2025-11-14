@@ -17,6 +17,9 @@ export function startImessageCampaignProcessor() {
 
 async function processActiveCampaigns() {
   try {
+    // RECOVERY SWEEP: Reset abandoned messages left in 'sending' after crashes
+    await recoverAbandonedMessages();
+    
     const activeRuns = await storage.getActiveImessageCampaignRuns();
     
     for (const run of activeRuns) {
@@ -32,6 +35,24 @@ async function processActiveCampaigns() {
     }
   } catch (error) {
     console.error('[CAMPAIGN PROCESSOR] Error:', error);
+  }
+}
+
+async function recoverAbandonedMessages() {
+  try {
+    const abandonedMessages = await storage.getAbandonedCampaignMessages();
+    
+    if (abandonedMessages.length > 0) {
+      console.log(`[CAMPAIGN PROCESSOR] Recovering ${abandonedMessages.length} abandoned messages`);
+      
+      for (const message of abandonedMessages) {
+        await storage.updateImessageCampaignMessage(message.id, {
+          sendStatus: 'pending'
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[CAMPAIGN PROCESSOR] Error recovering abandoned messages:', error);
   }
 }
 
@@ -79,6 +100,12 @@ async function sendCampaignMessage(
   campaign: ImessageCampaign, 
   run: ImessageCampaignRun
 ) {
+  // TRANSACTIONAL CLAIM: Mark as "sending" BEFORE dispatch to prevent duplicates
+  await storage.updateImessageCampaignMessage(message.id, {
+    sendStatus: 'sending',
+    attemptedAt: new Date()
+  });
+  
   const contact = await storage.getContactById(message.contactId);
   
   let messageBody = campaign.messageBody;
@@ -96,8 +123,7 @@ async function sendCampaignMessage(
   
   await storage.updateImessageCampaignMessage(message.id, {
     sendStatus: 'sent',
-    messageGuid: response.data.guid,
-    attemptedAt: new Date()
+    messageGuid: response.data.guid
   });
   
   await storage.incrementRunSentCount(run.id);
@@ -119,8 +145,11 @@ async function handleSendError(message: ImessageCampaignMessage, error: any) {
     
     await storage.incrementRunFailedCount(message.runId);
   } else {
+    // Reset to 'pending' so processor can retry
     await storage.updateImessageCampaignMessage(message.id, {
-      retryCount
+      sendStatus: 'pending',
+      retryCount,
+      attemptedAt: new Date()
     });
   }
 }

@@ -1109,6 +1109,7 @@ export interface IStorage {
   getImessageCampaignMessage(id: string): Promise<ImessageCampaignMessage | undefined>;
   getImessageCampaignMessagesByRun(runId: string, filters?: { status?: string; limit?: number; offset?: number }): Promise<ImessageCampaignMessage[]>;
   getPendingCampaignMessages(runId: string, limit?: number): Promise<ImessageCampaignMessage[]>;
+  getAbandonedCampaignMessages(): Promise<ImessageCampaignMessage[]>;
   updateImessageCampaignMessage(id: string, data: Partial<InsertImessageCampaignMessage>): Promise<ImessageCampaignMessage | undefined>;
   bulkCreateCampaignMessages(messages: InsertImessageCampaignMessage[]): Promise<ImessageCampaignMessage[]>;
   
@@ -9864,6 +9865,23 @@ export class DbStorage implements IStorage {
     }
 
     return query;
+  }
+
+  async getAbandonedCampaignMessages(): Promise<ImessageCampaignMessage[]> {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    
+    const result = await db.select().from(imessageCampaignMessages)
+      .where(
+        and(
+          eq(imessageCampaignMessages.sendStatus, 'sending'),
+          or(
+            isNull(imessageCampaignMessages.attemptedAt),
+            lt(imessageCampaignMessages.attemptedAt, fiveMinutesAgo)
+          )
+        )
+      );
+    
+    return result;
   }
 
   async updateImessageCampaignMessage(id: string, data: Partial<InsertImessageCampaignMessage>): Promise<ImessageCampaignMessage | undefined> {
