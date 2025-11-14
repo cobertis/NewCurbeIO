@@ -869,8 +869,8 @@ const IncomeField = React.memo(({ control, frequency }: { control: any; frequenc
     } else {
       const num = parseFloat(value);
       if (!isNaN(num)) {
-        // Zero = delete income, otherwise format to 2 decimals
-        field.onChange(num === 0 ? '' : num.toFixed(2));
+        // Format to 2 decimals (including zero)
+        field.onChange(num.toFixed(2));
       }
     }
     field.onBlur();
