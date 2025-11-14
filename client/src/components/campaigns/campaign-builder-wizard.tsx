@@ -187,10 +187,10 @@ export function CampaignBuilderWizard({
     enabled: open && currentStep === 1,
   });
 
-  // Fetch categories
+  // Fetch categories (always load when wizard is open - needed for template creation)
   const { data: categoriesData } = useQuery({
     queryKey: ["/api/campaign-studio/categories"],
-    enabled: open && currentStep === 1,
+    enabled: open,
   });
 
   // Fetch placeholders
@@ -206,7 +206,7 @@ export function CampaignBuilderWizard({
   });
 
   const templates = (templatesData as any)?.templates || [];
-  const categories = (categoriesData as any)?.categories || [];
+  const categories = (categoriesData as any)?.categories || (categoriesData as any) || [];
   const placeholders = (placeholdersData as any)?.placeholders || [];
   const lists = listsData?.lists || [];
 
@@ -310,7 +310,7 @@ export function CampaignBuilderWizard({
           respectContactTimezone: false,
         },
         variants: data.abTestingEnabled && data.variants ? data.variants.map((v, index) => ({
-          variantLetter: String.fromCharCode(65 + index),
+          variantLetter: String.fromCharCode(65 + index) as "A" | "B" | "C" | "D" | "E",
           messageBody: v.messageBody,
           mediaUrls: [],
           splitPercentage: v.trafficPercentage,
@@ -1050,6 +1050,21 @@ function TemplateFormDialog({
                 </div>
               </div>
             </div>
+
+            {/* Warning if no categories available */}
+            {!template && categories.length === 0 && (
+              <div className="text-xs text-muted-foreground bg-red-50 dark:bg-red-950/20 p-3 rounded border border-red-200 dark:border-red-900">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-red-900 dark:text-red-100 mb-1">No Categories Available</p>
+                    <p className="text-red-800 dark:text-red-200">
+                      Template categories are loading. Please wait a moment and try again.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <DialogFooter>
               <Button
