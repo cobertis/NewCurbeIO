@@ -5356,6 +5356,7 @@ export class DbStorage implements IStorage {
     }
     
     // Match by complete name AND date of birth (all three must be present and match)
+    // Use case-insensitive comparison to avoid duplicates like "ALFREDO" vs "Alfredo"
     // If any field is missing, we can't be sure it's the same person, so create new member
     if (!existingMember && memberData.firstName && memberData.lastName && memberData.dateOfBirth) {
       const members = await db
@@ -5366,8 +5367,8 @@ export class DbStorage implements IStorage {
             eq(policyMembers.policyId, policyId),
             eq(policyMembers.companyId, companyId),
             eq(policyMembers.role, role),
-            eq(policyMembers.firstName, memberData.firstName),
-            eq(policyMembers.lastName, memberData.lastName),
+            sql`LOWER(${policyMembers.firstName}) = LOWER(${memberData.firstName})`,
+            sql`LOWER(${policyMembers.lastName}) = LOWER(${memberData.lastName})`,
             eq(policyMembers.dateOfBirth, memberData.dateOfBirth)
           )
         );
