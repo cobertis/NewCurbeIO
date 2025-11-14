@@ -25922,9 +25922,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Template not found" });
       }
       
-      if (existingTemplate.isSystem) {
-        return res.status(403).json({ message: "Cannot delete system templates" });
-      }
+      // Allow deletion of all templates including system templates
+      // User requested ability to delete any template
       
       await storage.deleteCampaignTemplate(id, user.companyId);
       res.status(204).send();

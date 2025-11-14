@@ -722,39 +722,37 @@ function TemplateSelectionStep({
                   {selectedTemplate === template.id && (
                     <Check className="h-5 w-5 text-primary" data-testid={`icon-selected-${template.id}`} />
                   )}
-                  {/* Only show edit/delete for company templates (not system templates) */}
-                  {template.scope === "company" && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          data-testid={`button-menu-${template.id}`}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => handleEditTemplate(template, e)}
-                          data-testid={`button-edit-${template.id}`}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Template
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={(e) => handleDeleteTemplate(template.id, e)}
-                          className="text-destructive"
-                          data-testid={`button-delete-${template.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Template
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  {/* Allow edit/delete for all templates including system templates */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        data-testid={`button-menu-${template.id}`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => handleEditTemplate(template, e)}
+                        data-testid={`button-edit-${template.id}`}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Template
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => handleDeleteTemplate(template.id, e)}
+                        className="text-destructive"
+                        data-testid={`button-delete-${template.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Template
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </CardHeader>
