@@ -103,6 +103,12 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
   - **Backend:** Removed hasVariants, abTestMetric, and abTestMinSample fields from imessageCampaigns schema
   - **Preserved:** campaignVariants table retained in database for historical data
   - **Impact:** Simplified campaign creation workflow, more focused on core messaging functionality
+- **Schedule & Automation Implementation Status:**
+  - **Data Storage:** All schedule settings (throttling, follow-ups, recurring schedules, quiet hours) are properly saved to database tables (`campaignSchedules`, `campaignFollowups`)
+  - **⚠️ Execution:** NO background worker/job runner currently processes these automations - they are stored but not executed
+  - **Working:** Immediate campaign execution (manual start button)
+  - **Not Working:** Scheduled campaigns, recurring campaigns, smart throttling, automated follow-up sequences
+  - **Next Steps:** Requires implementation of background scheduler/worker to process stored automation rules
 - **System Template Management:** Implemented secure multi-tenant template deletion system with defense-in-depth:
   - **Regular users:** Can only edit/delete templates belonging to their company
   - **Superadmins:** Can edit/delete any template including global system templates
