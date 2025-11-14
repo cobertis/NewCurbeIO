@@ -1567,66 +1567,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
           }
           
-          // Only proceed if we have a NEW message (not a duplicate)
-          if (newMessage) {
-            // AUTO-RESPONSE: Handle STOP/START keywords for blacklist management
-            // Only process if message is from client (not from us)
-            if (!messageData.isFromMe && newMessage.text) {
-              const messageText = newMessage.text.trim().toLowerCase();
-              const senderPhone = messageData.handle?.address || messageData.from;
+          // AUTO-RESPONSE: Handle STOP/START keywords BEFORE processing message storage
+          // Only process if message is from client (not from us) and has text
+          const incomingMessageText = messageData.text || '';
+          const isFromClient = !messageData.isFromMe;
+          
+          if (isFromClient && incomingMessageText.trim()) {
+            const messageText = incomingMessageText.trim().toLowerCase();
+            const senderPhone = messageData.handle?.address || messageData.from;
+            
+            console.log(`[iMessage Auto-Response] Checking message: "${messageText}" from ${senderPhone}`);
+            
+            if (messageText === 'stop') {
+              console.log(`[iMessage Auto-Response] STOP detected from ${senderPhone}`);
               
-              if (messageText === 'stop') {
-                console.log(`[iMessage Auto-Response] STOP detected from ${senderPhone}`);
+              // Add to blacklist (remove + prefix if present)
+              try {
+                const phoneForStorage = senderPhone.replace(/^\+/, '');
+                await blacklistService.addToBlacklist({
+                  companyId: company.id,
+                  phone: phoneForStorage,
+                  channel: 'imessage',
+                  reason: 'User requested opt-out via STOP keyword',
+                  addedBy: 'system'
+                });
                 
-                // Add to blacklist (remove + prefix if present)
-                try {
-                  const phoneForStorage = senderPhone.replace(/^\+/, '');
-                  await blacklistService.addToBlacklist({
-                    companyId: company.id,
-                    phone: phoneForStorage,
-                    channel: 'imessage',
-                    reason: 'User requested opt-out via STOP keyword',
-                    addedBy: 'system'
-                  });
-                  
-                  console.log(`[iMessage Auto-Response] Added ${senderPhone} to blacklist`);
-                  
-                  // Send confirmation message
-                  await blueBubblesManager.sendMessage(company.id, {
-                    chatGuid,
-                    message: 'Has sido dado de baja exitosamente. Responde START si quieres volver a recibir mensajes.',
-                  });
-                  
-                  console.log(`[iMessage Auto-Response] Sent STOP confirmation to ${senderPhone}`);
-                } catch (error) {
-                  console.error(`[iMessage Auto-Response] Error processing STOP:`, error);
-                }
-              } else if (messageText === 'start') {
-                console.log(`[iMessage Auto-Response] START detected from ${senderPhone}`);
+                console.log(`[iMessage Auto-Response] Added ${senderPhone} to blacklist`);
                 
-                // Remove from blacklist (remove + prefix if present)
-                try {
-                  const phoneForStorage = senderPhone.replace(/^\+/, '');
-                  await blacklistService.removeFromBlacklist({
-                    companyId: company.id,
-                    phone: phoneForStorage,
-                    channel: 'imessage'
-                  });
-                  
-                  console.log(`[iMessage Auto-Response] Removed ${senderPhone} from blacklist`);
-                  
-                  // Send confirmation message
-                  await blueBubblesManager.sendMessage(company.id, {
-                    chatGuid,
-                    message: 'Te has reactivado exitosamente. Ahora volverás a recibir nuestros mensajes.',
-                  });
-                  
-                  console.log(`[iMessage Auto-Response] Sent START confirmation to ${senderPhone}`);
-                } catch (error) {
-                  console.error(`[iMessage Auto-Response] Error processing START:`, error);
-                }
+                // Send confirmation message
+                await blueBubblesManager.sendMessage(company.id, {
+                  chatGuid,
+                  message: 'Has sido dado de baja exitosamente. Responde START si quieres volver a recibir mensajes.',
+                });
+                
+                console.log(`[iMessage Auto-Response] Sent STOP confirmation to ${senderPhone}`);
+              } catch (error) {
+                console.error(`[iMessage Auto-Response] Error processing STOP:`, error);
+              }
+            } else if (messageText === 'start') {
+              console.log(`[iMessage Auto-Response] START detected from ${senderPhone}`);
+              
+              // Remove from blacklist (remove + prefix if present)
+              try {
+                const phoneForStorage = senderPhone.replace(/^\+/, '');
+                await blacklistService.removeFromBlacklist({
+                  companyId: company.id,
+                  phone: phoneForStorage,
+                  channel: 'imessage'
+                });
+                
+                console.log(`[iMessage Auto-Response] Removed ${senderPhone} from blacklist`);
+                
+                // Send confirmation message
+                await blueBubblesManager.sendMessage(company.id, {
+                  chatGuid,
+                  message: 'Te has reactivado exitosamente. Ahora volverás a recibir nuestros mensajes.',
+                });
+                
+                console.log(`[iMessage Auto-Response] Sent START confirmation to ${senderPhone}`);
+              } catch (error) {
+                console.error(`[iMessage Auto-Response] Error processing START:`, error);
               }
             }
+          }
+          
+          // Only proceed if we have a NEW message (not a duplicate)
+          if (newMessage) {
             
             // Generate preview text (like iOS Messages app)
             let previewText = '';
