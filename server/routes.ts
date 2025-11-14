@@ -1569,6 +1569,63 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           // Only proceed if we have a NEW message (not a duplicate)
           if (newMessage) {
+            // AUTO-RESPONSE: Handle STOP/START keywords for blacklist management
+            // Only process if message is from client (not from us)
+            if (!messageData.isFromMe && newMessage.text) {
+              const messageText = newMessage.text.trim().toLowerCase();
+              const senderPhone = messageData.handle?.address || messageData.from;
+              
+              if (messageText === 'stop') {
+                console.log(`[iMessage Auto-Response] STOP detected from ${senderPhone}`);
+                
+                // Add to blacklist
+                try {
+                  await blacklistService.addToBlacklist({
+                    companyId: company.id,
+                    phone: senderPhone,
+                    channel: 'imessage',
+                    reason: 'User requested opt-out via STOP keyword',
+                    addedBy: 'system'
+                  });
+                  
+                  console.log(`[iMessage Auto-Response] Added ${senderPhone} to blacklist`);
+                  
+                  // Send confirmation message
+                  await blueBubblesManager.sendMessage(company.id, {
+                    chatGuid,
+                    message: 'Has sido dado de baja exitosamente. Responde START si quieres volver a recibir mensajes.',
+                  });
+                  
+                  console.log(`[iMessage Auto-Response] Sent STOP confirmation to ${senderPhone}`);
+                } catch (error) {
+                  console.error(`[iMessage Auto-Response] Error processing STOP:`, error);
+                }
+              } else if (messageText === 'start') {
+                console.log(`[iMessage Auto-Response] START detected from ${senderPhone}`);
+                
+                // Remove from blacklist
+                try {
+                  await blacklistService.removeFromBlacklist({
+                    companyId: company.id,
+                    phone: senderPhone,
+                    channel: 'imessage'
+                  });
+                  
+                  console.log(`[iMessage Auto-Response] Removed ${senderPhone} from blacklist`);
+                  
+                  // Send confirmation message
+                  await blueBubblesManager.sendMessage(company.id, {
+                    chatGuid,
+                    message: 'Te has reactivado exitosamente. Ahora volverás a recibir nuestros mensajes.',
+                  });
+                  
+                  console.log(`[iMessage Auto-Response] Sent START confirmation to ${senderPhone}`);
+                } catch (error) {
+                  console.error(`[iMessage Auto-Response] Error processing START:`, error);
+                }
+              }
+            }
+            
             // Generate preview text (like iOS Messages app)
             let previewText = '';
             if (newMessage.text && newMessage.text.trim()) {
