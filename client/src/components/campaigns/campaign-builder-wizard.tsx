@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -6,6 +6,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { type ImessageCampaign, type ContactList, type CreateCampaignWithDetails } from "@shared/schema";
 import { z } from "zod";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 import {
   Dialog,
   DialogContent,
@@ -88,6 +90,11 @@ import {
   Trash2,
   Edit,
   MoreVertical,
+  Smile,
+  Image,
+  Video,
+  Mic,
+  Upload,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -1002,6 +1009,8 @@ interface ContentEditorStepProps {
 function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps) {
   const messageBody = form.watch("messageBody") || "";
   const messageLength = messageBody.length;
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Common placeholders that are always available
   const commonPlaceholders = [
@@ -1064,6 +1073,28 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
     form.setValue("messageBody", currentText + `{{${placeholder}}}`);
   };
 
+  const insertEmoji = (emoji: any) => {
+    const currentText = form.getValues("messageBody") || "";
+    const textarea = textareaRef.current;
+    
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newText = currentText.substring(0, start) + emoji.native + currentText.substring(end);
+      form.setValue("messageBody", newText);
+      
+      // Set cursor position after emoji
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.native.length;
+        textarea.focus();
+      }, 0);
+    } else {
+      form.setValue("messageBody", currentText + emoji.native);
+    }
+    
+    setShowEmojiPicker(false);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -1119,13 +1150,37 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
               <FormItem>
                 <FormLabel>Message Template *</FormLabel>
                 <FormControl>
-                  <Textarea
-                    {...field}
-                    placeholder="Enter your message here..."
-                    rows={8}
-                    className="resize-none font-mono text-sm"
-                    data-testid="input-message-body"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      {...field}
+                      ref={textareaRef}
+                      placeholder="Enter your message here..."
+                      rows={8}
+                      className="resize-none font-mono text-sm pr-12"
+                      data-testid="input-message-body"
+                    />
+                    <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-2 top-2 h-8 w-8 p-0"
+                          data-testid="button-emoji-picker"
+                        >
+                          <Smile className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0 border-0" align="end">
+                        <Picker
+                          data={data}
+                          onEmojiSelect={insertEmoji}
+                          theme="light"
+                          previewPosition="none"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </FormControl>
                 <div className="flex justify-between items-center text-sm mt-2">
                   <FormMessage />
@@ -1163,27 +1218,65 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
             </div>
           </div>
 
-          <FormField
-            control={form.control}
-            name="mediaUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Media URL (Optional)</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type="url"
-                    placeholder="https://example.com/image.jpg"
-                    data-testid="input-media-url"
-                  />
-                </FormControl>
-                <FormDescription>
-                  Add an image or video URL to include in your message
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Media Section */}
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Image className="h-4 w-4 text-muted-foreground" />
+              <Label className="text-sm font-medium">Media Attachments (Optional)</Label>
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="mediaUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image / Video / Audio URL</FormLabel>
+                  <FormControl>
+                    <div className="space-y-2">
+                      <Input
+                        {...field}
+                        type="url"
+                        placeholder="https://example.com/image.jpg"
+                        data-testid="input-media-url"
+                      />
+                      <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Image className="h-3 w-3" />
+                          <span>.jpg, .png, .gif</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Video className="h-3 w-3" />
+                          <span>.mp4, .mov</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Mic className="h-3 w-3" />
+                          <span>.mp3, .m4a, .wav</span>
+                        </div>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Add a URL to any media file: image, video, or audio recording
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded border border-blue-200 dark:border-blue-900">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">Supported Media Types:</p>
+                  <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-200">
+                    <li><strong>Images:</strong> JPG, PNG, GIF, HEIC</li>
+                    <li><strong>Videos:</strong> MP4, MOV, M4V (max 100MB)</li>
+                    <li><strong>Audio:</strong> MP3, M4A, WAV, CAF (voice memos)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <FormField
             control={form.control}
