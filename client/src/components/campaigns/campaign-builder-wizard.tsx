@@ -205,9 +205,10 @@ export function CampaignBuilderWizard({
     enabled: open,
   });
 
-  const templates = (templatesData as any)?.templates || [];
-  const categories = (categoriesData as any)?.categories || (categoriesData as any) || [];
-  const placeholders = (placeholdersData as any)?.placeholders || [];
+  // Backend returns arrays directly, not wrapped in objects
+  const templates = Array.isArray(templatesData) ? templatesData : [];
+  const categories = Array.isArray(categoriesData) ? categoriesData : [];
+  const placeholders = Array.isArray(placeholdersData) ? placeholdersData : [];
   const lists = listsData?.lists || [];
 
   // Reset form when dialog opens/closes
