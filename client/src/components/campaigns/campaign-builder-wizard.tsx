@@ -1003,6 +1003,20 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
   const messageBody = form.watch("messageBody") || "";
   const messageLength = messageBody.length;
 
+  // Common placeholders that are always available
+  const commonPlaceholders = [
+    { key: "firstName", label: "First Name" },
+    { key: "lastName", label: "Last Name" },
+    { key: "email", label: "Email" },
+    { key: "phoneNumber", label: "Phone" },
+    { key: "companyName", label: "Company" },
+    { key: "policyNumber", label: "Policy #" },
+    { key: "agentName", label: "Agent Name" },
+  ];
+
+  // Merge with backend placeholders, giving priority to backend data
+  const allPlaceholders = placeholders.length > 0 ? placeholders : commonPlaceholders;
+
   // AI Content Coach - Mock Analysis
   const contentAnalysis = useMemo(() => {
     const text = messageBody.toLowerCase();
@@ -1130,26 +1144,24 @@ function ContentEditorStep({ form, placeholders, lists }: ContentEditorStepProps
           />
 
           {/* Placeholders */}
-          {placeholders.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Insert Placeholders</Label>
-              <div className="flex flex-wrap gap-2">
-                {placeholders.map((p: any) => (
-                  <Button
-                    key={p.key}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => insertPlaceholder(p.key)}
-                    data-testid={`button-placeholder-${p.key}`}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    {p.label}
-                  </Button>
-                ))}
-              </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Insert Placeholders</Label>
+            <div className="flex flex-wrap gap-2">
+              {allPlaceholders.map((p: any) => (
+                <Button
+                  key={p.key}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => insertPlaceholder(p.key)}
+                  data-testid={`button-placeholder-${p.key}`}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  {p.label}
+                </Button>
+              ))}
             </div>
-          )}
+          </div>
 
           <FormField
             control={form.control}
