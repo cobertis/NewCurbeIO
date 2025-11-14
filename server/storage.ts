@@ -5328,9 +5328,11 @@ export class DbStorage implements IStorage {
     role: string,
     memberData: Partial<InsertPolicyMember>
   ): Promise<{ member: PolicyMember; wasCreated: boolean }> {
-    // Try to find existing member by policyId + role + SSN (most reliable)
+    // Only update if we can definitively identify the same person
+    // Require either SSN OR complete name+DOB match to prevent overwriting different people
     let existingMember: PolicyMember | undefined;
     
+    // Match by SSN (most reliable identifier)
     if (memberData.ssn) {
       const members = await db
         .select()
@@ -5346,7 +5348,8 @@ export class DbStorage implements IStorage {
       existingMember = members[0];
     }
     
-    // Fallback: match by name and DOB if SSN not available
+    // Match by complete name AND date of birth (all three must be present and match)
+    // If any field is missing, we can't be sure it's the same person, so create new member
     if (!existingMember && memberData.firstName && memberData.lastName && memberData.dateOfBirth) {
       const members = await db
         .select()
@@ -5363,6 +5366,8 @@ export class DbStorage implements IStorage {
         );
       existingMember = members[0];
     }
+    
+    // If no clear match found, always create new member to prevent data loss
     
     if (existingMember) {
       // Update existing member
