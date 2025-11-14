@@ -1,5 +1,6 @@
 import type { CompanySettings } from "@shared/schema";
 import { blacklistService } from "./services/blacklist-service";
+import { storage } from "./storage";
 
 /**
  * Extract phone number from iMessage chatGuid
@@ -378,16 +379,136 @@ export class BlueBubblesClient {
   }
 }
 
-// Singleton instance - will be initialized on demand
-let blueBubblesClientInstance: BlueBubblesClient | null = null;
+interface CachedClient {
+  client: BlueBubblesClient;
+  configHash: string;
+  loadedAt: Date;
+}
 
-// Export a singleton getter that creates/returns the client
+class BlueBubblesClientManager {
+  private clients = new Map<string, CachedClient>();
+
+  async getClient(companyId: string): Promise<BlueBubblesClient> {
+    const settings = await storage.getCompanySettings(companyId);
+    if (!settings) {
+      throw new Error('Company settings not found');
+    }
+
+    const imessageSettings = settings.imessageSettings as {
+      serverUrl?: string;
+      password?: string;
+      isEnabled?: boolean;
+    };
+
+    if (!imessageSettings?.isEnabled || !imessageSettings.serverUrl || !imessageSettings.password) {
+      throw new Error('BlueBubbles not configured for this company');
+    }
+
+    const configHash = JSON.stringify({
+      url: imessageSettings.serverUrl,
+      hasPassword: !!imessageSettings.password,
+    });
+
+    const cached = this.clients.get(companyId);
+    if (cached && cached.configHash === configHash) {
+      return cached.client;
+    }
+
+    const client = new BlueBubblesClient({
+      serverUrl: imessageSettings.serverUrl,
+      password: imessageSettings.password,
+    });
+
+    this.clients.set(companyId, {
+      client,
+      configHash,
+      loadedAt: new Date(),
+    });
+
+    console.log(`[BlueBubblesManager] Client created/updated for company: ${companyId}`);
+    return client;
+  }
+
+  invalidateClient(companyId: string): void {
+    this.clients.delete(companyId);
+    console.log(`[BlueBubblesManager] Client cache invalidated for company: ${companyId}`);
+  }
+
+  async sendMessage(companyId: string, request: SendMessageRequest): Promise<SendMessageResponse> {
+    const client = await this.getClient(companyId);
+    return client.sendMessage(request, companyId);
+  }
+
+  async sendAttachment(
+    companyId: string,
+    chatGuid: string,
+    attachmentPath: string,
+    tempGuid?: string,
+    isAudioMessage: boolean = false,
+    audioMetadata?: {
+      duration: number;
+      waveform: number[];
+      mimeType: string;
+      uti: string;
+      codec: string;
+      sampleRate: number;
+    }
+  ): Promise<SendMessageResponse> {
+    const client = await this.getClient(companyId);
+    return client.sendAttachment(chatGuid, attachmentPath, tempGuid, isAudioMessage, audioMetadata, companyId);
+  }
+
+  async getChats(companyId: string, offset = 0, limit = 100): Promise<{ data: Chat[] }> {
+    const client = await this.getClient(companyId);
+    return client.getChats(offset, limit);
+  }
+
+  async getChat(companyId: string, chatGuid: string): Promise<{ data: Chat }> {
+    const client = await this.getClient(companyId);
+    return client.getChat(chatGuid);
+  }
+
+  async getChatMessages(companyId: string, chatGuid: string, offset = 0, limit = 100): Promise<{ data: Message[] }> {
+    const client = await this.getClient(companyId);
+    return client.getChatMessages(chatGuid, offset, limit);
+  }
+
+  async sendReaction(companyId: string, request: SendReactionRequest): Promise<SendMessageResponse> {
+    const client = await this.getClient(companyId);
+    return client.sendReaction(request);
+  }
+
+  async getAttachmentStream(companyId: string, guid: string): Promise<Response> {
+    const client = await this.getClient(companyId);
+    return client.getAttachmentStream(guid);
+  }
+
+  async markAsRead(companyId: string, chatGuid: string): Promise<void> {
+    const client = await this.getClient(companyId);
+    return client.markAsRead(chatGuid);
+  }
+
+  async getServerInfo(companyId: string): Promise<any> {
+    const client = await this.getClient(companyId);
+    return client.getServerInfo();
+  }
+
+  async unsendMessage(companyId: string, messageGuid: string, partIndex: number = 0): Promise<SendMessageResponse> {
+    const client = await this.getClient(companyId);
+    return client.unsendMessage(messageGuid, partIndex);
+  }
+}
+
+export const blueBubblesManager = new BlueBubblesClientManager();
+
+// Deprecated: Old singleton export for backward compatibility
+// New code should use blueBubblesManager instead
 export const blueBubblesClient = {
   sendMessage: async (request: SendMessageRequest, companyId?: string): Promise<SendMessageResponse> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.sendMessage(request, companyId);
+    return blueBubblesManager.sendMessage(companyId, request);
   },
   
   sendAttachment: async (
@@ -405,75 +526,77 @@ export const blueBubblesClient = {
     },
     companyId?: string
   ): Promise<SendMessageResponse> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.sendAttachment(chatGuid, attachmentPath, tempGuid, isAudioMessage, audioMetadata, companyId);
+    return blueBubblesManager.sendAttachment(companyId, chatGuid, attachmentPath, tempGuid, isAudioMessage, audioMetadata);
   },
   
-  getChats: async (offset = 0, limit = 100): Promise<{ data: Chat[] }> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  getChats: async (companyId: string, offset = 0, limit = 100): Promise<{ data: Chat[] }> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.getChats(offset, limit);
+    return blueBubblesManager.getChats(companyId, offset, limit);
   },
   
-  getChat: async (chatGuid: string): Promise<{ data: Chat }> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  getChat: async (companyId: string, chatGuid: string): Promise<{ data: Chat }> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.getChat(chatGuid);
+    return blueBubblesManager.getChat(companyId, chatGuid);
   },
   
-  getChatMessages: async (chatGuid: string, offset = 0, limit = 100): Promise<{ data: Message[] }> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  getChatMessages: async (companyId: string, chatGuid: string, offset = 0, limit = 100): Promise<{ data: Message[] }> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.getChatMessages(chatGuid, offset, limit);
+    return blueBubblesManager.getChatMessages(companyId, chatGuid, offset, limit);
   },
   
-  markAsRead: async (chatGuid: string): Promise<void> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  markAsRead: async (companyId: string, chatGuid: string): Promise<void> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.markAsRead(chatGuid);
+    return blueBubblesManager.markAsRead(companyId, chatGuid);
   },
   
-  getServerInfo: async (): Promise<any> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  getServerInfo: async (companyId: string): Promise<any> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.getServerInfo();
+    return blueBubblesManager.getServerInfo(companyId);
   },
   
-  sendReaction: async (params: SendReactionRequest): Promise<SendMessageResponse> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  sendReaction: async (companyId: string, params: SendReactionRequest): Promise<SendMessageResponse> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.sendReaction(params);
+    return blueBubblesManager.sendReaction(companyId, params);
   },
   
-  unsendMessage: async (messageGuid: string, partIndex: number = 0): Promise<SendMessageResponse> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  unsendMessage: async (companyId: string, messageGuid: string, partIndex: number = 0): Promise<SendMessageResponse> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.unsendMessage(messageGuid, partIndex);
+    return blueBubblesManager.unsendMessage(companyId, messageGuid, partIndex);
   },
   
-  getAttachmentStream: async (guid: string): Promise<Response> => {
-    if (!blueBubblesClientInstance) {
-      throw new Error('BlueBubbles client not initialized. Please configure iMessage settings.');
+  getAttachmentStream: async (companyId: string, guid: string): Promise<Response> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
     }
-    return blueBubblesClientInstance.getAttachmentStream(guid);
+    return blueBubblesManager.getAttachmentStream(companyId, guid);
   },
   
+  // Deprecated: These methods no longer needed with manager pattern
   initialize: (settings: CompanySettings): boolean => {
-    blueBubblesClientInstance = BlueBubblesClient.createFromSettings(settings);
-    return blueBubblesClientInstance !== null;
+    console.warn('[BlueBubbles] initialize() is deprecated. The manager handles initialization automatically per company.');
+    return true;
   },
   
   isInitialized: (): boolean => {
-    return blueBubblesClientInstance !== null;
+    console.warn('[BlueBubbles] isInitialized() is deprecated. The manager handles initialization automatically per company.');
+    return true;
   }
 };
 

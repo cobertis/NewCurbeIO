@@ -1123,18 +1123,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
    * Returns the local file path relative to server root
    */
   async function downloadAndSaveAttachment(
-    companySettings: any,
+    companyId: string,
     attachment: { guid: string; mimeType: string; transferName?: string; fileName?: string }
   ): Promise<string> {
     try {
       console.log(`[iMessage Attachment] Starting download for GUID: ${attachment.guid}, MIME: ${attachment.mimeType}`);
       
-      // Initialize BlueBubbles client
-      const { blueBubblesClient } = await import("./bluebubbles");
-      blueBubblesClient.initialize(companySettings);
+      // Use BlueBubbles manager for multi-tenant support
+      const { blueBubblesManager } = await import("./bluebubbles");
       
       // Download attachment stream from BlueBubbles
-      const attachmentResponse = await blueBubblesClient.getAttachmentStream(attachment.guid);
+      const attachmentResponse = await blueBubblesManager.getAttachmentStream(companyId, attachment.guid);
       console.log(`[iMessage Attachment] BlueBubbles response status: ${attachmentResponse.status}`);
       
       if (!attachmentResponse.ok || !attachmentResponse.body) {
@@ -1444,7 +1443,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               (messageData.attachments || []).map(async (att: any) => {
                 try {
                   // Download and save attachment to local storage
-                  await downloadAndSaveAttachment(companySettings, {
+                  await downloadAndSaveAttachment(company.id, {
                     guid: att.guid,
                     mimeType: att.mimeType,
                     transferName: att.transferName,
@@ -1502,7 +1501,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 (messageData.attachments || []).map(async (att: any) => {
                   try {
                     // Download and save attachment to local storage
-                    await downloadAndSaveAttachment(companySettings, {
+                    await downloadAndSaveAttachment(company.id, {
                       guid: att.guid,
                       mimeType: att.mimeType,
                       transferName: att.transferName,
@@ -1917,12 +1916,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Attachment not found" });
       }
       
-      // Initialize BlueBubbles client
-      const { blueBubblesClient } = await import("./bluebubbles");
-      blueBubblesClient.initialize(companySettings);
+      // Use BlueBubbles manager for multi-tenant support
+      const { blueBubblesManager } = await import("./bluebubbles");
       
       // Stream attachment from BlueBubbles
-      const attachmentResponse = await blueBubblesClient.getAttachmentStream(guid);
+      const attachmentResponse = await blueBubblesManager.getAttachmentStream(user.companyId, guid);
     
       console.log('[iMessage Attachment] BlueBubbles response status:', attachmentResponse.status);
       console.log('[iMessage Attachment] Headers:', {
@@ -2128,12 +2126,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(503).json({ message: "iMessage service is not configured" });
       }
       
-      // Initialize BlueBubbles client
-      const { blueBubblesClient } = await import("./bluebubbles");
-      if (companySettings) {
-        blueBubblesClient.initialize(companySettings);
-      }
-      
       const { conversationId, to, text, replyToGuid, effect, clientGuid } = req.body;
       const uploadedFiles = (req as any).files as Express.Multer.File[] || [];
       
@@ -2223,7 +2215,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
           
           console.log(`[iMessage] Sending text message via BlueBubbles`);
-          sendResult = await blueBubblesClient.sendMessage(sendPayload, user.companyId);
+          const { blueBubblesManager } = await import("./bluebubbles");
+          sendResult = await blueBubblesManager.sendMessage(user.companyId, sendPayload);
           console.log(`[iMessage] BlueBubbles response:`, sendResult);
         }
         
@@ -2322,13 +2315,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
           
           console.log(`[iMessage] Sending attachment: ${actualFilename} (${actualMimeType})${isVoiceMemo ? ' as voice memo' : ''}`);
-          const attachmentResult = await blueBubblesClient.sendAttachment(
+          const { blueBubblesManager } = await import("./bluebubbles");
+          const attachmentResult = await blueBubblesManager.sendAttachment(
+            user.companyId,
             conversation.chatGuid,
             actualFilePath,
             clientGuid, // Send clientGuid for webhook reconciliation
             isVoiceMemo, // Mark as audio message if CAF
-            audioMetadata, // Send audio metadata for voice memos (guaranteed non-null if isVoiceMemo=true)
-            user.companyId
+            audioMetadata // Send audio metadata for voice memos (guaranteed non-null if isVoiceMemo=true)
           );
           
           // If no text message was sent, use attachment result as primary
@@ -2402,13 +2396,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const imessageSettings = companySettings?.imessageSettings as any;
       if (imessageSettings?.serverUrl && imessageSettings?.isEnabled) {
         try {
-          const { blueBubblesClient } = await import("./bluebubbles");
-          if (companySettings) {
-            blueBubblesClient.initialize(companySettings);
-          }
+          const { blueBubblesManager } = await import("./bluebubbles");
           
           // Send reaction to BlueBubbles
-          await blueBubblesClient.sendReaction({
+          await blueBubblesManager.sendReaction(user.companyId, {
             chatGuid: message.chatGuid,
             messageGuid: message.messageGuid,
             reaction: reaction,
@@ -2460,11 +2451,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
       if (imessageSettings?.serverUrl) {
-        const { blueBubblesClient } = await import("./bluebubbles");
-        if (companySettings) {
-          blueBubblesClient.initialize(companySettings);
-          await blueBubblesClient.markAsRead(conversation.chatGuid);
-        }
+        const { blueBubblesManager } = await import("./bluebubbles");
+        await blueBubblesManager.markAsRead(user.companyId, conversation.chatGuid);
       }
       
       res.json({ success: true });
@@ -2580,10 +2568,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
       if (imessageSettings?.serverUrl && companySettings) {
-        const { blueBubblesClient } = await import("./bluebubbles");
-        blueBubblesClient.initialize(companySettings);
         // Note: sendTypingIndicator not implemented in our client
-        // await blueBubblesClient.sendTypingIndicator(conversation.chatGuid, isTyping);
+        // const { blueBubblesManager } = await import("./bluebubbles");
+        // await blueBubblesManager.sendTypingIndicator(user.companyId, conversation.chatGuid, isTyping);
       }
       
       // Broadcast typing update
@@ -2651,13 +2638,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Try to unsend via BlueBubbles if configured
       if (imessageSettings?.isEnabled && imessageSettings?.serverUrl) {
         try {
-          const { blueBubblesClient } = await import("./bluebubbles");
-          if (companySettings) {
-            blueBubblesClient.initialize(companySettings);
-          }
+          const { blueBubblesManager } = await import("./bluebubbles");
           
           console.log(`[iMessage] Attempting to unsend message: ${messageGuid}`);
-          await blueBubblesClient.unsendMessage(messageGuid, 0);
+          await blueBubblesManager.unsendMessage(user.companyId, messageGuid, 0);
           console.log(`[iMessage] Successfully unsent message: ${messageGuid}`);
         } catch (unsendError: any) {
           console.error(`[iMessage] Failed to unsend message via BlueBubbles:`, unsendError);

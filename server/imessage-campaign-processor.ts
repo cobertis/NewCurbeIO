@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { storage } from './storage';
-import { blueBubblesClient } from './bluebubbles';
+import { blueBubblesManager } from './bluebubbles';
 import type { ImessageCampaignRun, ImessageCampaign, ImessageCampaignMessage, ManualContact } from '@shared/schema';
 
 const activeProcessing = new Set<string>();
@@ -81,11 +81,11 @@ async function sendCampaignMessage(
     messageBody = messageBody.replace(/\{\{phone\}\}/g, contact.phone || '');
   }
   
-  const response = await blueBubblesClient.sendMessage({
+  const response = await blueBubblesManager.sendMessage(campaign.companyId, {
     chatGuid: message.chatGuid!,
     message: messageBody,
     method: 'private-api'
-  }, campaign.companyId);
+  });
   
   await storage.updateImessageCampaignMessage(message.id, {
     sendStatus: 'sent',
