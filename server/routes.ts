@@ -25897,8 +25897,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Template not found" });
       }
       
-      if (existingTemplate.isSystem) {
-        return res.status(403).json({ message: "Cannot modify system templates" });
+      // Only superadmins can modify system templates
+      if (existingTemplate.isSystem && user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can modify system templates" });
       }
       
       let updateData = { ...parsed };
@@ -25909,7 +25910,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         updateData.placeholders = extractedPlaceholders;
       }
       
-      const updated = await storage.updateCampaignTemplate(id, user.companyId, updateData);
+      const updated = await storage.updateCampaignTemplate(id, user.companyId, updateData, user.role === "superadmin");
       res.json(updated);
     } catch (error: any) {
       if (error.name === "ZodError") {
@@ -25931,10 +25932,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Template not found" });
       }
       
-      // Allow deletion of all templates including system templates
-      // User requested ability to delete any template
+      // Only superadmins can delete system templates
+      // Regular users can delete their own company templates
+      if (existingTemplate.isSystem && user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can delete system templates" });
+      }
       
-      await storage.deleteCampaignTemplate(id, user.companyId);
+      await storage.deleteCampaignTemplate(id, user.companyId, user.role === "superadmin");
       res.status(204).send();
     } catch (error: any) {
       console.error("Error deleting campaign template:", error);

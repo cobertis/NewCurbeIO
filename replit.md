@@ -84,3 +84,17 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Security:** Bcrypt.
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
+
+## Recent Changes
+
+### November 14, 2025 - iMessage Campaigns System Improvements
+- **Campaign List Display Fix:** Modified `GET /api/imessage/campaigns` endpoint to return proper structure `{campaigns: [...], stats: {...}}` instead of array, resolving issue where newly created campaigns weren't visible
+- **Target Audience Optional:** Made "Target Audience" field truly optional in Campaign Builder Wizard - users can proceed without selecting a specific contact list (defaults to "All Contacts")
+- **System Template Management:** Implemented secure multi-tenant template deletion system with defense-in-depth:
+  - **Regular users:** Can only edit/delete templates belonging to their company
+  - **Superadmins:** Can edit/delete any template including global system templates
+  - **Security:** Dual-layer protection (endpoint + storage) prevents cross-tenant access
+  - **Fetch logic:** Superadmins use ID-only lookup for system templates; regular users use company-scoped lookup
+- **Multi-tenant Architecture Confirmed:**
+  - iMessage campaigns are company-scoped (all users in a company can view their company's campaigns)
+  - Campaign templates support both global system templates (shared) and company-specific templates (isolated)

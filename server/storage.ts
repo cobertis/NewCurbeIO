@@ -1122,8 +1122,8 @@ export interface IStorage {
   getCampaignTemplates(companyId: string, categoryId?: string): Promise<CampaignTemplate[]>;
   getCampaignTemplateById(id: string, companyId: string): Promise<CampaignTemplate | undefined>;
   createCampaignTemplate(data: InsertCampaignTemplate): Promise<CampaignTemplate>;
-  updateCampaignTemplate(id: string, companyId: string, data: Partial<InsertCampaignTemplate>): Promise<CampaignTemplate>;
-  deleteCampaignTemplate(id: string, companyId: string): Promise<void>;
+  updateCampaignTemplate(id: string, companyId: string, data: Partial<InsertCampaignTemplate>, isSuperadmin?: boolean): Promise<CampaignTemplate>;
+  deleteCampaignTemplate(id: string, companyId: string, isSuperadmin?: boolean): Promise<void>;
   incrementTemplateUsage(id: string): Promise<void>;
   
   // Campaign Placeholders
@@ -9967,44 +9967,72 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateCampaignTemplate(id: string, companyId: string, data: Partial<InsertCampaignTemplate>): Promise<CampaignTemplate> {
-    const template = await this.getCampaignTemplateById(id, companyId);
+  async updateCampaignTemplate(id: string, companyId: string, data: Partial<InsertCampaignTemplate>, isSuperadmin: boolean = false): Promise<CampaignTemplate> {
+    // For superadmins, fetch template by ID only (allows access to system templates)
+    // For regular users, fetch with company scoping for security
+    let template: CampaignTemplate | undefined;
+    
+    if (isSuperadmin) {
+      const result = await db.select().from(campaignTemplates).where(eq(campaignTemplates.id, id));
+      template = result[0];
+    } else {
+      template = await this.getCampaignTemplateById(id, companyId);
+    }
+    
     if (!template) {
       throw new Error("Template not found");
     }
-    if (template.isSystem) {
-      throw new Error("Cannot modify system templates");
+    
+    // Only superadmins can modify system templates
+    if (template.isSystem && !isSuperadmin) {
+      throw new Error("Only superadmins can modify system templates");
     }
     
     const result = await db
       .update(campaignTemplates)
       .set({ ...data, updatedAt: new Date() })
       .where(
-        and(
-          eq(campaignTemplates.id, id),
-          eq(campaignTemplates.companyId, companyId)
-        )
+        template.isSystem
+          ? eq(campaignTemplates.id, id) // System templates: ID only
+          : and(
+              eq(campaignTemplates.id, id),
+              eq(campaignTemplates.companyId, companyId) // Company templates: ID + companyId for security
+            )
       )
       .returning();
     return result[0];
   }
 
-  async deleteCampaignTemplate(id: string, companyId: string): Promise<void> {
-    const template = await this.getCampaignTemplateById(id, companyId);
+  async deleteCampaignTemplate(id: string, companyId: string, isSuperadmin: boolean = false): Promise<void> {
+    // For superadmins, fetch template by ID only (allows access to system templates)
+    // For regular users, fetch with company scoping for security
+    let template: CampaignTemplate | undefined;
+    
+    if (isSuperadmin) {
+      const result = await db.select().from(campaignTemplates).where(eq(campaignTemplates.id, id));
+      template = result[0];
+    } else {
+      template = await this.getCampaignTemplateById(id, companyId);
+    }
+    
     if (!template) {
       throw new Error("Template not found");
     }
-    if (template.isSystem) {
-      throw new Error("Cannot delete system templates");
+    
+    // Only superadmins can delete system templates
+    if (template.isSystem && !isSuperadmin) {
+      throw new Error("Only superadmins can delete system templates");
     }
     
     await db
       .delete(campaignTemplates)
       .where(
-        and(
-          eq(campaignTemplates.id, id),
-          eq(campaignTemplates.companyId, companyId)
-        )
+        template.isSystem
+          ? eq(campaignTemplates.id, id) // System templates: ID only
+          : and(
+              eq(campaignTemplates.id, id),
+              eq(campaignTemplates.companyId, companyId) // Company templates: ID + companyId for security
+            )
       );
   }
 
