@@ -834,7 +834,6 @@ function TemplateFormDialog({
   const templateFormSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
-    categoryId: z.string().min(1, "Category is required"),
     messageBody: z.string().min(1, "Message is required").max(500, "Message too long"),
   });
 
@@ -843,7 +842,6 @@ function TemplateFormDialog({
     defaultValues: {
       name: template?.name || "",
       description: template?.description || "",
-      categoryId: template?.categoryId || "",
       messageBody: template?.messageBody || "",
     },
   });
@@ -865,14 +863,12 @@ function TemplateFormDialog({
       templateForm.reset({
         name: template.name,
         description: template.description || "",
-        categoryId: template.categoryId,
         messageBody: template.messageBody,
       });
     } else {
       templateForm.reset({
         name: "",
         description: "",
-        categoryId: "",
         messageBody: "",
       });
     }
@@ -905,7 +901,12 @@ function TemplateFormDialog({
   };
 
   const handleSave = (data: any) => {
-    onSave(data);
+    // Auto-assign to first category if available
+    const dataWithCategory = {
+      ...data,
+      categoryId: template?.categoryId || categories[0]?.id || null,
+    };
+    onSave(dataWithCategory);
   };
 
   return (
@@ -953,31 +954,6 @@ function TemplateFormDialog({
                       data-testid="input-template-description"
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={templateForm.control}
-              name="categoryId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-template-category">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categories.map((cat: any) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
