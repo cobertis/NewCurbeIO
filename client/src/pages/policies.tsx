@@ -28,7 +28,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { type User as UserType, type Quote, type QuotePaymentMethod, type InsertPaymentMethod, insertPaymentMethodSchema, type QuoteMember, type QuoteMemberIncome, type QuoteMemberImmigration, type QuoteMemberDocument, type QuoteReminder, type InsertQuoteReminder, insertQuoteReminderSchema } from "@shared/schema";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -4478,6 +4478,25 @@ export default function PoliciesPage() {
   
   // Determine if we're in the wizard view based on URL
   const showWizard = location === "/policies/new";
+  
+  // Extract policyId from URL using wouter's useRoute
+  const [, params] = useRoute('/policies/:id');
+  const policyId = params?.id && params.id !== 'new' ? params.id : null;
+  
+  // Reset all editing states when navigating between policies
+  useEffect(() => {
+    setAddingMember(false);
+    setExpandedMemberId(null);
+    setEditingAddresses(null);
+    setEditingNotes(false);
+    setEditingDoctor(false);
+    setEditingMedicines(false);
+    setPaymentMethodsSheet({open: false});
+    setNotesSheetOpen(false);
+    setDocumentsSheetOpen(false);
+    setRemindersSheetOpen(false);
+    setConsentsSheetOpen(false);
+  }, [policyId]);
   
   // Fetch policies statistics
   const { data: stats, isLoading: isLoadingStats } = useQuery<{
