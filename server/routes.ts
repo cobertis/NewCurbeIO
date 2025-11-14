@@ -25884,7 +25884,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/campaign-studio/templates", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
-      const parsed = insertCampaignTemplateSchema.parse(req.body);
+      
+      // Add companyId before validation since it's required by schema
+      const dataToValidate = {
+        ...req.body,
+        companyId: user.companyId,
+        createdBy: user.id,
+        isSystem: false,
+      };
+      
+      console.log("[Campaign Template] Creating template with data:", JSON.stringify(dataToValidate, null, 2));
+      
+      const parsed = insertCampaignTemplateSchema.parse(dataToValidate);
       
       const placeholderRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
       const matches = [...parsed.messageBody.matchAll(placeholderRegex)];
@@ -25892,15 +25903,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const template = await storage.createCampaignTemplate({
         ...parsed,
-        companyId: user.companyId,
-        createdBy: user.id,
         placeholders: extractedPlaceholders,
-        isSystem: false,
       });
       
       res.status(201).json(template);
     } catch (error: any) {
       if (error.name === "ZodError") {
+        console.error("[Campaign Template] Validation error:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       console.error("Error creating campaign template:", error);
