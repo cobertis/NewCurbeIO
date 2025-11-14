@@ -4290,7 +4290,7 @@ export const createCampaignWithDetailsSchema = z.object({
     name: z.string().min(1, "Campaign name is required").max(200),
     description: z.string().optional().nullable(),
     messageBody: z.string().min(1, "Message body is required").max(500),
-    targetListId: z.string().uuid().optional().nullable(),
+    targetListId: z.union([z.string().uuid(), z.literal("all")]).optional().nullable(),
     templateId: z.string().uuid().optional().nullable(),
     hasVariants: z.boolean().default(false),
     abTestMetric: z.enum(["response_rate", "conversion_rate", "click_rate"]).optional().nullable(),
