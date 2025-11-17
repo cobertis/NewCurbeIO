@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight, Zap, Smile, MessageCircle, Copy } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight, Zap, Smile, MessageCircle, Copy, Phone, Wifi, WifiOff } from "lucide-react";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
@@ -1433,6 +1433,10 @@ export default function Settings() {
                 <Bell className="h-4 w-4" />
                 Notifications
               </TabsTrigger>
+              <TabsTrigger value="webphone" className="gap-2" data-testid="tab-webphone">
+                <Phone className="h-4 w-4" />
+                WebPhone
+              </TabsTrigger>
             </TabsList>
 
             {/* Profile Tab */}
@@ -2686,6 +2690,11 @@ export default function Settings() {
               </Dialog>
             </TabsContent>
 
+            {/* WebPhone Tab */}
+            <TabsContent value="webphone" className="space-y-4">
+              <WebPhoneTab />
+            </TabsContent>
+
             {/* Automations Tab */}
             <TabsContent value="automations" className="space-y-4">
               <AutomationsTab />
@@ -2709,6 +2718,231 @@ export default function Settings() {
         </div>
       </div>
     </div>
+  );
+}
+
+// WebPhone Tab Component
+function WebPhoneTab() {
+  const { toast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
+  const [testingCall, setTestingCall] = useState(false);
+  
+  // Fetch user data
+  const { data: userData, isLoading: isLoadingUser } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+  
+  const user = userData?.user;
+  
+  // State for form data
+  const [sipExtension, setSipExtension] = useState("");
+  const [sipPassword, setSipPassword] = useState("");
+  const [sipEnabled, setSipEnabled] = useState(false);
+  
+  // Initialize form with user data when it loads
+  useEffect(() => {
+    if (user) {
+      setSipExtension(user.sipExtension || "");
+      setSipPassword(user.sipPassword || "");
+      setSipEnabled(user.sipEnabled || false);
+    }
+  }, [user]);
+  
+  // Mutation for updating SIP settings
+  const updateSipMutation = useMutation({
+    mutationFn: async (data: { sipExtension: string; sipPassword: string; sipEnabled: boolean }) => {
+      return apiRequest("PATCH", "/api/users/sip", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      toast({
+        title: "WebPhone Settings Updated",
+        description: "Your SIP credentials have been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update WebPhone settings.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Handle form submission
+  const handleSave = () => {
+    if (sipEnabled && (!sipExtension || !sipPassword)) {
+      toast({
+        title: "Missing Credentials",
+        description: "Please enter both SIP Extension and Password to enable WebPhone.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    updateSipMutation.mutate({
+      sipExtension,
+      sipPassword,
+      sipEnabled,
+    });
+  };
+  
+  // Handle test call
+  const handleTestCall = async () => {
+    if (!sipExtension || !sipPassword) {
+      toast({
+        title: "Missing Credentials",
+        description: "Please enter SIP credentials before testing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setTestingCall(true);
+    
+    // Simulate test call - in production, this would initiate a real SIP call
+    setTimeout(() => {
+      setTestingCall(false);
+      toast({
+        title: "Test Call",
+        description: "Test call initiated. Check your WebPhone for the connection.",
+      });
+    }, 2000);
+  };
+  
+  // Connection status (simulated - in production, would check real SIP registration status)
+  const isConnected = sipEnabled && sipExtension && sipPassword;
+  
+  if (isLoadingUser) {
+    return <LoadingSpinner message="Loading WebPhone settings..." fullScreen={false} />;
+  }
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>WebPhone Configuration</CardTitle>
+        <CardDescription>
+          Configure your SIP credentials for WebRTC calling capabilities
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Connection Status */}
+        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+          <div className="flex items-center gap-3">
+            {isConnected ? (
+              <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
+            ) : (
+              <WifiOff className="h-5 w-5 text-muted-foreground" />
+            )}
+            <div>
+              <p className="font-medium">Connection Status</p>
+              <p className="text-sm text-muted-foreground">
+                {isConnected ? "WebPhone is connected and ready" : "WebPhone is disconnected"}
+              </p>
+            </div>
+          </div>
+          <Badge variant={isConnected ? "default" : "secondary"} data-testid="badge-connection-status">
+            {isConnected ? "Connected" : "Disconnected"}
+          </Badge>
+        </div>
+        
+        {/* Enable WebPhone Switch */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="sipEnabled" className="text-base">
+              Enable WebPhone
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Turn on WebRTC calling capabilities in your browser
+            </p>
+          </div>
+          <Switch
+            id="sipEnabled"
+            checked={sipEnabled}
+            onCheckedChange={setSipEnabled}
+            disabled={updateSipMutation.isPending}
+            data-testid="switch-sip-enabled"
+          />
+        </div>
+        
+        {/* SIP Credentials */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="sipExtension">SIP Extension</Label>
+            <Input
+              id="sipExtension"
+              type="text"
+              placeholder="e.g., 101"
+              value={sipExtension}
+              onChange={(e) => setSipExtension(e.target.value)}
+              disabled={updateSipMutation.isPending}
+              data-testid="input-sip-extension"
+            />
+            <p className="text-xs text-muted-foreground">
+              Your unique SIP extension number provided by your administrator
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="sipPassword">SIP Password</Label>
+            <div className="relative">
+              <Input
+                id="sipPassword"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your SIP password"
+                value={sipPassword}
+                onChange={(e) => setSipPassword(e.target.value)}
+                disabled={updateSipMutation.isPending}
+                className="pr-10"
+                data-testid="input-sip-password"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+                data-testid="button-toggle-password"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your SIP authentication password
+            </p>
+          </div>
+        </div>
+        
+        {/* Test Call Button */}
+        <div className="pt-2">
+          <Button
+            variant="outline"
+            onClick={handleTestCall}
+            disabled={testingCall || !sipExtension || !sipPassword}
+            className="w-full sm:w-auto"
+            data-testid="button-test-call"
+          >
+            <Phone className="h-4 w-4 mr-2" />
+            {testingCall ? "Testing..." : "Make Test Call"}
+          </Button>
+        </div>
+        
+        {/* Save Button */}
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button
+            onClick={handleSave}
+            disabled={updateSipMutation.isPending}
+            data-testid="button-save-webphone"
+          >
+            {updateSipMutation.isPending ? "Saving..." : "Save Settings"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

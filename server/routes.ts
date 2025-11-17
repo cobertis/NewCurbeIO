@@ -5933,6 +5933,70 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Update user's SIP credentials for WebPhone
+  app.patch("/api/users/sip", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    try {
+      // Validate request body
+      const sipSchema = z.object({
+        sipExtension: z.string(),
+        sipPassword: z.string(),
+        sipEnabled: z.boolean(),
+      });
+      
+      const { sipExtension, sipPassword, sipEnabled } = sipSchema.parse(req.body);
+
+      // Update user's SIP settings
+      const updatedUser = await storage.updateUser(currentUser.id, {
+        sipExtension,
+        sipPassword,
+        sipEnabled,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Log the update
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "user",
+        entityId: currentUser.id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          email: currentUser.email,
+          updateType: "sip_credentials",
+          sipEnabled,
+          sipExtension,
+        },
+      });
+      
+      // Broadcast user update for real-time UI refresh
+      const { broadcastUserUpdate } = await import("./websocket");
+      broadcastUserUpdate(updatedUser.id, updatedUser.companyId || '');
+      
+      // Return sanitized user data
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      console.error("Error updating SIP credentials:", error);
+      
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Invalid SIP credentials", 
+          errors: error.errors 
+        });
+      }
+      
+      return res.status(500).json({ 
+        message: "Failed to update SIP credentials", 
+        error: error.message 
+      });
+    }
+  });
+
   // Update user (superadmin or admin)
   app.patch("/api/users/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
