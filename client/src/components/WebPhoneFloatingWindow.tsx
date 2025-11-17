@@ -9,10 +9,11 @@ import { formatPhoneInput } from '@shared/phone';
 export function WebPhoneFloatingWindow() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [dialNumber, setDialNumber] = useState('');
-  const [position, setPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 580 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 380, y: window.innerHeight - 660 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [callDuration, setCallDuration] = useState(0);
+  const [showKeypad, setShowKeypad] = useState(false);
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -121,211 +122,228 @@ export function WebPhoneFloatingWindow() {
       <audio ref={remoteAudioRef} autoPlay />
       <audio ref={localAudioRef} autoPlay muted />
       
-      {/* Floating Window */}
+      {/* iPhone-style Floating Window */}
       <div
         ref={windowRef}
-        className="fixed z-50 bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg overflow-hidden"
+        className="fixed z-50 bg-background border-2 border-border rounded-[2.5rem] shadow-2xl overflow-hidden"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
-          width: isMinimized ? '240px' : '300px',
-          cursor: isDragging ? 'grabbing' : 'grab'
+          width: '360px',
+          height: isMinimized ? '80px' : '640px',
+          cursor: isDragging ? 'grabbing' : 'default'
         }}
       >
-        {/* Header */}
+        {/* iPhone Notch/Header */}
         <div
-          className="bg-muted/50 px-3 py-2 flex items-center justify-between border-b border-border"
+          className="bg-background px-4 py-3 flex items-center justify-between cursor-grab active:cursor-grabbing"
           onMouseDown={handleMouseDown}
         >
           <div className="flex items-center gap-2">
-            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-foreground font-medium text-xs">Phone</span>
+            <span className="text-foreground font-medium text-sm">Phone</span>
             {sipExtension && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                {sipExtension}
+                Ext {sipExtension}
               </Badge>
-            )}
-            {connectionStatus === 'connected' && (
-              <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
             )}
           </div>
           
-          <div className="flex items-center gap-0.5 no-drag">
+          <div className="flex items-center gap-1 no-drag">
+            {connectionStatus === 'connected' && (
+              <div className="h-2 w-2 rounded-full bg-green-500" />
+            )}
             <Button
               variant="ghost"
               size="icon"
-              className="h-5 w-5 text-muted-foreground hover:text-foreground"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
               onClick={() => setIsMinimized(!isMinimized)}
             >
-              {isMinimized ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+              {isMinimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-5 w-5 text-muted-foreground hover:text-foreground"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
               onClick={toggleDialpad}
             >
-              <X className="h-3 w-3" />
+              <X className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
         
         {!isMinimized && (
-          <div className="p-4 no-drag">
-            {/* Active Call Display */}
+          <div className="flex flex-col h-[588px] no-drag">
             {currentCall ? (
-              <div className="space-y-6">
-                {/* Profile Section */}
-                <div className="text-center pt-2 pb-4">
-                  <div className="mx-auto w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <User className="h-10 w-10 text-muted-foreground" />
+              /* Active Call Screen */
+              <div className="flex-1 flex flex-col justify-between p-6">
+                {/* Contact Info */}
+                <div className="text-center pt-8">
+                  <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <User className="h-12 w-12 text-muted-foreground" />
                   </div>
-                  <div className="text-base font-medium text-foreground mb-1">
+                  <h2 className="text-xl font-medium text-foreground mb-2">
                     {currentCall.displayName || 'Unknown'}
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-2">
+                  </h2>
+                  <p className="text-base text-muted-foreground mb-1">
                     {formatPhoneInput(currentCall.phoneNumber)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {currentCall.status === 'ringing' && 'Ringing...'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {currentCall.status === 'ringing' && 'Calling...'}
                     {currentCall.status === 'answered' && formatDuration(callDuration)}
+                  </p>
+                </div>
+                
+                {/* Call Controls */}
+                <div className="space-y-4 pb-8">
+                  {/* Control Buttons Grid */}
+                  <div className="grid grid-cols-3 gap-6 px-4">
+                    <button
+                      onClick={() => webPhone.toggleMute()}
+                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                    >
+                      <div className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                        isMuted ? "bg-foreground" : "bg-muted/80"
+                      )}>
+                        {isMuted ? (
+                          <MicOff className="h-7 w-7 text-background" />
+                        ) : (
+                          <Mic className="h-7 w-7 text-foreground" />
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">mute</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowKeypad(!showKeypad)}
+                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                    >
+                      <div className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                        showKeypad ? "bg-foreground" : "bg-muted/80"
+                      )}>
+                        <Grid3x3 className={cn("h-7 w-7", showKeypad ? "text-background" : "text-foreground")} />
+                      </div>
+                      <span className="text-xs text-muted-foreground">keypad</span>
+                    </button>
+                    
+                    <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
+                      <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                        <Volume2 className="h-7 w-7 text-foreground" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">speaker</span>
+                    </button>
+                    
+                    <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
+                      <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                        <UserPlus className="h-7 w-7 text-foreground" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">add call</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => webPhone.toggleHold()}
+                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                    >
+                      <div className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                        isOnHold ? "bg-foreground" : "bg-muted/80"
+                      )}>
+                        <Pause className={cn("h-7 w-7", isOnHold ? "text-background" : "text-foreground")} />
+                      </div>
+                      <span className="text-xs text-muted-foreground">hold</span>
+                    </button>
+                    
+                    <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
+                      <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                        <Phone className="h-7 w-7 text-foreground" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">contacts</span>
+                    </button>
                   </div>
-                </div>
-                
-                {/* Call Controls Grid */}
-                <div className="grid grid-cols-3 gap-4 px-2">
-                  {/* Row 1 */}
-                  <button
-                    onClick={() => webPhone.toggleMute()}
-                    className={cn(
-                      "flex flex-col items-center gap-2",
-                      "transition-opacity hover:opacity-80"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-14 h-14 rounded-full flex items-center justify-center",
-                      isMuted ? "bg-foreground" : "bg-muted"
-                    )}>
-                      {isMuted ? (
-                        <MicOff className={cn("h-6 w-6", isMuted ? "text-background" : "text-foreground")} />
-                      ) : (
-                        <Mic className="h-6 w-6 text-foreground" />
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">mute</span>
-                  </button>
                   
-                  <button className="flex flex-col items-center gap-2 opacity-50 cursor-not-allowed">
-                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                      <Grid3x3 className="h-6 w-6 text-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">keypad</span>
-                  </button>
-                  
-                  <button className="flex flex-col items-center gap-2 opacity-50 cursor-not-allowed">
-                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                      <Volume2 className="h-6 w-6 text-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">speaker</span>
-                  </button>
-                  
-                  {/* Row 2 */}
-                  <button className="flex flex-col items-center gap-2 opacity-50 cursor-not-allowed">
-                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                      <UserPlus className="h-6 w-6 text-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">add call</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => webPhone.toggleHold()}
-                    className={cn(
-                      "flex flex-col items-center gap-2",
-                      "transition-opacity hover:opacity-80"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-14 h-14 rounded-full flex items-center justify-center",
-                      isOnHold ? "bg-foreground" : "bg-muted"
-                    )}>
-                      <Pause className={cn("h-6 w-6", isOnHold ? "text-background" : "text-foreground")} />
-                    </div>
-                    <span className="text-xs text-muted-foreground">hold</span>
-                  </button>
-                  
-                  <button className="flex flex-col items-center gap-2 opacity-50 cursor-not-allowed">
-                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-                      <Phone className="h-6 w-6 text-foreground" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">contacts</span>
-                  </button>
-                  
-                  {/* Row 3 - Placeholder buttons */}
-                  <div className="col-span-3 h-8" />
-                </div>
-                
-                {/* Hangup Button */}
-                <div className="flex justify-center pb-2">
-                  <button
-                    onClick={() => webPhone.hangupCall()}
-                    className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all"
-                  >
-                    <PhoneOff className="h-7 w-7 text-white" />
-                  </button>
+                  {/* End Call Button */}
+                  <div className="flex justify-center pt-6">
+                    <button
+                      onClick={() => webPhone.hangupCall()}
+                      className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+                    >
+                      <PhoneOff className="h-9 w-9 text-white" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <>
-                {/* Dialpad Input */}
-                <div className="mb-3">
+              /* Dialpad Screen */
+              <div className="flex-1 flex flex-col p-6">
+                {/* Number Display */}
+                <div className="pt-6 pb-8">
                   <input
                     type="text"
                     value={dialNumber}
                     onChange={(e) => setDialNumber(e.target.value)}
-                    className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-base text-center focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Enter number..."
+                    className="w-full bg-transparent border-none text-foreground text-3xl text-center focus:outline-none font-light"
+                    placeholder="Enter number"
                     data-testid="input-dial-number"
                   />
                 </div>
                 
-                {/* Dialpad */}
-                <div className="grid grid-cols-3 gap-1.5 mb-3">
+                {/* Dialpad Grid */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
                   {digits.map((digit, index) => (
                     <button
                       key={digit}
                       onClick={() => handleDial(digit)}
-                      className="aspect-square bg-muted hover:bg-accent border border-border rounded-md flex flex-col items-center justify-center transition-colors"
+                      className="aspect-square bg-muted/50 hover:bg-muted rounded-full flex flex-col items-center justify-center transition-all active:scale-95"
                       data-testid={`button-dialpad-${digit}`}
                     >
-                      <span className="text-lg text-foreground font-light">{digit}</span>
+                      <span className="text-3xl text-foreground font-light">{digit}</span>
                       {letters[index] && (
-                        <span className="text-[9px] text-muted-foreground">{letters[index]}</span>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider mt-0.5">
+                          {letters[index]}
+                        </span>
                       )}
                     </button>
                   ))}
                 </div>
                 
-                {/* Call Button */}
-                <div className="flex gap-1.5">
-                  <Button
-                    onClick={() => setDialNumber(prev => prev.slice(0, -1))}
-                    variant="outline"
-                    size="sm"
-                    className="w-12 h-8"
-                  >
-                    ←
-                  </Button>
-                  <Button
+                {/* Action Buttons */}
+                <div className="flex items-center justify-center gap-16 pb-6">
+                  {dialNumber && (
+                    <button
+                      onClick={() => setDialNumber('')}
+                      className="w-14 h-14 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-all"
+                    >
+                      <X className="h-6 w-6 text-foreground" />
+                    </button>
+                  )}
+                  
+                  <button
                     onClick={handleCall}
-                    size="sm"
-                    className="flex-1 h-8 bg-green-600 hover:bg-green-700"
                     disabled={!dialNumber}
+                    className={cn(
+                      "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
+                      dialNumber 
+                        ? "bg-green-500 hover:bg-green-600" 
+                        : "bg-muted/30 cursor-not-allowed"
+                    )}
                   >
-                    <Phone className="h-3.5 w-3.5 mr-1.5" />
-                    Call
-                  </Button>
+                    <Phone className={cn(
+                      "h-8 w-8",
+                      dialNumber ? "text-white" : "text-muted-foreground"
+                    )} />
+                  </button>
+                  
+                  {dialNumber && (
+                    <button
+                      onClick={() => setDialNumber(prev => prev.slice(0, -1))}
+                      className="w-14 h-14 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-all"
+                    >
+                      <span className="text-2xl text-foreground">⌫</span>
+                    </button>
+                  )}
                 </div>
-              </>
+              </div>
             )}
           </div>
         )}
