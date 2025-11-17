@@ -454,6 +454,7 @@ export default function Settings() {
     if (location === "/settings/sessions") return "sessions";
     if (location === "/settings/notifications") return "notifications";
     if (location === "/settings/team") return "team";
+    if (location === "/settings/webphone") return "webphone";
     return "profile"; // default
   };
 
@@ -472,9 +473,9 @@ export default function Settings() {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["profile", "security", "sessions", "preferences", "notifications", "automations"];
+    const baseTabs = ["profile", "security", "sessions", "preferences", "notifications", "automations", "webphone"];
     if (isAdmin) {
-      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications", "automations"];
+      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications", "automations", "webphone"];
     }
     return baseTabs;
   }, [isAdmin]);

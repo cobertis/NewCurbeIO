@@ -1250,6 +1250,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings/webphone">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       
       <Route path="/audit-logs">
         <ProtectedRoute>
