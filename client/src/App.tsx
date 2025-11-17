@@ -17,12 +17,12 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
-import { WebPhoneFloatingButton } from '@/components/WebPhoneFloatingButton';
 import { WebPhoneDialpad } from '@/components/WebPhoneDialpad';
 import { WebPhoneIncomingCall } from '@/components/WebPhoneIncomingCall';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
@@ -489,6 +489,22 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons + User Profile */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {/* WebPhone Button */}
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => useWebPhoneStore.getState().toggleDialpad()}
+                data-testid="button-webphone"
+                className="rounded-md hover-elevate active-elevate-2 relative"
+              >
+                <Phone className="h-8 w-8 text-blue-500" />
+                {/* Connection status indicator */}
+                <div className={cn(
+                  "absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-background",
+                  useWebPhoneStore.getState().connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500"
+                )} />
+              </Button>
+              
               {/* Search Icon */}
               <Button 
                 variant="ghost" 
@@ -643,9 +659,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* WebPhone Floating Button */}
-      <WebPhoneFloatingButton />
-      
       {/* WebPhone Dialpad Dialog */}
       <WebPhoneDialpad />
       
