@@ -185,6 +185,12 @@ class WebPhoneManager {
         traceSip: true
       };
       
+      console.log('[WebPhone] Initializing with config:', {
+        uri: uriString,
+        server: store.wssServer,
+        username: extension
+      });
+      
       // Create User Agent
       this.userAgent = new UserAgent({
         uri: UserAgent.makeURI(uriString)!,
@@ -195,29 +201,49 @@ class WebPhoneManager {
         delegate: {
           onInvite: this.handleIncomingCall.bind(this),
           onConnect: () => {
-            console.log('[WebPhone] Connected to WebSocket');
+            console.log('[WebPhone] ✅ Connected to WebSocket successfully');
             store.setConnectionStatus('connected');
             this.startReconnectMonitor();
           },
           onDisconnect: (error?: Error) => {
-            console.log('[WebPhone] Disconnected from WebSocket', error);
+            console.error('[WebPhone] ❌ Disconnected from WebSocket', {
+              error: error?.message,
+              stack: error?.stack
+            });
             store.setConnectionStatus('disconnected', error?.message);
           }
         }
       });
       
       // Start the User Agent
+      console.log('[WebPhone] Starting UserAgent...');
       await this.userAgent.start();
+      console.log('[WebPhone] UserAgent started, attempting registration...');
       
       // Create and send registration
-      this.registerer = new Registerer(this.userAgent);
-      await this.registerer.register();
+      this.registerer = new Registerer(this.userAgent, {
+        expires: 300
+      });
       
-      console.log('[WebPhone] Successfully registered');
-      store.setConnectionStatus('connected');
+      // Add registration state change listener
+      this.registerer.stateChange.addListener((newState) => {
+        console.log('[WebPhone] Registration state changed:', newState);
+        if (newState === 'Registered') {
+          console.log('[WebPhone] ✅ Successfully registered to Asterisk');
+          store.setConnectionStatus('connected');
+        }
+      });
+      
+      await this.registerer.register();
+      console.log('[WebPhone] Registration request sent');
       
     } catch (error: any) {
-      console.error('[WebPhone] Initialization failed:', error);
+      console.error('[WebPhone] ❌ Initialization failed:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        error: error
+      });
       store.setConnectionStatus('error', error.message);
       throw error;
     }
