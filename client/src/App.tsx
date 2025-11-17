@@ -22,7 +22,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
-import { WebPhoneHeader } from "@/components/WebPhoneHeader";
+import { WebPhoneFloatingButton } from '@/components/WebPhoneFloatingButton';
+import { WebPhoneDialpad } from '@/components/WebPhoneDialpad';
+import { WebPhoneIncomingCall } from '@/components/WebPhoneIncomingCall';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
@@ -437,9 +439,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      {/* WebPhone Header - Always on top, outside router */}
-      <WebPhoneHeader />
-      
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
@@ -643,6 +642,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+
+      {/* WebPhone Floating Button */}
+      <WebPhoneFloatingButton />
+      
+      {/* WebPhone Dialpad Dialog */}
+      <WebPhoneDialpad />
+      
+      {/* WebPhone Incoming Call Modal */}
+      <WebPhoneIncomingCall />
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>
