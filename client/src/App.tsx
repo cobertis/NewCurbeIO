@@ -22,6 +22,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
+import { WebPhoneHeader } from "@/components/WebPhoneHeader";
+import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -153,6 +155,25 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   });
 
   const user = userData?.user;
+  
+  // Initialize WebPhone when user has SIP credentials
+  useEffect(() => {
+    if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
+      // Initialize WebPhone with user's SIP credentials
+      webPhone.initialize(user.sipExtension, user.sipPassword).catch(error => {
+        console.error('[WebPhone] Failed to initialize:', error);
+        toast({
+          title: "WebPhone Error",
+          description: "Failed to connect to phone system",
+          variant: "destructive",
+          duration: 5000,
+        });
+      });
+    } else if (!user?.sipEnabled && useWebPhoneStore.getState().isConnected) {
+      // Disconnect if SIP is disabled
+      webPhone.disconnect();
+    }
+  }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword]);
 
   // Fetch company data for all users with a companyId
   const { data: companyData } = useQuery<{ company: any }>({
@@ -415,6 +436,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
+      {/* WebPhone Header - Always on top, outside router */}
+      <WebPhoneHeader />
+      
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
