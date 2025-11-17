@@ -5940,24 +5940,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       // Validate request body
       const sipSchema = z.object({
-        sipExtension: z.string(),
-        sipPassword: z.string(),
-        sipServer: z.string().optional().default("wss://pbx.curbe.io:8089/ws"),
+        sipExtension: z.string().min(1),
+        sipPassword: z.string().min(1),
+        sipServer: z.string().min(1).default("wss://pbx.curbe.io:8089/ws"),
         sipEnabled: z.boolean(),
       });
       
       const { sipExtension, sipPassword, sipServer, sipEnabled } = sipSchema.parse(req.body);
 
-      // Update user's SIP settings
-      const updateData: any = {
+      // Update user's SIP settings - always send all fields
+      const updatedUser = await storage.updateUser(currentUser.id, {
+        sipExtension,
+        sipPassword,
+        sipServer,
         sipEnabled,
-      };
-      
-      if (sipExtension) updateData.sipExtension = sipExtension;
-      if (sipPassword) updateData.sipPassword = sipPassword;
-      if (sipServer) updateData.sipServer = sipServer;
-      
-      const updatedUser = await storage.updateUser(currentUser.id, updateData);
+      });
 
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
