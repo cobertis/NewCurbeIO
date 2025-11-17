@@ -2765,7 +2765,7 @@ function WebPhoneTab() {
         sipEnabled: user.sipEnabled || false,
       });
     }
-  }, [user, form]);
+  }, [user]);
   
   // Watch form values for UI display
   const sipEnabled = form.watch("sipEnabled");
