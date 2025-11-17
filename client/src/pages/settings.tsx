@@ -2738,6 +2738,7 @@ function WebPhoneTab() {
   // State for form data
   const [sipExtension, setSipExtension] = useState("");
   const [sipPassword, setSipPassword] = useState("");
+  const [sipServer, setSipServer] = useState("wss://pbx.curbe.io:8089/ws");
   const [sipEnabled, setSipEnabled] = useState(false);
   
   // Initialize form with user data when it loads
@@ -2745,13 +2746,14 @@ function WebPhoneTab() {
     if (user) {
       setSipExtension(user.sipExtension || "");
       setSipPassword(user.sipPassword || "");
+      setSipServer(user.sipServer || "wss://pbx.curbe.io:8089/ws");
       setSipEnabled(user.sipEnabled || false);
     }
   }, [user]);
   
   // Mutation for updating SIP settings
   const updateSipMutation = useMutation({
-    mutationFn: async (data: { sipExtension: string; sipPassword: string; sipEnabled: boolean }) => {
+    mutationFn: async (data: { sipExtension: string; sipPassword: string; sipServer: string; sipEnabled: boolean }) => {
       return apiRequest("PATCH", "/api/users/sip", data);
     },
     onSuccess: () => {
@@ -2784,6 +2786,7 @@ function WebPhoneTab() {
     updateSipMutation.mutate({
       sipExtension,
       sipPassword,
+      sipServer,
       sipEnabled,
     });
   };
@@ -2914,6 +2917,22 @@ function WebPhoneTab() {
             </div>
             <p className="text-xs text-muted-foreground">
               Your SIP authentication password
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="sipServer">SIP Server (WSS)</Label>
+            <Input
+              id="sipServer"
+              type="text"
+              placeholder="wss://pbx.curbe.io:8089/ws"
+              value={sipServer}
+              onChange={(e) => setSipServer(e.target.value)}
+              disabled={updateSipMutation.isPending}
+              data-testid="input-sip-server"
+            />
+            <p className="text-xs text-muted-foreground">
+              WebSocket Secure server for SIP connection (Domain: pbx.curbe.io)
             </p>
           </div>
         </div>

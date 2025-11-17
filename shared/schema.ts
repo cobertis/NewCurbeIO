@@ -198,6 +198,7 @@ export const users = pgTable("users", {
   // SIP WebPhone Settings
   sipExtension: text("sip_extension"), // SIP extension number (e.g., "101")
   sipPassword: text("sip_password"), // SIP password for WebRTC registration
+  sipServer: text("sip_server"), // SIP server URL (e.g., "wss://pbx.example.com:8089/ws")
   sipEnabled: boolean("sip_enabled").notNull().default(false), // Whether WebPhone is enabled for this user
   
   // Email preferences

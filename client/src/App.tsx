@@ -160,7 +160,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
       // Initialize WebPhone with user's SIP credentials
-      webPhone.initialize(user.sipExtension, user.sipPassword).catch(error => {
+      const sipServer = user.sipServer || 'wss://pbx.curbe.io:8089/ws';
+      webPhone.initialize(user.sipExtension, user.sipPassword, sipServer).catch(error => {
         console.error('[WebPhone] Failed to initialize:', error);
         toast({
           title: "WebPhone Error",
@@ -173,7 +174,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       // Disconnect if SIP is disabled
       webPhone.disconnect();
     }
-  }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword]);
+  }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
 
   // Fetch company data for all users with a companyId
   const { data: companyData } = useQuery<{ company: any }>({

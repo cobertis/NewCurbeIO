@@ -1,0 +1,140 @@
+Aquí vamos a dejarlo **CLARÍSIMO**, Javier.
+Esto es EXACTAMENTE lo que tu webphone necesita para conectarse a tu Asterisk/FreePBX usando **WebRTC + WSS**.
+
+Piensa en esto como el “usuario SIP especial para WebRTC”.
+
+---
+
+# ✅ 1. **SERVIDOR (WSS)**
+
+Tu servidor SIP WebRTC ES:
+
+```
+wss://pbx.curbe.io:8089/ws
+```
+
+Ese es el WebSocket seguro que Asterisk expone para WebRTC.
+
+Ya lo tienes activo.
+
+---
+
+# ✅ 2. **DOMAIN / REALM**
+
+El dominio de autenticación ES:
+
+```
+pbx.curbe.io
+```
+
+---
+
+# ✅ 3. **USERNAME (EXTENSIÓN SIP)**
+
+La extensión del agente.
+Ejemplo:
+
+```
+301
+```
+
+---
+
+# ✅ 4. **PASSWORD (SIP SECRET / PJSIP PASSWORD)**
+
+La clave SIP de la extensión.
+
+Ejemplo:
+
+```
+nT8x4VK79Io9p3LZ
+```
+
+*(obvio, usa la real de la extensión que creaste)*
+
+---
+
+# ✅ 5. **SIP URI**
+
+Debe ponerse así:
+
+```
+sip:301@pbx.curbe.io
+```
+
+---
+
+# ❗ IMPORTANTE: EL WEBPHONE DEBE USAR WebRTC MODE
+
+O sea, debe enviar y recibir así:
+
+* DTLS
+* ICE/STUN
+* RTP WebRTC compatible
+* audio bidireccional desde el navegador
+
+Si usas SIP.js, es automático.
+Si usas JSSIP, debes activar el modo WebRTC.
+
+---
+
+# 🎯 VARIABLES EXACTAS PARA TU PHONE.JS
+
+Pónlas ASÍ MISMO:
+
+```js
+const SIP_USERNAME = "301";
+const SIP_PASSWORD = "TU_PASSWORD_SIP";
+const SIP_DOMAIN   = "pbx.curbe.io";
+const WSS_SERVER   = "wss://pbx.curbe.io:8089/ws";
+```
+
+Y la construcción del UA (User Agent):
+
+```js
+const ua = new SIP.UA({
+  uri: `sip:${SIP_USERNAME}@${SIP_DOMAIN}`,
+  transportOptions: {
+    wsServers: [WSS_SERVER]
+  },
+  authorizationUser: SIP_USERNAME,
+  password: SIP_PASSWORD,
+  sessionDescriptionHandlerFactoryOptions: {
+    peerConnectionOptions: {
+      rtcConfiguration: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" }
+        ]
+      }
+    }
+  }
+});
+```
+
+---
+
+# 🚀 RESUMEN RÁPIDO PARA TI
+
+| Dato                       | Valor                          |
+| -------------------------- | ------------------------------ |
+| **WebSocket Server (WSS)** | `wss://pbx.curbe.io:8089/ws`   |
+| **SIP Domain / Realm**     | `pbx.curbe.io`                 |
+| **SIP URI**                | `sip:<extension>@pbx.curbe.io` |
+| **Username**               | extensión (301, 302, etc.)     |
+| **Password**               | clave SIP de la extensión      |
+| **STUN**                   | `stun:stun.l.google.com:19302` |
+| **Codec recomendado**      | opus / ulaw                    |
+
+---
+
+# 📌 Siguiente paso
+
+Cuando tengas listo el HTML/JS del webphone que generaste, tráemelo aquí y:
+
+* lo ajusto
+* verifico que registre correctamente
+* revisamos ICE/SDP
+* verificamos que pueda **hacer y recibir llamadas reales**
+* conecto todo con tu Asterisk paso a paso
+
+Y listo: tus agentes tendrán un webphone moderno en tu CRM.

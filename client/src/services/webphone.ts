@@ -51,6 +51,7 @@ interface WebPhoneState {
   // Actions
   setConnectionStatus: (status: WebPhoneState['connectionStatus'], error?: string) => void;
   setSipCredentials: (extension: string, password: string) => void;
+  setWssServer: (server: string) => void;
   setCurrentCall: (call?: Call) => void;
   setCallStatus: (status: Call['status']) => void;
   setMuted: (muted: boolean) => void;
@@ -87,10 +88,7 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
     sipPassword: password 
   }),
   
-  setCurrentCall: (call) => set({ 
-    currentCall: call, 
-    isCallActive: !!call 
-  }),
+  setWssServer: (server: string) => set({ wssServer: server }),
   
   setCallStatus: (status) => set(state => ({
     currentCall: state.currentCall ? { ...state.currentCall, status } : undefined
@@ -147,13 +145,19 @@ class WebPhoneManager {
     this.ringtone.loop = true;
   }
   
-  public async initialize(extension: string, password: string): Promise<void> {
+  public async initialize(extension: string, password: string, server?: string): Promise<void> {
     const store = useWebPhoneStore.getState();
+    
+    // Update server if provided
+    if (server) {
+      store.setWssServer(server);
+    }
     
     // Don't reinitialize if already connected with same credentials
     if (this.userAgent && store.isConnected && 
         store.sipExtension === extension && 
-        store.sipPassword === password) {
+        store.sipPassword === password &&
+        (!server || store.wssServer === server)) {
       console.log('[WebPhone] Already connected with same credentials');
       return;
     }
