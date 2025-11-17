@@ -711,8 +711,7 @@ export default function Settings() {
   // Update avatar mutation
   const updateAvatarMutation = useMutation({
     mutationFn: async (avatar: string) => {
-      const response = await apiRequest("PATCH", "/api/settings/profile", { avatar });
-      return response.json();
+      return await apiRequest("PATCH", "/api/settings/profile", { avatar });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
