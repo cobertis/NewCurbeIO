@@ -9,7 +9,7 @@ import { formatPhoneInput } from '@shared/phone';
 export function WebPhoneFloatingWindow() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [dialNumber, setDialNumber] = useState('');
-  const [position, setPosition] = useState({ x: window.innerWidth - 420, y: 100 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 580 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [callDuration, setCallDuration] = useState(0);
@@ -124,149 +124,145 @@ export function WebPhoneFloatingWindow() {
       {/* Floating Window */}
       <div
         ref={windowRef}
-        className="fixed z-50 bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+        className="fixed z-50 bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg overflow-hidden"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
-          width: isMinimized ? '300px' : '380px',
+          width: isMinimized ? '240px' : '300px',
           cursor: isDragging ? 'grabbing' : 'grab'
         }}
       >
         {/* Header */}
         <div
-          className="bg-gradient-to-r from-blue-600 to-blue-500 p-3 flex items-center justify-between"
+          className="bg-muted/50 px-3 py-2 flex items-center justify-between border-b border-border"
           onMouseDown={handleMouseDown}
         >
           <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-white" />
-            <span className="text-white font-semibold text-sm">WebPhone</span>
+            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-foreground font-medium text-xs">Phone</span>
             {sipExtension && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">
-                Ext {sipExtension}
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                {sipExtension}
               </Badge>
+            )}
+            {connectionStatus === 'connected' && (
+              <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
             )}
           </div>
           
-          <div className="flex items-center gap-1 no-drag">
-            {/* Connection Status */}
-            <div className="flex items-center gap-1 mr-2">
-              {connectionStatus === 'connected' ? (
-                <Wifi className="h-3.5 w-3.5 text-green-300" />
-              ) : (
-                <WifiOff className="h-3.5 w-3.5 text-red-300" />
-              )}
-            </div>
-            
+          <div className="flex items-center gap-0.5 no-drag">
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-white hover:bg-white/20"
+              className="h-5 w-5 text-muted-foreground hover:text-foreground"
               onClick={() => setIsMinimized(!isMinimized)}
             >
-              {isMinimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
+              {isMinimized ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-white hover:bg-white/20"
+              className="h-5 w-5 text-muted-foreground hover:text-foreground"
               onClick={toggleDialpad}
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </Button>
           </div>
         </div>
         
         {!isMinimized && (
-          <div className="p-4 no-drag">
+          <div className="p-3 no-drag">
             {/* Active Call Display */}
             {currentCall ? (
-              <div className="mb-4 p-4 bg-slate-800/50 rounded-lg">
-                <div className="text-center mb-3">
-                  <div className="text-lg font-semibold text-white">
+              <div className="space-y-3">
+                <div className="text-center py-2">
+                  <div className="text-sm font-medium text-foreground">
                     {formatPhoneInput(currentCall.phoneNumber)}
                   </div>
                   {currentCall.displayName && (
-                    <div className="text-sm text-slate-400">{currentCall.displayName}</div>
+                    <div className="text-xs text-muted-foreground">{currentCall.displayName}</div>
                   )}
-                  <div className="text-sm text-slate-400 mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     {currentCall.status === 'ringing' && 'Ringing...'}
                     {currentCall.status === 'answered' && formatDuration(callDuration)}
                   </div>
                 </div>
                 
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-1.5 justify-center">
                   <Button
                     onClick={() => webPhone.toggleMute()}
                     variant={isMuted ? 'default' : 'outline'}
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 h-8"
                   >
-                    {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                   </Button>
                   <Button
                     onClick={() => webPhone.toggleHold()}
                     variant={isOnHold ? 'default' : 'outline'}
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 h-8"
                   >
-                    {isOnHold ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                    {isOnHold ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
                   </Button>
                   <Button
                     onClick={() => webPhone.hangupCall()}
                     variant="destructive"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 h-8"
                   >
-                    <PhoneOff className="h-4 w-4" />
+                    <PhoneOff className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
             ) : (
               <>
                 {/* Dialpad Input */}
-                <div className="mb-4">
+                <div className="mb-3">
                   <input
                     type="text"
                     value={dialNumber}
                     onChange={(e) => setDialNumber(e.target.value)}
-                    className="w-full bg-slate-800/50 border border-slate-600 rounded-lg px-4 py-2 text-white text-xl text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-base text-center focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Enter number..."
                     data-testid="input-dial-number"
                   />
                 </div>
                 
                 {/* Dialpad */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-3 gap-1.5 mb-3">
                   {digits.map((digit, index) => (
                     <button
                       key={digit}
                       onClick={() => handleDial(digit)}
-                      className="aspect-square bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600 rounded-lg flex flex-col items-center justify-center transition-all transform active:scale-95"
+                      className="aspect-square bg-muted hover:bg-accent border border-border rounded-md flex flex-col items-center justify-center transition-colors"
                       data-testid={`button-dialpad-${digit}`}
                     >
-                      <span className="text-2xl text-white font-light">{digit}</span>
+                      <span className="text-lg text-foreground font-light">{digit}</span>
                       {letters[index] && (
-                        <span className="text-xs text-slate-400">{letters[index]}</span>
+                        <span className="text-[9px] text-muted-foreground">{letters[index]}</span>
                       )}
                     </button>
                   ))}
                 </div>
                 
                 {/* Call Button */}
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <Button
                     onClick={() => setDialNumber(prev => prev.slice(0, -1))}
                     variant="outline"
-                    className="flex-1 bg-slate-700/50 border-slate-600 text-white hover:bg-slate-600/50"
+                    size="sm"
+                    className="w-12 h-8"
                   >
                     ←
                   </Button>
                   <Button
                     onClick={handleCall}
-                    className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                    size="sm"
+                    className="flex-1 h-8 bg-green-600 hover:bg-green-700"
                     disabled={!dialNumber}
                   >
-                    <Phone className="h-4 w-4 mr-2" />
+                    <Phone className="h-3.5 w-3.5 mr-1.5" />
                     Call
                   </Button>
                 </div>
