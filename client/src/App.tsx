@@ -23,7 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
-import { WebPhoneDialpad } from '@/components/WebPhoneDialpad';
+import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
 import { WebPhoneIncomingCall } from '@/components/WebPhoneIncomingCall';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import type { User } from "@shared/schema";
@@ -659,8 +659,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* WebPhone Dialpad Dialog */}
-      <WebPhoneDialpad />
+      {/* WebPhone Floating Window */}
+      <WebPhoneFloatingWindow />
       
       {/* WebPhone Incoming Call Modal */}
       <WebPhoneIncomingCall />
