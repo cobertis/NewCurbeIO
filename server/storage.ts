@@ -1226,6 +1226,11 @@ export class DbStorage implements IStorage {
     if (data.viewAllCompanyData !== undefined) mappedData.viewAllCompanyData = data.viewAllCompanyData;
     // Last login tracking
     if (data.lastLoginAt !== undefined) mappedData.lastLoginAt = data.lastLoginAt;
+    // WebPhone SIP credentials
+    if (data.sipExtension !== undefined) mappedData.sipExtension = data.sipExtension;
+    if (data.sipPassword !== undefined) mappedData.sipPassword = data.sipPassword;
+    if (data.sipServer !== undefined) mappedData.sipServer = data.sipServer;
+    if (data.sipEnabled !== undefined) mappedData.sipEnabled = data.sipEnabled;
     
     const result = await db.update(users).set(mappedData).where(eq(users.id, id)).returning();
     return result[0];
