@@ -275,15 +275,6 @@ export default function ImessageCampaigns() {
   };
 
   const handleDelete = (campaign: ImessageCampaign) => {
-    if (campaign.status !== "draft") {
-      toast({
-        title: "Cannot Delete",
-        description: "Only draft campaigns can be deleted",
-        variant: "destructive",
-        duration: 3000,
-      });
-      return;
-    }
     setDeleteCampaignId(campaign.id);
   };
 
