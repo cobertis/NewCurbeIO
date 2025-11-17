@@ -47,7 +47,17 @@ export function WebPhoneHeader() {
   
   // Auto-initialize WebPhone when user has saved credentials (runs only once per unique credentials)
   useEffect(() => {
+    console.log('[WebPhone] Auto-init check:', {
+      hasUser: !!user,
+      sipEnabled: user?.sipEnabled,
+      hasExtension: !!user?.sipExtension,
+      hasPassword: !!user?.sipPassword,
+      server: user?.sipServer
+    });
+    
     if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
+      console.log('[WebPhone] Starting auto-initialization...');
+      
       // Load credentials into store
       setSipCredentials(user.sipExtension, user.sipPassword);
       if (user.sipServer) {
@@ -57,11 +67,13 @@ export function WebPhoneHeader() {
       // Initialize WebPhone connection
       webPhone.initialize(user.sipExtension, user.sipPassword, user.sipServer || undefined)
         .then(() => {
-          console.log('[WebPhone] Auto-initialized from saved credentials');
+          console.log('[WebPhone] Auto-initialized successfully from saved credentials');
         })
         .catch((error) => {
           console.error('[WebPhone] Auto-initialization failed:', error);
         });
+    } else {
+      console.log('[WebPhone] Auto-init skipped - missing credentials or not enabled');
     }
     // Only re-run when credentials change
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer, setSipCredentials, setWssServer]);

@@ -4244,6 +4244,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Two-Factor Authentication
         twoFactorEmailEnabled: user.twoFactorEmailEnabled,
         twoFactorSmsEnabled: user.twoFactorSmsEnabled,
+        // WebPhone SIP Credentials
+        sipExtension: user.sipExtension,
+        sipPassword: user.sipPassword,
+        sipServer: user.sipServer,
+        sipEnabled: user.sipEnabled,
       },
     });
   });
