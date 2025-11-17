@@ -90,6 +90,11 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   
   setWssServer: (server: string) => set({ wssServer: server }),
   
+  setCurrentCall: (call) => set({ 
+    currentCall: call,
+    isCallActive: !!call 
+  }),
+  
   setCallStatus: (status) => set(state => ({
     currentCall: state.currentCall ? { ...state.currentCall, status } : undefined
   })),
@@ -171,8 +176,8 @@ class WebPhoneManager {
         await this.disconnect();
       }
       
-      // Create SIP configuration
-      const uri = `sip:${extension}@${store.sipDomain}`;
+      // Create SIP configuration  
+      const uriString = `sip:${extension}@${store.sipDomain}`;
       const transportOptions = {
         server: store.wssServer,
         connectionTimeout: 10,
@@ -182,7 +187,7 @@ class WebPhoneManager {
       
       // Create User Agent
       this.userAgent = new UserAgent({
-        uri,
+        uri: UserAgent.makeURI(uriString)!,
         transportOptions,
         authorizationUsername: extension,
         authorizationPassword: password,
@@ -272,10 +277,15 @@ class WebPhoneManager {
     
     // Format number
     const formattedNumber = phoneNumber.replace(/\D/g, '');
-    const uri = `sip:${formattedNumber}@${store.sipDomain}`;
+    const uriString = `sip:${formattedNumber}@${store.sipDomain}`;
+    const targetURI = UserAgent.makeURI(uriString);
+    
+    if (!targetURI) {
+      throw new Error('Invalid phone number');
+    }
     
     // Create inviter
-    const inviter = new Inviter(this.userAgent, uri);
+    const inviter = new Inviter(this.userAgent, targetURI);
     
     // Create call object
     const call: Call = {
@@ -366,7 +376,13 @@ class WebPhoneManager {
       if (this.currentSession.state === SessionState.Established) {
         await this.currentSession.bye();
       } else {
-        await this.currentSession.cancel();
+        // For non-established calls, check if it's an Inviter and cancel
+        if (this.currentSession instanceof Inviter) {
+          await this.currentSession.cancel();
+        } else {
+          // For Invitation, use reject
+          await (this.currentSession as Invitation).reject();
+        }
       }
     } catch (error) {
       console.error('[WebPhone] Failed to hangup call:', error);
@@ -396,13 +412,22 @@ class WebPhoneManager {
     
     if (!this.currentSession) return;
     
-    if (store.isOnHold) {
-      this.currentSession.unhold();
-    } else {
-      this.currentSession.hold();
-    }
+    // Note: SIP.js doesn't have built-in hold/unhold methods
+    // This would require SDP renegotiation which is complex
+    // For now, we'll just toggle the state and mute audio
+    console.log('[WebPhone] Hold/unhold requires SDP renegotiation - using mute instead');
     
-    store.setOnHold(!store.isOnHold);
+    const pc = (this.currentSession as any)?.sessionDescriptionHandler?.peerConnection;
+    if (pc) {
+      const localStream = pc.getLocalStreams()[0];
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = store.isOnHold; // Toggle based on current hold state
+          store.setOnHold(!store.isOnHold);
+        }
+      }
+    }
   }
   
   public sendDTMF(digit: string): void {

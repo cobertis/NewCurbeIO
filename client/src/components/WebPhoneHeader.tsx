@@ -11,10 +11,11 @@ import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
+import { useQuery } from '@tanstack/react-query';
+import type { User as UserType } from '@shared/schema';
 
 // WebPhone Header Component
 export function WebPhoneHeader() {
-  const store = useWebPhoneStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [dialNumber, setDialNumber] = useState('');
@@ -22,18 +23,61 @@ export function WebPhoneHeader() {
   const localAudioRef = useRef<HTMLAudioElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   
+  // Use stable Zustand selectors instead of entire store
+  const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
+  const currentCall = useWebPhoneStore(state => state.currentCall);
+  const isMuted = useWebPhoneStore(state => state.isMuted);
+  const isOnHold = useWebPhoneStore(state => state.isOnHold);
+  const dialpadVisible = useWebPhoneStore(state => state.dialpadVisible);
+  const incomingCallVisible = useWebPhoneStore(state => state.incomingCallVisible);
+  const sipExtension = useWebPhoneStore(state => state.sipExtension);
+  const callHistory = useWebPhoneStore(state => state.callHistory);
+  const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
+  const clearCallHistory = useWebPhoneStore(state => state.clearCallHistory);
+  const setAudioElements = useWebPhoneStore(state => state.setAudioElements);
+  const setSipCredentials = useWebPhoneStore(state => state.setSipCredentials);
+  const setWssServer = useWebPhoneStore(state => state.setWssServer);
+  
+  // Fetch user session to get SIP credentials
+  const { data: sessionData } = useQuery<{ user: UserType }>({
+    queryKey: ["/api/session"],
+  });
+  
+  const user = sessionData?.user;
+  
+  // Auto-initialize WebPhone when user has saved credentials (runs only once per unique credentials)
+  useEffect(() => {
+    if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
+      // Load credentials into store
+      setSipCredentials(user.sipExtension, user.sipPassword);
+      if (user.sipServer) {
+        setWssServer(user.sipServer);
+      }
+      
+      // Initialize WebPhone connection
+      webPhone.initialize(user.sipExtension, user.sipPassword, user.sipServer || undefined)
+        .then(() => {
+          console.log('[WebPhone] Auto-initialized from saved credentials');
+        })
+        .catch((error) => {
+          console.error('[WebPhone] Auto-initialization failed:', error);
+        });
+    }
+    // Only re-run when credentials change
+  }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer, setSipCredentials, setWssServer]);
+  
   // Initialize audio elements
   useEffect(() => {
     if (remoteAudioRef.current && localAudioRef.current) {
-      store.setAudioElements(localAudioRef.current, remoteAudioRef.current);
+      setAudioElements(localAudioRef.current, remoteAudioRef.current);
     }
-  }, []);
+  }, [setAudioElements]);
   
   // Call timer
   useEffect(() => {
-    if (store.currentCall && store.currentCall.status === 'answered') {
+    if (currentCall && currentCall.status === 'answered') {
       timerRef.current = setInterval(() => {
-        const duration = Math.floor((new Date().getTime() - store.currentCall!.startTime.getTime()) / 1000);
+        const duration = Math.floor((new Date().getTime() - currentCall!.startTime.getTime()) / 1000);
         setCallDuration(duration);
       }, 1000);
     } else {
@@ -46,7 +90,7 @@ export function WebPhoneHeader() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [store.currentCall?.status]);
+  }, [currentCall?.status]);
   
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -61,7 +105,7 @@ export function WebPhoneHeader() {
   
   const handleDial = (digit: string) => {
     setDialNumber(prev => prev + digit);
-    if (store.currentCall?.status === 'answered') {
+    if (currentCall?.status === 'answered') {
       webPhone.sendDTMF(digit);
     }
   };
@@ -71,7 +115,7 @@ export function WebPhoneHeader() {
     try {
       await webPhone.makeCall(dialNumber);
       setDialNumber('');
-      store.toggleDialpad();
+      toggleDialpad();
     } catch (error) {
       console.error('Failed to make call:', error);
     }
@@ -85,16 +129,16 @@ export function WebPhoneHeader() {
       error: { icon: WifiOff, color: 'text-red-400', label: 'Error' }
     };
     
-    const config = statusConfig[store.connectionStatus];
+    const config = statusConfig[connectionStatus];
     const Icon = config.icon;
     
     return (
       <div className="flex items-center gap-1.5">
         <Icon className={cn("h-3.5 w-3.5", config.color)} />
         <span className={cn("text-xs", config.color)}>{config.label}</span>
-        {store.sipExtension && (
+        {sipExtension && (
           <Badge variant="outline" className="text-xs px-1.5 py-0 h-4">
-            Ext {store.sipExtension}
+            Ext {sipExtension}
           </Badge>
         )}
       </div>
@@ -102,7 +146,7 @@ export function WebPhoneHeader() {
   };
   
   const IncomingCallModal = () => {
-    if (!store.incomingCallVisible || !store.currentCall) return null;
+    if (!incomingCallVisible || !currentCall) return null;
     
     return (
       <AnimatePresence>
@@ -126,11 +170,11 @@ export function WebPhoneHeader() {
             <div className="p-6 space-y-4">
               <div className="text-center">
                 <div className="text-2xl font-semibold text-white">
-                  {formatPhoneInput(store.currentCall.phoneNumber)}
+                  {formatPhoneInput(currentCall.phoneNumber)}
                 </div>
-                {store.currentCall.displayName && (
+                {currentCall.displayName && (
                   <div className="text-sm text-gray-400 mt-1">
-                    {store.currentCall.displayName}
+                    {currentCall.displayName}
                   </div>
                 )}
               </div>
@@ -222,10 +266,10 @@ export function WebPhoneHeader() {
   };
   
   const ActiveCall = () => {
-    if (!store.currentCall) return null;
+    if (!currentCall) return null;
     
-    const isRinging = store.currentCall.status === 'ringing';
-    const isAnswered = store.currentCall.status === 'answered';
+    const isRinging = currentCall.status === 'ringing';
+    const isAnswered = currentCall.status === 'answered';
     
     return (
       <motion.div
@@ -234,7 +278,7 @@ export function WebPhoneHeader() {
         className="flex items-center gap-3 px-3 py-1.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-lg border border-cyan-500/30"
       >
         <div className="relative">
-          {store.currentCall.direction === 'inbound' ? (
+          {currentCall.direction === 'inbound' ? (
             <PhoneIncoming className="h-4 w-4 text-cyan-400" />
           ) : (
             <PhoneOutgoing className="h-4 w-4 text-cyan-400" />
@@ -248,7 +292,7 @@ export function WebPhoneHeader() {
         
         <div className="flex-1 min-w-0">
           <div className="text-sm text-white truncate">
-            {formatPhoneInput(store.currentCall.phoneNumber)}
+            {formatPhoneInput(currentCall.phoneNumber)}
           </div>
           <div className="text-xs text-gray-400">
             {isRinging ? 'Calling...' : isAnswered ? formatDuration(callDuration) : 'Connected'}
@@ -263,11 +307,11 @@ export function WebPhoneHeader() {
               onClick={() => webPhone.toggleMute()}
               className={cn(
                 "h-7 w-7 p-0",
-                store.isMuted ? "text-red-400" : "text-gray-400"
+                isMuted ? "text-red-400" : "text-gray-400"
               )}
               data-testid="button-mute"
             >
-              {store.isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
             </Button>
             
             <Button
@@ -276,17 +320,17 @@ export function WebPhoneHeader() {
               onClick={() => webPhone.toggleHold()}
               className={cn(
                 "h-7 w-7 p-0",
-                store.isOnHold ? "text-yellow-400" : "text-gray-400"
+                isOnHold ? "text-yellow-400" : "text-gray-400"
               )}
               data-testid="button-hold"
             >
-              {store.isOnHold ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+              {isOnHold ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
             </Button>
             
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => store.toggleDialpad()}
+              onClick={() => toggleDialpad()}
               className="h-7 w-7 p-0 text-gray-400"
               data-testid="button-toggle-dialpad"
             >
@@ -308,7 +352,7 @@ export function WebPhoneHeader() {
   };
   
   const CallHistory = () => {
-    const recentCalls = store.callHistory.slice(0, 5);
+    const recentCalls = callHistory.slice(0, 5);
     
     if (!isExpanded || recentCalls.length === 0) return null;
     
@@ -323,7 +367,7 @@ export function WebPhoneHeader() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-gray-400">Recent Calls</span>
             <button
-              onClick={() => store.clearCallHistory()}
+              onClick={() => clearCallHistory()}
               className="text-xs text-red-400 hover:text-red-300"
             >
               Clear All
@@ -335,7 +379,7 @@ export function WebPhoneHeader() {
               className="flex items-center gap-3 p-2 bg-white/5 rounded-lg hover:bg-white/10 cursor-pointer"
               onClick={() => {
                 setDialNumber(call.phoneNumber);
-                store.toggleDialpad();
+                toggleDialpad();
               }}
             >
               {call.status === 'missed' ? (
@@ -361,7 +405,7 @@ export function WebPhoneHeader() {
   };
   
   // Don't render if SIP is not enabled
-  if (!store.sipExtension) return null;
+  if (!sipExtension) return null;
   
   return (
     <>
@@ -386,13 +430,13 @@ export function WebPhoneHeader() {
               <ConnectionStatus />
               
               {/* Active call */}
-              {store.currentCall && <ActiveCall />}
+              {currentCall && <ActiveCall />}
               
               {/* Dialpad button */}
-              {!store.currentCall && (
+              {!currentCall && (
                 <Button
                   size="sm"
-                  onClick={() => store.toggleDialpad()}
+                  onClick={() => toggleDialpad()}
                   className="h-8 px-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600"
                   data-testid="button-open-dialpad"
                 >
@@ -415,7 +459,7 @@ export function WebPhoneHeader() {
           </motion.div>
           
           {/* Dialpad dropdown */}
-          {store.dialpadVisible && <Dialpad />}
+          {dialpadVisible && <Dialpad />}
           
           {/* Call history dropdown */}
           <CallHistory />

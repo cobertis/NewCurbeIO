@@ -2734,25 +2734,47 @@ function WebPhoneTab() {
   
   const user = userData?.user;
   
-  // State for form data
-  const [sipExtension, setSipExtension] = useState("");
-  const [sipPassword, setSipPassword] = useState("");
-  const [sipServer, setSipServer] = useState("wss://pbx.curbe.io:8089/ws");
-  const [sipEnabled, setSipEnabled] = useState(false);
+  // SIP form schema
+  const sipFormSchema = z.object({
+    sipExtension: z.string(),
+    sipPassword: z.string(),
+    sipServer: z.string(),
+    sipEnabled: z.boolean(),
+  });
   
-  // Initialize form with user data when it loads
+  type SipForm = z.infer<typeof sipFormSchema>;
+  
+  // Form using react-hook-form
+  const form = useForm<SipForm>({
+    resolver: zodResolver(sipFormSchema),
+    defaultValues: {
+      sipExtension: "",
+      sipPassword: "",
+      sipServer: "wss://pbx.curbe.io:8089/ws",
+      sipEnabled: false,
+    },
+  });
+  
+  // Hydrate form when user data loads
   useEffect(() => {
     if (user) {
-      setSipExtension(user.sipExtension || "");
-      setSipPassword(user.sipPassword || "");
-      setSipServer(user.sipServer || "wss://pbx.curbe.io:8089/ws");
-      setSipEnabled(user.sipEnabled || false);
+      form.reset({
+        sipExtension: user.sipExtension || "",
+        sipPassword: user.sipPassword || "",
+        sipServer: user.sipServer || "wss://pbx.curbe.io:8089/ws",
+        sipEnabled: user.sipEnabled || false,
+      });
     }
-  }, [user]);
+  }, [user, form]);
+  
+  // Watch form values for UI display
+  const sipEnabled = form.watch("sipEnabled");
+  const sipExtension = form.watch("sipExtension");
+  const sipPassword = form.watch("sipPassword");
   
   // Mutation for updating SIP settings
   const updateSipMutation = useMutation({
-    mutationFn: async (data: { sipExtension: string; sipPassword: string; sipServer: string; sipEnabled: boolean }) => {
+    mutationFn: async (data: SipForm) => {
       return apiRequest("PATCH", "/api/users/sip", data);
     },
     onSuccess: () => {
@@ -2773,7 +2795,8 @@ function WebPhoneTab() {
   
   // Handle form submission
   const handleSave = () => {
-    if (sipEnabled && (!sipExtension || !sipPassword)) {
+    const values = form.getValues();
+    if (values.sipEnabled && (!values.sipExtension || !values.sipPassword)) {
       toast({
         title: "Missing Credentials",
         description: "Please enter both SIP Extension and Password to enable WebPhone.",
@@ -2782,17 +2805,13 @@ function WebPhoneTab() {
       return;
     }
     
-    updateSipMutation.mutate({
-      sipExtension,
-      sipPassword,
-      sipServer,
-      sipEnabled,
-    });
+    updateSipMutation.mutate(values);
   };
   
   // Handle test call
   const handleTestCall = async () => {
-    if (!sipExtension || !sipPassword) {
+    const values = form.getValues();
+    if (!values.sipExtension || !values.sipPassword) {
       toast({
         title: "Missing Credentials",
         description: "Please enter SIP credentials before testing.",
@@ -2862,7 +2881,7 @@ function WebPhoneTab() {
           <Switch
             id="sipEnabled"
             checked={sipEnabled}
-            onCheckedChange={setSipEnabled}
+            onCheckedChange={(value) => form.setValue("sipEnabled", value)}
             disabled={updateSipMutation.isPending}
             data-testid="switch-sip-enabled"
           />
@@ -2877,7 +2896,7 @@ function WebPhoneTab() {
               type="text"
               placeholder="e.g., 101"
               value={sipExtension}
-              onChange={(e) => setSipExtension(e.target.value)}
+              onChange={(e) => form.setValue("sipExtension", e.target.value)}
               disabled={updateSipMutation.isPending}
               data-testid="input-sip-extension"
             />
@@ -2894,7 +2913,7 @@ function WebPhoneTab() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your SIP password"
                 value={sipPassword}
-                onChange={(e) => setSipPassword(e.target.value)}
+                onChange={(e) => form.setValue("sipPassword", e.target.value)}
                 disabled={updateSipMutation.isPending}
                 className="pr-10"
                 data-testid="input-sip-password"
@@ -2925,8 +2944,8 @@ function WebPhoneTab() {
               id="sipServer"
               type="text"
               placeholder="wss://pbx.curbe.io:8089/ws"
-              value={sipServer}
-              onChange={(e) => setSipServer(e.target.value)}
+              value={form.watch("sipServer")}
+              onChange={(e) => form.setValue("sipServer", e.target.value)}
               disabled={updateSipMutation.isPending}
               data-testid="input-sip-server"
             />
