@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatPhoneNumber } from '@shared/phone';
+import { formatPhoneInput } from '@shared/phone';
 
 // WebPhone Header Component
 export function WebPhoneHeader() {
@@ -126,7 +126,7 @@ export function WebPhoneHeader() {
             <div className="p-6 space-y-4">
               <div className="text-center">
                 <div className="text-2xl font-semibold text-white">
-                  {formatPhoneNumber(store.currentCall.phoneNumber)}
+                  {formatPhoneInput(store.currentCall.phoneNumber)}
                 </div>
                 {store.currentCall.displayName && (
                   <div className="text-sm text-gray-400 mt-1">
@@ -248,7 +248,7 @@ export function WebPhoneHeader() {
         
         <div className="flex-1 min-w-0">
           <div className="text-sm text-white truncate">
-            {formatPhoneNumber(store.currentCall.phoneNumber)}
+            {formatPhoneInput(store.currentCall.phoneNumber)}
           </div>
           <div className="text-xs text-gray-400">
             {isRinging ? 'Calling...' : isAnswered ? formatDuration(callDuration) : 'Connected'}
@@ -347,7 +347,7 @@ export function WebPhoneHeader() {
               )}
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-white truncate">
-                  {formatPhoneNumber(call.phoneNumber)}
+                  {formatPhoneInput(call.phoneNumber)}
                 </div>
                 <div className="text-xs text-gray-500">
                   {new Date(call.startTime).toLocaleTimeString()} • {call.duration ? `${call.duration}s` : 'Missed'}
