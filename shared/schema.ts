@@ -195,6 +195,11 @@ export const users = pgTable("users", {
   // SMS marketing subscription
   smsSubscribed: boolean("sms_subscribed").notNull().default(true), // Subscribed to marketing SMS
   
+  // SIP WebPhone Settings
+  sipExtension: text("sip_extension"), // SIP extension number (e.g., "101")
+  sipPassword: text("sip_password"), // SIP password for WebRTC registration
+  sipEnabled: boolean("sip_enabled").notNull().default(false), // Whether WebPhone is enabled for this user
+  
   // Email preferences
   emailNotifications: boolean("email_notifications").notNull().default(true), // General email notifications
   invoiceAlerts: boolean("invoice_alerts").notNull().default(true), // Invoice notification emails

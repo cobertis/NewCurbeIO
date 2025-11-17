@@ -1,0 +1,132 @@
+Construye un WebPhone WebRTC WebSocket (WSS) profesional y moderno usando SIP.js o JSSIP que siempre permanezca activo en el HEADER del sistema, nunca se recargue al cambiar de página, y mantenga viva la llamada aunque el usuario navegue por el CRM.
+
+🎯 REQUISITOS ESTRUCTURALES IMPORTANTES:
+
+El WebPhone debe estar dentro de un header fijo global, fuera del flujo del router.
+
+Debe funcionar como un singleton:
+
+Solo una instancia del SIP User Agent
+
+Nunca destruirlo ni recrearlo al navegar
+
+Usar global state (window.phoneClient o un store tipo Zustand/Redux)
+
+El contenido del CRM puede cambiar, pero el phone NO se recarga jamás.
+
+El WebPhone siempre muestra:
+
+estado SIP (Connected / Disconnected)
+
+la llamada activa
+
+el timer
+
+botones Mute / Hold / Hangup
+
+progress bar
+
+🎨 DISEÑO EXACTO QUE QUIERO:
+
+Estilo glassmorphism futurista (transparente, blur, sombras suaves)
+
+Header elegante y moderno al estilo:
+
+Aircall
+
+Dialpad
+
+RingCentral WebPhone
+
+iOS 17 call bar
+
+Íconos premium (Lucide / HeroIcons)
+
+Animación minimal suave
+
+Tema oscuro con colores turquesa/azul neón
+
+El dialpad aparece como un drawer deslizable
+
+Llamada en curso muestra una mini tarjeta animada
+
+⚙️ FUNCIONALIDADES TÉCNICAS OBLIGATORIAS:
+
+Registro SIP en WSS:
+
+wss://pbx.curbe.io:8089/ws
+
+
+Variables de configuración:
+
+const SIP_USERNAME = "EXT";
+const SIP_PASSWORD = "PASS";
+const SIP_DOMAIN   = "pbx.curbe.io";
+const WSS_SERVER   = "wss://pbx.curbe.io:8089/ws";
+
+
+Hacer llamadas
+
+Recibir llamadas
+
+Modal de llamada entrante estilo Aircall
+
+Ring + ringtone
+
+Caller ID
+
+Hold / Resume
+
+Mute / Unmute
+
+Teclado con DTMF
+
+Timer
+
+Logs de llamadas (localStorage)
+
+🧠 REQUISITOS AVANZADOS:
+
+El WebPhone debe correr SIN recarga, usando:
+
+SPA
+
+Global JS state
+
+Persistencia del user agent
+
+El header debe ser un componente global fijo (sticky top)
+
+Nada debe depender del router
+
+Si la app navega, el phone NO se reinicia
+
+Incluir reconexión automática del SIP WebSocket
+
+Manejo correcto de ICE, RTC y SDP
+
+📁 ESTRUCTURA DEL PROYECTO:
+
+index.html
+
+app.js (manejo del router/spa)
+
+phone.js (UserAgent SIP.js persistente)
+
+header.js (UI del WebPhone fijo)
+
+style.css estilo premium
+
+📦 ENTREGA ESPERADA:
+
+Todo el HTML/CSS/JS completo
+
+WebPhone ultra moderno
+
+Persistente en el header
+
+Totalmente funcional con WebRTC + WSS
+
+Listo para integrarlo dentro de mi CRM
+
+NO quiero nada simple, ni básico. Quiero un producto premium, moderno, elegante, con calidad SaaS empresarial.

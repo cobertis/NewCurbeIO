@@ -99,6 +99,7 @@
     "react-resizable-panels": "^2.1.7",
     "react-signature-canvas": "^1.1.0-alpha.2",
     "recharts": "^2.15.2",
+    "sip.js": "^0.21.2",
     "stripe": "^19.1.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
@@ -108,7 +109,8 @@
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "zod": "^3.24.2",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.4.1",
