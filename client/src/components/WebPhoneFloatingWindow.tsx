@@ -338,7 +338,7 @@ export function WebPhoneFloatingWindow() {
                   
                   {/* Call Controls */}
                   <div className="space-y-4 pb-8">
-                    {/* Control Buttons Grid */}
+                    {/* Control Buttons Grid - Only 3 buttons */}
                     <div className="grid grid-cols-3 gap-6 px-4">
                       <button
                         onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
@@ -356,37 +356,6 @@ export function WebPhoneFloatingWindow() {
                           )}
                         </div>
                         <span className="text-xs text-muted-foreground">mute</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => setShowKeypad(!showKeypad)}
-                        className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-                      >
-                        <div className={cn(
-                          "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
-                          showKeypad ? "bg-foreground" : "bg-muted/80"
-                        )}>
-                          <Grid3x3 className={cn("h-7 w-7", showKeypad ? "text-background" : "text-foreground")} />
-                        </div>
-                        <span className="text-xs text-muted-foreground">keypad</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => isRecording ? webPhone.stopRecording() : webPhone.startRecording()}
-                        className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-                        data-testid="button-recording"
-                      >
-                        <div className={cn(
-                          "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
-                          isRecording ? "bg-red-500" : "bg-muted/80"
-                        )}>
-                          {isRecording ? (
-                            <Circle className="h-7 w-7 text-white fill-white animate-pulse" />
-                          ) : (
-                            <Circle className="h-7 w-7 text-foreground" />
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{isRecording ? 'recording' : 'record'}</span>
                       </button>
                       
                       <button
@@ -412,13 +381,6 @@ export function WebPhoneFloatingWindow() {
                           <Pause className={cn("h-7 w-7", isOnHold ? "text-background" : "text-foreground")} />
                         </div>
                         <span className="text-xs text-muted-foreground">hold</span>
-                      </button>
-                      
-                      <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
-                        <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                          <Phone className="h-7 w-7 text-foreground" />
-                        </div>
-                        <span className="text-xs text-muted-foreground">contacts</span>
                       </button>
                     </div>
                     
