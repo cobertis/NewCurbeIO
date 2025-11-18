@@ -1113,10 +1113,18 @@ class WebPhoneManager {
       return false;
     }
     
-    // Check Call Waiting
-    if (store.currentCall && !store.callWaitingEnabled) {
-      console.log('[WebPhone] Rejecting call - Call Waiting is disabled and call is active');
-      return false;
+    // Check Call Waiting - only reject if there's ACTUALLY an active call
+    // (not just terminated/ending)
+    if (store.currentCall) {
+      const callStatus = store.currentCall.status;
+      const isActiveCall = (callStatus === 'ringing' || callStatus === 'answered');
+      
+      if (isActiveCall && !store.callWaitingEnabled) {
+        console.log('[WebPhone] Rejecting call - Call Waiting is disabled and call is active:', callStatus);
+        return false;
+      }
+      
+      console.log('[WebPhone] Accepting call - Current call status is:', callStatus);
     }
     
     return true;
