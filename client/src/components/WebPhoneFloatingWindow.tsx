@@ -21,6 +21,7 @@ export function WebPhoneFloatingWindow() {
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const localAudioRef = useRef<HTMLAudioElement>(null);
+  const dialInputRef = useRef<HTMLInputElement>(null);
   
   const isVisible = useWebPhoneStore(state => state.dialpadVisible);
   const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
@@ -64,6 +65,15 @@ export function WebPhoneFloatingWindow() {
       setViewMode('keypad');
     }
   }, [currentCall]);
+  
+  // Auto-focus input when switching to keypad
+  useEffect(() => {
+    if (viewMode === 'keypad' && dialInputRef.current) {
+      setTimeout(() => {
+        dialInputRef.current?.focus();
+      }, 100);
+    }
+  }, [viewMode]);
   
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -497,12 +507,22 @@ export function WebPhoneFloatingWindow() {
                   {/* Number Display */}
                   <div className="text-center py-3">
                     <input
-                      type="text"
+                      ref={dialInputRef}
+                      type="tel"
                       value={dialNumber}
                       onChange={(e) => handleNumberChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && dialNumber) {
+                          handleCall();
+                        } else if (e.key === 'Backspace') {
+                          e.preventDefault();
+                          setDialNumber(prev => prev.slice(0, -1));
+                        }
+                      }}
                       className="w-full bg-transparent border-none text-foreground text-2xl text-center focus:outline-none font-normal"
                       placeholder=""
                       data-testid="input-dial-number"
+                      autoComplete="off"
                     />
                   </div>
                   
