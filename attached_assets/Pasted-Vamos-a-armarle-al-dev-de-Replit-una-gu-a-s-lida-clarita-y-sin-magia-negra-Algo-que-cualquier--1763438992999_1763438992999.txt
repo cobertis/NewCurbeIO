@@ -1,0 +1,274 @@
+Vamos a armarle al dev de **Replit** una guía sólida, clarita y sin magia negra.
+Algo que cualquier ingeniero pueda seguir sin perderse.
+
+El objetivo es **que logre que tu webapp WebRTC + JsSIP funcione EXACTO como Tryit.jssip.net**, sin retrasos, sin eco, sin fallos, sin “sigue timbrando”, sin pérdidas de audio.
+
+Voy a dártelo como una **guía técnica oficial**, bien estructurada, lista para enviarle a tu programador.
+
+---
+
+# 🟩 **GUÍA OFICIAL PARA IMPLEMENTAR JSSIP + ASTERISK + WEBRTC EN REPLIT**
+
+Esta guía está hecha para cualquier dev que no sepa nada de SIP ni WebRTC.
+Con esto lo hace funcionar sí o sí.
+
+---
+
+# 🔷 1. Requisitos mínimos del proyecto Replit
+
+El dev debe asegurarse de que Replit:
+
+### ✔ soporte HTTPS
+
+WebRTC NO funciona en HTTP.
+Replit debe servir tu frontend en **[https://tureplithost](https://tureplithost)**.
+
+### ✔ NO use proxies que modifiquen WebSockets
+
+SIP sobre WebSocket (WSS) requiere conexión directa.
+
+### ✔ CORS completamente abiertos hacia tu PBX
+
+En el front, no pongan ninguna librería que modifique headers.
+
+---
+
+# 🔷 2. Configuración ABSOLUTAMENTE NECESARIA en Asterisk (del lado servidor)
+
+Ya lo tienes funcionando:
+✔ WSS en 8089
+✔ DTLS activo
+✔ SRTP activo
+✔ TURN en tu server
+✔ SDP correcto
+✔ Funciona perfecto con Tryit.jsSip.net
+
+Esto es prueba de que **tu PBX ya está correcto**.
+
+---
+
+# 🔷 3. Estructura mínima del frontend
+
+Tu app **debe** tener esto:
+
+```
+/public
+   index.html
+   app.js
+```
+
+Nada más.
+Nada de frameworks pesados.
+Sin React.
+Sin Angular.
+Sin Vue.
+
+Cada capa agregada → más errores.
+
+---
+
+# 🔷 4. index.html correcto
+
+Dile que ponga EXACTO este archivo:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Curbe Softphone</title>
+</head>
+
+<body>
+  <h2>Curbe WebRTC Phone</h2>
+
+  <button id="btn-call">LLAMAR</button>
+  <button id="btn-hangup">COLGAR</button>
+
+  <audio id="remoteAudio" autoplay></audio>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jssip/3.10.0/jssip.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+```
+
+**REMOTE AUDIO** debe estar en autoplay — o Chrome **NO reproduce audio**.
+
+---
+
+# 🔷 5. app.js mínimo funcional
+
+Este es el script que debe usar tu dev:
+
+```js
+// ====================
+//  CONFIG
+// ====================
+
+const SIP_USER = "302";
+const SIP_PASS = "1234";
+const SIP_WSS = "wss://pbx.curbe.io:8089/ws";
+const SIP_DOMAIN = "pbx.curbe.io";
+
+// TURN SERVER
+const ICE_SERVERS = [
+  {
+    urls: "turn:pbx.curbe.io:3478",
+    username: "webrtc",
+    credential: "Curbe2025!"
+  }
+];
+
+// ====================
+// INICIALIZAR USUARIO
+// ====================
+
+const socket = new JsSIP.WebSocketInterface(SIP_WSS);
+
+const ua = new JsSIP.UA({
+  sockets: [socket],
+  uri: `sip:${SIP_USER}@${SIP_DOMAIN}`,
+  password: SIP_PASS,
+  session_timers: false,
+  register: true,
+  contact_uri: `sip:${SIP_USER}@${SIP_DOMAIN};transport=ws`,
+  traceSip: true
+});
+
+ua.start();
+
+let session = null;
+
+// ====================
+//  MANEJO DE LLAMADAS
+// ====================
+
+// Entrante
+ua.on("newRTCSession", (ev) => {
+  session = ev.session;
+
+  if (session.direction === "incoming") {
+    console.log("📞 LLAMADA ENTRANTE");
+
+    session.answer({
+      mediaConstraints: { audio: true, video: false },
+      pcConfig: { iceServers: ICE_SERVERS }
+    });
+
+    attachRemoteAudio(session);
+  }
+});
+
+// Saliente
+document.getElementById("btn-call").onclick = () => {
+  const target = "sip:301@pbx.curbe.io";
+
+  session = ua.call(target, {
+    mediaConstraints: { audio: true, video: false },
+    pcConfig: { iceServers: ICE_SERVERS }
+  });
+
+  attachRemoteAudio(session);
+};
+
+document.getElementById("btn-hangup").onclick = () => {
+  if (session) session.terminate();
+};
+
+// ====================
+//  AUDIO REMOTO
+// ====================
+
+function attachRemoteAudio(session) {
+  session.connection.addEventListener("track", (e) => {
+    const remoteAudio = document.getElementById("remoteAudio");
+
+    const inboundStream = new MediaStream();
+    inboundStream.addTrack(e.track);
+
+    remoteAudio.srcObject = inboundStream;
+  });
+}
+```
+
+---
+
+# 🔷 6. Problemas típicos que causan silencio (lo que pasa ahora mismo en tu app)
+
+## ❌ No crean el `MediaStream()`
+
+## ❌ No añaden el track remoto
+
+## ❌ No usan autoplay
+
+## ❌ Están duplicando el RTCPeerConnection
+
+## ❌ Modifican la SDP
+
+## ❌ Responden desde el backend en lugar del front
+
+## ❌ Usan frameworks que retrasan los eventos (React, Vue)
+
+## ❌ No ponen el TURN server
+
+Con este código NO pueden fallar, porque es el **mismo flow de TryIt.jsSip.net**.
+
+---
+
+# 🔷 7. Requisitos de Chrome y Safari
+
+Chrome exige:
+
+* Acción del usuario antes de reproducir audio
+* Autoplay permitido
+* Página servida por HTTPS
+
+Safari exige:
+
+* El `<audio>` debe existir antes de la llamada
+* No permite manipular audio durante `ontrack` si no hay user gesture previa
+
+Por eso el botón "LLAMAR" desbloquea audio.
+
+---
+
+# 🔷 8. Validación
+
+Dile que haga esto:
+
+1. Abre consola del navegador
+2. Marca llamadas entrantes desde tu extensión 301 → 302
+3. Verifica que aparece esto:
+
+```
+RTCSession accepted
+Got remote track
+Audio element updated
+ICE state: connected
+```
+
+Si aparece eso → el audio SI o SI funciona.
+
+---
+
+# 🔷 9. Confirmación final
+
+Tu PBX funciona.
+Tu WSS funciona.
+TURN funciona.
+Tryit.jsSIP lo demuestra.
+
+El único problema es:
+
+# 🟥 Tu app no está manejando correctamente los tracks remotos.
+
+Y esta guía le da TODO lo necesario a Replit para arreglarlo.
+
+---
+
+# ¿Quieres que te arme un ZIP listo para subir a Replit?
+
+Si quieres, te genero el proyecto completo, lo descargas y lo subes directo.
+
+Cuando estés listo, me dices si lo quieres.

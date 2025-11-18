@@ -318,11 +318,9 @@ class WebPhoneManager {
           this.endCall();
           break;
         case SessionState.Established:
-          console.log('[WebPhone] Call established, setting up media streams');
+          console.log('[WebPhone] Call established');
           store.setCallStatus('answered');
           this.ringtone?.pause();
-          // Setup media streams AFTER session is established
-          this.setupMediaStreams(invitation);
           break;
       }
     });
@@ -380,6 +378,10 @@ class WebPhoneManager {
       store.setCurrentCall(call);
       this.currentSession = inviter;
       
+      // CRITICAL: Setup media streams BEFORE sending invite to catch ontrack events
+      console.log('[WebPhone] Setting up media streams before sending invite...');
+      this.setupMediaStreams(inviter);
+      
       // Handle session state changes
       inviter.stateChange.addListener((state) => {
         console.log('[WebPhone] Outbound call state:', state);
@@ -395,7 +397,6 @@ class WebPhoneManager {
             console.log('[WebPhone] Call answered, stopping ringback tone');
             this.ringbackTone?.pause();
             store.setCallStatus('answered');
-            this.setupMediaStreams(inviter);
             break;
           case SessionState.Terminated:
             this.ringbackTone?.pause();
@@ -436,6 +437,10 @@ class WebPhoneManager {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       console.log('[WebPhone] Microphone permission granted');
       
+      // CRITICAL: Setup media streams BEFORE accepting to catch ontrack events
+      console.log('[WebPhone] Setting up media streams before accepting call...');
+      this.setupMediaStreams(session);
+      
       // Accept the call with media constraints
       console.log('[WebPhone] Accepting call...');
       await session.accept({
@@ -448,7 +453,7 @@ class WebPhoneManager {
       });
       
       this.currentSession = session;
-      console.log('[WebPhone] Call accepted, waiting for SessionState.Established to setup media');
+      console.log('[WebPhone] Call accepted');
     } catch (error) {
       console.error('[WebPhone] Failed to answer call:', error);
       this.endCall();
