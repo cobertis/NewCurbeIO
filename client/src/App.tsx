@@ -491,18 +491,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {/* WebPhone Button */}
               <Button 
-                variant="ghost" 
                 size="icon"
                 onClick={() => useWebPhoneStore.getState().toggleDialpad()}
                 data-testid="button-webphone"
-                className="rounded-md hover-elevate active-elevate-2 relative"
+                className="rounded-md hover-elevate active-elevate-2 bg-green-500 hover:bg-green-600 active:bg-green-700"
               >
-                <Phone className="h-8 w-8 text-blue-500" />
-                {/* Connection status indicator */}
-                <div className={cn(
-                  "absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-background",
-                  useWebPhoneStore.getState().connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500"
-                )} />
+                <Phone className="h-8 w-8 text-white" />
               </Button>
               
               {/* Search Icon */}
