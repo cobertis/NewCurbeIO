@@ -199,7 +199,7 @@ class WebPhoneManager {
         username: extension
       });
       
-      // Create User Agent with STUN servers for WebRTC NAT traversal (required for Replit)
+      // Create User Agent with TURN/STUN servers for WebRTC NAT traversal
       this.userAgent = new UserAgent({
         uri: UserAgent.makeURI(uriString)!,
         transportOptions,
@@ -209,9 +209,15 @@ class WebPhoneManager {
         sessionDescriptionHandlerFactoryOptions: {
           peerConnectionOptions: {
             iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' },
-              { urls: 'stun:stun2.l.google.com:19302' }
+              {
+                urls: [
+                  'stun:pbx.curbe.io:3478',
+                  'turn:pbx.curbe.io:5349?transport=tcp',
+                  'turns:pbx.curbe.io:5349?transport=tcp'
+                ],
+                username: 'webrtc',
+                credential: 'Curbe2025!'
+              }
             ]
           }
         },
