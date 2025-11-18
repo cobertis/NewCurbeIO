@@ -72,75 +72,69 @@ let sessionStore: any = null;
 export function setupWebSocket(server: Server, pgSessionStore?: any) {
   sessionStore = pgSessionStore;
   
-  // Chat WebSocket
-  wss = new WebSocketServer({ 
-    server,
-    path: '/ws/chat',
-    verifyClient: (info, callback) => {
-      // Extract and validate session on connection upgrade
-      const sessionId = getSessionIdFromRequest(info.req);
-      
-      if (!sessionId || !sessionStore) {
-        // Reject unauthenticated connections immediately
-        console.log('[WebSocket] Rejecting connection without valid session');
-        callback(false, 401, 'Unauthorized');
-        return;
-      }
-
-      // Validate session exists in store
-      sessionStore.get(sessionId, (err: any, session: SessionData) => {
-        if (err || !session || !session.user?.id) {
-          console.log('[WebSocket] Rejecting connection with invalid/expired session');
-          callback(false, 401, 'Unauthorized');
-          return;
-        }
-
-        // Session is valid - allow connection
-        console.log('[WebSocket] Accepting authenticated connection');
-        callback(true);
-      });
-    }
-  });
+  // Use noServer mode and manual upgrade handling to filter by path
+  wss = new WebSocketServer({ noServer: true });
   
-  // SIP WebSocket Proxy - relays SIP messages between client and PBX server
-  const sipWss = new WebSocketServer({
-    server,
-    path: '/ws/sip',
-    verifyClient: (info, callback) => {
-      const sessionId = getSessionIdFromRequest(info.req);
-      
-      if (!sessionId || !sessionStore) {
-        console.log('[SIP WebSocket] Rejecting connection without valid session');
-        callback(false, 401, 'Unauthorized');
-        return;
-      }
-
-      sessionStore.get(sessionId, (err: any, session: SessionData) => {
-        if (err || !session || !session.user?.id) {
-          console.log('[SIP WebSocket] Rejecting connection with invalid/expired session');
-          callback(false, 401, 'Unauthorized');
-          return;
-        }
-
-        console.log('[SIP WebSocket] Accepting authenticated connection');
-        callback(true);
-      });
-    }
-  });
-  
-  sipWss.on('connection', (clientWs: WebSocket, req: IncomingMessage) => {
-    console.log('[SIP WebSocket] ⚡ CONNECTION HANDLER TRIGGERED');
-    const sessionId = getSessionIdFromRequest(req);
+  // Handle HTTP upgrade events manually - only for our specific paths
+  server.on('upgrade', (request, socket, head) => {
+    const pathname = request.url || '';
     
-    if (!sessionId || !sessionStore) {
-      console.log('[SIP WebSocket] Connection without session - closing');
-      clientWs.close(1008, 'Unauthorized');
+    // Only handle our specific WebSocket paths
+    if (!pathname.startsWith('/ws/sip') && !pathname.startsWith('/ws/chat')) {
+      // Let other handlers (Vite HMR, etc.) handle this upgrade
+      // Don't touch it - just return and let Express/Vite handle it
       return;
     }
     
-    console.log('[SIP WebSocket] Validating session...');
+    // Validate session for our paths
+    const sessionId = getSessionIdFromRequest(request);
     
-    sessionStore.get(sessionId, async (err: any, session: SessionData) => {
+    if (!sessionId || !sessionStore) {
+      console.log('[WebSocket] Rejecting upgrade without valid session');
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    
+    sessionStore.get(sessionId, (err: any, session: SessionData) => {
+      if (err || !session || !session.user?.id) {
+        console.log('[WebSocket] Rejecting upgrade with invalid/expired session');
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      
+      // Session is valid - handle the upgrade
+      console.log('[WebSocket] Accepting authenticated connection for path:', pathname);
+      
+      if (wss) {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          // Route to appropriate handler based on path
+          if (pathname.startsWith('/ws/sip')) {
+            handleSipConnection(ws as AuthenticatedWebSocket, request);
+          } else if (pathname.startsWith('/ws/chat')) {
+            handleChatConnection(ws as AuthenticatedWebSocket, request);
+          }
+        });
+      }
+    });
+  });
+}
+
+// SIP WebSocket Proxy Handler
+function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
+  console.log('[SIP WebSocket] ⚡ SIP CONNECTION HANDLER TRIGGERED');
+  const sessionId = getSessionIdFromRequest(req);
+  
+  if (!sessionId || !sessionStore) {
+    console.log('[SIP WebSocket] Connection without session - closing');
+    clientWs.close(1008, 'Unauthorized');
+    return;
+  }
+  
+  console.log('[SIP WebSocket] Validating session...');
+  
+  sessionStore.get(sessionId, async (err: any, session: SessionData) => {
       if (err) {
         console.error('[SIP WebSocket] Session store error:', err);
         clientWs.close(1008, 'Session error');
@@ -176,8 +170,12 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
         const pbxServer = user.sipServer;
         console.log(`[SIP WebSocket] ✅ Connecting to PBX: ${pbxServer}`);
         
-        // Create WebSocket connection to actual PBX server
-        const pbxWs = new WebSocket(pbxServer);
+        // Create WebSocket connection to actual PBX server with SIP subprotocol
+        const pbxWs = new WebSocket(pbxServer, 'sip', {
+          headers: {
+            'Origin': req.headers.origin || 'https://proxy.curbe.io'
+          }
+        });
         
         // Relay messages from PBX to client
         pbxWs.on('message', (data) => {
@@ -206,11 +204,15 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
           }
         });
         
-        // Handle PBX disconnect
+        // Handle PBX disconnect - sanitize close codes
         pbxWs.on('close', (code, reason) => {
           console.log(`[SIP WebSocket] PBX disconnected (${code}): ${reason}`);
           if (clientWs.readyState === WebSocket.OPEN) {
-            clientWs.close(code, reason.toString());
+            // Sanitize close code - must be in valid range (1000-4999)
+            const safeCode = (code >= 1000 && code <= 4999) ? code : 1011;
+            // Trim reason to max 123 bytes
+            const safeReason = reason.toString().slice(0, 123);
+            clientWs.close(safeCode, safeReason);
           }
         });
         
@@ -226,62 +228,58 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
         clientWs.close(1011, 'Proxy setup error');
       }
     });
-  });
+}
 
-  wss.on('connection', (ws: AuthenticatedWebSocket, req: IncomingMessage) => {
-    ws.isAuthenticated = false;
-    
-    // Extract session and authenticate the WebSocket
-    const sessionId = getSessionIdFromRequest(req);
-    
-    // This handler should only be called if verifyClient passed, but defense in depth
-    if (!sessionId || !sessionStore) {
-      console.log('[WebSocket] Connection without session - closing immediately');
+// Chat WebSocket Handler
+function handleChatConnection(ws: AuthenticatedWebSocket, req: IncomingMessage) {
+  ws.isAuthenticated = false;
+  
+  // Extract session and authenticate the WebSocket
+  const sessionId = getSessionIdFromRequest(req);
+  
+  // This handler should only be called if verifyClient passed, but defense in depth
+  if (!sessionId || !sessionStore) {
+    console.log('[WebSocket] Connection without session - closing immediately');
+    ws.close(1008, 'Unauthorized');
+    return;
+  }
+  
+  sessionStore.get(sessionId, async (err: any, session: SessionData) => {
+    if (err || !session || !session.user?.id) {
+      console.log('[WebSocket] Invalid session in connection handler - closing');
       ws.close(1008, 'Unauthorized');
       return;
     }
     
-    sessionStore.get(sessionId, async (err: any, session: SessionData) => {
-      if (err || !session || !session.user?.id) {
-        console.log('[WebSocket] Invalid session in connection handler - closing');
-        ws.close(1008, 'Unauthorized');
-        return;
-      }
-      
-      // Get user from storage to get full user data
-      const { storage } = await import('./storage');
-      const user = await storage.getUser(session.user.id);
-      
-      if (!user) {
-        console.log('[WebSocket] User not found for session - closing');
-        ws.close(1008, 'Unauthorized');
-        return;
-      }
-      
-      // Authenticate the WebSocket
-      ws.companyId = user.companyId || null;
-      ws.userId = user.id;
-      ws.role = user.role;
-      ws.isAuthenticated = true;
-      
-      console.log(`[WebSocket] Authenticated: userId=${ws.userId}, companyId=${ws.companyId}, role=${ws.role}`);
-      ws.send(JSON.stringify({ type: 'authenticated', user: {
-        id: user.id,
-        companyId: user.companyId,
-        role: user.role
-      }}));
-    });
-
-    ws.on('error', console.error);
-
-    ws.on('close', () => {
-      console.log('[WebSocket] Client disconnected');
-    });
+    // Get user from storage to get full user data
+    const { storage } = await import('./storage');
+    const user = await storage.getUser(session.user.id);
+    
+    if (!user) {
+      console.log('[WebSocket] User not found for session - closing');
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
+    
+    // Authenticate the WebSocket
+    ws.companyId = user.companyId || null;
+    ws.userId = user.id;
+    ws.role = user.role;
+    ws.isAuthenticated = true;
+    
+    console.log(`[WebSocket] Authenticated: userId=${ws.userId}, companyId=${ws.companyId}, role=${ws.role}`);
+    ws.send(JSON.stringify({ type: 'authenticated', user: {
+      id: user.id,
+      companyId: user.companyId,
+      role: user.role
+    }}));
   });
 
-  wss.on('error', console.error);
+  ws.on('error', console.error);
 
-  console.log('[WebSocket] Server initialized on path /ws/chat');
+  ws.on('close', () => {
+    console.log('[WebSocket] Client disconnected');
+  });
 }
 
 // Broadcast new message to tenant-scoped clients only
