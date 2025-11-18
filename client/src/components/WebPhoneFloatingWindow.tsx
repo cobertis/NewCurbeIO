@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Search, Menu } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Search, Menu, Delete } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -516,13 +516,14 @@ export function WebPhoneFloatingWindow() {
                     ))}
                   </div>
                   
-                  {/* Call and Delete Buttons */}
-                  <div className="flex items-center justify-center gap-8 py-3">
+                  {/* Bottom Row - Call and Delete Buttons */}
+                  <div className="grid grid-cols-3 gap-3 px-2 py-3">
+                    <div></div>
                     <button
                       onClick={handleCall}
                       disabled={!dialNumber}
                       className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
+                        "w-20 h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
                         dialNumber 
                           ? "bg-green-500 hover:bg-green-600" 
                           : "bg-green-500/40 cursor-not-allowed"
@@ -531,13 +532,15 @@ export function WebPhoneFloatingWindow() {
                       <Phone className="h-7 w-7 text-white" />
                     </button>
                     
-                    {dialNumber && (
+                    {dialNumber ? (
                       <button
                         onClick={() => setDialNumber(prev => prev.slice(0, -1))}
-                        className="w-12 h-12 rounded-full bg-muted/40 hover:bg-muted/60 flex items-center justify-center transition-all active:scale-95"
+                        className="w-20 h-20 mx-auto rounded-full hover:bg-muted/30 flex items-center justify-center transition-all active:scale-95"
                       >
-                        <X className="h-5 w-5 text-foreground" />
+                        <Delete className="h-6 w-6 text-foreground" />
                       </button>
+                    ) : (
+                      <div></div>
                     )}
                   </div>
                 </div>
