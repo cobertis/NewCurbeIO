@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Search, Menu, Delete } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
 
-type ViewMode = 'calls' | 'contacts' | 'keypad' | 'search';
+type ViewMode = 'calls' | 'contacts' | 'keypad' | 'voicemail';
 
 export function WebPhoneFloatingWindow() {
   const [dialNumber, setDialNumber] = useState('');
@@ -436,16 +436,18 @@ export function WebPhoneFloatingWindow() {
                   </button>
                   
                   <button
-                    onClick={() => setViewMode('search')}
+                    onClick={() => setViewMode('voicemail')}
                     className="flex flex-col items-center gap-0.5 py-1 px-2"
                   >
-                    <Search className={cn("h-6 w-6", viewMode === 'search' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className="text-[10px] text-transparent">.</span>
+                    <Voicemail className={cn("h-6 w-6", viewMode === 'voicemail' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'voicemail' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Voicemail
+                    </span>
                   </button>
                 </div>
               </div>
-            ) : viewMode === 'contacts' || viewMode === 'search' ? (
-              /* Contacts/Search Screen - Empty State */
+            ) : viewMode === 'contacts' || viewMode === 'voicemail' ? (
+              /* Contacts/Voicemail Screen - Empty State */
               <div className="flex-1 flex flex-col">
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-sm text-muted-foreground">Coming soon</p>
@@ -493,11 +495,13 @@ export function WebPhoneFloatingWindow() {
                   </button>
                   
                   <button
-                    onClick={() => setViewMode('search')}
+                    onClick={() => setViewMode('voicemail')}
                     className="flex flex-col items-center gap-0.5 py-1 px-2"
                   >
-                    <Search className={cn("h-6 w-6", viewMode === 'search' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className="text-[10px] text-transparent">.</span>
+                    <Voicemail className={cn("h-6 w-6", viewMode === 'voicemail' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'voicemail' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Voicemail
+                    </span>
                   </button>
                 </div>
               </div>
@@ -618,11 +622,13 @@ export function WebPhoneFloatingWindow() {
                   </button>
                   
                   <button
-                    onClick={() => setViewMode('search')}
+                    onClick={() => setViewMode('voicemail')}
                     className="flex flex-col items-center gap-0.5 py-1 px-2"
                   >
-                    <Search className={cn("h-6 w-6", viewMode === 'search' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className="text-[10px] text-transparent">.</span>
+                    <Voicemail className={cn("h-6 w-6", viewMode === 'voicemail' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'voicemail' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Voicemail
+                    </span>
                   </button>
                 </div>
               </div>
