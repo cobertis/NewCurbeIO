@@ -195,9 +195,12 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
         });
         
         // Relay messages from PBX to client
+        // CRITICAL FIX: Convert binary frames to UTF-8 text for SIP.js compatibility
         pbxWs.on('message', (data) => {
           if (clientWs.readyState === WebSocket.OPEN) {
-            clientWs.send(data);
+            // SIP.js REQUIRES text frames, not binary - convert Buffer to string
+            const message = data.toString('utf8');
+            clientWs.send(message);
           }
         });
         
