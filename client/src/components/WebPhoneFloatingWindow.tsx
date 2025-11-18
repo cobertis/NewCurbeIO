@@ -288,33 +288,33 @@ export function WebPhoneFloatingWindow() {
               </div>
             ) : (
               /* Dialpad Screen */
-              <div className="flex-1 flex flex-col px-6 py-3">
+              <div className="flex-1 flex flex-col justify-between py-6 px-8">
                 {/* Number Display */}
-                <div className="pt-3 pb-4">
+                <div className="text-center py-4">
                   <input
                     type="text"
                     value={dialNumber}
                     onChange={(e) => handleNumberChange(e.target.value)}
-                    className="w-full bg-transparent border-none text-muted-foreground text-2xl text-center focus:outline-none font-light tracking-wide"
-                    placeholder="Enter number"
+                    className="w-full bg-transparent border-none text-foreground text-2xl text-center focus:outline-none font-normal"
+                    placeholder="(786) 630-2555"
                     data-testid="input-dial-number"
                   />
                 </div>
                 
                 {/* Dialpad Grid */}
-                <div className="grid grid-cols-3 gap-x-4 gap-y-2 px-6 mb-3">
+                <div className="grid grid-cols-3 gap-4 px-2 mb-4">
                   {digits.map((digit, index) => (
                     <button
                       key={digit}
                       onClick={() => handleDial(digit)}
-                      className="flex flex-col items-center justify-center py-2 hover:bg-muted/20 rounded-lg transition-colors active:bg-muted/30"
+                      className="w-20 h-20 mx-auto rounded-full bg-muted/40 hover:bg-muted/60 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
                       data-testid={`button-dialpad-${digit}`}
                     >
-                      <span className="text-2xl text-foreground font-light leading-none">
+                      <span className="text-3xl text-foreground font-normal">
                         {digit}
                       </span>
                       {letters[index] && (
-                        <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium mt-0.5">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
                           {letters[index]}
                         </span>
                       )}
@@ -322,23 +322,29 @@ export function WebPhoneFloatingWindow() {
                   ))}
                 </div>
                 
-                {/* Call Button */}
-                <div className="flex justify-center pt-3 pb-4">
+                {/* Call and Delete Buttons */}
+                <div className="flex items-center justify-center gap-8 pb-4">
                   <button
                     onClick={handleCall}
                     disabled={!dialNumber}
                     className={cn(
-                      "w-14 h-14 rounded-full flex items-center justify-center transition-all",
+                      "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
                       dialNumber 
-                        ? "bg-green-500 hover:bg-green-600 active:scale-95" 
-                        : "bg-muted/20 cursor-not-allowed opacity-40"
+                        ? "bg-green-500 hover:bg-green-600" 
+                        : "bg-green-500/40 cursor-not-allowed"
                     )}
                   >
-                    <Phone className={cn(
-                      "h-6 w-6",
-                      dialNumber ? "text-white" : "text-muted-foreground"
-                    )} />
+                    <Phone className="h-7 w-7 text-white" />
                   </button>
+                  
+                  {dialNumber && (
+                    <button
+                      onClick={() => setDialNumber(prev => prev.slice(0, -1))}
+                      className="w-12 h-12 rounded-full bg-muted/40 hover:bg-muted/60 flex items-center justify-center transition-all active:scale-95"
+                    >
+                      <X className="h-5 w-5 text-foreground" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
