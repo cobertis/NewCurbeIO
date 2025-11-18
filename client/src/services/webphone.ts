@@ -1146,6 +1146,19 @@ class WebPhoneManager {
             console.log('[WebPhone] ICE state:', pc.iceConnectionState);
           };
           
+          // ICE candidate logging - CRITICAL for TURN verification
+          pc.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
+            if (event.candidate) {
+              const cand = event.candidate;
+              console.log(`[WebPhone] 🧊 ICE Candidate: ${cand.type} | ${cand.protocol} | ${cand.address}:${cand.port}`);
+              if (cand.type === 'relay') {
+                console.log('[WebPhone] ✅ TURN RELAY CANDIDATE GENERATED - TURN SERVER IS WORKING!');
+              }
+            } else {
+              console.log('[WebPhone] 🧊 ICE gathering complete');
+            }
+          };
+          
           console.log('[WebPhone] ✅ peerConnection.ontrack configured');
         } else {
           console.warn('[WebPhone] onSessionDescriptionHandler fired without peerConnection');
