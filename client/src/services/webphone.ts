@@ -462,8 +462,12 @@ class WebPhoneManager {
     store.setIncomingCallVisible(false);
     
     try {
-      // Delegate already configured in handleIncomingCall() - no need to set it again
-      // This follows Browser-Phone pattern: delegate is set when call arrives, not when answered
+      // CRITICAL FIX: Assign currentSession BEFORE accept() so delegate can wire media immediately
+      // Delegate already configured in handleIncomingCall() when call arrived
+      // When accept() runs, onSessionDescriptionHandler fires and needs this.currentSession set
+      // This matches Browser-Phone pattern and ensures instant audio
+      this.currentSession = session;
+      console.log('[WebPhone] 🎯 Session marked as active - ready for media binding');
       
       // Accept the call with media constraints
       // SIP.js will automatically request microphone permission - no need to do it manually
@@ -477,8 +481,7 @@ class WebPhoneManager {
         }
       });
       
-      this.currentSession = session;
-      console.log('[WebPhone] ✅ Call accepted - audio should connect immediately');
+      console.log('[WebPhone] ✅ Call accepted - audio should be connected immediately');
     } catch (error) {
       console.error('[WebPhone] Failed to answer call:', error);
       this.endCall();
