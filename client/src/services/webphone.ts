@@ -332,7 +332,10 @@ class WebPhoneManager {
         pc.ontrack = (event: RTCTrackEvent) => {
           console.log('[WebPhone] 🎵 ontrack fired - instant audio binding');
           
-          const remoteAudio = store.remoteAudioElement;
+          // CRITICAL FIX: Get current store state inside callback to avoid stale closure
+          const currentStore = useWebPhoneStore.getState();
+          const remoteAudio = currentStore.remoteAudioElement;
+          
           if (!remoteAudio) {
             console.error('[WebPhone] ❌ No remote audio element available');
             return;
@@ -450,7 +453,10 @@ class WebPhoneManager {
           pc.ontrack = (event: RTCTrackEvent) => {
             console.log('[WebPhone] 🎵 ontrack fired - instant audio binding (outbound)');
             
-            const remoteAudio = store.remoteAudioElement;
+            // CRITICAL FIX: Get current store state inside callback to avoid stale closure
+            const currentStore = useWebPhoneStore.getState();
+            const remoteAudio = currentStore.remoteAudioElement;
+            
             if (!remoteAudio) {
               console.error('[WebPhone] ❌ No remote audio element available');
               return;
@@ -928,7 +934,10 @@ class WebPhoneManager {
         if (sdh?.peerConnection) {
           const pc = sdh.peerConnection;
           pc.ontrack = (event: RTCTrackEvent) => {
-            const remoteAudio = store.remoteAudioElement;
+            // CRITICAL FIX: Get current store state inside callback to avoid stale closure
+            const currentStore = useWebPhoneStore.getState();
+            const remoteAudio = currentStore.remoteAudioElement;
+            
             if (remoteAudio && event.streams && event.streams[0]) {
               remoteAudio.srcObject = event.streams[0];
               remoteAudio.play().catch((error) => console.error('[WebPhone] Audio play error:', error));
