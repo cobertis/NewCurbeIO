@@ -407,6 +407,9 @@ class WebPhoneManager {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       console.log('[WebPhone] Microphone permission granted');
       
+      // Setup media streams BEFORE accepting to catch early tracks
+      this.setupMediaStreams(session);
+      
       // Accept the call with media constraints
       await session.accept({
         sessionDescriptionHandlerOptions: {
@@ -418,7 +421,6 @@ class WebPhoneManager {
       });
       
       this.currentSession = session;
-      this.setupMediaStreams(session);
       store.setCallStatus('answered');
       console.log('[WebPhone] Call answered successfully');
     } catch (error) {
