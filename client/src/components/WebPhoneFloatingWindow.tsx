@@ -492,7 +492,7 @@ export function WebPhoneFloatingWindow() {
                       value={dialNumber}
                       onChange={(e) => handleNumberChange(e.target.value)}
                       className="w-full bg-transparent border-none text-foreground text-2xl text-center focus:outline-none font-normal"
-                      placeholder="(786) 630-2555"
+                      placeholder=""
                       data-testid="input-dial-number"
                     />
                   </div>
