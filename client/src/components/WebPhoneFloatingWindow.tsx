@@ -167,18 +167,20 @@ export function WebPhoneFloatingWindow() {
           onMouseDown={handleMouseDown}
         >
           <div className="flex items-center gap-2">
-            <span className="text-foreground font-medium text-sm">Phone</span>
-            {sipExtension && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                Ext {sipExtension}
-              </Badge>
+            {sipExtension ? (
+              <>
+                <span className="text-foreground font-medium text-sm">Ext: {sipExtension}</span>
+                <div className={cn(
+                  "h-2.5 w-2.5 rounded-full",
+                  connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500"
+                )} />
+              </>
+            ) : (
+              <span className="text-foreground font-medium text-sm">Not configured</span>
             )}
           </div>
           
           <div className="flex items-center gap-2 no-drag">
-            {connectionStatus === 'connected' && (
-              <div className="h-2 w-2 rounded-full bg-green-500" />
-            )}
             <Button
               variant="ghost"
               size="icon"
