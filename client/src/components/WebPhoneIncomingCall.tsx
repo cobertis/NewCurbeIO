@@ -1,6 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { Phone, PhoneOff, Volume2 } from 'lucide-react';
-import { useWebPhoneStore, webPhone } from '@/services/webphone';
+import { useWebPhoneStore, getWebPhone } from '@/services/webphone';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { formatPhoneInput } from '@shared/phone';
@@ -44,20 +44,22 @@ export function WebPhoneIncomingCall() {
   
   // Handle answer - stop ringtone
   const handleAnswer = () => {
+    console.log('[WebPhoneIncomingCall] Answer button clicked');
     if (ringtoneRef.current) {
       ringtoneRef.current.pause();
       ringtoneRef.current.currentTime = 0;
     }
-    webPhone.answerCall();
+    getWebPhone().answerCall();
   };
   
   // Handle reject - stop ringtone
   const handleReject = () => {
+    console.log('[WebPhoneIncomingCall] Reject button clicked');
     if (ringtoneRef.current) {
       ringtoneRef.current.pause();
       ringtoneRef.current.currentTime = 0;
     }
-    webPhone.rejectCall();
+    getWebPhone().rejectCall();
   };
   
   if (!currentCall) return null;

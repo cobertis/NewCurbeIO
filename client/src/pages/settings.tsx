@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import { useMemo } from "react";
-import { webPhone, useWebPhoneStore } from "@/services/webphone";
+import { getWebPhone, useWebPhoneStore } from "@/services/webphone";
 
 // Business categories
 const categories = [
@@ -2969,7 +2969,7 @@ function WebPhoneTab() {
             </div>
             <Switch
               checked={doNotDisturb}
-              onCheckedChange={() => webPhone.toggleDoNotDisturb()}
+              onCheckedChange={() => getWebPhone().toggleDoNotDisturb()}
               data-testid="switch-dnd"
             />
           </div>
@@ -2981,7 +2981,7 @@ function WebPhoneTab() {
             </div>
             <Switch
               checked={callWaiting}
-              onCheckedChange={() => webPhone.toggleCallWaiting()}
+              onCheckedChange={() => getWebPhone().toggleCallWaiting()}
               data-testid="switch-call-waiting"
             />
           </div>

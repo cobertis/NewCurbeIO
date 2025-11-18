@@ -1287,10 +1287,14 @@ class WebPhoneManager {
   }
 }
 
-// Export singleton instance
-export const webPhone = WebPhoneManager.getInstance();
+// Export lazy getter for singleton instance
+// This ensures the instance is always available when called,
+// avoiding undefined errors during module initialization
+export function getWebPhone(): WebPhoneManager {
+  return WebPhoneManager.getInstance();
+}
 
 // Persist WebPhone instance globally
 if (typeof window !== 'undefined') {
-  (window as any).webPhone = webPhone;
+  (window as any).getWebPhone = getWebPhone;
 }
