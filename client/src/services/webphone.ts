@@ -1042,6 +1042,20 @@ class WebPhoneManager {
       if (sdh.peerConnection) {
         this.attachPeerConnectionHandlers(sdh.peerConnection);
       }
+      
+      // CRITICAL FIX: Configure ICE candidate handler to eliminate 5-second delay
+      // When first usable ICE candidate arrives, call event.ready() to skip waiting
+      // for the full 5000ms iceGatheringTimeout (Browser-Phone pattern)
+      sdh.delegate = {
+        onIceCandidate: (event: any) => {
+          console.log('[WebPhone] ICE candidate received');
+          if (event.ready) {
+            console.log('[WebPhone] ✅ Calling event.ready() - skipping ICE gathering timeout');
+            event.ready();
+          }
+        }
+      };
+      
       // Call extra onSessionDescriptionHandler if provided
       if (extraHandlers?.onSessionDescriptionHandler) {
         extraHandlers.onSessionDescriptionHandler(sdh);
