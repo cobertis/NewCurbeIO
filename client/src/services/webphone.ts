@@ -226,7 +226,8 @@ class WebPhoneManager {
         username: extension
       });
       
-      // Create User Agent with TURN/STUN servers for WebRTC NAT traversal
+      // Create User Agent with STUN servers for WebRTC NAT traversal
+      // Using Google's public STUN servers (free and always available)
       this.userAgent = new UserAgent({
         uri: UserAgent.makeURI(uriString)!,
         transportOptions,
@@ -238,12 +239,12 @@ class WebPhoneManager {
             iceServers: [
               {
                 urls: [
-                  'stun:pbx.curbe.io:3478',
-                  'turn:pbx.curbe.io:5349?transport=tcp',
-                  'turns:pbx.curbe.io:5349?transport=tcp'
-                ],
-                username: 'webrtc',
-                credential: 'Curbe2025!'
+                  'stun:stun.l.google.com:19302',
+                  'stun:stun1.l.google.com:19302',
+                  'stun:stun2.l.google.com:19302',
+                  'stun:stun3.l.google.com:19302',
+                  'stun:stun4.l.google.com:19302'
+                ]
               }
             ]
           }
