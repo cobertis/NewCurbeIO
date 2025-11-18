@@ -36,6 +36,9 @@ interface WebPhoneState {
   isCallActive: boolean;
   isMuted: boolean;
   isOnHold: boolean;
+  isRecording: boolean;
+  doNotDisturb: boolean;
+  callWaitingEnabled: boolean;
   
   // Call history
   callHistory: CallLog[];
@@ -56,6 +59,9 @@ interface WebPhoneState {
   setCallStatus: (status: Call['status']) => void;
   setMuted: (muted: boolean) => void;
   setOnHold: (hold: boolean) => void;
+  setIsRecording: (recording: boolean) => void;
+  setDoNotDisturb: (dnd: boolean) => void;
+  setCallWaitingEnabled: (enabled: boolean) => void;
   addCallToHistory: (call: CallLog) => void;
   toggleDialpad: () => void;
   setIncomingCallVisible: (visible: boolean) => void;
@@ -72,6 +78,9 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   isCallActive: false,
   isMuted: false,
   isOnHold: false,
+  isRecording: false,
+  doNotDisturb: localStorage.getItem('webphone_dnd') === '1',
+  callWaitingEnabled: localStorage.getItem('webphone_call_waiting') !== '0',
   callHistory: JSON.parse(localStorage.getItem('webphone_call_history') || '[]'),
   dialpadVisible: false,
   incomingCallVisible: false,
@@ -101,6 +110,9 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   
   setMuted: (muted) => set({ isMuted: muted }),
   setOnHold: (hold) => set({ isOnHold: hold }),
+  setIsRecording: (recording) => set({ isRecording: recording }),
+  setDoNotDisturb: (dnd) => set({ doNotDisturb: dnd }),
+  setCallWaitingEnabled: (enabled) => set({ callWaitingEnabled: enabled }),
   
   addCallToHistory: (call) => set(state => {
     // Remove non-serializable fields (session has circular references)
@@ -289,6 +301,15 @@ class WebPhoneManager {
     const callerName = invitation.remoteIdentity.displayName || callerNumber;
     
     console.log('[WebPhone] 📞 Incoming call from:', callerNumber);
+    
+    // Check DND and Call Waiting BEFORE creating call object
+    if (!this.shouldAcceptIncomingCall()) {
+      console.log('[WebPhone] Auto-rejecting incoming call');
+      invitation.reject().catch((error) => {
+        console.error('[WebPhone] Error rejecting call:', error);
+      });
+      return;
+    }
     
     // Create call object
     const call: Call = {
@@ -725,17 +746,305 @@ class WebPhoneManager {
     console.log('[WebPhone] ✅ Microphone unmuted');
   }
   
-  private setupSessionDelegate(session: Session) {
-    // Setup delegate to capture sessionDescriptionHandler when it's created
-    session.delegate = {
-      ...session.delegate,
-      onSessionDescriptionHandler: (sdh: any) => {
-        console.log('[WebPhone] SessionDescriptionHandler created, setting up media');
-        if (sdh.peerConnection) {
-          this.attachPeerConnectionHandlers(sdh.peerConnection);
+  // ============================================================================
+  // TRANSFER FUNCTIONS - Blind & Attended Transfer
+  // ============================================================================
+  
+  public async blindTransfer(targetNumber: string): Promise<void> {
+    const session = this.currentSession;
+    
+    if (!session || session.state !== SessionState.Established) {
+      console.warn('[WebPhone] Cannot transfer - no active call');
+      return;
+    }
+    
+    if (!targetNumber || targetNumber.trim() === '') {
+      console.warn('[WebPhone] Cannot transfer - no target number provided');
+      return;
+    }
+    
+    console.log('[WebPhone] Initiating blind transfer to:', targetNumber);
+    
+    const target = `sip:${targetNumber}@${useWebPhoneStore.getState().sipDomain}`;
+    
+    const referOptions = {
+      requestDelegate: {
+        onAccept: () => {
+          console.log('[WebPhone] ✅ Blind transfer accepted');
+          // End the current call after successful transfer
+          this.hangupCall();
+        },
+        onReject: () => {
+          console.warn('[WebPhone] ❌ Blind transfer rejected');
         }
       }
     };
+    
+    try {
+      await (session as any).refer(target, referOptions);
+      console.log('[WebPhone] Blind transfer initiated successfully');
+    } catch (error) {
+      console.error('[WebPhone] Error initiating blind transfer:', error);
+    }
+  }
+  
+  public async attendedTransfer(targetNumber: string): Promise<void> {
+    const session = this.currentSession;
+    
+    if (!session || session.state !== SessionState.Established) {
+      console.warn('[WebPhone] Cannot transfer - no active call');
+      return;
+    }
+    
+    if (!targetNumber || targetNumber.trim() === '') {
+      console.warn('[WebPhone] Cannot transfer - no target number provided');
+      return;
+    }
+    
+    console.log('[WebPhone] Initiating attended transfer to:', targetNumber);
+    
+    // Put current call on hold first
+    await this.holdCall();
+    
+    // Make a new call to the transfer target
+    const store = useWebPhoneStore.getState();
+    const targetUri = UserAgent.makeURI(`sip:${targetNumber}@${store.sipDomain}`);
+    
+    if (!targetUri) {
+      console.error('[WebPhone] Invalid target number for attended transfer');
+      await this.unholdCall();
+      return;
+    }
+    
+    const inviteOptions = {
+      sessionDescriptionHandlerOptions: {
+        constraints: {
+          audio: true,
+          video: false
+        }
+      }
+    };
+    
+    try {
+      const inviter = new Inviter(this.userAgent!, targetUri, inviteOptions);
+      
+      // FIX PROBLEM 1: Pass onBye handler to setupSessionDelegate instead of overwriting
+      this.setupSessionDelegate(inviter, {
+        onBye: () => {
+          console.log('[WebPhone] Transfer target hung up before transfer completed');
+          // Resume original call
+          this.unholdCall();
+        }
+      });
+      
+      // Send the invite
+      await inviter.invite();
+      
+      // When transfer session is established, complete the transfer
+      inviter.stateChange.addListener((state: SessionState) => {
+        if (state === SessionState.Established) {
+          console.log('[WebPhone] Transfer target answered, completing attended transfer');
+          
+          // FIX PROBLEM 2 & 3: Wait for session establishment, then use targetUri for REFER
+          // Use REFER to complete attended transfer with proper URI target
+          const referOptions = {
+            requestDelegate: {
+              onAccept: () => {
+                console.log('[WebPhone] ✅ Attended transfer accepted by server');
+                // FIX PROBLEM 3: Defer hangupCall until REFER completes
+                // Add small delay to ensure transfer completes on server
+                setTimeout(() => {
+                  console.log('[WebPhone] Hanging up original call after transfer completion');
+                  this.hangupCall();
+                  inviter.bye();
+                }, 500);
+              },
+              onReject: () => {
+                console.warn('[WebPhone] ❌ Attended transfer rejected by server');
+                // Resume original call
+                this.unholdCall();
+                inviter.bye();
+              }
+            }
+          };
+          
+          // FIX PROBLEM 2: Use targetUri (SIP URI string) instead of inviter object
+          (session as any).refer(targetUri.toString(), referOptions);
+        } else if (state === SessionState.Terminated) {
+          // Consultation leg failed before establishing - resume original call
+          console.warn('[WebPhone] Transfer target failed/rejected, resuming original call');
+          this.unholdCall();
+        }
+      });
+      
+    } catch (error) {
+      console.error('[WebPhone] Error initiating attended transfer:', error);
+      // Resume original call on error
+      await this.unholdCall();
+    }
+  }
+  
+  // ============================================================================
+  // RECORDING FUNCTIONS - Call Recording
+  // ============================================================================
+  
+  private mediaRecorder: MediaRecorder | null = null;
+  private recordedChunks: Blob[] = [];
+  
+  public startRecording(): void {
+    const store = useWebPhoneStore.getState();
+    const session = this.currentSession;
+    
+    if (!session || session.state !== SessionState.Established) {
+      console.warn('[WebPhone] Cannot record - no active call');
+      return;
+    }
+    
+    const sdh = (session as any).sessionDescriptionHandler;
+    if (!sdh || !sdh.peerConnection) {
+      console.warn('[WebPhone] No peer connection available for recording');
+      return;
+    }
+    
+    console.log('[WebPhone] Starting call recording');
+    
+    const pc = sdh.peerConnection;
+    const recordingStream = new MediaStream();
+    
+    // Add all audio tracks (both local and remote)
+    pc.getSenders().forEach((sender: RTCRtpSender) => {
+      if (sender.track && sender.track.kind === 'audio') {
+        console.log('[WebPhone] Adding local audio track to recording');
+        recordingStream.addTrack(sender.track);
+      }
+    });
+    
+    pc.getReceivers().forEach((receiver: RTCRtpReceiver) => {
+      if (receiver.track && receiver.track.kind === 'audio') {
+        console.log('[WebPhone] Adding remote audio track to recording');
+        recordingStream.addTrack(receiver.track);
+      }
+    });
+    
+    if (recordingStream.getAudioTracks().length === 0) {
+      console.error('[WebPhone] No audio tracks available for recording');
+      return;
+    }
+    
+    // Create MediaRecorder
+    try {
+      this.recordedChunks = [];
+      this.mediaRecorder = new MediaRecorder(recordingStream, {
+        mimeType: 'audio/webm'
+      });
+      
+      this.mediaRecorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data.size > 0) {
+          this.recordedChunks.push(event.data);
+        }
+      };
+      
+      this.mediaRecorder.onstop = () => {
+        console.log('[WebPhone] Recording stopped, saving file');
+        const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `call-recording-${timestamp}.webm`;
+        
+        // Download the recording
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        console.log('[WebPhone] ✅ Recording saved:', filename);
+        store.setIsRecording(false);
+      };
+      
+      this.mediaRecorder.start();
+      store.setIsRecording(true);
+      console.log('[WebPhone] ✅ Recording started');
+      
+    } catch (error) {
+      console.error('[WebPhone] Error starting recording:', error);
+    }
+  }
+  
+  public stopRecording(): void {
+    if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+      console.warn('[WebPhone] No active recording to stop');
+      return;
+    }
+    
+    console.log('[WebPhone] Stopping call recording');
+    this.mediaRecorder.stop();
+  }
+  
+  // ============================================================================
+  // DND & CALL WAITING - Feature Toggles
+  // ============================================================================
+  
+  public toggleDoNotDisturb(): void {
+    const store = useWebPhoneStore.getState();
+    const newDndState = !store.doNotDisturb;
+    
+    store.setDoNotDisturb(newDndState);
+    localStorage.setItem('webphone_dnd', newDndState ? '1' : '0');
+    
+    console.log('[WebPhone] Do Not Disturb:', newDndState ? 'ENABLED' : 'DISABLED');
+  }
+  
+  public toggleCallWaiting(): void {
+    const store = useWebPhoneStore.getState();
+    const newState = !store.callWaitingEnabled;
+    
+    store.setCallWaitingEnabled(newState);
+    localStorage.setItem('webphone_call_waiting', newState ? '1' : '0');
+    
+    console.log('[WebPhone] Call Waiting:', newState ? 'ENABLED' : 'DISABLED');
+  }
+  
+  private shouldAcceptIncomingCall(): boolean {
+    const store = useWebPhoneStore.getState();
+    
+    // Check DND
+    if (store.doNotDisturb) {
+      console.log('[WebPhone] Rejecting call - Do Not Disturb is enabled');
+      return false;
+    }
+    
+    // Check Call Waiting
+    if (store.currentCall && !store.callWaitingEnabled) {
+      console.log('[WebPhone] Rejecting call - Call Waiting is disabled and call is active');
+      return false;
+    }
+    
+    return true;
+  }
+  
+  private setupSessionDelegate(session: Session, extraHandlers?: any) {
+    // Create base delegate with media setup handler
+    const baseMediaHandler = (sdh: any) => {
+      console.log('[WebPhone] SessionDescriptionHandler created, setting up media');
+      if (sdh.peerConnection) {
+        this.attachPeerConnectionHandlers(sdh.peerConnection);
+      }
+      // Call extra onSessionDescriptionHandler if provided
+      if (extraHandlers?.onSessionDescriptionHandler) {
+        extraHandlers.onSessionDescriptionHandler(sdh);
+      }
+    };
+    
+    // Merge delegates: existing + extraHandlers + our media handler
+    session.delegate = {
+      ...session.delegate,
+      ...extraHandlers,
+      // Always use our merged media handler to ensure media setup happens
+      onSessionDescriptionHandler: baseMediaHandler
+    };
+    
+    console.log('[WebPhone] Session delegate configured with merged handlers');
     
     // Also check if sessionDescriptionHandler already exists (for late setup)
     const existingSdh = (session as any).sessionDescriptionHandler;
