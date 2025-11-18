@@ -1173,6 +1173,8 @@ class WebPhoneManager {
     const store = useWebPhoneStore.getState();
     const call = store.currentCall;
     
+    console.log('[WebPhone] 🧹 Starting full call cleanup (teardown)');
+    
     if (call) {
       // Determine final status based on current status and call direction
       let finalStatus: Call['status'] = 'ended';
@@ -1199,16 +1201,77 @@ class WebPhoneManager {
       store.addCallToHistory(callLog);
     }
     
-    // Clean up audio
-    this.currentSession = undefined;
-    this.ringtone?.pause();
-    this.ringbackTone?.pause();
+    // CRITICAL: Clean up SIP session and media resources (Browser-Phone pattern)
+    if (this.currentSession) {
+      const session = this.currentSession;
+      
+      // Step 1: Stop all media tracks (microphone, speakers)
+      try {
+        const sdh = (session as any).sessionDescriptionHandler;
+        if (sdh?.peerConnection) {
+          const pc = sdh.peerConnection;
+          
+          // Stop all audio senders (microphone tracks)
+          pc.getSenders().forEach((sender) => {
+            if (sender.track && sender.track.kind === 'audio') {
+              console.log('[WebPhone] 🛑 Stopping sender track:', sender.track.id);
+              sender.track.stop();
+            }
+          });
+          
+          // Stop all audio receivers (remote audio tracks)
+          pc.getReceivers().forEach((receiver) => {
+            if (receiver.track && receiver.track.kind === 'audio') {
+              console.log('[WebPhone] 🛑 Stopping receiver track:', receiver.track.id);
+              receiver.track.stop();
+            }
+          });
+          
+          console.log('[WebPhone] ✅ All media tracks stopped');
+        }
+      } catch (error) {
+        console.error('[WebPhone] ❌ Error stopping media tracks:', error);
+      }
+      
+      // Step 2: Clear remote audio element
+      if (store.remoteAudioElement) {
+        store.remoteAudioElement.pause();
+        store.remoteAudioElement.srcObject = null;
+        console.log('[WebPhone] ✅ Remote audio element cleared');
+      }
+      
+      // Step 3: Dispose of the session
+      try {
+        if ((session as any).dispose) {
+          (session as any).dispose();
+          console.log('[WebPhone] ✅ Session disposed');
+        }
+      } catch (error) {
+        console.error('[WebPhone] ⚠️  Error disposing session:', error);
+      }
+    }
     
-    // Reset call state
+    // Step 4: Stop ringtones
+    if (this.ringtone) {
+      this.ringtone.pause();
+      this.ringtone.currentTime = 0;
+    }
+    if (this.ringbackTone) {
+      this.ringbackTone.pause();
+      this.ringbackTone.currentTime = 0;
+    }
+    console.log('[WebPhone] ✅ Ringtones stopped');
+    
+    // Step 5: Clear session reference
+    this.currentSession = undefined;
+    
+    // Step 6: Reset all call state
     store.setCurrentCall(undefined);
     store.setIncomingCallVisible(false);
     store.setMuted(false);
     store.setOnHold(false);
+    
+    console.log('[WebPhone] ✅ Call cleanup complete - ready for next call');
   }
   
   private startReconnectMonitor() {

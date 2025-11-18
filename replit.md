@@ -25,7 +25,9 @@ ALWAYS use the standardized `LoadingSpinner` component for all loading states ac
 - SIP domain/realm: pbx.curbe.io
 - WebPhone auto-initializes when user has valid SIP credentials
 - Configuration stored per-user in database (sipExtension, sipPassword, sipServer, sipEnabled)
-**CRITICAL AUDIO FIX**: Session delegate (including onSessionDescriptionHandler) is now configured when incoming call arrives, not when user answers. This follows Browser-Phone pattern and ensures audio tracks are registered immediately upon accepting the call, eliminating the ~5 second delay that occurred when delegate was configured after accept()
+**CRITICAL CALL LIFECYCLE FIXES**:
+- **Session Delegate:** Configured when incoming call arrives (not when answered), following Browser-Phone pattern for immediate audio track registration
+- **Complete Teardown:** endCall() implements full Browser-Phone teardown pattern - stops all RTCPeerConnection audio tracks (senders/receivers), disposes SIP session, clears remote audio element, resets ringtones, preventing resource leaks that block subsequent calls
 
 ## System Architecture
 
