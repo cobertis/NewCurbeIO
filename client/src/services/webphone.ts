@@ -549,9 +549,11 @@ class WebPhoneManager {
     // Setup delegate to capture sessionDescriptionHandler when it's created
     session.delegate = {
       ...session.delegate,
-      onSessionDescriptionHandler: (sdh) => {
+      onSessionDescriptionHandler: (sdh: any) => {
         console.log('[WebPhone] SessionDescriptionHandler created, setting up media');
-        this.attachPeerConnectionHandlers(sdh.peerConnection);
+        if (sdh.peerConnection) {
+          this.attachPeerConnectionHandlers(sdh.peerConnection);
+        }
       }
     };
     
@@ -573,33 +575,39 @@ class WebPhoneManager {
     
     console.log('[WebPhone] Attaching handlers to peer connection');
     
-    // CRITICAL: Set up ontrack handler to receive remote audio
-    // Following JsSIP best practice: create new MediaStream and add track manually
+    // CRITICAL: Use Browser-Phone pattern - ontrack triggers manual track collection
     pc.ontrack = (event: RTCTrackEvent) => {
-      console.log('[WebPhone] 🎵 Received remote track:', event.track.kind);
+      console.log('[WebPhone] 🎵 ontrack fired - kind:', event.track.kind);
       
-      if (event.track.kind === 'audio') {
-        // Create new MediaStream and add track manually (best practice)
-        const inboundStream = new MediaStream();
-        inboundStream.addTrack(event.track);
-        
-        console.log('[WebPhone] 🔊 Assigning remote stream to audio element');
-        
-        if (store.remoteAudioElement) {
-          store.remoteAudioElement.srcObject = inboundStream;
+      // Browser-Phone pattern: Collect tracks from transceivers manually
+      const remoteAudioStream = new MediaStream();
+      
+      pc.getTransceivers().forEach((transceiver) => {
+        const receiver = transceiver.receiver;
+        if (receiver.track && receiver.track.kind === 'audio') {
+          console.log('[WebPhone] Adding remote audio track from transceiver');
+          remoteAudioStream.addTrack(receiver.track);
+        }
+      });
+      
+      // Attach audio stream if we have tracks
+      if (remoteAudioStream.getAudioTracks().length >= 1) {
+        const remoteAudio = store.remoteAudioElement;
+        if (remoteAudio) {
+          console.log('[WebPhone] 🔊 Assigning remote stream to audio element');
+          remoteAudio.srcObject = remoteAudioStream;
           
-          // Force play with error handling
-          store.remoteAudioElement.play()
-            .then(() => {
-              console.log('[WebPhone] ✅ Remote audio PLAYING - you should hear audio now');
-            })
-            .catch((error) => {
-              console.error('[WebPhone] ❌ Failed to play remote audio:', error);
-              // Retry after user interaction
-              setTimeout(() => {
-                store.remoteAudioElement?.play().catch(console.error);
-              }, 500);
-            });
+          // CRITICAL: Use onloadedmetadata pattern from Browser-Phone
+          remoteAudio.onloadedmetadata = () => {
+            console.log('[WebPhone] Audio metadata loaded, starting playback');
+            remoteAudio.play()
+              .then(() => {
+                console.log('[WebPhone] ✅ Remote audio PLAYING - you should hear audio now');
+              })
+              .catch((error) => {
+                console.error('[WebPhone] ❌ Failed to play remote audio:', error);
+              });
+          };
         }
       }
     };
