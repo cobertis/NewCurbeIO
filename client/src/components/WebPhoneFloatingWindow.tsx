@@ -509,11 +509,9 @@ export function WebPhoneFloatingWindow() {
                         <span className="text-3xl text-foreground font-normal">
                           {digit}
                         </span>
-                        {letters[index] && (
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
-                            {letters[index]}
-                          </span>
-                        )}
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium h-[14px]">
+                          {letters[index] || '\u00A0'}
+                        </span>
                       </button>
                     ))}
                   </div>
