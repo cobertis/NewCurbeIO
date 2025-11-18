@@ -2755,7 +2755,7 @@ function WebPhoneTab() {
     defaultValues: {
       sipExtension: "",
       sipPassword: "",
-      sipServer: "wss://pbx1.curbe.io:8089/ws",
+      sipServer: "wss://pbx.curbe.io:8089/ws",
       sipEnabled: false,
     },
   });
@@ -2766,7 +2766,7 @@ function WebPhoneTab() {
       form.reset({
         sipExtension: user.sipExtension || "",
         sipPassword: user.sipPassword || "",
-        sipServer: user.sipServer || "wss://pbx1.curbe.io:8089/ws",
+        sipServer: user.sipServer || "wss://pbx.curbe.io:8089/ws",
         sipEnabled: user.sipEnabled || false,
       });
     }
@@ -2948,14 +2948,14 @@ function WebPhoneTab() {
             <Input
               id="sipServer"
               type="text"
-              placeholder="wss://pbx1.curbe.io:8089/ws"
+              placeholder="wss://pbx.curbe.io:8089/ws"
               value={form.watch("sipServer")}
               onChange={(e) => form.setValue("sipServer", e.target.value)}
               disabled={updateSipMutation.isPending}
               data-testid="input-sip-server"
             />
             <p className="text-xs text-muted-foreground">
-              WebSocket Secure server for SIP connection (Domain: pbx1.curbe.io)
+              WebSocket Secure server for SIP connection (Domain: pbx.curbe.io)
             </p>
           </div>
         </div>
