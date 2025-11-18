@@ -147,13 +147,15 @@ class WebPhoneManager {
   private registerer?: Registerer;
   private currentSession?: Session;
   private reconnectInterval?: NodeJS.Timeout;
-  private ringtone?: HTMLAudioElement;
-  private ringbackTone?: HTMLAudioElement;
+  private audioContext?: AudioContext;
+  private ringtoneOscillator?: OscillatorNode;
+  private ringtoneGain?: GainNode;
+  private ringbackOscillator?: OscillatorNode;
+  private ringbackGain?: GainNode;
   
   private constructor() {
     // Private constructor for singleton
-    this.initializeRingtone();
-    this.initializeRingbackTone();
+    this.initializeAudio();
   }
   
   public static getInstance(): WebPhoneManager {
@@ -165,18 +167,105 @@ class WebPhoneManager {
     return WebPhoneManager.instance;
   }
   
-  private initializeRingtone() {
-    // Modern iPhone ringtone - professional and recognizable
-    this.ringtone = new Audio('/ringtone.mp3');
-    this.ringtone.loop = true;
-    this.ringtone.volume = 0.8; // Set comfortable volume level
+  private initializeAudio() {
+    // Create Web Audio Context for synthetic ringtones
+    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+
+  private playRingtone() {
+    if (!this.audioContext) return;
+    
+    // Stop any existing ringtone
+    this.stopRingtone();
+    
+    // Create iPhone-style ringtone (two-tone 1000Hz + 1320Hz)
+    const oscillator1 = this.audioContext.createOscillator();
+    const oscillator2 = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+    
+    oscillator1.type = 'sine';
+    oscillator1.frequency.value = 1000;
+    oscillator2.type = 'sine';
+    oscillator2.frequency.value = 1320;
+    
+    gainNode.gain.value = 0.3; // Volume at 30%
+    
+    oscillator1.connect(gainNode);
+    oscillator2.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+    
+    oscillator1.start();
+    oscillator2.start();
+    
+    this.ringtoneOscillator = oscillator1;
+    this.ringtoneGain = gainNode;
+    
+    console.log('[Ringtone] 🔔 Playing ringtone');
   }
   
-  private initializeRingbackTone() {
-    // Professional ringback tone (US/Canada standard - 440Hz + 480Hz)
-    // High-quality audio from BigSoundBank (CC0 Public Domain)
-    this.ringbackTone = new Audio('/ringback.mp3');
-    this.ringbackTone.loop = true;
+  private stopRingtone() {
+    if (this.ringtoneOscillator) {
+      try {
+        this.ringtoneOscillator.stop();
+        this.ringtoneOscillator.disconnect();
+      } catch (e) {
+        // Ignore errors from already stopped oscillators
+      }
+      this.ringtoneOscillator = undefined;
+    }
+    if (this.ringtoneGain) {
+      this.ringtoneGain.disconnect();
+      this.ringtoneGain = undefined;
+    }
+    console.log('[Ringtone] 🔇 Stopping ringtone');
+  }
+  
+  private playRingbackTone() {
+    if (!this.audioContext) return;
+    
+    // Stop any existing ringback
+    this.stopRingbackTone();
+    
+    // US/Canada ringback tone (440Hz + 480Hz)
+    const oscillator1 = this.audioContext.createOscillator();
+    const oscillator2 = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+    
+    oscillator1.type = 'sine';
+    oscillator1.frequency.value = 440;
+    oscillator2.type = 'sine';
+    oscillator2.frequency.value = 480;
+    
+    gainNode.gain.value = 0.2; // Volume at 20%
+    
+    oscillator1.connect(gainNode);
+    oscillator2.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
+    
+    oscillator1.start();
+    oscillator2.start();
+    
+    this.ringbackOscillator = oscillator1;
+    this.ringbackGain = gainNode;
+    
+    console.log('[Ringback] 📞 Playing ringback tone');
+  }
+  
+  private stopRingbackTone() {
+    if (this.ringbackOscillator) {
+      try {
+        this.ringbackOscillator.stop();
+        this.ringbackOscillator.disconnect();
+      } catch (e) {
+        // Ignore errors from already stopped oscillators
+      }
+      this.ringbackOscillator = undefined;
+    }
+    if (this.ringbackGain) {
+      this.ringbackGain.disconnect();
+      this.ringbackGain = undefined;
+    }
+    console.log('[Ringback] 🔇 Stopping ringback tone');
   }
   
   public async initialize(extension: string, password: string, server?: string): Promise<void> {
@@ -333,11 +422,8 @@ class WebPhoneManager {
     store.setCurrentCall(call);
     store.setIncomingCallVisible(true);
     
-    // Play ringtone with error handling for autoplay policy
-    this.ringtone?.play().catch((error) => {
-      console.log('[WebPhone] Ringtone autoplay blocked:', error.message);
-      // This is expected in some browsers - ringtone will play after user interaction
-    });
+    // Play ringtone
+    this.playRingtone();
     
     // Handle session state changes
     invitation.stateChange.addListener((state) => {
@@ -349,7 +435,7 @@ class WebPhoneManager {
         case SessionState.Established:
           console.log('[WebPhone] Call established');
           store.setCallStatus('answered');
-          this.ringtone?.pause();
+          this.stopRingtone();
           break;
       }
     });
@@ -417,17 +503,15 @@ class WebPhoneManager {
           case SessionState.Establishing:
             // Play ringback tone when ringing
             console.log('[WebPhone] Call ringing, playing ringback tone');
-            this.ringbackTone?.play().catch((error) => {
-              console.log('[WebPhone] Ringback autoplay blocked:', error.message);
-            });
+            this.playRingbackTone();
             break;
           case SessionState.Established:
             console.log('[WebPhone] Call answered, stopping ringback tone');
-            this.ringbackTone?.pause();
+            this.stopRingbackTone();
             store.setCallStatus('answered');
             break;
           case SessionState.Terminated:
-            this.ringbackTone?.pause();
+            this.stopRingbackTone();
             this.endCall();
             break;
         }
@@ -456,7 +540,7 @@ class WebPhoneManager {
     
     if (!session) return;
     
-    this.ringtone?.pause();
+    this.stopRingtone();
     store.setIncomingCallVisible(false);
     
     try {
@@ -487,7 +571,7 @@ class WebPhoneManager {
     
     if (!session) return;
     
-    this.ringtone?.pause();
+    this.stopRingtone();
     store.setIncomingCallVisible(false);
     
     try {
@@ -1210,14 +1294,8 @@ class WebPhoneManager {
     }
     
     // Step 4: Stop ringtones
-    if (this.ringtone) {
-      this.ringtone.pause();
-      this.ringtone.currentTime = 0;
-    }
-    if (this.ringbackTone) {
-      this.ringbackTone.pause();
-      this.ringbackTone.currentTime = 0;
-    }
+    this.stopRingtone();
+    this.stopRingbackTone();
     console.log('[WebPhone] ✅ Ringtones stopped');
     
     // Step 5: Clear session reference
