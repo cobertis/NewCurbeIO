@@ -483,64 +483,65 @@ export function WebPhoneFloatingWindow() {
             ) : (
               /* Dialpad Screen */
               <div className="flex-1 flex flex-col">
-                <div className="flex-1 flex flex-col justify-between py-6 px-8">
-                {/* Number Display */}
-                <div className="text-center py-4">
-                  <input
-                    type="text"
-                    value={dialNumber}
-                    onChange={(e) => handleNumberChange(e.target.value)}
-                    className="w-full bg-transparent border-none text-foreground text-2xl text-center focus:outline-none font-normal"
-                    placeholder="(786) 630-2555"
-                    data-testid="input-dial-number"
-                  />
-                </div>
-                
-                {/* Dialpad Grid */}
-                <div className="grid grid-cols-3 gap-4 px-2 mb-4">
-                  {digits.map((digit, index) => (
-                    <button
-                      key={digit}
-                      onClick={() => handleDial(digit)}
-                      className="w-20 h-20 mx-auto rounded-full bg-muted/40 hover:bg-muted/60 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
-                      data-testid={`button-dialpad-${digit}`}
-                    >
-                      <span className="text-3xl text-foreground font-normal">
-                        {digit}
-                      </span>
-                      {letters[index] && (
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
-                          {letters[index]}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-                
-                {/* Call and Delete Buttons */}
-                <div className="flex items-center justify-center gap-8 pb-4">
-                  <button
-                    onClick={handleCall}
-                    disabled={!dialNumber}
-                    className={cn(
-                      "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
-                      dialNumber 
-                        ? "bg-green-500 hover:bg-green-600" 
-                        : "bg-green-500/40 cursor-not-allowed"
-                    )}
-                  >
-                    <Phone className="h-7 w-7 text-white" />
-                  </button>
+                {/* Dialpad Content */}
+                <div className="flex-1 overflow-y-auto flex flex-col justify-between py-4 px-6">
+                  {/* Number Display */}
+                  <div className="text-center py-3">
+                    <input
+                      type="text"
+                      value={dialNumber}
+                      onChange={(e) => handleNumberChange(e.target.value)}
+                      className="w-full bg-transparent border-none text-foreground text-2xl text-center focus:outline-none font-normal"
+                      placeholder="(786) 630-2555"
+                      data-testid="input-dial-number"
+                    />
+                  </div>
                   
-                  {dialNumber && (
+                  {/* Dialpad Grid */}
+                  <div className="grid grid-cols-3 gap-3 px-2">
+                    {digits.map((digit, index) => (
+                      <button
+                        key={digit}
+                        onClick={() => handleDial(digit)}
+                        className="w-20 h-20 mx-auto rounded-full bg-muted/40 hover:bg-muted/60 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
+                        data-testid={`button-dialpad-${digit}`}
+                      >
+                        <span className="text-3xl text-foreground font-normal">
+                          {digit}
+                        </span>
+                        {letters[index] && (
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
+                            {letters[index]}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Call and Delete Buttons */}
+                  <div className="flex items-center justify-center gap-8 py-3">
                     <button
-                      onClick={() => setDialNumber(prev => prev.slice(0, -1))}
-                      className="w-12 h-12 rounded-full bg-muted/40 hover:bg-muted/60 flex items-center justify-center transition-all active:scale-95"
+                      onClick={handleCall}
+                      disabled={!dialNumber}
+                      className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
+                        dialNumber 
+                          ? "bg-green-500 hover:bg-green-600" 
+                          : "bg-green-500/40 cursor-not-allowed"
+                      )}
                     >
-                      <X className="h-5 w-5 text-foreground" />
+                      <Phone className="h-7 w-7 text-white" />
                     </button>
-                  )}
-                </div>
+                    
+                    {dialNumber && (
+                      <button
+                        onClick={() => setDialNumber(prev => prev.slice(0, -1))}
+                        className="w-12 h-12 rounded-full bg-muted/40 hover:bg-muted/60 flex items-center justify-center transition-all active:scale-95"
+                      >
+                        <X className="h-5 w-5 text-foreground" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Bottom Navigation */}
