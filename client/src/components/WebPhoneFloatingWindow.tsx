@@ -550,10 +550,10 @@ export function WebPhoneFloatingWindow() {
                     <div></div>
                     <button
                       onClick={handleCall}
-                      disabled={!dialNumber}
+                      disabled={!dialNumber || connectionStatus !== 'connected'}
                       className={cn(
                         "w-20 h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
-                        dialNumber 
+                        dialNumber && connectionStatus === 'connected'
                           ? "bg-green-500 hover:bg-green-600" 
                           : "bg-green-500/40 cursor-not-allowed"
                       )}
