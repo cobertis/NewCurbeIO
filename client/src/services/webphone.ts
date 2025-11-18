@@ -317,6 +317,10 @@ class WebPhoneManager {
       return;
     }
     
+    // CRITICAL: Setup session delegate IMMEDIATELY when call arrives (Browser-Phone pattern)
+    // This ensures audio is ready BEFORE user answers
+    this.setupSessionDelegate(invitation);
+    
     // Create call object
     const call: Call = {
       id: Math.random().toString(36).substr(2, 9),
@@ -458,8 +462,8 @@ class WebPhoneManager {
     store.setIncomingCallVisible(false);
     
     try {
-      // CRITICAL: Setup delegate BEFORE accepting to catch onSessionDescriptionHandler
-      this.setupSessionDelegate(session);
+      // Delegate already configured in handleIncomingCall() - no need to set it again
+      // This follows Browser-Phone pattern: delegate is set when call arrives, not when answered
       
       // Accept the call with media constraints
       // SIP.js will automatically request microphone permission - no need to do it manually
