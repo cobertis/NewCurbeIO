@@ -458,15 +458,11 @@ class WebPhoneManager {
     store.setIncomingCallVisible(false);
     
     try {
-      // Request microphone permission before accepting
-      console.log('[WebPhone] Requesting microphone permission...');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      console.log('[WebPhone] Microphone permission granted');
-      
       // CRITICAL: Setup delegate BEFORE accepting to catch onSessionDescriptionHandler
       this.setupSessionDelegate(session);
       
       // Accept the call with media constraints
+      // SIP.js will automatically request microphone permission - no need to do it manually
       console.log('[WebPhone] Accepting call...');
       await session.accept({
         sessionDescriptionHandlerOptions: {
@@ -478,7 +474,7 @@ class WebPhoneManager {
       });
       
       this.currentSession = session;
-      console.log('[WebPhone] Call accepted');
+      console.log('[WebPhone] ✅ Call accepted - audio should connect immediately');
     } catch (error) {
       console.error('[WebPhone] Failed to answer call:', error);
       this.endCall();
