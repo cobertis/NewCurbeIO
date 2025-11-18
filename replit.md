@@ -25,6 +25,7 @@ ALWAYS use the standardized `LoadingSpinner` component for all loading states ac
 - SIP domain/realm: pbx.curbe.io
 - WebPhone auto-initializes when user has valid SIP credentials
 - Configuration stored per-user in database (sipExtension, sipPassword, sipServer, sipEnabled)
+**CRITICAL AUDIO FIX**: Removed manual getUserMedia() call before session.accept() for incoming calls - SIP.js handles microphone permissions automatically, eliminating ~5 second delay that occurred when requesting permissions manually
 
 ## System Architecture
 
