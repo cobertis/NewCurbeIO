@@ -318,52 +318,8 @@ class WebPhoneManager {
       return;
     }
     
-    // CRITICAL: Browser-Phone pattern - Use event listener instead of delegate
-    // This fires IMMEDIATELY when SDH is created, not when accept() returns
-    invitation.on('SessionDescriptionHandler-created', () => {
-      console.log('[WebPhone] ⚡ SessionDescriptionHandler-created event fired');
-      const sdh = (invitation as any).sessionDescriptionHandler;
-      
-      if (sdh?.peerConnection) {
-        const pc = sdh.peerConnection;
-        console.log('[WebPhone] Setting up ontrack handler for instant audio');
-        
-        // Browser-Phone pattern: ontrack handles audio immediately
-        pc.ontrack = (event: RTCTrackEvent) => {
-          console.log('[WebPhone] 🎵 ontrack fired - instant audio binding');
-          
-          // CRITICAL FIX: Get current store state inside callback to avoid stale closure
-          const currentStore = useWebPhoneStore.getState();
-          const remoteAudio = currentStore.remoteAudioElement;
-          
-          if (!remoteAudio) {
-            console.error('[WebPhone] ❌ No remote audio element available');
-            return;
-          }
-          
-          if (event.streams && event.streams[0]) {
-            console.log('[WebPhone] Using stream from event');
-            remoteAudio.srcObject = event.streams[0];
-          } else {
-            console.log('[WebPhone] Creating MediaStream from track');
-            if (!remoteAudio.srcObject) {
-              remoteAudio.srcObject = new MediaStream();
-            }
-            (remoteAudio.srcObject as MediaStream).addTrack(event.track);
-          }
-          
-          // Play immediately
-          remoteAudio.play()
-            .then(() => console.log('[WebPhone] ✅ AUDIO PLAYING INSTANTLY'))
-            .catch((error) => console.error('[WebPhone] Audio play error:', error));
-        };
-        
-        // ICE connection logging
-        pc.oniceconnectionstatechange = () => {
-          console.log('[WebPhone] ICE state:', pc.iceConnectionState);
-        };
-      }
-    });
+    // BROWSER-PHONE PATTERN: Attach session delegate for instant audio
+    this.attachSessionDescriptionHandler(invitation, false);
     
     // Create call object
     const call: Call = {
@@ -440,51 +396,8 @@ class WebPhoneManager {
         }
       });
       
-      // CRITICAL: Browser-Phone pattern - Setup event listener BEFORE sending invite
-      inviter.on('SessionDescriptionHandler-created', () => {
-        console.log('[WebPhone] ⚡ SessionDescriptionHandler-created event fired (outbound)');
-        const sdh = (inviter as any).sessionDescriptionHandler;
-        
-        if (sdh?.peerConnection) {
-          const pc = sdh.peerConnection;
-          console.log('[WebPhone] Setting up ontrack handler for instant audio (outbound)');
-          
-          // Browser-Phone pattern: ontrack handles audio immediately
-          pc.ontrack = (event: RTCTrackEvent) => {
-            console.log('[WebPhone] 🎵 ontrack fired - instant audio binding (outbound)');
-            
-            // CRITICAL FIX: Get current store state inside callback to avoid stale closure
-            const currentStore = useWebPhoneStore.getState();
-            const remoteAudio = currentStore.remoteAudioElement;
-            
-            if (!remoteAudio) {
-              console.error('[WebPhone] ❌ No remote audio element available');
-              return;
-            }
-            
-            if (event.streams && event.streams[0]) {
-              console.log('[WebPhone] Using stream from event');
-              remoteAudio.srcObject = event.streams[0];
-            } else {
-              console.log('[WebPhone] Creating MediaStream from track');
-              if (!remoteAudio.srcObject) {
-                remoteAudio.srcObject = new MediaStream();
-              }
-              (remoteAudio.srcObject as MediaStream).addTrack(event.track);
-            }
-            
-            // Play immediately
-            remoteAudio.play()
-              .then(() => console.log('[WebPhone] ✅ AUDIO PLAYING INSTANTLY (outbound)'))
-              .catch((error) => console.error('[WebPhone] Audio play error:', error));
-          };
-          
-          // ICE connection logging
-          pc.oniceconnectionstatechange = () => {
-            console.log('[WebPhone] ICE state:', pc.iceConnectionState);
-          };
-        }
-      });
+      // BROWSER-PHONE PATTERN: Attach session delegate for instant audio
+      this.attachSessionDescriptionHandler(inviter, false);
       
       // Create call object
       const call: Call = {
@@ -928,26 +841,13 @@ class WebPhoneManager {
     try {
       const inviter = new Inviter(this.userAgent!, targetUri, inviteOptions);
       
-      // Browser-Phone pattern: Setup event listener for instant audio
-      inviter.on('SessionDescriptionHandler-created', () => {
-        const sdh = (inviter as any).sessionDescriptionHandler;
-        if (sdh?.peerConnection) {
-          const pc = sdh.peerConnection;
-          pc.ontrack = (event: RTCTrackEvent) => {
-            // CRITICAL FIX: Get current store state inside callback to avoid stale closure
-            const currentStore = useWebPhoneStore.getState();
-            const remoteAudio = currentStore.remoteAudioElement;
-            
-            if (remoteAudio && event.streams && event.streams[0]) {
-              remoteAudio.srcObject = event.streams[0];
-              remoteAudio.play().catch((error) => console.error('[WebPhone] Audio play error:', error));
-            }
-          };
-        }
-      });
+      // BROWSER-PHONE PATTERN: Attach session delegate for instant audio
+      this.attachSessionDescriptionHandler(inviter, false);
       
       // Handle transfer target hanging up before transfer completes
+      // Merge with existing delegate to preserve onSessionDescriptionHandler
       inviter.delegate = {
+        ...inviter.delegate,
         onBye: () => {
           console.log('[WebPhone] Transfer target hung up before transfer completed');
           this.unholdCall();
@@ -1138,6 +1038,95 @@ class WebPhoneManager {
     }
     
     return true;
+  }
+
+  // BROWSER-PHONE PATTERN: Helper to attach SessionDescriptionHandler and setup audio
+  private attachSessionDescriptionHandler(session: Session, includeVideo: boolean = false): void {
+    console.log('[WebPhone] Attaching SessionDescriptionHandler delegate (Browser-Phone pattern)');
+    
+    // Browser-Phone pattern: Use delegate.onSessionDescriptionHandler
+    session.delegate = {
+      ...session.delegate,
+      onSessionDescriptionHandler: (sdh: any, provisional: boolean) => {
+        console.log('[WebPhone] onSessionDescriptionHandler fired, provisional:', provisional);
+        
+        if (sdh && sdh.peerConnection) {
+          const pc = sdh.peerConnection as RTCPeerConnection;
+          
+          // Browser-Phone pattern: Attach ontrack directly to peerConnection
+          pc.ontrack = (event: RTCTrackEvent) => {
+            console.log('[WebPhone] 🎵 ontrack fired - setting up media streams');
+            this.onTrackAddedEvent(session, includeVideo);
+          };
+          
+          // ICE connection logging
+          pc.oniceconnectionstatechange = () => {
+            console.log('[WebPhone] ICE state:', pc.iceConnectionState);
+          };
+          
+          console.log('[WebPhone] ✅ peerConnection.ontrack configured');
+        } else {
+          console.warn('[WebPhone] onSessionDescriptionHandler fired without peerConnection');
+        }
+      }
+    };
+  }
+
+  // BROWSER-PHONE PATTERN: Handle track added event and setup media
+  private onTrackAddedEvent(session: Session, includeVideo: boolean): void {
+    console.log('[WebPhone] onTrackAddedEvent - rebuilding media streams from transceivers');
+    
+    const sdh = (session as any).sessionDescriptionHandler;
+    if (!sdh || !sdh.peerConnection) {
+      console.error('[WebPhone] No peerConnection available');
+      return;
+    }
+    
+    const pc = sdh.peerConnection as RTCPeerConnection;
+    
+    // Browser-Phone pattern: Create MediaStreams
+    const remoteAudioStream = new MediaStream();
+    const remoteVideoStream = new MediaStream();
+    
+    // Browser-Phone pattern: Use getTransceivers to collect tracks
+    pc.getTransceivers().forEach((transceiver) => {
+      const receiver = transceiver.receiver;
+      if (receiver.track) {
+        if (receiver.track.kind === 'audio') {
+          console.log('[WebPhone] Adding remote audio track');
+          remoteAudioStream.addTrack(receiver.track);
+        }
+        if (includeVideo && receiver.track.kind === 'video') {
+          console.log('[WebPhone] Adding remote video track');
+          remoteVideoStream.addTrack(receiver.track);
+        }
+      }
+    });
+    
+    // Attach audio if we have tracks
+    if (remoteAudioStream.getAudioTracks().length >= 1) {
+      // Get fresh store state to avoid stale closure
+      const currentStore = useWebPhoneStore.getState();
+      const remoteAudio = currentStore.remoteAudioElement;
+      
+      if (!remoteAudio) {
+        console.error('[WebPhone] ❌ Remote audio element not available');
+        return;
+      }
+      
+      console.log('[WebPhone] 🔊 Assigning remote audio stream');
+      remoteAudio.srcObject = remoteAudioStream;
+      
+      // Browser-Phone pattern: Use onloadedmetadata to play
+      remoteAudio.onloadedmetadata = () => {
+        console.log('[WebPhone] Audio metadata loaded, playing...');
+        remoteAudio.play()
+          .then(() => console.log('[WebPhone] ✅ REMOTE AUDIO PLAYING'))
+          .catch((error) => console.error('[WebPhone] Audio play error:', error));
+      };
+    } else {
+      console.warn('[WebPhone] ⚠️ No audio tracks found in stream');
+    }
   }
   
   private endCall() {
