@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
 
 export function WebPhoneFloatingWindow() {
-  const [isMinimized, setIsMinimized] = useState(false);
   const [dialNumber, setDialNumber] = useState('');
   const [position, setPosition] = useState({ x: window.innerWidth - 380, y: window.innerHeight - 660 });
   const [isDragging, setIsDragging] = useState(false);
@@ -153,7 +152,7 @@ export function WebPhoneFloatingWindow() {
           left: `${position.x}px`,
           top: `${position.y}px`,
           width: '360px',
-          height: isMinimized ? '80px' : '640px',
+          height: '640px',
           cursor: isDragging ? 'grabbing' : 'default'
         }}
       >
@@ -171,18 +170,10 @@ export function WebPhoneFloatingWindow() {
             )}
           </div>
           
-          <div className="flex items-center gap-1 no-drag">
+          <div className="flex items-center gap-2 no-drag">
             {connectionStatus === 'connected' && (
               <div className="h-2 w-2 rounded-full bg-green-500" />
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              onClick={() => setIsMinimized(!isMinimized)}
-            >
-              {isMinimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
-            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -194,8 +185,7 @@ export function WebPhoneFloatingWindow() {
           </div>
         </div>
         
-        {!isMinimized && (
-          <div className="flex flex-col h-[588px] no-drag">
+        <div className="flex flex-col h-[588px] no-drag">
             {currentCall ? (
               /* Active Call Screen */
               <div className="flex-1 flex flex-col justify-between p-6">
@@ -352,8 +342,7 @@ export function WebPhoneFloatingWindow() {
                 </div>
               </div>
             )}
-          </div>
-        )}
+        </div>
       </div>
     </>
   );
