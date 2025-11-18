@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -233,6 +233,35 @@ export function WebPhoneFloatingWindow() {
   };
   
   const missedCallsCount = callHistory.filter(c => c.status === 'missed').length;
+  
+  const getCallStatusStyle = (status: string) => {
+    switch(status) {
+      case 'missed':
+        return {
+          color: 'text-red-500',
+          icon: PhoneMissed,
+          label: 'Missed'
+        };
+      case 'answered':
+        return {
+          color: 'text-green-600',
+          icon: Phone,
+          label: 'Answered'
+        };
+      case 'ended':
+        return {
+          color: 'text-foreground',
+          icon: Phone,
+          label: 'Ended'
+        };
+      default:
+        return {
+          color: 'text-muted-foreground',
+          icon: Phone,
+          label: status
+        };
+    }
+  };
   
   if (!isVisible) return null;
   
@@ -480,8 +509,7 @@ export function WebPhoneFloatingWindow() {
                           ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
                           : '';
                         const timeStr = format(new Date(call.startTime), 'h:mma');
-                        const isMissed = call.status === 'missed';
-                        const isUnknown = !call.displayName;
+                        const statusStyle = getCallStatusStyle(call.status);
                         
                         return (
                           <div key={call.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
@@ -497,15 +525,16 @@ export function WebPhoneFloatingWindow() {
                             {/* Call Info */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-0.5">
-                                {call.direction === 'inbound' && (
+                                {call.direction === 'inbound' && call.status === 'missed' ? (
+                                  <PhoneMissed className={cn("h-3.5 w-3.5", statusStyle.color)} />
+                                ) : call.direction === 'inbound' ? (
                                   <PhoneIncoming className="h-3.5 w-3.5 text-muted-foreground" />
-                                )}
-                                {call.direction === 'outbound' && (
+                                ) : (
                                   <PhoneOutgoing className="h-3.5 w-3.5 text-muted-foreground" />
                                 )}
                                 <span className={cn(
                                   "text-base font-normal truncate",
-                                  isMissed ? "text-red-500" : isUnknown ? "text-red-500" : "text-foreground"
+                                  statusStyle.color
                                 )}>
                                   {call.displayName || formatPhoneInput(call.phoneNumber)}
                                 </span>

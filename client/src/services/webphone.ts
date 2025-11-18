@@ -1159,12 +1159,27 @@ class WebPhoneManager {
     const call = store.currentCall;
     
     if (call) {
+      // Determine final status based on current status and call direction
+      let finalStatus: Call['status'] = 'ended';
+      
+      if (call.status === 'answered') {
+        // Preserve answered status for completed calls
+        finalStatus = 'answered';
+      } else if (call.status === 'ringing') {
+        // Only mark INBOUND ringing calls as missed
+        // Outbound calls that ring but aren't answered should be 'ended', not 'missed'
+        finalStatus = call.direction === 'inbound' ? 'missed' : 'ended';
+      } else {
+        // For any other status (missed, ended), preserve or default to ended
+        finalStatus = call.status === 'missed' ? 'missed' : 'ended';
+      }
+      
       // Add to history
       const callLog: CallLog = {
         ...call,
         endTime: new Date(),
         duration: Math.floor((new Date().getTime() - call.startTime.getTime()) / 1000),
-        status: call.status === 'ringing' ? 'missed' : 'ended'
+        status: finalStatus
       };
       store.addCallToHistory(callLog);
     }
