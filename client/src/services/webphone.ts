@@ -103,7 +103,9 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   setOnHold: (hold) => set({ isOnHold: hold }),
   
   addCallToHistory: (call) => set(state => {
-    const newHistory = [call, ...state.callHistory].slice(0, 100); // Keep last 100 calls
+    // Remove non-serializable fields (session has circular references)
+    const { session, ...serializableCall } = call;
+    const newHistory = [serializableCall, ...state.callHistory].slice(0, 100); // Keep last 100 calls
     localStorage.setItem('webphone_call_history', JSON.stringify(newHistory));
     return { callHistory: newHistory };
   }),
