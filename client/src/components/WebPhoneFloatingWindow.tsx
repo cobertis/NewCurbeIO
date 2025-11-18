@@ -16,7 +16,7 @@ export function WebPhoneFloatingWindow() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [callDuration, setCallDuration] = useState(0);
   const [showKeypad, setShowKeypad] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('calls');
+  const [viewMode, setViewMode] = useState<ViewMode>('keypad');
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -57,6 +57,13 @@ export function WebPhoneFloatingWindow() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [currentCall?.status]);
+  
+  // Return to keypad when call ends
+  useEffect(() => {
+    if (!currentCall) {
+      setViewMode('keypad');
+    }
+  }, [currentCall]);
   
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
