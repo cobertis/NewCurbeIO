@@ -313,8 +313,8 @@ class WebPhoneManager {
         username: extension
       });
       
-      // Create User Agent with STUN servers for WebRTC NAT traversal
-      // Using Google's public STUN servers (free and always available)
+      // Create User Agent with STUN/TURN servers for WebRTC NAT traversal
+      // Using Curbe's private TURN server for reliable connectivity
       this.userAgent = new UserAgent({
         uri: UserAgent.makeURI(uriString)!,
         transportOptions,
@@ -325,15 +325,15 @@ class WebPhoneManager {
           peerConnectionOptions: {
             iceServers: [
               {
-                urls: [
-                  'stun:stun.l.google.com:19302',
-                  'stun:stun1.l.google.com:19302',
-                  'stun:stun2.l.google.com:19302',
-                  'stun:stun3.l.google.com:19302',
-                  'stun:stun4.l.google.com:19302'
-                ]
+                urls: 'stun:95.111.237.201:3478'
+              },
+              {
+                urls: 'turn:95.111.237.201:3478',
+                username: 'javier',
+                credential: 'superpass123'
               }
-            ]
+            ],
+            iceTransportPolicy: 'all'
           }
         },
         delegate: {
