@@ -66,12 +66,14 @@ export function WebPhoneFloatingWindow() {
     }
   }, [currentCall]);
   
-  // Auto-focus input when switching to keypad
+  // Auto-focus input when switching to keypad and clear when leaving
   useEffect(() => {
     if (viewMode === 'keypad' && dialInputRef.current) {
       setTimeout(() => {
         dialInputRef.current?.focus();
       }, 100);
+    } else if (viewMode !== 'keypad') {
+      setDialNumber('');
     }
   }, [viewMode]);
   
