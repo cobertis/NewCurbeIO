@@ -42,7 +42,14 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Real-Time Notifications:** WebSocket-based updates.
 - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with real-time updates.
 - **iMessage Integration (BlueBubbles):** Full Apple iMessage clone functionality with authentic bubble styling, reactions, reply-to threading, message effects, typing indicators, read receipts, multimedia support, message search, group conversations, message deletion, and native voice memo system. All iMessage attachments are persistently stored locally.
-- **WebPhone WebRTC System:** Professional SIP-based calling with SIP.js integration, glassmorphism design, singleton pattern for persistent calls across navigation, per-user SIP credentials, call history persistence, dialpad with DTMF support, incoming call modal with ringtone, and full call control (mute, hold, transfer).
+- **WebPhone WebRTC System:** Professional SIP-based calling with complete Browser-Phone integration. Features include:
+  - **Core SIP Integration:** SIP.js library, singleton pattern for persistent calls, WebSocket proxy for session-authenticated connections
+  - **Per-User Configuration:** Database-stored SIP credentials (extension, password, server), auto-initialization on login
+  - **Call Management:** Full call control with mute, hold, blind transfer, attended transfer, call recording, Do Not Disturb, Call Waiting
+  - **UI/UX:** iPhone-style glassmorphism design, 3-zone fixed layout (header, scrollable content, fixed bottom menu), incoming call modal with ringtone
+  - **Call History:** Color-coded status (red for missed, green for answered), localStorage persistence with proper Date deserialization
+  - **Audio System:** Automatic audio element registration, ringback tone support, remote audio stream handling
+  - **DTMF Support:** Full dialpad with tone generation for IVR navigation
 - **Billing & Stripe Integration:** Automated customer and subscription management.
 - **Quotes Management System:** A 3-step wizard with Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
 - **Policies Management System:** Converts quotes to policies, manages statuses, assigns agents, and identifies canonical clients. Supports cursor-based pagination and a hybrid search.
