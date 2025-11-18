@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Star, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
 
-type ViewMode = 'calls' | 'contacts' | 'keypad' | 'voicemail';
+type ViewMode = 'favorites' | 'recents' | 'contacts' | 'keypad' | 'voicemail';
 
 export function WebPhoneFloatingWindow() {
   const [dialNumber, setDialNumber] = useState('');
@@ -312,13 +312,13 @@ export function WebPhoneFloatingWindow() {
                   </div>
                 </div>
               </div>
-            ) : viewMode === 'calls' ? (
+            ) : viewMode === 'recents' ? (
               /* Call History Screen */
               <div className="flex-1 flex flex-col">
                 {/* Header */}
                 <div className="px-4 py-3 flex items-center justify-between">
                   <button className="text-base text-blue-500">Edit</button>
-                  <h2 className="text-lg font-semibold text-foreground">Calls</h2>
+                  <h2 className="text-lg font-semibold text-foreground">Recents</h2>
                   <button>
                     <Menu className="h-5 w-5 text-foreground" />
                   </button>
@@ -395,111 +395,131 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
+                <div className="border-t border-border/30 px-1 py-1.5 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
                   <button
-                    onClick={() => setViewMode('calls')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    onClick={() => setViewMode('favorites')}
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
+                  >
+                    <Star className={cn("h-7 w-7", viewMode === 'favorites' ? "text-blue-500 fill-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'favorites' ? "text-blue-500" : "text-foreground/90")}>
+                      Favorites
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setViewMode('recents')}
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
                     <div className="relative">
-                      <Phone className={cn("h-6 w-6", viewMode === 'calls' ? "text-blue-500" : "text-muted-foreground")} />
+                      <Clock className={cn("h-7 w-7", viewMode === 'recents' ? "text-blue-500" : "text-foreground")} />
                       {callHistory.filter(c => c.status === 'missed').length > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                        <div className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                           <span className="text-white text-[10px] font-semibold">
                             {callHistory.filter(c => c.status === 'missed').length}
                           </span>
                         </div>
                       )}
                     </div>
-                    <span className={cn("text-[10px]", viewMode === 'calls' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
-                      Calls
+                    <span className={cn("text-[9px]", viewMode === 'recents' ? "text-blue-500" : "text-foreground/90")}>
+                      Recents
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('contacts')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <User className={cn("h-6 w-6", viewMode === 'contacts' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'contacts' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <User className={cn("h-7 w-7", viewMode === 'contacts' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'contacts' ? "text-blue-500" : "text-foreground/90")}>
                       Contacts
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('keypad')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <Grid3x3 className={cn("h-6 w-6", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <Grid3x3 className={cn("h-7 w-7", viewMode === 'keypad' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'keypad' ? "text-blue-500" : "text-foreground/90")}>
                       Keypad
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('voicemail')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <Voicemail className={cn("h-6 w-6", viewMode === 'voicemail' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'voicemail' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <Voicemail className={cn("h-7 w-7", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground/90")}>
                       Voicemail
                     </span>
                   </button>
                 </div>
               </div>
-            ) : viewMode === 'contacts' || viewMode === 'voicemail' ? (
-              /* Contacts/Voicemail Screen - Empty State */
+            ) : viewMode === 'favorites' || viewMode === 'contacts' || viewMode === 'voicemail' ? (
+              /* Favorites/Contacts/Voicemail Screen - Empty State */
               <div className="flex-1 flex flex-col">
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-sm text-muted-foreground">Coming soon</p>
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
+                <div className="border-t border-border/30 px-1 py-1.5 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
                   <button
-                    onClick={() => setViewMode('calls')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    onClick={() => setViewMode('favorites')}
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
+                  >
+                    <Star className={cn("h-7 w-7", viewMode === 'favorites' ? "text-blue-500 fill-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'favorites' ? "text-blue-500" : "text-foreground/90")}>
+                      Favorites
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setViewMode('recents')}
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
                     <div className="relative">
-                      <Phone className={cn("h-6 w-6", viewMode === 'calls' ? "text-blue-500" : "text-muted-foreground")} />
+                      <Clock className={cn("h-7 w-7", viewMode === 'recents' ? "text-blue-500" : "text-foreground")} />
                       {callHistory.filter(c => c.status === 'missed').length > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                        <div className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                           <span className="text-white text-[10px] font-semibold">
                             {callHistory.filter(c => c.status === 'missed').length}
                           </span>
                         </div>
                       )}
                     </div>
-                    <span className={cn("text-[10px]", viewMode === 'calls' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
-                      Calls
+                    <span className={cn("text-[9px]", viewMode === 'recents' ? "text-blue-500" : "text-foreground/90")}>
+                      Recents
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('contacts')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <User className={cn("h-6 w-6", viewMode === 'contacts' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'contacts' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <User className={cn("h-7 w-7", viewMode === 'contacts' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'contacts' ? "text-blue-500" : "text-foreground/90")}>
                       Contacts
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('keypad')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <Grid3x3 className={cn("h-6 w-6", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <Grid3x3 className={cn("h-7 w-7", viewMode === 'keypad' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'keypad' ? "text-blue-500" : "text-foreground/90")}>
                       Keypad
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('voicemail')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <Voicemail className={cn("h-6 w-6", viewMode === 'voicemail' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'voicemail' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <Voicemail className={cn("h-7 w-7", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground/90")}>
                       Voicemail
                     </span>
                   </button>
@@ -581,52 +601,62 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
+                <div className="border-t border-border/30 px-1 py-1.5 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
                   <button
-                    onClick={() => setViewMode('calls')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    onClick={() => setViewMode('favorites')}
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
+                  >
+                    <Star className={cn("h-7 w-7", viewMode === 'favorites' ? "text-blue-500 fill-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'favorites' ? "text-blue-500" : "text-foreground/90")}>
+                      Favorites
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setViewMode('recents')}
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
                     <div className="relative">
-                      <Phone className={cn("h-6 w-6", viewMode === 'calls' ? "text-blue-500" : "text-muted-foreground")} />
+                      <Clock className={cn("h-7 w-7", viewMode === 'recents' ? "text-blue-500" : "text-foreground")} />
                       {callHistory.filter(c => c.status === 'missed').length > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                        <div className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                           <span className="text-white text-[10px] font-semibold">
                             {callHistory.filter(c => c.status === 'missed').length}
                           </span>
                         </div>
                       )}
                     </div>
-                    <span className={cn("text-[10px]", viewMode === 'calls' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
-                      Calls
+                    <span className={cn("text-[9px]", viewMode === 'recents' ? "text-blue-500" : "text-foreground/90")}>
+                      Recents
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('contacts')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <User className={cn("h-6 w-6", viewMode === 'contacts' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'contacts' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <User className={cn("h-7 w-7", viewMode === 'contacts' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'contacts' ? "text-blue-500" : "text-foreground/90")}>
                       Contacts
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('keypad')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <Grid3x3 className={cn("h-6 w-6", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <Grid3x3 className={cn("h-7 w-7", viewMode === 'keypad' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'keypad' ? "text-blue-500" : "text-foreground/90")}>
                       Keypad
                     </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('voicemail')}
-                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
-                    <Voicemail className={cn("h-6 w-6", viewMode === 'voicemail' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'voicemail' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                    <Voicemail className={cn("h-7 w-7", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground")} />
+                    <span className={cn("text-[9px]", viewMode === 'voicemail' ? "text-blue-500" : "text-foreground/90")}>
                       Voicemail
                     </span>
                   </button>
