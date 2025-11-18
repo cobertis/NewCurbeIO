@@ -770,7 +770,14 @@ class WebPhoneManager {
     
     console.log('[WebPhone] Initiating blind transfer to:', targetNumber);
     
-    const target = `sip:${targetNumber}@${useWebPhoneStore.getState().sipDomain}`;
+    const store = useWebPhoneStore.getState();
+    const targetUriString = `sip:${targetNumber.replace(/#/g, '%23')}@${store.sipDomain}`;
+    const targetUri = UserAgent.makeURI(targetUriString);
+    
+    if (!targetUri) {
+      console.error('[WebPhone] Invalid target URI for blind transfer');
+      return;
+    }
     
     const referOptions = {
       requestDelegate: {
@@ -786,7 +793,9 @@ class WebPhoneManager {
     };
     
     try {
-      await (session as any).refer(target, referOptions);
+      // CRITICAL FIX: Pass URI object (not string) to refer() method
+      // This matches Browser-Phone implementation pattern
+      await (session as any).refer(targetUri, referOptions);
       console.log('[WebPhone] Blind transfer initiated successfully');
     } catch (error) {
       console.error('[WebPhone] Error initiating blind transfer:', error);
@@ -850,13 +859,11 @@ class WebPhoneManager {
         if (state === SessionState.Established) {
           console.log('[WebPhone] Transfer target answered, completing attended transfer');
           
-          // FIX PROBLEM 2 & 3: Wait for session establishment, then use targetUri for REFER
-          // Use REFER to complete attended transfer with proper URI target
+          // Use REFER to complete attended transfer
           const referOptions = {
             requestDelegate: {
               onAccept: () => {
                 console.log('[WebPhone] ✅ Attended transfer accepted by server');
-                // FIX PROBLEM 3: Defer hangupCall until REFER completes
                 // Add small delay to ensure transfer completes on server
                 setTimeout(() => {
                   console.log('[WebPhone] Hanging up original call after transfer completion');
@@ -873,8 +880,10 @@ class WebPhoneManager {
             }
           };
           
-          // FIX PROBLEM 2: Use targetUri (SIP URI string) instead of inviter object
-          (session as any).refer(targetUri.toString(), referOptions);
+          // CRITICAL FIX: Pass the inviter session object (not URI) to refer() method
+          // This matches Browser-Phone implementation pattern for attended transfer
+          // The session object contains the Replaces header needed for attended transfer
+          (session as any).refer(inviter, referOptions);
         } else if (state === SessionState.Terminated) {
           // Consultation leg failed before establishing - resume original call
           console.warn('[WebPhone] Transfer target failed/rejected, resuming original call');
