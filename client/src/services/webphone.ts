@@ -132,10 +132,12 @@ class WebPhoneManager {
   private currentSession?: Session;
   private reconnectInterval?: NodeJS.Timeout;
   private ringtone?: HTMLAudioElement;
+  private ringbackTone?: HTMLAudioElement;
   
   private constructor() {
     // Private constructor for singleton
     this.initializeRingtone();
+    this.initializeRingbackTone();
   }
   
   public static getInstance(): WebPhoneManager {
@@ -148,8 +150,15 @@ class WebPhoneManager {
   }
   
   private initializeRingtone() {
-    this.ringtone = new Audio('data:audio/wav;base64,UklGRrQEAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YZAEAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA');
+    // iPhone-style ringtone (1 second on, 3 seconds off pattern)
+    this.ringtone = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqPk5ibnqGjpqequKuuse+68b31wPnC+8P9xP3E/cT9w/vC+cD5vvW78ber76OemJOKhYF/fHl2c3Bta2llY2JhX15dXFtaWVlYV1dWVlVVVFRTU1JSUVFQUFBPTk5OTU1MTEtLS0pKSUlJSEhISEdHR0ZGRkZFRUVFREREQ0NDQ0NDQkJCQkFBQUFBQUFAQEBAQD8/Pz8/Pz4+Pj4+Pj4+Pj09PT09PT09PT08PDw8PDw8PDw8PDw8Ozs7Ozs7Ozs7Ozs7Ozs7Ozs6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Njc2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI=');
     this.ringtone.loop = true;
+  }
+  
+  private initializeRingbackTone() {
+    // Ringback tone (what you hear when calling someone - repeating beep pattern)
+    this.ringbackTone = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqPk5ibnqGjpqequKuuse+68b31wPnC+8P9xP3E/cT9w/vC+cD5vvW78ber76OemJOKhYF/fHl2c3Bta2hlY2JhX15dXFtaWVlYV1dWVlVVVFRTU1JSUVFQUFBPTk5OTU1MTEtLS0pKSUlJSEhISEdHR0ZGRkZFRUVFREREQ0NDQ0NDQkJCQkFBQUFBQUFAQEBAQD8/Pz8/Pz4+Pj4+Pj4+Pj09PT09PT09PT08PDw8PDw8PDw8PDw8Ozs7Ozs7Ozs7Ozs7Ozs7Ozs6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Njc2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI=');
+    this.ringbackTone.loop = true;
   }
   
   public async initialize(extension: string, password: string, server?: string): Promise<void> {
@@ -370,12 +379,21 @@ class WebPhoneManager {
       
       // Handle session state changes
       inviter.stateChange.addListener((state) => {
+        console.log('[WebPhone] Outbound call state:', state);
         switch (state) {
+          case SessionState.Establishing:
+            // Play ringback tone when ringing
+            console.log('[WebPhone] Call ringing, playing ringback tone');
+            this.ringbackTone?.play();
+            break;
           case SessionState.Established:
+            console.log('[WebPhone] Call answered, stopping ringback tone');
+            this.ringbackTone?.pause();
             store.setCallStatus('answered');
             this.setupMediaStreams(inviter);
             break;
           case SessionState.Terminated:
+            this.ringbackTone?.pause();
             this.endCall();
             break;
         }
@@ -622,9 +640,12 @@ class WebPhoneManager {
       store.addCallToHistory(callLog);
     }
     
-    // Clean up
+    // Clean up audio
     this.currentSession = undefined;
     this.ringtone?.pause();
+    this.ringbackTone?.pause();
+    
+    // Reset call state
     store.setCurrentCall(undefined);
     store.setIncomingCallVisible(false);
     store.setMuted(false);
