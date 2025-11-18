@@ -49,7 +49,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
   - **Transfer Implementation:** Both blind and attended transfer follow Browser-Phone reference pattern. Blind transfer uses `UserAgent.makeURI()` to create proper SIP URI objects with percent-encoding. Attended transfer passes the consultation session object to preserve Replaces headers for proper server-side transfer handling.
   - **UI/UX:** iPhone-style glassmorphism design, 3-zone fixed layout (header, scrollable content, fixed bottom menu), incoming call modal with ringtone
   - **Call History:** Color-coded status (red for missed, green for answered), localStorage persistence with proper Date deserialization
-  - **Audio System:** Automatic audio element registration, professional ringback tone (US/Canada standard 440Hz+480Hz), remote audio stream handling
+  - **Audio System:** Automatic audio element registration, modern iPhone ringtone for incoming calls, professional ringback tone (US/Canada standard 440Hz+480Hz) for outbound calls, remote audio stream handling
   - **DTMF Support:** Full dialpad with tone generation for IVR navigation
 - **Billing & Stripe Integration:** Automated customer and subscription management.
 - **Quotes Management System:** A 3-step wizard with Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.

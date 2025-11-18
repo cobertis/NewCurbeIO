@@ -1,0 +1,345 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1.0, shrink-to-fit=no">
+<link rel="apple-touch-icon" href="https://s0.nxstatic.com/apple-touch-icon.png">
+<style>
+:root {
+    --container-spacing: 1.25rem;
+}
+*,
+:after,
+:before {
+    box-sizing: border-box;
+}
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap');
+html {
+    font-size: 1.2em;
+    font-family: Roboto, apple-system, BlinkMacSystemFont, 'Helvetica Neue',
+        Arial, sans-serif;
+    line-height: 1.15;
+    -ms-text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+    padding: 0;
+    margin: 0;
+}
+body {
+    padding: 0;
+    margin: 0;
+}
+header {
+    border-bottom: 1px #eee solid;
+    padding: 0.5rem 0;
+}
+a {
+    text-decoration: underline;
+    color: inherit;
+}
+.body {
+    min-height: calc(100vh - 115px);
+}
+.content-title {
+    font-weight: bold;
+    margin: 0.5rem 0;
+}
+.container {
+    max-width: 768px;
+    margin: auto;
+    padding: 0 1.25rem;
+    padding: 0 var(--container-spacing);
+}
+@media (max-width: 359px) {
+    :root {
+        --container-spacing: 0.625rem;
+    }
+}
+.content {
+    padding: var(--container-spacing) 0;
+}
+.btn,
+button,
+input[type='submit'] {
+    cursor: pointer;
+    border-radius: 0.125rem;
+    font-weight: normal;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    text-decoration: none;
+    line-height: 1.6em;
+    padding: 0.25rem 0.5rem;
+    min-width: 6.5rem;
+    display: inline-block;
+    border: none;
+    text-align: center;
+    transition: background 0.2s;
+}
+.btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+.btn-primary {
+    background: #3498db;
+    color: #fff;
+}
+.btn-primary:hover {
+    background: #1e88e5;
+    color: #fff;
+}
+.btn-secondary {
+    border: 1px #666 solid;
+    color: #666;
+}
+.btn-secondary:hover {
+    border-color: #3498db;
+    color: #3498db;
+}
+footer > .container {
+    border-top: 1px #eee solid;
+    height: 3.5rem;
+}
+.copyright {
+    padding: 1em 0;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    font-size: 0.8rem;
+}
+.body {
+    display: flex;
+    align-items: stretch;
+}
+.content-main {
+    flex: auto 1 0;
+}
+.content-footer {
+    flex: 1 0 0;
+}
+</style>
+<style>
+.a {
+    color: #3498db;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.a:hover {
+    color: #2980b9;
+}
+.http-error {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #fff0f0;
+    border-left: 4px solid #e74c3c;
+    border-radius: 2px;
+}
+.status-code,
+.status-message {
+    font-size: 0.9em;
+    display: inline-block;
+}
+.status-code {
+    color: #e74c3c;
+    font-weight: bold;
+    border-right: 1px #333 solid;
+    padding-right: 0.5rem;
+    margin-right: 0.5rem;
+}
+.status-message {
+    text-transform: uppercase;
+    color: #666;
+    font-size: 0.75em;
+}
+.content-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.content-title {
+    color: #e74c3c;
+    margin-bottom: 1rem;
+    font-size: 2em;
+}
+.content-description p {
+    color: #333;
+    line-height: 1.6;
+}
+#retry-info {
+    margin-top: 1.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    font-size: 0.9em;
+}
+#btn-retry a {
+    color: #2980b9;
+    font-weight: bold;
+}
+.btn-tertiary {
+    background: #ff0000ff;
+    color: #fff;
+}
+.thumbnail-list > a {
+    border-bottom: 1px solid #dfdfdf;
+    display: flex;
+    text-decoration: none;
+}
+.thumbnail-list > a > .thumbnail {
+    padding: 5px;
+    min-width: 125px;
+}
+.thumbnail > img {
+    max-width: 125px;
+    width: 100%;
+    height: auto;
+}
+.thumbnail-list > a > .caption {
+    width: 100%;
+    height: auto;
+    font-size: 0.8em;
+    padding: 0.75rem 0.25rem;
+}
+
+.search-box {
+    display: flex;
+    width: 100%;
+    max-width: 600px;
+    margin: auto;
+    background: #fff;
+    border: 2px solid #ccc;
+    border-radius: 0.125rem;
+    overflow: hidden;
+    transition: 0.3s;
+    margin-bottom: 1rem;
+}
+
+.search-box:focus-within {
+    border-color: #007bff;
+    box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
+}
+
+.search-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 12px 16px;
+    font-size: 16px;
+}
+
+.search-box button {
+    background: #ff0000ff;
+    border: none;
+    color: #fff;
+    padding: 0 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.search-box button:hover {
+    background: #fa2020;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+    .search-box input {
+        font-size: 14px;
+        padding: 10px 12px;
+    }
+    .search-box button {
+        padding: 0 15px;
+        font-size: 14px;
+    }
+}
+
+</style>
+</head>
+<body>
+<div id="wrapper">
+<header class="header">
+    <div class="container logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 150" width="165" height="32" class="nav-brand-logo">
+            <path fill="#000" d="M95.1 41h13.7v15.3a48 48 0 0113-13.4c4.5-3 9.2-4.5 14.2-4.5 3.7 0 7.6 1.2 11.8 3.6l-7 11.3a18.7 18.7 0 00-7-1.9c-4.5 0-8.8 1.9-13 5.6a34.8 34.8 0 00-9.5 17c-1.6 6-2.5 18-2.5 36.1v35.3H95.1V41z"></path>
+            <path fill="#000" d="M186.8 38.4a54.3 54.3 0 0154.4 55.1c0 14.6-5.1 27.3-15.3 38.2a51 51 0 01-39.1 16.4 54.3 54.3 0 01-54.4-54.6c0-14.4 4.7-27 14.3-37.5a51.6 51.6 0 0140-17.6zm0 13.1A38.7 38.7 0 00158 64c-8 8.2-12 18.2-12 30 0 7.5 1.8 14.5 5.4 21a38.8 38.8 0 0014.8 15.1c6.3 3.6 13 5.3 20.5 5.3s14.3-1.7 20.5-5.3 11.2-8.6 14.8-15 5.5-13.6 5.5-21.2c0-11.7-4-21.7-12-29.9a38.7 38.7 0 00-28.8-12.4zm228.9 59.3l11.3 6c-3.7 7.2-8 13.1-12.9 17.6a51 51 0 01-37 13.7c-17 0-30.3-5.6-40-16.7s-14.3-23.8-14.3-37.9c0-13.2 4-25 12.2-35.3a49.8 49.8 0 0141.3-19.8c17.8 0 32 6.7 42.6 20.2a56.5 56.5 0 0111.5 35.7h-93.8c.2 12.1 4.1 22 11.6 29.8a37 37 0 0027.7 11.6 44.5 44.5 0 0028.3-10.1c3.6-3 7.4-8 11.5-14.8zm0-28.1a44.5 44.5 0 00-7.9-17.2 41.6 41.6 0 00-31.3-14.3c-10.2 0-19 3.3-26.4 10-5.4 4.7-9.4 12-12.2 21.5h77.8zm28.6-41.6H458v15.2c4.1-6 8.4-10.5 13-13.4s9.2-4.5 14.1-4.5c3.7 0 7.7 1.2 12 3.5l-7 11.4a18.7 18.7 0 00-7.2-1.9c-4.4 0-8.8 1.9-12.9 5.5a34.8 34.8 0 00-9.5 17.2c-1.7 5.9-2.5 18-2.5 36v35.3h-13.7V41z"></path>
+            <path fill="#000" d="M589.2 41v104.4H576v-18c-5.6 7-12 12-19 15.5s-14.6 5.2-22.9 5.2a51 51 0 01-37.8-16A53.8 53.8 0 01480.6 93c0-15 5.3-28 15.8-38.6s23.3-16 38-16A49.1 49.1 0 01576 60.3V41h13.2zm-53.6 10.4a40.5 40.5 0 00-35.8 21 42.4 42.4 0 000 42 41.3 41.3 0 0035.7 21.3 42 42 0 0036-20.6 43 43 0 005.4-21.3 41.5 41.5 0 00-41.3-42.5zM82.2 18.6A36.1 36.1 0 0062.4 6.5C57 5 46.7 4.5 31.7 4.4L21 18.2h19.7c9.6 0 16.4.8 20.6 2.5 4.2 1.6 7.6 4.4 10.1 8.3 2.6 4 3.8 8.3 3.8 13 0 4.8-1.2 9.2-3.8 13.2-2.6 3.9-6 6.7-10.5 8.5a62.6 62.6 0 01-21.2 2.6L15.8 66V25l-14 18.3v102.1h14V79.8h10c17.6 0 29.5-.8 36-2.3a36.8 36.8 0 0020.5-12.3c5-6.1 7.5-13.9 7.5-23.3 0-9.3-2.5-17-7.6-23.2z"></path>
+            <path fill="#000" d="M272.4 90.8l57.3-49.7H310l-48.4 42V22l-13.4 17.4v106h13.4v-47l52.6 47H333l-60.7-54.5z"></path>
+            <path fill="#000" d="M605.2 42v103.4h13.4V24.6L605.2 42zm127 79.7c0-5 2.8-9.3 6.7-11.7V41h-13.2v19.3a49.3 49.3 0 00-41.5-21.9 51.6 51.6 0 00-38 16A52.8 52.8 0 00630.2 93c0 15.4 5.2 28.4 15.7 39.1s23 16 37.8 16c8.3 0 16-1.7 23-5.1s13.3-8.6 19-15.4v17.9h13.1v-12c-4-2.4-6.6-6.8-6.6-11.7zm-11-6.6c-3.5 6.4-8.5 11.4-15.1 15s-13.6 5.6-20.9 5.6a41.1 41.1 0 01-35.6-21.3 42.3 42.3 0 0115-57.6 40.5 40.5 0 0120.7-5.5 41.5 41.5 0 0141.3 42.4c0 8-1.8 15.1-5.3 21.4z"></path>
+            <path fill="#FDCD08" d="M25.7 4.4h-24v31l24-31zm236 9.9V.8h-13.5v30.9l13.4-17.4z"></path>
+            <path fill="#FDCD08" d="M618.6 16.9V.9h-13.4v33.4l13.4-17.4z"></path>
+            <path fill="#FDCD08" d="M758.4 122a11.7 11.7 0 11-23.4 0 11.7 11.7 0 0123.4 0"></path>
+        </svg>
+            </div>
+</header>
+<main class="body">
+    <div class="container">
+        <div class="content content-main">
+    <div class="http-error">
+        <span class="status-code">404</span><span class="status-message">Page Not found</span>
+    </div>
+    <div class="content-details">
+                    <div class="content-title" style="font-size: 1.25em;">Oops! Something went wrong</div>
+                <div class="content-description">
+            <p>We couldn't find the page you're looking for. It might have been moved or deleted. Try using our <a class="a" href="/search/">search</a> to find what you're looking for, or go back to our <a href="/">homepage</a>.</p>
+                    </div>
+    </div>
+</div>
+<div class="content content-footer">
+            <a class="btn btn-tertiary" href="https://www.prokerala.com?utm_source=Page_404&utm_medium=Home_Button&utm_campaign=Home_Page">Go to home page</a>
+        <a class="btn" href="/contact.php">Report Error</a>
+    <aside>
+                    <h3>Read Our Popular Stories</h3>
+            <div class="thumbnail-list">
+                                    <a href="/news/articles/a1616995.html?utm_source=Page_404&utm_medium=Thumbnail_Links&utm_campaign=Popular_Stories">
+                        <div class="thumbnail">
+                            <img loading="lazy" src="//files.prokerala.com//news/photos/imgs/150x125/sunita-williams-team-to-ensure-safe-cargo-flights-to-iss-412749.jpg" alt="">
+                        </div>
+                        <div class="caption">
+                            Sunita Williams set to return home today after extended ISS mission                        </div>
+                    </a>
+                                    <a href="/news/sports/royal-challengers-bengaluru-vs-mumbai-indians-2025-moments.htm?utm_source=Page_404&utm_medium=Thumbnail_Links&utm_campaign=Popular_Stories">
+                        <div class="thumbnail">
+                            <img loading="lazy" src="//files.prokerala.com//news/photos/imgs/150x125/ipl-2025-mi-vs-rcb-1881886.jpg" alt="">
+                        </div>
+                        <div class="caption">
+                            RCB Vs MI IPL 2025: Remarkable Performances And Interesting Highlights                        </div>
+                    </a>
+                                    <a href="/news/sports/punjab-kings-vs-royal-challengers-bengaluru-2025-moments.htm?utm_source=Page_404&utm_medium=Thumbnail_Links&utm_campaign=Popular_Stories">
+                        <div class="thumbnail">
+                            <img loading="lazy" src="//files.prokerala.com//news/photos/imgs/150x125/new-chandigarh-ipl-2025-pbks-vs-rcb-1904527.jpg" alt="">
+                        </div>
+                        <div class="caption">
+                            PBKS Vs RCB IPL 2025: Interesting Moments and Key Highlights                        </div>
+                    </a>
+                                    <a href="/news/sports/csk-vs-srh-2025-moments.htm?utm_source=Page_404&utm_medium=Thumbnail_Links&utm_campaign=Popular_Stories">
+                        <div class="thumbnail">
+                            <img loading="lazy" src="//files.prokerala.com//news/photos/imgs/150x125/ipl-2025-csk-vs-srh-1890771.jpg" alt="">
+                        </div>
+                        <div class="caption">
+                            SRH vs CSK IPL 2025: Key Highlights and Interesting Moments                        </div>
+                    </a>
+                                    <a href="/news/sports/rr-vs-gt-2025-moments.htm?utm_source=Page_404&utm_medium=Thumbnail_Links&utm_campaign=Popular_Stories">
+                        <div class="thumbnail">
+                            <img loading="lazy" src="//files.prokerala.com//news/photos/imgs/150x125/ipl-2025-rr-vs-gt-1892225.jpg" alt="">
+                        </div>
+                        <div class="caption">
+                            RR vs GT -IPL 2025: Key Highlights and Interesting Moments                        </div>
+                    </a>
+                                    <a href="/news/sports/kolkata-knight-riders-vs-chennai-super-kings-2025-moments.htm?utm_source=Page_404&utm_medium=Thumbnail_Links&utm_campaign=Popular_Stories">
+                        <div class="thumbnail">
+                            <img loading="lazy" src="//files.prokerala.com//news/photos/imgs/150x125/ipl-2025-csk-vs-kkr-1883707.jpg" alt="">
+                        </div>
+                        <div class="caption">
+                            CSK Vs KKR IPL 2025: Key Highlights and Interesting Moments                        </div>
+                    </a>
+                            </div>
+            </aside>
+</div>    </div>
+</main>
+<footer class="footer">
+    <div class="container">
+        <div class="copyright">
+            &copy; 2025 Prokerala.com. All rights reserved.
+        </div>
+    </div>
+</footer>
+</div>
+</body>
+</html>
