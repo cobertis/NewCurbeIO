@@ -230,10 +230,11 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
         pbxWs.on('close', (code, reason) => {
           console.log(`[SIP WebSocket] PBX disconnected (${code}): ${reason}`);
           if (clientWs.readyState === WebSocket.OPEN) {
-            // Sanitize close code - must be in valid range (1000-4999)
-            const safeCode = (code >= 1000 && code <= 4999) ? code : 1011;
+            // Sanitize close code - must be a valid number in range (1000-4999)
+            const codeNum = typeof code === 'number' ? code : 1006;
+            const safeCode = (codeNum >= 1000 && codeNum <= 4999) ? codeNum : 1011;
             // Trim reason to max 123 bytes
-            const safeReason = reason.toString().slice(0, 123);
+            const safeReason = reason ? reason.toString().slice(0, 123) : '';
             clientWs.close(safeCode, safeReason);
           }
         });
