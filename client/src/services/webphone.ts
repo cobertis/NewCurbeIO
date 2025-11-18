@@ -246,10 +246,7 @@ class WebPhoneManager {
                 credential: 'Curbe2025!'
               }
             ]
-          },
-          // CRITICAL: Set ICE gathering timeout to 0 to avoid 5-second delay
-          // The actual delegate must be configured per-session (see setupSessionDelegate)
-          iceGatheringTimeout: 0
+          }
         },
         delegate: {
           onInvite: this.handleIncomingCall.bind(this),
@@ -319,10 +316,6 @@ class WebPhoneManager {
       });
       return;
     }
-    
-    // CRITICAL: Setup delegate IMMEDIATELY when call arrives (Browser-Phone pattern)
-    // This must happen BEFORE user clicks "Answer" for instant audio connection
-    this.setupSessionDelegate(invitation);
     
     // Create call object
     const call: Call = {
@@ -465,7 +458,10 @@ class WebPhoneManager {
     store.setIncomingCallVisible(false);
     
     try {
-      // Delegate is already configured in handleIncomingCall - just accept the call
+      // CRITICAL: Setup delegate BEFORE accepting to catch onSessionDescriptionHandler
+      this.setupSessionDelegate(session);
+      
+      // Accept the call with media constraints
       // SIP.js will automatically request microphone permission - no need to do it manually
       console.log('[WebPhone] Accepting call...');
       await session.accept({
@@ -1045,21 +1041,6 @@ class WebPhoneManager {
       if (sdh.peerConnection) {
         this.attachPeerConnectionHandlers(sdh.peerConnection);
       }
-      
-      // CRITICAL FIX (Browser-Phone pattern): Configure ICE delegate to call event.ready() immediately
-      // This works with iceGatheringTimeout: 0 to eliminate the 5-second delay
-      // onIceCandidate is NOT supported in sessionDescriptionHandlerFactoryOptions,
-      // it MUST be configured here on the sdh.delegate
-      sdh.delegate = {
-        onIceCandidate: (event: any) => {
-          console.log('[WebPhone] 🧊 ICE candidate event received');
-          if (event.ready) {
-            console.log('[WebPhone] ✅ Calling event.ready() - proceeding immediately with ICE candidate');
-            event.ready();
-          }
-        }
-      };
-      
       // Call extra onSessionDescriptionHandler if provided
       if (extraHandlers?.onSessionDescriptionHandler) {
         extraHandlers.onSessionDescriptionHandler(sdh);
@@ -1287,14 +1268,10 @@ class WebPhoneManager {
   }
 }
 
-// Export lazy getter for singleton instance
-// This ensures the instance is always available when called,
-// avoiding undefined errors during module initialization
-export function getWebPhone(): WebPhoneManager {
-  return WebPhoneManager.getInstance();
-}
+// Export singleton instance
+export const webPhone = WebPhoneManager.getInstance();
 
 // Persist WebPhone instance globally
 if (typeof window !== 'undefined') {
-  (window as any).getWebPhone = getWebPhone;
+  (window as any).webPhone = webPhone;
 }

@@ -7,7 +7,7 @@ import {
   Volume2, KeyboardIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useWebPhoneStore, getWebPhone } from '@/services/webphone';
+import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
@@ -65,7 +65,7 @@ export function WebPhoneHeader() {
       }
       
       // Initialize WebPhone connection
-      getWebPhone().initialize(user.sipExtension, user.sipPassword, user.sipServer || undefined)
+      webPhone.initialize(user.sipExtension, user.sipPassword, user.sipServer || undefined)
         .then(() => {
           console.log('[WebPhone] Auto-initialized successfully from saved credentials');
         })
@@ -118,14 +118,14 @@ export function WebPhoneHeader() {
   const handleDial = (digit: string) => {
     setDialNumber(prev => prev + digit);
     if (currentCall?.status === 'answered') {
-      getWebPhone().sendDTMF(digit);
+      webPhone.sendDTMF(digit);
     }
   };
   
   const handleCall = async () => {
     if (!dialNumber) return;
     try {
-      await getWebPhone().makeCall(dialNumber);
+      await webPhone.makeCall(dialNumber);
       setDialNumber('');
       toggleDialpad();
     } catch (error) {
@@ -193,7 +193,7 @@ export function WebPhoneHeader() {
               
               <div className="flex gap-3">
                 <Button
-                  onClick={() => getWebPhone().rejectCall()}
+                  onClick={() => webPhone.rejectCall()}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white"
                   data-testid="button-reject-call"
                 >
@@ -201,7 +201,7 @@ export function WebPhoneHeader() {
                   Decline
                 </Button>
                 <Button
-                  onClick={() => getWebPhone().answerCall()}
+                  onClick={() => webPhone.answerCall()}
                   className="flex-1 bg-green-500 hover:bg-green-600 text-white"
                   data-testid="button-answer-call"
                 >
@@ -316,7 +316,7 @@ export function WebPhoneHeader() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => getWebPhone().toggleMute()}
+              onClick={() => webPhone.toggleMute()}
               className={cn(
                 "h-7 w-7 p-0",
                 isMuted ? "text-red-400" : "text-gray-400"
@@ -329,7 +329,7 @@ export function WebPhoneHeader() {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => getWebPhone().toggleHold()}
+              onClick={() => webPhone.toggleHold()}
               className={cn(
                 "h-7 w-7 p-0",
                 isOnHold ? "text-yellow-400" : "text-gray-400"
@@ -353,7 +353,7 @@ export function WebPhoneHeader() {
         
         <Button
           size="sm"
-          onClick={() => getWebPhone().hangupCall()}
+          onClick={() => webPhone.hangupCall()}
           className="h-7 px-3 bg-red-500 hover:bg-red-600 text-white"
           data-testid="button-hangup"
         >

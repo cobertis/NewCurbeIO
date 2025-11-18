@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useWebPhoneStore, getWebPhone } from '@/services/webphone';
+import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -220,7 +220,7 @@ export function WebPhoneFloatingWindow() {
     }
     
     if (currentCall?.status === 'answered') {
-      getWebPhone().sendDTMF(digit);
+      webPhone.sendDTMF(digit);
     }
   };
   
@@ -233,7 +233,7 @@ export function WebPhoneFloatingWindow() {
     if (!dialNumber) return;
     try {
       const digits = dialNumber.replace(/\D/g, '');
-      await getWebPhone().makeCall(digits);
+      await webPhone.makeCall(digits);
       setDialNumber('');
     } catch (error) {
       console.error('Failed to make call:', error);
@@ -349,7 +349,7 @@ export function WebPhoneFloatingWindow() {
                     {/* Control Buttons Grid - Only 3 buttons */}
                     <div className="grid grid-cols-3 gap-6 px-4">
                       <button
-                        onClick={() => isMuted ? getWebPhone().unmuteCall() : getWebPhone().muteCall()}
+                        onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
                         className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
                         data-testid="button-mute-call"
                       >
@@ -378,7 +378,7 @@ export function WebPhoneFloatingWindow() {
                       </button>
                       
                       <button
-                        onClick={() => isOnHold ? getWebPhone().unholdCall() : getWebPhone().holdCall()}
+                        onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
                         className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
                         data-testid="button-hold-call"
                       >
@@ -395,7 +395,7 @@ export function WebPhoneFloatingWindow() {
                     {/* End Call Button */}
                     <div className="flex justify-center pt-6">
                       <button
-                        onClick={() => getWebPhone().hangupCall()}
+                        onClick={() => webPhone.hangupCall()}
                         className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
                       >
                         <PhoneOff className="h-9 w-9 text-white" />
@@ -425,7 +425,7 @@ export function WebPhoneFloatingWindow() {
                           <div className="flex gap-2">
                             <Button
                               onClick={() => {
-                                getWebPhone().blindTransfer(transferNumber);
+                                webPhone.blindTransfer(transferNumber);
                                 setShowTransferDialog(false);
                                 setTransferNumber('');
                               }}
@@ -437,7 +437,7 @@ export function WebPhoneFloatingWindow() {
                             </Button>
                             <Button
                               onClick={() => {
-                                getWebPhone().attendedTransfer(transferNumber);
+                                webPhone.attendedTransfer(transferNumber);
                                 setShowTransferDialog(false);
                                 setTransferNumber('');
                               }}

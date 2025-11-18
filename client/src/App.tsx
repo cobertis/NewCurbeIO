@@ -25,7 +25,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
 import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
 import { WebPhoneIncomingCall } from '@/components/WebPhoneIncomingCall';
-import { getWebPhone, useWebPhoneStore } from "@/services/webphone";
+import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -163,7 +163,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
       // Initialize WebPhone with user's SIP credentials
       const sipServer = user.sipServer || 'wss://pbx.curbe.io:8089/ws';
-      getWebPhone().initialize(user.sipExtension, user.sipPassword, sipServer).catch(error => {
+      webPhone.initialize(user.sipExtension, user.sipPassword, sipServer).catch(error => {
         console.error('[WebPhone] Failed to initialize:', error);
         toast({
           title: "WebPhone Error",
@@ -174,7 +174,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       });
     } else if (!user?.sipEnabled && useWebPhoneStore.getState().isConnected) {
       // Disconnect if SIP is disabled
-      getWebPhone().disconnect();
+      webPhone.disconnect();
     }
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
 
