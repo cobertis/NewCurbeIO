@@ -1216,7 +1216,7 @@ class WebPhoneManager {
           const pc = sdh.peerConnection;
           
           // Stop all audio senders (microphone tracks)
-          pc.getSenders().forEach((sender) => {
+          pc.getSenders().forEach((sender: RTCRtpSender) => {
             if (sender.track && sender.track.kind === 'audio') {
               console.log('[WebPhone] 🛑 Stopping sender track:', sender.track.id);
               sender.track.stop();
@@ -1224,7 +1224,7 @@ class WebPhoneManager {
           });
           
           // Stop all audio receivers (remote audio tracks)
-          pc.getReceivers().forEach((receiver) => {
+          pc.getReceivers().forEach((receiver: RTCRtpReceiver) => {
             if (receiver.track && receiver.track.kind === 'audio') {
               console.log('[WebPhone] 🛑 Stopping receiver track:', receiver.track.id);
               receiver.track.stop();
