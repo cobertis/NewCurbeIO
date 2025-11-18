@@ -279,6 +279,8 @@ class WebPhoneManager {
     const callerNumber = invitation.remoteIdentity.uri.user || 'Unknown';
     const callerName = invitation.remoteIdentity.displayName || callerNumber;
     
+    console.log('[WebPhone] 📞 Incoming call from:', callerNumber);
+    
     // Create call object
     const call: Call = {
       id: Math.random().toString(36).substr(2, 9),
@@ -298,13 +300,17 @@ class WebPhoneManager {
     
     // Handle session state changes
     invitation.stateChange.addListener((state) => {
+      console.log('[WebPhone] Incoming call state:', state);
       switch (state) {
         case SessionState.Terminated:
           this.endCall();
           break;
         case SessionState.Established:
+          console.log('[WebPhone] Call established, setting up media streams');
           store.setCallStatus('answered');
           this.ringtone?.pause();
+          // Setup media streams AFTER session is established
+          this.setupMediaStreams(invitation);
           break;
       }
     });
@@ -407,10 +413,8 @@ class WebPhoneManager {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       console.log('[WebPhone] Microphone permission granted');
       
-      // Setup media streams BEFORE accepting to catch early tracks
-      this.setupMediaStreams(session);
-      
       // Accept the call with media constraints
+      console.log('[WebPhone] Accepting call...');
       await session.accept({
         sessionDescriptionHandlerOptions: {
           constraints: {
@@ -421,8 +425,7 @@ class WebPhoneManager {
       });
       
       this.currentSession = session;
-      store.setCallStatus('answered');
-      console.log('[WebPhone] Call answered successfully');
+      console.log('[WebPhone] Call accepted, waiting for SessionState.Established to setup media');
     } catch (error) {
       console.error('[WebPhone] Failed to answer call:', error);
       this.endCall();
@@ -518,55 +521,90 @@ class WebPhoneManager {
   
   private setupMediaStreams(session: Session) {
     const store = useWebPhoneStore.getState();
-    const sdh = (session as any)?.sessionDescriptionHandler;
-    const pc: RTCPeerConnection | undefined = sdh?.peerConnection;
     
-    if (!pc) {
-      console.error('[WebPhone] No peer connection available');
+    if (!store.remoteAudioElement) {
+      console.error('[WebPhone] ❌ Remote audio element not available');
       return;
     }
     
-    console.log('[WebPhone] Setting up media streams...');
-    
-    // Handle remote tracks
-    pc.ontrack = (event: RTCTrackEvent) => {
-      console.log('[WebPhone] Received remote track:', event.track.kind);
-      if (event.track.kind === 'audio' && store.remoteAudioElement) {
-        const remoteStream = new MediaStream([event.track]);
-        store.remoteAudioElement.srcObject = remoteStream;
-        store.remoteAudioElement.play().then(() => {
-          console.log('[WebPhone] ✅ Remote audio playing');
-        }).catch((error) => {
-          console.error('[WebPhone] ❌ Failed to play remote audio:', error);
+    // Wait for sessionDescriptionHandler to be ready
+    const setupHandler = () => {
+      const sdh = (session as any)?.sessionDescriptionHandler;
+      const pc: RTCPeerConnection | undefined = sdh?.peerConnection;
+      
+      if (!pc) {
+        console.error('[WebPhone] No peer connection available');
+        return;
+      }
+      
+      console.log('[WebPhone] Setting up media streams with peer connection');
+      
+      // CRITICAL: Set up ontrack handler to receive remote audio
+      pc.ontrack = (event: RTCTrackEvent) => {
+        console.log('[WebPhone] 🎵 Received remote track:', event.track.kind, 'streams:', event.streams.length);
+        
+        if (event.track.kind === 'audio' && event.streams.length > 0) {
+          const remoteStream = event.streams[0];
+          console.log('[WebPhone] 🔊 Assigning remote stream to audio element');
+          
+          if (store.remoteAudioElement) {
+            store.remoteAudioElement.srcObject = remoteStream;
+            
+            // Force play with error handling
+            store.remoteAudioElement.play()
+              .then(() => {
+                console.log('[WebPhone] ✅ Remote audio PLAYING - you should hear audio now');
+              })
+              .catch((error) => {
+                console.error('[WebPhone] ❌ Failed to play remote audio:', error);
+                // Retry after user interaction
+                setTimeout(() => {
+                  store.remoteAudioElement?.play().catch(console.error);
+                }, 500);
+              });
+          }
+        }
+      };
+      
+      // Log ICE connection state for debugging
+      pc.oniceconnectionstatechange = () => {
+        console.log('[WebPhone] ICE connection state:', pc.iceConnectionState);
+        if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+          console.log('[WebPhone] ✅ ICE connection established');
+        }
+      };
+      
+      // Log connection state
+      pc.onconnectionstatechange = () => {
+        console.log('[WebPhone] Connection state:', pc.connectionState);
+      };
+      
+      // Check if remote tracks already exist (for incoming calls answered quickly)
+      const receivers = pc.getReceivers();
+      console.log('[WebPhone] Existing receivers:', receivers.length);
+      
+      if (receivers.length > 0) {
+        receivers.forEach((receiver, idx) => {
+          if (receiver.track.kind === 'audio') {
+            console.log('[WebPhone] 🎵 Found existing audio receiver', idx);
+            const remoteStream = new MediaStream([receiver.track]);
+            
+            if (store.remoteAudioElement) {
+              store.remoteAudioElement.srcObject = remoteStream;
+              store.remoteAudioElement.play()
+                .then(() => console.log('[WebPhone] ✅ Existing track playing'))
+                .catch(console.error);
+            }
+          }
         });
       }
     };
     
-    // Log ICE connection state
-    pc.oniceconnectionstatechange = () => {
-      console.log('[WebPhone] ICE connection state:', pc.iceConnectionState);
-    };
+    // Try to set up immediately
+    setupHandler();
     
-    // Log connection state
-    pc.onconnectionstatechange = () => {
-      console.log('[WebPhone] Connection state:', pc.connectionState);
-    };
-    
-    // Check if remote stream already exists (for incoming calls)
-    const receivers = pc.getReceivers();
-    if (receivers.length > 0 && store.remoteAudioElement) {
-      const audioReceiver = receivers.find(r => r.track.kind === 'audio');
-      if (audioReceiver && audioReceiver.track) {
-        console.log('[WebPhone] Setting up existing remote audio track');
-        const remoteStream = new MediaStream([audioReceiver.track]);
-        store.remoteAudioElement.srcObject = remoteStream;
-        store.remoteAudioElement.play().then(() => {
-          console.log('[WebPhone] ✅ Remote audio playing (existing track)');
-        }).catch((error) => {
-          console.error('[WebPhone] ❌ Failed to play remote audio:', error);
-        });
-      }
-    }
+    // Also try after a short delay in case SDH isn't ready yet
+    setTimeout(setupHandler, 100);
   }
   
   private endCall() {
