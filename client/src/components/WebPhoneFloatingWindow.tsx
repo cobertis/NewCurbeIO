@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Star, Clock } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
 
-type ViewMode = 'favorites' | 'recents' | 'contacts' | 'keypad' | 'voicemail';
+type ViewMode = 'recents' | 'contacts' | 'keypad' | 'voicemail';
 
 export function WebPhoneFloatingWindow() {
   const [dialNumber, setDialNumber] = useState('');
@@ -397,16 +397,6 @@ export function WebPhoneFloatingWindow() {
                 {/* Bottom Navigation */}
                 <div className="border-t border-border/30 px-1 py-1.5 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
                   <button
-                    onClick={() => setViewMode('favorites')}
-                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
-                  >
-                    <Star className={cn("h-7 w-7", viewMode === 'favorites' ? "text-blue-500 fill-blue-500" : "text-foreground")} />
-                    <span className={cn("text-[9px]", viewMode === 'favorites' ? "text-blue-500" : "text-foreground/90")}>
-                      Favorites
-                    </span>
-                  </button>
-                  
-                  <button
                     onClick={() => setViewMode('recents')}
                     className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
                   >
@@ -456,8 +446,8 @@ export function WebPhoneFloatingWindow() {
                   </button>
                 </div>
               </div>
-            ) : viewMode === 'favorites' || viewMode === 'contacts' || viewMode === 'voicemail' ? (
-              /* Favorites/Contacts/Voicemail Screen - Empty State */
+            ) : viewMode === 'contacts' || viewMode === 'voicemail' ? (
+              /* Contacts/Voicemail Screen - Empty State */
               <div className="flex-1 flex flex-col">
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-sm text-muted-foreground">Coming soon</p>
@@ -465,16 +455,6 @@ export function WebPhoneFloatingWindow() {
                 
                 {/* Bottom Navigation */}
                 <div className="border-t border-border/30 px-1 py-1.5 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
-                  <button
-                    onClick={() => setViewMode('favorites')}
-                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
-                  >
-                    <Star className={cn("h-7 w-7", viewMode === 'favorites' ? "text-blue-500 fill-blue-500" : "text-foreground")} />
-                    <span className={cn("text-[9px]", viewMode === 'favorites' ? "text-blue-500" : "text-foreground/90")}>
-                      Favorites
-                    </span>
-                  </button>
-                  
                   <button
                     onClick={() => setViewMode('recents')}
                     className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
@@ -602,16 +582,6 @@ export function WebPhoneFloatingWindow() {
                 
                 {/* Bottom Navigation */}
                 <div className="border-t border-border/30 px-1 py-1.5 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
-                  <button
-                    onClick={() => setViewMode('favorites')}
-                    className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
-                  >
-                    <Star className={cn("h-7 w-7", viewMode === 'favorites' ? "text-blue-500 fill-blue-500" : "text-foreground")} />
-                    <span className={cn("text-[9px]", viewMode === 'favorites' ? "text-blue-500" : "text-foreground/90")}>
-                      Favorites
-                    </span>
-                  </button>
-                  
                   <button
                     onClick={() => setViewMode('recents')}
                     className="flex flex-col items-center justify-center gap-0.5 py-1 px-2"
