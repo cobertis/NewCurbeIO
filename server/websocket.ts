@@ -132,6 +132,23 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
     return;
   }
   
+  // Buffer messages from client until PBX connection is ready
+  const messageBuffer: any[] = [];
+  let pbxWs: WebSocket | null = null;
+  let isReady = false;
+  
+  // CRITICAL: Set up client message listener IMMEDIATELY before any async operations
+  clientWs.on('message', (data) => {
+    console.log('[SIP WebSocket] 📩 Message from client, buffering until PBX ready');
+    if (isReady && pbxWs && pbxWs.readyState === WebSocket.OPEN) {
+      console.log('[SIP WebSocket] ✅ Forwarding message to PBX');
+      pbxWs.send(data);
+    } else {
+      console.log('[SIP WebSocket] 📦 Buffering message (PBX not ready)');
+      messageBuffer.push(data);
+    }
+  });
+  
   console.log('[SIP WebSocket] Validating session...');
   
   sessionStore.get(sessionId, async (err: any, session: SessionData) => {
@@ -171,7 +188,7 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
         console.log(`[SIP WebSocket] ✅ Connecting to PBX: ${pbxServer}`);
         
         // Create WebSocket connection to actual PBX server with SIP subprotocol
-        const pbxWs = new WebSocket(pbxServer, 'sip', {
+        pbxWs = new WebSocket(pbxServer, 'sip', {
           headers: {
             'Origin': req.headers.origin || 'https://proxy.curbe.io'
           }
@@ -184,16 +201,21 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
           }
         });
         
-        // Relay messages from client to PBX
-        clientWs.on('message', (data) => {
-          if (pbxWs.readyState === WebSocket.OPEN) {
-            pbxWs.send(data);
-          }
-        });
-        
-        // Handle PBX connection open
+        // Handle PBX connection open - flush buffer
         pbxWs.on('open', () => {
           console.log('[SIP WebSocket] ✅ Connected to PBX server successfully');
+          isReady = true;
+          
+          // Flush buffered messages
+          if (messageBuffer.length > 0) {
+            console.log(`[SIP WebSocket] 📤 Flushing ${messageBuffer.length} buffered messages to PBX`);
+            messageBuffer.forEach((data) => {
+              if (pbxWs && pbxWs.readyState === WebSocket.OPEN) {
+                pbxWs.send(data);
+              }
+            });
+            messageBuffer.length = 0;
+          }
         });
         
         // Handle PBX errors
@@ -219,7 +241,7 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
         // Handle client disconnect
         clientWs.on('close', () => {
           console.log('[SIP WebSocket] Client disconnected - closing PBX connection');
-          if (pbxWs.readyState === WebSocket.OPEN || pbxWs.readyState === WebSocket.CONNECTING) {
+          if (pbxWs && (pbxWs.readyState === WebSocket.OPEN || pbxWs.readyState === WebSocket.CONNECTING)) {
             pbxWs.close();
           }
         });

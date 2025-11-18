@@ -1,0 +1,167 @@
+Javi, esos *tres mensajes* que viste en el PBX nos dan la radiografía exacta del problema.
+Déjame explicártelo **sin vueltas**, directo al punto:
+
+---
+
+# 🟥 **1) “Shutting down transport 'WSS … no request in 32 seconds”**
+
+Esto significa:
+
+👉 Replit **sí abrió la conexión WSS**,
+⚠️ **pero NO envió el REGISTER**.
+
+Entonces Asterisk dice:
+
+> “Abriste WebSocket, pero no me mandaste nada en 32 segundos. Te cierro.”
+
+---
+
+# 🟥 **2) “Broken pipe”**
+
+Esto significa:
+
+👉 Replit **cerró la conexión o la perdió**
+probablemente porque:
+
+* no estás sirviendo tu app por HTTPS en Replit
+* tu “frontend” no terminó de iniciar JsSIP
+* o el WebSocket no se manejó bien
+
+---
+
+# 🟥 **3) “SSL_shutdown() failed: Internal SSL error”**
+
+Esto aparece cuando:
+
+👉 **El cliente cierra el WebSocket sin completar el handshake WebRTC**
+y Asterisk intenta cerrar la sesión TLS pero el cliente ya no está.
+
+Esto **NO es un error del PBX**,
+es un error del cliente (Replit).
+
+---
+
+# 🟦 EN RESUMEN TÉCNICO PERFECTO
+
+### ✔ Replit **sí llega al PBX**
+
+(el WSS se abrió)
+
+### ❌ Replit **NO envía REGISTER**
+
+(la extensión nunca aparece)
+
+### ❌ Replit **corta la conexión**
+
+(“Broken pipe”, “SSL_shutdown failed”)
+
+### ✔ El PBX está bien
+
+(demostrado porque tu navegador local funciona)
+
+---
+
+# 🟩 LA PREGUNTA CLAVE:
+
+**¿Por qué Replit NO envía REGISTER?**
+
+Porque JsSIP requiere **TRES cosas específicas** para funcionar dentro de Replit:
+
+---
+
+# 🟦 ✔ REQUISITO 1 — Tu app en Replit debe estar en HTTPS
+
+Si estás abriendo así:
+
+👉 [http://tu-replit-url.repl.co](http://tu-replit-url.repl.co)
+
+WebRTC **NO funciona**
+WSS **NO conecta formalmente**
+JsSIP **NO hace registro**
+
+Tiene que ser:
+
+👉 [https://tu-replit-url.repl.co](https://tu-replit-url.repl.co)
+
+Dímelo claro:
+
+📌 ¿Estás entrando a tu app de Replit con **HTTPS**?
+
+---
+
+# 🟦 ✔ REQUISITO 2 — Necesitas STUN (Replit corre en NAT)
+
+Tu código debe contener:
+
+```javascript
+sessionDescriptionHandlerFactoryOptions: {
+  peerConnectionOptions: {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" }
+    ]
+  }
+}
+```
+
+Si no, WebRTC **no inicia** → JsSIP **ni intenta registrar**.
+
+---
+
+# 🟦 ✔ REQUISITO 3 — Necesito ver tu código
+
+Porque estoy 100 % seguro de que tu código de Replit:
+
+* o usa `ws://` en vez de `wss://`
+* o usa mal el dominio
+* o no tiene el UA.start()
+* o tiene un error en la contraseña
+* o está usando otra extensión
+* o está atrapado en un error de JS y no ejecuta tu UA
+
+**SI TU CÓDIGO TIENE UN ERROR JS → JsSIP NO INICIA → PBX nunca recibe REGISTER.**
+
+---
+
+# 🟥 LO QUE HAY QUE HACER AHORA
+
+**Mándame tu código EXACTO de Replit**, el archivo donde creas el user agent:
+
+* la parte de `var socket…`
+* la parte de `var configuration…`
+* la parte de `ua.start()`
+
+Con eso lo reparo en una sola respuesta.
+
+---
+
+# 🟦 **ANTES DE ESO, VERIFICA ESTO (IMPORTANTE)**
+
+En Replit, abre la consola del navegador:
+
+👉 **Menu → Tools → Logs → Webview**
+o
+👉 **F12 → Console**
+
+DINOS:
+
+¿Hay un error como?
+
+* “Mixed Content”
+* “WebSocket connection failed”
+* “Failed to construct ‘WebSocket’”
+* “ERR_SSL_PROTOCOL_ERROR”
+* “Cannot find module 'jssip'”
+* “Blocked by client”
+
+Cualquiera de esos explica EXACTAMENTE lo que estás viendo en el PBX.
+
+---
+
+# 🟩 LISTO PARA CONTINUAR
+
+Tu PBX está perfecto.
+
+Ahora toca que Replit termine el REGISTER.
+Y eso lo arreglo cuando me envíes tu código.
+
+Mándalo y te lo dejo funcionando en segundos.
