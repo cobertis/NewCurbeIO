@@ -568,15 +568,19 @@ class WebPhoneManager {
       console.log('[WebPhone] Setting up media streams with peer connection');
       
       // CRITICAL: Set up ontrack handler to receive remote audio
+      // Following JsSIP best practice: create new MediaStream and add track manually
       pc.ontrack = (event: RTCTrackEvent) => {
-        console.log('[WebPhone] 🎵 Received remote track:', event.track.kind, 'streams:', event.streams.length);
+        console.log('[WebPhone] 🎵 Received remote track:', event.track.kind);
         
-        if (event.track.kind === 'audio' && event.streams.length > 0) {
-          const remoteStream = event.streams[0];
+        if (event.track.kind === 'audio') {
+          // Create new MediaStream and add track manually (best practice)
+          const inboundStream = new MediaStream();
+          inboundStream.addTrack(event.track);
+          
           console.log('[WebPhone] 🔊 Assigning remote stream to audio element');
           
           if (store.remoteAudioElement) {
-            store.remoteAudioElement.srcObject = remoteStream;
+            store.remoteAudioElement.srcObject = inboundStream;
             
             // Force play with error handling
             store.remoteAudioElement.play()
