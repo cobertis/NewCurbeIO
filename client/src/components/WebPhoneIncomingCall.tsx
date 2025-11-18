@@ -5,6 +5,19 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { formatPhoneInput } from '@shared/phone';
 
+function formatCallerNumber(phoneNumber: string): string {
+  // Remove all non-digit characters
+  const digits = phoneNumber.replace(/\D/g, '');
+  
+  // If it's 3-4 digits, it's an extension
+  if (digits.length >= 3 && digits.length <= 4) {
+    return `Ext. ${digits}`;
+  }
+  
+  // Otherwise, format as regular phone number
+  return formatPhoneInput(phoneNumber);
+}
+
 export function WebPhoneIncomingCall() {
   const incomingCallVisible = useWebPhoneStore(state => state.incomingCallVisible);
   const currentCall = useWebPhoneStore(state => state.currentCall);
@@ -70,7 +83,7 @@ export function WebPhoneIncomingCall() {
             <div className="text-center mb-8">
               <p className="text-sm text-slate-400 mb-2">Incoming Call</p>
               <h3 className="text-3xl font-semibold text-white mb-1">
-                {formatPhoneInput(currentCall.phoneNumber)}
+                {formatCallerNumber(currentCall.phoneNumber)}
               </h3>
               {currentCall.displayName && (
                 <p className="text-sm text-slate-400">

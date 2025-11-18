@@ -8,6 +8,14 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
 
+function formatCallerNumber(phoneNumber: string): string {
+  const digits = phoneNumber.replace(/\D/g, '');
+  if (digits.length >= 3 && digits.length <= 4) {
+    return `Ext. ${digits}`;
+  }
+  return formatPhoneInput(phoneNumber);
+}
+
 type ViewMode = 'recents' | 'contacts' | 'keypad' | 'voicemail';
 
 interface BottomNavigationProps {
@@ -328,7 +336,7 @@ export function WebPhoneFloatingWindow() {
                       {currentCall.displayName || 'Unknown'}
                     </h2>
                     <p className="text-base text-muted-foreground mb-1">
-                      {formatPhoneInput(currentCall.phoneNumber)}
+                      {formatCallerNumber(currentCall.phoneNumber)}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {currentCall.status === 'ringing' && 'Calling...'}
@@ -503,7 +511,7 @@ export function WebPhoneFloatingWindow() {
                                       "text-base font-normal truncate",
                                       statusStyle.color
                                     )}>
-                                      {call.displayName || formatPhoneInput(call.phoneNumber)}
+                                      {call.displayName || formatCallerNumber(call.phoneNumber)}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
