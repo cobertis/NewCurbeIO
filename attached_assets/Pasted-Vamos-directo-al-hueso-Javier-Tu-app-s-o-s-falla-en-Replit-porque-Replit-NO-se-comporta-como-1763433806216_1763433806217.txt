@@ -1,0 +1,149 @@
+Vamos directo al hueso, Javier.
+Tu app **sí o sí** falla en Replit porque Replit NO se comporta como Ubuntu.
+La solución universal —la que hace que funcione SIEMPRE— es esta:
+
+---
+
+# ⭐ **LA SOLUCIÓN REAL PARA QUE TU APP FUNCIONE EN DESARROLLO (REPLIT)**
+
+Necesitas **3 cambios obligatorios**.
+
+Si haces estos 3, tu app funciona al 100% en Replit **idéntico a producción**.
+
+Te lo dejo paso a paso, sin saltarme nada.
+
+---
+
+# 🟦 **1. Replit no lee tu .env → tienes que mover todo a SECRETS**
+
+### En Replit:
+
+1. Entra a la pestaña **"Secrets"**
+2. Crea uno por uno **TODOS** los valores que tienes en producción:
+
+   * DATABASE_URL
+   * JWT_SECRET
+   * NEXT_PUBLIC_API_URL
+   * BUCKET_KEY
+   * STRIPE_SECRET
+   * CUALQUIERA que uses…
+
+### Tu servidor en Replit SOLO usa:
+
+```bash
+process.env.NOMBRE
+```
+
+Si falta uno → la app nunca arranca.
+
+---
+
+# 🟦 **2. Replit no deja escuchar en puerto fijo → usar process.env.PORT obligatorio**
+
+Tu backend (Express, Nest, Next API, etc.) debe iniciar EXACTAMENTE así:
+
+```js
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Servidor ejecutándose en puerto " + PORT);
+});
+```
+
+Si tienes esto:
+
+```js
+app.listen(3000)
+```
+
+→ JAMÁS funcionará en Replit.
+
+Porque Replit asigna su propio puerto dinámico (normalmente 49152–65535).
+
+---
+
+# 🟦 **3. Tu frontend NO PUEDE apuntar a producción en desarrollo**
+
+Si tu Next.js, Axios, o Fetch usa esto:
+
+```env
+NEXT_PUBLIC_API_URL=https://app.curbe.io/api
+```
+
+→ EN REPLIT NO FUNCIONA.
+
+Debes usar esto EN EL REPLIT:
+
+```
+NODE_ENV=development
+NEXT_PUBLIC_API_URL=https://<tu-proyecto>.youruser.repl.co/api
+```
+
+Ese dominio cambia según tu Repl.
+
+---
+
+# ✨ EJEMPLO DE CONFIGURACIÓN CORRECTA EN REPLIT
+
+Tus SECRETS:
+
+```
+NODE_ENV=development
+PORT=3000
+NEXT_PUBLIC_API_URL=https://curbe-dev.<tu-usuario>.repl.co
+DATABASE_URL=postgres://.....
+JWT_SECRET=*****
+```
+
+Tu servidor:
+
+```js
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Servidor arrancado en puerto ${PORT}`);
+});
+```
+
+Tu Axios:
+
+```js
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+});
+```
+
+Ahora, sí funciona.
+
+---
+
+# ✔️ **CONCLUSIÓN**
+
+Tu app funciona en producción porque:
+
+✓ El .env existe
+✓ El puerto es fijo
+✓ La URL es correcta
+
+Pero en Replit:
+
+✗ No usa tu .env
+✗ No acepta puertos fijos
+✗ Usa URLs de producción
+✗ Quizás usa tu base real (que bloquea desarrollo)
+
+Arreglas esos tres, y queda perfecto.
+
+---
+
+# 👉 SIGUIENTE PASO
+
+Para darte el FIX exacto:
+
+**Envíame:**
+
+1. Tu archivo donde arranca el servidor (server.js / index.js / app.js)
+2. Tu next.config.js
+3. Tu archivo donde configuras axios (si lo usas)
+
+Y te devuelvo **los archivos listos y corregidos para Replit**.

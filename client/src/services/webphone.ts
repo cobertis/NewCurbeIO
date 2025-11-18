@@ -153,7 +153,7 @@ class WebPhoneManager {
   public async initialize(extension: string, password: string, server?: string): Promise<void> {
     const store = useWebPhoneStore.getState();
     
-    // Update server if provided
+    // Update server if provided (for storage, not used for connection)
     if (server) {
       store.setWssServer(server);
     }
@@ -176,10 +176,16 @@ class WebPhoneManager {
         await this.disconnect();
       }
       
+      // Use local WebSocket proxy instead of direct PBX connection
+      // This works in both Replit dev and production environments
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const sipProxyUrl = `${protocol}//${host}/ws/sip`;
+      
       // Create SIP configuration  
       const uriString = `sip:${extension}@${store.sipDomain}`;
       const transportOptions = {
-        server: store.wssServer,
+        server: sipProxyUrl, // Use local proxy instead of direct PBX connection
         connectionTimeout: 10,
         keepAliveInterval: 30,
         traceSip: true
@@ -187,7 +193,7 @@ class WebPhoneManager {
       
       console.log('[WebPhone] Initializing with config:', {
         uri: uriString,
-        server: store.wssServer,
+        proxyServer: sipProxyUrl,
         username: extension
       });
       
@@ -201,12 +207,12 @@ class WebPhoneManager {
         delegate: {
           onInvite: this.handleIncomingCall.bind(this),
           onConnect: () => {
-            console.log('[WebPhone] ✅ Connected to WebSocket successfully');
+            console.log('[WebPhone] ✅ Connected to WebSocket proxy successfully');
             store.setConnectionStatus('connected');
             this.startReconnectMonitor();
           },
           onDisconnect: (error?: Error) => {
-            console.error('[WebPhone] ❌ Disconnected from WebSocket', {
+            console.error('[WebPhone] ❌ Disconnected from WebSocket proxy', {
               error: error?.message,
               stack: error?.stack
             });
