@@ -81,7 +81,11 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   isRecording: false,
   doNotDisturb: localStorage.getItem('webphone_dnd') === '1',
   callWaitingEnabled: localStorage.getItem('webphone_call_waiting') !== '0',
-  callHistory: JSON.parse(localStorage.getItem('webphone_call_history') || '[]'),
+  callHistory: JSON.parse(localStorage.getItem('webphone_call_history') || '[]').map((call: any) => ({
+    ...call,
+    startTime: call.startTime ? new Date(call.startTime) : undefined,
+    endTime: call.endTime ? new Date(call.endTime) : undefined,
+  })),
   dialpadVisible: false,
   incomingCallVisible: false,
   
