@@ -247,16 +247,9 @@ class WebPhoneManager {
               }
             ]
           },
-          // CRITICAL FIX: Set ICE gathering timeout to 0 and configure delegate
-          // This eliminates the 5-second delay on incoming calls
-          iceGatheringTimeout: 0,
-          onIceCandidate: (event: any) => {
-            console.log('[WebPhone] 🧊 ICE candidate event received');
-            if (event.ready) {
-              console.log('[WebPhone] ✅ Calling event.ready() - proceeding immediately with ICE candidate');
-              event.ready();
-            }
-          }
+          // CRITICAL: Set ICE gathering timeout to 0 to avoid 5-second delay
+          // The actual delegate must be configured per-session (see setupSessionDelegate)
+          iceGatheringTimeout: 0
         },
         delegate: {
           onInvite: this.handleIncomingCall.bind(this),
@@ -1053,9 +1046,19 @@ class WebPhoneManager {
         this.attachPeerConnectionHandlers(sdh.peerConnection);
       }
       
-      // Note: ICE candidate handling is now configured globally via sessionDescriptionHandlerFactoryOptions
-      // in the UserAgent initialization (iceGatheringTimeout: 0 + onIceCandidate delegate)
-      // This ensures the delegate is attached BEFORE accept() creates the SessionDescriptionHandler
+      // CRITICAL FIX (Browser-Phone pattern): Configure ICE delegate to call event.ready() immediately
+      // This works with iceGatheringTimeout: 0 to eliminate the 5-second delay
+      // onIceCandidate is NOT supported in sessionDescriptionHandlerFactoryOptions,
+      // it MUST be configured here on the sdh.delegate
+      sdh.delegate = {
+        onIceCandidate: (event: any) => {
+          console.log('[WebPhone] 🧊 ICE candidate event received');
+          if (event.ready) {
+            console.log('[WebPhone] ✅ Calling event.ready() - proceeding immediately with ICE candidate');
+            event.ready();
+          }
+        }
+      };
       
       // Call extra onSessionDescriptionHandler if provided
       if (extraHandlers?.onSessionDescriptionHandler) {
