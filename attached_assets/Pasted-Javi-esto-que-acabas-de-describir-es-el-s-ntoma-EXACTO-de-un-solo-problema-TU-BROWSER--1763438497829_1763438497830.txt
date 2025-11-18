@@ -1,0 +1,94 @@
+Javi, esto que acabas de describir **es el síntoma EXACTO** de un solo problema:
+
+# 🟥 **TU BROWSER (Replit / Chrome) NO RECIBE AUDIO — SOLO ENVÍA**
+
+Eso se llama **one-way audio (downlink)** y ocurre cuando:
+
+* 🟩 Tus paquetes **SRTP de salida** sí llegan al PBX (por eso la otra persona te escucha)
+* 🟥 Pero los paquetes **SRTP de entrada** NO pueden llegar a tu navegador
+  → el firewall/NAT del lado de Replit bloquea el camino de regreso
+  → solo el TURN lo puede desbloquear
+
+Y aquí viene lo importante:
+
+# 🟥 **TURN ya está funcionando — pero tu navegador NO lo está usando todavía**
+
+Para que Replit reciba audio, el navegador **DEBE usar TURN y NO STUN**.
+Si usa STUN → no funciona.
+Si usa conexión directa → no funciona.
+Si usa TURN 3478 → no funciona en Replit.
+Si usa TURN 5349/TLS → funciona perfecto.
+
+Eso lo deciden dos cosas:
+
+1. **tu código WebRTC (JsSIP)**
+2. **la política de ICE en la llamada**
+
+Ahora mismo tu PBX y TURN están bien.
+El fallo está en el cliente.
+
+---
+
+# 🟦 SOLUCIÓN (directa, sin rodeos)
+
+Necesito revisar tu código JsSIP, específicamente estas partes:
+
+1. El bloque donde defines el `pcConfig` (ICE servers)
+2. El lugar donde inicializas el `UA`
+3. El bloque donde manejas el `session.connection`
+4. El bloque donde agregas los streams de audio al `<audio>` en el DOM
+
+🔊 **Si tu navegador no conecta el audio entrante a un `<audio>` element, NO vas a oír nada.**
+
+JsSIP NO reproduce audio por sí solo.
+Debes hacer esto:
+
+```js
+session.on('addstream', (e) => {
+    const remoteAudio = document.getElementById('remoteAudio');
+    remoteAudio.srcObject = e.stream;
+    remoteAudio.play();
+});
+```
+
+O si usas `track`:
+
+```js
+session.connection.ontrack = (event) => {
+    const remoteAudio = document.getElementById('remoteAudio');
+    remoteAudio.srcObject = event.streams[0];
+    remoteAudio.play();
+};
+```
+
+Si esto NO está en tu código → **nunca escucharás nada** aunque el TURN funcione perfecto.
+
+---
+
+# 🟩 Javi, para arreglarlo ya:
+
+Pégame aquí **tu archivo Replit donde inicializas JsSIP**
+o por lo menos estas tres partes:
+
+⭐⭐⭐ OBLIGATORIO PEGAR ⭐⭐⭐
+
+1. donde creas el WebSocket:
+
+   ```js
+   new JsSIP.WebSocketInterface("wss://pbx.curbe.io:8089/ws");
+   ```
+
+2. donde creas el UA:
+
+   ```js
+   ua = new JsSIP.UA({...});
+   ```
+
+3. donde manejas el audio entrante:
+
+   ```js
+   session.connection.ontrack = ...
+   ```
+
+Con eso te digo EXACTAMENTE qué línea te falta
+y en 1 minuto ya escuchas audio entrante perfecto.
