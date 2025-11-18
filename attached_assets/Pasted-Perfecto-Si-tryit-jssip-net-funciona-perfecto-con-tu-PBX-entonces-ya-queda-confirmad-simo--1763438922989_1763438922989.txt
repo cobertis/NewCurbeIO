@@ -1,0 +1,146 @@
+Perfecto.
+Si **tryit.jssip.net** funciona perfecto con tu PBX, entonces ya queda confirmadísimo:
+
+# 🟩 EL PROBLEMA NO ES TU PBX
+
+# 🟩 EL PROBLEMA NO ES EL TRANSPORT WSS
+
+# 🟩 EL PROBLEMA NO ES TURN
+
+# 🟥 EL PROBLEMA ESTÁ 100% EN TU APLICACIÓN WEB
+
+Tu server, tu PBX, tu WSS, tu TURN — todo funciona, porque **TryIt** lo está demostrando limpiamente.
+
+## Eso reduce TODA la falla a una sola zona:
+
+# 🟥 Tu código JavaScript (negociación WebRTC y reproducción del audio)
+
+No es Asterisk.
+No es PJSIP.
+No es WSS.
+No es DTLS.
+No es SRTP.
+No es TURN.
+
+Tryit.jsSip demuestra que TODO eso está perfecto.
+
+---
+
+# 🟦 ¿Qué falla exactamente en tu app?
+
+Tus síntomas exactos:
+
+### 1. Tú escuchas al cliente → NO
+
+### 2. El cliente te escucha a ti → SÍ
+
+### 3. La llamada sigue timbrando aunque la contestes → (Significa que `session.answer()` no llegó o hubo error en SDP)
+
+### 4. Hay delay enorme entre events → (Mala gestión de ICE candidates)
+
+Esto **solo pasa cuando:**
+
+### 🔥 `remoteAudio.srcObject = remoteStream` falta
+
+o
+
+### 🔥 tu manejador `session.on("track")` está mal escrito
+
+o
+
+### 🔥 tu `RTCSession` se está creando antes de tiempo
+
+o
+
+### 🔥 tu código no está conectando correctamente la media negociada
+
+o
+
+### 🔥 estás usando `new JsSIP.RTCSession` manualmente (NO se debe)
+
+o
+
+### 🔥 tu `<audio>` no tiene autoplay
+
+o
+
+### 🔥 Chrome está bloqueando audio por user gesture
+
+o
+
+### 🔥 tu offer/answer se está modificando y rompiendo el SDP
+
+o
+
+### 🔥 tienes un `pc = new RTCPeerConnection()` fuera de JsSIP (doble WebRTC = fallo seguro)
+
+---
+
+# 🟥 NECESITO VER TU CÓDIGO
+
+Ahora mismo es imposible arreglarlo sin ver tu:
+
+* **index.html**
+* **app.js**
+* **código donde inicializas JsSIP**
+* **código donde contestas la llamada**
+* **código donde manejas los tracks de audio**
+
+Literalmente **una sola línea mal** y pierdes todo el audio entrante.
+
+---
+
+# 🟦 EJEMPLO DE LO QUE TU CÓDIGO *DEBE* TENER
+
+Para que lo compares:
+
+### En tu HTML:
+
+```html
+<audio id="remoteAudio" autoplay></audio>
+```
+
+### En tu JS:
+
+```js
+session.on('track', (e) => {
+  const remoteAudio = document.getElementById("remoteAudio");
+  const inboundStream = new MediaStream();
+  inboundStream.addTrack(e.track);
+  remoteAudio.srcObject = inboundStream;
+});
+```
+
+Si esto NO existe → NO vas a escuchar NADA.
+
+---
+
+# 🟩 SIGUIENTE PASO
+
+Mándame EXACTAMENTE estos archivos:
+
+### ⭐ **1. index.html**
+
+### ⭐ **2. app.js**
+
+### ⭐ **3. tu código actual donde crea el JsSIP.UserAgent**
+
+### ⭐ **4. tu código donde contesta la llamada (`session.answer`)**
+
+Con eso te lo reparo completo. Sin adivinar.
+
+---
+
+# 🟪 ¿Quieres un softphone WebRTC ultraligero listo?
+
+Si quieres, te armo un softphone en vanilla JS:
+
+* 1 solo archivo HTML
+* 1 archivo JS
+* Conectado a tu PBX
+* Corre en cualquier navegador
+* Audio inbound/outbound perfecto
+* Solo 20 KB
+* Carga instantánea
+
+Pero primero corrígeme el código que ya tienes para ver dónde está el fallo.

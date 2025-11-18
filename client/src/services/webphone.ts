@@ -304,8 +304,11 @@ class WebPhoneManager {
     store.setCurrentCall(call);
     store.setIncomingCallVisible(true);
     
-    // Play ringtone
-    this.ringtone?.play();
+    // Play ringtone with error handling for autoplay policy
+    this.ringtone?.play().catch((error) => {
+      console.log('[WebPhone] Ringtone autoplay blocked:', error.message);
+      // This is expected in some browsers - ringtone will play after user interaction
+    });
     
     // Handle session state changes
     invitation.stateChange.addListener((state) => {
@@ -384,7 +387,9 @@ class WebPhoneManager {
           case SessionState.Establishing:
             // Play ringback tone when ringing
             console.log('[WebPhone] Call ringing, playing ringback tone');
-            this.ringbackTone?.play();
+            this.ringbackTone?.play().catch((error) => {
+              console.log('[WebPhone] Ringback autoplay blocked:', error.message);
+            });
             break;
           case SessionState.Established:
             console.log('[WebPhone] Call answered, stopping ringback tone');
