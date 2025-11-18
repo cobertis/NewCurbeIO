@@ -549,7 +549,7 @@ class WebPhoneManager {
   // BROWSER-PHONE FUNCTIONS - Hold/Mute/Transfer
   // ============================================================================
   
-  public holdCall(): void {
+  public async holdCall(): Promise<void> {
     const store = useWebPhoneStore.getState();
     const session = this.currentSession;
     
@@ -592,6 +592,7 @@ class WebPhoneManager {
         },
         onReject: () => {
           console.warn('[WebPhone] Failed to put call on hold');
+          store.setOnHold(false);
         }
       },
       sessionDescriptionHandlerOptions: {
@@ -599,12 +600,15 @@ class WebPhoneManager {
       }
     };
     
-    (session as any).invite(options).catch((error: any) => {
+    try {
+      await (session as any).invite(options);
+    } catch (error) {
       console.error('[WebPhone] Error putting call on hold:', error);
-    });
+      store.setOnHold(false);
+    }
   }
   
-  public unholdCall(): void {
+  public async unholdCall(): Promise<void> {
     const store = useWebPhoneStore.getState();
     const session = this.currentSession;
     
@@ -647,6 +651,7 @@ class WebPhoneManager {
         },
         onReject: () => {
           console.warn('[WebPhone] Failed to take call off hold');
+          store.setOnHold(true);
         }
       },
       sessionDescriptionHandlerOptions: {
@@ -654,9 +659,12 @@ class WebPhoneManager {
       }
     };
     
-    (session as any).invite(options).catch((error: any) => {
+    try {
+      await (session as any).invite(options);
+    } catch (error) {
       console.error('[WebPhone] Error taking call off hold:', error);
-    });
+      store.setOnHold(true);
+    }
   }
   
   public muteCall(): void {
