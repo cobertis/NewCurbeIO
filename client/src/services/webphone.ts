@@ -205,16 +205,14 @@ class WebPhoneManager {
         await this.disconnect();
       }
       
-      // Use local WebSocket proxy instead of direct PBX connection
-      // This works in both Replit dev and production environments
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const sipProxyUrl = `${protocol}//${host}/ws/sip`;
+      // DIRECT CONNECTION to Asterisk WSS (no proxy)
+      // Connect directly from browser to pbx1.curbe.io
+      const pbxServer = server || store.wssServer || 'wss://pbx1.curbe.io:8089/ws';
       
       // Create SIP configuration  
       const uriString = `sip:${extension}@${store.sipDomain}`;
       const transportOptions = {
-        server: sipProxyUrl, // Use local proxy instead of direct PBX connection
+        server: pbxServer, // Direct connection to Asterisk
         connectionTimeout: 10,
         keepAliveInterval: 30,
         traceSip: true
@@ -222,7 +220,7 @@ class WebPhoneManager {
       
       console.log('[WebPhone] Initializing with config:', {
         uri: uriString,
-        proxyServer: sipProxyUrl,
+        directPBX: pbxServer,
         username: extension
       });
       
