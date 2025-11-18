@@ -98,12 +98,19 @@ export function WebPhoneFloatingWindow() {
   const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
   const setAudioElements = useWebPhoneStore(state => state.setAudioElements);
   
-  // Initialize audio elements
+  // FIX PROBLEM 1: Re-register audio elements EVERY time component becomes visible
+  // This ensures audio refs are NEVER lost after reload or when dialpad is toggled
   useEffect(() => {
-    if (remoteAudioRef.current && localAudioRef.current) {
+    if (isVisible && remoteAudioRef.current && localAudioRef.current) {
+      console.log('[WebPhone FloatingWindow] ✅ Registering audio elements on mount/visibility');
       setAudioElements(localAudioRef.current, remoteAudioRef.current);
+    } else if (isVisible) {
+      console.warn('[WebPhone FloatingWindow] ⚠️ Audio refs not ready:', {
+        remote: !!remoteAudioRef.current,
+        local: !!localAudioRef.current
+      });
     }
-  }, [setAudioElements]);
+  }, [isVisible, setAudioElements]);
   
   // Call timer
   useEffect(() => {

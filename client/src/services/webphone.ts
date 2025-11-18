@@ -1057,16 +1057,25 @@ class WebPhoneManager {
   private attachPeerConnectionHandlers(pc: RTCPeerConnection) {
     const store = useWebPhoneStore.getState();
     
+    // FIX PROBLEM 3: Guard #1 - Check audio element exists at start
     if (!store.remoteAudioElement) {
-      console.error('[WebPhone] ❌ Remote audio element not available');
+      console.error('[WebPhone] ❌ CRITICAL: Remote audio element not available - audio will NOT work!');
+      console.error('[WebPhone] ❌ This likely means WebPhoneFloatingWindow did not register audio refs properly');
       return;
     }
     
-    console.log('[WebPhone] Attaching handlers to peer connection');
+    console.log('[WebPhone] ✅ Audio element verified, attaching handlers to peer connection');
     
     // CRITICAL: Use Browser-Phone pattern - ontrack triggers manual track collection
     pc.ontrack = (event: RTCTrackEvent) => {
       console.log('[WebPhone] 🎵 ontrack fired - kind:', event.track.kind);
+      
+      // FIX PROBLEM 3: Guard #2 - Re-check audio element before using
+      const currentStore = useWebPhoneStore.getState();
+      if (!currentStore.remoteAudioElement) {
+        console.error('[WebPhone] ❌ CRITICAL: Remote audio element lost during call - cannot play audio');
+        return;
+      }
       
       // Browser-Phone pattern: Collect tracks from transceivers manually
       const remoteAudioStream = new MediaStream();
@@ -1081,7 +1090,7 @@ class WebPhoneManager {
       
       // Attach audio stream if we have tracks
       if (remoteAudioStream.getAudioTracks().length >= 1) {
-        const remoteAudio = store.remoteAudioElement;
+        const remoteAudio = currentStore.remoteAudioElement;
         if (remoteAudio) {
           console.log('[WebPhone] 🔊 Assigning remote stream to audio element');
           remoteAudio.srcObject = remoteAudioStream;
@@ -1097,7 +1106,11 @@ class WebPhoneManager {
                 console.error('[WebPhone] ❌ Failed to play remote audio:', error);
               });
           };
+        } else {
+          console.error('[WebPhone] ❌ Audio element became null before assigning stream');
         }
+      } else {
+        console.warn('[WebPhone] ⚠️ No audio tracks found in stream');
       }
     };
     
@@ -1124,11 +1137,17 @@ class WebPhoneManager {
           console.log('[WebPhone] 🎵 Found existing audio receiver', idx);
           const remoteStream = new MediaStream([receiver.track]);
           
-          if (store.remoteAudioElement) {
-            store.remoteAudioElement.srcObject = remoteStream;
-            store.remoteAudioElement.play()
+          // FIX PROBLEM 3: Guard #3 - Check audio element before using existing tracks
+          const currentStore = useWebPhoneStore.getState();
+          if (currentStore.remoteAudioElement) {
+            currentStore.remoteAudioElement.srcObject = remoteStream;
+            currentStore.remoteAudioElement.play()
               .then(() => console.log('[WebPhone] ✅ Existing track playing'))
-              .catch(console.error);
+              .catch((error) => {
+                console.error('[WebPhone] ❌ Failed to play existing track:', error);
+              });
+          } else {
+            console.error('[WebPhone] ❌ Audio element not available for existing tracks');
           }
         }
       });
