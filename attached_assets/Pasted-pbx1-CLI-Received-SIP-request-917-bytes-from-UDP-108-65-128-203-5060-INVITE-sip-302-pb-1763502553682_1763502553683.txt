@@ -1,0 +1,641 @@
+pbx1*CLI> 
+<--- Received SIP request (917 bytes) from UDP:108.65.128.203:5060 --->
+INVITE sip:302@pbx1.curbe.io:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.148:5060;branch=z9hG4bK1ba6358566b3c241dafe5
+From: "Javier Lazo" <sip:301@pbx1.curbe.io:5060>;tag=742558756
+To: <sip:302@pbx1.curbe.io:5060>
+Call-ID: 0_742640347@192.168.1.148
+CSeq: 1 INVITE
+Contact: <sip:301@192.168.1.148:5060>
+Content-Type: application/sdp
+Allow: INVITE, INFO, PRACK, ACK, BYE, CANCEL, OPTIONS, NOTIFY, REGISTER, SUBSCRIBE, REFER, PUBLISH, UPDATE, MESSAGE
+Max-Forwards: 70
+User-Agent: Yealink SIP-T54W 96.86.0.70
+Allow-Events: talk,hold,conference,refer,check-sync
+Supported: replaces
+Content-Length: 308
+
+v=0
+o=- 20033 20033 IN IP4 192.168.1.148
+s=SDP data
+c=IN IP4 192.168.1.148
+t=0 0
+m=audio 12532 RTP/AVP 9 0 8 18 101
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:18 G729/8000
+a=fmtp:18 annexb=no
+a=ptime:20
+a=sendrecv
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+
+<--- Transmitting SIP response (507 bytes) to UDP:108.65.128.203:5060 --->
+SIP/2.0 401 Unauthorized
+Via: SIP/2.0/UDP 192.168.1.148:5060;rport=5060;received=108.65.128.203;branch=z9hG4bK1ba6358566b3c241dafe5
+Call-ID: 0_742640347@192.168.1.148
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=z9hG4bK1ba6358566b3c241dafe5
+CSeq: 1 INVITE
+WWW-Authenticate: Digest realm="asterisk",nonce="1763502329/d3e5f3dfbb36619274c1402e2f934dd2",opaque="1b2c91d57689a1c4",algorithm=MD5,qop="auth"
+Server: FPBX-17.0.21.7(22.6.0)
+Content-Length:  0
+
+
+<--- Received SIP request (304 bytes) from UDP:108.65.128.203:5060 --->
+ACK sip:302@pbx1.curbe.io:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.148:5060;branch=z9hG4bK1ba6358566b3c241dafe5
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=z9hG4bK1ba6358566b3c241dafe5
+Call-ID: 0_742640347@192.168.1.148
+CSeq: 1 ACK
+Content-Length: 0
+
+
+<--- Received SIP request (1178 bytes) from UDP:108.65.128.203:5060 --->
+INVITE sip:302@pbx1.curbe.io:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.148:5060;branch=z9hG4bK742681129
+From: "Javier Lazo" <sip:301@pbx1.curbe.io:5060>;tag=742558756
+To: <sip:302@pbx1.curbe.io:5060>
+Call-ID: 0_742640347@192.168.1.148
+CSeq: 2 INVITE
+Contact: <sip:301@192.168.1.148:5060>
+Authorization: Digest username="301", realm="asterisk", nonce="1763502329/d3e5f3dfbb36619274c1402e2f934dd2", uri="sip:302@pbx1.curbe.io:5060", response="01ec3ea8ed69ddf80bb7cc660a82bc9a", algorithm=MD5, cnonce="742764220", opaque="1b2c91d57689a1c4", qop=auth, nc=00000001
+Content-Type: application/sdp
+Allow: INVITE, INFO, PRACK, ACK, BYE, CANCEL, OPTIONS, NOTIFY, REGISTER, SUBSCRIBE, REFER, PUBLISH, UPDATE, MESSAGE
+Max-Forwards: 70
+User-Agent: Yealink SIP-T54W 96.86.0.70
+Allow-Events: talk,hold,conference,refer,check-sync
+Supported: replaces
+Content-Length: 308
+
+v=0
+o=- 20033 20033 IN IP4 192.168.1.148
+s=SDP data
+c=IN IP4 192.168.1.148
+t=0 0
+m=audio 12532 RTP/AVP 9 0 8 18 101
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:18 G729/8000
+a=fmtp:18 annexb=no
+a=ptime:20
+a=sendrecv
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-15
+
+<--- Transmitting SIP response (310 bytes) to UDP:108.65.128.203:5060 --->
+SIP/2.0 100 Trying
+Via: SIP/2.0/UDP 192.168.1.148:5060;rport=5060;received=108.65.128.203;branch=z9hG4bK742681129
+Call-ID: 0_742640347@192.168.1.148
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>
+CSeq: 2 INVITE
+Server: FPBX-17.0.21.7(22.6.0)
+Content-Length:  0
+
+
+  == Using SIP RTP Audio TOS bits 184
+  == Using SIP RTP Audio TOS bits 184 in TCLASS field.
+  == Using SIP RTP Audio CoS mark 5
+    -- Executing [302@from-internal:1] GotoIf("PJSIP/301-0000000f", "1?ext-local,302,1:followme-check,302,1") in new stack
+    -- Goto (ext-local,302,1)
+    -- Executing [302@ext-local:1] Set("PJSIP/301-0000000f", "__RINGTIMER=15") in new stack
+    -- Executing [302@ext-local:2] ExecIf("PJSIP/301-0000000f", "0?Set(__CWIGNORE=)") in new stack
+    -- Executing [302@ext-local:3] Gosub("PJSIP/301-0000000f", "macro-exten-vm,s,1(novm,302,0,0,0)") in new stack
+    -- Executing [s@macro-exten-vm:1] Gosub("PJSIP/301-0000000f", "macro-user-callerid,s,1(novm,302,,,,macro-exten-vm)") in new stack
+    -- Executing [s@macro-user-callerid:1] Set("PJSIP/301-0000000f", "TOUCH_MONITOR=1763502329.22") in new stack
+    -- Executing [s@macro-user-callerid:2] Set("PJSIP/301-0000000f", "CHANCONTEXT=") in new stack
+    -- Executing [s@macro-user-callerid:3] Set("PJSIP/301-0000000f", "CHANCONTEXT=") in new stack
+    -- Executing [s@macro-user-callerid:4] Set("PJSIP/301-0000000f", "CHANEXTENCONTEXT=301-0000000f") in new stack
+    -- Executing [s@macro-user-callerid:5] Set("PJSIP/301-0000000f", "CHANEXTEN=301-0000000f") in new stack
+    -- Executing [s@macro-user-callerid:6] Set("PJSIP/301-0000000f", "CALLERID(number)=301") in new stack
+    -- Executing [s@macro-user-callerid:7] Set("PJSIP/301-0000000f", "AMPUSER=301") in new stack
+    -- Executing [s@macro-user-callerid:8] Set("PJSIP/301-0000000f", "HOTDESCKCHAN=301-0000000f") in new stack
+    -- Executing [s@macro-user-callerid:9] Set("PJSIP/301-0000000f", "HOTDESKEXTEN=301") in new stack
+    -- Executing [s@macro-user-callerid:10] Set("PJSIP/301-0000000f", "HOTDESKCALL=0") in new stack
+    -- Executing [s@macro-user-callerid:11] ExecIf("PJSIP/301-0000000f", "0?Set(HOTDESKCALL=1)") in new stack
+    -- Executing [s@macro-user-callerid:12] ExecIf("PJSIP/301-0000000f", "0?Set(CALLERID(name)=)") in new stack
+    -- Executing [s@macro-user-callerid:13] GotoIf("PJSIP/301-0000000f", "0?report") in new stack
+    -- Executing [s@macro-user-callerid:14] ExecIf("PJSIP/301-0000000f", "1?Set(REALCALLERIDNUM=301)") in new stack
+    -- Executing [s@macro-user-callerid:15] Set("PJSIP/301-0000000f", "AMPUSER=301") in new stack
+    -- Executing [s@macro-user-callerid:16] GotoIf("PJSIP/301-0000000f", "0?limit") in new stack
+    -- Executing [s@macro-user-callerid:17] Set("PJSIP/301-0000000f", "AMPUSERCIDNAME=Javier Lazo") in new stack
+    -- Executing [s@macro-user-callerid:18] ExecIf("PJSIP/301-0000000f", "0?Set(__CIDMASQUERADING=TRUE)") in new stack
+    -- Executing [s@macro-user-callerid:19] GotoIf("PJSIP/301-0000000f", "0?report") in new stack
+    -- Executing [s@macro-user-callerid:20] Set("PJSIP/301-0000000f", "AMPUSERCID=301") in new stack
+    -- Executing [s@macro-user-callerid:21] Set("PJSIP/301-0000000f", "__DIAL_OPTIONS=HhTtr") in new stack
+    -- Executing [s@macro-user-callerid:22] Set("PJSIP/301-0000000f", "CALLERID(all)="Javier Lazo" <301>") in new stack
+    -- Executing [s@macro-user-callerid:23] ExecIf("PJSIP/301-0000000f", "0?Set(CUSDIAL=302)") in new stack
+    -- Executing [s@macro-user-callerid:24] ExecIf("PJSIP/301-0000000f", "0?Set(CALLERID(all)=302)") in new stack
+    -- Executing [s@macro-user-callerid:25] GotoIf("PJSIP/301-0000000f", "0?limit") in new stack
+    -- Executing [s@macro-user-callerid:26] ExecIf("PJSIP/301-0000000f", "0?Set(GROUP(concurrency_limit)=301)") in new stack
+    -- Executing [s@macro-user-callerid:27] ExecIf("PJSIP/301-0000000f", "0?Set(CHANNEL(language)=)") in new stack
+    -- Executing [s@macro-user-callerid:28] NoOp("PJSIP/301-0000000f", "Macro depricated!! To keep the same line numbers") in new stack
+    -- Executing [s@macro-user-callerid:29] NoOp("PJSIP/301-0000000f", "Macro depricated !!  To keep the same line numbers") in new stack
+    -- Executing [s@macro-user-callerid:30] GotoIf("PJSIP/301-0000000f", "0?continue") in new stack
+    -- Executing [s@macro-user-callerid:31] ExecIf("PJSIP/301-0000000f", "1?Set(__CALLEE_ACCOUNCODE=)") in new stack
+    -- Executing [s@macro-user-callerid:32] Set("PJSIP/301-0000000f", "__TTL=64") in new stack
+    -- Executing [s@macro-user-callerid:33] GotoIf("PJSIP/301-0000000f", "1?continue") in new stack
+    -- Goto (macro-user-callerid,s,49)
+    -- Executing [s@macro-user-callerid:49] Set("PJSIP/301-0000000f", "CALLERID(number)=301") in new stack
+    -- Executing [s@macro-user-callerid:50] Set("PJSIP/301-0000000f", "CALLERID(name)=Javier Lazo") in new stack
+    -- Executing [s@macro-user-callerid:51] GotoIf("PJSIP/301-0000000f", "0?cnum") in new stack
+    -- Executing [s@macro-user-callerid:52] Set("PJSIP/301-0000000f", "__MCNUM=301") in new stack
+    -- Executing [s@macro-user-callerid:53] Set("PJSIP/301-0000000f", "__MCNAME=Javier Lazo") in new stack
+    -- Executing [s@macro-user-callerid:54] Set("PJSIP/301-0000000f", "__MCEXTEN=301") in new stack
+    -- Executing [s@macro-user-callerid:55] Set("PJSIP/301-0000000f", "__MCORGCHAN=PJSIP/301-0000000f") in new stack
+    -- Executing [s@macro-user-callerid:56] Set("PJSIP/301-0000000f", "CDR(cnam)=Javier Lazo") in new stack
+    -- Executing [s@macro-user-callerid:57] Set("PJSIP/301-0000000f", "CDR(cnum)=301") in new stack
+    -- Executing [s@macro-user-callerid:58] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-exten-vm:2] Set("PJSIP/301-0000000f", "RingGroupMethod=none") in new stack
+    -- Executing [s@macro-exten-vm:3] Set("PJSIP/301-0000000f", "__EXTTOCALL=302") in new stack
+    -- Executing [s@macro-exten-vm:4] Set("PJSIP/301-0000000f", "__PICKUPMARK=302") in new stack
+    -- Executing [s@macro-exten-vm:5] Set("PJSIP/301-0000000f", "RT=") in new stack
+    -- Executing [s@macro-exten-vm:6] GotoIf("PJSIP/301-0000000f", "1?startcheck:exitcheck") in new stack
+    -- Goto (macro-exten-vm,s,7)
+    -- Executing [s@macro-exten-vm:7] GotoIf("PJSIP/301-0000000f", "0?featureSIP:featurePJSIP") in new stack
+    -- Goto (macro-exten-vm,s,11)
+    -- Executing [s@macro-exten-vm:11] ExecIf("PJSIP/301-0000000f", "0?Gosub(macro-vm,novm,DIRECTDIAL,)") in new stack
+    -- Executing [s@macro-exten-vm:12] ExecIf("PJSIP/301-0000000f", "0?Return()") in new stack
+    -- Executing [s@macro-exten-vm:13] GotoIf("PJSIP/301-0000000f", "1?featuremoniPJSIP:featuremoniSIP") in new stack
+    -- Goto (macro-exten-vm,s,14)
+    -- Executing [s@macro-exten-vm:14] ExecIf("PJSIP/301-0000000f", "0?ChanSpy(PJSIP/302,q)") in new stack
+    -- Executing [s@macro-exten-vm:15] ExecIf("PJSIP/301-0000000f", "0?Return()") in new stack
+    -- Executing [s@macro-exten-vm:16] GotoIf("PJSIP/301-0000000f", "1?check-ext-intercom:featuremoniSIP") in new stack
+    -- Goto (macro-exten-vm,s,19)
+    -- Executing [s@macro-exten-vm:19] GotoIf("PJSIP/301-0000000f", "0?ext-intercomSIP:ext-intercomPJSIP") in new stack
+    -- Goto (macro-exten-vm,s,20)
+    -- Executing [s@macro-exten-vm:20] ExecIf("PJSIP/301-0000000f", "0?Gosub(ext-intercom,*80302,1())") in new stack
+    -- Executing [s@macro-exten-vm:21] ExecIf("PJSIP/301-0000000f", "0?Return()") in new stack
+    -- Executing [s@macro-exten-vm:22] GotoIf("PJSIP/301-0000000f", "1?exitcheck:ext-intercomSIP") in new stack
+    -- Goto (macro-exten-vm,s,25)
+    -- Executing [s@macro-exten-vm:25] NoOp("PJSIP/301-0000000f", "Exiting Checks") in new stack
+    -- Executing [s@macro-exten-vm:26] Gosub("PJSIP/301-0000000f", "sub-record-check,s,1(exten,302,dontcare)") in new stack
+    -- Executing [s@sub-record-check:1] GotoIf("PJSIP/301-0000000f", "0?initialized") in new stack
+    -- Executing [s@sub-record-check:2] Set("PJSIP/301-0000000f", "__REC_STATUS=INITIALIZED") in new stack
+    -- Executing [s@sub-record-check:3] Set("PJSIP/301-0000000f", "NOW=1763502329") in new stack
+    -- Executing [s@sub-record-check:4] Set("PJSIP/301-0000000f", "__DAY=18") in new stack
+    -- Executing [s@sub-record-check:5] Set("PJSIP/301-0000000f", "__MONTH=11") in new stack
+    -- Executing [s@sub-record-check:6] Set("PJSIP/301-0000000f", "__YEAR=2025") in new stack
+    -- Executing [s@sub-record-check:7] Set("PJSIP/301-0000000f", "__TIMESTR=20251118-164529") in new stack
+    -- Executing [s@sub-record-check:8] Set("PJSIP/301-0000000f", "__FROMEXTEN=301") in new stack
+    -- Executing [s@sub-record-check:9] Set("PJSIP/301-0000000f", "__MON_FMT=wav") in new stack
+    -- Executing [s@sub-record-check:10] NoOp("PJSIP/301-0000000f", "Recordings initialized") in new stack
+    -- Executing [s@sub-record-check:11] ExecIf("PJSIP/301-0000000f", "0?Set(ARG3=dontcare)") in new stack
+    -- Executing [s@sub-record-check:12] Set("PJSIP/301-0000000f", "REC_POLICY_MODE_SAVE=") in new stack
+    -- Executing [s@sub-record-check:13] ExecIf("PJSIP/301-0000000f", "0?Set(REC_STATUS=NO)") in new stack
+    -- Executing [s@sub-record-check:14] GotoIf("PJSIP/301-0000000f", "5?checkaction") in new stack
+    -- Goto (sub-record-check,s,17)
+    -- Executing [s@sub-record-check:17] GotoIf("PJSIP/301-0000000f", "1?sub-record-check,exten,1") in new stack
+    -- Goto (sub-record-check,exten,1)
+    -- Executing [exten@sub-record-check:1] NoOp("PJSIP/301-0000000f", "Exten Recording Check between 301 and 302") in new stack
+    -- Executing [exten@sub-record-check:2] Set("PJSIP/301-0000000f", "CALLTYPE=internal") in new stack
+    -- Executing [exten@sub-record-check:3] ExecIf("PJSIP/301-0000000f", "0?Set(CALLTYPE=)") in new stack
+    -- Executing [exten@sub-record-check:4] Set("PJSIP/301-0000000f", "CALLEE=dontcare") in new stack
+    -- Executing [exten@sub-record-check:5] ExecIf("PJSIP/301-0000000f", "0?Set(CALLEE=dontcare)") in new stack
+    -- Executing [exten@sub-record-check:6] GotoIf("PJSIP/301-0000000f", "0?callee") in new stack
+    -- Executing [exten@sub-record-check:7] GotoIf("PJSIP/301-0000000f", "1?caller") in new stack
+    -- Goto (sub-record-check,exten,13)
+    -- Executing [exten@sub-record-check:13] Set("PJSIP/301-0000000f", "RECMODE=dontcare") in new stack
+    -- Executing [exten@sub-record-check:14] Set("PJSIP/301-0000000f", "CALLERRECMODE=dontcare") in new stack
+    -- Executing [exten@sub-record-check:15] Set("PJSIP/301-0000000f", "CALEERECMODE=dontcare") in new stack
+    -- Executing [exten@sub-record-check:16] GotoIf("PJSIP/301-0000000f", "0?processnormal") in new stack
+    -- Executing [exten@sub-record-check:17] ExecIf("PJSIP/301-0000000f", "0?Set(RECMODE=dontcare)") in new stack
+    -- Executing [exten@sub-record-check:18] ExecIf("PJSIP/301-0000000f", "0?Set(RECMODE=dontcare)") in new stack
+    -- Executing [exten@sub-record-check:19] ExecIf("PJSIP/301-0000000f", "0?Set(RECMODE=dontcare)") in new stack
+    -- Executing [exten@sub-record-check:20] ExecIf("PJSIP/301-0000000f", "0?Set(RECMODE=dontcare)") in new stack
+    -- Executing [exten@sub-record-check:21] ExecIf("PJSIP/301-0000000f", "0?Set(RECMODE=dontcare)") in new stack
+    -- Executing [exten@sub-record-check:22] ExecIf("PJSIP/301-0000000f", "1?Set(RECMODE=dontcare)") in new stack
+    -- Executing [exten@sub-record-check:23] Gosub("PJSIP/301-0000000f", "recordcheck,1(dontcare,internal,302)") in new stack
+    -- Executing [recordcheck@sub-record-check:1] NoOp("PJSIP/301-0000000f", "Starting recording check against dontcare") in new stack
+    -- Executing [recordcheck@sub-record-check:2] Goto("PJSIP/301-0000000f", "dontcare") in new stack
+    -- Goto (sub-record-check,recordcheck,3)
+    -- Executing [recordcheck@sub-record-check:3] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [exten@sub-record-check:24] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-exten-vm:27] GotoIf("PJSIP/301-0000000f", "1?macrodial") in new stack
+    -- Goto (macro-exten-vm,s,33)
+    -- Executing [s@macro-exten-vm:33] GosubIf("PJSIP/301-0000000f", "0?clrheader,1()") in new stack
+    -- Executing [s@macro-exten-vm:34] Gosub("PJSIP/301-0000000f", "macro-dial-one,s,1(,HhTtr,302)") in new stack
+    -- Executing [s@macro-dial-one:1] Set("PJSIP/301-0000000f", "DEXTEN=302") in new stack
+    -- Executing [s@macro-dial-one:2] Set("PJSIP/301-0000000f", "__CRM_SOURCE=301") in new stack
+    -- Executing [s@macro-dial-one:3] Set("PJSIP/301-0000000f", "__MCEXTTOCALL=302") in new stack
+    -- Executing [s@macro-dial-one:4] Set("PJSIP/301-0000000f", "__MCMULTI=fc84771ad524e79735d51bca098bef08") in new stack
+    -- Executing [s@macro-dial-one:5] ExecIf("PJSIP/301-0000000f", "0?Set(__EXTTOCALL=302)") in new stack
+    -- Executing [s@macro-dial-one:6] Set("PJSIP/301-0000000f", "DIALSTATUS_CW=") in new stack
+    -- Executing [s@macro-dial-one:7] GosubIf("PJSIP/301-0000000f", "0?screen,1()") in new stack
+    -- Executing [s@macro-dial-one:8] GosubIf("PJSIP/301-0000000f", "0?cf,1()") in new stack
+    -- Executing [s@macro-dial-one:9] GotoIf("PJSIP/301-0000000f", "1?skip1") in new stack
+    -- Goto (macro-dial-one,s,12)
+    -- Executing [s@macro-dial-one:12] GotoIf("PJSIP/301-0000000f", "0?nodial") in new stack
+    -- Executing [s@macro-dial-one:13] GotoIf("PJSIP/301-0000000f", "0?continue") in new stack
+    -- Executing [s@macro-dial-one:14] Set("PJSIP/301-0000000f", "EXTHASCW=ENABLED") in new stack
+    -- Executing [s@macro-dial-one:15] GotoIf("PJSIP/301-0000000f", "0?next1:cwinusebusy") in new stack
+    -- Goto (macro-dial-one,s,27)
+    -- Executing [s@macro-dial-one:27] GotoIf("PJSIP/301-0000000f", "0?next3:continue") in new stack
+    -- Goto (macro-dial-one,s,29)
+    -- Executing [s@macro-dial-one:29] GotoIf("PJSIP/301-0000000f", "0?nodial") in new stack
+    -- Executing [s@macro-dial-one:30] GosubIf("PJSIP/301-0000000f", "1?dstring,1():dlocal,1()") in new stack
+    -- Executing [dstring@macro-dial-one:1] Set("PJSIP/301-0000000f", "DSTRING=") in new stack
+    -- Executing [dstring@macro-dial-one:2] Set("PJSIP/301-0000000f", "DEVICES=302") in new stack
+    -- Executing [dstring@macro-dial-one:3] ExecIf("PJSIP/301-0000000f", "0?Return()") in new stack
+    -- Executing [dstring@macro-dial-one:4] ExecIf("PJSIP/301-0000000f", "0?Set(DEVICES=02)") in new stack
+    -- Executing [dstring@macro-dial-one:5] Set("PJSIP/301-0000000f", "LOOPCNT=1") in new stack
+    -- Executing [dstring@macro-dial-one:6] Set("PJSIP/301-0000000f", "ITER=1") in new stack
+    -- Executing [dstring@macro-dial-one:7] Set("PJSIP/301-0000000f", "THISDIAL=PJSIP/302") in new stack
+    -- Executing [dstring@macro-dial-one:8] GotoIf("PJSIP/301-0000000f", "0?docheck") in new stack
+    -- Executing [dstring@macro-dial-one:9] NoOp("PJSIP/301-0000000f", "Debug: Found PJSIP Destination PJSIP/302") in new stack
+    -- Executing [dstring@macro-dial-one:10] GotoIf("PJSIP/301-0000000f", "0?doset") in new stack
+    -- Executing [dstring@macro-dial-one:11] NoOp("PJSIP/301-0000000f", "Debug: Updating PJSIP Destination with PJSIP_DIAL_CONTACTS") in new stack
+    -- Executing [dstring@macro-dial-one:12] Set("PJSIP/301-0000000f", "THISDIAL=PJSIP/302/sip:tnqujs8p@71.145.228.152:52618;transport=ws;x-ast-orig-host=j4un7uevgkqp.invalid:0") in new stack
+    -- Executing [dstring@macro-dial-one:13] ExecIf("PJSIP/301-0000000f", "0?Set(DIALSTATUS=CHANUNAVAIL)") in new stack
+    -- Executing [dstring@macro-dial-one:14] GotoIf("PJSIP/301-0000000f", "0?skipset") in new stack
+    -- Executing [dstring@macro-dial-one:15] Set("PJSIP/301-0000000f", "DSTRING=PJSIP/302/sip:tnqujs8p@71.145.228.152:52618;transport=ws;x-ast-orig-host=j4un7uevgkqp.invalid:0&") in new stack
+    -- Executing [dstring@macro-dial-one:16] Set("PJSIP/301-0000000f", "ITER=2") in new stack
+    -- Executing [dstring@macro-dial-one:17] GotoIf("PJSIP/301-0000000f", "0?begin") in new stack
+    -- Executing [dstring@macro-dial-one:18] ExecIf("PJSIP/301-0000000f", "0?Return()") in new stack
+    -- Executing [dstring@macro-dial-one:19] Set("PJSIP/301-0000000f", "DSTRING=PJSIP/302/sip:tnqujs8p@71.145.228.152:52618;transport=ws;x-ast-orig-host=j4un7uevgkqp.invalid:0") in new stack
+    -- Executing [dstring@macro-dial-one:20] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-dial-one:31] GotoIf("PJSIP/301-0000000f", "0?nodial") in new stack
+    -- Executing [s@macro-dial-one:32] GotoIf("PJSIP/301-0000000f", "0?skiptrace") in new stack
+    -- Executing [s@macro-dial-one:33] GosubIf("PJSIP/301-0000000f", "1?ctset,1():ctclear,1()") in new stack
+    -- Executing [ctset@macro-dial-one:1] Set("PJSIP/301-0000000f", "DB(CALLTRACE/302)=301") in new stack
+    -- Executing [ctset@macro-dial-one:2] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-dial-one:34] Set("PJSIP/301-0000000f", "D_OPTIONS=HhTtr") in new stack
+    -- Executing [s@macro-dial-one:35] GosubIf("PJSIP/301-0000000f", "0?func-set-sipheader,s,1(Alert-Info,)") in new stack
+    -- Executing [s@macro-dial-one:36] NoOp("PJSIP/301-0000000f", "Blind Transfer: , Attended Transfer: , User: 301, Alert Info: ") in new stack
+    -- Executing [s@macro-dial-one:37] ExecIf("PJSIP/301-0000000f", "1?Set(ALERT_INFO=)") in new stack
+    -- Executing [s@macro-dial-one:38] ExecIf("PJSIP/301-0000000f", "0?Set(ALERT_INFO=)") in new stack
+    -- Executing [s@macro-dial-one:39] ExecIf("PJSIP/301-0000000f", "0?Set(ALERT_INFO=)") in new stack
+    -- Executing [s@macro-dial-one:40] ExecIf("PJSIP/301-0000000f", "0?Set(ALERT_INFO=Normal;volume=)") in new stack
+    -- Executing [s@macro-dial-one:41] ExecIf("PJSIP/301-0000000f", "0?Set(ALERT_INFO=Normal;volume=)") in new stack
+    -- Executing [s@macro-dial-one:42] GosubIf("PJSIP/301-0000000f", "0?func-set-sipheader,s,1(Alert-Info,)") in new stack
+    -- Executing [s@macro-dial-one:43] ExecIf("PJSIP/301-0000000f", "0?Set(CHANNEL(musicclass)=)") in new stack
+    -- Executing [s@macro-dial-one:44] GosubIf("PJSIP/301-0000000f", "0?qwait,1()") in new stack
+    -- Executing [s@macro-dial-one:45] Set("PJSIP/301-0000000f", "__CWIGNORE=") in new stack
+    -- Executing [s@macro-dial-one:46] Set("PJSIP/301-0000000f", "__KEEPCID=TRUE") in new stack
+    -- Executing [s@macro-dial-one:47] GotoIf("PJSIP/301-0000000f", "0?usegoto,1") in new stack
+    -- Executing [s@macro-dial-one:48] GotoIf("PJSIP/301-0000000f", "0?godial") in new stack
+    -- Executing [s@macro-dial-one:49] Gosub("PJSIP/301-0000000f", "sub-presencestate-display,s,1(302)") in new stack
+    -- Executing [s@sub-presencestate-display:1] Goto("PJSIP/301-0000000f", "state-available,1") in new stack
+    -- Goto (sub-presencestate-display,state-available,1)
+    -- Executing [state-available@sub-presencestate-display:1] Set("PJSIP/301-0000000f", "PRESENCESTATE_DISPLAY=(Available)") in new stack
+    -- Executing [state-available@sub-presencestate-display:2] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-dial-one:50] Set("PJSIP/301-0000000f", "CONNECTEDLINE(name,i)=Jason Fonseca (Available)") in new stack
+    -- Executing [s@macro-dial-one:51] Set("PJSIP/301-0000000f", "CONNECTEDLINE(num)=302") in new stack
+    -- Executing [s@macro-dial-one:52] Set("PJSIP/301-0000000f", "D_OPTIONS=HhTtr") in new stack
+    -- Executing [s@macro-dial-one:53] Gosub("PJSIP/301-0000000f", "macro-dialout-one-predial-hook,s,1()") in new stack
+    -- Executing [s@macro-dialout-one-predial-hook:1] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-dial-one:54] ExecIf("PJSIP/301-0000000f", "0?Set(D_OPTIONS=HhtrI)") in new stack
+    -- Executing [s@macro-dial-one:55] ExecIf("PJSIP/301-0000000f", "0?Set(CWRING=r(callwaiting)):Set(CWRING=)") in new stack
+    -- Executing [s@macro-dial-one:56] NoOp("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-dial-one:57] ExecIf("PJSIP/301-0000000f", "0?Set(D_OPTIONS=Hhtr)") in new stack
+    -- Executing [s@macro-dial-one:58] ExecIf("PJSIP/301-0000000f", "0?Set(D_OPTIONS=HhTtrg)") in new stack
+    -- Executing [s@macro-dial-one:59] Gosub("PJSIP/301-0000000f", "dialOne-with-exten,302,1()") in new stack
+    -- Executing [302@dialOne-with-exten:1] Set("PJSIP/301-0000000f", "CHANNEL(hangup_handler_push)=app-missedcall-hangup,,1") in new stack
+    -- Executing [302@dialOne-with-exten:2] Dial("PJSIP/301-0000000f", "PJSIP/302/sip:tnqujs8p@71.145.228.152:52618;transport=ws;x-ast-orig-host=j4un7uevgkqp.invalid:0,,HhTtrb(func-apply-sipheaders^s^1)") in new stack
+    -- PJSIP/302-00000010 Internal Gosub(func-apply-sipheaders,s,1) start
+    -- Executing [s@func-apply-sipheaders:1] ExecIf("PJSIP/302-00000010", "0?Set(CHANNEL(hangup_handler_push)=crm-hangup,s,1)") in new stack
+    -- Executing [s@func-apply-sipheaders:2] NoOp("PJSIP/302-00000010", "Applying SIP Headers to channel PJSIP/302-00000010") in new stack
+    -- Executing [s@func-apply-sipheaders:3] Set("PJSIP/302-00000010", "localchan=302-00000010") in new stack
+    -- Executing [s@func-apply-sipheaders:4] Set("PJSIP/302-00000010", "DialMCEXT=302") in new stack
+    -- Executing [s@func-apply-sipheaders:5] Set("PJSIP/302-00000010", "CHANNEL(hangup_handler_push)=app-missedcall-hangup,302,1") in new stack
+    -- Executing [s@func-apply-sipheaders:6] Set("PJSIP/302-00000010", "Dchan=302-00000010") in new stack
+    -- Executing [s@func-apply-sipheaders:7] Set("PJSIP/302-00000010", "TECH=PJSIP") in new stack
+    -- Executing [s@func-apply-sipheaders:8] Set("PJSIP/302-00000010", "SIPHEADERKEYS=") in new stack
+    -- Executing [s@func-apply-sipheaders:9] While("PJSIP/302-00000010", "0") in new stack
+    -- Jumping to priority 15
+    -- Executing [s@func-apply-sipheaders:16] Return("PJSIP/302-00000010", "") in new stack
+  == Spawn extension (from-internal, 302, 1) exited non-zero on 'PJSIP/302-00000010'
+    -- PJSIP/302-00000010 Internal Gosub(func-apply-sipheaders,s,1) complete GOSUB_RETVAL=
+  == Using SIP RTP Audio TOS bits 184
+  == Using SIP RTP Audio CoS mark 5
+<--- Transmitting SIP request (1683 bytes) to WSS:71.145.228.152:52618 --->
+INVITE sip:tnqujs8p@71.145.228.152:52618;transport=ws SIP/2.0
+Via: SIP/2.0/WSS 95.111.237.201:8089;rport;branch=z9hG4bKPj18a10c34-1774-4f28-b510-701bfbaf892d;alias
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=02ecca8d-1dd5-4acb-83f5-c421802d0b9a
+To: <sip:tnqujs8p@71.145.228.152>
+Contact: <sip:asterisk@pbx1.curbe.io:5060;transport=ws>
+Call-ID: 8431e0ad-48e3-4109-b8b3-a8876b23c1a7
+CSeq: 26531 INVITE
+Allow: OPTIONS, INVITE, ACK, BYE, CANCEL, UPDATE, PRACK, REGISTER, SUBSCRIBE, NOTIFY, PUBLISH, INFO, MESSAGE, REFER
+Supported: 100rel, timer, replaces, norefersub, histinfo
+Session-Expires: 1800
+Min-SE: 90
+P-Asserted-Identity: "Javier Lazo" <sip:301@pbx1.curbe.io>
+Max-Forwards: 70
+User-Agent: FPBX-17.0.21.7(22.6.0)
+Content-Type: application/sdp
+Content-Length:   892
+
+v=0
+o=- 424361234 424361234 IN IP4 95.111.237.201
+s=Asterisk
+c=IN IP4 95.111.237.201
+t=0 0
+a=group:BUNDLE audio-0
+m=audio 15576 UDP/TLS/RTP/SAVPF 0 8 9 3 111 107 101 102
+a=connection:new
+a=setup:actpass
+a=fingerprint:SHA-256 52:6C:12:8C:2B:E6:FF:9C:8F:B2:AD:BE:EF:62:38:CA:75:1F:B6:38:A1:BE:AD:88:B9:4F:F7:52:1E:5F:E7:DF
+a=ice-ufrag:7aed6b197ee952bc124ff54128d667b7
+a=ice-pwd:6e20b0601a3f34cf4fb380c65106ce4f
+a=candidate:H5f6fedc9 1 UDP 2130706431 95.111.237.201 15576 typ host
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:3 GSM/8000
+a=rtpmap:111 G726-32/8000
+a=rtpmap:107 opus/48000/2
+a=fmtp:107 useinbandfec=1
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=rtpmap:102 telephone-event/48000
+a=fmtp:102 0-16
+a=ptime:20
+a=maxptime:20
+a=sendrecv
+a=rtcp-mux
+a=ssrc:1881748968 cname:bbd99c6a-5236-4291-aa00-bfb411a75253
+a=mid:audio-0
+
+    -- Called PJSIP/302/sip:tnqujs8p@71.145.228.152:52618;transport=ws;x-ast-orig-host=j4un7uevgkqp.invalid:0
+<--- Transmitting SIP response (567 bytes) to UDP:108.65.128.203:5060 --->
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP 192.168.1.148:5060;rport=5060;received=108.65.128.203;branch=z9hG4bK742681129
+Call-ID: 0_742640347@192.168.1.148
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=9da37d39-60e9-43a0-aa57-24fc40327ab6
+CSeq: 2 INVITE
+Server: FPBX-17.0.21.7(22.6.0)
+Contact: <sip:95.111.237.201:5060>
+Allow: OPTIONS, INVITE, ACK, BYE, CANCEL, UPDATE, PRACK, REGISTER, SUBSCRIBE, NOTIFY, PUBLISH, INFO, MESSAGE, REFER
+P-Asserted-Identity: "Jason Fonseca" <sip:302@pbx1.curbe.io>
+Content-Length:  0
+
+
+<--- Received SIP response (380 bytes) from WSS:71.145.228.152:52618 --->
+SIP/2.0 100 Trying
+Via: SIP/2.0/WSS 95.111.237.201:8089;rport;branch=z9hG4bKPj18a10c34-1774-4f28-b510-701bfbaf892d;alias
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=02ecca8d-1dd5-4acb-83f5-c421802d0b9a
+To: <sip:tnqujs8p@71.145.228.152>
+CSeq: 26531 INVITE
+Call-ID: 8431e0ad-48e3-4109-b8b3-a8876b23c1a7
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Content-Length: 0
+
+
+<--- Received SIP response (455 bytes) from WSS:71.145.228.152:52618 --->
+SIP/2.0 180 Ringing
+Via: SIP/2.0/WSS 95.111.237.201:8089;rport;branch=z9hG4bKPj18a10c34-1774-4f28-b510-701bfbaf892d;alias
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=02ecca8d-1dd5-4acb-83f5-c421802d0b9a
+To: <sip:tnqujs8p@71.145.228.152>;tag=76157hnns7
+CSeq: 26531 INVITE
+Call-ID: 8431e0ad-48e3-4109-b8b3-a8876b23c1a7
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Contact: <sip:tnqujs8p@j4un7uevgkqp.invalid;transport=ws>
+Content-Length: 0
+
+
+    -- PJSIP/302-00000010 is ringing
+<--- Transmitting SIP response (567 bytes) to UDP:108.65.128.203:5060 --->
+SIP/2.0 180 Ringing
+Via: SIP/2.0/UDP 192.168.1.148:5060;rport=5060;received=108.65.128.203;branch=z9hG4bK742681129
+Call-ID: 0_742640347@192.168.1.148
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=9da37d39-60e9-43a0-aa57-24fc40327ab6
+CSeq: 2 INVITE
+Server: FPBX-17.0.21.7(22.6.0)
+Allow: OPTIONS, INVITE, ACK, BYE, CANCEL, UPDATE, PRACK, REGISTER, SUBSCRIBE, NOTIFY, PUBLISH, INFO, MESSAGE, REFER
+Contact: <sip:95.111.237.201:5060>
+P-Asserted-Identity: "Jason Fonseca" <sip:302@pbx1.curbe.io>
+Content-Length:  0
+
+
+<--- Transmitting SIP request (429 bytes) to UDP:108.65.128.203:5060 --->
+OPTIONS sip:301@108.65.128.203:5060 SIP/2.0
+Via: SIP/2.0/UDP 95.111.237.201:5060;rport;branch=z9hG4bKPjbc6c026d-d12b-449e-adf7-64c5162692d6
+From: <sip:301@95.111.237.201>;tag=55df82a2-9896-403a-9821-8241b342e00e
+To: <sip:301@108.65.128.203>
+Contact: <sip:301@95.111.237.201:5060>
+Call-ID: e9b8d860-ce54-42f9-99e2-a557ef81889b
+CSeq: 32564 OPTIONS
+Max-Forwards: 70
+User-Agent: FPBX-17.0.21.7(22.6.0)
+Content-Length:  0
+
+
+<--- Received SIP response (365 bytes) from UDP:108.65.128.203:5060 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 95.111.237.201:5060;rport=5060;branch=z9hG4bKPjbc6c026d-d12b-449e-adf7-64c5162692d6
+From: <sip:301@95.111.237.201>;tag=55df82a2-9896-403a-9821-8241b342e00e
+To: <sip:301@108.65.128.203>;tag=742878130
+Call-ID: e9b8d860-ce54-42f9-99e2-a557ef81889b
+CSeq: 32564 OPTIONS
+User-Agent: Yealink SIP-T54W 96.86.0.70
+Content-Length: 0
+
+
+<--- Received SIP response (1840 bytes) from WSS:71.145.228.152:52618 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/WSS 95.111.237.201:8089;rport;branch=z9hG4bKPj18a10c34-1774-4f28-b510-701bfbaf892d;alias
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=02ecca8d-1dd5-4acb-83f5-c421802d0b9a
+To: <sip:tnqujs8p@71.145.228.152>;tag=76157hnns7
+CSeq: 26531 INVITE
+Call-ID: 8431e0ad-48e3-4109-b8b3-a8876b23c1a7
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Allow: ACK,BYE,CANCEL,INFO,INVITE,MESSAGE,NOTIFY,OPTIONS,PRACK,REFER,REGISTER,SUBSCRIBE
+Contact: <sip:tnqujs8p@j4un7uevgkqp.invalid;transport=ws>
+Content-Type: application/sdp
+Content-Length: 1267
+
+v=0
+o=- 3058477909660001261 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE audio-0
+a=msid-semantic: WMS 49dbd007-78de-47a0-b3e6-4b946af0636e
+m=audio 49954 UDP/TLS/RTP/SAVPF 0 8 9 107 101 102
+c=IN IP4 169.254.131.201
+a=rtcp:9 IN IP4 0.0.0.0
+a=candidate:2987512782 1 udp 2122260223 169.254.131.201 49954 typ host generation 0 network-id 2
+a=candidate:716063784 1 udp 2122194687 71.145.228.152 61702 typ host generation 0 network-id 1 network-cost 10
+a=candidate:1287325530 1 tcp 1518280447 169.254.131.201 9 typ host tcptype active generation 0 network-id 2
+a=candidate:3557068988 1 tcp 1518214911 71.145.228.152 9 typ host tcptype active generation 0 network-id 1 network-cost 10
+a=ice-ufrag:1ZOd
+a=ice-pwd:o8Bq02SSGKXmQkxqQvEanPzs
+a=ice-options:trickle
+a=fingerprint:sha-256 23:79:62:A1:83:27:47:61:60:4D:28:57:60:B1:DA:29:08:A4:20:97:4B:31:32:C2:D7:F4:FD:54:39:F0:1E:5E
+a=setup:active
+a=mid:audio-0
+a=sendrecv
+a=msid:49dbd007-78de-47a0-b3e6-4b946af0636e 0b7a4be4-2a64-413f-a425-6b3ac2af9f9b
+a=rtcp-mux
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:107 opus/48000/2
+a=fmtp:107 minptime=10;useinbandfec=1
+a=rtpmap:101 telephone-event/8000
+a=rtpmap:102 telephone-event/48000
+a=ssrc:1123112851 cname:D91aB1VJROfZ07D+
+
+<--- Transmitting SIP request (439 bytes) to WSS:71.145.228.152:52618 --->
+ACK sip:tnqujs8p@71.145.228.152:52618;transport=ws SIP/2.0
+Via: SIP/2.0/WSS 95.111.237.201:8089;rport;branch=z9hG4bKPj1181150e-7fbf-446f-a173-29af2d2fe17d;alias
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=02ecca8d-1dd5-4acb-83f5-c421802d0b9a
+To: <sip:tnqujs8p@71.145.228.152>;tag=76157hnns7
+Call-ID: 8431e0ad-48e3-4109-b8b3-a8876b23c1a7
+CSeq: 26531 ACK
+Max-Forwards: 70
+User-Agent: FPBX-17.0.21.7(22.6.0)
+Content-Length:  0
+
+
+    -- PJSIP/302-00000010 answered PJSIP/301-0000000f
+<--- Transmitting SIP response (923 bytes) to UDP:108.65.128.203:5060 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 192.168.1.148:5060;rport=5060;received=108.65.128.203;branch=z9hG4bK742681129
+Call-ID: 0_742640347@192.168.1.148
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=9da37d39-60e9-43a0-aa57-24fc40327ab6
+CSeq: 2 INVITE
+Server: FPBX-17.0.21.7(22.6.0)
+Allow: OPTIONS, INVITE, ACK, BYE, CANCEL, UPDATE, PRACK, REGISTER, SUBSCRIBE, NOTIFY, PUBLISH, INFO, MESSAGE, REFER
+Contact: <sip:95.111.237.201:5060>
+Supported: 100rel, timer, replaces, norefersub
+P-Asserted-Identity: "Jason Fonseca" <sip:302@pbx1.curbe.io>
+Content-Type: application/sdp
+Content-Length:   279
+
+v=0
+o=- 20033 20035 IN IP4 95.111.237.201
+s=Asterisk
+c=IN IP4 95.111.237.201
+t=0 0
+m=audio 17502 RTP/AVP 0 8 9 101
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16
+a=ptime:20
+a=maxptime:140
+a=sendrecv
+
+    -- Channel PJSIP/302-00000010 joined 'simple_bridge' basic-bridge <9e3d53c0-4513-40c0-af66-5db1c5d39349>
+    -- Channel PJSIP/301-0000000f joined 'simple_bridge' basic-bridge <9e3d53c0-4513-40c0-af66-5db1c5d39349>
+<--- Received SIP request (395 bytes) from UDP:108.65.128.203:5060 --->
+ACK sip:95.111.237.201:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.148:5060;branch=z9hG4bK742956732
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=9da37d39-60e9-43a0-aa57-24fc40327ab6
+Call-ID: 0_742640347@192.168.1.148
+CSeq: 2 ACK
+Contact: <sip:301@192.168.1.148:5060>
+Max-Forwards: 70
+User-Agent: Yealink SIP-T54W 96.86.0.70
+Content-Length: 0
+
+
+<--- Received SIP request (665 bytes) from UDP:108.65.128.203:5060 --->
+BYE sip:95.111.237.201:5060 SIP/2.0
+Via: SIP/2.0/UDP 192.168.1.148:5060;branch=z9hG4bK743021116
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=9da37d39-60e9-43a0-aa57-24fc40327ab6
+Call-ID: 0_742640347@192.168.1.148
+CSeq: 3 BYE
+Contact: <sip:301@192.168.1.148:5060>
+Authorization: Digest username="301", realm="asterisk", nonce="1763502329/d3e5f3dfbb36619274c1402e2f934dd2", uri="sip:95.111.237.201:5060", response="3103a11955c871094ff385eddff9c833", algorithm=MD5, cnonce="742764220", opaque="1b2c91d57689a1c4", qop=auth, nc=00000002
+Max-Forwards: 70
+User-Agent: Yealink SIP-T54W 96.86.0.70
+Content-Length: 0
+
+
+<--- Transmitting SIP response (344 bytes) to UDP:108.65.128.203:5060 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/UDP 192.168.1.148:5060;rport=5060;received=108.65.128.203;branch=z9hG4bK743021116
+Call-ID: 0_742640347@192.168.1.148
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=742558756
+To: <sip:302@pbx1.curbe.io>;tag=9da37d39-60e9-43a0-aa57-24fc40327ab6
+CSeq: 3 BYE
+Server: FPBX-17.0.21.7(22.6.0)
+Content-Length:  0
+
+
+    -- Channel PJSIP/301-0000000f left 'simple_bridge' basic-bridge <9e3d53c0-4513-40c0-af66-5db1c5d39349>
+    -- Channel PJSIP/302-00000010 left 'simple_bridge' basic-bridge <9e3d53c0-4513-40c0-af66-5db1c5d39349>
+  == Spawn extension (dialOne-with-exten, 302, 2) exited non-zero on 'PJSIP/301-0000000f'
+    -- Executing [h@dialOne-with-exten:1] Gosub("PJSIP/301-0000000f", "macro-hangupcall,s,1()") in new stack
+    -- PJSIP/302-00000010 Internal Gosub(app-missedcall-hangup,302,1) start
+    -- Executing [302@app-missedcall-hangup:1] NoOp("PJSIP/302-00000010", "Dialed: 302") in new stack
+    -- Executing [s@macro-hangupcall:1] Set("PJSIP/301-0000000f", "__MCVMSTATUS=") in new stack
+    -- Executing [s@macro-hangupcall:2] Gosub("PJSIP/301-0000000f", "app-missedcall-hangup,s,1()") in new stack
+    -- Executing [302@app-missedcall-hangup:2] NoOp("PJSIP/302-00000010", "Caller: 301") in new stack
+    -- Executing [s@app-missedcall-hangup:1] NoOp("PJSIP/301-0000000f", "Dialed: s") in new stack
+    -- Executing [302@app-missedcall-hangup:3] GotoIf("PJSIP/302-00000010", "0?exit") in new stack
+    -- Executing [s@app-missedcall-hangup:2] NoOp("PJSIP/301-0000000f", "Caller: 301") in new stack
+    -- Executing [s@app-missedcall-hangup:3] GotoIf("PJSIP/301-0000000f", "0?exit") in new stack
+    -- Executing [s@app-missedcall-hangup:4] Set("PJSIP/301-0000000f", "EXTENNUM=s") in new stack
+    -- Executing [302@app-missedcall-hangup:4] Set("PJSIP/302-00000010", "EXTENNUM=302") in new stack
+    -- Executing [s@app-missedcall-hangup:5] Set("PJSIP/301-0000000f", "FEXTENNUM=s") in new stack
+    -- Executing [302@app-missedcall-hangup:5] Set("PJSIP/302-00000010", "FEXTENNUM=302") in new stack
+    -- Executing [s@app-missedcall-hangup:6] GotoIf("PJSIP/301-0000000f", "0?exit") in new stack
+    -- Executing [s@app-missedcall-hangup:7] AGI("PJSIP/301-0000000f", "agi://127.0.0.1/missedcallnotify.php,s,,s,0,,PJSIP/301-0000000f,ANSWER,,,") in new stack
+    -- Executing [302@app-missedcall-hangup:6] GotoIf("PJSIP/302-00000010", "0?exit") in new stack
+    -- Executing [302@app-missedcall-hangup:7] AGI("PJSIP/302-00000010", "agi://127.0.0.1/missedcallnotify.php,302,,302,0,,PJSIP/302-00000010,,,,") in new stack
+    -- <PJSIP/302-00000010>AGI Script agi://127.0.0.1/missedcallnotify.php completed, returning 0
+    -- Executing [302@app-missedcall-hangup:8] Return("PJSIP/302-00000010", "") in new stack
+  == Spawn extension (from-internal, , 1) exited non-zero on 'PJSIP/302-00000010'
+    -- PJSIP/302-00000010 Internal Gosub(app-missedcall-hangup,302,1) complete GOSUB_RETVAL=
+<--- Transmitting SIP request (463 bytes) to WSS:71.145.228.152:52618 --->
+BYE sip:tnqujs8p@71.145.228.152:52618;transport=ws SIP/2.0
+Via: SIP/2.0/WSS 95.111.237.201:8089;rport;branch=z9hG4bKPj65fb7c78-330e-429d-9095-552a5c51227d;alias
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=02ecca8d-1dd5-4acb-83f5-c421802d0b9a
+To: <sip:tnqujs8p@71.145.228.152>;tag=76157hnns7
+Call-ID: 8431e0ad-48e3-4109-b8b3-a8876b23c1a7
+CSeq: 26532 BYE
+Reason: Q.850;cause=16
+Max-Forwards: 70
+User-Agent: FPBX-17.0.21.7(22.6.0)
+Content-Length:  0
+
+
+    -- <PJSIP/301-0000000f>AGI Script agi://127.0.0.1/missedcallnotify.php completed, returning 0
+    -- Executing [s@app-missedcall-hangup:8] Return("PJSIP/301-0000000f", "") in new stack
+    -- Executing [s@macro-hangupcall:3] UserEvent("PJSIP/301-0000000f", "MES,RTPAUDIOQOSMESBRIDGED:,RTPAUDIOQOSMES:   minrxmes=000.000000;   maxrxmes=000.000000;   avgrxmes=000.000000;   stdevrxmes=000.000710;   mintxmes=000.000000;   maxtxmes=000.000000;   avgtxmes=000.000000;   stdevtxmes=000.000000;") in new stack
+    -- Executing [s@macro-hangupcall:4] GotoIf("PJSIP/301-0000000f", "1?theend") in new stack
+    -- Goto (macro-hangupcall,s,6)
+    -- Executing [s@macro-hangupcall:6] ExecIf("PJSIP/301-0000000f", "0?Set(CDR(recordingfile)=)") in new stack
+    -- Executing [s@macro-hangupcall:7] Hangup("PJSIP/301-0000000f", "") in new stack
+  == Spawn extension (macro-hangupcall, s, 7) exited non-zero on 'PJSIP/301-0000000f'
+    -- PJSIP/301-0000000f Internal Gosub(app-missedcall-hangup,302,1) start
+    -- Executing [302@app-missedcall-hangup:1] NoOp("PJSIP/301-0000000f", "Dialed: 302") in new stack
+    -- Executing [302@app-missedcall-hangup:2] NoOp("PJSIP/301-0000000f", "Caller: 301") in new stack
+    -- Executing [302@app-missedcall-hangup:3] GotoIf("PJSIP/301-0000000f", "0?exit") in new stack
+    -- Executing [302@app-missedcall-hangup:4] Set("PJSIP/301-0000000f", "EXTENNUM=302") in new stack
+    -- Executing [302@app-missedcall-hangup:5] Set("PJSIP/301-0000000f", "FEXTENNUM=302") in new stack
+    -- Executing [302@app-missedcall-hangup:6] GotoIf("PJSIP/301-0000000f", "0?exit") in new stack
+    -- Executing [302@app-missedcall-hangup:7] AGI("PJSIP/301-0000000f", "agi://127.0.0.1/missedcallnotify.php,302,,302,0,,PJSIP/301-0000000f,ANSWER,,,") in new stack
+    -- <PJSIP/301-0000000f>AGI Script agi://127.0.0.1/missedcallnotify.php completed, returning 0
+    -- Executing [302@app-missedcall-hangup:8] Return("PJSIP/301-0000000f", "") in new stack
+  == Spawn extension (macro-hangupcall, s, 7) exited non-zero on 'PJSIP/301-0000000f'
+    -- PJSIP/301-0000000f Internal Gosub(app-missedcall-hangup,302,1) complete GOSUB_RETVAL=
+<--- Received SIP response (388 bytes) from WSS:71.145.228.152:52618 --->
+SIP/2.0 200 OK
+Via: SIP/2.0/WSS 95.111.237.201:8089;rport;branch=z9hG4bKPj65fb7c78-330e-429d-9095-552a5c51227d;alias
+From: "Javier Lazo" <sip:301@pbx1.curbe.io>;tag=02ecca8d-1dd5-4acb-83f5-c421802d0b9a
+To: <sip:tnqujs8p@71.145.228.152>;tag=76157hnns7
+CSeq: 26532 BYE
+Call-ID: 8431e0ad-48e3-4109-b8b3-a8876b23c1a7
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Content-Length: 0
+
+
+pbx1*CLI>

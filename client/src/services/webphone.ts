@@ -315,6 +315,7 @@ class WebPhoneManager {
       
       // Create User Agent with STUN/TURN servers for WebRTC NAT traversal
       // Using Curbe's private TURN server for reliable connectivity
+      // CRITICAL: SIP.js 0.21 uses "peerConnectionConfiguration" not "peerConnectionOptions"
       this.userAgent = new UserAgent({
         uri: UserAgent.makeURI(uriString)!,
         transportOptions,
@@ -322,18 +323,24 @@ class WebPhoneManager {
         authorizationPassword: password,
         displayName: extension,
         sessionDescriptionHandlerFactoryOptions: {
-          peerConnectionOptions: {
+          iceGatheringTimeout: 5000, // Wait up to 5 seconds for TURN candidates
+          peerConnectionConfiguration: {  // FIXED: Correct property name for SIP.js 0.21
             iceServers: [
               {
                 urls: 'stun:95.111.237.201:3478'
               },
               {
-                urls: 'turn:95.111.237.201:3478',
+                urls: [
+                  'turn:95.111.237.201:3478?transport=udp',
+                  'turn:95.111.237.201:3478?transport=tcp'
+                ],
                 username: 'javier',
                 credential: 'superpass123'
               }
             ],
-            iceTransportPolicy: 'all'
+            iceTransportPolicy: 'all',  // Use all candidates, prefer TURN
+            bundlePolicy: 'balanced',
+            rtcpMuxPolicy: 'require'
           }
         },
         delegate: {
