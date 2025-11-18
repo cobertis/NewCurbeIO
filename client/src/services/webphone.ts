@@ -73,8 +73,8 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   // Initial state
   isConnected: false,
   connectionStatus: 'disconnected',
-  sipDomain: 'pbx.curbe.io',
-  wssServer: 'wss://pbx.curbe.io:8089/ws',
+  sipDomain: 'pbx1.curbe.io',
+  wssServer: 'wss://pbx1.curbe.io:8089/ws',
   isCallActive: false,
   isMuted: false,
   isOnHold: false,
@@ -238,9 +238,9 @@ class WebPhoneManager {
             iceServers: [
               {
                 urls: [
-                  'stun:pbx.curbe.io:3478',
-                  'turn:pbx.curbe.io:5349?transport=tcp',
-                  'turns:pbx.curbe.io:5349?transport=tcp'
+                  'stun:pbx1.curbe.io:3478',
+                  'turn:pbx1.curbe.io:5349?transport=tcp',
+                  'turns:pbx1.curbe.io:5349?transport=tcp'
                 ],
                 username: 'webrtc',
                 credential: 'Curbe2025!'

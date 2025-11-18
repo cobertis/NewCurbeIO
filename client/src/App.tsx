@@ -162,7 +162,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
       // Initialize WebPhone with user's SIP credentials
-      const sipServer = user.sipServer || 'wss://pbx.curbe.io:8089/ws';
+      const sipServer = user.sipServer || 'wss://pbx1.curbe.io:8089/ws';
       webPhone.initialize(user.sipExtension, user.sipPassword, sipServer).catch(error => {
         console.error('[WebPhone] Failed to initialize:', error);
         toast({

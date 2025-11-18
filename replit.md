@@ -21,13 +21,14 @@ ALWAYS use the standardized `LoadingSpinner` component for all loading states ac
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 **WebPhone Configuration:**
 - Each user can configure their own SIP credentials (extension, password, server)
-- Default SIP server: wss://pbx.curbe.io:8089/ws
-- SIP domain/realm: pbx.curbe.io
+- Default SIP server: wss://pbx1.curbe.io:8089/ws
+- SIP domain/realm: pbx1.curbe.io
 - WebPhone auto-initializes when user has valid SIP credentials
 - Configuration stored per-user in database (sipExtension, sipPassword, sipServer, sipEnabled)
 **CRITICAL CALL LIFECYCLE FIXES**:
 - **Session Delegate:** Configured when incoming call arrives (not when answered), following Browser-Phone pattern for immediate audio track registration
 - **Complete Teardown:** endCall() implements full Browser-Phone teardown pattern - stops all RTCPeerConnection audio tracks (senders/receivers), disposes SIP session, clears remote audio element, resets ringtones, preventing resource leaks that block subsequent calls
+- **Instant Incoming Audio:** currentSession assigned BEFORE session.accept() in answerCall() to enable immediate media binding by delegate during accept()
 
 ## System Architecture
 
