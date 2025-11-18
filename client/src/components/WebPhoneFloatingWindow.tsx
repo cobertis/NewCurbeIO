@@ -288,33 +288,33 @@ export function WebPhoneFloatingWindow() {
               </div>
             ) : (
               /* Dialpad Screen */
-              <div className="flex-1 flex flex-col justify-between px-4 py-8">
+              <div className="flex-1 flex flex-col justify-between px-6 py-4">
                 {/* Number Display */}
-                <div className="pt-8 pb-12">
+                <div className="pt-4 pb-6">
                   <input
                     type="text"
                     value={dialNumber}
                     onChange={(e) => handleNumberChange(e.target.value)}
-                    className="w-full bg-transparent border-none text-muted-foreground text-4xl text-center focus:outline-none font-light tracking-wide"
+                    className="w-full bg-transparent border-none text-muted-foreground text-3xl text-center focus:outline-none font-light tracking-wide"
                     placeholder="Enter number"
                     data-testid="input-dial-number"
                   />
                 </div>
                 
                 {/* Dialpad Grid */}
-                <div className="grid grid-cols-3 gap-x-8 gap-y-6 px-8">
+                <div className="grid grid-cols-3 gap-x-6 gap-y-3 px-4">
                   {digits.map((digit, index) => (
                     <button
                       key={digit}
                       onClick={() => handleDial(digit)}
-                      className="flex flex-col items-center justify-center py-4 hover:bg-muted/20 rounded-lg transition-colors active:bg-muted/30"
+                      className="flex flex-col items-center justify-center py-3 hover:bg-muted/20 rounded-lg transition-colors active:bg-muted/30"
                       data-testid={`button-dialpad-${digit}`}
                     >
-                      <span className="text-4xl text-foreground font-light leading-none mb-1">
+                      <span className="text-3xl text-foreground font-light leading-none mb-0.5">
                         {digit}
                       </span>
                       {letters[index] && (
-                        <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
                           {letters[index]}
                         </span>
                       )}
@@ -323,7 +323,7 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Call Button */}
-                <div className="flex justify-center pt-8 pb-6">
+                <div className="flex justify-center pt-4 pb-4">
                   <button
                     onClick={handleCall}
                     disabled={!dialNumber}
