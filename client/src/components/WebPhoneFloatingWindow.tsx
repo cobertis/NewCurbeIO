@@ -316,355 +316,350 @@ export function WebPhoneFloatingWindow() {
         
         <div className="flex-1 flex flex-col overflow-hidden no-drag">
           {currentCall ? (
-              /* Active Call Screen */
-              <div className="flex-1 flex flex-col justify-between p-6">
-                {/* Contact Info */}
-                <div className="text-center pt-8">
-                  <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <User className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                  <h2 className="text-xl font-medium text-foreground mb-2">
-                    {currentCall.displayName || 'Unknown'}
-                  </h2>
-                  <p className="text-base text-muted-foreground mb-1">
-                    {formatPhoneInput(currentCall.phoneNumber)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {currentCall.status === 'ringing' && 'Calling...'}
-                    {currentCall.status === 'answered' && formatDuration(callDuration)}
-                  </p>
-                </div>
-                
-                {/* Call Controls */}
-                <div className="space-y-4 pb-8">
-                  {/* Control Buttons Grid */}
-                  <div className="grid grid-cols-3 gap-6 px-4">
-                    <button
-                      onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
-                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-                      data-testid="button-mute-call"
-                    >
-                      <div className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
-                        isMuted ? "bg-foreground" : "bg-muted/80"
-                      )}>
-                        {isMuted ? (
-                          <MicOff className="h-7 w-7 text-background" />
-                        ) : (
-                          <Mic className="h-7 w-7 text-foreground" />
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground">mute</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => setShowKeypad(!showKeypad)}
-                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-                    >
-                      <div className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
-                        showKeypad ? "bg-foreground" : "bg-muted/80"
-                      )}>
-                        <Grid3x3 className={cn("h-7 w-7", showKeypad ? "text-background" : "text-foreground")} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">keypad</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => isRecording ? webPhone.stopRecording() : webPhone.startRecording()}
-                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-                      data-testid="button-recording"
-                    >
-                      <div className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
-                        isRecording ? "bg-red-500" : "bg-muted/80"
-                      )}>
-                        {isRecording ? (
-                          <Circle className="h-7 w-7 text-white fill-white animate-pulse" />
-                        ) : (
-                          <Circle className="h-7 w-7 text-foreground" />
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground">{isRecording ? 'recording' : 'record'}</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => setShowTransferDialog(true)}
-                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-                      data-testid="button-transfer"
-                    >
-                      <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                        <PhoneForwarded className="h-7 w-7 text-foreground" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">transfer</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
-                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-                      data-testid="button-hold-call"
-                    >
-                      <div className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
-                        isOnHold ? "bg-foreground" : "bg-muted/80"
-                      )}>
-                        <Pause className={cn("h-7 w-7", isOnHold ? "text-background" : "text-foreground")} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">hold</span>
-                    </button>
-                    
-                    <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
-                      <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                        <Phone className="h-7 w-7 text-foreground" />
-                      </div>
-                      <span className="text-xs text-muted-foreground">contacts</span>
-                    </button>
+              /* Active Call Screen - No bottom navigation */
+              <div className="flex-1 overflow-y-auto">
+                <div className="flex flex-col justify-between p-6 min-h-full">
+                  {/* Contact Info */}
+                  <div className="text-center pt-8">
+                    <div className="mx-auto w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
+                      <User className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                    <h2 className="text-xl font-medium text-foreground mb-2">
+                      {currentCall.displayName || 'Unknown'}
+                    </h2>
+                    <p className="text-base text-muted-foreground mb-1">
+                      {formatPhoneInput(currentCall.phoneNumber)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentCall.status === 'ringing' && 'Calling...'}
+                      {currentCall.status === 'answered' && formatDuration(callDuration)}
+                    </p>
                   </div>
                   
-                  {/* End Call Button */}
-                  <div className="flex justify-center pt-6">
-                    <button
-                      onClick={() => webPhone.hangupCall()}
-                      className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
-                    >
-                      <PhoneOff className="h-9 w-9 text-white" />
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Transfer Dialog */}
-                {showTransferDialog && currentCall && (
-                  <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
-                    <DialogContent className="sm:max-w-md">
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-lg font-semibold mb-2">Transfer Call</h3>
-                          <p className="text-sm text-muted-foreground">Enter the number to transfer to</p>
+                  {/* Call Controls */}
+                  <div className="space-y-4 pb-8">
+                    {/* Control Buttons Grid */}
+                    <div className="grid grid-cols-3 gap-6 px-4">
+                      <button
+                        onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
+                        className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                        data-testid="button-mute-call"
+                      >
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                          isMuted ? "bg-foreground" : "bg-muted/80"
+                        )}>
+                          {isMuted ? (
+                            <MicOff className="h-7 w-7 text-background" />
+                          ) : (
+                            <Mic className="h-7 w-7 text-foreground" />
+                          )}
                         </div>
-                        
-                        <input
-                          type="tel"
-                          value={transferNumber}
-                          onChange={(e) => setTransferNumber(e.target.value)}
-                          placeholder="Enter phone number"
-                          className="w-full px-4 py-2 border rounded-lg"
-                          data-testid="input-transfer-number"
-                        />
-                        
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => {
-                              webPhone.blindTransfer(transferNumber);
-                              setShowTransferDialog(false);
-                              setTransferNumber('');
-                            }}
-                            disabled={!transferNumber}
-                            className="flex-1"
-                            data-testid="button-blind-transfer"
-                          >
-                            Blind Transfer
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              webPhone.attendedTransfer(transferNumber);
-                              setShowTransferDialog(false);
-                              setTransferNumber('');
-                            }}
-                            disabled={!transferNumber}
-                            variant="outline"
-                            className="flex-1"
-                            data-testid="button-attended-transfer"
-                          >
-                            Attended Transfer
-                          </Button>
+                        <span className="text-xs text-muted-foreground">mute</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => setShowKeypad(!showKeypad)}
+                        className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                      >
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                          showKeypad ? "bg-foreground" : "bg-muted/80"
+                        )}>
+                          <Grid3x3 className={cn("h-7 w-7", showKeypad ? "text-background" : "text-foreground")} />
                         </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
-            ) : viewMode === 'recents' ? (
-              /* Call History Screen */
-              <div className="flex-1 flex flex-col">
-                {/* Header */}
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <button className="text-base text-blue-500">Edit</button>
-                  <h2 className="text-lg font-semibold text-foreground">Recents</h2>
-                  <button>
-                    <Menu className="h-5 w-5 text-foreground" />
-                  </button>
-                </div>
-                
-                {/* Call History List */}
-                <div className="flex-1 overflow-y-auto">
-                  {callHistory.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                      <Phone className="h-12 w-12 text-muted-foreground mb-3" />
-                      <p className="text-sm text-muted-foreground">No recent calls</p>
+                        <span className="text-xs text-muted-foreground">keypad</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => isRecording ? webPhone.stopRecording() : webPhone.startRecording()}
+                        className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                        data-testid="button-recording"
+                      >
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                          isRecording ? "bg-red-500" : "bg-muted/80"
+                        )}>
+                          {isRecording ? (
+                            <Circle className="h-7 w-7 text-white fill-white animate-pulse" />
+                          ) : (
+                            <Circle className="h-7 w-7 text-foreground" />
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{isRecording ? 'recording' : 'record'}</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => setShowTransferDialog(true)}
+                        className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                        data-testid="button-transfer"
+                      >
+                        <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                          <PhoneForwarded className="h-7 w-7 text-foreground" />
+                        </div>
+                        <span className="text-xs text-muted-foreground">transfer</span>
+                      </button>
+                      
+                      <button
+                        onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
+                        className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                        data-testid="button-hold-call"
+                      >
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                          isOnHold ? "bg-foreground" : "bg-muted/80"
+                        )}>
+                          <Pause className={cn("h-7 w-7", isOnHold ? "text-background" : "text-foreground")} />
+                        </div>
+                        <span className="text-xs text-muted-foreground">hold</span>
+                      </button>
+                      
+                      <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
+                        <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                          <Phone className="h-7 w-7 text-foreground" />
+                        </div>
+                        <span className="text-xs text-muted-foreground">contacts</span>
+                      </button>
                     </div>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {callHistory.map((call) => {
-                        const initials = call.displayName 
-                          ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-                          : '';
-                        const timeStr = format(new Date(call.startTime), 'h:mma');
-                        const statusStyle = getCallStatusStyle(call.status);
-                        
-                        return (
-                          <div key={call.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                            {/* Avatar */}
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                              {initials ? (
-                                <span className="text-sm font-medium text-muted-foreground">{initials}</span>
-                              ) : (
-                                <User className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
-                            
-                            {/* Call Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                {call.direction === 'inbound' && call.status === 'missed' ? (
-                                  <PhoneMissed className={cn("h-3.5 w-3.5", statusStyle.color)} />
-                                ) : call.direction === 'inbound' ? (
-                                  <PhoneIncoming className="h-3.5 w-3.5 text-muted-foreground" />
-                                ) : (
-                                  <PhoneOutgoing className="h-3.5 w-3.5 text-muted-foreground" />
-                                )}
-                                <span className={cn(
-                                  "text-base font-normal truncate",
-                                  statusStyle.color
-                                )}>
-                                  {call.displayName || formatPhoneInput(call.phoneNumber)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Phone className="h-3 w-3" />
-                                <span>phone</span>
-                              </div>
-                            </div>
-                            
-                            {/* Time and Call Button */}
-                            <div className="flex items-center gap-3 flex-shrink-0">
-                              <span className="text-sm text-muted-foreground">{timeStr}</span>
-                              <button
-                                onClick={() => {
-                                  setViewMode('keypad');
-                                  setDialNumber(call.phoneNumber);
-                                }}
-                                className="text-blue-500 hover:opacity-80 transition-opacity"
-                              >
-                                <Phone className="h-5 w-5" />
-                              </button>
-                            </div>
+                    
+                    {/* End Call Button */}
+                    <div className="flex justify-center pt-6">
+                      <button
+                        onClick={() => webPhone.hangupCall()}
+                        className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+                      >
+                        <PhoneOff className="h-9 w-9 text-white" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Transfer Dialog */}
+                  {showTransferDialog && currentCall && (
+                    <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+                      <DialogContent className="sm:max-w-md">
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="text-lg font-semibold mb-2">Transfer Call</h3>
+                            <p className="text-sm text-muted-foreground">Enter the number to transfer to</p>
                           </div>
-                        );
-                      })}
+                          
+                          <input
+                            type="tel"
+                            value={transferNumber}
+                            onChange={(e) => setTransferNumber(e.target.value)}
+                            placeholder="Enter phone number"
+                            className="w-full px-4 py-2 border rounded-lg"
+                            data-testid="input-transfer-number"
+                          />
+                          
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => {
+                                webPhone.blindTransfer(transferNumber);
+                                setShowTransferDialog(false);
+                                setTransferNumber('');
+                              }}
+                              disabled={!transferNumber}
+                              className="flex-1"
+                              data-testid="button-blind-transfer"
+                            >
+                              Blind Transfer
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                webPhone.attendedTransfer(transferNumber);
+                                setShowTransferDialog(false);
+                                setTransferNumber('');
+                              }}
+                              disabled={!transferNumber}
+                              variant="outline"
+                              className="flex-1"
+                              data-testid="button-attended-transfer"
+                            >
+                              Attended Transfer
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Main Layout with Fixed Bottom Navigation */
+              <>
+                {/* Scrollable Content Area */}
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  {viewMode === 'recents' && (
+                    <>
+                      {/* Header - Fixed at top of scrollable area */}
+                      <div className="px-4 py-3 flex items-center justify-between flex-shrink-0">
+                        <button className="text-base text-blue-500">Edit</button>
+                        <h2 className="text-lg font-semibold text-foreground">Recents</h2>
+                        <button>
+                          <Menu className="h-5 w-5 text-foreground" />
+                        </button>
+                      </div>
+                      
+                      {/* Call History List - Scrollable */}
+                      {callHistory.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center px-6">
+                          <Phone className="h-12 w-12 text-muted-foreground mb-3" />
+                          <p className="text-sm text-muted-foreground">No recent calls</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-border">
+                          {callHistory.map((call) => {
+                            const initials = call.displayName 
+                              ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                              : '';
+                            const timeStr = format(new Date(call.startTime), 'h:mma');
+                            const statusStyle = getCallStatusStyle(call.status);
+                            
+                            return (
+                              <div key={call.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+                                {/* Avatar */}
+                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                  {initials ? (
+                                    <span className="text-sm font-medium text-muted-foreground">{initials}</span>
+                                  ) : (
+                                    <User className="h-5 w-5 text-muted-foreground" />
+                                  )}
+                                </div>
+                                
+                                {/* Call Info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    {call.direction === 'inbound' && call.status === 'missed' ? (
+                                      <PhoneMissed className={cn("h-3.5 w-3.5", statusStyle.color)} />
+                                    ) : call.direction === 'inbound' ? (
+                                      <PhoneIncoming className="h-3.5 w-3.5 text-muted-foreground" />
+                                    ) : (
+                                      <PhoneOutgoing className="h-3.5 w-3.5 text-muted-foreground" />
+                                    )}
+                                    <span className={cn(
+                                      "text-base font-normal truncate",
+                                      statusStyle.color
+                                    )}>
+                                      {call.displayName || formatPhoneInput(call.phoneNumber)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <Phone className="h-3 w-3" />
+                                    <span>phone</span>
+                                  </div>
+                                </div>
+                                
+                                {/* Time and Call Button */}
+                                <div className="flex items-center gap-3 flex-shrink-0">
+                                  <span className="text-sm text-muted-foreground">{timeStr}</span>
+                                  <button
+                                    onClick={() => {
+                                      setViewMode('keypad');
+                                      setDialNumber(call.phoneNumber);
+                                    }}
+                                    className="text-blue-500 hover:opacity-80 transition-opacity"
+                                  >
+                                    <Phone className="h-5 w-5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  {viewMode === 'keypad' && (
+                    /* Dialpad Content */
+                    <div className="flex flex-col justify-between py-4 px-6 min-h-full">
+                      {/* Number Display */}
+                      <div className="text-center py-3">
+                        <input
+                          ref={dialInputRef}
+                          type="tel"
+                          value={dialNumber}
+                          onChange={(e) => handleNumberChange(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && dialNumber) {
+                              handleCall();
+                            } else if (e.key === 'Backspace') {
+                              e.preventDefault();
+                              setDialNumber(prev => prev.slice(0, -1));
+                            }
+                          }}
+                          className="w-full bg-transparent border-none text-foreground text-2xl text-center focus:outline-none font-normal"
+                          placeholder=""
+                          data-testid="input-dial-number"
+                          autoComplete="off"
+                        />
+                      </div>
+                      
+                      {/* Dialpad Grid */}
+                      <div className="grid grid-cols-3 gap-3 px-2">
+                        {digits.map((digit, index) => (
+                          <button
+                            key={digit}
+                            onClick={() => handleDial(digit)}
+                            className="w-20 h-20 mx-auto rounded-full bg-muted/40 hover:bg-muted/60 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
+                            data-testid={`button-dialpad-${digit}`}
+                          >
+                            <span className="text-3xl text-foreground font-normal">
+                              {digit}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium h-[14px]">
+                              {letters[index] || '\u00A0'}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* Bottom Row - Call and Delete Buttons */}
+                      <div className="grid grid-cols-3 gap-3 px-2 py-3">
+                        <div></div>
+                        <button
+                          onClick={handleCall}
+                          disabled={!dialNumber || connectionStatus !== 'connected'}
+                          className={cn(
+                            "w-20 h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
+                            dialNumber && connectionStatus === 'connected'
+                              ? "bg-green-500 hover:bg-green-600" 
+                              : "bg-green-500/40 cursor-not-allowed"
+                          )}
+                        >
+                          <Phone className="h-7 w-7 text-white" />
+                        </button>
+                        
+                        {dialNumber ? (
+                          <button
+                            onClick={() => setDialNumber(prev => prev.slice(0, -1))}
+                            className="w-20 h-20 mx-auto rounded-full hover:bg-muted/30 flex items-center justify-center transition-all active:scale-95"
+                          >
+                            <Delete className="h-6 w-6 text-foreground" />
+                          </button>
+                        ) : (
+                          <div></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {(viewMode === 'contacts' || viewMode === 'voicemail') && (
+                    /* Contacts/Voicemail - Empty State */
+                    <div className="flex items-center justify-center min-h-full">
+                      <p className="text-sm text-muted-foreground">Coming soon</p>
                     </div>
                   )}
                 </div>
                 
+                {/* Bottom Navigation - Fixed at bottom, OUTSIDE scrollable area */}
                 <BottomNavigation 
                   viewMode={viewMode} 
                   setViewMode={setViewMode} 
                   missedCallsCount={missedCallsCount} 
                 />
-              </div>
-            ) : viewMode === 'contacts' || viewMode === 'voicemail' ? (
-              /* Contacts/Voicemail Screen - Empty State */
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 flex items-center justify-center">
-                  <p className="text-sm text-muted-foreground">Coming soon</p>
-                </div>
-                
-                <BottomNavigation 
-                  viewMode={viewMode} 
-                  setViewMode={setViewMode} 
-                  missedCallsCount={missedCallsCount} 
-                />
-              </div>
-            ) : (
-              /* Dialpad Screen */
-              <div className="flex-1 flex flex-col">
-                {/* Dialpad Content */}
-                <div className="flex-1 overflow-y-auto flex flex-col justify-between py-4 px-6">
-                  {/* Number Display */}
-                  <div className="text-center py-3">
-                    <input
-                      ref={dialInputRef}
-                      type="tel"
-                      value={dialNumber}
-                      onChange={(e) => handleNumberChange(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && dialNumber) {
-                          handleCall();
-                        } else if (e.key === 'Backspace') {
-                          e.preventDefault();
-                          setDialNumber(prev => prev.slice(0, -1));
-                        }
-                      }}
-                      className="w-full bg-transparent border-none text-foreground text-2xl text-center focus:outline-none font-normal"
-                      placeholder=""
-                      data-testid="input-dial-number"
-                      autoComplete="off"
-                    />
-                  </div>
-                  
-                  {/* Dialpad Grid */}
-                  <div className="grid grid-cols-3 gap-3 px-2">
-                    {digits.map((digit, index) => (
-                      <button
-                        key={digit}
-                        onClick={() => handleDial(digit)}
-                        className="w-20 h-20 mx-auto rounded-full bg-muted/40 hover:bg-muted/60 flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
-                        data-testid={`button-dialpad-${digit}`}
-                      >
-                        <span className="text-3xl text-foreground font-normal">
-                          {digit}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium h-[14px]">
-                          {letters[index] || '\u00A0'}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Bottom Row - Call and Delete Buttons */}
-                  <div className="grid grid-cols-3 gap-3 px-2 py-3">
-                    <div></div>
-                    <button
-                      onClick={handleCall}
-                      disabled={!dialNumber || connectionStatus !== 'connected'}
-                      className={cn(
-                        "w-20 h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
-                        dialNumber && connectionStatus === 'connected'
-                          ? "bg-green-500 hover:bg-green-600" 
-                          : "bg-green-500/40 cursor-not-allowed"
-                      )}
-                    >
-                      <Phone className="h-7 w-7 text-white" />
-                    </button>
-                    
-                    {dialNumber ? (
-                      <button
-                        onClick={() => setDialNumber(prev => prev.slice(0, -1))}
-                        className="w-20 h-20 mx-auto rounded-full hover:bg-muted/30 flex items-center justify-center transition-all active:scale-95"
-                      >
-                        <Delete className="h-6 w-6 text-foreground" />
-                      </button>
-                    ) : (
-                      <div></div>
-                    )}
-                  </div>
-                </div>
-                
-                <BottomNavigation 
-                  viewMode={viewMode} 
-                  setViewMode={setViewMode} 
-                  missedCallsCount={missedCallsCount} 
-                />
-              </div>
+              </>
             )}
         </div>
       </div>
