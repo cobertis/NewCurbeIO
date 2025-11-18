@@ -1209,6 +1209,18 @@ class WebPhoneManager {
     
     store.setConnectionStatus('disconnected');
   }
+  
+  // ============================================================================
+  // GETTERS - State access methods
+  // ============================================================================
+  
+  public getDoNotDisturb(): boolean {
+    return useWebPhoneStore.getState().doNotDisturb;
+  }
+  
+  public getCallWaiting(): boolean {
+    return useWebPhoneStore.getState().callWaitingEnabled;
+  }
 }
 
 // Export singleton instance

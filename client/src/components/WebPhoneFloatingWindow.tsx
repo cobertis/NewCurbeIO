@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
 
@@ -78,6 +79,8 @@ export function WebPhoneFloatingWindow() {
   const [callDuration, setCallDuration] = useState(0);
   const [showKeypad, setShowKeypad] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('keypad');
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [transferNumber, setTransferNumber] = useState('');
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -89,6 +92,7 @@ export function WebPhoneFloatingWindow() {
   const currentCall = useWebPhoneStore(state => state.currentCall);
   const isMuted = useWebPhoneStore(state => state.isMuted);
   const isOnHold = useWebPhoneStore(state => state.isOnHold);
+  const isRecording = useWebPhoneStore(state => state.isRecording);
   const sipExtension = useWebPhoneStore(state => state.sipExtension);
   const callHistory = useWebPhoneStore(state => state.callHistory);
   const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
@@ -330,18 +334,33 @@ export function WebPhoneFloatingWindow() {
                       <span className="text-xs text-muted-foreground">keypad</span>
                     </button>
                     
-                    <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
-                      <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                        <Volume2 className="h-7 w-7 text-foreground" />
+                    <button
+                      onClick={() => isRecording ? webPhone.stopRecording() : webPhone.startRecording()}
+                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                      data-testid="button-recording"
+                    >
+                      <div className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-md",
+                        isRecording ? "bg-red-500" : "bg-muted/80"
+                      )}>
+                        {isRecording ? (
+                          <Circle className="h-7 w-7 text-white fill-white animate-pulse" />
+                        ) : (
+                          <Circle className="h-7 w-7 text-foreground" />
+                        )}
                       </div>
-                      <span className="text-xs text-muted-foreground">speaker</span>
+                      <span className="text-xs text-muted-foreground">{isRecording ? 'recording' : 'record'}</span>
                     </button>
                     
-                    <button className="flex flex-col items-center gap-2 opacity-40 cursor-not-allowed">
+                    <button
+                      onClick={() => setShowTransferDialog(true)}
+                      className="flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
+                      data-testid="button-transfer"
+                    >
                       <div className="w-16 h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                        <UserPlus className="h-7 w-7 text-foreground" />
+                        <PhoneForwarded className="h-7 w-7 text-foreground" />
                       </div>
-                      <span className="text-xs text-muted-foreground">add call</span>
+                      <span className="text-xs text-muted-foreground">transfer</span>
                     </button>
                     
                     <button
@@ -376,6 +395,57 @@ export function WebPhoneFloatingWindow() {
                     </button>
                   </div>
                 </div>
+                
+                {/* Transfer Dialog */}
+                {showTransferDialog && currentCall && (
+                  <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+                    <DialogContent className="sm:max-w-md">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-lg font-semibold mb-2">Transfer Call</h3>
+                          <p className="text-sm text-muted-foreground">Enter the number to transfer to</p>
+                        </div>
+                        
+                        <input
+                          type="tel"
+                          value={transferNumber}
+                          onChange={(e) => setTransferNumber(e.target.value)}
+                          placeholder="Enter phone number"
+                          className="w-full px-4 py-2 border rounded-lg"
+                          data-testid="input-transfer-number"
+                        />
+                        
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              webPhone.blindTransfer(transferNumber);
+                              setShowTransferDialog(false);
+                              setTransferNumber('');
+                            }}
+                            disabled={!transferNumber}
+                            className="flex-1"
+                            data-testid="button-blind-transfer"
+                          >
+                            Blind Transfer
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              webPhone.attendedTransfer(transferNumber);
+                              setShowTransferDialog(false);
+                              setTransferNumber('');
+                            }}
+                            disabled={!transferNumber}
+                            variant="outline"
+                            className="flex-1"
+                            data-testid="button-attended-transfer"
+                          >
+                            Attended Transfer
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             ) : viewMode === 'recents' ? (
               /* Call History Screen */

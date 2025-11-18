@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import { useMemo } from "react";
+import { webPhone, useWebPhoneStore } from "@/services/webphone";
 
 // Business categories
 const categories = [
@@ -2727,6 +2728,10 @@ function WebPhoneTab() {
   const [showPassword, setShowPassword] = useState(false);
   const [testingCall, setTestingCall] = useState(false);
   
+  // Reactive WebPhone state from Zustand store
+  const doNotDisturb = useWebPhoneStore(state => state.doNotDisturb);
+  const callWaiting = useWebPhoneStore(state => state.callWaitingEnabled);
+  
   // Fetch user data
   const { data: userData, isLoading: isLoadingUser } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -2952,6 +2957,33 @@ function WebPhoneTab() {
             <p className="text-xs text-muted-foreground">
               WebSocket Secure server for SIP connection (Domain: pbx.curbe.io)
             </p>
+          </div>
+        </div>
+        
+        {/* Call Features */}
+        <div className="space-y-4 pt-4 border-t">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Do Not Disturb</Label>
+              <p className="text-sm text-muted-foreground">Reject all incoming calls automatically</p>
+            </div>
+            <Switch
+              checked={doNotDisturb}
+              onCheckedChange={() => webPhone.toggleDoNotDisturb()}
+              data-testid="switch-dnd"
+            />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Call Waiting</Label>
+              <p className="text-sm text-muted-foreground">Allow incoming calls while on active call</p>
+            </div>
+            <Switch
+              checked={callWaiting}
+              onCheckedChange={() => webPhone.toggleCallWaiting()}
+              data-testid="switch-call-waiting"
+            />
           </div>
         </div>
         
