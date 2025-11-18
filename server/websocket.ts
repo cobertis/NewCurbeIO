@@ -128,7 +128,8 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
     }
   });
   
-  sipWss.on('connection', async (clientWs: WebSocket, req: IncomingMessage) => {
+  sipWss.on('connection', (clientWs: WebSocket, req: IncomingMessage) => {
+    console.log('[SIP WebSocket] ⚡ CONNECTION HANDLER TRIGGERED');
     const sessionId = getSessionIdFromRequest(req);
     
     if (!sessionId || !sessionStore) {
@@ -137,71 +138,93 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
       return;
     }
     
+    console.log('[SIP WebSocket] Validating session...');
+    
     sessionStore.get(sessionId, async (err: any, session: SessionData) => {
-      if (err || !session || !session.user?.id) {
+      if (err) {
+        console.error('[SIP WebSocket] Session store error:', err);
+        clientWs.close(1008, 'Session error');
+        return;
+      }
+      
+      if (!session || !session.user?.id) {
         console.log('[SIP WebSocket] Invalid session - closing');
         clientWs.close(1008, 'Unauthorized');
         return;
       }
       
-      // Get user's SIP server configuration
-      const { storage } = await import('./storage');
-      const user = await storage.getUser(session.user.id);
+      console.log(`[SIP WebSocket] Session valid for user: ${session.user.id}`);
       
-      if (!user || !user.sipEnabled || !user.sipServer) {
-        console.log('[SIP WebSocket] User has no SIP configuration - closing');
-        clientWs.close(1008, 'No SIP configuration');
-        return;
+      try {
+        // Get user's SIP server configuration
+        const { storage } = await import('./storage');
+        const user = await storage.getUser(session.user.id);
+        
+        console.log('[SIP WebSocket] User config:', {
+          hasUser: !!user,
+          sipEnabled: user?.sipEnabled,
+          hasSipServer: !!user?.sipServer,
+          sipServer: user?.sipServer
+        });
+        
+        if (!user || !user.sipEnabled || !user.sipServer) {
+          console.log('[SIP WebSocket] User has no SIP configuration - closing');
+          clientWs.close(1008, 'No SIP configuration');
+          return;
+        }
+        
+        const pbxServer = user.sipServer;
+        console.log(`[SIP WebSocket] ✅ Connecting to PBX: ${pbxServer}`);
+        
+        // Create WebSocket connection to actual PBX server
+        const pbxWs = new WebSocket(pbxServer);
+        
+        // Relay messages from PBX to client
+        pbxWs.on('message', (data) => {
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(data);
+          }
+        });
+        
+        // Relay messages from client to PBX
+        clientWs.on('message', (data) => {
+          if (pbxWs.readyState === WebSocket.OPEN) {
+            pbxWs.send(data);
+          }
+        });
+        
+        // Handle PBX connection open
+        pbxWs.on('open', () => {
+          console.log('[SIP WebSocket] ✅ Connected to PBX server successfully');
+        });
+        
+        // Handle PBX errors
+        pbxWs.on('error', (error) => {
+          console.error('[SIP WebSocket] ❌ PBX connection error:', error.message);
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.close(1011, 'PBX connection error');
+          }
+        });
+        
+        // Handle PBX disconnect
+        pbxWs.on('close', (code, reason) => {
+          console.log(`[SIP WebSocket] PBX disconnected (${code}): ${reason}`);
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.close(code, reason.toString());
+          }
+        });
+        
+        // Handle client disconnect
+        clientWs.on('close', () => {
+          console.log('[SIP WebSocket] Client disconnected - closing PBX connection');
+          if (pbxWs.readyState === WebSocket.OPEN || pbxWs.readyState === WebSocket.CONNECTING) {
+            pbxWs.close();
+          }
+        });
+      } catch (error: any) {
+        console.error('[SIP WebSocket] Error setting up proxy:', error.message);
+        clientWs.close(1011, 'Proxy setup error');
       }
-      
-      const pbxServer = user.sipServer;
-      console.log(`[SIP WebSocket] Connecting to PBX: ${pbxServer}`);
-      
-      // Create WebSocket connection to actual PBX server
-      const pbxWs = new WebSocket(pbxServer);
-      
-      // Relay messages from PBX to client
-      pbxWs.on('message', (data) => {
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(data);
-        }
-      });
-      
-      // Relay messages from client to PBX
-      clientWs.on('message', (data) => {
-        if (pbxWs.readyState === WebSocket.OPEN) {
-          pbxWs.send(data);
-        }
-      });
-      
-      // Handle PBX connection open
-      pbxWs.on('open', () => {
-        console.log('[SIP WebSocket] Connected to PBX server');
-      });
-      
-      // Handle PBX errors
-      pbxWs.on('error', (error) => {
-        console.error('[SIP WebSocket] PBX connection error:', error.message);
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.close(1011, 'PBX connection error');
-        }
-      });
-      
-      // Handle PBX disconnect
-      pbxWs.on('close', (code, reason) => {
-        console.log(`[SIP WebSocket] PBX disconnected (${code}): ${reason}`);
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.close(code, reason.toString());
-        }
-      });
-      
-      // Handle client disconnect
-      clientWs.on('close', () => {
-        console.log('[SIP WebSocket] Client disconnected - closing PBX connection');
-        if (pbxWs.readyState === WebSocket.OPEN || pbxWs.readyState === WebSocket.CONNECTING) {
-          pbxWs.close();
-        }
-      });
     });
   });
 
