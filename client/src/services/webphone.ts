@@ -246,6 +246,16 @@ class WebPhoneManager {
                 credential: 'Curbe2025!'
               }
             ]
+          },
+          // CRITICAL FIX: Set ICE gathering timeout to 0 and configure delegate
+          // This eliminates the 5-second delay on incoming calls
+          iceGatheringTimeout: 0,
+          onIceCandidate: (event: any) => {
+            console.log('[WebPhone] 🧊 ICE candidate event received');
+            if (event.ready) {
+              console.log('[WebPhone] ✅ Calling event.ready() - proceeding immediately with ICE candidate');
+              event.ready();
+            }
           }
         },
         delegate: {
@@ -1043,18 +1053,9 @@ class WebPhoneManager {
         this.attachPeerConnectionHandlers(sdh.peerConnection);
       }
       
-      // CRITICAL FIX: Configure ICE candidate handler to eliminate 5-second delay
-      // When first usable ICE candidate arrives, call event.ready() to skip waiting
-      // for the full 5000ms iceGatheringTimeout (Browser-Phone pattern)
-      sdh.delegate = {
-        onIceCandidate: (event: any) => {
-          console.log('[WebPhone] ICE candidate received');
-          if (event.ready) {
-            console.log('[WebPhone] ✅ Calling event.ready() - skipping ICE gathering timeout');
-            event.ready();
-          }
-        }
-      };
+      // Note: ICE candidate handling is now configured globally via sessionDescriptionHandlerFactoryOptions
+      // in the UserAgent initialization (iceGatheringTimeout: 0 + onIceCandidate delegate)
+      // This ensures the delegate is attached BEFORE accept() creates the SessionDescriptionHandler
       
       // Call extra onSessionDescriptionHandler if provided
       if (extraHandlers?.onSessionDescriptionHandler) {
