@@ -97,17 +97,40 @@ export function WebPhoneFloatingWindow() {
   const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
   const letters = ['', 'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQRS', 'TUV', 'WXYZ', '', '+', ''];
   
+  const formatDialerInput = (value: string): string => {
+    const rawDigits = value.replace(/\D/g, '');
+    const limitedDigits = rawDigits.slice(0, 10);
+    
+    if (limitedDigits.length === 0) return '';
+    if (limitedDigits.length <= 3) return `(${limitedDigits}`;
+    if (limitedDigits.length <= 6) {
+      return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3)}`;
+    }
+    return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3, 6)}-${limitedDigits.slice(6)}`;
+  };
+  
   const handleDial = (digit: string) => {
-    setDialNumber(prev => prev + digit);
+    const currentDigits = dialNumber.replace(/\D/g, '');
+    if (currentDigits.length < 10) {
+      const newDigits = currentDigits + digit;
+      setDialNumber(formatDialerInput(newDigits));
+    }
+    
     if (currentCall?.status === 'answered') {
       webPhone.sendDTMF(digit);
     }
   };
   
+  const handleNumberChange = (value: string) => {
+    const formatted = formatDialerInput(value);
+    setDialNumber(formatted);
+  };
+  
   const handleCall = async () => {
     if (!dialNumber) return;
     try {
-      await webPhone.makeCall(dialNumber);
+      const digits = dialNumber.replace(/\D/g, '');
+      await webPhone.makeCall(digits);
       setDialNumber('');
     } catch (error) {
       console.error('Failed to make call:', error);
@@ -275,31 +298,33 @@ export function WebPhoneFloatingWindow() {
               </div>
             ) : (
               /* Dialpad Screen */
-              <div className="flex-1 flex flex-col p-6">
+              <div className="flex-1 flex flex-col justify-between px-4 py-8">
                 {/* Number Display */}
-                <div className="pt-6 pb-8">
+                <div className="pt-8 pb-12">
                   <input
                     type="text"
                     value={dialNumber}
-                    onChange={(e) => setDialNumber(e.target.value)}
-                    className="w-full bg-transparent border-none text-foreground text-3xl text-center focus:outline-none font-light"
+                    onChange={(e) => handleNumberChange(e.target.value)}
+                    className="w-full bg-transparent border-none text-muted-foreground text-4xl text-center focus:outline-none font-light tracking-wide"
                     placeholder="Enter number"
                     data-testid="input-dial-number"
                   />
                 </div>
                 
                 {/* Dialpad Grid */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-3 gap-x-8 gap-y-6 px-8">
                   {digits.map((digit, index) => (
                     <button
                       key={digit}
                       onClick={() => handleDial(digit)}
-                      className="aspect-square bg-muted/50 hover:bg-muted rounded-full flex flex-col items-center justify-center transition-all active:scale-95"
+                      className="flex flex-col items-center justify-center py-4 hover:bg-muted/20 rounded-lg transition-colors active:bg-muted/30"
                       data-testid={`button-dialpad-${digit}`}
                     >
-                      <span className="text-3xl text-foreground font-light">{digit}</span>
+                      <span className="text-4xl text-foreground font-light leading-none mb-1">
+                        {digit}
+                      </span>
                       {letters[index] && (
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider mt-0.5">
+                        <span className="text-xs text-muted-foreground uppercase tracking-widest font-medium">
                           {letters[index]}
                         </span>
                       )}
@@ -307,41 +332,23 @@ export function WebPhoneFloatingWindow() {
                   ))}
                 </div>
                 
-                {/* Action Buttons */}
-                <div className="flex items-center justify-center gap-16 pb-6">
-                  {dialNumber && (
-                    <button
-                      onClick={() => setDialNumber('')}
-                      className="w-14 h-14 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-all"
-                    >
-                      <X className="h-6 w-6 text-foreground" />
-                    </button>
-                  )}
-                  
+                {/* Call Button */}
+                <div className="flex justify-center pt-8 pb-6">
                   <button
                     onClick={handleCall}
                     disabled={!dialNumber}
                     className={cn(
-                      "w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
+                      "w-16 h-16 rounded-full flex items-center justify-center transition-all",
                       dialNumber 
-                        ? "bg-green-500 hover:bg-green-600" 
-                        : "bg-muted/30 cursor-not-allowed"
+                        ? "bg-green-500 hover:bg-green-600 active:scale-95" 
+                        : "bg-muted/20 cursor-not-allowed opacity-40"
                     )}
                   >
                     <Phone className={cn(
-                      "h-8 w-8",
+                      "h-7 w-7",
                       dialNumber ? "text-white" : "text-muted-foreground"
                     )} />
                   </button>
-                  
-                  {dialNumber && (
-                    <button
-                      onClick={() => setDialNumber(prev => prev.slice(0, -1))}
-                      className="w-14 h-14 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-all"
-                    >
-                      <span className="text-2xl text-foreground">⌫</span>
-                    </button>
-                  )}
                 </div>
               </div>
             )}
