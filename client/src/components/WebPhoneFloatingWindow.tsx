@@ -11,7 +11,7 @@ type ViewMode = 'calls' | 'contacts' | 'keypad' | 'search';
 
 export function WebPhoneFloatingWindow() {
   const [dialNumber, setDialNumber] = useState('');
-  const [position, setPosition] = useState({ x: window.innerWidth - 380, y: window.innerHeight - 660 });
+  const [position, setPosition] = useState({ x: window.innerWidth - 380, y: window.innerHeight - 720 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [callDuration, setCallDuration] = useState(0);
@@ -152,18 +152,18 @@ export function WebPhoneFloatingWindow() {
       {/* iPhone-style Floating Window */}
       <div
         ref={windowRef}
-        className="fixed z-50 bg-background border-2 border-border rounded-[2.5rem] shadow-2xl overflow-hidden"
+        className="fixed z-50 bg-background border-2 border-border rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
         style={{
           left: `${position.x}px`,
           top: `${position.y}px`,
           width: '360px',
-          height: '640px',
+          height: '700px',
           cursor: isDragging ? 'grabbing' : 'default'
         }}
       >
         {/* iPhone Notch/Header */}
         <div
-          className="bg-background px-4 py-3 flex items-center justify-between cursor-grab active:cursor-grabbing"
+          className="bg-background px-4 py-3 flex items-center justify-between cursor-grab active:cursor-grabbing h-[52px] flex-shrink-0"
           onMouseDown={handleMouseDown}
         >
           <div className="flex items-center gap-2">
@@ -190,7 +190,7 @@ export function WebPhoneFloatingWindow() {
           </div>
         </div>
         
-        <div className="flex flex-col h-[588px] no-drag">
+        <div className="flex-1 flex flex-col overflow-hidden no-drag">
           {currentCall ? (
               /* Active Call Screen */
               <div className="flex-1 flex flex-col justify-between p-6">
@@ -374,7 +374,7 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background">
+                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
                   <button
                     onClick={() => setViewMode('calls')}
                     className="flex flex-col items-center gap-0.5 py-1 px-2"
@@ -431,7 +431,7 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background">
+                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
                   <button
                     onClick={() => setViewMode('calls')}
                     className="flex flex-col items-center gap-0.5 py-1 px-2"
@@ -545,7 +545,7 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background">
+                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background h-[60px] flex-shrink-0">
                   <button
                     onClick={() => setViewMode('calls')}
                     className="flex flex-col items-center gap-0.5 py-1 px-2"
