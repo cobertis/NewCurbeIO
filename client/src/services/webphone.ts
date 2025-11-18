@@ -199,13 +199,22 @@ class WebPhoneManager {
         username: extension
       });
       
-      // Create User Agent
+      // Create User Agent with STUN servers for WebRTC NAT traversal (required for Replit)
       this.userAgent = new UserAgent({
         uri: UserAgent.makeURI(uriString)!,
         transportOptions,
         authorizationUsername: extension,
         authorizationPassword: password,
         displayName: extension,
+        sessionDescriptionHandlerFactoryOptions: {
+          peerConnectionOptions: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+          }
+        },
         delegate: {
           onInvite: this.handleIncomingCall.bind(this),
           onConnect: () => {
@@ -318,37 +327,49 @@ class WebPhoneManager {
       throw new Error('Invalid phone number');
     }
     
-    // Create inviter
-    const inviter = new Inviter(this.userAgent, targetURI);
-    
-    // Create call object
-    const call: Call = {
-      id: Math.random().toString(36).substr(2, 9),
-      direction: 'outbound',
-      phoneNumber: formattedNumber,
-      startTime: new Date(),
-      status: 'ringing',
-      session: inviter
-    };
-    
-    store.setCurrentCall(call);
-    this.currentSession = inviter;
-    
-    // Handle session state changes
-    inviter.stateChange.addListener((state) => {
-      switch (state) {
-        case SessionState.Established:
-          store.setCallStatus('answered');
-          this.setupMediaStreams(inviter);
-          break;
-        case SessionState.Terminated:
-          this.endCall();
-          break;
-      }
-    });
-    
-    // Send the invite
     try {
+      // Request microphone permission before making call
+      console.log('[WebPhone] Requesting microphone permission...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      console.log('[WebPhone] Microphone permission granted');
+      
+      // Create inviter with audio constraints
+      const inviter = new Inviter(this.userAgent, targetURI, {
+        sessionDescriptionHandlerOptions: {
+          constraints: {
+            audio: true,
+            video: false
+          }
+        }
+      });
+      
+      // Create call object
+      const call: Call = {
+        id: Math.random().toString(36).substr(2, 9),
+        direction: 'outbound',
+        phoneNumber: formattedNumber,
+        startTime: new Date(),
+        status: 'ringing',
+        session: inviter
+      };
+      
+      store.setCurrentCall(call);
+      this.currentSession = inviter;
+      
+      // Handle session state changes
+      inviter.stateChange.addListener((state) => {
+        switch (state) {
+          case SessionState.Established:
+            store.setCallStatus('answered');
+            this.setupMediaStreams(inviter);
+            break;
+          case SessionState.Terminated:
+            this.endCall();
+            break;
+        }
+      });
+      
+      // Send the invite
       await inviter.invite({
         requestDelegate: {
           onAccept: () => console.log('[WebPhone] Call accepted'),
@@ -375,10 +396,25 @@ class WebPhoneManager {
     store.setIncomingCallVisible(false);
     
     try {
-      await session.accept();
+      // Request microphone permission before accepting
+      console.log('[WebPhone] Requesting microphone permission...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      console.log('[WebPhone] Microphone permission granted');
+      
+      // Accept the call with media constraints
+      await session.accept({
+        sessionDescriptionHandlerOptions: {
+          constraints: {
+            audio: true,
+            video: false
+          }
+        }
+      });
+      
       this.currentSession = session;
       this.setupMediaStreams(session);
       store.setCallStatus('answered');
+      console.log('[WebPhone] Call answered successfully');
     } catch (error) {
       console.error('[WebPhone] Failed to answer call:', error);
       this.endCall();
@@ -474,19 +510,54 @@ class WebPhoneManager {
   
   private setupMediaStreams(session: Session) {
     const store = useWebPhoneStore.getState();
-    const pc = (session as any)?.sessionDescriptionHandler?.peerConnection;
+    const sdh = (session as any)?.sessionDescriptionHandler;
+    const pc: RTCPeerConnection | undefined = sdh?.peerConnection;
     
-    if (!pc) return;
+    if (!pc) {
+      console.error('[WebPhone] No peer connection available');
+      return;
+    }
     
-    // Setup remote audio
-    if (store.remoteAudioElement) {
-      pc.ontrack = (event: RTCTrackEvent) => {
-        if (event.track.kind === 'audio' && store.remoteAudioElement) {
-          const remoteStream = new MediaStream([event.track]);
-          store.remoteAudioElement.srcObject = remoteStream;
-          store.remoteAudioElement.play();
-        }
-      };
+    console.log('[WebPhone] Setting up media streams...');
+    
+    // Handle remote tracks
+    pc.ontrack = (event: RTCTrackEvent) => {
+      console.log('[WebPhone] Received remote track:', event.track.kind);
+      if (event.track.kind === 'audio' && store.remoteAudioElement) {
+        const remoteStream = new MediaStream([event.track]);
+        store.remoteAudioElement.srcObject = remoteStream;
+        store.remoteAudioElement.play().then(() => {
+          console.log('[WebPhone] ✅ Remote audio playing');
+        }).catch((error) => {
+          console.error('[WebPhone] ❌ Failed to play remote audio:', error);
+        });
+      }
+    };
+    
+    // Log ICE connection state
+    pc.oniceconnectionstatechange = () => {
+      console.log('[WebPhone] ICE connection state:', pc.iceConnectionState);
+    };
+    
+    // Log connection state
+    pc.onconnectionstatechange = () => {
+      console.log('[WebPhone] Connection state:', pc.connectionState);
+    };
+    
+    // Check if remote stream already exists (for incoming calls)
+    const receivers = pc.getReceivers();
+    if (receivers.length > 0 && store.remoteAudioElement) {
+      const audioReceiver = receivers.find(r => r.track.kind === 'audio');
+      if (audioReceiver && audioReceiver.track) {
+        console.log('[WebPhone] Setting up existing remote audio track');
+        const remoteStream = new MediaStream([audioReceiver.track]);
+        store.remoteAudioElement.srcObject = remoteStream;
+        store.remoteAudioElement.play().then(() => {
+          console.log('[WebPhone] ✅ Remote audio playing (existing track)');
+        }).catch((error) => {
+          console.error('[WebPhone] ❌ Failed to play remote audio:', error);
+        });
+      }
     }
   }
   
