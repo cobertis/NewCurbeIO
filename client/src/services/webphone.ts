@@ -545,6 +545,178 @@ class WebPhoneManager {
     (this.currentSession as any).sessionDescriptionHandler?.sendDtmf(digit);
   }
   
+  // ============================================================================
+  // BROWSER-PHONE FUNCTIONS - Hold/Mute/Transfer
+  // ============================================================================
+  
+  public holdCall(): void {
+    const store = useWebPhoneStore.getState();
+    const session = this.currentSession;
+    
+    if (!session || session.state !== SessionState.Established) {
+      console.warn('[WebPhone] Cannot hold - no active call');
+      return;
+    }
+    
+    if (store.isOnHold) {
+      console.log('[WebPhone] Call is already on hold');
+      return;
+    }
+    
+    console.log('[WebPhone] Putting call on hold');
+    
+    const options = {
+      requestDelegate: {
+        onAccept: () => {
+          const sdh = (session as any).sessionDescriptionHandler;
+          if (sdh && sdh.peerConnection) {
+            const pc = sdh.peerConnection;
+            
+            // Disable all inbound tracks
+            pc.getReceivers().forEach((receiver: RTCRtpReceiver) => {
+              if (receiver.track) {
+                receiver.track.enabled = false;
+              }
+            });
+            
+            // Disable all outbound tracks
+            pc.getSenders().forEach((sender: RTCRtpSender) => {
+              if (sender.track) {
+                sender.track.enabled = false;
+              }
+            });
+          }
+          
+          store.setOnHold(true);
+          console.log('[WebPhone] ✅ Call is on hold');
+        },
+        onReject: () => {
+          console.warn('[WebPhone] Failed to put call on hold');
+        }
+      },
+      sessionDescriptionHandlerOptions: {
+        hold: true
+      }
+    };
+    
+    (session as any).invite(options).catch((error: any) => {
+      console.error('[WebPhone] Error putting call on hold:', error);
+    });
+  }
+  
+  public unholdCall(): void {
+    const store = useWebPhoneStore.getState();
+    const session = this.currentSession;
+    
+    if (!session || session.state !== SessionState.Established) {
+      console.warn('[WebPhone] Cannot unhold - no active call');
+      return;
+    }
+    
+    if (!store.isOnHold) {
+      console.log('[WebPhone] Call is not on hold');
+      return;
+    }
+    
+    console.log('[WebPhone] Taking call off hold');
+    
+    const options = {
+      requestDelegate: {
+        onAccept: () => {
+          const sdh = (session as any).sessionDescriptionHandler;
+          if (sdh && sdh.peerConnection) {
+            const pc = sdh.peerConnection;
+            
+            // Enable all inbound tracks
+            pc.getReceivers().forEach((receiver: RTCRtpReceiver) => {
+              if (receiver.track) {
+                receiver.track.enabled = true;
+              }
+            });
+            
+            // Enable all outbound tracks
+            pc.getSenders().forEach((sender: RTCRtpSender) => {
+              if (sender.track) {
+                sender.track.enabled = true;
+              }
+            });
+          }
+          
+          store.setOnHold(false);
+          console.log('[WebPhone] ✅ Call is off hold');
+        },
+        onReject: () => {
+          console.warn('[WebPhone] Failed to take call off hold');
+        }
+      },
+      sessionDescriptionHandlerOptions: {
+        hold: false
+      }
+    };
+    
+    (session as any).invite(options).catch((error: any) => {
+      console.error('[WebPhone] Error taking call off hold:', error);
+    });
+  }
+  
+  public muteCall(): void {
+    const store = useWebPhoneStore.getState();
+    const session = this.currentSession;
+    
+    if (!session || session.state !== SessionState.Established) {
+      console.warn('[WebPhone] Cannot mute - no active call');
+      return;
+    }
+    
+    const sdh = (session as any).sessionDescriptionHandler;
+    if (!sdh || !sdh.peerConnection) {
+      console.warn('[WebPhone] No peer connection available');
+      return;
+    }
+    
+    console.log('[WebPhone] Muting microphone');
+    
+    const pc = sdh.peerConnection;
+    pc.getSenders().forEach((sender: RTCRtpSender) => {
+      if (sender.track && sender.track.kind === 'audio') {
+        console.log('[WebPhone] Muting audio track:', sender.track.label);
+        sender.track.enabled = false;
+      }
+    });
+    
+    store.setMuted(true);
+    console.log('[WebPhone] ✅ Microphone muted');
+  }
+  
+  public unmuteCall(): void {
+    const store = useWebPhoneStore.getState();
+    const session = this.currentSession;
+    
+    if (!session || session.state !== SessionState.Established) {
+      console.warn('[WebPhone] Cannot unmute - no active call');
+      return;
+    }
+    
+    const sdh = (session as any).sessionDescriptionHandler;
+    if (!sdh || !sdh.peerConnection) {
+      console.warn('[WebPhone] No peer connection available');
+      return;
+    }
+    
+    console.log('[WebPhone] Unmuting microphone');
+    
+    const pc = sdh.peerConnection;
+    pc.getSenders().forEach((sender: RTCRtpSender) => {
+      if (sender.track && sender.track.kind === 'audio') {
+        console.log('[WebPhone] Unmuting audio track:', sender.track.label);
+        sender.track.enabled = true;
+      }
+    });
+    
+    store.setMuted(false);
+    console.log('[WebPhone] ✅ Microphone unmuted');
+  }
+  
   private setupSessionDelegate(session: Session) {
     // Setup delegate to capture sessionDescriptionHandler when it's created
     session.delegate = {
