@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, PhoneMissed, Users, Search } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Search, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
 
-type ViewMode = 'recents' | 'keypad';
+type ViewMode = 'calls' | 'contacts' | 'keypad' | 'search';
 
 export function WebPhoneFloatingWindow() {
   const [dialNumber, setDialNumber] = useState('');
@@ -16,7 +16,7 @@ export function WebPhoneFloatingWindow() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [callDuration, setCallDuration] = useState(0);
   const [showKeypad, setShowKeypad] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('recents');
+  const [viewMode, setViewMode] = useState<ViewMode>('calls');
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -291,12 +291,16 @@ export function WebPhoneFloatingWindow() {
                   </div>
                 </div>
               </div>
-            ) : viewMode === 'recents' ? (
+            ) : viewMode === 'calls' ? (
               /* Call History Screen */
               <div className="flex-1 flex flex-col">
                 {/* Header */}
-                <div className="px-4 py-3 flex items-center justify-center border-b border-border">
-                  <h2 className="text-base font-semibold text-foreground">Recents</h2>
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <button className="text-base text-blue-500">Edit</button>
+                  <h2 className="text-lg font-semibold text-foreground">Calls</h2>
+                  <button>
+                    <Menu className="h-5 w-5 text-foreground" />
+                  </button>
                 </div>
                 
                 {/* Call History List */}
@@ -311,52 +315,57 @@ export function WebPhoneFloatingWindow() {
                       {callHistory.map((call) => {
                         const initials = call.displayName 
                           ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-                          : '?';
-                        const timeStr = format(new Date(call.startTime), 'h:mma').toLowerCase();
+                          : '';
+                        const timeStr = format(new Date(call.startTime), 'h:mma');
                         const isMissed = call.status === 'missed';
+                        const isUnknown = !call.displayName;
                         
                         return (
-                          <div key={call.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
+                          <div key={call.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
                             {/* Avatar */}
                             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                              <span className="text-sm font-medium text-muted-foreground">{initials}</span>
+                              {initials ? (
+                                <span className="text-sm font-medium text-muted-foreground">{initials}</span>
+                              ) : (
+                                <User className="h-5 w-5 text-muted-foreground" />
+                              )}
                             </div>
                             
                             {/* Call Info */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                {call.direction === 'inbound' && (
+                                  <PhoneIncoming className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                                {call.direction === 'outbound' && (
+                                  <PhoneOutgoing className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
                                 <span className={cn(
-                                  "text-sm font-medium truncate",
-                                  isMissed ? "text-red-500" : "text-foreground"
+                                  "text-base font-normal truncate",
+                                  isMissed ? "text-red-500" : isUnknown ? "text-red-500" : "text-foreground"
                                 )}>
                                   {call.displayName || formatPhoneInput(call.phoneNumber)}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                {call.direction === 'inbound' ? (
-                                  <PhoneIncoming className="h-3 w-3" />
-                                ) : (
-                                  <PhoneOutgoing className="h-3 w-3" />
-                                )}
-                                <span>{call.direction === 'inbound' ? 'Incoming' : 'Outgoing'}</span>
+                                <Phone className="h-3 w-3" />
+                                <span>phone</span>
                               </div>
                             </div>
                             
-                            {/* Time */}
-                            <div className="text-xs text-muted-foreground flex-shrink-0">
-                              {timeStr}
+                            {/* Time and Call Button */}
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              <span className="text-sm text-muted-foreground">{timeStr}</span>
+                              <button
+                                onClick={() => {
+                                  setViewMode('keypad');
+                                  setDialNumber(call.phoneNumber);
+                                }}
+                                className="text-blue-500 hover:opacity-80 transition-opacity"
+                              >
+                                <Phone className="h-5 w-5" />
+                              </button>
                             </div>
-                            
-                            {/* Call Button */}
-                            <button
-                              onClick={() => {
-                                setViewMode('keypad');
-                                setDialNumber(call.phoneNumber);
-                              }}
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-blue-500 hover:bg-blue-500/10 transition-colors flex-shrink-0"
-                            >
-                              <Phone className="h-4 w-4" />
-                            </button>
                           </div>
                         );
                       })}
@@ -365,42 +374,109 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-6 py-2 flex items-center justify-around bg-background">
+                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background">
                   <button
-                    onClick={() => setViewMode('recents')}
-                    className="flex flex-col items-center gap-1 py-1 px-3"
+                    onClick={() => setViewMode('calls')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
                   >
                     <div className="relative">
-                      <Phone className={cn("h-5 w-5", viewMode === 'recents' ? "text-blue-500" : "text-muted-foreground")} />
+                      <Phone className={cn("h-6 w-6", viewMode === 'calls' ? "text-blue-500" : "text-muted-foreground")} />
                       {callHistory.filter(c => c.status === 'missed').length > 0 && (
-                        <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 flex items-center justify-center text-[9px]">
-                          {callHistory.filter(c => c.status === 'missed').length}
-                        </Badge>
+                        <div className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                          <span className="text-white text-[10px] font-semibold">
+                            {callHistory.filter(c => c.status === 'missed').length}
+                          </span>
+                        </div>
                       )}
                     </div>
-                    <span className={cn("text-[10px]", viewMode === 'recents' ? "text-blue-500" : "text-muted-foreground")}>
-                      Recents
+                    <span className={cn("text-[10px]", viewMode === 'calls' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Calls
                     </span>
                   </button>
                   
-                  <button className="flex flex-col items-center gap-1 py-1 px-3 opacity-40">
-                    <Users className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">Contacts</span>
+                  <button
+                    onClick={() => setViewMode('contacts')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <User className={cn("h-6 w-6", viewMode === 'contacts' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'contacts' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Contacts
+                    </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('keypad')}
-                    className="flex flex-col items-center gap-1 py-1 px-3"
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
                   >
-                    <Grid3x3 className={cn("h-5 w-5", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")}>
+                    <Grid3x3 className={cn("h-6 w-6", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
                       Keypad
                     </span>
                   </button>
                   
-                  <button className="flex flex-col items-center gap-1 py-1 px-3 opacity-40">
-                    <Search className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">Search</span>
+                  <button
+                    onClick={() => setViewMode('search')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <Search className={cn("h-6 w-6", viewMode === 'search' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className="text-[10px] text-transparent">.</span>
+                  </button>
+                </div>
+              </div>
+            ) : viewMode === 'contacts' || viewMode === 'search' ? (
+              /* Contacts/Search Screen - Empty State */
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-sm text-muted-foreground">Coming soon</p>
+                </div>
+                
+                {/* Bottom Navigation */}
+                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background">
+                  <button
+                    onClick={() => setViewMode('calls')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <div className="relative">
+                      <Phone className={cn("h-6 w-6", viewMode === 'calls' ? "text-blue-500" : "text-muted-foreground")} />
+                      {callHistory.filter(c => c.status === 'missed').length > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                          <span className="text-white text-[10px] font-semibold">
+                            {callHistory.filter(c => c.status === 'missed').length}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <span className={cn("text-[10px]", viewMode === 'calls' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Calls
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setViewMode('contacts')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <User className={cn("h-6 w-6", viewMode === 'contacts' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'contacts' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Contacts
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setViewMode('keypad')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <Grid3x3 className={cn("h-6 w-6", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Keypad
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setViewMode('search')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <Search className={cn("h-6 w-6", viewMode === 'search' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className="text-[10px] text-transparent">.</span>
                   </button>
                 </div>
               </div>
@@ -468,42 +544,52 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Bottom Navigation */}
-                <div className="border-t border-border px-6 py-2 flex items-center justify-around bg-background">
+                <div className="border-t border-border px-4 py-2 flex items-center justify-around bg-background">
                   <button
-                    onClick={() => setViewMode('recents')}
-                    className="flex flex-col items-center gap-1 py-1 px-3"
+                    onClick={() => setViewMode('calls')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
                   >
                     <div className="relative">
-                      <Phone className={cn("h-5 w-5", viewMode === 'recents' ? "text-blue-500" : "text-muted-foreground")} />
+                      <Phone className={cn("h-6 w-6", viewMode === 'calls' ? "text-blue-500" : "text-muted-foreground")} />
                       {callHistory.filter(c => c.status === 'missed').length > 0 && (
-                        <Badge variant="destructive" className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 flex items-center justify-center text-[9px]">
-                          {callHistory.filter(c => c.status === 'missed').length}
-                        </Badge>
+                        <div className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                          <span className="text-white text-[10px] font-semibold">
+                            {callHistory.filter(c => c.status === 'missed').length}
+                          </span>
+                        </div>
                       )}
                     </div>
-                    <span className={cn("text-[10px]", viewMode === 'recents' ? "text-blue-500" : "text-muted-foreground")}>
-                      Recents
+                    <span className={cn("text-[10px]", viewMode === 'calls' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Calls
                     </span>
                   </button>
                   
-                  <button className="flex flex-col items-center gap-1 py-1 px-3 opacity-40">
-                    <Users className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">Contacts</span>
+                  <button
+                    onClick={() => setViewMode('contacts')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <User className={cn("h-6 w-6", viewMode === 'contacts' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'contacts' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
+                      Contacts
+                    </span>
                   </button>
                   
                   <button
                     onClick={() => setViewMode('keypad')}
-                    className="flex flex-col items-center gap-1 py-1 px-3"
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
                   >
-                    <Grid3x3 className={cn("h-5 w-5", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
-                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")}>
+                    <Grid3x3 className={cn("h-6 w-6", viewMode === 'keypad' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className={cn("text-[10px]", viewMode === 'keypad' ? "text-blue-500 font-medium" : "text-muted-foreground")}>
                       Keypad
                     </span>
                   </button>
                   
-                  <button className="flex flex-col items-center gap-1 py-1 px-3 opacity-40">
-                    <Search className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">Search</span>
+                  <button
+                    onClick={() => setViewMode('search')}
+                    className="flex flex-col items-center gap-0.5 py-1 px-2"
+                  >
+                    <Search className={cn("h-6 w-6", viewMode === 'search' ? "text-blue-500" : "text-muted-foreground")} />
+                    <span className="text-[10px] text-transparent">.</span>
                   </button>
                 </div>
               </div>
