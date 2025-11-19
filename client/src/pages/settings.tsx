@@ -2920,57 +2920,59 @@ function WebPhoneTab() {
         
         {/* SIP Credentials - With inline validation */}
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="sipExtension">SIP Extension</Label>
-            <Input
-              {...form.register("sipExtension")}
-              id="sipExtension"
-              type="text"
-              placeholder="e.g., 302"
-              disabled={updateSipMutation.isPending}
-              data-testid="input-sip-extension"
-            />
-            {form.formState.errors.sipExtension && (
-              <p className="text-xs text-destructive">{form.formState.errors.sipExtension.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Your unique SIP extension number provided by your administrator
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="sipPassword">SIP Password</Label>
-            <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="sipExtension">SIP Extension</Label>
               <Input
-                {...form.register("sipPassword")}
-                id="sipPassword"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your SIP password"
+                {...form.register("sipExtension")}
+                id="sipExtension"
+                type="text"
+                placeholder="e.g., 302"
                 disabled={updateSipMutation.isPending}
-                className="pr-10"
-                data-testid="input-sip-password"
+                data-testid="input-sip-extension"
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-                data-testid="button-toggle-password"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
+              {form.formState.errors.sipExtension && (
+                <p className="text-xs text-destructive">{form.formState.errors.sipExtension.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Your unique SIP extension number provided by your administrator
+              </p>
             </div>
-            {form.formState.errors.sipPassword && (
-              <p className="text-xs text-destructive">{form.formState.errors.sipPassword.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Your SIP authentication password (minimum 6 characters)
-            </p>
+            
+            <div className="space-y-2">
+              <Label htmlFor="sipPassword">SIP Password</Label>
+              <div className="relative">
+                <Input
+                  {...form.register("sipPassword")}
+                  id="sipPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your SIP password"
+                  disabled={updateSipMutation.isPending}
+                  className="pr-10"
+                  data-testid="input-sip-password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                  data-testid="button-toggle-password"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {form.formState.errors.sipPassword && (
+                <p className="text-xs text-destructive">{form.formState.errors.sipPassword.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Your SIP authentication password (minimum 6 characters)
+              </p>
+            </div>
           </div>
           
           <div className="space-y-2">
