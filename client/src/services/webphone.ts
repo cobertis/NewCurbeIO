@@ -491,13 +491,14 @@ class WebPhoneManager {
       console.log('[WebPhone] Lookup result:', data);
       
       if (data.found) {
-        const callerName = `${data.clientFirstName} ${data.clientLastName}`.trim();
+        // CRITICAL FIX: Use firstName/lastName (not clientFirstName/clientLastName)
+        const callerName = `${data.firstName} ${data.lastName}`.trim();
         const callerInfo = {
           found: true,
           type: data.type,
           id: data.id,
-          firstName: data.clientFirstName,
-          lastName: data.clientLastName
+          firstName: data.firstName,
+          lastName: data.lastName
         };
         
         // Update callerInfo in store
