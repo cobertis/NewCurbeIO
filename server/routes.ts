@@ -83,7 +83,7 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, desc, or } from "drizzle-orm";
+import { and, eq, ne, gte, desc, or, sql } from "drizzle-orm";
 import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -5813,16 +5813,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const { phoneNumber } = req.params;
       
-      // Normalize phone number using formatE164 (adds + prefix if needed)
-      let normalizedPhone: string;
-      try {
-        normalizedPhone = formatE164(phoneNumber);
-      } catch (error) {
-        // If normalization fails, try to continue with raw number
-        normalizedPhone = phoneNumber;
-      }
+      // Extract only digits from incoming number for comparison
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      
+      // Get last 10 digits for comparison (handles both US and international formats)
+      const searchDigits = digitsOnly.slice(-10);
+      
+      console.log('[Caller Lookup] Searching for number with digits:', searchDigits);
       
       // Search in policies table first (higher priority) - Get most recent by ordering desc
+      // Compare only digits using REGEXP_REPLACE to strip non-digits from database field
       const policyResults = await db
         .select({
           id: policies.id,
@@ -5835,7 +5835,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(policies.companyId, currentUser.companyId!),
-            eq(policies.clientPhone, normalizedPhone)
+            sql`REGEXP_REPLACE(${policies.clientPhone}, '[^0-9]', '', 'g') LIKE '%' || ${searchDigits}`
           )
         )
         .orderBy(desc(policies.updatedAt))
@@ -5844,6 +5844,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // If policy found, return it
       if (policyResults.length > 0) {
         const mostRecentPolicy = policyResults[0]; // First result is most recent due to desc ordering
+        console.log('[Caller Lookup] ✅ Found in Policy:', mostRecentPolicy.id);
         return res.json({
           found: true,
           type: 'policy',
@@ -5867,7 +5868,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(quotes.companyId, currentUser.companyId!),
-            eq(quotes.clientPhone, normalizedPhone)
+            sql`REGEXP_REPLACE(${quotes.clientPhone}, '[^0-9]', '', 'g') LIKE '%' || ${searchDigits}`
           )
         )
         .orderBy(desc(quotes.updatedAt))
@@ -5876,6 +5877,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // If quote found, return it
       if (quoteResults.length > 0) {
         const mostRecentQuote = quoteResults[0]; // First result is most recent due to desc ordering
+        console.log('[Caller Lookup] ✅ Found in Quote:', mostRecentQuote.id);
         return res.json({
           found: true,
           type: 'quote',
@@ -5887,6 +5889,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // No match found
+      console.log('[Caller Lookup] ℹ️ No match found for:', searchDigits);
       return res.json({
         found: false,
         type: null,
