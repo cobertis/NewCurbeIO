@@ -367,8 +367,7 @@ class WebPhoneManager {
         delegate: {
           onInvite: this.handleIncomingCall.bind(this),
           onConnect: () => {
-            console.log('[WebPhone] ✅ Connected to WebSocket proxy successfully');
-            store.setConnectionStatus('connected');
+            console.log('[WebPhone] ✅ Connected to WebSocket (waiting for SIP registration)');
             this.startReconnectMonitor();
           },
           onDisconnect: (error?: Error) => {
@@ -391,20 +390,28 @@ class WebPhoneManager {
         expires: 300
       });
       
-      // Add registration state change listener
-      this.registerer.stateChange.addListener((newState) => {
-        console.log('[WebPhone] Registration state changed:', newState);
-        if (newState === 'Registered') {
-          console.log('[WebPhone] ✅ Successfully registered to Asterisk');
-          store.setConnectionStatus('connected');
-        } else if (newState === 'Unregistered' || newState === 'Terminated') {
-          console.log('[WebPhone] ❌ Registration failed or ended');
-          store.setConnectionStatus('error', 'Authentication failed - Invalid credentials');
-        }
+      // CRITICAL FIX: Wait for registration to complete before advertising readiness
+      // This prevents PBX from discarding the first INVITE due to stale contact
+      const registrationComplete = new Promise<void>((resolve, reject) => {
+        this.registerer!.stateChange.addListener((newState) => {
+          console.log('[WebPhone] Registration state changed:', newState);
+          if (newState === 'Registered') {
+            console.log('[WebPhone] ✅ Successfully registered to Asterisk');
+            resolve();
+          } else if (newState === 'Unregistered' || newState === 'Terminated') {
+            console.log('[WebPhone] ❌ Registration failed or ended');
+            reject(new Error('Authentication failed - Invalid credentials'));
+          }
+        });
       });
       
       await this.registerer.register();
-      console.log('[WebPhone] Registration request sent');
+      console.log('[WebPhone] Registration request sent, waiting for confirmation...');
+      
+      // Wait for registration to complete
+      await registrationComplete;
+      console.log('[WebPhone] ✅ Registration confirmed - ready to receive calls');
+      store.setConnectionStatus('connected');
       
     } catch (error: any) {
       console.error('[WebPhone] ❌ Initialization failed:', {
@@ -1458,15 +1465,27 @@ class WebPhoneManager {
       }
     });
     
-    // Attach audio if we have tracks
+    // CRITICAL FIX: Create audio element immediately if not available
+    // This prevents audio from being lost when tracks arrive before UI is ready
     if (remoteAudioStream.getAudioTracks().length >= 1) {
       // Get fresh store state to avoid stale closure
       const currentStore = useWebPhoneStore.getState();
-      const remoteAudio = currentStore.remoteAudioElement;
+      let remoteAudio = currentStore.remoteAudioElement;
       
+      // Create audio element immediately if UI hasn't provided one yet
       if (!remoteAudio) {
-        console.error('[WebPhone] ❌ Remote audio element not available');
-        return;
+        console.log('[WebPhone] ⚠️ Creating audio element on-demand (UI not ready)');
+        remoteAudio = document.createElement('audio');
+        remoteAudio.autoplay = true;
+        remoteAudio.volume = 1.0;
+        // Attach to document to ensure playback
+        remoteAudio.style.display = 'none';
+        document.body.appendChild(remoteAudio);
+        
+        // Update store with the new element
+        if (currentStore.localAudioElement) {
+          currentStore.setAudioElements(currentStore.localAudioElement, remoteAudio);
+        }
       }
       
       console.log('[WebPhone] 🔊 Assigning remote audio stream');
@@ -1475,7 +1494,7 @@ class WebPhoneManager {
       // Browser-Phone pattern: Use onloadedmetadata to play
       remoteAudio.onloadedmetadata = () => {
         console.log('[WebPhone] Audio metadata loaded, playing...');
-        remoteAudio.play()
+        remoteAudio!.play()
           .then(() => console.log('[WebPhone] ✅ REMOTE AUDIO PLAYING'))
           .catch((error) => console.error('[WebPhone] Audio play error:', error));
       };
