@@ -2792,8 +2792,8 @@ function WebPhoneTab() {
         try {
           await webPhone.initialize(variables.sipExtension, variables.sipPassword, variables.sipServer);
           toast({
-            title: "WebPhone Connected",
-            description: "Your SIP credentials have been saved and WebPhone is now connected.",
+            title: "WebPhone Enabled",
+            description: "WebPhone is now connecting...",
           });
         } catch (error: any) {
           toast({
@@ -2802,6 +2802,11 @@ function WebPhoneTab() {
             variant: "destructive",
           });
         }
+      } else if (!variables.sipEnabled) {
+        toast({
+          title: "WebPhone Disabled",
+          description: "WebPhone has been disconnected.",
+        });
       } else {
         toast({
           title: "Settings Saved",
@@ -2822,6 +2827,25 @@ function WebPhoneTab() {
   const handleSave = form.handleSubmit((values) => {
     updateSipMutation.mutate(values);
   });
+  
+  // Handle toggle Enable WebPhone switch - auto-saves and connects/disconnects
+  const handleToggleEnabled = async (enabled: boolean) => {
+    form.setValue("sipEnabled", enabled);
+    
+    const currentValues = form.getValues();
+    const dataToSave = {
+      ...currentValues,
+      sipEnabled: enabled,
+    };
+    
+    // Auto-save when toggling
+    updateSipMutation.mutate(dataToSave);
+    
+    // If disabling, disconnect immediately
+    if (!enabled) {
+      webPhone.disconnect();
+    }
+  };
   
   // Handle test call - REAL implementation
   const handleTestCall = async () => {
@@ -2897,10 +2921,9 @@ function WebPhoneTab() {
                 Enable WebPhone
               </Label>
               <Switch
-                {...form.register("sipEnabled")}
                 id="sipEnabled"
                 checked={form.watch("sipEnabled")}
-                onCheckedChange={(value) => form.setValue("sipEnabled", value)}
+                onCheckedChange={handleToggleEnabled}
                 disabled={updateSipMutation.isPending}
                 data-testid="switch-sip-enabled"
               />
