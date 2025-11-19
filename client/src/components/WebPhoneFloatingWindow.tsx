@@ -292,6 +292,7 @@ export function WebPhoneFloatingWindow() {
   const isVisible = useWebPhoneStore(state => state.dialpadVisible);
   const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
   const currentCall = useWebPhoneStore(state => state.currentCall);
+  const consultationCall = useWebPhoneStore(state => state.consultationCall);
   const callerInfo = useWebPhoneStore(state => state.callerInfo);
   const isMuted = useWebPhoneStore(state => state.isMuted);
   const isOnHold = useWebPhoneStore(state => state.isOnHold);
@@ -616,51 +617,89 @@ export function WebPhoneFloatingWindow() {
                   
                   {/* Call Controls */}
                   <div className="space-y-3 sm:space-y-4 pb-4 sm:pb-8">
-                    {/* Control Buttons Grid - Only 3 buttons */}
-                    <div className="grid grid-cols-3 gap-3 sm:gap-6 px-2 sm:px-4">
-                      <button
-                        onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
-                        className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
-                        data-testid="button-mute-call"
-                      >
-                        <div className={cn(
-                          "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
-                          isMuted ? "bg-foreground" : "bg-muted/80"
-                        )}>
-                          {isMuted ? (
-                            <MicOff className="h-5 w-5 sm:h-7 sm:w-7 text-background" />
-                          ) : (
-                            <Mic className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
-                          )}
+                    {consultationCall ? (
+                      /* Consultation Call Active - Show Complete/Cancel Transfer Buttons */
+                      <>
+                        {/* Info Banner */}
+                        <div className="px-2 sm:px-4">
+                          <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900 rounded-lg p-3">
+                            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 text-center">
+                              <span className="font-semibold">Consultation Call Active</span>
+                              <br />
+                              Talking to: {consultationCall.displayName}
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-[10px] sm:text-xs text-muted-foreground">mute</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => setShowTransferDialog(true)}
-                        className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
-                        data-testid="button-transfer"
-                      >
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                          <PhoneForwarded className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
+                        
+                        {/* Transfer Action Buttons */}
+                        <div className="grid grid-cols-2 gap-3 px-2 sm:px-4">
+                          <Button
+                            onClick={() => webPhone.completeAttendedTransfer()}
+                            className="bg-green-600 hover:bg-green-700 text-white h-12"
+                            data-testid="button-complete-transfer"
+                          >
+                            <Check className="h-5 w-5 mr-2" />
+                            Complete Transfer
+                          </Button>
+                          
+                          <Button
+                            onClick={() => webPhone.cancelAttendedTransfer()}
+                            variant="outline"
+                            className="h-12 border-2"
+                            data-testid="button-cancel-transfer"
+                          >
+                            <X className="h-5 w-5 mr-2" />
+                            Cancel
+                          </Button>
                         </div>
-                        <span className="text-[10px] sm:text-xs text-muted-foreground">transfer</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
-                        className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
-                        data-testid="button-hold-call"
-                      >
-                        <div className={cn(
-                          "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
-                          isOnHold ? "bg-foreground" : "bg-muted/80"
-                        )}>
-                          <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", isOnHold ? "text-background" : "text-foreground")} />
-                        </div>
-                        <span className="text-[10px] sm:text-xs text-muted-foreground">hold</span>
-                      </button>
-                    </div>
+                      </>
+                    ) : (
+                      /* Normal Call Controls - 3 buttons */
+                      <div className="grid grid-cols-3 gap-3 sm:gap-6 px-2 sm:px-4">
+                        <button
+                          onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
+                          className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                          data-testid="button-mute-call"
+                        >
+                          <div className={cn(
+                            "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
+                            isMuted ? "bg-foreground" : "bg-muted/80"
+                          )}>
+                            {isMuted ? (
+                              <MicOff className="h-5 w-5 sm:h-7 sm:w-7 text-background" />
+                            ) : (
+                              <Mic className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
+                            )}
+                          </div>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">mute</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => setShowTransferDialog(true)}
+                          className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                          data-testid="button-transfer"
+                        >
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                            <PhoneForwarded className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
+                          </div>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">transfer</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
+                          className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                          data-testid="button-hold-call"
+                        >
+                          <div className={cn(
+                            "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
+                            isOnHold ? "bg-foreground" : "bg-muted/80"
+                          )}>
+                            <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", isOnHold ? "text-background" : "text-foreground")} />
+                          </div>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">hold</span>
+                        </button>
+                      </div>
+                    )}
                     
                     {/* End Call Button */}
                     <div className="flex justify-center pt-3 sm:pt-6">

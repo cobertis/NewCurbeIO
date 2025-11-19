@@ -181,6 +181,7 @@ class WebPhoneManager {
   private currentSession?: Session;
   private consultationSession?: Session; // For attended transfers
   private transferInProgress: boolean = false; // Guard against manual hangup during transfer
+  private referPending: boolean = false; // ONLY true when REFER is actually sent
   private reconnectInterval?: NodeJS.Timeout;
   private audioContext?: AudioContext;
   private ringtoneOscillator?: OscillatorNode;
@@ -928,10 +929,39 @@ class WebPhoneManager {
   public async hangupCall(): Promise<void> {
     if (!this.currentSession) return;
     
+    const store = useWebPhoneStore.getState();
+    
+    // CRITICAL GUARD: Prevent hangup when consultation call is active
+    // Agent must complete or cancel the attended transfer first
+    if (this.consultationSession || store.consultationCall) {
+      console.warn('[WebPhone] ⚠️ Cannot hangup - active consultation session detected');
+      console.warn('[WebPhone] Please complete or cancel the transfer first');
+      
+      // Import toast dynamically to show warning to user
+      import('@/hooks/use-toast').then(({ toast }) => {
+        toast({
+          title: "Cannot Hang Up",
+          description: "You have an active consultation call. Please complete or cancel the transfer first.",
+          variant: "destructive"
+        });
+      });
+      
+      return;
+    }
+    
     // BROWSER-PHONE PATTERN: Prevent manual hangup during attended transfer
     // REFER completion must be driven by PBX-initiated BYE events only
     if (this.transferInProgress) {
       console.warn('[WebPhone] ⚠️ Cannot hangup manually during transfer - waiting for PBX completion');
+      
+      import('@/hooks/use-toast').then(({ toast }) => {
+        toast({
+          title: "Transfer In Progress",
+          description: "Please wait for the transfer to complete. The PBX is connecting both parties.",
+          variant: "default"
+        });
+      });
+      
       return;
     }
     
@@ -1279,13 +1309,35 @@ class WebPhoneManager {
       const consultTerminatedHandler = (state: SessionState) => {
         if (state === SessionState.Terminated) {
           console.log('[WebPhone] Consultation session terminated');
-          // If transfer wasn't completed, resume original call
-          if (!this.transferInProgress && originalSession.state === SessionState.Established) {
-            console.log('[WebPhone] Consultation ended without transfer, resuming original call');
-            this.consultationSession = undefined;
-            this.unholdCall();
+          
+          // CRITICAL: Clear consultation call from store immediately
+          store.setConsultationCall(undefined);
+          this.consultationSession = undefined;
+          
+          // CRITICAL FIX: Distinguish between consultation scenarios
+          // - referPending=true: REFER was sent, let PBX handle termination
+          // - referPending=false: Consultation ended without REFER (cancel or target hangup)
+          if (this.referPending) {
+            console.log('[WebPhone] ✅ Transfer REFER completed - PBX will bridge calls and terminate');
+            // Reset flags - PBX will handle call termination via separate BYE events
+            this.transferInProgress = false;
+            this.referPending = false;
           } else {
-            this.consultationSession = undefined;
+            console.log('[WebPhone] ⚠️ Consultation ended WITHOUT REFER - resuming original call');
+            // Consultation was established but REFER was never sent
+            // This happens when:
+            // 1. Target hangs up before agent clicks "Complete Transfer"
+            // 2. Agent clicks "Cancel Transfer"
+            
+            // Reset protection flags
+            this.transferInProgress = false;
+            this.referPending = false;
+            
+            // Resume original call if it's still active
+            if (originalSession.state === SessionState.Established) {
+              console.log('[WebPhone] Resuming original call (was on hold during consultation)');
+              this.unholdCall();
+            }
           }
         }
       };
@@ -1295,10 +1347,19 @@ class WebPhoneManager {
       inviter.delegate = {
         ...inviter.delegate,
         onBye: () => {
-          console.log('[WebPhone] Transfer target hung up before transfer completed');
-          if (!this.transferInProgress) {
-            this.consultationSession = undefined;
-            store.setConsultationCall(undefined);
+          console.log('[WebPhone] Transfer target hung up');
+          
+          // Clear consultation session and store
+          this.consultationSession = undefined;
+          store.setConsultationCall(undefined);
+          
+          // CRITICAL FIX: Reset BOTH flags when target hangs up
+          this.transferInProgress = false;
+          this.referPending = false;
+          console.log('[WebPhone] 🔓 Transfer protection disabled - consultation ended');
+          
+          if (originalSession.state === SessionState.Established) {
+            console.log('[WebPhone] Resuming original call after consultation hangup');
             this.unholdCall();
           }
         }
@@ -1309,6 +1370,11 @@ class WebPhoneManager {
         if (state === SessionState.Established) {
           console.log('[WebPhone] ✅ Consultation call established - agent can talk to transfer target');
           
+          // CRITICAL FIX: Set transferInProgress flag as soon as consultation is established
+          // This prevents accidental hangup during the consultation phase
+          this.transferInProgress = true;
+          console.log('[WebPhone] 🔒 Transfer protection enabled - hangup blocked until transfer completes or cancels');
+          
           // Create Call object for store
           const consultationCall: Call = {
             id: `consultation-${Date.now()}`,
@@ -1316,7 +1382,7 @@ class WebPhoneManager {
             phoneNumber: targetNumber,
             displayName: targetNumber,
             startTime: new Date(),
-            status: 'active',
+            status: 'answered',
             session: inviter
           };
           
@@ -1345,6 +1411,7 @@ class WebPhoneManager {
   public async completeAttendedTransfer(): Promise<void> {
     const originalSession = this.currentSession;
     const consultationSession = this.consultationSession;
+    const store = useWebPhoneStore.getState();
     
     if (!originalSession || originalSession.state !== SessionState.Established) {
       console.warn('[WebPhone] Cannot complete transfer - no active original call');
@@ -1358,27 +1425,36 @@ class WebPhoneManager {
     
     console.log('[WebPhone] 🔄 Completing attended transfer - connecting both parties');
     
-    // Set transfer flag to prevent manual hangup during REFER processing
-    this.transferInProgress = true;
+    // NOTE: transferInProgress flag is already set when consultation was established
+    // This ensures protection throughout the entire consultation phase, not just during REFER
+    if (!this.transferInProgress) {
+      console.warn('[WebPhone] ⚠️ Transfer flag was not set - setting now for safety');
+      this.transferInProgress = true;
+    }
     
-    // Add listeners for PBX-initiated termination
+    // Add listeners for PBX-initiated termination after REFER
     const originalTerminatedHandler = (state: SessionState) => {
       if (state === SessionState.Terminated) {
         console.log('[WebPhone] ✅ Original session terminated by PBX after successful transfer');
         this.currentSession = undefined;
+        // Reset both flags when original session ends post-transfer
         this.transferInProgress = false;
+        this.referPending = false;
       }
     };
     originalSession.stateChange.addListener(originalTerminatedHandler);
     
-    const consultTerminatedHandler = (state: SessionState) => {
+    const consultTerminatedHandlerPostRefer = (state: SessionState) => {
       if (state === SessionState.Terminated) {
         console.log('[WebPhone] ✅ Consultation session terminated by PBX after successful transfer');
         this.consultationSession = undefined;
         store.setConsultationCall(undefined);
+        // Reset both flags when consultation session ends post-transfer
+        this.transferInProgress = false;
+        this.referPending = false;
       }
     };
-    consultationSession.stateChange.addListener(consultTerminatedHandler);
+    consultationSession.stateChange.addListener(consultTerminatedHandlerPostRefer);
     
     // CRITICAL FIX: Execute REFER from consultation session to original session
     // This is the correct Browser-Phone pattern - REFER while BOTH calls are ACTIVE
@@ -1390,7 +1466,9 @@ class WebPhoneManager {
         },
         onReject: () => {
           console.warn('[WebPhone] ❌ Attended transfer REFER rejected by PBX');
+          // Reset ALL flags on REFER rejection
           this.transferInProgress = false;
+          this.referPending = false;
           // Resume original call on failure
           this.consultationSession?.bye().catch(e => console.error('Failed to hangup consultation:', e));
           this.consultationSession = undefined;
@@ -1403,10 +1481,16 @@ class WebPhoneManager {
       // CRITICAL: Call refer() from consultation session, passing original session
       // Both sessions are Established when this executes
       await (consultationSession as any).refer(originalSession, referOptions);
+      
+      // CRITICAL FIX: Set referPending flag ONLY when REFER is actually sent
+      this.referPending = true;
       console.log('[WebPhone] 🎯 REFER sent - PBX will now bridge the two calls');
+      console.log('[WebPhone] 🔐 REFER flag set - waiting for PBX to complete transfer');
     } catch (error) {
       console.error('[WebPhone] Error sending REFER:', error);
+      // Reset ALL flags on error
       this.transferInProgress = false;
+      this.referPending = false;
       this.consultationSession = undefined;
       await this.unholdCall();
     }
@@ -1426,17 +1510,31 @@ class WebPhoneManager {
     console.log('[WebPhone] Cancelling attended transfer');
     
     try {
+      // CRITICAL FIX: Reset ALL flags BEFORE hanging up consultation
+      // This prevents race condition where BYE handler might not clear them properly
+      this.transferInProgress = false;
+      this.referPending = false;
+      console.log('[WebPhone] 🔓 Transfer protection disabled - cancelling consultation');
+      
       // Hang up consultation call
       if (this.consultationSession.state === SessionState.Established) {
         await this.consultationSession.bye();
       }
+      
+      // Clear consultation session and store
       this.consultationSession = undefined;
       store.setConsultationCall(undefined);
       
       // Resume original call
+      console.log('[WebPhone] Resuming original call after cancellation');
       await this.unholdCall();
     } catch (error) {
       console.error('[WebPhone] Error cancelling transfer:', error);
+      // Ensure cleanup even on error - reset ALL flags
+      this.transferInProgress = false;
+      this.referPending = false;
+      this.consultationSession = undefined;
+      store.setConsultationCall(undefined);
     }
   }
   
