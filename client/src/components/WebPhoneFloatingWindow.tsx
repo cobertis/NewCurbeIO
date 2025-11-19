@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
 
@@ -113,6 +114,7 @@ export function WebPhoneFloatingWindow() {
   const [transferNumber, setTransferNumber] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
+  const [callFilter, setCallFilter] = useState<'all' | 'missed' | 'answered'>('all');
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -294,6 +296,14 @@ export function WebPhoneFloatingWindow() {
   
   const missedCallsCount = callHistory.filter(c => c.status === 'missed').length;
   
+  // Filter calls based on selected filter
+  const filteredCallHistory = callHistory.filter(call => {
+    if (callFilter === 'all') return true;
+    if (callFilter === 'missed') return call.status === 'missed';
+    if (callFilter === 'answered') return call.status === 'answered' || call.status === 'ended';
+    return true;
+  });
+  
   const getCallStatusStyle = (status: string) => {
     switch(status) {
       case 'missed':
@@ -330,10 +340,10 @@ export function WebPhoneFloatingWindow() {
   };
   
   const handleToggleSelectAll = () => {
-    if (selectedCallIds.size === callHistory.length) {
+    if (selectedCallIds.size === filteredCallHistory.length) {
       setSelectedCallIds(new Set());
     } else {
-      setSelectedCallIds(new Set(callHistory.map(c => c.id)));
+      setSelectedCallIds(new Set(filteredCallHistory.map(c => c.id)));
     }
   };
   
@@ -569,15 +579,63 @@ export function WebPhoneFloatingWindow() {
                             Clear All
                           </button>
                         ) : (
-                          <div className="w-[60px]"></div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button 
+                                className="text-sm sm:text-base text-blue-500 flex items-center gap-1"
+                                data-testid="button-filter-calls"
+                              >
+                                {callFilter === 'all' ? 'All' : callFilter === 'missed' ? 'Missed' : 'Answered'}
+                                <ChevronDown className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-32">
+                              <DropdownMenuItem 
+                                onClick={() => setCallFilter('all')}
+                                className="cursor-pointer"
+                                data-testid="filter-all"
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span>All</span>
+                                  {callFilter === 'all' && <Check className="h-4 w-4 text-blue-500" />}
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => setCallFilter('missed')}
+                                className="cursor-pointer"
+                                data-testid="filter-missed"
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span>Missed</span>
+                                  {callFilter === 'missed' && <Check className="h-4 w-4 text-blue-500" />}
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => setCallFilter('answered')}
+                                className="cursor-pointer"
+                                data-testid="filter-answered"
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span>Answered</span>
+                                  {callFilter === 'answered' && <Check className="h-4 w-4 text-blue-500" />}
+                                </div>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
                       
                       {/* Call History List - Scrollable */}
-                      {callHistory.length === 0 ? (
+                      {filteredCallHistory.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-center px-4 sm:px-6">
                           <Phone className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-2 sm:mb-3" />
-                          <p className="text-xs sm:text-sm text-muted-foreground">No recent calls</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            {callFilter === 'all' 
+                              ? 'No recent calls' 
+                              : callFilter === 'missed' 
+                                ? 'No missed calls' 
+                                : 'No answered calls'}
+                          </p>
                         </div>
                       ) : (
                         <>
@@ -591,12 +649,12 @@ export function WebPhoneFloatingWindow() {
                               <div 
                                 className={cn(
                                   "w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
-                                  selectedCallIds.size === callHistory.length
+                                  selectedCallIds.size === filteredCallHistory.length
                                     ? "bg-blue-500 border-blue-500"
                                     : "border-muted-foreground"
                                 )}
                               >
-                                {selectedCallIds.size === callHistory.length && (
+                                {selectedCallIds.size === filteredCallHistory.length && (
                                   <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white"></div>
                                 )}
                               </div>
@@ -605,7 +663,7 @@ export function WebPhoneFloatingWindow() {
                           )}
                           
                           <div className="divide-y divide-border">
-                            {callHistory.map((call) => {
+                            {filteredCallHistory.map((call) => {
                               const initials = call.displayName 
                                 ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
                                 : '';
