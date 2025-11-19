@@ -155,6 +155,16 @@ export function WebPhoneFloatingWindow() {
     }
   }, [isVisible, setAudioElements]);
   
+  // Debug callerInfo changes
+  useEffect(() => {
+    console.log('[WebPhone UI] CallerInfo changed:', callerInfo);
+    console.log('[WebPhone UI] Current call:', currentCall);
+    if (currentCall) {
+      console.log('[WebPhone UI] Current call displayName:', currentCall.displayName);
+      console.log('[WebPhone UI] Current call phoneNumber:', currentCall.phoneNumber);
+    }
+  }, [callerInfo, currentCall]);
+  
   // Call timer
   useEffect(() => {
     if (currentCall && currentCall.status === 'answered') {

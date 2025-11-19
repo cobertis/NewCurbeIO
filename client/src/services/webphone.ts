@@ -426,12 +426,15 @@ class WebPhoneManager {
       
       const response = await fetch(`/api/caller-lookup/${phoneNumber}`);
       
+      console.log('[WebPhone] Lookup response status:', response.status);
+      
       if (!response.ok) {
         console.warn('[WebPhone] Caller lookup API error:', response.status);
         return;
       }
       
       const data = await response.json();
+      console.log('[WebPhone] Lookup response data:', data);
       
       if (data.found) {
         const callerInfo = {
@@ -442,9 +445,12 @@ class WebPhoneManager {
           lastName: data.clientLastName
         };
         
+        console.log('[WebPhone] Setting callerInfo to:', callerInfo);
         store.setCallerInfo(callerInfo);
         console.log(`[WebPhone] ✅ Caller identified: ${data.clientFirstName} ${data.clientLastName} (${data.type})`);
+        console.log('[WebPhone] CallerInfo in store after set:', store.callerInfo);
       } else {
+        console.log('[WebPhone] Caller not found, setting callerInfo to not found');
         store.setCallerInfo({ found: false, type: null, id: null, firstName: '', lastName: '' });
         console.log('[WebPhone] ℹ️ Caller not found in database');
       }
