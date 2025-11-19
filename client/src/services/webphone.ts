@@ -146,6 +146,8 @@ class WebPhoneManager {
   private userAgent?: UserAgent;
   private registerer?: Registerer;
   private currentSession?: Session;
+  private consultationSession?: Session; // For attended transfers
+  private transferInProgress: boolean = false; // Guard against manual hangup during transfer
   private reconnectInterval?: NodeJS.Timeout;
   private audioContext?: AudioContext;
   private ringtoneOscillator?: OscillatorNode;
@@ -593,6 +595,13 @@ class WebPhoneManager {
   public async hangupCall(): Promise<void> {
     if (!this.currentSession) return;
     
+    // BROWSER-PHONE PATTERN: Prevent manual hangup during attended transfer
+    // REFER completion must be driven by PBX-initiated BYE events only
+    if (this.transferInProgress) {
+      console.warn('[WebPhone] ⚠️ Cannot hangup manually during transfer - waiting for PBX completion');
+      return;
+    }
+    
     try {
       if (this.currentSession.state === SessionState.Established) {
         await this.currentSession.bye();
@@ -891,9 +900,9 @@ class WebPhoneManager {
   }
   
   public async attendedTransfer(targetNumber: string): Promise<void> {
-    const session = this.currentSession;
+    const originalSession = this.currentSession;
     
-    if (!session || session.state !== SessionState.Established) {
+    if (!originalSession || originalSession.state !== SessionState.Established) {
       console.warn('[WebPhone] Cannot transfer - no active call');
       return;
     }
@@ -927,11 +936,48 @@ class WebPhoneManager {
       }
     };
     
+    // Set transfer flag to prevent manual hangup during REFER
+    this.transferInProgress = true;
+    
+    // Track all listeners for cleanup - hoisted to be accessible in catch block
+    let inviter: Inviter | undefined;
+    let consultTerminatedHandler: ((state: SessionState) => void) | undefined;
+    let originalTerminatedHandler: ((state: SessionState) => void) | undefined;
+    let establishedHandler: ((state: SessionState) => void) | undefined;
+    
+    // Cleanup function to remove all listeners and clear transfer flag
+    const cleanupListeners = () => {
+      if (consultTerminatedHandler && inviter) {
+        inviter.stateChange.removeListener(consultTerminatedHandler);
+        consultTerminatedHandler = undefined;
+      }
+      if (originalTerminatedHandler && originalSession) {
+        originalSession.stateChange.removeListener(originalTerminatedHandler);
+        originalTerminatedHandler = undefined;
+      }
+      if (establishedHandler && inviter) {
+        inviter.stateChange.removeListener(establishedHandler);
+        establishedHandler = undefined;
+      }
+      // Clear transfer flag to allow manual hangup again
+      this.transferInProgress = false;
+    };
+    
     try {
-      const inviter = new Inviter(this.userAgent!, targetUri, inviteOptions);
+      inviter = new Inviter(this.userAgent!, targetUri, inviteOptions);
       
-      // BROWSER-PHONE PATTERN: Attach session delegate for instant audio
-      this.attachSessionDescriptionHandler(inviter, false);
+      // Store consultation session for tracking
+      this.consultationSession = inviter;
+      
+      // Add Terminated listener for consultation session cleanup
+      consultTerminatedHandler = (state: SessionState) => {
+        if (state === SessionState.Terminated) {
+          console.log('[WebPhone] Consultation session terminated by server');
+          this.consultationSession = undefined;
+          cleanupListeners();
+        }
+      };
+      inviter.stateChange.addListener(consultTerminatedHandler);
       
       // Handle transfer target hanging up before transfer completes
       // Merge with existing delegate to preserve onSessionDescriptionHandler
@@ -939,6 +985,8 @@ class WebPhoneManager {
         ...inviter.delegate,
         onBye: () => {
           console.log('[WebPhone] Transfer target hung up before transfer completed');
+          this.consultationSession = undefined;
+          cleanupListeners();
           this.unholdCall();
         }
       };
@@ -947,45 +995,72 @@ class WebPhoneManager {
       await inviter.invite();
       
       // When transfer session is established, complete the transfer
-      inviter.stateChange.addListener((state: SessionState) => {
+      establishedHandler = (state: SessionState) => {
         if (state === SessionState.Established) {
+          // Verify both sessions are still Established before REFER
+          if (originalSession.state !== SessionState.Established) {
+            console.warn('[WebPhone] Original session not Established, waiting for PBX cleanup');
+            // DO NOT manually call bye() - let PBX handle cleanup via Terminated events
+            return;
+          }
+          
           console.log('[WebPhone] Transfer target answered, completing attended transfer');
+          
+          // Add one-time Terminated listener for original session cleanup
+          originalTerminatedHandler = (origState: SessionState) => {
+            if (origState === SessionState.Terminated) {
+              console.log('[WebPhone] Original session terminated by server after transfer');
+              // PBX has terminated the original call - UI cleanup only
+              this.currentSession = undefined;
+              this.consultationSession = undefined;
+              cleanupListeners();
+            }
+          };
+          originalSession.stateChange.addListener(originalTerminatedHandler);
           
           // Use REFER to complete attended transfer
           const referOptions = {
             requestDelegate: {
               onAccept: () => {
                 console.log('[WebPhone] ✅ Attended transfer accepted by server');
-                // Add small delay to ensure transfer completes on server
-                setTimeout(() => {
-                  console.log('[WebPhone] Hanging up original call after transfer completion');
-                  this.hangupCall();
-                  inviter.bye();
-                }, 500);
+                // BROWSER-PHONE PATTERN: DO NOT manually hangup/bye
+                // Let the PBX send BYE on both legs - listeners will handle cleanup
+                console.log('[WebPhone] Waiting for PBX to terminate both sessions...');
               },
               onReject: () => {
                 console.warn('[WebPhone] ❌ Attended transfer rejected by server');
-                // Resume original call
+                // REFER failed - resume original call and cleanup all listeners
+                this.consultationSession = undefined;
+                cleanupListeners();
                 this.unholdCall();
-                inviter.bye();
+                // PBX will send BYE for consultation session
               }
             }
           };
           
-          // CRITICAL FIX: Pass the inviter session object (not URI) to refer() method
-          // This matches Browser-Phone implementation pattern for attended transfer
+          // BROWSER-PHONE PATTERN: Pass the consultation session object to refer()
           // The session object contains the Replaces header needed for attended transfer
-          (session as any).refer(inviter, referOptions);
+          (originalSession as any).refer(inviter, referOptions);
         } else if (state === SessionState.Terminated) {
-          // Consultation leg failed before establishing - resume original call
+          // Consultation leg failed/rejected before establishing
+          if (!this.consultationSession) {
+            // Already cleaned up
+            return;
+          }
           console.warn('[WebPhone] Transfer target failed/rejected, resuming original call');
+          this.consultationSession = undefined;
+          cleanupListeners();
           this.unholdCall();
         }
-      });
+      };
+      
+      inviter.stateChange.addListener(establishedHandler);
       
     } catch (error) {
       console.error('[WebPhone] Error initiating attended transfer:', error);
-      // Resume original call on error
+      // Resume original call on error and cleanup all listeners
+      this.consultationSession = undefined;
+      cleanupListeners(); // Critical: cleanup listeners even on invite() failure
       await this.unholdCall();
     }
   }
