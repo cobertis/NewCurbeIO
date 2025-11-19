@@ -43,6 +43,7 @@ interface WebPhoneState {
   
   // Current call
   currentCall?: Call;
+  consultationCall?: Call; // For attended transfer
   isCallActive: boolean;
   isMuted: boolean;
   isOnHold: boolean;
@@ -69,6 +70,7 @@ interface WebPhoneState {
   setSipCredentials: (extension: string, password: string) => void;
   setWssServer: (server: string) => void;
   setCurrentCall: (call?: Call) => void;
+  setConsultationCall: (call?: Call) => void;
   setCallStatus: (status: Call['status']) => void;
   setMuted: (muted: boolean) => void;
   setOnHold: (hold: boolean) => void;
@@ -123,6 +125,10 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   setCurrentCall: (call) => set({ 
     currentCall: call,
     isCallActive: !!call 
+  }),
+  
+  setConsultationCall: (call) => set({ 
+    consultationCall: call
   }),
   
   setCallStatus: (status) => set(state => ({
@@ -1292,10 +1298,33 @@ class WebPhoneManager {
           console.log('[WebPhone] Transfer target hung up before transfer completed');
           if (!this.transferInProgress) {
             this.consultationSession = undefined;
+            store.setConsultationCall(undefined);
             this.unholdCall();
           }
         }
       };
+      
+      // Add Established listener to set consultation call in store
+      const establishedHandler = (state: SessionState) => {
+        if (state === SessionState.Established) {
+          console.log('[WebPhone] ✅ Consultation call established - agent can talk to transfer target');
+          
+          // Create Call object for store
+          const consultationCall: Call = {
+            id: `consultation-${Date.now()}`,
+            direction: 'outbound',
+            phoneNumber: targetNumber,
+            displayName: targetNumber,
+            startTime: new Date(),
+            status: 'active',
+            session: inviter
+          };
+          
+          // Update store to show consultation call active
+          store.setConsultationCall(consultationCall);
+        }
+      };
+      inviter.stateChange.addListener(establishedHandler);
       
       // Send the invite
       await inviter.invite();
@@ -1346,6 +1375,7 @@ class WebPhoneManager {
       if (state === SessionState.Terminated) {
         console.log('[WebPhone] ✅ Consultation session terminated by PBX after successful transfer');
         this.consultationSession = undefined;
+        store.setConsultationCall(undefined);
       }
     };
     consultationSession.stateChange.addListener(consultTerminatedHandler);
@@ -1386,6 +1416,8 @@ class WebPhoneManager {
    * Cancel attended transfer - hang up consultation call and resume original
    */
   public async cancelAttendedTransfer(): Promise<void> {
+    const store = useWebPhoneStore.getState();
+    
     if (!this.consultationSession) {
       console.warn('[WebPhone] No consultation call to cancel');
       return;
@@ -1399,6 +1431,7 @@ class WebPhoneManager {
         await this.consultationSession.bye();
       }
       this.consultationSession = undefined;
+      store.setConsultationCall(undefined);
       
       // Resume original call
       await this.unholdCall();
