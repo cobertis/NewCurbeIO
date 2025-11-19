@@ -2986,33 +2986,6 @@ function WebPhoneTab() {
           </div>
         </div>
         
-        {/* Call Features */}
-        <div className="space-y-4 pt-4 border-t">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Do Not Disturb</Label>
-              <p className="text-sm text-muted-foreground">Reject all incoming calls automatically</p>
-            </div>
-            <Switch
-              checked={doNotDisturb}
-              onCheckedChange={() => webPhone.toggleDoNotDisturb()}
-              data-testid="switch-dnd"
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Call Waiting</Label>
-              <p className="text-sm text-muted-foreground">Allow incoming calls while on active call</p>
-            </div>
-            <Switch
-              checked={callWaiting}
-              onCheckedChange={() => webPhone.toggleCallWaiting()}
-              data-testid="switch-call-waiting"
-            />
-          </div>
-        </div>
-        
         {/* Test Call Button */}
         <div className="pt-2">
           <Button
