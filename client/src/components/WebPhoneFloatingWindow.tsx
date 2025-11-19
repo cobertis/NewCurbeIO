@@ -1,13 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, type LucideIcon } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, Search, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 
 function formatCallerNumber(phoneNumber: string): string {
   const digits = phoneNumber.replace(/\D/g, '');
@@ -18,6 +20,172 @@ function formatCallerNumber(phoneNumber: string): string {
 }
 
 type ViewMode = 'recents' | 'contacts' | 'keypad' | 'voicemail';
+
+interface Contact {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  type: 'quote' | 'policy' | 'lead';
+}
+
+interface ContactsViewProps {
+  setDialNumber: (number: string) => void;
+  setViewMode: (mode: ViewMode) => void;
+}
+
+function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Fetch quotes
+  const { data: quotes = [] } = useQuery({
+    queryKey: ['/api/quotes'],
+  });
+  
+  // Fetch policies
+  const { data: policies = [] } = useQuery({
+    queryKey: ['/api/policies'],
+  });
+  
+  // Fetch leads (if they exist in your system)
+  // const { data: leads = [] } = useQuery({
+  //   queryKey: ['/api/leads'],
+  // });
+  
+  // Combine all contacts
+  const allContacts = useMemo(() => {
+    const contacts: Contact[] = [];
+    
+    // Add quotes
+    if (Array.isArray(quotes)) {
+      quotes.forEach((quote: any) => {
+        if (quote.phoneNumber) {
+          contacts.push({
+            id: quote.id,
+            name: `${quote.firstName} ${quote.lastName}`.trim(),
+            phoneNumber: quote.phoneNumber,
+            type: 'quote'
+          });
+        }
+      });
+    }
+    
+    // Add policies
+    if (Array.isArray(policies)) {
+      policies.forEach((policy: any) => {
+        if (policy.phoneNumber) {
+          contacts.push({
+            id: policy.id,
+            name: `${policy.firstName} ${policy.lastName}`.trim(),
+            phoneNumber: policy.phoneNumber,
+            type: 'policy'
+          });
+        }
+      });
+    }
+    
+    // Sort by name
+    return contacts.sort((a, b) => a.name.localeCompare(b.name));
+  }, [quotes, policies]);
+  
+  // Filter contacts based on search
+  const filteredContacts = useMemo(() => {
+    if (!searchQuery) return allContacts;
+    
+    const query = searchQuery.toLowerCase();
+    return allContacts.filter(contact => 
+      contact.name.toLowerCase().includes(query) ||
+      contact.phoneNumber.includes(query)
+    );
+  }, [allContacts, searchQuery]);
+  
+  const handleCallContact = (phoneNumber: string) => {
+    setDialNumber(phoneNumber);
+    setViewMode('keypad');
+  };
+  
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header with search */}
+      <div className="px-2 sm:px-4 py-2 sm:py-3 flex-shrink-0 space-y-2">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground text-center">Contacts</h2>
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search contacts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-8 sm:h-9 text-xs sm:text-sm"
+            data-testid="input-search-contacts"
+          />
+        </div>
+      </div>
+      
+      {/* Contacts list */}
+      <div className="flex-1 overflow-y-auto">
+        {filteredContacts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4 sm:px-6">
+            <User className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-2 sm:mb-3" />
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {searchQuery ? 'No contacts found' : 'No contacts'}
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filteredContacts.map((contact) => {
+              const initials = contact.name
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .substring(0, 2)
+                .toUpperCase();
+              
+              return (
+                <div
+                  key={`${contact.type}-${contact.id}`}
+                  className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
+                  data-testid={`contact-${contact.id}`}
+                >
+                  {/* Avatar */}
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">{initials}</span>
+                  </div>
+                  
+                  {/* Contact Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm sm:text-base font-normal truncate text-foreground">
+                        {contact.name}
+                      </span>
+                      <Badge 
+                        variant="outline" 
+                        className="text-[8px] sm:text-[10px] px-1 py-0 h-4 capitalize"
+                      >
+                        {contact.type}
+                      </Badge>
+                    </div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">
+                      {formatCallerNumber(contact.phoneNumber)}
+                    </div>
+                  </div>
+                  
+                  {/* Call button */}
+                  <button
+                    onClick={() => handleCallContact(contact.phoneNumber)}
+                    className="text-blue-500 hover:opacity-80 transition-opacity"
+                    data-testid={`button-call-contact-${contact.id}`}
+                  >
+                    <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface BottomNavigationProps {
   viewMode: ViewMode;
@@ -835,8 +1003,12 @@ export function WebPhoneFloatingWindow() {
                     </div>
                   )}
                   
-                  {(viewMode === 'contacts' || viewMode === 'voicemail') && (
-                    /* Contacts/Voicemail - Empty State */
+                  {viewMode === 'contacts' && (
+                    <ContactsView setDialNumber={setDialNumber} setViewMode={setViewMode} />
+                  )}
+                  
+                  {viewMode === 'voicemail' && (
+                    /* Voicemail - Empty State */
                     <div className="flex items-center justify-center min-h-full">
                       <p className="text-sm text-muted-foreground">Coming soon</p>
                     </div>
