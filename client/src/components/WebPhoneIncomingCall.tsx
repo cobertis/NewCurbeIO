@@ -138,11 +138,11 @@ export function WebPhoneIncomingCall() {
             ) : (
               <>
                 <h3 className="text-lg font-semibold text-white mb-1">
-                  {currentCall.displayName || formatCallerNumber(currentCall.phoneNumber)}
+                  {currentCall.displayName || "Unknown Caller"}
                 </h3>
-                {!currentCall.displayName && (
-                  <p className="text-xs text-slate-400">Unknown Caller</p>
-                )}
+                <p className="text-xs text-slate-400">
+                  {formatCallerNumber(currentCall.phoneNumber)}
+                </p>
               </>
             )}
           </div>
