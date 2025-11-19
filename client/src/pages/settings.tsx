@@ -2763,6 +2763,10 @@ function WebPhoneTab() {
     mode: "onChange", // Validate on change for immediate feedback
   });
   
+  // Watch form values for UI logic
+  const sipExtension = form.watch("sipExtension");
+  const sipPassword = form.watch("sipPassword");
+  
   // Hydrate form when user data loads
   useEffect(() => {
     if (user) {
