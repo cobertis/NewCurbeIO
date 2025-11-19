@@ -2900,14 +2900,26 @@ function WebPhoneTab() {
           <div className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2">
               {isConnected ? (
-                <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              ) : connectionStatus === 'error' ? (
+                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
               ) : connectionStatus === 'connecting' ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-yellow-600 border-t-transparent" />
               ) : (
                 <WifiOff className="h-4 w-4 text-muted-foreground" />
               )}
               <Badge 
-                variant={isConnected ? "default" : connectionStatus === 'connecting' ? "outline" : "secondary"} 
+                variant={
+                  isConnected ? "default" : 
+                  connectionStatus === 'error' ? "destructive" : 
+                  connectionStatus === 'connecting' ? "outline" : 
+                  "secondary"
+                }
+                className={
+                  isConnected ? "bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700" : 
+                  connectionStatus === 'connecting' ? "border-yellow-600 text-yellow-600" : 
+                  ""
+                }
                 data-testid="badge-connection-status"
               >
                 {connectionStatus === 'connected' && 'Connected'}
