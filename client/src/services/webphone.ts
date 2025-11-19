@@ -791,11 +791,16 @@ class WebPhoneManager {
       // BROWSER-PHONE PATTERN: Attach session delegate for instant audio
       this.attachSessionDescriptionHandler(inviter, false);
       
+      // Determine display name based on number type
+      const digitsOnly = formattedNumber.replace(/\D/g, '');
+      const isInternalExtension = digitsOnly.length >= 3 && digitsOnly.length <= 4;
+      
       // Create call object
       const call: Call = {
         id: Math.random().toString(36).substr(2, 9),
         direction: 'outbound',
         phoneNumber: formattedNumber,
+        displayName: isInternalExtension ? 'Internal Number' : undefined,
         startTime: new Date(),
         status: 'ringing',
         session: inviter
@@ -804,27 +809,27 @@ class WebPhoneManager {
       store.setCurrentCall(call);
       this.currentSession = inviter;
       
-      // Lookup caller info for outbound calls (same as inbound)
-      // This will update displayName if the number is found in Quotes/Policies
-      try {
-        const digitsOnly = formattedNumber.replace(/\D/g, '');
-        if (digitsOnly.length >= 10) {
-          // External phone number - normalize to E.164 and lookup
-          try {
-            const normalizedNumber = formatE164(formattedNumber);
-            console.log('[WebPhone] 🔍 Looking up outbound contact:', normalizedNumber);
-            this.performCallerLookup(normalizedNumber);
-          } catch (formatError) {
-            console.warn('[WebPhone] ⚠️ Could not format number to E.164 for outbound lookup:', formattedNumber);
-            // Try lookup with raw number anyway
-            this.performCallerLookup(formattedNumber);
+      // Lookup caller info for outbound calls (only for external numbers)
+      if (!isInternalExtension) {
+        try {
+          if (digitsOnly.length >= 10) {
+            // External phone number - normalize to E.164 and lookup
+            try {
+              const normalizedNumber = formatE164(formattedNumber);
+              console.log('[WebPhone] 🔍 Looking up outbound contact:', normalizedNumber);
+              this.performCallerLookup(normalizedNumber);
+            } catch (formatError) {
+              console.warn('[WebPhone] ⚠️ Could not format number to E.164 for outbound lookup:', formattedNumber);
+              // Try lookup with raw number anyway
+              this.performCallerLookup(formattedNumber);
+            }
           }
-        } else {
-          console.log('[WebPhone] ⚠️ Skipping outbound lookup - appears to be internal extension:', formattedNumber);
+        } catch (error) {
+          console.error('[WebPhone] Error during outbound caller lookup:', error);
+          // Continue with call flow even if lookup fails
         }
-      } catch (error) {
-        console.error('[WebPhone] Error during outbound caller lookup:', error);
-        // Continue with call flow even if lookup fails
+      } else {
+        console.log('[WebPhone] 📞 Calling internal extension:', formattedNumber, '- Display name set to "Internal Number"');
       }
       
       // Handle session state changes
