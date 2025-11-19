@@ -2895,26 +2895,6 @@ function WebPhoneTab() {
         {connectionError && (
           <p className="text-xs text-destructive mt-2">{connectionError}</p>
         )}
-        
-        {/* Enable WebPhone Switch */}
-        <div className="flex items-center justify-between px-6 pb-4">
-          <div className="space-y-0.5">
-            <Label htmlFor="sipEnabled" className="text-base">
-              Enable WebPhone
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Turn on WebRTC calling capabilities in your browser
-            </p>
-          </div>
-          <Switch
-            {...form.register("sipEnabled")}
-            id="sipEnabled"
-            checked={form.watch("sipEnabled")}
-            onCheckedChange={(value) => form.setValue("sipEnabled", value)}
-            disabled={updateSipMutation.isPending}
-            data-testid="switch-sip-enabled"
-          />
-        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         
