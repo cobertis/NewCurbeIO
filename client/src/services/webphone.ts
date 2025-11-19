@@ -199,34 +199,83 @@ class WebPhoneManager {
     // Stop any existing ringtone
     this.stopRingtone();
     
-    // Create iPhone-style ringtone (two-tone 1000Hz + 1320Hz)
-    const oscillator1 = this.audioContext.createOscillator();
-    const oscillator2 = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
+    // Create professional ringtone with ring-ring pattern
+    // Using traditional telephone bell frequencies (400Hz + 450Hz) with ADSR envelope
+    const createRingTone = () => {
+      const oscillator1 = this.audioContext!.createOscillator();
+      const oscillator2 = this.audioContext!.createOscillator();
+      const gainNode = this.audioContext!.createGain();
+      
+      // Traditional phone ring frequencies (warmer, less harsh)
+      oscillator1.type = 'sine';
+      oscillator1.frequency.value = 400;
+      oscillator2.type = 'sine';
+      oscillator2.frequency.value = 450;
+      
+      oscillator1.connect(gainNode);
+      oscillator2.connect(gainNode);
+      gainNode.connect(this.audioContext!.destination);
+      
+      const now = this.audioContext!.currentTime;
+      
+      // Ring pattern: 0.4s ring, 0.2s silence, 0.4s ring, 2s silence
+      // Attack-Decay-Sustain-Release envelope for smoother sound
+      gainNode.gain.setValueAtTime(0, now);
+      
+      // First ring: fade in, sustain, fade out
+      gainNode.gain.linearRampToValueAtTime(0.25, now + 0.05); // Attack
+      gainNode.gain.setValueAtTime(0.25, now + 0.35); // Sustain
+      gainNode.gain.linearRampToValueAtTime(0, now + 0.4); // Release
+      
+      // Silence
+      gainNode.gain.setValueAtTime(0, now + 0.4);
+      gainNode.gain.setValueAtTime(0, now + 0.6);
+      
+      // Second ring: fade in, sustain, fade out
+      gainNode.gain.linearRampToValueAtTime(0.25, now + 0.65);
+      gainNode.gain.setValueAtTime(0.25, now + 0.95);
+      gainNode.gain.linearRampToValueAtTime(0, now + 1.0);
+      
+      // Long silence before next pattern
+      gainNode.gain.setValueAtTime(0, now + 1.0);
+      
+      oscillator1.start(now);
+      oscillator2.start(now);
+      oscillator1.stop(now + 3.0); // Total pattern duration: 3 seconds
+      oscillator2.stop(now + 3.0);
+      
+      return { oscillator1, oscillator2, gainNode };
+    };
     
-    oscillator1.type = 'sine';
-    oscillator1.frequency.value = 1000;
-    oscillator2.type = 'sine';
-    oscillator2.frequency.value = 1320;
-    
-    gainNode.gain.value = 0.3; // Volume at 30%
-    
-    oscillator1.connect(gainNode);
-    oscillator2.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    oscillator1.start();
-    oscillator2.start();
-    
+    // Start initial pattern
+    const { oscillator1, oscillator2, gainNode } = createRingTone();
     this.ringtoneOscillator = oscillator1;
     this.ringtoneGain = gainNode;
     
-    console.log('[Ringtone] 🔔 Playing ringtone');
+    // Repeat pattern every 3 seconds
+    const repeatInterval = setInterval(() => {
+      if (!this.ringtoneOscillator) {
+        clearInterval(repeatInterval);
+        return;
+      }
+      createRingTone();
+    }, 3000);
+    
+    // Store interval for cleanup
+    (this.ringtoneOscillator as any)._repeatInterval = repeatInterval;
+    
+    console.log('[Ringtone] 🔔 Playing professional ring-ring pattern');
   }
   
   private stopRingtone() {
     if (this.ringtoneOscillator) {
       try {
+        // Clear repeat interval if exists
+        const interval = (this.ringtoneOscillator as any)._repeatInterval;
+        if (interval) {
+          clearInterval(interval);
+        }
+        
         this.ringtoneOscillator.stop();
         this.ringtoneOscillator.disconnect();
       } catch (e) {
