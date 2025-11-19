@@ -491,14 +491,17 @@ class WebPhoneManager {
       console.log('[WebPhone] Lookup result:', data);
       
       if (data.found) {
-        // CRITICAL FIX: Use firstName/lastName (not clientFirstName/clientLastName)
-        const callerName = `${data.firstName} ${data.lastName}`.trim();
+        // CACHE COMPATIBILITY: Support both new (firstName/lastName) and old (clientFirstName/clientLastName) field names
+        // This handles cached 304 responses from browser cache until cache expires
+        const firstName = data.firstName || data.clientFirstName || '';
+        const lastName = data.lastName || data.clientLastName || '';
+        const callerName = `${firstName} ${lastName}`.trim();
         const callerInfo = {
           found: true,
           type: data.type,
           id: data.id,
-          firstName: data.firstName,
-          lastName: data.lastName
+          firstName,
+          lastName
         };
         
         // Update callerInfo in store

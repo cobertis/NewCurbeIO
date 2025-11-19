@@ -5811,6 +5811,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/caller-lookup/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
+    // CRITICAL: Prevent HTTP caching - caller data must always be fresh
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    
     try {
       const { phoneNumber } = req.params;
       
