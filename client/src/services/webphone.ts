@@ -507,11 +507,21 @@ class WebPhoneManager {
         store.setCallerInfo(callerInfo);
         
         // CRITICAL: Also update the currentCall displayName so UI shows the name immediately
-        if (store.currentCall) {
-          store.setCurrentCall({
-            ...store.currentCall,
+        const currentCall = useWebPhoneStore.getState().currentCall;
+        console.log('[WebPhone] 🔄 About to update displayName:', { 
+          hasCurrentCall: !!currentCall, 
+          currentDisplayName: currentCall?.displayName,
+          newDisplayName: callerName 
+        });
+        
+        if (currentCall) {
+          useWebPhoneStore.getState().setCurrentCall({
+            ...currentCall,
             displayName: callerName
           });
+          console.log('[WebPhone] ✅ DisplayName updated to:', callerName);
+        } else {
+          console.warn('[WebPhone] ⚠️ Cannot update displayName - no current call');
         }
         
         console.log(`[WebPhone] ✅ Caller identified: ${callerName} (${data.type})`);
