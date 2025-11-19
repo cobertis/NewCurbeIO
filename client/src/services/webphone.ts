@@ -742,6 +742,29 @@ class WebPhoneManager {
       store.setCurrentCall(call);
       this.currentSession = inviter;
       
+      // Lookup caller info for outbound calls (same as inbound)
+      // This will update displayName if the number is found in Quotes/Policies
+      try {
+        const digitsOnly = formattedNumber.replace(/\D/g, '');
+        if (digitsOnly.length >= 10) {
+          // External phone number - normalize to E.164 and lookup
+          try {
+            const normalizedNumber = formatE164(formattedNumber);
+            console.log('[WebPhone] 🔍 Looking up outbound contact:', normalizedNumber);
+            this.performCallerLookup(normalizedNumber);
+          } catch (formatError) {
+            console.warn('[WebPhone] ⚠️ Could not format number to E.164 for outbound lookup:', formattedNumber);
+            // Try lookup with raw number anyway
+            this.performCallerLookup(formattedNumber);
+          }
+        } else {
+          console.log('[WebPhone] ⚠️ Skipping outbound lookup - appears to be internal extension:', formattedNumber);
+        }
+      } catch (error) {
+        console.error('[WebPhone] Error during outbound caller lookup:', error);
+        // Continue with call flow even if lookup fails
+      }
+      
       // Handle session state changes
       inviter.stateChange.addListener((state) => {
         console.log('[WebPhone] Outbound call state:', state);
