@@ -1,7 +1,6 @@
 import { useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Volume2, CheckCircle } from 'lucide-react';
+import { Phone, PhoneOff, CheckCircle, X } from 'lucide-react';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
@@ -91,7 +90,7 @@ export function WebPhoneIncomingCall() {
     webPhone.rejectCall();
   };
   
-  if (!currentCall) return null;
+  if (!currentCall || !incomingCallVisible) return null;
   
   return (
     <>
@@ -102,72 +101,73 @@ export function WebPhoneIncomingCall() {
         loop 
       />
       
-      <Dialog open={incomingCallVisible} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-sm bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
-          <div className="p-6">
-            <div className="flex items-center justify-center mb-6">
-              <div className="h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center animate-pulse">
-                <Phone className="h-8 w-8 text-green-500" />
+      {/* Compact incoming call notification - top right */}
+      <div 
+        className="fixed top-20 right-4 w-80 bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-lg shadow-2xl z-50 animate-in slide-in-from-top-5 duration-300"
+        data-testid="incoming-call-notification"
+      >
+        <div className="p-4">
+          {/* Header with icon and close */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center animate-pulse">
+                <Phone className="h-5 w-5 text-green-500" />
               </div>
-            </div>
-            
-            <div className="text-center mb-8">
-              <p className="text-sm text-slate-400 mb-2">Incoming Call</p>
-              
-              {callerInfo?.found ? (
-                <>
-                  <h3 className="text-3xl font-semibold text-white mb-2">
-                    {callerInfo.firstName} {callerInfo.lastName}
-                  </h3>
-                  <Badge 
-                    className="bg-green-600 hover:bg-green-700 text-white mb-2" 
-                    data-testid="badge-caller-identified"
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    {callerInfo.type === 'quote' ? 'Quote Client' : 'Policy Client'}
-                  </Badge>
-                  <p className="text-sm text-slate-400">
-                    {formatCallerNumber(currentCall.phoneNumber)}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-3xl font-semibold text-white mb-1">
-                    {currentCall.displayName || formatCallerNumber(currentCall.phoneNumber)}
-                  </h3>
-                  {currentCall.displayName && (
-                    <p className="text-sm text-slate-400">
-                      {formatCallerNumber(currentCall.phoneNumber)}
-                    </p>
-                  )}
-                  {!currentCall.displayName && (
-                    <p className="text-sm text-slate-400">Unknown</p>
-                  )}
-                </>
-              )}
-            </div>
-            
-            <div className="flex gap-4">
-              <Button
-                onClick={handleReject}
-                className="flex-1 h-14 bg-red-600 hover:bg-red-700 text-white"
-                data-testid="button-reject-call"
-              >
-                <PhoneOff className="h-5 w-5 mr-2" />
-                Decline
-              </Button>
-              <Button
-                onClick={handleAnswer}
-                className="flex-1 h-14 bg-green-600 hover:bg-green-700 text-white"
-                data-testid="button-answer-call"
-              >
-                <Phone className="h-5 w-5 mr-2" />
-                Answer
-              </Button>
+              <span className="text-xs font-medium text-slate-400">Incoming Call</span>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          
+          {/* Caller info */}
+          <div className="mb-4">
+            {callerInfo?.found ? (
+              <>
+                <h3 className="text-lg font-semibold text-white mb-1">
+                  {callerInfo.firstName} {callerInfo.lastName}
+                </h3>
+                <Badge 
+                  className="bg-green-600 hover:bg-green-700 text-white text-xs mb-1" 
+                  data-testid="badge-caller-identified"
+                >
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  {callerInfo.type === 'quote' ? 'Quote Client' : 'Policy Client'}
+                </Badge>
+                <p className="text-xs text-slate-400 mt-1">
+                  {formatCallerNumber(currentCall.phoneNumber)}
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-white mb-1">
+                  {currentCall.displayName || formatCallerNumber(currentCall.phoneNumber)}
+                </h3>
+                {!currentCall.displayName && (
+                  <p className="text-xs text-slate-400">Unknown Caller</p>
+                )}
+              </>
+            )}
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <Button
+              onClick={handleReject}
+              className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white text-sm"
+              data-testid="button-reject-call"
+            >
+              <PhoneOff className="h-4 w-4 mr-1" />
+              Decline
+            </Button>
+            <Button
+              onClick={handleAnswer}
+              className="flex-1 h-10 bg-green-600 hover:bg-green-700 text-white text-sm"
+              data-testid="button-answer-call"
+            >
+              <Phone className="h-4 w-4 mr-1" />
+              Answer
+            </Button>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
