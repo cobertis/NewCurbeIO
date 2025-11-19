@@ -83,7 +83,7 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, desc } from "drizzle-orm";
+import { and, eq, ne, gte, desc, or } from "drizzle-orm";
 import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -5813,10 +5813,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const { phoneNumber } = req.params;
       
-      // Normalize phone number using formatForStorage
+      // Normalize phone number - search for multiple formats since database may have inconsistent formats
       let normalizedPhone: string;
+      let normalizedPhoneWithPlus: string;
+      
       try {
-        normalizedPhone = formatForStorage(phoneNumber);
+        normalizedPhone = formatForStorage(phoneNumber); // e.g., "17866302522"
+        normalizedPhoneWithPlus = formatE164(phoneNumber); // e.g., "+17866302522"
       } catch (error) {
         return res.json({
           found: false,
@@ -5829,6 +5832,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Search in policies table first (higher priority) - Get most recent by ordering desc
+      // Search for BOTH formats to handle database inconsistencies
       const policyResults = await db
         .select({
           id: policies.id,
@@ -5841,7 +5845,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(policies.companyId, currentUser.companyId!),
-            eq(policies.clientPhone, normalizedPhone)
+            or(
+              eq(policies.clientPhone, normalizedPhone),
+              eq(policies.clientPhone, normalizedPhoneWithPlus)
+            )
           )
         )
         .orderBy(desc(policies.updatedAt))
@@ -5861,6 +5868,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Search in quotes table if no policy found - Get most recent by ordering desc
+      // Search for BOTH formats to handle database inconsistencies
       const quoteResults = await db
         .select({
           id: quotes.id,
@@ -5873,7 +5881,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(quotes.companyId, currentUser.companyId!),
-            eq(quotes.clientPhone, normalizedPhone)
+            or(
+              eq(quotes.clientPhone, normalizedPhone),
+              eq(quotes.clientPhone, normalizedPhoneWithPlus)
+            )
           )
         )
         .orderBy(desc(quotes.updatedAt))
