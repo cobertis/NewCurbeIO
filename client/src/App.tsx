@@ -494,9 +494,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 size="icon"
                 onClick={() => useWebPhoneStore.getState().toggleDialpad()}
                 data-testid="button-webphone"
-                className="rounded-md hover-elevate active-elevate-2 bg-green-500 hover:bg-green-600 active:bg-green-700"
+                className="rounded-full hover-elevate active-elevate-2 bg-green-500 hover:bg-green-600 active:bg-green-700"
               >
-                <Phone className="h-8 w-8 text-white" />
+                <Phone className="h-5 w-5 text-white" />
               </Button>
               
               {/* Search Icon */}
