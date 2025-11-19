@@ -323,7 +323,7 @@ class WebPhoneManager {
         authorizationPassword: password,
         displayName: extension,
         sessionDescriptionHandlerFactoryOptions: {
-          iceGatheringTimeout: 5000, // Wait up to 5 seconds for TURN candidates
+          iceGatheringTimeout: 1000, // Wait max 1 second for ICE candidates (TURN already works)
           peerConnectionConfiguration: {  // FIXED: Correct property name for SIP.js 0.21
             iceServers: [
               {
