@@ -1,0 +1,5 @@
+email,first_name,last_name,phone,role,status,is_active,view_all_company_data,email_subscribed,sms_subscribed,email_notifications,invoice_alerts,preferred_language,timezone,two_factor_email_enabled,two_factor_sms_enabled,agent_internal_code,national_producer_number,sip_enabled,sip_extension,sip_server
+jason@cobertisinsurance.com,Jason,Fonseca,,admin,active,TRUE,FALSE,TRUE,TRUE,TRUE,TRUE,es,America/New_York,TRUE,TRUE,,,FALSE,,
+javier@cobertisinsurance.com,Javier,Lazo,+17866302522,admin,active,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,es,America/New_York,FALSE,FALSE,,,TRUE,302,wss://pbx1.curbe.io:8089/ws
+claudia@cobertisinsurance.com,Claudia,Ferreiro Padron,+17542567992,admin,active,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE,es,America/New_York,FALSE,FALSE,,21315036,FALSE,,
+hello@cobertisinsurance.com,Fernando,Marrero,+19543101649,admin,active,TRUE,FALSE,TRUE,TRUE,TRUE,TRUE,es,America/New_York,FALSE,FALSE,,,FALSE,,
