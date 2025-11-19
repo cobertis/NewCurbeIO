@@ -2,6 +2,7 @@
 import { UserAgent, Registerer, Session, Inviter, SessionState, Invitation } from 'sip.js';
 import { create } from 'zustand';
 import { formatE164 } from '@shared/phone';
+import { apiRequest } from '@/lib/queryClient';
 
 // WebPhone state store
 interface Call {
@@ -1642,6 +1643,28 @@ class WebPhoneManager {
       };
       console.log(`[WebPhone] 💾 Saving call to history:`, { displayName: callLog.displayName, phoneNumber: callLog.phoneNumber, status: callLog.status });
       store.addCallToHistory(callLog);
+      
+      // Create notification for missed calls
+      if (finalStatus === 'missed') {
+        console.log('[WebPhone] 📢 Creating missed call notification');
+        
+        // Prepare notification data
+        const notificationData = {
+          phoneNumber: callLog.phoneNumber,
+          displayName: finalDisplayName,
+          callerType: callerInfo?.type,
+          callerId: callerInfo?.id,
+        };
+        
+        // Call API to create notification (fire and forget, don't block cleanup)
+        apiRequest('/api/notifications/missed-call', {
+          method: 'POST',
+          body: JSON.stringify(notificationData),
+          headers: { 'Content-Type': 'application/json' },
+        }).catch((error) => {
+          console.error('[WebPhone] ❌ Failed to create missed call notification:', error);
+        });
+      }
     }
     
     // CRITICAL: Clean up SIP session and media resources (Browser-Phone pattern)

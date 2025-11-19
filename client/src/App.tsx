@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -841,6 +841,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         {notifs.map((notification: any) => {
                           const getNotificationIcon = () => {
                             // Check title first for better detection (handles old and new formats)
+                            if (notification.title.toLowerCase().includes('missed call')) return PhoneMissed;
                             if (notification.title.toLowerCase().includes('sms')) return MessageSquare;
                             if (notification.title.toLowerCase().includes('login')) return LogIn;
                             if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return Mail;
@@ -849,6 +850,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             // Then check notification type
                             if (notification.type) {
                               switch (notification.type) {
+                                case 'missed_call': return PhoneMissed;
                                 case 'sms_received': return MessageSquare;
                                 case 'user_login': return LogIn;
                                 case 'success': return CheckCircle;
@@ -865,6 +867,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                           // Get icon color based on type
                           const getIconColor = () => {
                             // Check title first for better detection (handles old and new formats)
+                            if (notification.title.toLowerCase().includes('missed call')) return 'text-red-600 dark:text-red-400';
                             if (notification.title.toLowerCase().includes('sms')) return 'text-blue-600 dark:text-blue-400';
                             if (notification.title.toLowerCase().includes('login')) return 'text-purple-600 dark:text-purple-400';
                             if (notification.title.toLowerCase().includes('email') || notification.title.toLowerCase().includes('campaign')) return 'text-green-600 dark:text-green-400';
@@ -873,6 +876,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                             // Then check notification type
                             if (notification.type) {
                               switch (notification.type) {
+                                case 'missed_call': return 'text-red-600 dark:text-red-400';
                                 case 'sms_received': return 'text-blue-600 dark:text-blue-400';
                                 case 'user_login': return 'text-purple-600 dark:text-purple-400';
                                 case 'success': return 'text-green-600 dark:text-green-400';

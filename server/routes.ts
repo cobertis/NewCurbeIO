@@ -9806,6 +9806,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Create missed call notification
+  app.post("/api/notifications/missed-call", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const { phoneNumber, displayName, callerType, callerId } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      // Format caller name for notification
+      const callerName = displayName || "Unknown Caller";
+      
+      // Create notification link if caller was identified
+      let link: string | undefined;
+      if (callerType && callerId) {
+        link = callerType === 'quote' ? `/quotes/${callerId}` : `/policies/${callerId}`;
+      }
+      
+      // Create notification
+      const notification: InsertNotification = {
+        userId: currentUser.id,
+        type: "missed_call",
+        title: `Missed Call from ${callerName}`,
+        message: `Phone: ${phoneNumber}`,
+        link,
+        isRead: false,
+      };
+      
+      const result = await storage.createNotification(notification);
+      
+      // Broadcast to update real-time
+      broadcastNotificationUpdate();
+      
+      res.json({ success: true, notification: result });
+    } catch (error) {
+      console.error('Create missed call notification error:', error);
+      res.status(500).json({ message: "Failed to create notification" });
+    }
+  });
+
   // ==================== EMAIL TEMPLATES ENDPOINTS ====================
 
   // Get all email templates (superadmin only)
