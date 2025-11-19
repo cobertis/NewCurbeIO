@@ -431,7 +431,7 @@ export function WebPhoneFloatingWindow() {
                       <User className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
                     </div>
                     <h2 className="text-lg sm:text-xl font-medium text-foreground mb-1.5 sm:mb-2">
-                      {currentCall.displayName || formatCallerNumber(currentCall.phoneNumber)}
+                      {currentCall.displayName || "Unknown Caller"}
                     </h2>
                     <p className="text-sm sm:text-base text-muted-foreground mb-1">
                       {formatCallerNumber(currentCall.phoneNumber)}
