@@ -1,6 +1,7 @@
 // WebPhone Service - Singleton SIP.js implementation
 import { UserAgent, Registerer, Session, Inviter, SessionState, Invitation } from 'sip.js';
 import { create } from 'zustand';
+import { formatE164 } from '@shared/phone';
 
 // WebPhone state store
 interface Call {
@@ -454,17 +455,104 @@ class WebPhoneManager {
     }
   }
   
+  private extractCallerNumber(invitation: Invitation): string {
+    // Try to extract the actual external caller number from SIP headers
+    // Priority: P-Asserted-Identity > Remote-Party-ID > Diversion > From
+    // We look for the FIRST external number (>4 digits) to avoid PBX extensions
+    
+    const isExternalNumber = (number: string): boolean => {
+      const digits = number.replace(/\D/g, '');
+      // External numbers are typically 10-11 digits, extensions are 3-4
+      return digits.length >= 10;
+    };
+    
+    const extractNumberFromUri = (uri: string): string | null => {
+      // Match sip:NUMBER@domain or tel:NUMBER
+      const sipMatch = uri.match(/sip:([^@;]+)@/);
+      if (sipMatch) return sipMatch[1];
+      
+      const telMatch = uri.match(/tel:([^;]+)/);
+      if (telMatch) return telMatch[1];
+      
+      return null;
+    };
+    
+    try {
+      // Check P-Asserted-Identity header (most reliable for external caller ID)
+      // Note: In SIP, multiple P-Asserted-Identity headers can exist
+      // getHeader() returns the first one, which is usually the external number
+      const pAssertedIdentity = invitation.request.getHeader('P-Asserted-Identity');
+      if (pAssertedIdentity) {
+        const number = extractNumberFromUri(pAssertedIdentity);
+        if (number && isExternalNumber(number)) {
+          console.log('[WebPhone] 📋 Extracted external number from P-Asserted-Identity:', number);
+          return number;
+        }
+      }
+      
+      // Check Remote-Party-ID header
+      const remotePartyId = invitation.request.getHeader('Remote-Party-ID');
+      if (remotePartyId) {
+        const number = extractNumberFromUri(remotePartyId);
+        if (number && isExternalNumber(number)) {
+          console.log('[WebPhone] 📋 Extracted external number from Remote-Party-ID:', number);
+          return number;
+        }
+      }
+      
+      // Check Diversion header
+      const diversion = invitation.request.getHeader('Diversion');
+      if (diversion) {
+        const number = extractNumberFromUri(diversion);
+        if (number && isExternalNumber(number)) {
+          console.log('[WebPhone] 📋 Extracted external number from Diversion:', number);
+          return number;
+        }
+      }
+    } catch (error) {
+      console.warn('[WebPhone] Error extracting caller number from headers:', error);
+    }
+    
+    // Fallback to From header
+    const fromNumber = invitation.remoteIdentity.uri.user || 'Unknown';
+    console.log('[WebPhone] 📋 Using From header (may be extension):', fromNumber);
+    return fromNumber;
+  }
+  
   private handleIncomingCall(invitation: Invitation) {
     const store = useWebPhoneStore.getState();
     
-    // Extract caller info
-    const callerNumber = invitation.remoteIdentity.uri.user || 'Unknown';
-    const callerName = invitation.remoteIdentity.displayName || callerNumber;
+    // Extract the actual caller number from SIP headers
+    const rawCallerNumber = this.extractCallerNumber(invitation);
+    const callerName = invitation.remoteIdentity.displayName || rawCallerNumber;
     
-    console.log('[WebPhone] 📞 Incoming call from:', callerNumber);
+    console.log('[WebPhone] 📞 Incoming call from:', rawCallerNumber);
     
-    // Perform caller ID lookup (async, non-blocking)
-    this.performCallerLookup(callerNumber);
+    // Try to normalize and lookup the caller number
+    // We attempt lookup for all numbers, even short ones, since the backend
+    // will handle normalization and matching
+    try {
+      const digitsOnly = rawCallerNumber.replace(/\D/g, '');
+      
+      // Only attempt lookup if we have a number with at least some digits
+      if (digitsOnly.length >= 10) {
+        // External phone number - normalize to E.164
+        try {
+          const normalizedNumber = formatE164(rawCallerNumber);
+          console.log('[WebPhone] 🔍 Normalized number for lookup:', normalizedNumber);
+          this.performCallerLookup(normalizedNumber);
+        } catch (formatError) {
+          console.warn('[WebPhone] ⚠️ Could not format number to E.164, trying as-is:', rawCallerNumber);
+          // Try lookup with raw number anyway - backend may be able to handle it
+          this.performCallerLookup(rawCallerNumber);
+        }
+      } else {
+        console.log('[WebPhone] ⚠️ Skipping lookup - appears to be internal extension:', rawCallerNumber);
+      }
+    } catch (error) {
+      console.error('[WebPhone] Error during caller lookup setup:', error);
+      // Continue with call flow even if lookup fails
+    }
     
     // Check DND and Call Waiting BEFORE creating call object
     if (!this.shouldAcceptIncomingCall()) {
@@ -482,7 +570,7 @@ class WebPhoneManager {
     const call: Call = {
       id: Math.random().toString(36).substr(2, 9),
       direction: 'inbound',
-      phoneNumber: callerNumber,
+      phoneNumber: rawCallerNumber,
       displayName: callerName,
       startTime: new Date(),
       status: 'ringing',
