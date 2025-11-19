@@ -1451,15 +1451,6 @@ export const quotes = pgTable("quotes", {
   // Additional Policy/Quote Fields
   memberId: varchar("member_id").references((): AnyPgColumn => quoteMembers.id, { onDelete: "set null" }), // Primary member/client ID reference
   npnMarketplace: text("npn_marketplace"), // NPN for marketplace transactions
-  saleType: text("sale_type"), // Type of sale (new, renewal, etc.)
-  marketplaceId: text("marketplace_id"), // External marketplace identifier
-  ffmMarketplace: text("ffm_marketplace"), // Federally Facilitated Marketplace identifier
-  specialEnrollmentReason: text("special_enrollment_reason"), // Reason for SEP
-  specialEnrollmentDate: date("special_enrollment_date"), // SEP date (yyyy-MM-dd)
-  cancellationDate: date("cancellation_date"), // Policy cancellation date (yyyy-MM-dd)
-  renewalStatus: text("renewal_status"), // pending, active, completed, etc.
-  isArchived: boolean("is_archived").notNull().default(false), // Archived status
-  isBlocked: boolean("is_blocked").notNull().default(false), // Blocked status
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -2094,7 +2085,6 @@ export const policies = pgTable("policies", {
   // Marketplace & Enrollment Information
   memberId: text("member_id"),
   npnMarketplace: text("npn_marketplace"),
-  saleType: text("sale_type"), // "new" or "renewal"
   marketplaceId: text("marketplace_id"),
   ffmMarketplace: text("ffm_marketplace"),
   specialEnrollmentReason: text("special_enrollment_reason"),
