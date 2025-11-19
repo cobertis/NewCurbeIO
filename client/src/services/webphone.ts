@@ -1558,6 +1558,7 @@ class WebPhoneManager {
   private endCall() {
     const store = useWebPhoneStore.getState();
     const call = store.currentCall;
+    const callerInfo = store.callerInfo;
     
     console.log('[WebPhone] 🧹 Starting full call cleanup (teardown)');
     
@@ -1577,13 +1578,24 @@ class WebPhoneManager {
         finalStatus = call.status === 'missed' ? 'missed' : 'ended';
       }
       
+      // Use caller name from lookup if available, otherwise use displayName from call
+      let finalDisplayName = call.displayName;
+      if (callerInfo?.found && callerInfo.firstName && callerInfo.lastName) {
+        finalDisplayName = `${callerInfo.firstName} ${callerInfo.lastName}`.trim();
+        console.log(`[WebPhone] ✅ Using caller name from lookup: ${finalDisplayName}`);
+      } else {
+        console.log(`[WebPhone] ⚠️ No caller info found, using displayName: ${finalDisplayName}`);
+      }
+      
       // Add to history
       const callLog: CallLog = {
         ...call,
+        displayName: finalDisplayName,
         endTime: new Date(),
         duration: Math.floor((new Date().getTime() - call.startTime.getTime()) / 1000),
         status: finalStatus
       };
+      console.log(`[WebPhone] 💾 Saving call to history:`, { displayName: callLog.displayName, phoneNumber: callLog.phoneNumber, status: callLog.status });
       store.addCallToHistory(callLog);
     }
     
