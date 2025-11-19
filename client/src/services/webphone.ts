@@ -79,6 +79,7 @@ interface WebPhoneState {
   setIncomingCallVisible: (visible: boolean) => void;
   setAudioElements: (local: HTMLAudioElement, remote: HTMLAudioElement) => void;
   clearCallHistory: () => void;
+  deleteCallsFromHistory: (callIds: string[]) => void;
   setCallerInfo: (info: CallerInfo | null) => void;
   clearCallerInfo: () => void;
 }
@@ -153,6 +154,12 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
     localStorage.removeItem('webphone_call_history');
     set({ callHistory: [] });
   },
+  
+  deleteCallsFromHistory: (callIds) => set(state => {
+    const newHistory = state.callHistory.filter(call => !callIds.includes(call.id));
+    localStorage.setItem('webphone_call_history', JSON.stringify(newHistory));
+    return { callHistory: newHistory };
+  }),
   
   setCallerInfo: (info) => set({ callerInfo: info }),
   

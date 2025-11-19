@@ -111,6 +111,8 @@ export function WebPhoneFloatingWindow() {
   const [viewMode, setViewMode] = useState<ViewMode>('keypad');
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [transferNumber, setTransferNumber] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -128,6 +130,8 @@ export function WebPhoneFloatingWindow() {
   const callHistory = useWebPhoneStore(state => state.callHistory);
   const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
   const setAudioElements = useWebPhoneStore(state => state.setAudioElements);
+  const clearCallHistory = useWebPhoneStore(state => state.clearCallHistory);
+  const deleteCallsFromHistory = useWebPhoneStore(state => state.deleteCallsFromHistory);
 
   // Handle window resize - recalculate dimensions and clamp position
   useEffect(() => {
@@ -317,6 +321,42 @@ export function WebPhoneFloatingWindow() {
           label: status
         };
     }
+  };
+  
+  // Edit mode handlers
+  const handleToggleEdit = () => {
+    setIsEditMode(!isEditMode);
+    setSelectedCallIds(new Set());
+  };
+  
+  const handleToggleSelectAll = () => {
+    if (selectedCallIds.size === callHistory.length) {
+      setSelectedCallIds(new Set());
+    } else {
+      setSelectedCallIds(new Set(callHistory.map(c => c.id)));
+    }
+  };
+  
+  const handleToggleCallSelection = (callId: string) => {
+    const newSelection = new Set(selectedCallIds);
+    if (newSelection.has(callId)) {
+      newSelection.delete(callId);
+    } else {
+      newSelection.add(callId);
+    }
+    setSelectedCallIds(newSelection);
+  };
+  
+  const handleDeleteSelected = () => {
+    deleteCallsFromHistory(Array.from(selectedCallIds));
+    setSelectedCallIds(new Set());
+    setIsEditMode(false);
+  };
+  
+  const handleClearAll = () => {
+    clearCallHistory();
+    setSelectedCallIds(new Set());
+    setIsEditMode(false);
   };
   
   if (!isVisible) return null;
@@ -512,11 +552,25 @@ export function WebPhoneFloatingWindow() {
                     <>
                       {/* Header - Fixed at top of scrollable area */}
                       <div className="px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between flex-shrink-0">
-                        <button className="text-sm sm:text-base text-blue-500">Edit</button>
-                        <h2 className="text-base sm:text-lg font-semibold text-foreground">Recents</h2>
-                        <button>
-                          <Menu className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
+                        <button 
+                          onClick={handleToggleEdit}
+                          className="text-sm sm:text-base text-blue-500"
+                          data-testid="button-edit-recents"
+                        >
+                          {isEditMode ? 'Done' : 'Edit'}
                         </button>
+                        <h2 className="text-base sm:text-lg font-semibold text-foreground">Recents</h2>
+                        {isEditMode ? (
+                          <button 
+                            onClick={handleClearAll}
+                            className="text-sm sm:text-base text-blue-500"
+                            data-testid="button-clear-all"
+                          >
+                            Clear All
+                          </button>
+                        ) : (
+                          <div className="w-[60px]"></div>
+                        )}
                       </div>
                       
                       {/* Call History List - Scrollable */}
@@ -526,65 +580,133 @@ export function WebPhoneFloatingWindow() {
                           <p className="text-xs sm:text-sm text-muted-foreground">No recent calls</p>
                         </div>
                       ) : (
-                        <div className="divide-y divide-border">
-                          {callHistory.map((call) => {
-                            const initials = call.displayName 
-                              ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
-                              : '';
-                            const timeStr = format(new Date(call.startTime), 'h:mma');
-                            const statusStyle = getCallStatusStyle(call.status);
-                            
-                            return (
-                              <div key={call.id} className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-2.5 hover:bg-muted/30 transition-colors">
-                                {/* Avatar */}
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                  {initials ? (
-                                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">{initials}</span>
-                                  ) : (
-                                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                        <>
+                          {/* Select All Row - Only in Edit Mode */}
+                          {isEditMode && (
+                            <div 
+                              onClick={handleToggleSelectAll}
+                              className="flex items-center gap-3 px-2 sm:px-4 py-2 sm:py-2.5 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors"
+                              data-testid="button-select-all"
+                            >
+                              <div 
+                                className={cn(
+                                  "w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                                  selectedCallIds.size === callHistory.length
+                                    ? "bg-blue-500 border-blue-500"
+                                    : "border-muted-foreground"
+                                )}
+                              >
+                                {selectedCallIds.size === callHistory.length && (
+                                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white"></div>
+                                )}
+                              </div>
+                              <span className="text-sm sm:text-base text-foreground">Select All</span>
+                            </div>
+                          )}
+                          
+                          <div className="divide-y divide-border">
+                            {callHistory.map((call) => {
+                              const initials = call.displayName 
+                                ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                                : '';
+                              const timeStr = format(new Date(call.startTime), 'h:mma');
+                              const statusStyle = getCallStatusStyle(call.status);
+                              const isSelected = selectedCallIds.has(call.id);
+                              
+                              return (
+                                <div 
+                                  key={call.id} 
+                                  className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-2.5 hover:bg-muted/30 transition-colors"
+                                >
+                                  {/* Checkbox - Only in Edit Mode */}
+                                  {isEditMode && (
+                                    <div 
+                                      onClick={() => handleToggleCallSelection(call.id)}
+                                      className={cn(
+                                        "w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors",
+                                        isSelected
+                                          ? "bg-blue-500 border-blue-500"
+                                          : "border-muted-foreground"
+                                      )}
+                                      data-testid={`checkbox-call-${call.id}`}
+                                    >
+                                      {isSelected && (
+                                        <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white"></div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Avatar */}
+                                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                    {initials ? (
+                                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">{initials}</span>
+                                    ) : (
+                                      <User className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                  
+                                  {/* Call Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5">
+                                      {call.direction === 'inbound' && call.status === 'missed' ? (
+                                        <PhoneMissed className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", statusStyle.color)} />
+                                      ) : call.direction === 'inbound' ? (
+                                        <PhoneIncoming className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
+                                      ) : (
+                                        <PhoneOutgoing className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
+                                      )}
+                                      <span className={cn(
+                                        "text-sm sm:text-base font-normal truncate",
+                                        statusStyle.color
+                                      )}>
+                                        {call.displayName || "Unknown Caller"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                                      <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                      <span>{formatCallerNumber(call.phoneNumber)}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Time and Call Button */}
+                                  {!isEditMode && (
+                                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                                      <span className="text-xs sm:text-sm text-muted-foreground">{timeStr}</span>
+                                      <button
+                                        onClick={() => {
+                                          setViewMode('keypad');
+                                          setDialNumber(call.phoneNumber);
+                                        }}
+                                        className="text-blue-500 hover:opacity-80 transition-opacity"
+                                        data-testid={`button-call-${call.id}`}
+                                      >
+                                        <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Time Only in Edit Mode */}
+                                  {isEditMode && (
+                                    <span className="text-xs sm:text-sm text-muted-foreground flex-shrink-0">{timeStr}</span>
                                   )}
                                 </div>
-                                
-                                {/* Call Info */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5">
-                                    {call.direction === 'inbound' && call.status === 'missed' ? (
-                                      <PhoneMissed className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", statusStyle.color)} />
-                                    ) : call.direction === 'inbound' ? (
-                                      <PhoneIncoming className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
-                                    ) : (
-                                      <PhoneOutgoing className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
-                                    )}
-                                    <span className={cn(
-                                      "text-sm sm:text-base font-normal truncate",
-                                      statusStyle.color
-                                    )}>
-                                      {call.displayName || "Unknown Caller"}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-                                    <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                    <span>{formatCallerNumber(call.phoneNumber)}</span>
-                                  </div>
-                                </div>
-                                
-                                {/* Time and Call Button */}
-                                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                                  <span className="text-xs sm:text-sm text-muted-foreground">{timeStr}</span>
-                                  <button
-                                    onClick={() => {
-                                      setViewMode('keypad');
-                                      setDialNumber(call.phoneNumber);
-                                    }}
-                                    className="text-blue-500 hover:opacity-80 transition-opacity"
-                                  >
-                                    <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* Delete Button - Only in Edit Mode with Selections */}
+                          {isEditMode && selectedCallIds.size > 0 && (
+                            <div className="px-2 sm:px-4 py-3 sm:py-4">
+                              <button
+                                onClick={handleDeleteSelected}
+                                className="w-full py-2 sm:py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                                data-testid="button-delete-selected"
+                              >
+                                Delete {selectedCallIds.size} {selectedCallIds.size === 1 ? 'call' : 'calls'}
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}
