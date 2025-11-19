@@ -83,8 +83,8 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages } from "@shared/schema";
+import { and, eq, ne, gte, desc } from "drizzle-orm";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -5803,6 +5803,116 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error("Error fetching user by phone:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Caller ID Lookup - Identifies incoming calls by matching phone numbers with Quotes and Policies
+  app.get("/api/caller-lookup/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const { phoneNumber } = req.params;
+      
+      // Normalize phone number using formatForStorage
+      let normalizedPhone: string;
+      try {
+        normalizedPhone = formatForStorage(phoneNumber);
+      } catch (error) {
+        return res.json({
+          found: false,
+          type: null,
+          id: null,
+          clientFirstName: '',
+          clientLastName: '',
+          clientPhone: phoneNumber
+        });
+      }
+      
+      // Search in policies table first (higher priority) - Get most recent by ordering desc
+      const policyResults = await db
+        .select({
+          id: policies.id,
+          clientFirstName: policies.clientFirstName,
+          clientLastName: policies.clientLastName,
+          clientPhone: policies.clientPhone,
+          updatedAt: policies.updatedAt
+        })
+        .from(policies)
+        .where(
+          and(
+            eq(policies.companyId, currentUser.companyId!),
+            eq(policies.clientPhone, normalizedPhone)
+          )
+        )
+        .orderBy(desc(policies.updatedAt))
+        .limit(1);
+      
+      // If policy found, return it
+      if (policyResults.length > 0) {
+        const mostRecentPolicy = policyResults[0]; // First result is most recent due to desc ordering
+        return res.json({
+          found: true,
+          type: 'policy',
+          id: mostRecentPolicy.id,
+          clientFirstName: mostRecentPolicy.clientFirstName,
+          clientLastName: mostRecentPolicy.clientLastName,
+          clientPhone: mostRecentPolicy.clientPhone
+        });
+      }
+      
+      // Search in quotes table if no policy found - Get most recent by ordering desc
+      const quoteResults = await db
+        .select({
+          id: quotes.id,
+          clientFirstName: quotes.clientFirstName,
+          clientLastName: quotes.clientLastName,
+          clientPhone: quotes.clientPhone,
+          updatedAt: quotes.updatedAt
+        })
+        .from(quotes)
+        .where(
+          and(
+            eq(quotes.companyId, currentUser.companyId!),
+            eq(quotes.clientPhone, normalizedPhone)
+          )
+        )
+        .orderBy(desc(quotes.updatedAt))
+        .limit(1);
+      
+      // If quote found, return it
+      if (quoteResults.length > 0) {
+        const mostRecentQuote = quoteResults[0]; // First result is most recent due to desc ordering
+        return res.json({
+          found: true,
+          type: 'quote',
+          id: mostRecentQuote.id,
+          clientFirstName: mostRecentQuote.clientFirstName,
+          clientLastName: mostRecentQuote.clientLastName,
+          clientPhone: mostRecentQuote.clientPhone
+        });
+      }
+      
+      // No match found
+      return res.json({
+        found: false,
+        type: null,
+        id: null,
+        clientFirstName: '',
+        clientLastName: '',
+        clientPhone: phoneNumber
+      });
+      
+    } catch (error) {
+      console.error("[Caller Lookup] Error looking up caller:", error);
+      res.status(500).json({ 
+        found: false,
+        type: null,
+        id: null,
+        clientFirstName: '',
+        clientLastName: '',
+        clientPhone: req.params.phoneNumber,
+        error: "Failed to lookup caller information"
+      });
     }
   });
 

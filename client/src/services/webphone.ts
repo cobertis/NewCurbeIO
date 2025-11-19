@@ -19,6 +19,14 @@ interface CallLog extends Call {
   recordingUrl?: string;
 }
 
+interface CallerInfo {
+  found: boolean;
+  type: 'quote' | 'policy' | null;
+  id: string | null;
+  firstName: string;
+  lastName: string;
+}
+
 interface WebPhoneState {
   // Connection state
   isConnected: boolean;
@@ -42,6 +50,9 @@ interface WebPhoneState {
   
   // Call history
   callHistory: CallLog[];
+  
+  // Caller identification
+  callerInfo: CallerInfo | null;
   
   // UI state
   dialpadVisible: boolean;
@@ -67,6 +78,8 @@ interface WebPhoneState {
   setIncomingCallVisible: (visible: boolean) => void;
   setAudioElements: (local: HTMLAudioElement, remote: HTMLAudioElement) => void;
   clearCallHistory: () => void;
+  setCallerInfo: (info: CallerInfo | null) => void;
+  clearCallerInfo: () => void;
 }
 
 export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
@@ -88,6 +101,7 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   })),
   dialpadVisible: false,
   incomingCallVisible: false,
+  callerInfo: null,
   
   // Actions
   setConnectionStatus: (status, error) => set({ 
@@ -137,7 +151,11 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   clearCallHistory: () => {
     localStorage.removeItem('webphone_call_history');
     set({ callHistory: [] });
-  }
+  },
+  
+  setCallerInfo: (info) => set({ callerInfo: info }),
+  
+  clearCallerInfo: () => set({ callerInfo: null })
 }));
 
 // WebPhone Manager Class
@@ -399,6 +417,43 @@ class WebPhoneManager {
     }
   }
   
+  private async performCallerLookup(phoneNumber: string): Promise<void> {
+    const store = useWebPhoneStore.getState();
+    
+    try {
+      console.log('[WebPhone] 🔍 Looking up caller ID for:', phoneNumber);
+      
+      const response = await fetch(`/api/caller-lookup/${phoneNumber}`);
+      
+      if (!response.ok) {
+        console.warn('[WebPhone] Caller lookup API error:', response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.found) {
+        const callerInfo = {
+          found: true,
+          type: data.type,
+          id: data.id,
+          firstName: data.clientFirstName,
+          lastName: data.clientLastName
+        };
+        
+        store.setCallerInfo(callerInfo);
+        console.log(`[WebPhone] ✅ Caller identified: ${data.clientFirstName} ${data.clientLastName} (${data.type})`);
+      } else {
+        store.setCallerInfo({ found: false, type: null, id: null, firstName: '', lastName: '' });
+        console.log('[WebPhone] ℹ️ Caller not found in database');
+      }
+    } catch (error) {
+      console.error('[WebPhone] Caller lookup failed:', error);
+      // Don't throw - caller lookup should not block the call flow
+      store.setCallerInfo({ found: false, type: null, id: null, firstName: '', lastName: '' });
+    }
+  }
+  
   private handleIncomingCall(invitation: Invitation) {
     const store = useWebPhoneStore.getState();
     
@@ -407,6 +462,9 @@ class WebPhoneManager {
     const callerName = invitation.remoteIdentity.displayName || callerNumber;
     
     console.log('[WebPhone] 📞 Incoming call from:', callerNumber);
+    
+    // Perform caller ID lookup (async, non-blocking)
+    this.performCallerLookup(callerNumber);
     
     // Check DND and Call Waiting BEFORE creating call object
     if (!this.shouldAcceptIncomingCall()) {

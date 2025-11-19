@@ -1,9 +1,12 @@
 import { useRef, useEffect } from 'react';
-import { Phone, PhoneOff, Volume2 } from 'lucide-react';
+import { Phone, PhoneOff, Volume2, CheckCircle } from 'lucide-react';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { formatPhoneInput } from '@shared/phone';
+import { useLocation } from 'wouter';
+import { useToast } from '@/hooks/use-toast';
 
 function formatCallerNumber(phoneNumber: string): string {
   // Remove all non-digit characters
@@ -21,7 +24,11 @@ function formatCallerNumber(phoneNumber: string): string {
 export function WebPhoneIncomingCall() {
   const incomingCallVisible = useWebPhoneStore(state => state.incomingCallVisible);
   const currentCall = useWebPhoneStore(state => state.currentCall);
+  const callerInfo = useWebPhoneStore(state => state.callerInfo);
+  const clearCallerInfo = useWebPhoneStore(state => state.clearCallerInfo);
   const ringtoneRef = useRef<HTMLAudioElement>(null);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   
   // Play ringtone when incoming call appears
   useEffect(() => {
@@ -42,13 +49,37 @@ export function WebPhoneIncomingCall() {
     };
   }, [incomingCallVisible]);
   
-  // Handle answer - stop ringtone
+  // Handle answer - stop ringtone and navigate to caller's quote/policy
   const handleAnswer = () => {
     if (ringtoneRef.current) {
       ringtoneRef.current.pause();
       ringtoneRef.current.currentTime = 0;
     }
     webPhone.answerCall();
+    
+    // Navigate to caller's record if identified
+    if (callerInfo?.found && callerInfo.id) {
+      const clientName = `${callerInfo.firstName} ${callerInfo.lastName}`.trim();
+      const recordType = callerInfo.type === 'quote' ? 'Quote' : 'Policy';
+      
+      // Navigate after a short delay to allow the call to be answered
+      setTimeout(() => {
+        if (callerInfo.type === 'quote') {
+          setLocation(`/quotes/${callerInfo.id}`);
+        } else if (callerInfo.type === 'policy') {
+          setLocation(`/policies/${callerInfo.id}`);
+        }
+        
+        // Show toast notification
+        toast({
+          title: `Opening ${recordType}`,
+          description: `${recordType} for ${clientName}`,
+        });
+        
+        // Clear caller info after navigation
+        clearCallerInfo();
+      }, 500);
+    }
   };
   
   // Handle reject - stop ringtone
@@ -82,13 +113,37 @@ export function WebPhoneIncomingCall() {
             
             <div className="text-center mb-8">
               <p className="text-sm text-slate-400 mb-2">Incoming Call</p>
-              <h3 className="text-3xl font-semibold text-white mb-1">
-                {formatCallerNumber(currentCall.phoneNumber)}
-              </h3>
-              {currentCall.displayName && (
-                <p className="text-sm text-slate-400">
-                  {currentCall.displayName}
-                </p>
+              
+              {callerInfo?.found ? (
+                <>
+                  <h3 className="text-3xl font-semibold text-white mb-2">
+                    {callerInfo.firstName} {callerInfo.lastName}
+                  </h3>
+                  <Badge 
+                    className="bg-green-600 hover:bg-green-700 text-white mb-2" 
+                    data-testid="badge-caller-identified"
+                  >
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    {callerInfo.type === 'quote' ? 'Quote Client' : 'Policy Client'}
+                  </Badge>
+                  <p className="text-sm text-slate-400">
+                    {formatCallerNumber(currentCall.phoneNumber)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-3xl font-semibold text-white mb-1">
+                    {currentCall.displayName || formatCallerNumber(currentCall.phoneNumber)}
+                  </h3>
+                  {currentCall.displayName && (
+                    <p className="text-sm text-slate-400">
+                      {formatCallerNumber(currentCall.phoneNumber)}
+                    </p>
+                  )}
+                  {!currentCall.displayName && (
+                    <p className="text-sm text-slate-400">Unknown</p>
+                  )}
+                </>
               )}
             </div>
             
