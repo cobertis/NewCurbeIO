@@ -491,10 +491,9 @@ class WebPhoneManager {
       console.log('[WebPhone] Lookup result:', data);
       
       if (data.found) {
-        // CACHE COMPATIBILITY: Support both new (firstName/lastName) and old (clientFirstName/clientLastName) field names
-        // This handles cached 304 responses from browser cache until cache expires
-        const firstName = data.firstName || data.clientFirstName || '';
-        const lastName = data.lastName || data.clientLastName || '';
+        // Backend returns clientFirstName/clientLastName - normalize to firstName/lastName
+        const firstName = data.clientFirstName || '';
+        const lastName = data.clientLastName || '';
         const callerName = `${firstName} ${lastName}`.trim();
         const callerInfo = {
           found: true,
