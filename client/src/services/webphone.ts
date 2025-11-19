@@ -378,6 +378,9 @@ class WebPhoneManager {
         if (newState === 'Registered') {
           console.log('[WebPhone] ✅ Successfully registered to Asterisk');
           store.setConnectionStatus('connected');
+        } else if (newState === 'Unregistered' || newState === 'Terminated') {
+          console.log('[WebPhone] ❌ Registration failed or ended');
+          store.setConnectionStatus('error', 'Authentication failed - Invalid credentials');
         }
       });
       
