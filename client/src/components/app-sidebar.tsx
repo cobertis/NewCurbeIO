@@ -58,6 +58,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { User, BulkvsThread } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
+import { useWebPhoneStore, webPhone } from "@/services/webphone";
 
 // Component to show unread iMessage count
 function ImessageUnreadBadge() {
@@ -320,6 +321,13 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     try {
+      // If there's an active call, hang up before logout
+      const { currentCall } = useWebPhoneStore.getState();
+      if (currentCall) {
+        console.log('[Logout] Hanging up active call before logout');
+        await webPhone.hangupCall();
+      }
+      
       const response = await fetch("/api/logout", {
         method: "POST",
         credentials: "include",
