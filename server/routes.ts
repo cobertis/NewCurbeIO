@@ -5822,17 +5822,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log('[Caller Lookup] Searching for number with digits:', searchDigits);
       
       // Search in policies table first (higher priority)
+      // Order by effectiveDate DESC to get the most recent policy year when multiple policies exist
       const allPolicies = await db
         .select({
           id: policies.id,
           clientFirstName: policies.clientFirstName,
           clientLastName: policies.clientLastName,
           clientPhone: policies.clientPhone,
-          updatedAt: policies.updatedAt
+          effectiveDate: policies.effectiveDate
         })
         .from(policies)
         .where(eq(policies.companyId, currentUser.companyId!))
-        .orderBy(desc(policies.updatedAt));
+        .orderBy(desc(policies.effectiveDate));
       
       // Filter by phone number digits in JavaScript
       const matchingPolicy = allPolicies.find(p => {
@@ -5854,17 +5855,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Search in quotes table if no policy found
+      // Order by effectiveDate DESC to get the most recent quote year when multiple quotes exist
       const allQuotes = await db
         .select({
           id: quotes.id,
           clientFirstName: quotes.clientFirstName,
           clientLastName: quotes.clientLastName,
           clientPhone: quotes.clientPhone,
-          updatedAt: quotes.updatedAt
+          effectiveDate: quotes.effectiveDate
         })
         .from(quotes)
         .where(eq(quotes.companyId, currentUser.companyId!))
-        .orderBy(desc(quotes.updatedAt));
+        .orderBy(desc(quotes.effectiveDate));
       
       // Filter by phone number digits in JavaScript
       const matchingQuote = allQuotes.find(q => {
