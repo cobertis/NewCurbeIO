@@ -422,11 +422,9 @@ class WebPhoneManager {
     const store = useWebPhoneStore.getState();
     
     try {
-      console.log('[WebPhone] 🔍 Looking up caller ID for:', phoneNumber);
+      console.log('[WebPhone] 🔍 Instant lookup for:', phoneNumber);
       
       const response = await fetch(`/api/caller-lookup/${phoneNumber}`);
-      
-      console.log('[WebPhone] Lookup response status:', response.status);
       
       if (!response.ok) {
         console.warn('[WebPhone] Caller lookup API error:', response.status);
@@ -434,9 +432,10 @@ class WebPhoneManager {
       }
       
       const data = await response.json();
-      console.log('[WebPhone] Lookup response data:', data);
+      console.log('[WebPhone] Lookup result:', data);
       
       if (data.found) {
+        const callerName = `${data.clientFirstName} ${data.clientLastName}`.trim();
         const callerInfo = {
           found: true,
           type: data.type,
@@ -445,18 +444,24 @@ class WebPhoneManager {
           lastName: data.clientLastName
         };
         
-        console.log('[WebPhone] Setting callerInfo to:', callerInfo);
+        // Update callerInfo in store
         store.setCallerInfo(callerInfo);
-        console.log(`[WebPhone] ✅ Caller identified: ${data.clientFirstName} ${data.clientLastName} (${data.type})`);
-        console.log('[WebPhone] CallerInfo in store after set:', store.callerInfo);
+        
+        // CRITICAL: Also update the currentCall displayName so UI shows the name immediately
+        if (store.currentCall) {
+          store.setCurrentCall({
+            ...store.currentCall,
+            displayName: callerName
+          });
+        }
+        
+        console.log(`[WebPhone] ✅ Caller identified: ${callerName} (${data.type})`);
       } else {
-        console.log('[WebPhone] Caller not found, setting callerInfo to not found');
         store.setCallerInfo({ found: false, type: null, id: null, firstName: '', lastName: '' });
         console.log('[WebPhone] ℹ️ Caller not found in database');
       }
     } catch (error) {
       console.error('[WebPhone] Caller lookup failed:', error);
-      // Don't throw - caller lookup should not block the call flow
       store.setCallerInfo({ found: false, type: null, id: null, firstName: '', lastName: '' });
     }
   }
