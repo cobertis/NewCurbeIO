@@ -5807,6 +5807,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // Caller ID Lookup - Identifies incoming calls by matching phone numbers with Quotes and Policies
+  // OPTIMIZED: Uses SQL LIKE with wildcard for instant lookup
   app.get("/api/caller-lookup/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
@@ -5819,11 +5820,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get last 10 digits for comparison (handles both US and international formats)
       const searchDigits = digitsOnly.slice(-10);
       
-      console.log('[Caller Lookup] Searching for number with digits:', searchDigits);
+      console.log('[Caller Lookup] 🔍 Instant lookup for:', searchDigits);
       
-      // Search in policies table first (higher priority)
-      // Order by effectiveDate DESC to get the most recent policy year when multiple policies exist
-      const allPolicies = await db
+      // OPTIMIZED: Use SQL LIKE with % wildcard for instant database-level matching
+      // This searches directly in the database instead of loading all records into memory
+      const matchingPolicy = await db
         .select({
           id: policies.id,
           clientFirstName: policies.clientFirstName,
@@ -5832,31 +5833,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           effectiveDate: policies.effectiveDate
         })
         .from(policies)
-        .where(eq(policies.companyId, currentUser.companyId!))
-        .orderBy(desc(policies.effectiveDate));
+        .where(
+          and(
+            eq(policies.companyId, currentUser.companyId!),
+            sql`REPLACE(REPLACE(REPLACE(REPLACE(${policies.clientPhone}, '(', ''), ')', ''), '-', ''), ' ', '') LIKE '%${sql.raw(searchDigits)}%'`
+          )
+        )
+        .orderBy(desc(policies.effectiveDate))
+        .limit(1);
       
-      // Filter by phone number digits in JavaScript
-      const matchingPolicy = allPolicies.find(p => {
-        if (!p.clientPhone) return false;
-        const dbDigits = p.clientPhone.replace(/\D/g, '');
-        return dbDigits.includes(searchDigits) || searchDigits.includes(dbDigits.slice(-10));
-      });
-      
-      if (matchingPolicy) {
-        console.log('[Caller Lookup] ✅ Found in Policy:', matchingPolicy.id);
+      if (matchingPolicy.length > 0) {
+        const policy = matchingPolicy[0];
+        console.log('[Caller Lookup] ✅ Found in Policy:', policy.id);
         return res.json({
           found: true,
           type: 'policy',
-          id: matchingPolicy.id,
-          clientFirstName: matchingPolicy.clientFirstName,
-          clientLastName: matchingPolicy.clientLastName,
-          clientPhone: matchingPolicy.clientPhone
+          id: policy.id,
+          clientFirstName: policy.clientFirstName,
+          clientLastName: policy.clientLastName,
+          clientPhone: policy.clientPhone
         });
       }
       
       // Search in quotes table if no policy found
-      // Order by effectiveDate DESC to get the most recent quote year when multiple quotes exist
-      const allQuotes = await db
+      const matchingQuote = await db
         .select({
           id: quotes.id,
           clientFirstName: quotes.clientFirstName,
@@ -5865,25 +5865,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           effectiveDate: quotes.effectiveDate
         })
         .from(quotes)
-        .where(eq(quotes.companyId, currentUser.companyId!))
-        .orderBy(desc(quotes.effectiveDate));
+        .where(
+          and(
+            eq(quotes.companyId, currentUser.companyId!),
+            sql`REPLACE(REPLACE(REPLACE(REPLACE(${quotes.clientPhone}, '(', ''), ')', ''), '-', ''), ' ', '') LIKE '%${sql.raw(searchDigits)}%'`
+          )
+        )
+        .orderBy(desc(quotes.effectiveDate))
+        .limit(1);
       
-      // Filter by phone number digits in JavaScript
-      const matchingQuote = allQuotes.find(q => {
-        if (!q.clientPhone) return false;
-        const dbDigits = q.clientPhone.replace(/\D/g, '');
-        return dbDigits.includes(searchDigits) || searchDigits.includes(dbDigits.slice(-10));
-      });
-      
-      if (matchingQuote) {
-        console.log('[Caller Lookup] ✅ Found in Quote:', matchingQuote.id);
+      if (matchingQuote.length > 0) {
+        const quote = matchingQuote[0];
+        console.log('[Caller Lookup] ✅ Found in Quote:', quote.id);
         return res.json({
           found: true,
           type: 'quote',
-          id: matchingQuote.id,
-          clientFirstName: matchingQuote.clientFirstName,
-          clientLastName: matchingQuote.clientLastName,
-          clientPhone: matchingQuote.clientPhone
+          id: quote.id,
+          clientFirstName: quote.clientFirstName,
+          clientLastName: quote.clientLastName,
+          clientPhone: quote.clientPhone
         });
       }
       
