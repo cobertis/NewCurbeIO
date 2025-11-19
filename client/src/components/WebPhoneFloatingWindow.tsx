@@ -705,23 +705,15 @@ export function WebPhoneFloatingWindow() {
                                   
                                   {/* Call Info */}
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5">
-                                      {call.direction === 'inbound' && call.status === 'missed' ? (
-                                        <PhoneMissed className={cn("h-3 w-3 sm:h-3.5 sm:w-3.5", statusStyle.color)} />
-                                      ) : call.direction === 'inbound' ? (
-                                        <PhoneIncoming className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
-                                      ) : (
-                                        <PhoneOutgoing className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
-                                      )}
+                                    <div className="mb-0.5">
                                       <span className={cn(
                                         "text-sm sm:text-base font-normal truncate",
-                                        statusStyle.color
+                                        call.status === 'missed' ? statusStyle.color : 'text-foreground'
                                       )}>
                                         {call.displayName || "Unknown Caller"}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-                                      <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                       <span>{formatCallerNumber(call.phoneNumber)}</span>
                                     </div>
                                   </div>
