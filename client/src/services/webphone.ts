@@ -372,14 +372,15 @@ class WebPhoneManager {
         await this.disconnect();
       }
       
-      // DIRECT CONNECTION to Asterisk WSS (no proxy)
-      // Connect directly from browser to pbx1.curbe.io
-      const pbxServer = server || store.wssServer || 'wss://pbx1.curbe.io:8089/ws';
+      // USE BACKEND PROXY for SIP WebSocket
+      // Connect through /ws/sip proxy which handles authentication and headers
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const proxyServer = `${wsProtocol}//${window.location.host}/ws/sip`;
       
       // Create SIP configuration  
       const uriString = `sip:${extension}@${store.sipDomain}`;
       const transportOptions = {
-        server: pbxServer, // Direct connection to Asterisk
+        server: proxyServer, // Connect through backend proxy
         connectionTimeout: 10,
         keepAliveInterval: 30,
         traceSip: true
@@ -387,7 +388,7 @@ class WebPhoneManager {
       
       console.log('[WebPhone] Initializing with config:', {
         uri: uriString,
-        directPBX: pbxServer,
+        proxyServer: proxyServer,
         username: extension
       });
       
