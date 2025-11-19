@@ -120,6 +120,7 @@ export function WebPhoneFloatingWindow() {
   const isVisible = useWebPhoneStore(state => state.dialpadVisible);
   const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
   const currentCall = useWebPhoneStore(state => state.currentCall);
+  const callerInfo = useWebPhoneStore(state => state.callerInfo);
   const isMuted = useWebPhoneStore(state => state.isMuted);
   const isOnHold = useWebPhoneStore(state => state.isOnHold);
   const isRecording = useWebPhoneStore(state => state.isRecording);
@@ -370,7 +371,7 @@ export function WebPhoneFloatingWindow() {
                       <User className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
                     </div>
                     <h2 className="text-lg sm:text-xl font-medium text-foreground mb-1.5 sm:mb-2">
-                      {currentCall.displayName || 'Unknown'}
+                      {callerInfo?.name || currentCall.displayName || 'Unknown'}
                     </h2>
                     <p className="text-sm sm:text-base text-muted-foreground mb-1">
                       {formatCallerNumber(currentCall.phoneNumber)}
