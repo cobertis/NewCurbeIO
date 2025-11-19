@@ -292,6 +292,7 @@ export function WebPhoneFloatingWindow() {
   const isVisible = useWebPhoneStore(state => state.dialpadVisible);
   const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
   const currentCall = useWebPhoneStore(state => state.currentCall);
+  const waitingCall = useWebPhoneStore(state => state.waitingCall);
   const consultationCall = useWebPhoneStore(state => state.consultationCall);
   const callerInfo = useWebPhoneStore(state => state.callerInfo);
   const isMuted = useWebPhoneStore(state => state.isMuted);
@@ -615,6 +616,25 @@ export function WebPhoneFloatingWindow() {
                     </p>
                   </div>
                   
+                  {/* Waiting Call Banner */}
+                  {waitingCall && (
+                    <div className="px-2 sm:px-4 pb-3">
+                      <div className="bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900 rounded-lg p-3 animate-pulse">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-xs sm:text-sm font-semibold text-orange-700 dark:text-orange-300">
+                              Llamada en Espera
+                            </p>
+                            <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                              {waitingCall.displayName || "Unknown Caller"} · {formatCallerNumber(waitingCall.phoneNumber)}
+                            </p>
+                          </div>
+                          <PhoneIncoming className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 ml-2" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Call Controls */}
                   <div className="space-y-3 sm:space-y-4 pb-4 sm:pb-8">
                     {consultationCall ? (
@@ -651,6 +671,76 @@ export function WebPhoneFloatingWindow() {
                             <X className="h-5 w-5 mr-2" />
                             Cancel
                           </Button>
+                        </div>
+                      </>
+                    ) : waitingCall ? (
+                      /* Call Waiting Active - Show Swap/Answer Buttons */
+                      <>
+                        {/* Waiting Call Action Buttons */}
+                        <div className="grid grid-cols-2 gap-3 px-2 sm:px-4">
+                          <Button
+                            onClick={() => webPhone.swapCalls()}
+                            className="bg-blue-600 hover:bg-blue-700 text-white h-12"
+                            data-testid="button-swap-calls"
+                          >
+                            <Users className="h-5 w-5 mr-2" />
+                            Swap Calls
+                          </Button>
+                          
+                          <Button
+                            onClick={() => webPhone.answerWaitingCall()}
+                            className="bg-green-600 hover:bg-green-700 text-white h-12"
+                            data-testid="button-answer-waiting"
+                          >
+                            <PhoneIncoming className="h-5 w-5 mr-2" />
+                            Answer
+                          </Button>
+                        </div>
+                        
+                        {/* Basic Controls Row */}
+                        <div className="grid grid-cols-3 gap-3 sm:gap-6 px-2 sm:px-4">
+                          <button
+                            onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
+                            className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                            data-testid="button-mute-call"
+                          >
+                            <div className={cn(
+                              "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
+                              isMuted ? "bg-foreground" : "bg-muted/80"
+                            )}>
+                              {isMuted ? (
+                                <MicOff className="h-5 w-5 sm:h-7 sm:w-7 text-background" />
+                              ) : (
+                                <Mic className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
+                              )}
+                            </div>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">mute</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => setShowTransferDialog(true)}
+                            className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                            data-testid="button-transfer"
+                          >
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                              <PhoneForwarded className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
+                            </div>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">transfer</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
+                            className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                            data-testid="button-hold-call"
+                          >
+                            <div className={cn(
+                              "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
+                              isOnHold ? "bg-foreground" : "bg-muted/80"
+                            )}>
+                              <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", isOnHold ? "text-background" : "text-foreground")} />
+                            </div>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">hold</span>
+                          </button>
                         </div>
                       </>
                     ) : (

@@ -43,6 +43,7 @@ interface WebPhoneState {
   
   // Current call
   currentCall?: Call;
+  waitingCall?: Call; // For call waiting - second incoming call
   consultationCall?: Call; // For attended transfer
   isCallActive: boolean;
   isMuted: boolean;
@@ -70,6 +71,7 @@ interface WebPhoneState {
   setSipCredentials: (extension: string, password: string) => void;
   setWssServer: (server: string) => void;
   setCurrentCall: (call?: Call) => void;
+  setWaitingCall: (call?: Call) => void;
   setConsultationCall: (call?: Call) => void;
   setCallStatus: (status: Call['status']) => void;
   setMuted: (muted: boolean) => void;
@@ -127,6 +129,10 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
     isCallActive: !!call 
   }),
   
+  setWaitingCall: (call) => set({ 
+    waitingCall: call
+  }),
+  
   setConsultationCall: (call) => set({ 
     consultationCall: call
   }),
@@ -179,6 +185,7 @@ class WebPhoneManager {
   private userAgent?: UserAgent;
   private registerer?: Registerer;
   private currentSession?: Session;
+  private waitingSession?: Session; // For call waiting
   private consultationSession?: Session; // For attended transfers
   private transferInProgress: boolean = false; // Guard against manual hangup during transfer
   private referPending: boolean = false; // ONLY true when REFER is actually sent
@@ -734,6 +741,54 @@ class WebPhoneManager {
       session: invitation
     };
     
+    // CALL WAITING: Check if there's already an active call
+    const existingCall = store.currentCall;
+    if (existingCall && (existingCall.status === 'ringing' || existingCall.status === 'answered')) {
+      console.log('[WebPhone] 📞 Call Waiting: Incoming call while already on a call');
+      
+      // Store as waiting call
+      store.setWaitingCall(call);
+      this.waitingSession = invitation;
+      
+      // Log waiting call notification
+      const callerDisplay = callerName !== "Unknown Caller" ? callerName : rawCallerNumber;
+      console.log(`[WebPhone] 🔔 Llamada entrante en espera - ${callerDisplay}`);
+      
+      // Handle session state changes for waiting call
+      invitation.stateChange.addListener((state) => {
+        console.log('[WebPhone] Waiting call state:', state);
+        switch (state) {
+          case SessionState.Terminated:
+            // Clear waiting call if it ends
+            if (store.waitingCall?.id === call.id) {
+              store.setWaitingCall(undefined);
+              this.waitingSession = undefined;
+            }
+            break;
+          case SessionState.Established:
+            console.log('[WebPhone] Waiting call answered');
+            // Update waiting call status
+            store.setWaitingCall({ ...call, status: 'answered' });
+            break;
+        }
+      });
+      
+      // Auto-reject waiting call after 30 seconds
+      setTimeout(() => {
+        if (store.waitingCall?.id === call.id && store.waitingCall.status === 'ringing') {
+          console.log('[WebPhone] Auto-rejecting waiting call after timeout');
+          invitation.reject().catch((error) => {
+            console.error('[WebPhone] Error rejecting waiting call:', error);
+          });
+          store.setWaitingCall(undefined);
+          this.waitingSession = undefined;
+        }
+      }, 30000);
+      
+      return; // Don't replace currentCall
+    }
+    
+    // Normal flow: No existing call, set as current call
     store.setCurrentCall(call);
     store.setIncomingCallVisible(true);
     
@@ -1929,7 +1984,25 @@ class WebPhoneManager {
     store.setMuted(false);
     store.setOnHold(false);
     
-    console.log('[WebPhone] ✅ Call cleanup complete - ready for next call');
+    // Step 7: CALL WAITING - Promote waiting call if exists
+    const waitingCall = store.waitingCall;
+    if (waitingCall && this.waitingSession) {
+      console.log('[WebPhone] 📞 Promoting waiting call to current call');
+      store.setCurrentCall(waitingCall);
+      store.setWaitingCall(undefined);
+      this.currentSession = this.waitingSession;
+      this.waitingSession = undefined;
+      
+      // If waiting call is still ringing, show incoming call UI
+      if (waitingCall.status === 'ringing') {
+        store.setIncomingCallVisible(true);
+        this.playRingtone();
+      }
+      
+      console.log('[WebPhone] ✅ Waiting call promoted successfully');
+    } else {
+      console.log('[WebPhone] ✅ Call cleanup complete - ready for next call');
+    }
   }
   
   private startReconnectMonitor() {
@@ -1978,6 +2051,96 @@ class WebPhoneManager {
     }
     
     store.setConnectionStatus('disconnected');
+  }
+  
+  // ============================================================================
+  // CALL WAITING METHODS
+  // ============================================================================
+  
+  public async swapCalls(): Promise<void> {
+    const store = useWebPhoneStore.getState();
+    const currentCall = store.currentCall;
+    const waitingCall = store.waitingCall;
+    
+    if (!currentCall || !waitingCall) {
+      console.warn('[WebPhone] Cannot swap - missing calls');
+      return;
+    }
+    
+    console.log('[WebPhone] 🔄 Swapping calls');
+    
+    try {
+      // Put current call on hold
+      if (currentCall.status === 'answered') {
+        await this.toggleHold();
+      }
+      
+      // Swap the calls
+      store.setCurrentCall(waitingCall);
+      store.setWaitingCall(currentCall);
+      
+      // Swap sessions
+      const tempSession = this.currentSession;
+      this.currentSession = this.waitingSession;
+      this.waitingSession = tempSession;
+      
+      // If the new current call is on hold, unhold it
+      if (waitingCall.status === 'answered') {
+        await this.toggleHold();
+      }
+      
+      console.log('[WebPhone] ✅ Calls swapped successfully');
+    } catch (error) {
+      console.error('[WebPhone] Failed to swap calls:', error);
+      throw error;
+    }
+  }
+  
+  public async answerWaitingCall(): Promise<void> {
+    const store = useWebPhoneStore.getState();
+    const currentCall = store.currentCall;
+    const waitingCall = store.waitingCall;
+    
+    if (!waitingCall || !this.waitingSession) {
+      console.warn('[WebPhone] No waiting call to answer');
+      return;
+    }
+    
+    console.log('[WebPhone] 📞 Answering waiting call');
+    
+    try {
+      // Put current call on hold if answered
+      if (currentCall?.status === 'answered') {
+        await this.toggleHold();
+      }
+      
+      // Answer the waiting call
+      const invitation = this.waitingSession as Invitation;
+      await invitation.accept({
+        sessionDescriptionHandlerOptions: {
+          constraints: {
+            audio: true,
+            video: false
+          }
+        }
+      });
+      
+      // Update waiting call status
+      store.setWaitingCall({ ...waitingCall, status: 'answered' });
+      
+      // Swap calls
+      store.setCurrentCall(waitingCall);
+      store.setWaitingCall(currentCall);
+      
+      const tempSession = this.currentSession;
+      this.currentSession = this.waitingSession;
+      this.waitingSession = tempSession;
+      
+      console.log('[WebPhone] ✅ Waiting call answered and swapped');
+    } catch (error) {
+      console.error('[WebPhone] Failed to answer waiting call:', error);
+      throw error;
+    }
   }
   
   // ============================================================================
