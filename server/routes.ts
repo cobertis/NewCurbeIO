@@ -5813,26 +5813,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const { phoneNumber } = req.params;
       
-      // Normalize phone number - search for multiple formats since database may have inconsistent formats
+      // Normalize phone number using formatE164 (adds + prefix if needed)
       let normalizedPhone: string;
-      let normalizedPhoneWithPlus: string;
-      
       try {
-        normalizedPhone = formatForStorage(phoneNumber); // e.g., "17866302522"
-        normalizedPhoneWithPlus = formatE164(phoneNumber); // e.g., "+17866302522"
+        normalizedPhone = formatE164(phoneNumber);
       } catch (error) {
-        return res.json({
-          found: false,
-          type: null,
-          id: null,
-          clientFirstName: '',
-          clientLastName: '',
-          clientPhone: phoneNumber
-        });
+        // If normalization fails, try to continue with raw number
+        normalizedPhone = phoneNumber;
       }
       
       // Search in policies table first (higher priority) - Get most recent by ordering desc
-      // Search for BOTH formats to handle database inconsistencies
       const policyResults = await db
         .select({
           id: policies.id,
@@ -5845,10 +5835,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(policies.companyId, currentUser.companyId!),
-            or(
-              eq(policies.clientPhone, normalizedPhone),
-              eq(policies.clientPhone, normalizedPhoneWithPlus)
-            )
+            eq(policies.clientPhone, normalizedPhone)
           )
         )
         .orderBy(desc(policies.updatedAt))
@@ -5868,7 +5855,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Search in quotes table if no policy found - Get most recent by ordering desc
-      // Search for BOTH formats to handle database inconsistencies
       const quoteResults = await db
         .select({
           id: quotes.id,
@@ -5881,10 +5867,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(quotes.companyId, currentUser.companyId!),
-            or(
-              eq(quotes.clientPhone, normalizedPhone),
-              eq(quotes.clientPhone, normalizedPhoneWithPlus)
-            )
+            eq(quotes.clientPhone, normalizedPhone)
           )
         )
         .orderBy(desc(quotes.updatedAt))
