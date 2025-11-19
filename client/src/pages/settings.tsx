@@ -2895,11 +2895,9 @@ function WebPhoneTab() {
         {connectionError && (
           <p className="text-xs text-destructive mt-2">{connectionError}</p>
         )}
-      </CardHeader>
-      <CardContent className="space-y-6">
         
         {/* Enable WebPhone Switch */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-6 pb-4">
           <div className="space-y-0.5">
             <Label htmlFor="sipEnabled" className="text-base">
               Enable WebPhone
@@ -2917,6 +2915,8 @@ function WebPhoneTab() {
             data-testid="switch-sip-enabled"
           />
         </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
         
         {/* SIP Credentials - With inline validation */}
         <div className="space-y-4">
