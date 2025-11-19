@@ -564,7 +564,7 @@ export function WebPhoneFloatingWindow() {
                                   </div>
                                   <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
                                     <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                    <span>phone</span>
+                                    <span>{formatCallerNumber(call.phoneNumber)}</span>
                                   </div>
                                 </div>
                                 
