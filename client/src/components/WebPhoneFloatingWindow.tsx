@@ -559,7 +559,7 @@ export function WebPhoneFloatingWindow() {
                                       "text-sm sm:text-base font-normal truncate",
                                       statusStyle.color
                                     )}>
-                                      {call.displayName || formatCallerNumber(call.phoneNumber)}
+                                      {call.displayName || "Unknown Caller"}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
