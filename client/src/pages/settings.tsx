@@ -2866,45 +2866,37 @@ function WebPhoneTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>WebPhone Configuration</CardTitle>
-        <CardDescription>
-          Configure your SIP credentials for WebRTC calling capabilities
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            <CardTitle>WebPhone Configuration</CardTitle>
+            <CardDescription>
+              Configure your SIP credentials for WebRTC calling capabilities
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            {isConnected ? (
+              <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+            ) : connectionStatus === 'connecting' ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-muted-foreground" />
+            )}
+            <Badge 
+              variant={isConnected ? "default" : connectionStatus === 'connecting' ? "outline" : "secondary"} 
+              data-testid="badge-connection-status"
+            >
+              {connectionStatus === 'connected' && 'Connected'}
+              {connectionStatus === 'connecting' && 'Connecting'}
+              {connectionStatus === 'disconnected' && 'Disconnected'}
+              {connectionStatus === 'error' && 'Error'}
+            </Badge>
+          </div>
+        </div>
+        {connectionError && (
+          <p className="text-xs text-destructive mt-2">{connectionError}</p>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Connection Status - REAL state from WebPhone */}
-        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
-          <div className="flex items-center gap-3">
-            {isConnected ? (
-              <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
-            ) : connectionStatus === 'connecting' ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            ) : (
-              <WifiOff className="h-5 w-5 text-muted-foreground" />
-            )}
-            <div>
-              <p className="font-medium">Connection Status</p>
-              <p className="text-sm text-muted-foreground">
-                {connectionStatus === 'connected' && 'WebPhone is connected and ready'}
-                {connectionStatus === 'connecting' && 'Connecting to WebPhone...'}
-                {connectionStatus === 'disconnected' && 'WebPhone is disconnected'}
-                {connectionStatus === 'error' && 'Connection error'}
-              </p>
-              {connectionError && (
-                <p className="text-xs text-destructive mt-1">{connectionError}</p>
-              )}
-            </div>
-          </div>
-          <Badge 
-            variant={isConnected ? "default" : connectionStatus === 'connecting' ? "outline" : "secondary"} 
-            data-testid="badge-connection-status"
-          >
-            {connectionStatus === 'connected' && 'Connected'}
-            {connectionStatus === 'connecting' && 'Connecting'}
-            {connectionStatus === 'disconnected' && 'Disconnected'}
-            {connectionStatus === 'error' && 'Error'}
-          </Badge>
-        </div>
         
         {/* Enable WebPhone Switch */}
         <div className="flex items-center justify-between">
