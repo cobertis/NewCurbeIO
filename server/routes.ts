@@ -5821,9 +5821,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log('[Caller Lookup] Searching for number with digits:', searchDigits);
       
-      // Search in policies table first (higher priority) - Get most recent by ordering desc
-      // Compare only digits using REGEXP_REPLACE to strip non-digits from database field
-      const policyResults = await db
+      // Search in policies table first (higher priority)
+      const allPolicies = await db
         .select({
           id: policies.id,
           clientFirstName: policies.clientFirstName,
@@ -5832,31 +5831,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedAt: policies.updatedAt
         })
         .from(policies)
-        .where(
-          and(
-            eq(policies.companyId, currentUser.companyId!),
-            sql`REGEXP_REPLACE(${policies.clientPhone}, '[^0-9]', '', 'g') LIKE '%' || ${searchDigits}`
-          )
-        )
-        .orderBy(desc(policies.updatedAt))
-        .limit(1);
+        .where(eq(policies.companyId, currentUser.companyId!))
+        .orderBy(desc(policies.updatedAt));
       
-      // If policy found, return it
-      if (policyResults.length > 0) {
-        const mostRecentPolicy = policyResults[0]; // First result is most recent due to desc ordering
-        console.log('[Caller Lookup] ✅ Found in Policy:', mostRecentPolicy.id);
+      // Filter by phone number digits in JavaScript
+      const matchingPolicy = allPolicies.find(p => {
+        if (!p.clientPhone) return false;
+        const dbDigits = p.clientPhone.replace(/\D/g, '');
+        return dbDigits.includes(searchDigits) || searchDigits.includes(dbDigits.slice(-10));
+      });
+      
+      if (matchingPolicy) {
+        console.log('[Caller Lookup] ✅ Found in Policy:', matchingPolicy.id);
         return res.json({
           found: true,
           type: 'policy',
-          id: mostRecentPolicy.id,
-          clientFirstName: mostRecentPolicy.clientFirstName,
-          clientLastName: mostRecentPolicy.clientLastName,
-          clientPhone: mostRecentPolicy.clientPhone
+          id: matchingPolicy.id,
+          clientFirstName: matchingPolicy.clientFirstName,
+          clientLastName: matchingPolicy.clientLastName,
+          clientPhone: matchingPolicy.clientPhone
         });
       }
       
-      // Search in quotes table if no policy found - Get most recent by ordering desc
-      const quoteResults = await db
+      // Search in quotes table if no policy found
+      const allQuotes = await db
         .select({
           id: quotes.id,
           clientFirstName: quotes.clientFirstName,
@@ -5865,26 +5863,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updatedAt: quotes.updatedAt
         })
         .from(quotes)
-        .where(
-          and(
-            eq(quotes.companyId, currentUser.companyId!),
-            sql`REGEXP_REPLACE(${quotes.clientPhone}, '[^0-9]', '', 'g') LIKE '%' || ${searchDigits}`
-          )
-        )
-        .orderBy(desc(quotes.updatedAt))
-        .limit(1);
+        .where(eq(quotes.companyId, currentUser.companyId!))
+        .orderBy(desc(quotes.updatedAt));
       
-      // If quote found, return it
-      if (quoteResults.length > 0) {
-        const mostRecentQuote = quoteResults[0]; // First result is most recent due to desc ordering
-        console.log('[Caller Lookup] ✅ Found in Quote:', mostRecentQuote.id);
+      // Filter by phone number digits in JavaScript
+      const matchingQuote = allQuotes.find(q => {
+        if (!q.clientPhone) return false;
+        const dbDigits = q.clientPhone.replace(/\D/g, '');
+        return dbDigits.includes(searchDigits) || searchDigits.includes(dbDigits.slice(-10));
+      });
+      
+      if (matchingQuote) {
+        console.log('[Caller Lookup] ✅ Found in Quote:', matchingQuote.id);
         return res.json({
           found: true,
           type: 'quote',
-          id: mostRecentQuote.id,
-          clientFirstName: mostRecentQuote.clientFirstName,
-          clientLastName: mostRecentQuote.clientLastName,
-          clientPhone: mostRecentQuote.clientPhone
+          id: matchingQuote.id,
+          clientFirstName: matchingQuote.clientFirstName,
+          clientLastName: matchingQuote.clientLastName,
+          clientPhone: matchingQuote.clientPhone
         });
       }
       
