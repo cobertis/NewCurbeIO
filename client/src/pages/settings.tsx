@@ -2873,23 +2873,38 @@ function WebPhoneTab() {
               Configure your SIP credentials for WebRTC calling capabilities
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            {isConnected ? (
-              <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
-            ) : connectionStatus === 'connecting' ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-muted-foreground" />
-            )}
-            <Badge 
-              variant={isConnected ? "default" : connectionStatus === 'connecting' ? "outline" : "secondary"} 
-              data-testid="badge-connection-status"
-            >
-              {connectionStatus === 'connected' && 'Connected'}
-              {connectionStatus === 'connecting' && 'Connecting'}
-              {connectionStatus === 'disconnected' && 'Disconnected'}
-              {connectionStatus === 'error' && 'Error'}
-            </Badge>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+              ) : connectionStatus === 'connecting' ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-muted-foreground" />
+              )}
+              <Badge 
+                variant={isConnected ? "default" : connectionStatus === 'connecting' ? "outline" : "secondary"} 
+                data-testid="badge-connection-status"
+              >
+                {connectionStatus === 'connected' && 'Connected'}
+                {connectionStatus === 'connecting' && 'Connecting'}
+                {connectionStatus === 'disconnected' && 'Disconnected'}
+                {connectionStatus === 'error' && 'Error'}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="sipEnabled" className="text-sm text-muted-foreground">
+                Enable WebPhone
+              </Label>
+              <Switch
+                {...form.register("sipEnabled")}
+                id="sipEnabled"
+                checked={form.watch("sipEnabled")}
+                onCheckedChange={(value) => form.setValue("sipEnabled", value)}
+                disabled={updateSipMutation.isPending}
+                data-testid="switch-sip-enabled"
+              />
+            </div>
           </div>
         </div>
         {connectionError && (
