@@ -526,6 +526,29 @@ class WebPhoneManager {
     try {
       console.log('[WebPhone] 🔍 Instant lookup for:', phoneNumber);
       
+      // Check if this is an internal extension (3-4 digits)
+      const digits = phoneNumber.replace(/\D/g, '');
+      const isInternalExtension = digits.length >= 3 && digits.length <= 4;
+      
+      if (isInternalExtension) {
+        console.log('[WebPhone] 📞 Detected internal extension:', digits);
+        
+        // Set as internal extension - no need to lookup in database
+        store.setCallerInfo({ found: false, type: null, id: null, firstName: '', lastName: '' });
+        
+        // Update currentCall displayName to show "Internal Number"
+        const currentCall = useWebPhoneStore.getState().currentCall;
+        if (currentCall) {
+          useWebPhoneStore.getState().setCurrentCall({
+            ...currentCall,
+            displayName: 'Internal Number'
+          });
+          console.log('[WebPhone] ✅ DisplayName set to: Internal Number (Extension:', digits + ')');
+        }
+        
+        return;
+      }
+      
       const response = await fetch(`/api/caller-lookup/${phoneNumber}`);
       
       if (!response.ok) {
