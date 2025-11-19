@@ -304,7 +304,7 @@ class WebPhoneManager {
     // Stop any existing ringback
     this.stopRingbackTone();
     
-    // US/Canada ringback tone (440Hz + 480Hz)
+    // Professional ringback pattern: 2 seconds ON, 4 seconds OFF (like real phone)
     const oscillator1 = this.audioContext.createOscillator();
     const oscillator2 = this.audioContext.createOscillator();
     const gainNode = this.audioContext.createGain();
@@ -314,7 +314,8 @@ class WebPhoneManager {
     oscillator2.type = 'sine';
     oscillator2.frequency.value = 480;
     
-    gainNode.gain.value = 0.2; // Volume at 20%
+    // Start with sound OFF
+    gainNode.gain.value = 0;
     
     oscillator1.connect(gainNode);
     oscillator2.connect(gainNode);
@@ -326,12 +327,48 @@ class WebPhoneManager {
     this.ringbackOscillator = oscillator1;
     this.ringbackGain = gainNode;
     
-    console.log('[Ringback] 📞 Playing ringback tone');
+    // Create ring pattern: 2s ON, 4s OFF
+    const createRingPattern = () => {
+      const now = this.audioContext!.currentTime;
+      
+      // Turn ON for 2 seconds
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.15, now + 0.1); // Fade in
+      gainNode.gain.setValueAtTime(0.15, now + 2);
+      gainNode.gain.linearRampToValueAtTime(0, now + 2.1); // Fade out
+      
+      // Stay OFF for 4 seconds
+      gainNode.gain.setValueAtTime(0, now + 2.1);
+      gainNode.gain.setValueAtTime(0, now + 6);
+    };
+    
+    // Start pattern immediately
+    createRingPattern();
+    
+    // Repeat every 6 seconds
+    const interval = setInterval(() => {
+      if (!this.ringbackOscillator || !this.audioContext) {
+        clearInterval(interval);
+        return;
+      }
+      createRingPattern();
+    }, 6000);
+    
+    // Store interval for cleanup
+    (this.ringbackOscillator as any)._repeatInterval = interval;
+    
+    console.log('[Ringback] 📞 Playing realistic ring-ring pattern');
   }
   
   private stopRingbackTone() {
     if (this.ringbackOscillator) {
       try {
+        // Clear repeat interval if exists
+        const interval = (this.ringbackOscillator as any)._repeatInterval;
+        if (interval) {
+          clearInterval(interval);
+        }
+        
         this.ringbackOscillator.stop();
         this.ringbackOscillator.disconnect();
       } catch (e) {
