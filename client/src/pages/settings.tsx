@@ -2951,11 +2951,8 @@ function WebPhoneTab() {
                   className="pr-10"
                   data-testid="input-sip-password"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                <span
+                  className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   data-testid="button-toggle-password"
                 >
@@ -2964,7 +2961,7 @@ function WebPhoneTab() {
                   ) : (
                     <Eye className="h-4 w-4" />
                   )}
-                </Button>
+                </span>
               </div>
               {form.formState.errors.sipPassword && (
                 <p className="text-xs text-destructive">{form.formState.errors.sipPassword.message}</p>
