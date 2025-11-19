@@ -427,7 +427,11 @@ export function WebPhoneFloatingWindow() {
     const limitedDigits = rawDigits.slice(0, 10);
     
     if (limitedDigits.length === 0) return '';
-    if (limitedDigits.length <= 3) return `(${limitedDigits}`;
+    
+    // Don't format if 3 or fewer digits (extensions like 301)
+    if (limitedDigits.length <= 3) return limitedDigits;
+    
+    // Format only after 4th digit
     if (limitedDigits.length <= 6) {
       return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3)}`;
     }
