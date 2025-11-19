@@ -173,10 +173,11 @@ export function WebPhoneFloatingWindow() {
     };
   }, [currentCall?.status]);
   
-  // Return to keypad when call ends
+  // Return to keypad when call ends and clear dial number
   useEffect(() => {
     if (!currentCall) {
       setViewMode('keypad');
+      setDialNumber('');
     }
   }, [currentCall]);
   
