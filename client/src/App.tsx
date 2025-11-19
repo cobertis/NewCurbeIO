@@ -1159,6 +1159,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/contacts">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Contacts />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/tasks">
         <ProtectedRoute>
           <DashboardLayout>
