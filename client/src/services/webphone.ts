@@ -1196,8 +1196,8 @@ class WebPhoneManager {
       }
     };
     
-    // Set transfer flag to prevent manual hangup during REFER
-    this.transferInProgress = true;
+    // NOTE: transferInProgress flag is set LATER, only when REFER is sent
+    // We do NOT block hangup during consultation phase - user needs to hangup to complete transfer
     
     // Track if consultation was established (user got to talk)
     let consultationEstablished = false;
@@ -1302,6 +1302,10 @@ class WebPhoneManager {
             }
           };
           originalSession.stateChange.addListener(originalTerminatedHandler);
+          
+          // CRITICAL: Set transfer flag NOW to prevent manual hangup during REFER processing
+          // User has already hung up consultation call, now we wait for PBX to complete transfer
+          this.transferInProgress = true;
           
           // Use REFER to complete attended transfer
           const referOptions = {
