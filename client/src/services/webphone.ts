@@ -942,6 +942,9 @@ class WebPhoneManager {
     // Set transfer flag to prevent manual hangup during REFER
     this.transferInProgress = true;
     
+    // Track if consultation was established (user got to talk)
+    let consultationEstablished = false;
+    
     // Track all listeners for cleanup - hoisted to be accessible in catch block
     let inviter: Inviter | undefined;
     let consultTerminatedHandler: ((state: SessionState) => void) | undefined;
@@ -997,23 +1000,45 @@ class WebPhoneManager {
       // Send the invite
       await inviter.invite();
       
-      // When transfer session is established, complete the transfer
+      // When transfer session is established, allow consultation (DO NOT auto-transfer)
       establishedHandler = (state: SessionState) => {
         if (state === SessionState.Established) {
-          // Verify both sessions are still Established before REFER
-          if (originalSession.state !== SessionState.Established) {
-            console.warn('[WebPhone] Original session not Established, waiting for PBX cleanup');
-            // DO NOT manually call bye() - let PBX handle cleanup via Terminated events
+          consultationEstablished = true;
+          console.log('[WebPhone] ✅ Consultation call established - user can now speak with transfer target');
+          console.log('[WebPhone] User can complete transfer by hanging up consultation call');
+          
+          // CRITICAL: Do NOT automatically call refer() here
+          // This allows the user to talk to the transfer target first (consultation phase)
+          // The transfer will be completed when user hangs up the consultation call (Terminated handler below)
+          
+        } else if (state === SessionState.Terminated) {
+          console.log('[WebPhone] Consultation call terminated');
+          
+          // If consultation was never established, it means the call failed/was rejected
+          if (!consultationEstablished) {
+            console.warn('[WebPhone] Consultation call failed/rejected, resuming original call');
+            this.consultationSession = undefined;
+            cleanupListeners();
+            this.unholdCall();
             return;
           }
           
-          console.log('[WebPhone] Transfer target answered, completing attended transfer');
+          // If we're here, consultation WAS established and user hung up
+          // This is the signal to complete the attended transfer
+          console.log('[WebPhone] User hung up consultation call - completing attended transfer');
+          
+          // Verify original session is still established
+          if (originalSession.state !== SessionState.Established) {
+            console.warn('[WebPhone] Original session not Established, cannot complete transfer');
+            this.consultationSession = undefined;
+            cleanupListeners();
+            return;
+          }
           
           // Add one-time Terminated listener for original session cleanup
           originalTerminatedHandler = (origState: SessionState) => {
             if (origState === SessionState.Terminated) {
               console.log('[WebPhone] Original session terminated by server after transfer');
-              // PBX has terminated the original call - UI cleanup only
               this.currentSession = undefined;
               this.consultationSession = undefined;
               cleanupListeners();
@@ -1026,34 +1051,19 @@ class WebPhoneManager {
             requestDelegate: {
               onAccept: () => {
                 console.log('[WebPhone] ✅ Attended transfer accepted by server');
-                // BROWSER-PHONE PATTERN: DO NOT manually hangup/bye
-                // Let the PBX send BYE on both legs - listeners will handle cleanup
                 console.log('[WebPhone] Waiting for PBX to terminate both sessions...');
               },
               onReject: () => {
                 console.warn('[WebPhone] ❌ Attended transfer rejected by server');
-                // REFER failed - resume original call and cleanup all listeners
                 this.consultationSession = undefined;
                 cleanupListeners();
                 this.unholdCall();
-                // PBX will send BYE for consultation session
               }
             }
           };
           
           // BROWSER-PHONE PATTERN: Pass the consultation session object to refer()
-          // The session object contains the Replaces header needed for attended transfer
           (originalSession as any).refer(inviter, referOptions);
-        } else if (state === SessionState.Terminated) {
-          // Consultation leg failed/rejected before establishing
-          if (!this.consultationSession) {
-            // Already cleaned up
-            return;
-          }
-          console.warn('[WebPhone] Transfer target failed/rejected, resuming original call');
-          this.consultationSession = undefined;
-          cleanupListeners();
-          this.unholdCall();
         }
       };
       
