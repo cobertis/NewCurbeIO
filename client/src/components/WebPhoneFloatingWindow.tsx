@@ -643,22 +643,22 @@ export function WebPhoneFloatingWindow() {
                           {isEditMode && (
                             <div 
                               onClick={handleToggleSelectAll}
-                              className="flex items-center gap-3 px-2 sm:px-4 py-2 sm:py-2.5 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors"
+                              className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 border-b border-border cursor-pointer hover:bg-muted/30 transition-colors"
                               data-testid="button-select-all"
                             >
                               <div 
                                 className={cn(
-                                  "w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                                  "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
                                   selectedCallIds.size === filteredCallHistory.length
                                     ? "bg-blue-500 border-blue-500"
                                     : "border-muted-foreground"
                                 )}
                               >
                                 {selectedCallIds.size === filteredCallHistory.length && (
-                                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white"></div>
+                                  <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
                                 )}
                               </div>
-                              <span className="text-sm sm:text-base text-foreground">Select All</span>
+                              <span className="text-xs sm:text-sm text-foreground">Select All</span>
                             </div>
                           )}
                           
@@ -674,14 +674,14 @@ export function WebPhoneFloatingWindow() {
                               return (
                                 <div 
                                   key={call.id} 
-                                  className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-2.5 hover:bg-muted/30 transition-colors"
+                                  className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
                                 >
                                   {/* Checkbox - Only in Edit Mode */}
                                   {isEditMode && (
                                     <div 
                                       onClick={() => handleToggleCallSelection(call.id)}
                                       className={cn(
-                                        "w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors",
+                                        "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors",
                                         isSelected
                                           ? "bg-blue-500 border-blue-500"
                                           : "border-muted-foreground"
@@ -689,7 +689,7 @@ export function WebPhoneFloatingWindow() {
                                       data-testid={`checkbox-call-${call.id}`}
                                     >
                                       {isSelected && (
-                                        <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-white"></div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
                                       )}
                                     </div>
                                   )}
@@ -752,12 +752,12 @@ export function WebPhoneFloatingWindow() {
                             })}
                           </div>
                           
-                          {/* Delete Button - Only in Edit Mode with Selections */}
+                          {/* Delete Button - Only in Edit Mode with Selections - STICKY */}
                           {isEditMode && selectedCallIds.size > 0 && (
-                            <div className="px-2 sm:px-4 py-3 sm:py-4">
+                            <div className="sticky bottom-0 bg-background border-t border-border px-2 sm:px-4 py-2 sm:py-3">
                               <button
                                 onClick={handleDeleteSelected}
-                                className="w-full py-2 sm:py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                                className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors text-sm sm:text-base"
                                 data-testid="button-delete-selected"
                               >
                                 Delete {selectedCallIds.size} {selectedCallIds.size === 1 ? 'call' : 'calls'}
