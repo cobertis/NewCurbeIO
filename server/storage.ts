@@ -161,6 +161,10 @@ import {
   type InsertBulkvsMessage,
   type ManualContact,
   type InsertManualContact,
+  type Contact,
+  type InsertContact,
+  type ContactSource,
+  type InsertContactSource,
   type BlacklistEntry,
   type InsertBlacklistEntry,
   type ContactEngagement,
@@ -272,6 +276,8 @@ import {
   bulkvsThreads,
   bulkvsMessages,
   manualContacts,
+  contacts,
+  contactSources,
   blacklistEntries,
   contactEngagements,
   tasks,
@@ -996,6 +1002,26 @@ export interface IStorage {
   getManualContact(id: string): Promise<ManualContact | undefined>;
   updateManualContact(id: string, data: Partial<InsertManualContact>): Promise<ManualContact | undefined>;
   deleteManualContact(id: string): Promise<void>;
+  
+  // Unified Contacts (Canonical contact registry)
+  upsertContact(data: InsertContact): Promise<Contact>;
+  upsertContactSource(data: InsertContactSource): Promise<ContactSource>;
+  getContactByPhone(companyId: string, phoneNormalized: string): Promise<Contact | undefined>;
+  getContactByEmail(companyId: string, email: string): Promise<Contact | undefined>;
+  getContactWithSources(contactId: string): Promise<Contact & { sources: ContactSource[] } | undefined>;
+  getContacts(companyId: string, filters?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+    listId?: string;
+    includeUnassignedOnly?: boolean;
+    includeBlacklistOnly?: boolean;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<{ contacts: Array<Contact & { sourceCount: number }>; total: number }>;
+  getLandingLead(id: string): Promise<any>;
   
   // Blacklist Management
   addToBlacklist(data: {
@@ -7946,6 +7972,389 @@ export class DbStorage implements IStorage {
       .set(updateData)
       .where(eq(manualContacts.id, id))
       .returning();
+    return result[0];
+  }
+
+  // ==================== UNIFIED CONTACTS ====================
+  
+  async upsertContact(data: InsertContact): Promise<Contact> {
+    // Find existing contact by phone or email
+    let existing: Contact | undefined;
+    
+    if (data.phoneNormalized) {
+      existing = await this.getContactByPhone(data.companyId, data.phoneNormalized);
+    }
+    
+    if (!existing && data.email) {
+      existing = await this.getContactByEmail(data.companyId, data.email);
+    }
+    
+    if (existing) {
+      // MERGE existing contact - only update fields that are provided (non-null/non-undefined)
+      // This prevents later sources from erasing data from earlier sources
+      const updateData: Partial<InsertContact> = {
+        // Only update if new value is provided (not null/undefined)
+        firstName: data.firstName !== null && data.firstName !== undefined ? data.firstName : existing.firstName,
+        lastName: data.lastName !== null && data.lastName !== undefined ? data.lastName : existing.lastName,
+        displayName: data.displayName !== null && data.displayName !== undefined ? data.displayName : existing.displayName,
+        email: data.email !== null && data.email !== undefined ? data.email : existing.email,
+        phoneNormalized: data.phoneNormalized !== null && data.phoneNormalized !== undefined ? data.phoneNormalized : existing.phoneNormalized,
+        phoneDisplay: data.phoneDisplay !== null && data.phoneDisplay !== undefined ? data.phoneDisplay : existing.phoneDisplay,
+        companyName: data.companyName !== null && data.companyName !== undefined ? data.companyName : existing.companyName,
+        notes: data.notes !== null && data.notes !== undefined ? data.notes : existing.notes,
+        tags: data.tags !== null && data.tags !== undefined ? data.tags : existing.tags,
+        lastContactedAt: data.lastContactedAt !== null && data.lastContactedAt !== undefined ? data.lastContactedAt : existing.lastContactedAt,
+        updatedAt: new Date(),
+      };
+      
+      const result = await db
+        .update(contacts)
+        .set(updateData)
+        .where(eq(contacts.id, existing.id))
+        .returning();
+      return result[0];
+    } else {
+      // Insert new contact
+      const result = await db
+        .insert(contacts)
+        .values(data as any)
+        .returning();
+      return result[0];
+    }
+  }
+  
+  async upsertContactSource(data: InsertContactSource): Promise<ContactSource> {
+    // Try to find existing source by contactId + sourceType + sourceId
+    const existing = await db
+      .select()
+      .from(contactSources)
+      .where(
+        and(
+          eq(contactSources.contactId, data.contactId),
+          eq(contactSources.sourceType, data.sourceType),
+          eq(contactSources.sourceId, data.sourceId)
+        )
+      )
+      .then(results => results[0]);
+    
+    if (existing) {
+      // Update existing source
+      const result = await db
+        .update(contactSources)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+        })
+        .where(eq(contactSources.id, existing.id))
+        .returning();
+      return result[0];
+    } else {
+      // Insert new source
+      const result = await db
+        .insert(contactSources)
+        .values(data as any)
+        .returning();
+      return result[0];
+    }
+  }
+  
+  async getContactByPhone(companyId: string, phoneNormalized: string): Promise<Contact | undefined> {
+    const result = await db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.companyId, companyId),
+          eq(contacts.phoneNormalized, phoneNormalized)
+        )
+      );
+    return result[0];
+  }
+  
+  async getContactByEmail(companyId: string, email: string): Promise<Contact | undefined> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const result = await db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.companyId, companyId),
+          eq(contacts.email, normalizedEmail)
+        )
+      );
+    return result[0];
+  }
+  
+  async getContactWithSources(contactId: string): Promise<Contact & { sources: ContactSource[] } | undefined> {
+    const contact = await db
+      .select()
+      .from(contacts)
+      .where(eq(contacts.id, contactId))
+      .then(results => results[0]);
+    
+    if (!contact) {
+      return undefined;
+    }
+    
+    const sources = await db
+      .select()
+      .from(contactSources)
+      .where(eq(contactSources.contactId, contactId))
+      .orderBy(desc(contactSources.createdAt));
+    
+    return {
+      ...contact,
+      sources,
+    };
+  }
+  
+  async getContacts(companyId: string, filters?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+    listId?: string;
+    includeUnassignedOnly?: boolean;
+    includeBlacklistOnly?: boolean;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<{ contacts: Array<Contact & { sourceCount: number }>; total: number }> {
+    const { 
+      search, 
+      limit = 50, 
+      offset = 0, 
+      listId, 
+      includeUnassignedOnly, 
+      includeBlacklistOnly,
+      sortBy = 'updatedAt',
+      sortOrder = 'desc',
+      dateFrom,
+      dateTo
+    } = filters || {};
+    
+    // ==================== QUERY UNIFIED CONTACTS TABLE ====================
+    
+    // Build where conditions for unified contacts
+    const contactConditions = [eq(contacts.companyId, companyId)];
+    
+    if (search) {
+      contactConditions.push(
+        or(
+          like(contacts.firstName, `%${search}%`),
+          like(contacts.lastName, `%${search}%`),
+          like(contacts.displayName, `%${search}%`),
+          like(contacts.email, `%${search}%`),
+          like(contacts.phoneDisplay, `%${search}%`)
+        ) as any
+      );
+    }
+    
+    if (dateFrom) {
+      contactConditions.push(gte(contacts.createdAt, dateFrom));
+    }
+    
+    if (dateTo) {
+      contactConditions.push(lt(contacts.createdAt, dateTo));
+    }
+    
+    // Build base query for unified contacts
+    let contactQuery = db
+      .select({
+        contact: contacts,
+        sourceCount: sql<number>`COUNT(DISTINCT ${contactSources.id})::int`,
+      })
+      .from(contacts)
+      .leftJoin(contactSources, eq(contactSources.contactId, contacts.id));
+    
+    // Apply list filtering for unified contacts
+    if (includeUnassignedOnly) {
+      const notExistsCondition = sql`NOT EXISTS (
+        SELECT 1 FROM ${contactListMembers} 
+        WHERE ${contactListMembers.contactId} = ${contacts.id}
+      )`;
+      contactConditions.push(notExistsCondition as any);
+    } else if (includeBlacklistOnly) {
+      const existsBlacklistCondition = sql`EXISTS (
+        SELECT 1 FROM ${blacklistEntries} 
+        WHERE ${blacklistEntries.companyId} = ${companyId}
+        AND ${blacklistEntries.isActive} = true
+        AND (
+          ${blacklistEntries.identifier} = ${contacts.phoneNormalized}
+          OR (${contacts.email} IS NOT NULL AND ${blacklistEntries.identifier} = ${contacts.email})
+        )
+      )`;
+      contactConditions.push(existsBlacklistCondition as any);
+    } else if (listId) {
+      contactQuery = contactQuery.innerJoin(
+        contactListMembers, 
+        and(
+          eq(contactListMembers.contactId, contacts.id),
+          eq(contactListMembers.listId, listId)
+        )
+      );
+    }
+    
+    contactQuery = contactQuery
+      .where(and(...contactConditions) as any)
+      .groupBy(contacts.id);
+    
+    // ==================== QUERY MANUAL CONTACTS TABLE (BACKWARDS COMPATIBILITY) ====================
+    
+    // Build where conditions for manual contacts
+    const manualConditions = [eq(manualContacts.companyId, companyId)];
+    
+    if (search) {
+      manualConditions.push(
+        or(
+          like(manualContacts.firstName, `%${search}%`),
+          like(manualContacts.lastName, `%${search}%`),
+          like(manualContacts.email, `%${search}%`),
+          like(manualContacts.phone, `%${search}%`)
+        ) as any
+      );
+    }
+    
+    if (dateFrom) {
+      manualConditions.push(gte(manualContacts.createdAt, dateFrom));
+    }
+    
+    if (dateTo) {
+      manualConditions.push(lt(manualContacts.createdAt, dateTo));
+    }
+    
+    // Build base query for manual contacts
+    let manualQuery = db
+      .select({
+        contact: manualContacts,
+      })
+      .from(manualContacts);
+    
+    // Apply list filtering for manual contacts
+    if (includeUnassignedOnly) {
+      const notExistsCondition = sql`NOT EXISTS (
+        SELECT 1 FROM ${contactListMembers} 
+        WHERE ${contactListMembers.contactId} = ${manualContacts.id}
+      )`;
+      manualConditions.push(notExistsCondition as any);
+    } else if (includeBlacklistOnly) {
+      const existsBlacklistCondition = sql`EXISTS (
+        SELECT 1 FROM ${blacklistEntries} 
+        WHERE ${blacklistEntries.companyId} = ${companyId}
+        AND ${blacklistEntries.isActive} = true
+        AND (
+          ${blacklistEntries.identifier} = ${manualContacts.phone}
+          OR (${manualContacts.email} IS NOT NULL AND ${blacklistEntries.identifier} = ${manualContacts.email})
+        )
+      )`;
+      manualConditions.push(existsBlacklistCondition as any);
+    } else if (listId) {
+      manualQuery = manualQuery.innerJoin(
+        contactListMembers, 
+        and(
+          eq(contactListMembers.contactId, manualContacts.id),
+          eq(contactListMembers.listId, listId)
+        )
+      );
+    }
+    
+    manualQuery = manualQuery.where(and(...manualConditions) as any);
+    
+    // ==================== EXECUTE QUERIES AND MERGE RESULTS ====================
+    
+    // Execute both queries
+    const [unifiedResults, manualResults] = await Promise.all([
+      contactQuery,
+      manualQuery,
+    ]);
+    
+    // Format unified contacts
+    const unifiedContacts = unifiedResults.map(row => ({
+      ...row.contact,
+      sourceCount: row.sourceCount,
+    }));
+    
+    // Project manual contacts as Contact type with synthetic sourceCount
+    const manualContactsProjected = manualResults.map((row: any) => {
+      const mc = row.contact || row;
+      return {
+        id: mc.id,
+        companyId: mc.companyId,
+        firstName: mc.firstName,
+        lastName: mc.lastName,
+        displayName: `${mc.firstName || ''} ${mc.lastName || ''}`.trim() || null,
+        email: mc.email,
+        phoneNormalized: mc.phone, // Manual contacts use 'phone' field
+        phoneDisplay: mc.phone,
+        companyName: mc.companyName,
+        notes: mc.notes,
+        tags: null,
+        lastContactedAt: null,
+        createdAt: mc.createdAt,
+        updatedAt: mc.updatedAt,
+        sourceCount: 1, // Manual contacts have synthetic sourceCount of 1
+      } as Contact & { sourceCount: number };
+    });
+    
+    // Merge results: deduplicating by phone/email (prefer contacts table over manualContacts)
+    const mergedMap = new Map<string, Contact & { sourceCount: number }>();
+    
+    // Add unified contacts first (they take priority)
+    unifiedContacts.forEach(contact => {
+      const key = contact.phoneNormalized || contact.email || contact.id;
+      mergedMap.set(key, contact);
+    });
+    
+    // Add manual contacts only if not already present
+    manualContactsProjected.forEach(contact => {
+      const key = contact.phoneNormalized || contact.email || contact.id;
+      if (!mergedMap.has(key)) {
+        mergedMap.set(key, contact);
+      }
+    });
+    
+    // Convert map to array
+    let allContacts = Array.from(mergedMap.values());
+    
+    // ==================== APPLY SORTING ====================
+    
+    const sortColumn = sortBy === 'name' 
+      ? 'firstName' 
+      : sortBy === 'email' 
+      ? 'email' 
+      : sortBy === 'phone' 
+      ? 'phoneDisplay'
+      : sortBy === 'createdAt'
+      ? 'createdAt'
+      : 'updatedAt';
+    
+    allContacts.sort((a, b) => {
+      const aVal = a[sortColumn as keyof typeof a] || '';
+      const bVal = b[sortColumn as keyof typeof b] || '';
+      
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+      }
+    });
+    
+    // ==================== APPLY PAGINATION ====================
+    
+    const total = allContacts.length;
+    const paginatedContacts = allContacts.slice(offset, offset + limit);
+    
+    return {
+      contacts: paginatedContacts,
+      total,
+    };
+  }
+  
+  async getLandingLead(id: string): Promise<any> {
+    const result = await db
+      .select()
+      .from(landingLeads)
+      .where(eq(landingLeads.id, id));
     return result[0];
   }
 

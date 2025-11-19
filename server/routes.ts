@@ -1554,6 +1554,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 isImessage: true,
                 hasAttachments: transformedAttachments.length > 0,
               });
+              
+              // Automatically create contact from incoming iMessage
+              if (!messageData.isFromMe) {
+                try {
+                  const { contactRegistry } = await import("./services/contact-registry");
+                  const senderHandle = messageData.handle?.address || messageData.from || 'Unknown';
+                  await contactRegistry.upsertContactFromImessage(senderHandle, company.id, messageGuid);
+                } catch (error: any) {
+                  console.error("[iMessage] Failed to create contact from message:", error);
+                }
+              }
             } catch (createError: any) {
               // If duplicate key error, the message already exists (race condition)
               if (createError.code === '23505') {
@@ -10643,22 +10654,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const limit = parseInt(req.query.limit as string) || 25;
       const search = req.query.search as string;
       const listId = req.query.listId as string;
+      const includeUnassignedOnly = req.query.includeUnassignedOnly === 'true';
+      const includeBlacklistOnly = req.query.includeBlacklistOnly === 'true';
       const sortBy = req.query.sortBy as string;
-      const sortOrder = req.query.sortOrder as 'asc' | 'desc';
+      const sortOrder = (req.query.sortOrder as 'asc' | 'desc') || 'desc';
       const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined;
       const dateTo = req.query.dateTo ? new Date(req.query.dateTo as string) : undefined;
+      const offset = (page - 1) * limit;
 
-      // Detect special sentinel values for filtering
-      const includeUnassignedOnly = listId === "__none";
-      const includeBlacklistOnly = listId === "__blacklist";
-      const actualListId = (includeUnassignedOnly || includeBlacklistOnly) ? undefined : listId;
-
-      const result = await storage.listContacts({
-        companyId: currentUser.companyId!,
-        page,
-        limit,
+      // Query unified contacts table with all filters (includes backwards compatibility with manualContacts)
+      const result = await storage.getContacts(currentUser.companyId!, {
         search,
-        listId: actualListId,
+        limit,
+        offset,
+        listId,
         includeUnassignedOnly,
         includeBlacklistOnly,
         sortBy,
@@ -10667,7 +10676,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         dateTo,
       });
 
-      res.json(result);
+      // Format response to match expected format
+      const formattedResult = {
+        contacts: result.contacts,
+        total: result.total,
+        page,
+        limit,
+      };
+
+      res.json(formattedResult);
     } catch (error) {
       console.error("[CONTACTS] Error listing contacts:", error);
       res.status(500).json({ message: "Failed to fetch contacts" });
@@ -12180,6 +12197,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const validatedData = insertQuoteSchema.parse(payload);
       
       const quote = await storage.createQuote(validatedData);
+      
+      // Automatically create contacts from quote
+      try {
+        const { contactRegistry } = await import("./services/contact-registry");
+        await contactRegistry.upsertContactFromQuote(quote.id, currentUser.companyId!);
+      } catch (error: any) {
+        console.error("[QUOTE] Failed to create contacts from quote:", error);
+      }
       
       await logger.logCrud({
         req,
@@ -16754,6 +16779,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const validatedData = insertPolicySchema.parse(payload);
       
       const policy = await storage.createPolicy(validatedData);
+      
+      // Automatically create contacts from policy
+      try {
+        const { contactRegistry } = await import("./services/contact-registry");
+        await contactRegistry.upsertContactFromPolicy(policy.id, currentUser.companyId!);
+      } catch (error: any) {
+        console.error("[POLICY] Failed to create contacts from policy:", error);
+      }
       
       // CRITICAL FIX: Create policy_members for spouses and dependents
       // Extract family members from request body (they come as arrays)
@@ -22475,6 +22508,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Create lead
       const lead = await storage.createLandingLead(validatedData);
+      
+      // Automatically create contact from lead
+      try {
+        const { contactRegistry } = await import("./services/contact-registry");
+        await contactRegistry.upsertContactFromLead(lead.id, landingPage.companyId);
+      } catch (error: any) {
+        console.error("[LEAD] Failed to create contact from lead:", error);
+      }
       
       res.status(201).json({ 
         message: "Lead captured successfully",

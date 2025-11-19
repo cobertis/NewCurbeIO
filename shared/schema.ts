@@ -3301,6 +3301,94 @@ export const manualContacts = pgTable("manual_contacts", {
 }));
 
 // =====================================================
+// UNIFIED CONTACTS (Canonical contact registry)
+// =====================================================
+
+// Contacts - Single canonical record per unique person across all sources
+export const contacts = pgTable("contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Canonical identity (deduplicated across sources)
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  displayName: text("display_name"), // Computed display name for UI
+  companyName: text("company_name"), // For business contacts
+  
+  // Contact information (normalized)
+  email: text("email"), // Lowercase, trimmed
+  phoneNormalized: text("phone_normalized"), // E.164 format (+17865551234)
+  phoneDisplay: text("phone_display"), // Original format for display
+  
+  // Metadata
+  notes: text("notes"),
+  tags: text("tags").array(), // Array of tags for filtering
+  lastContactedAt: timestamp("last_contacted_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraints - one canonical contact per phone/email per company
+  uniqueCompanyEmail: uniqueIndex("contacts_company_email_unique").on(table.companyId, table.email).where(sql`${table.email} IS NOT NULL`),
+  uniqueCompanyPhone: uniqueIndex("contacts_company_phone_unique").on(table.companyId, table.phoneNormalized).where(sql`${table.phoneNormalized} IS NOT NULL`),
+  // Performance indexes
+  companyIdIndex: index("contacts_company_id_idx").on(table.companyId),
+  emailIndex: index("contacts_email_idx").on(table.email),
+  phoneIndex: index("contacts_phone_normalized_idx").on(table.phoneNormalized),
+}));
+
+// Contact Sources - Track where each contact appears (quote, policy, lead, SMS, etc.)
+export const contactSources = pgTable("contact_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: varchar("contact_id").notNull().references(() => contacts.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Source information
+  sourceType: text("source_type").notNull(), // "quote", "policy", "lead", "sms_inbound", "manual", "imessage_inbound"
+  sourceId: text("source_id").notNull(), // ID of the source record (quoteId, policyId, leadId, messageId, etc.)
+  sourceName: text("source_name"), // Human-readable source name for display
+  
+  // Source-specific data (stored as JSON for flexibility)
+  sourceData: jsonb("source_data"), // Original data from source (firstName, lastName, role, etc.)
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique constraint - one source entry per contact+source combination
+  uniqueContactSource: uniqueIndex("contact_sources_unique").on(table.contactId, table.sourceType, table.sourceId),
+  // Performance indexes
+  contactIdIndex: index("contact_sources_contact_id_idx").on(table.contactId),
+  companyIdIndex: index("contact_sources_company_id_idx").on(table.companyId),
+  sourceTypeIndex: index("contact_sources_source_type_idx").on(table.sourceType),
+  sourceIdIndex: index("contact_sources_source_id_idx").on(table.sourceId),
+}));
+
+// Insert schemas
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  email: z.string().email().toLowerCase().optional(),
+  phoneNormalized: z.string().regex(/^\+[1-9]\d{1,14}$/, "Must be E.164 format").optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+export const insertContactSourceSchema = createInsertSchema(contactSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  sourceType: z.enum(["quote", "policy", "lead", "sms_inbound", "manual", "imessage_inbound"]),
+  sourceData: z.record(z.any()).optional(),
+});
+
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
+export type ContactSource = typeof contactSources.$inferSelect;
+export type InsertContactSource = z.infer<typeof insertContactSourceSchema>;
+
+// =====================================================
 // BLACKLIST (Multi-channel communication blocking)
 // =====================================================
 

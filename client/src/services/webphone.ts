@@ -612,8 +612,8 @@ class WebPhoneManager {
     
     // Extract the actual caller number from SIP headers
     const rawCallerNumber = this.extractCallerNumber(invitation);
-    // Don't use phone number as fallback - leave undefined so UI shows "Unknown Caller"
-    const callerName = invitation.remoteIdentity.displayName || undefined;
+    // Default to "Unknown Caller" in English if no display name provided
+    const callerName = invitation.remoteIdentity.displayName || "Unknown Caller";
     
     console.log('[WebPhone] 📞 Incoming call from:', rawCallerNumber);
     
