@@ -22,7 +22,7 @@ ALWAYS use the standardized `LoadingSpinner` component for all loading states ac
 **WebPhone Configuration:**
 - Each user can configure their own SIP credentials (extension, password, server)
 - Default SIP server: wss://pbx1.curbe.io:8089/ws (changed from pbx.curbe.io)
-- SIP domain/realm: pbx.curbe.io
+- SIP domain/realm: sip.curbe.io (corrected from pbx.curbe.io)
 - WebPhone auto-initializes when user has valid SIP credentials
 - Configuration stored per-user in database (sipExtension, sipPassword, sipServer, sipEnabled)
 - **Settings UI (November 2025):** Rebuilt with proper react-hook-form validation, real-time connection status from Zustand store, inline error messages, auto-connect on save, and real test call functionality to extension 9196
@@ -57,7 +57,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
   - **Caller ID Lookup System (November 2025):** Automatic caller identification via CRM integration. When incoming call arrives, system extracts external caller number from SIP headers (P-Asserted-Identity, Remote-Party-ID, or Diversion) prioritizing 10+ digit external numbers over PBX extensions, normalizes to E.164 format with graceful fallback if formatting fails, searches Policies (priority) then Quotes by phone number using `desc(updatedAt).limit(1)`, displays caller name and green badge ("Quote Client" or "Policy Client") in compact top-right incoming call notification, and auto-navigates to `/quotes/${id}` or `/policies/${id}` upon answer with toast notification. Shows "Unknown Caller" in English when contact not found in database. Async lookup doesn't block call flow.
   - **Missed Call Notifications (November 2025):** Creates notification entries in central notification panel when calls are missed. Shows red phone icon with caller name/number and links to corresponding quote/policy record if caller identified in CRM.
   - **Call History:** Color-coded status (red for missed, green for answered), localStorage persistence with proper Date deserialization
-  - **Audio System:** Private TURN/STUN server (95.111.237.201:3478) for reliable NAT traversal with hardcoded credentials (internal network only), automatic audio element registration, Web Audio API synthetic ringtones (iPhone-style 1000Hz+1320Hz for incoming, US/Canada standard 440Hz+480Hz ringback for outbound), remote audio stream handling
+  - **Audio System:** STUN/TURN servers (sip.curbe.io:3478) for reliable NAT traversal, automatic audio element registration, Web Audio API synthetic ringtones (iPhone-style 1000Hz+1320Hz for incoming, US/Canada standard 440Hz+480Hz ringback for outbound), remote audio stream handling
   - **Instant Audio on Incoming Calls:** Session assignment before accept() enables immediate media binding when answering incoming calls
   - **DTMF Support:** Full dialpad with tone generation for IVR navigation
 - **Billing & Stripe Integration:** Automated customer and subscription management.
