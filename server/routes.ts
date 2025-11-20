@@ -5802,6 +5802,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Group by state
       const stateMap = new Map<string, number>();
       const statusMap = new Map<string, number>();
+      const productTypeMap = new Map<string, number>();
 
       for (const policy of allPolicies) {
         // Count by state (use physical_state)
@@ -5811,6 +5812,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Count by status
         const status = policy.status || "unknown";
         statusMap.set(status, (statusMap.get(status) || 0) + 1);
+
+        // Count by product type
+        const productType = policy.productType || "other";
+        productTypeMap.set(productType, (productTypeMap.get(productType) || 0) + 1);
       }
 
       // Sort states by count (top 10)
@@ -5832,14 +5837,109 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           percentage: ((count / allPolicies.length) * 100).toFixed(2),
         }));
 
+      // Sort product types by count
+      const productTypeData = Array.from(productTypeMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([type, count]) => ({
+          type,
+          count,
+          percentage: ((count / allPolicies.length) * 100).toFixed(2),
+        }));
+
       res.json({
         totalPolicies: allPolicies.length,
         byState: topStates,
         byStatus: statusData,
+        byProductType: productTypeData,
       });
     } catch (error) {
       console.error("Policies analytics error:", error);
       res.status(500).json({ message: "Failed to fetch policies analytics" });
+    }
+  });
+
+  // Get monthly comparison (Policies vs Quotes by Month)
+  app.get("/api/dashboard-monthly", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+      const allQuotes = await storage.getQuotesByCompany(companyId);
+
+      const monthlyMap = new Map<string, { policies: number; quotes: number }>();
+
+      // Initialize all months
+      for (let i = 0; i < 12; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const month = date.toLocaleDateString('en-US', { month: 'short' });
+        monthlyMap.set(month, { policies: 0, quotes: 0 });
+      }
+
+      // Count policies by month (rough estimate based on createdAt)
+      for (const policy of allPolicies) {
+        const month = new Date(policy.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short' });
+        const data = monthlyMap.get(month) || { policies: 0, quotes: 0 };
+        monthlyMap.set(month, { ...data, policies: data.policies + 1 });
+      }
+
+      // Count quotes by month
+      for (const quote of allQuotes) {
+        const month = new Date(quote.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short' });
+        const data = monthlyMap.get(month) || { policies: 0, quotes: 0 };
+        monthlyMap.set(month, { ...data, quotes: data.quotes + 1 });
+      }
+
+      const monthlyData = Array.from(monthlyMap.entries())
+        .reverse()
+        .map(([month, data]) => ({
+          month,
+          policies: data.policies,
+          quotes: data.quotes,
+        }));
+
+      res.json({ data: monthlyData });
+    } catch (error) {
+      console.error("Monthly comparison error:", error);
+      res.status(500).json({ message: "Failed to fetch monthly data" });
+    }
+  });
+
+  // Get agents leaderboard
+  app.get("/api/dashboard-agents", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+      const users = await storage.getUsersByCompany(companyId);
+
+      const agentMap = new Map<string, { name: string; count: number }>();
+
+      for (const policy of allPolicies) {
+        if (policy.assignedAgent) {
+          const current = agentMap.get(policy.assignedAgent) || { name: policy.assignedAgent, count: 0 };
+          agentMap.set(policy.assignedAgent, { ...current, count: current.count + 1 });
+        }
+      }
+
+      const agents = Array.from(agentMap.values())
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      res.json({ agents });
+    } catch (error) {
+      console.error("Agents leaderboard error:", error);
+      res.status(500).json({ message: "Failed to fetch agents data" });
     }
   });
 

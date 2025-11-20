@@ -35,6 +35,17 @@ interface PoliciesAnalytics {
   totalPolicies: number;
   byState: Array<{ state: string; count: number; percentage: string }>;
   byStatus: Array<{ status: string; count: number; percentage: string }>;
+  byProductType?: Array<{ type: string; count: number; percentage: string }>;
+}
+
+interface MonthlyData {
+  month: string;
+  policies: number;
+  quotes: number;
+}
+
+interface AgentLeaderboard {
+  agents: Array<{ name: string; count: number }>;
 }
 
 export default function Dashboard() {
@@ -66,6 +77,16 @@ export default function Dashboard() {
 
   const { data: analyticsData } = useQuery<PoliciesAnalytics>({
     queryKey: ["/api/policies-analytics"],
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  const { data: monthlyData } = useQuery<{ data: MonthlyData[] }>({
+    queryKey: ["/api/dashboard-monthly"],
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  const { data: agentsData } = useQuery<AgentLeaderboard>({
+    queryKey: ["/api/dashboard-agents"],
     refetchInterval: 5 * 60 * 1000,
   });
 
@@ -125,21 +146,6 @@ export default function Dashboard() {
       iconColor: "text-cyan-600",
       link: "/leads",
     },
-  ];
-
-  const monthlyData = [
-    { month: "Jan", value: 20 },
-    { month: "Feb", value: 15 },
-    { month: "Mar", value: 18 },
-    { month: "Apr", value: 22 },
-    { month: "May", value: 10 },
-    { month: "Jun", value: 8 },
-    { month: "Jul", value: 25 },
-    { month: "Aug", value: 85 },
-    { month: "Sep", value: 95 },
-    { month: "Oct", value: 88 },
-    { month: "Nov", value: 92 },
-    { month: "Dec", value: 78 },
   ];
 
   return (
@@ -407,6 +413,116 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Monthly Comparison */}
+      <Card className="col-span-1 lg:col-span-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Policies vs Applicants by Month
+          </CardTitle>
+          <p className="text-xs text-gray-500 mt-1">Compare policies created and quotes this year</p>
+        </CardHeader>
+        <CardContent>
+          <div className="h-48 flex items-end justify-between gap-1 relative">
+            {(monthlyData?.data || []).map((data, index) => (
+              <div key={index} className="flex-1 flex flex-col items-center gap-1 group relative">
+                <div className="flex gap-0.5 items-end h-32 w-full justify-center">
+                  <div
+                    className="flex-1 bg-blue-400 rounded-t-sm transition-all duration-300 hover:bg-blue-500"
+                    style={{ height: `${Math.max(5, (data.policies / 10) * 100)}%` }}
+                    title={`Policies: ${data.policies}`}
+                    data-testid={`bar-policies-${index}`}
+                  ></div>
+                  <div
+                    className="flex-1 bg-cyan-400 rounded-t-sm transition-all duration-300 hover:bg-cyan-500"
+                    style={{ height: `${Math.max(5, (data.quotes / 10) * 100)}%` }}
+                    title={`Quotes: ${data.quotes}`}
+                    data-testid={`bar-quotes-${index}`}
+                  ></div>
+                </div>
+                <span className="text-xs text-gray-400">{data.month}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center gap-4 mt-4 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-400 rounded"></div>
+              <span className="text-gray-600 dark:text-gray-400">Policies</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-cyan-400 rounded"></div>
+              <span className="text-gray-600 dark:text-gray-400">Applicants</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Agents Leaderboard */}
+      <Card className="col-span-1 lg:col-span-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Top Agents Leaderboard
+          </CardTitle>
+          <p className="text-xs text-gray-500 mt-1">Agents by policies assigned</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {(agentsData?.agents || []).slice(0, 8).map((agent, idx) => (
+              <div key={idx} className="flex items-center gap-3 py-2">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-semibold">
+                  {idx + 1}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate">{agent.name}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{agent.count}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full"
+                      style={{ width: `${(agent.count / (agentsData?.agents?.[0]?.count || 1)) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Product Type Breakdown */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Policies by Product Type
+          </CardTitle>
+          <p className="text-xs text-gray-500 mt-1">Insurance types distribution</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {(analyticsData?.byProductType || []).slice(0, 6).map((item, idx) => (
+              <div key={idx} className="flex items-center gap-3 py-2">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">{item.type}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{item.count}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full"
+                      style={{ width: `${(item.count / (analyticsData?.byProductType?.[0]?.count || 1)) * 100}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{item.percentage}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Policies Analytics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
