@@ -450,7 +450,7 @@ export default function Dashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <PieChart className="h-4 w-4" />
-              Policies per Status (Top 10)
+              Policies per Status
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1">What is the status of your policies</p>
           </CardHeader>
@@ -467,10 +467,9 @@ export default function Dashboard() {
                   strokeWidth="20"
                   className="text-gray-200 dark:text-gray-700"
                 />
-                {(analyticsData?.byStatus || []).reduce((acc, item, idx) => {
+                {(() => {
+                  let cumulativeOffset = 0;
                   const circumference = 2 * Math.PI * 70;
-                  const offset = acc;
-                  const dasharray = (item.count / (analyticsData.totalPolicies || 1)) * circumference;
                   const colors = [
                     "text-blue-500",
                     "text-cyan-500",
@@ -484,38 +483,27 @@ export default function Dashboard() {
                     "text-teal-500",
                   ];
 
-                  return (
-                    <>
-                      {acc === undefined ? (
-                        <circle
-                          key={idx}
-                          cx="80"
-                          cy="80"
-                          r="70"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="20"
-                          strokeDasharray={`${dasharray} ${circumference}`}
-                          className={colors[idx % colors.length]}
-                        />
-                      ) : (
-                        <circle
-                          key={idx}
-                          cx="80"
-                          cy="80"
-                          r="70"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="20"
-                          strokeDasharray={`${dasharray} ${circumference}`}
-                          strokeDashoffset={-offset}
-                          className={colors[idx % colors.length]}
-                        />
-                      )}
-                      {offset + dasharray}
-                    </>
-                  );
-                }, 0)}
+                  return (analyticsData?.byStatus || []).map((item, idx) => {
+                    const dasharray = (item.count / (analyticsData.totalPolicies || 1)) * circumference;
+                    const offset = cumulativeOffset;
+                    cumulativeOffset += dasharray;
+
+                    return (
+                      <circle
+                        key={idx}
+                        cx="80"
+                        cy="80"
+                        r="70"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="20"
+                        strokeDasharray={`${dasharray} ${circumference}`}
+                        strokeDashoffset={-offset}
+                        className={colors[idx % colors.length]}
+                      />
+                    );
+                  });
+                })()}
               </svg>
 
               {/* Legend */}
