@@ -444,8 +444,8 @@ class WebPhoneManager {
       });
       
       // Create User Agent with STUN/TURN servers for WebRTC NAT traversal
-      // STUN: Anonymous server for basic NAT detection
-      // TURN: Fallback relay server for restrictive networks (symmetric NAT, firewalls)
+      // STUN: sip.curbe.io for basic NAT detection
+      // TURN: sip.curbe.io relay server for restrictive networks (symmetric NAT, firewalls)
       // CRITICAL: SIP.js 0.21 uses "peerConnectionConfiguration" not "peerConnectionOptions"
       this.userAgent = new UserAgent({
         uri: UserAgent.makeURI(uriString)!,
@@ -458,15 +458,12 @@ class WebPhoneManager {
           peerConnectionConfiguration: {  // FIXED: Correct property name for SIP.js 0.21
             iceServers: [
               {
-                urls: 'stun:136.243.104.170:3478'
+                urls: 'stun:sip.curbe.io:3478'
               },
               {
-                urls: [
-                  'turn:95.111.237.201:3478?transport=udp',
-                  'turn:95.111.237.201:3478?transport=tcp'
-                ],
-                username: 'javier',
-                credential: 'superpass123'
+                urls: 'turn:sip.curbe.io:3478',
+                username: 'curbe',
+                credential: 'CurbeTurn2025'
               }
             ],
             iceTransportPolicy: 'all',  // Use all candidates, prefer TURN for reliability
