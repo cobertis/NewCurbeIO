@@ -5773,6 +5773,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         newLeads,
       };
 
+      // Disable caching for dashboard stats to ensure fresh data
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.json(stats);
     } catch (error) {
       console.error("Dashboard stats error:", error);
