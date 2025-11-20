@@ -501,15 +501,16 @@ class WebPhoneManager {
       
       // CRITICAL FIX: Wait for registration to complete before advertising readiness
       // This prevents PBX from discarding the first INVITE due to stale contact
-      const registrationComplete = new Promise<void>((resolve, reject) => {
+      const registrationComplete = new Promise<void>((resolve) => {
         this.registerer!.stateChange.addListener((newState) => {
           console.log('[WebPhone] Registration state changed:', newState);
           if (newState === 'Registered') {
             console.log('[WebPhone] ✅ Successfully registered to Asterisk');
             resolve();
           } else if (newState === 'Unregistered' || newState === 'Terminated') {
-            console.log('[WebPhone] ❌ Registration failed or ended');
-            reject(new Error('Authentication failed - Invalid credentials'));
+            console.log('[WebPhone] ❌ Registration failed - Check PBX server and credentials');
+            store.setConnectionStatus('error', 'Registration failed - Check PBX server');
+            resolve(); // Resolve anyway to prevent unhandled rejection
           }
         });
       });
@@ -519,8 +520,13 @@ class WebPhoneManager {
       
       // Wait for registration to complete
       await registrationComplete;
-      console.log('[WebPhone] ✅ Registration confirmed - ready to receive calls');
-      store.setConnectionStatus('connected');
+      
+      // Only set connected if registration succeeded
+      const currentStatus = useWebPhoneStore.getState().connectionStatus;
+      if (currentStatus !== 'error') {
+        console.log('[WebPhone] ✅ Registration confirmed - ready to receive calls');
+        store.setConnectionStatus('connected');
+      }
       
     } catch (error: any) {
       console.error('[WebPhone] ❌ Initialization failed:', {
@@ -530,7 +536,8 @@ class WebPhoneManager {
         error: error
       });
       store.setConnectionStatus('error', error.message);
-      throw error;
+      // Don't throw - fail silently
+      console.log('[WebPhone] Failed to initialize:', error);
     }
   }
   
