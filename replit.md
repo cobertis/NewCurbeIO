@@ -21,8 +21,8 @@ ALWAYS use the standardized `LoadingSpinner` component for all loading states ac
 **CRITICAL: All sensitive data (SSN, income, immigration documents, payment methods) is stored in PLAIN TEXT without encryption or masking as per explicit user requirement.**
 **WebPhone Configuration:**
 - Each user can configure their own SIP credentials (extension, password, server)
-- Default SIP server: wss://pbx1.curbe.io:8089/ws (changed from pbx.curbe.io)
-- SIP domain/realm: sip.curbe.io (corrected from pbx.curbe.io)
+- Default SIP server: wss://sip.curbe.io:7443 (updated November 2025)
+- SIP domain/realm: sip.curbe.io
 - WebPhone auto-initializes when user has valid SIP credentials
 - Configuration stored per-user in database (sipExtension, sipPassword, sipServer, sipEnabled)
 - **Settings UI (November 2025):** Rebuilt with proper react-hook-form validation, real-time connection status from Zustand store, inline error messages, auto-connect on save, and real test call functionality to extension 9196
