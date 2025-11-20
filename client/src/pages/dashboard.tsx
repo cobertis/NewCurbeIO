@@ -148,9 +148,7 @@ export default function Dashboard() {
                     <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <h3 className="text-3xl font-bold text-gray-900 dark:text-white">{stat.count}</h3>
-                    </div>
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.count}</h3>
                     <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">{stat.title}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.subtitle}</p>
                   </div>
