@@ -5693,6 +5693,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (error) {
           // Ignore errors
         }
+        
+        // Count policy member birthdays (household members) - with deduplication
+        try {
+          const policyMembers = await db.select()
+            .from(policyMembersTable)
+            .where(eq(policyMembersTable.companyId, companyId));
+          
+          for (const member of policyMembers) {
+            if (isBirthdayThisWeek(member.dateOfBirth)) {
+              // Use SSN or email as unique identifier to avoid duplicate counting across policies
+              const key = member.ssn || member.email || member.id;
+              if (!birthdaySet.has(key)) {
+                birthdaySet.add(key);
+                birthdaysThisWeek++;
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors
+        }
       }
 
       // Get failed login attempts (last 14 days) - based on activity logs
