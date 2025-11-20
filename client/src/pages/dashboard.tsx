@@ -80,8 +80,8 @@ export default function Dashboard() {
   const quickStats = [
     {
       count: pendingTasks,
-      title: "Pending reminders",
-      subtitle: "Click here for more details",
+      title: "Today's reminders",
+      subtitle: format(today, 'EEEE, MMMM dd, yyyy'),
       icon: Bell,
       iconBg: "bg-purple-100",
       iconColor: "text-purple-600",

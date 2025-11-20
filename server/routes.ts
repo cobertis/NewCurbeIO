@@ -5527,14 +5527,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      // Get pending tasks/reminders (incomplete tasks with due dates)
+      // Get today's reminders (tasks due today that are not completed)
       let pendingTasks = 0;
       if (companyId) {
         try {
+          // Get today's date in yyyy-MM-dd format
+          const todayStr = new Date().toISOString().split('T')[0];
+          
           const tasks = await db.select()
             .from(tasksTable)
             .where(and(
               eq(tasksTable.companyId, companyId),
+              eq(tasksTable.dueDate, todayStr),
               ne(tasksTable.status, "completed")
             ));
           pendingTasks = tasks.length;
