@@ -5601,8 +5601,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           for (const member of quoteMembers) {
             if (isBirthdayThisWeek(member.dateOfBirth)) {
-              // Use SSN or email as unique identifier to avoid duplicate counting across quotes
-              const key = member.ssn || member.email || member.id;
+              // Use name + DOB as key to match with quote clients
+              const fullName = `${member.firstName} ${member.lastName}`.toLowerCase().trim();
+              const key = `${fullName}-${member.dateOfBirth}`;
               if (!birthdaySet.has(key)) {
                 birthdaySet.add(key);
                 birthdaysThisWeek++;
@@ -5702,8 +5703,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           for (const member of policyMembers) {
             if (isBirthdayThisWeek(member.dateOfBirth)) {
-              // Use SSN or email as unique identifier to avoid duplicate counting across policies
-              const key = member.ssn || member.email || member.id;
+              // Use name + DOB as key to match with policy clients
+              const fullName = `${member.firstName} ${member.lastName}`.toLowerCase().trim();
+              const key = `${fullName}-${member.dateOfBirth}`;
               if (!birthdaySet.has(key)) {
                 birthdaySet.add(key);
                 birthdaysThisWeek++;
