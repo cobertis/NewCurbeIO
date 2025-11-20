@@ -5786,6 +5786,63 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Get policies analytics (states and statuses)
+  app.get("/api/policies-analytics", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      // Get all policies for company
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Group by state
+      const stateMap = new Map<string, number>();
+      const statusMap = new Map<string, number>();
+
+      for (const policy of allPolicies) {
+        // Count by state (use physical_state)
+        const state = policy.physicalState || "Unknown";
+        stateMap.set(state, (stateMap.get(state) || 0) + 1);
+
+        // Count by status
+        const status = policy.status || "unknown";
+        statusMap.set(status, (statusMap.get(status) || 0) + 1);
+      }
+
+      // Sort states by count (top 10)
+      const topStates = Array.from(stateMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([state, count]) => ({
+          state,
+          count,
+          percentage: ((count / allPolicies.length) * 100).toFixed(2),
+        }));
+
+      // Sort statuses by count
+      const statusData = Array.from(statusMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([status, count]) => ({
+          status,
+          count,
+          percentage: ((count / allPolicies.length) * 100).toFixed(2),
+        }));
+
+      res.json({
+        totalPolicies: allPolicies.length,
+        byState: topStates,
+        byStatus: statusData,
+      });
+    } catch (error) {
+      console.error("Policies analytics error:", error);
+      res.status(500).json({ message: "Failed to fetch policies analytics" });
+    }
+  });
+
   // ==================== USER ENDPOINTS ====================
 
   // Get all users (superadmin or admin)

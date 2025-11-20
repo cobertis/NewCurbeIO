@@ -1,4 +1,4 @@
-import { Users, Building2, TrendingUp, Activity, ChevronDown, BarChart3, PieChart, Bell, Cake, AlertTriangle, UserPlus, ChevronRight } from "lucide-react";
+import { Users, Building2, TrendingUp, Activity, ChevronDown, BarChart3, PieChart, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,12 @@ interface DashboardStats {
   newLeads: number;
 }
 
+interface PoliciesAnalytics {
+  totalPolicies: number;
+  byState: Array<{ state: string; count: number; percentage: string }>;
+  byStatus: Array<{ status: string; count: number; percentage: string }>;
+}
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -56,6 +62,11 @@ export default function Dashboard() {
     // No polling! Updates happen via WebSocket events only
     // Keep a long fallback interval (5 minutes) just in case WebSocket fails
     refetchInterval: 5 * 60 * 1000, // 5 minutes fallback only
+  });
+
+  const { data: analyticsData } = useQuery<PoliciesAnalytics>({
+    queryKey: ["/api/policies-analytics"],
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const totalUsers = statsData?.totalUsers || 0;
@@ -395,6 +406,144 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Policies Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Policies Per State */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Policies per US State (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Where your clients are located</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {(analyticsData?.byState || []).slice(0, 10).map((item, index) => (
+                <div key={index} className="flex items-center gap-3 py-2">
+                  <div className="flex-shrink-0 w-6 text-center">
+                    <span className="text-xs font-semibold text-gray-400">{index + 1}</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{item.state}</span>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{item.count}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full"
+                        style={{ width: `${(item.count / (analyticsData?.byState?.[0]?.count || 1)) * 100}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{item.percentage}%</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Policies Per Status - Donut Chart */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              Policies per Status (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">What is the status of your policies</p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center">
+              {/* Donut Chart SVG */}
+              <svg className="w-40 h-40 transform -rotate-90" viewBox="0 0 160 160">
+                <circle
+                  cx="80"
+                  cy="80"
+                  r="70"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="20"
+                  className="text-gray-200 dark:text-gray-700"
+                />
+                {(analyticsData?.byStatus || []).reduce((acc, item, idx) => {
+                  const circumference = 2 * Math.PI * 70;
+                  const offset = acc;
+                  const dasharray = (item.count / (analyticsData.totalPolicies || 1)) * circumference;
+                  const colors = [
+                    "text-blue-500",
+                    "text-cyan-500",
+                    "text-emerald-500",
+                    "text-yellow-500",
+                    "text-orange-500",
+                    "text-red-500",
+                    "text-purple-500",
+                    "text-pink-500",
+                    "text-indigo-500",
+                    "text-teal-500",
+                  ];
+
+                  return (
+                    <>
+                      {acc === undefined ? (
+                        <circle
+                          key={idx}
+                          cx="80"
+                          cy="80"
+                          r="70"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="20"
+                          strokeDasharray={`${dasharray} ${circumference}`}
+                          className={colors[idx % colors.length]}
+                        />
+                      ) : (
+                        <circle
+                          key={idx}
+                          cx="80"
+                          cy="80"
+                          r="70"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="20"
+                          strokeDasharray={`${dasharray} ${circumference}`}
+                          strokeDashoffset={-offset}
+                          className={colors[idx % colors.length]}
+                        />
+                      )}
+                      {offset + dasharray}
+                    </>
+                  );
+                }, 0)}
+              </svg>
+
+              {/* Legend */}
+              <div className="mt-4 w-full space-y-1">
+                {(analyticsData?.byStatus || []).slice(0, 5).map((item, idx) => {
+                  const colors = [
+                    "bg-blue-500",
+                    "bg-cyan-500",
+                    "bg-emerald-500",
+                    "bg-yellow-500",
+                    "bg-orange-500",
+                  ];
+                  return (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${colors[idx % colors.length]}`}></div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 capitalize">
+                        {item.status}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                        {item.count} ({item.percentage}%)
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
