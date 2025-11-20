@@ -1728,18 +1728,18 @@ class WebPhoneManager {
       return false;
     }
     
-    // Check Call Waiting - only reject if there's ACTUALLY an active call
-    // (not just terminated/ending)
+    // Check if agent is busy on another call
+    // ALWAYS reject incoming calls when agent is already on a call (ringing or answered)
     if (store.currentCall) {
       const callStatus = store.currentCall.status;
       const isActiveCall = (callStatus === 'ringing' || callStatus === 'answered');
       
-      if (isActiveCall && !store.callWaitingEnabled) {
-        console.log('[WebPhone] Rejecting call - Call Waiting is disabled and call is active:', callStatus);
+      if (isActiveCall) {
+        console.log('[WebPhone] ⛔ Rejecting call - Agent is busy on another call:', callStatus);
         return false;
       }
       
-      console.log('[WebPhone] Accepting call - Current call status is:', callStatus);
+      console.log('[WebPhone] Accepting call - No active call (status:', callStatus, ')');
     }
     
     return true;
