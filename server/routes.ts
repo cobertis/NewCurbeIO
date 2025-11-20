@@ -6318,7 +6318,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const sipSchema = z.object({
         sipExtension: z.string().min(1),
         sipPassword: z.string().min(1),
-        sipServer: z.string().min(1).default("wss://pbx.curbe.io:8089/ws"),
+        sipServer: z.string().min(1).default("wss://pbx1.curbe.io:8089/ws"),
         sipEnabled: z.boolean(),
       });
       

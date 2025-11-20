@@ -93,8 +93,8 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   // Initial state
   isConnected: false,
   connectionStatus: 'disconnected',
-  sipDomain: 'sip.curbe.io',
-  wssServer: 'wss://sip.curbe.io:7443',
+  sipDomain: 'pbx1.curbe.io',
+  wssServer: 'wss://pbx1.curbe.io:8089/ws',
   isCallActive: false,
   isMuted: false,
   isOnHold: false,
