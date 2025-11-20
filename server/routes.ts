@@ -5557,7 +5557,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
       endOfWeek.setHours(23, 59, 59, 999);
       
-      const isBirthdayThisWeek = (dateOfBirth: string | Date | null) => {
+      console.log('[BIRTHDAY DEBUG] Week range:', startOfWeek.toISOString(), 'to', endOfWeek.toISOString());
+      console.log('[BIRTHDAY DEBUG] Today:', today.toISOString());
+      
+      const isBirthdayThisWeek = (dateOfBirth: string | Date | null, debugName?: string) => {
         if (!dateOfBirth) return false;
         
         // Extract month and day directly from string to avoid timezone issues
@@ -5575,19 +5578,27 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Create birthday in current year
         const thisYearBirthday = new Date(today.getFullYear(), month, day, 0, 0, 0, 0);
-        return thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
+        const isInRange = thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
+        
+        if (debugName) {
+          console.log(`[BIRTHDAY DEBUG] ${debugName}: DOB=${dateOfBirth}, ThisYear=${thisYearBirthday.toISOString()}, InRange=${isInRange}`);
+        }
+        
+        return isInRange;
       };
       
       // Track unique birthdays to avoid duplicates
       const birthdaySet = new Set<string>();
       
       // Count user birthdays (with deduplication)
+      console.log('[BIRTHDAY DEBUG] Checking', users.length, 'users');
       for (const user of users) {
-        if (isBirthdayThisWeek(user.dateOfBirth)) {
+        if (isBirthdayThisWeek(user.dateOfBirth, `User ${user.firstName} ${user.lastName}`)) {
           const key = user.dateOfBirth || user.id;
           if (!birthdaySet.has(key)) {
             birthdaySet.add(key);
             birthdaysThisWeek++;
+            console.log('[BIRTHDAY DEBUG] ✅ Added user birthday:', user.firstName, user.lastName);
           }
         }
       }
