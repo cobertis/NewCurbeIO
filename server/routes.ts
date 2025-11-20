@@ -5557,10 +5557,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
       endOfWeek.setHours(23, 59, 59, 999);
       
-      console.log('[BIRTHDAY DEBUG] Week range:', startOfWeek.toISOString(), 'to', endOfWeek.toISOString());
-      console.log('[BIRTHDAY DEBUG] Today:', today.toISOString());
-      
-      const isBirthdayThisWeek = (dateOfBirth: string | Date | null, debugName?: string) => {
+      const isBirthdayThisWeek = (dateOfBirth: string | Date | null) => {
         if (!dateOfBirth) return false;
         
         // Extract month and day directly from string to avoid timezone issues
@@ -5578,27 +5575,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Create birthday in current year
         const thisYearBirthday = new Date(today.getFullYear(), month, day, 0, 0, 0, 0);
-        const isInRange = thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
-        
-        if (debugName) {
-          console.log(`[BIRTHDAY DEBUG] ${debugName}: DOB=${dateOfBirth}, ThisYear=${thisYearBirthday.toISOString()}, InRange=${isInRange}`);
-        }
-        
-        return isInRange;
+        return thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
       };
       
       // Track unique birthdays to avoid duplicates
       const birthdaySet = new Set<string>();
       
       // Count user birthdays (with deduplication)
-      console.log('[BIRTHDAY DEBUG] Checking', users.length, 'users');
       for (const user of users) {
-        if (isBirthdayThisWeek(user.dateOfBirth, `User ${user.firstName} ${user.lastName}`)) {
+        if (isBirthdayThisWeek(user.dateOfBirth)) {
           const key = user.dateOfBirth || user.id;
           if (!birthdaySet.has(key)) {
             birthdaySet.add(key);
             birthdaysThisWeek++;
-            console.log('[BIRTHDAY DEBUG] ✅ Added user birthday:', user.firstName, user.lastName);
           }
         }
       }
@@ -5656,6 +5645,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               if (!birthdaySet.has(key)) {
                 birthdaySet.add(key);
                 birthdaysThisWeek++;
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors
+        }
+        
+        // Count birthdays from quotes (clients + members)
+        try {
+          const allQuotes = await storage.getQuotesByCompany(companyId);
+          
+          for (const quote of allQuotes) {
+            // Check quote client birthday
+            if (quote.clientDateOfBirth) {
+              if (isBirthdayThisWeek(quote.clientDateOfBirth)) {
+                const fullName = `${quote.clientFirstName} ${quote.clientLastName}`.toLowerCase().trim();
+                const key = `${fullName}-${quote.clientDateOfBirth}`;
+                if (!birthdaySet.has(key)) {
+                  birthdaySet.add(key);
+                  birthdaysThisWeek++;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors
+        }
+        
+        // Count birthdays from policies (clients + members)
+        try {
+          const allPolicies = await storage.getPoliciesByCompany(companyId);
+          
+          for (const policy of allPolicies) {
+            // Check policy client birthday
+            if (policy.clientDateOfBirth) {
+              if (isBirthdayThisWeek(policy.clientDateOfBirth)) {
+                const fullName = `${policy.clientFirstName} ${policy.clientLastName}`.toLowerCase().trim();
+                const key = `${fullName}-${policy.clientDateOfBirth}`;
+                if (!birthdaySet.has(key)) {
+                  birthdaySet.add(key);
+                  birthdaysThisWeek++;
+                }
               }
             }
           }
