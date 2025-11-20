@@ -194,18 +194,40 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-48 flex items-end justify-between gap-1 relative">
-              {monthlyData.map((data, index) => (
-                <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                  <div
-                    className={`w-full ${index >= 7 && index <= 9 ? 'bg-blue-400' : 'bg-blue-300'} rounded-sm transition-all duration-300`}
-                    style={{ height: `${data.value}%` }}
-                    data-testid={`bar-monthly-${index}`}
-                  ></div>
-                  <span className="text-xs text-gray-400">{data.month}</span>
-                </div>
-              ))}
-            </div>
+            {monthlyData?.data && monthlyData.data.length > 0 ? (
+              <div className="h-48 flex items-end justify-between gap-1 relative">
+                {(() => {
+                  const maxValue = Math.max(...monthlyData.data.map((d: any) => Math.max(d.policies, d.quotes)), 1);
+                  return monthlyData.data.map((data: any, index: number) => {
+                    const policiesHeight = (data.policies / maxValue) * 100;
+                    const quotesHeight = (data.quotes / maxValue) * 100;
+                    return (
+                      <div key={index} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="flex gap-0.5 items-end h-32 w-full justify-center">
+                          <div
+                            className={`flex-1 ${index >= 7 && index <= 9 ? 'bg-blue-500' : 'bg-blue-400'} rounded-t-sm transition-all duration-300`}
+                            style={{ height: `${Math.max(5, policiesHeight)}%` }}
+                            title={`Policies: ${data.policies}`}
+                            data-testid={`bar-monthly-policies-${index}`}
+                          ></div>
+                          <div
+                            className={`flex-1 ${index >= 7 && index <= 9 ? 'bg-cyan-500' : 'bg-cyan-400'} rounded-t-sm transition-all duration-300`}
+                            style={{ height: `${Math.max(5, quotesHeight)}%` }}
+                            title={`Quotes: ${data.quotes}`}
+                            data-testid={`bar-monthly-quotes-${index}`}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-gray-400">{data.month}</span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-gray-400">
+                <p>Loading...</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -600,7 +622,7 @@ export default function Dashboard() {
                   ];
 
                   return (analyticsData?.byStatus || []).map((item, idx) => {
-                    const dasharray = (item.count / (analyticsData.totalPolicies || 1)) * circumference;
+                    const dasharray = (item.count / (analyticsData?.totalPolicies || 1)) * circumference;
                     const offset = cumulativeOffset;
                     cumulativeOffset += dasharray;
 
