@@ -84,7 +84,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -5618,6 +5618,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           for (const contact of manualContacts) {
             if (isBirthdayThisWeek(contact.dateOfBirth)) {
               const key = contact.dateOfBirth || contact.id;
+              if (!birthdaySet.has(key)) {
+                birthdaySet.add(key);
+                birthdaysThisWeek++;
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore errors
+        }
+        
+        // Count manual birthdays from calendar (with deduplication)
+        try {
+          const calendarBirthdays = await db.select()
+            .from(manualBirthdays)
+            .where(eq(manualBirthdays.companyId, companyId));
+          
+          for (const birthday of calendarBirthdays) {
+            if (isBirthdayThisWeek(birthday.dateOfBirth)) {
+              // Use unique key combining name and date to avoid duplicates
+              const key = `${birthday.clientName}-${birthday.dateOfBirth}`;
               if (!birthdaySet.has(key)) {
                 birthdaySet.add(key);
                 birthdaysThisWeek++;
