@@ -5938,15 +5938,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const allPolicies = await storage.getPoliciesByCompany(companyId);
       const users = await storage.getUsersByCompany(companyId);
 
-      const agentMap = new Map<string, { name: string; policies: number; applicants: number }>();
+      const agentMap = new Map<string, { name: string; avatar: string | null; policies: number; applicants: number }>();
 
       for (const policy of allPolicies) {
         if (policy.agentId) {
           const agent = users.find(u => u.id === policy.agentId);
           const agentName = agent ? `${agent.firstName} ${agent.lastName}` : 'Unknown Agent';
+          const agentAvatar = agent?.avatarUrl || null;
           
           const current = agentMap.get(policy.agentId) || { 
-            name: agentName, 
+            name: agentName,
+            avatar: agentAvatar,
             policies: 0, 
             applicants: 0 
           };

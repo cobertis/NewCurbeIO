@@ -41,7 +41,7 @@ interface MonthlyData {
 }
 
 interface AgentLeaderboard {
-  agents: Array<{ name: string; policies: number; applicants: number }>;
+  agents: Array<{ name: string; avatar: string | null; policies: number; applicants: number }>;
 }
 
 const CHART_COLORS = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#6366f1"];
@@ -557,9 +557,17 @@ export default function Dashboard() {
                     <div key={idx} className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 transition-colors">
                       {/* Agent Name with Avatar */}
                       <div className="col-span-6 flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradients[idx]} flex items-center justify-center text-white font-bold text-sm shadow-md`}>
-                          {agent.name.charAt(0).toUpperCase()}
-                        </div>
+                        {agent.avatar ? (
+                          <img 
+                            src={agent.avatar} 
+                            alt={agent.name}
+                            className="w-8 h-8 rounded-full object-cover shadow-md border-2 border-white dark:border-gray-700"
+                          />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradients[idx]} flex items-center justify-center text-white font-bold text-sm shadow-md`}>
+                            {agent.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                             {agent.name}
