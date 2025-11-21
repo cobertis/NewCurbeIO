@@ -17965,12 +17965,27 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "User must belong to a company" });
       }
       
+      // Get year filter from query parameter (optional)
+      const yearFilter = req.query.year as string | undefined;
+      
       // Get all policies for the company
       let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
       
       // If user doesn't have viewAllCompanyData permission, filter by agentId
       if (!shouldViewAllCompanyData(currentUser)) {
         allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
+      }
+      
+      // Filter by year if specified (e.g., ?year=2025)
+      if (yearFilter && yearFilter !== 'all') {
+        const year = parseInt(yearFilter);
+        if (!isNaN(year)) {
+          const startDate = `${year}-01-01`;
+          const endDate = `${year + 1}-01-01`;
+          allPolicies = allPolicies.filter(policy => {
+            return policy.effectiveDate >= startDate && policy.effectiveDate < endDate;
+          });
+        }
       }
       
       // IMPORTANT: Exclude renewed policies to avoid double-counting
