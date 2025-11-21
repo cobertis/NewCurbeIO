@@ -190,6 +190,9 @@ class WebPhoneManager {
   private transferInProgress: boolean = false; // Guard against manual hangup during transfer
   private referPending: boolean = false; // ONLY true when REFER is actually sent
   private reconnectInterval?: NodeJS.Timeout;
+  private reconnectTimeout?: NodeJS.Timeout; // For exponential backoff
+  private reconnectAttempts: number = 0; // Counter for backoff calculation
+  private maxReconnectDelay: number = 30000; // Max 30 seconds between attempts
   private audioContext?: AudioContext;
   private ringtoneOscillator?: OscillatorNode;
   private ringtoneGain?: GainNode;
@@ -397,8 +400,44 @@ class WebPhoneManager {
     console.log('[Ringback] 🔇 Stopping ringback tone');
   }
   
+  private attemptReconnect(): void {
+    const store = useWebPhoneStore.getState();
+    
+    // Don't reconnect if we don't have credentials
+    if (!store.sipExtension || !store.sipPassword) {
+      console.log('[WebPhone] No credentials stored - skipping reconnect');
+      return;
+    }
+    
+    // Clear any existing reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
+    
+    // Calculate exponential backoff delay: 0ms, 2s, 4s, 8s, 16s, max 30s
+    // Formula: min(2^attempts * 1000, maxDelay)
+    const delay = this.reconnectAttempts === 0 
+      ? 0 
+      : Math.min(Math.pow(2, this.reconnectAttempts - 1) * 1000, this.maxReconnectDelay);
+    
+    console.log(`[WebPhone] 🔄 Reconnect attempt #${this.reconnectAttempts + 1} in ${delay}ms`);
+    
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectAttempts++;
+      console.log('[WebPhone] Attempting reconnection...');
+      this.initialize(store.sipExtension!, store.sipPassword!);
+    }, delay);
+  }
+
   public async initialize(extension: string, password: string, server?: string): Promise<void> {
     const store = useWebPhoneStore.getState();
+    
+    // Clear any pending reconnect attempts
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
     
     // Update server if provided (for storage, not used for connection)
     if (server) {
@@ -475,6 +514,9 @@ class WebPhoneManager {
           onInvite: this.handleIncomingCall.bind(this),
           onConnect: () => {
             console.log('[WebPhone] ✅ Connected to WebSocket (waiting for SIP registration)');
+            // Reset reconnect counter on successful connection
+            this.reconnectAttempts = 0;
+            console.log('[WebPhone] Reconnect counter reset - connection stable');
             this.startReconnectMonitor();
           },
           onDisconnect: (error?: Error) => {
@@ -483,6 +525,10 @@ class WebPhoneManager {
               stack: error?.stack
             });
             store.setConnectionStatus('disconnected', error?.message);
+            
+            // Attempt immediate reconnection with exponential backoff
+            console.log('[WebPhone] Connection lost - starting immediate reconnect...');
+            this.attemptReconnect();
           }
         }
       });
@@ -2030,11 +2076,18 @@ class WebPhoneManager {
   public async disconnect(): Promise<void> {
     const store = useWebPhoneStore.getState();
     
-    // Clear reconnect interval
+    // Clear reconnect interval and timeout
     if (this.reconnectInterval) {
       clearInterval(this.reconnectInterval);
       this.reconnectInterval = undefined;
     }
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
+    
+    // Reset reconnect counter
+    this.reconnectAttempts = 0;
     
     // Unregister if registered
     if (this.registerer) {

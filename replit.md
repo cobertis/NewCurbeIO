@@ -35,7 +35,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     - **Campaign System:** Unified Email/SMS campaign and contact list management.
     - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with real-time updates.
     - **iMessage Integration (BlueBubbles):** Full Apple iMessage clone functionality with authentic bubble styling, reactions, reply-to threading, message effects, typing indicators, read receipts, multimedia support, message search, group conversations, message deletion, and native voice memo system.
-    - **WebPhone WebRTC System:** Professional SIP-based calling with SIP.js, per-user configuration, call management (mute, hold, blind/attended transfer, recording, DND, call waiting), iPhone-style glassmorphism UI, responsive design, caller ID lookup, missed call notifications, call history, and DTMF support.
+    - **WebPhone WebRTC System:** Professional SIP-based calling with SIP.js, per-user configuration, call management (mute, hold, blind/attended transfer, recording, DND, call waiting), iPhone-style glassmorphism UI, responsive design, caller ID lookup, missed call notifications, call history, DTMF support, and automatic reconnection with exponential backoff (immediate first attempt, then 2s, 4s, 8s, 16s, max 30s).
 - **Billing & Stripe Integration:** Automated customer and subscription management.
 - **Quotes Management System:** 3-step wizard with Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
 - **Policies Management System:** Converts quotes to policies, manages statuses, assigns agents, identifies canonical clients, supports cursor-based pagination, and hybrid search. Includes a folder system with RBAC.
