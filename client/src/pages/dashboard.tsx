@@ -1,5 +1,6 @@
 import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, BarChart3, PieChart, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -67,37 +68,50 @@ export default function Dashboard() {
   const [hoveredState, setHoveredState] = useState<{ name: string; count: number; percentage: number } | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState<string>(currentYear.toString());
+  
   const handleWebSocketMessage = useCallback((message: any) => {
     if (message.type === 'notification_update' || message.type === 'dashboard_update' || message.type === 'data_invalidation') {
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard-stats", selectedYear] });
     }
-  }, [queryClient]);
+  }, [queryClient, selectedYear]);
   
   useWebSocket(handleWebSocketMessage);
   
   const { data: statsData, isLoading: isLoadingStats } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard-stats"],
+    queryKey: ["/api/dashboard-stats", selectedYear],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !!selectedYear,
+    queryFn: () => fetch(`/api/dashboard-stats?year=${selectedYear}`).then(res => res.json()),
   });
 
   const { data: analyticsData, isLoading: isLoadingAnalytics } = useQuery<PoliciesAnalytics>({
-    queryKey: ["/api/policies-analytics"],
+    queryKey: ["/api/policies-analytics", selectedYear],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !!selectedYear,
+    queryFn: () => fetch(`/api/policies-analytics?year=${selectedYear}`).then(res => res.json()),
   });
 
   const { data: monthlyData, isLoading: isLoadingMonthly } = useQuery<{ data: MonthlyData[] }>({
-    queryKey: ["/api/dashboard-monthly"],
+    queryKey: ["/api/dashboard-monthly", selectedYear],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !!selectedYear,
+    queryFn: () => fetch(`/api/dashboard-monthly?year=${selectedYear}`).then(res => res.json()),
   });
 
   const { data: agentsData, isLoading: isLoadingAgents } = useQuery<AgentLeaderboard>({
-    queryKey: ["/api/dashboard-agents"],
+    queryKey: ["/api/dashboard-agents", selectedYear],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !!selectedYear,
+    queryFn: () => fetch(`/api/dashboard-agents?year=${selectedYear}`).then(res => res.json()),
   });
 
   const { data: carriersData, isLoading: isLoadingCarriers } = useQuery<{ carriers: { carrier: string; policies: number; applicants: number }[] }>({
-    queryKey: ["/api/dashboard-carriers"],
+    queryKey: ["/api/dashboard-carriers", selectedYear],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !!selectedYear,
+    queryFn: () => fetch(`/api/dashboard-carriers?year=${selectedYear}`).then(res => res.json()),
   });
 
   const isLoading = isLoadingStats || isLoadingAnalytics || isLoadingMonthly || isLoadingAgents || isLoadingCarriers;
@@ -153,11 +167,27 @@ export default function Dashboard() {
   ];
 
   if (isLoading) {
-    return <LoadingSpinner text="Loading dashboard data..." />;
+    return <LoadingSpinner message="Loading dashboard data..." />;
   }
 
   return (
     <div className="flex flex-col gap-6 p-6">
+      {/* Year Filter Dropdown */}
+      <div className="flex items-center gap-2 mb-6">
+        <label className="text-sm font-medium text-gray-900 dark:text-white">Year:</label>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger className="w-[150px]" data-testid="select-year">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            <SelectItem value="2026">2026</SelectItem>
+            <SelectItem value="2025">2025</SelectItem>
+            <SelectItem value="2024">2024</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Quick Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {quickStats.map((stat, index) => (
