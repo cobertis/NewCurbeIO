@@ -191,9 +191,9 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              Policies per US state (Top 10)
+              Policy Distribution Across the United States
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Where your clients are located</p>
+            <p className="text-xs text-gray-500 mt-1">Geographic distribution of all policies nationwide</p>
           </CardHeader>
           <CardContent>
             {(() => {
