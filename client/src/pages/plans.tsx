@@ -13,13 +13,149 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPlanSchema, type Plan, type InsertPlan } from "@shared/schema";
-import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw } from "lucide-react";
+import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw, X, Users, Zap, Star } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+
+const PLAN_FEATURES = [
+  { name: "CMS API (integración CRM)", shared: true, dedicated: true, unlimited: true },
+  { name: "Landing Page Personalizada", shared: true, dedicated: true, unlimited: true },
+  { name: "Recordatorios de Cumpleaños", shared: true, dedicated: true, unlimited: true },
+  { name: "Campañas por Email", shared: true, dedicated: true, unlimited: true },
+  { name: "SMS Automáticos", shared: true, dedicated: true, unlimited: true },
+  { name: "Sistema de Referidos", shared: false, dedicated: true, unlimited: true },
+  { name: "WhatsApp Integrado", shared: false, dedicated: true, unlimited: true },
+  { name: "iMessage Bridge", shared: false, dedicated: false, unlimited: true },
+  { name: "Soporte Prioritario / Multiusuario", shared: false, dedicated: false, unlimited: true },
+];
+
+interface PublicPlan {
+  name: string;
+  price: number;
+  accounts: string;
+  popular?: boolean;
+  icon: typeof Users;
+  features: boolean[];
+}
+
+const PUBLIC_PLANS: PublicPlan[] = [
+  {
+    name: "Shared Plan",
+    price: 97,
+    accounts: "1 cuenta incluida",
+    icon: Users,
+    features: [true, true, true, true, true, false, false, false, false],
+  },
+  {
+    name: "Dedicated Plan",
+    price: 297,
+    accounts: "5 cuentas incluidas",
+    popular: true,
+    icon: Zap,
+    features: [true, true, true, true, true, true, true, false, false],
+  },
+  {
+    name: "Unlimited Plan",
+    price: 497,
+    accounts: "Cuentas ilimitadas",
+    icon: Star,
+    features: [true, true, true, true, true, true, true, true, true],
+  },
+];
+
+function PublicPricingView() {
+  return (
+    <div className="flex flex-col gap-8 p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="text-center space-y-4">
+        <Badge className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="badge-planes">
+          PLANES Y PRECIOS
+        </Badge>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
+          Elige el plan <span className="text-blue-600">perfecto para ti</span>
+        </h1>
+        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          Comienza con 14 días gratis. Cancela cuando quieras. Sin sorpresas.
+        </p>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        {PUBLIC_PLANS.map((plan, index) => {
+          const Icon = plan.icon;
+          return (
+            <div key={plan.name} className="relative" data-testid={`card-public-plan-${index}`}>
+              {plan.popular && (
+                <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
+                  <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1">
+                    MÁS POPULAR
+                  </Badge>
+                </div>
+              )}
+              <Card className={`h-full ${plan.popular ? 'border-blue-600 shadow-lg scale-105' : 'bg-gray-50'}`}>
+                <CardHeader className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${plan.popular ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                      <Icon className={`h-6 w-6 ${plan.popular ? 'text-blue-600' : 'text-gray-600'}`} />
+                    </div>
+                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                  </div>
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold">${plan.price}</span>
+                      <span className="text-muted-foreground">/mes</span>
+                    </div>
+                    <p className="text-sm text-green-600 font-medium mt-1">14 días free trial</p>
+                    <p className="text-sm text-muted-foreground mt-1">{plan.accounts}</p>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {PLAN_FEATURES.map((feature, idx) => {
+                    const included = plan.features[idx];
+                    return (
+                      <div
+                        key={feature.name}
+                        className="flex items-start gap-3"
+                        data-testid={`feature-${index}-${idx}`}
+                      >
+                        {included ? (
+                          <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <X className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                        )}
+                        <span className={`text-sm ${included ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {feature.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className={`w-full ${plan.popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    variant={plan.popular ? 'default' : 'outline'}
+                    data-testid={`button-select-plan-${index}`}
+                  >
+                    {plan.popular ? 'Comenzar ahora' : 'Elegir plan'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">
+          Todos los planes incluyen las características principales del CRM
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function PlansPage() {
   const { toast } = useToast();
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"public" | "admin">("public");
 
   const { data: sessionData } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
     queryKey: ["/api/session"],
@@ -217,9 +353,22 @@ export default function PlansPage() {
   }
 
   if (user?.role !== "superadmin") {
+    return <PublicPricingView />;
+  }
+
+  if (viewMode === "public") {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">Access denied. Only superadmins can manage plans.</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-end p-4 sm:p-6">
+          <Button
+            variant="outline"
+            onClick={() => setViewMode("admin")}
+            data-testid="button-toggle-admin-view"
+          >
+            Switch to Admin View
+          </Button>
+        </div>
+        <PublicPricingView />
       </div>
     );
   }
@@ -229,7 +378,17 @@ export default function PlansPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
-            <CardTitle>Subscription Plans</CardTitle>
+            <div className="flex items-center gap-4">
+              <CardTitle>Subscription Plans</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewMode("public")}
+                data-testid="button-toggle-public-view"
+              >
+                View Public Page
+              </Button>
+            </div>
             <Button 
               onClick={() => syncFromStripeMutation.mutate()} 
               disabled={syncFromStripeMutation.isPending}
@@ -304,7 +463,7 @@ export default function PlansPage() {
                         <li key={key} className="flex items-center gap-2">
                           <Check className="h-3 w-3" />
                           <span className="capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}: {typeof value === 'string' ? value : JSON.stringify(value)}
+                            {key.replace(/([A-Z])/g, ' $1').trim()}: {typeof value === 'string' ? value : String(value)}
                           </span>
                         </li>
                       ))}
