@@ -5412,6 +5412,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Get dashboard stats with billing and company info
   app.get("/api/dashboard-stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
 
     try {
@@ -5425,6 +5426,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Company ID required" });
       }
 
+
+      // Check cache first (only for company-specific stats)
+      if (companyId) {
+        const { dashboardCache } = await import("./dashboard-cache");
+        const cached = dashboardCache.getDashboardStats(companyId);
+        if (cached) {
+          console.log(`[Dashboard-Stats] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+          return res.json(cached);
+        }
+        console.log(`[Dashboard-Stats] Cache MISS for company ${companyId}`);
+      }
       // Get users (filtered by company if companyId is provided)
       let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
       if (companyId) {
@@ -5793,6 +5805,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
+      // Get unique policy holders count for totalPolicies
+      let totalPolicies = 0;
+      if (companyId) {
+        try {
+          const uniqueHoldersResult = await storage.getUniquePolicyHolders(companyId);
+          totalPolicies = uniqueHoldersResult.count;
+        } catch (error) {
+          console.error('[DASHBOARD] Error getting unique policy holders:', error);
+          totalPolicies = 0;
+        }
+      }
+
+
       const stats = {
         totalUsers: users.length,
         adminCount: users.filter((u) => u.role === "superadmin" || u.role === "admin").length,
@@ -5809,10 +5834,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         newLeads,
       };
 
-      // Disable caching for dashboard stats to ensure fresh data
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
+
+      // Cache the result (only for company-specific stats)
+      if (companyId) {
+        const { dashboardCache } = await import("./dashboard-cache");
+        dashboardCache.setDashboardStats(companyId, stats);
+      }
+
       res.json(stats);
     } catch (error) {
       console.error("Dashboard stats error:", error);
@@ -5822,6 +5850,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Get policies analytics (states and statuses)
   app.get("/api/policies-analytics", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
     const companyId = currentUser.companyId;
 
@@ -5830,103 +5859,125 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      // Get year filter from query parameter (optional, default: current year)
-      const currentYear = new Date().getFullYear();
+      // Check cache first
+      const { dashboardCache } = await import("./dashboard-cache");
+      const cached = dashboardCache.getAnalytics(companyId);
+      if (cached) {
+        console.log(`[Analytics] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+        return res.json(cached);
+      }
+      console.log(`[Analytics] Cache MISS for company ${companyId}`);
+
+      // Year filter parameter is accepted for backwards compatibility but ignored - always return all-time data
       const yearFilter = req.query.year as string | undefined;
-          // Validate year parameter
-          if (yearFilter && yearFilter !== 'all') {
-            const yearNum = parseInt(yearFilter);
-            
-            // Strict validation: must be a valid integer in reasonable range
-            if (
-              isNaN(yearNum) || 
-              !Number.isInteger(yearNum) || 
-              yearNum < 2000 || 
-              yearNum > 2100 || 
-              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
-            ) {
-              return res.status(400).json({ 
-                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
-              });
+
+      // Get all policies for company (all-time data)
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Get unique policy holders count and identifiers
+      const uniqueHoldersResult = await storage.getUniquePolicyHolders(companyId);
+      const totalUniquePeople = uniqueHoldersResult.count;
+      const uniqueIdentifiers = uniqueHoldersResult.uniqueIdentifiers;
+
+      // Group unique people by state, status, and product type
+      const stateMap = new Map<string, Set<string>>();
+      const statusMap = new Map<string, Set<string>>();
+      const productTypeMap = new Map<string, Set<string>>();
+
+      // CRITICAL FIX: Iterate through ALL policies for each person, not just the first one
+      // This allows a person to be counted in multiple states/statuses if they have policies in different dimensions
+      for (const [uniqueKey, data] of uniqueIdentifiers.entries()) {
+        // Get ALL policies for this person
+        const personPolicies = allPolicies.filter(p => data.policyIds.includes(p.id));
+        
+        if (personPolicies.length === 0) continue;
+
+        // Map this person to ALL states they have policies in
+        const statesSeen = new Set<string>();
+        for (const policy of personPolicies) {
+          const state = policy.physical_state || policy.mailing_state || policy.billing_state || "Unknown";
+          if (!statesSeen.has(state)) {
+            if (!stateMap.has(state)) {
+              stateMap.set(state, new Set());
             }
+            stateMap.get(state)!.add(uniqueKey);
+            statesSeen.add(state);
           }
+        }
 
-          // Only parse year if it passed validation
-          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+        // For status: use the LATEST policy status (sorted by effectiveDate)
+        const latestPolicy = personPolicies.sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate))[0];
+        const status = latestPolicy?.status || "unknown";
+        if (!statusMap.has(status)) {
+          statusMap.set(status, new Set());
+        }
+        statusMap.get(status)!.add(uniqueKey);
 
-      // Get all policies for company
-      let allPolicies = await storage.getPoliciesByCompany(companyId);
-
-      // Apply year filter
-      if (selectedYear) {
-        const startDate = `${selectedYear}-01-01`;
-        const endDate = `${selectedYear + 1}-01-01`;
-        allPolicies = allPolicies.filter(p => {
-          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
-        });
+        // Map this person to ALL product types they have
+        const productTypesSeen = new Set<string>();
+        for (const policy of personPolicies) {
+          const productType = policy.productType || "other";
+          if (!productTypesSeen.has(productType)) {
+            if (!productTypeMap.has(productType)) {
+              productTypeMap.set(productType, new Set());
+            }
+            productTypeMap.get(productType)!.add(uniqueKey);
+            productTypesSeen.add(productType);
+          }
+        }
       }
 
-      // Group by state
-      const stateMap = new Map<string, number>();
-      const statusMap = new Map<string, number>();
-      const productTypeMap = new Map<string, number>();
-
-      for (const policy of allPolicies) {
-        // Count by state (prioritize physical_state since that's what's displayed in UI)
-        const state = policy.physical_state || policy.mailing_state || policy.billing_state || "Unknown";
-        stateMap.set(state, (stateMap.get(state) || 0) + 1);
-
-        // Count by status
-        const status = policy.status || "unknown";
-        statusMap.set(status, (statusMap.get(status) || 0) + 1);
-
-        // Count by product type
-        const productType = policy.productType || "other";
-        productTypeMap.set(productType, (productTypeMap.get(productType) || 0) + 1);
-      }
-
-      // Sort states by count (top 10)
+      // Sort states by unique people count (top 10)
       const topStates = Array.from(stateMap.entries())
-        .sort((a, b) => b[1] - a[1])
+        .sort((a, b) => b[1].size - a[1].size)
         .slice(0, 10)
-        .map(([state, count]) => ({
+        .map(([state, peopleSet]) => ({
           state,
-          count,
-          percentage: ((count / allPolicies.length) * 100).toFixed(2),
+          count: peopleSet.size,
+          percentage: totalUniquePeople > 0 ? ((peopleSet.size / totalUniquePeople) * 100).toFixed(2) : "0.00",
         }));
 
-      // Sort statuses by count
+      // Sort statuses by unique people count
       const statusData = Array.from(statusMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([status, count]) => ({
+        .sort((a, b) => b[1].size - a[1].size)
+        .map(([status, peopleSet]) => ({
           status,
-          count,
-          percentage: ((count / allPolicies.length) * 100).toFixed(2),
+          count: peopleSet.size,
+          percentage: totalUniquePeople > 0 ? ((peopleSet.size / totalUniquePeople) * 100).toFixed(2) : "0.00",
         }));
 
-      // Sort product types by count
+      // Sort product types by unique people count
       const productTypeData = Array.from(productTypeMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .map(([type, count]) => ({
+        .sort((a, b) => b[1].size - a[1].size)
+        .map(([type, peopleSet]) => ({
           type,
-          count,
-          percentage: ((count / allPolicies.length) * 100).toFixed(2),
+          count: peopleSet.size,
+          percentage: totalUniquePeople > 0 ? ((peopleSet.size / totalUniquePeople) * 100).toFixed(2) : "0.00",
         }));
 
-      res.json({
-        totalPolicies: allPolicies.length,
+      const result = {
+        totalPolicies: totalUniquePeople,
         byState: topStates,
         byStatus: statusData,
         byProductType: productTypeData,
-      });
+      };
+
+      // Cache the result
+      dashboardCache.setAnalytics(companyId, result);
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`[Analytics] Computed and cached for company ${companyId} (${elapsed}ms)`);
+      
+      res.json(result);
     } catch (error) {
       console.error("Policies analytics error:", error);
       res.status(500).json({ message: "Failed to fetch policies analytics" });
     }
   });
 
-  // Get monthly comparison (Policies vs Quotes by Month)
+
   app.get("/api/dashboard-monthly", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
     const companyId = currentUser.companyId;
 
@@ -5935,91 +5986,68 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      // Get year filter from query parameter (optional, default: current year)
-      const currentYear = new Date().getFullYear();
+      // Year filter parameter is accepted for backwards compatibility but ignored - always return all-time data
       const yearFilter = req.query.year as string | undefined;
-          // Validate year parameter
-          if (yearFilter && yearFilter !== 'all') {
-            const yearNum = parseInt(yearFilter);
-            
-            // Strict validation: must be a valid integer in reasonable range
-            if (
-              isNaN(yearNum) || 
-              !Number.isInteger(yearNum) || 
-              yearNum < 2000 || 
-              yearNum > 2100 || 
-              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
-            ) {
-              return res.status(400).json({ 
-                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
-              });
-            }
-          }
 
-          // Only parse year if it passed validation
-          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
-
-      let allPolicies = await storage.getPoliciesByCompany(companyId);
-
-      // Apply year filter
-      if (selectedYear) {
-        const startDate = `${selectedYear}-01-01`;
-        const endDate = `${selectedYear + 1}-01-01`;
-        allPolicies = allPolicies.filter(p => {
-          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
-        });
+      // Check cache first
+      const { dashboardCache } = await import("./dashboard-cache");
+      const cached = dashboardCache.getMonthly(companyId);
+      if (cached) {
+        console.log(`[Dashboard-Monthly] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+        return res.json(cached);
       }
+      console.log(`[Dashboard-Monthly] Cache MISS for company ${companyId}`);
+      // Get all policies for company (all-time data)
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
 
-      const allQuotes = await storage.getQuotesByCompany(companyId);
+      // Get unique policy holders
+      const uniqueHoldersResult = await storage.getUniquePolicyHolders(companyId);
+      const uniqueIdentifiers = uniqueHoldersResult.uniqueIdentifiers;
 
-      const monthlyMap = new Map<string, { policies: number; customers: number }>();
+      const monthlyMap = new Map<string, Set<string>>();
 
-      // Initialize all months
+      // Initialize last 12 months
       for (let i = 0; i < 12; i++) {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
         const month = date.toLocaleDateString('en-US', { month: 'short' });
-        monthlyMap.set(month, { policies: 0, customers: 0 });
+        monthlyMap.set(month, new Set());
       }
 
-      // Count policies and customers by month (based on effective date / start date)
-      for (const policy of allPolicies) {
-        const month = new Date(policy.effectiveDate || policy.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short' });
-        const data = monthlyMap.get(month) || { policies: 0, customers: 0 };
+      // Count unique people by month (based on policy effective date)
+      for (const [uniqueKey, data] of uniqueIdentifiers.entries()) {
+        // Get all policies for this person
+        const personPolicies = allPolicies.filter(p => data.policyIds.includes(p.id));
         
-        // Count total customers: only those with isApplicant = true
-        let customersInPolicy = 0;
+        // Use the earliest policy date for this person
+        const earliestPolicy = personPolicies.sort((a, b) => 
+          a.effectiveDate.localeCompare(b.effectiveDate)
+        )[0];
         
-        // Count client if they are an applicant
-        if (policy.clientIsApplicant === true) {
-          customersInPolicy += 1;
+        if (earliestPolicy) {
+          const policyDate = new Date(earliestPolicy.effectiveDate || earliestPolicy.createdAt || new Date());
+          const month = policyDate.toLocaleDateString('en-US', { month: 'short' });
+          
+          if (monthlyMap.has(month)) {
+            monthlyMap.get(month)!.add(uniqueKey);
+          }
         }
-        
-        // Count spouses that are applicants
-        if (Array.isArray(policy.spouses)) {
-          customersInPolicy += policy.spouses.filter((spouse: any) => spouse.isApplicant === true).length;
-        }
-        
-        // Count dependents that are applicants
-        if (Array.isArray(policy.dependents)) {
-          customersInPolicy += policy.dependents.filter((dependent: any) => dependent.isApplicant === true).length;
-        }
-        
-        monthlyMap.set(month, { 
-          policies: data.policies + 1,
-          customers: data.customers + customersInPolicy
-        });
       }
 
       const monthlyData = Array.from(monthlyMap.entries())
         .reverse()
-        .map(([month, data]) => ({
+        .map(([month, peopleSet]) => ({
           month,
-          policies: data.policies,
-          customers: data.customers,
+          policies: peopleSet.size,
+          customers: peopleSet.size, // Same as policies now since we count unique people
         }));
 
-      res.json({ data: monthlyData });
+
+      // Cache the result
+      const monthlyResult = { data: monthlyData };
+      dashboardCache.setMonthly(companyId, monthlyResult);
+
+      res.json(monthlyResult);
     } catch (error) {
       console.error("Monthly comparison error:", error);
       res.status(500).json({ message: "Failed to fetch monthly data" });
@@ -6028,6 +6056,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Get agents leaderboard
   app.get("/api/dashboard-agents", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
     const companyId = currentUser.companyId;
 
@@ -6036,91 +6065,84 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      // Get year filter from query parameter (optional, default: current year)
-      const currentYear = new Date().getFullYear();
+      // Year filter parameter is accepted for backwards compatibility but ignored - always return all-time data
       const yearFilter = req.query.year as string | undefined;
-          // Validate year parameter
-          if (yearFilter && yearFilter !== 'all') {
-            const yearNum = parseInt(yearFilter);
-            
-            // Strict validation: must be a valid integer in reasonable range
-            if (
-              isNaN(yearNum) || 
-              !Number.isInteger(yearNum) || 
-              yearNum < 2000 || 
-              yearNum > 2100 || 
-              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
-            ) {
-              return res.status(400).json({ 
-                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
-              });
-            }
-          }
 
-          // Only parse year if it passed validation
-          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
-
-      let allPolicies = await storage.getPoliciesByCompany(companyId);
-
-      // Apply year filter
-      if (selectedYear) {
-        const startDate = `${selectedYear}-01-01`;
-        const endDate = `${selectedYear + 1}-01-01`;
-        allPolicies = allPolicies.filter(p => {
-          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
-        });
+      // Check cache first
+      const { dashboardCache } = await import("./dashboard-cache");
+      const cached = dashboardCache.getAgents(companyId);
+      if (cached) {
+        console.log(`[Dashboard-Agents] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+        return res.json(cached);
       }
+      console.log(`[Dashboard-Agents] Cache MISS for company ${companyId}`);
+      // Get all policies for company (all-time data)
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Get unique policy holders
+      const uniqueHoldersResult = await storage.getUniquePolicyHolders(companyId);
+      const uniqueIdentifiers = uniqueHoldersResult.uniqueIdentifiers;
 
       const users = await storage.getUsersByCompany(companyId);
 
-      const agentMap = new Map<string, { name: string; avatar: string | null; policies: number; applicants: number }>();
+      const agentMap = new Map<string, { name: string; avatar: string | null; policies: Set<string>; uniquePeople: Set<string> }>();
 
-      for (const policy of allPolicies) {
-        if (policy.agentId) {
-          const agent = users.find(u => u.id === policy.agentId);
+      // Process each unique person
+      for (const [uniqueKey, data] of uniqueIdentifiers.entries()) {
+        // Get all policies for this person
+        const personPolicies = allPolicies.filter(p => data.policyIds.includes(p.id));
+        
+        // Find the agent from the most recent policy
+        const latestPolicy = personPolicies.sort((a, b) => 
+          b.effectiveDate.localeCompare(a.effectiveDate)
+        )[0];
+        
+        if (latestPolicy && latestPolicy.agentId) {
+          const agent = users.find(u => u.id === latestPolicy.agentId);
           const agentName = agent ? `${agent.firstName} ${agent.lastName}` : 'Unknown Agent';
           const agentAvatar = agent?.avatar || null;
           
-          const current = agentMap.get(policy.agentId) || { 
-            name: agentName,
-            avatar: agentAvatar,
-            policies: 0, 
-            applicants: 0 
-          };
-          
-          // Count applicants in this policy
-          let applicantsInPolicy = 0;
-          if (policy.clientIsApplicant === true) {
-            applicantsInPolicy += 1;
-          }
-          if (Array.isArray(policy.spouses)) {
-            applicantsInPolicy += policy.spouses.filter((spouse: any) => spouse.isApplicant === true).length;
-          }
-          if (Array.isArray(policy.dependents)) {
-            applicantsInPolicy += policy.dependents.filter((dependent: any) => dependent.isApplicant === true).length;
+          if (!agentMap.has(latestPolicy.agentId)) {
+            agentMap.set(latestPolicy.agentId, { 
+              name: agentName,
+              avatar: agentAvatar,
+              policies: new Set(),
+              uniquePeople: new Set()
+            });
           }
           
-          agentMap.set(policy.agentId, { 
-            ...current, 
-            policies: current.policies + 1,
-            applicants: current.applicants + applicantsInPolicy
-          });
+          const agentData = agentMap.get(latestPolicy.agentId)!;
+          agentData.uniquePeople.add(uniqueKey);
+          
+          // Add all policy IDs for this person to the agent's policies
+          data.policyIds.forEach(policyId => agentData.policies.add(policyId));
         }
       }
 
       const agents = Array.from(agentMap.values())
+        .map(data => ({
+          name: data.name,
+          avatar: data.avatar,
+          policies: data.uniquePeople.size, // Count unique people
+          applicants: data.uniquePeople.size // Same as policies now
+        }))
         .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
 
-      res.json({ agents });
+
+      // Cache the result
+      const agentsResult = { agents };
+      dashboardCache.setAgents(companyId, agentsResult);
+
+      res.json(agentsResult);
     } catch (error) {
       console.error("Agents leaderboard error:", error);
       res.status(500).json({ message: "Failed to fetch agents data" });
     }
   });
 
-  // Get carriers statistics
   app.get("/api/dashboard-carriers", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
     const companyId = currentUser.companyId;
 
@@ -6129,89 +6151,74 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      // Get year filter from query parameter (optional, default: current year)
-      const currentYear = new Date().getFullYear();
+      // Year filter parameter is accepted for backwards compatibility but ignored - always return all-time data
       const yearFilter = req.query.year as string | undefined;
-          // Validate year parameter
-          if (yearFilter && yearFilter !== 'all') {
-            const yearNum = parseInt(yearFilter);
-            
-            // Strict validation: must be a valid integer in reasonable range
-            if (
-              isNaN(yearNum) || 
-              !Number.isInteger(yearNum) || 
-              yearNum < 2000 || 
-              yearNum > 2100 || 
-              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
-            ) {
-              return res.status(400).json({ 
-                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
-              });
+
+      // Check cache first
+      const { dashboardCache } = await import("./dashboard-cache");
+      const cached = dashboardCache.getCarriers(companyId);
+      if (cached) {
+        console.log(`[Dashboard-Carriers] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+        return res.json(cached);
+      }
+      console.log(`[Dashboard-Carriers] Cache MISS for company ${companyId}`);
+      // Get all policies for company (all-time data)
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Get unique policy holders
+      const uniqueHoldersResult = await storage.getUniquePolicyHolders(companyId);
+      const uniqueIdentifiers = uniqueHoldersResult.uniqueIdentifiers;
+
+      const carrierMap = new Map<string, Set<string>>();
+
+      // Process each unique person
+      for (const [uniqueKey, data] of uniqueIdentifiers.entries()) {
+        // Get all policies for this person
+        const personPolicies = allPolicies.filter(p => data.policyIds.includes(p.id));
+        
+        // Use the most recent policy to determine carrier
+        const latestPolicy = personPolicies.sort((a, b) => 
+          b.effectiveDate.localeCompare(a.effectiveDate)
+        )[0];
+        
+        if (latestPolicy) {
+          // Extract carrier from selected_plan JSON
+          let carrierName = 'Unknown Carrier';
+          if (latestPolicy.selectedPlan && typeof latestPolicy.selectedPlan === 'object') {
+            const plan = latestPolicy.selectedPlan;
+            if (plan.issuer && plan.issuer.name) {
+              // Normalize carrier name (remove state-specific suffixes)
+              carrierName = plan.issuer.name
+                .replace(/s+(of|in)s+[A-Z][a-z]+(s+[A-Z][a-z]+)?$/i, '')
+                .replace(/Insurance Company/i, '')
+                .replace(/Health Maintenance Organization/i, '')
+                .replace(/s+Inc.?/i, '')
+                .trim();
             }
           }
 
-          // Only parse year if it passed validation
-          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
-
-      let allPolicies = await storage.getPoliciesByCompany(companyId);
-
-      // Apply year filter
-      if (selectedYear) {
-        const startDate = `${selectedYear}-01-01`;
-        const endDate = `${selectedYear + 1}-01-01`;
-        allPolicies = allPolicies.filter(p => {
-          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
-        });
-      }
-
-      const carrierMap = new Map<string, { carrier: string; policies: number; applicants: number }>();
-
-      for (const policy of allPolicies) {
-        // Extract carrier from selected_plan JSON
-        let carrierName = 'Unknown Carrier';
-        if (policy.selectedPlan && typeof policy.selectedPlan === 'object') {
-          const plan: any = policy.selectedPlan;
-          if (plan.issuer && plan.issuer.name) {
-            // Normalize carrier name (remove state-specific suffixes)
-            carrierName = plan.issuer.name
-              .replace(/\s+(of|in)\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)?$/i, '')
-              .replace(/Insurance Company/i, '')
-              .replace(/Health Maintenance Organization/i, '')
-              .replace(/\s+Inc\.?/i, '')
-              .trim();
+          if (!carrierMap.has(carrierName)) {
+            carrierMap.set(carrierName, new Set());
           }
+          carrierMap.get(carrierName)!.add(uniqueKey);
         }
-
-        const current = carrierMap.get(carrierName) || {
-          carrier: carrierName,
-          policies: 0,
-          applicants: 0
-        };
-
-        // Count applicants in this policy
-        let applicantsInPolicy = 0;
-        if (policy.clientIsApplicant === true) {
-          applicantsInPolicy += 1;
-        }
-        if (Array.isArray(policy.spouses)) {
-          applicantsInPolicy += policy.spouses.filter((spouse: any) => spouse.isApplicant === true).length;
-        }
-        if (Array.isArray(policy.dependents)) {
-          applicantsInPolicy += policy.dependents.filter((dependent: any) => dependent.isApplicant === true).length;
-        }
-
-        carrierMap.set(carrierName, {
-          ...current,
-          policies: current.policies + 1,
-          applicants: current.applicants + applicantsInPolicy
-        });
       }
 
-      const carriers = Array.from(carrierMap.values())
+      const carriers = Array.from(carrierMap.entries())
+        .map(([carrier, peopleSet]) => ({
+          carrier,
+          policies: peopleSet.size, // Count unique people
+          applicants: peopleSet.size // Same as policies now
+        }))
         .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
 
-      res.json({ carriers });
+
+      // Cache the result
+      const carriersResult = { carriers };
+      dashboardCache.setCarriers(companyId, carriersResult);
+
+      res.json(carriersResult);
     } catch (error) {
       console.error("Carriers statistics error:", error);
       res.status(500).json({ message: "Failed to fetch carriers data" });
@@ -7113,7 +7120,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         role: user.role
       }));
       
-      res.json({ agents });
+
+      // Cache the result
+      const agentsResult = { agents };
+      dashboardCache.setAgents(companyId, agentsResult);
+
+      res.json(agentsResult);
     } catch (error: any) {
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
@@ -18116,6 +18128,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Return policy with plain text SSN (as stored in database)
+      // Invalidate dashboard cache
+
+      const { dashboardCache } = await import("./dashboard-cache");
+
+      dashboardCache.invalidateCompany(companyId);
+
+
       res.status(201).json({ policy });
     } catch (error: any) {
       console.error("Error creating policy:", error);
@@ -18757,6 +18776,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       
       // Return policy with plain text SSN (as stored in database)
+      // Invalidate dashboard cache
+
+      const { dashboardCache } = await import("./dashboard-cache");
+
+      dashboardCache.invalidateCompany(companyId);
+
+
       res.json({ policy: updatedPolicy });
     } catch (error: any) {
       console.error("Error updating policy:", error);
@@ -19172,6 +19198,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deletedBy: currentUser.email,
         },
       });
+      
+      // Invalidate dashboard cache
+
+      
+      const { dashboardCache } = await import("./dashboard-cache");
+
+      
+      dashboardCache.invalidateCompany(companyId);
+
+
       
       res.json({ message: "Policy deleted successfully" });
     } catch (error: any) {

@@ -2273,6 +2273,9 @@ export const policies = pgTable("policies", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({
   updatedAtIdx: index('policies_updated_at_idx').on(t.updatedAt),
+  companyIdIdx: index('policies_company_id_idx').on(t.companyId),
+  statusIdx: index('policies_status_idx').on(t.status),
+  companyIdStatusIdx: index('policies_company_id_status_idx').on(t.companyId, t.status),
 }));
 
 export const insertPolicySchema = createInsertSchema(policies).omit({
@@ -2373,7 +2376,10 @@ export const policyMembers = pgTable("policy_members", {
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  ssnIdx: index('policy_members_ssn_idx').on(t.ssn),
+  emailIdx: index('policy_members_email_idx').on(t.email),
+}));
 
 // =====================================================
 // POLICY MEMBER INCOME (Income information)

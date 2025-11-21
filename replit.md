@@ -45,7 +45,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Unified Contacts Directory:** Comprehensive contact management with automatic aggregation from all system sources (quotes, policies, leads, SMS, iMessage), non-destructive merge logic, filtering, CSV export, and bulk operations.
 - **Tasks & Reminders Management System:** Unified task management with assignment, priority, status tracking, due dates, and advanced filtering.
 - **Birthday Automation System:** Automated birthday greetings via Twilio SMS/MMS, aggregating birthdays from multiple sources.
-- **Dashboard Year Filter:** Global year filter for dashboard statistics across multiple endpoints.
+- **Dashboard Analytics System:** All-time analytics counting unique people (not policy instances) with SSN > email > name+DOB deduplication. Multi-dimensional aggregation ensures people with policies in multiple states/statuses/carriers appear in all relevant dimensions. Company-scoped caching with 60-second TTL reduces response times from 3-7 seconds to sub-1-second on cache hits (75-80% improvement). Cache automatically invalidates on policy create/update/delete.
 - **Policy Data Architecture:** Hybrid data sharing for Notes, Documents, Consents, Payment Methods (shared) and Reminders (per policy year).
 - **CMS Marketplace Integration:** Pure pass-through system with Hybrid Filtering and Flexible Cost-Share Parsing.
 - **Tab Auto-Save System:** Intelligent tab navigation with automatic data persistence.

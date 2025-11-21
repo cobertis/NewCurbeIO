@@ -808,6 +808,7 @@ export interface IStorage {
   updatePolicy(id: string, data: Partial<InsertPolicy>): Promise<Policy | undefined>;
   updatePolicySelectedPlan(id: string, selectedPlan: any, aptcData?: { aptcAmount?: string; aptcSource?: string; aptcCapturedAt?: string }): Promise<Policy | undefined>;
   deletePolicy(id: string): Promise<boolean>;
+  getUniquePolicyHolders(companyId: string, filters?: { agentId?: string; effectiveYear?: number; carrier?: string; status?: string; state?: string }): Promise<{ count: number; uniqueIdentifiers: Map<string, { policyIds: string[]; identifier: string; identifierType: 'ssn' | 'email' | 'name-dob' }> }>;
   submitQuoteAsPolicy(quoteId: string): Promise<Policy>;
   
   // Policy Members
@@ -5655,6 +5656,192 @@ export class DbStorage implements IStorage {
       .where(eq(policies.id, id))
       .returning();
     return result.length > 0;
+  }
+  
+  async getUniquePolicyHolders(companyId: string, filters?: { agentId?: string; effectiveYear?: number; carrier?: string; status?: string; state?: string }): Promise<{ count: number; uniqueIdentifiers: Map<string, { policyIds: string[]; identifier: string; identifierType: 'ssn' | 'email' | 'name-dob' }> }> {
+    // Build query conditions for policies
+    const conditions = [eq(policies.companyId, companyId)];
+    
+    if (filters?.agentId) {
+      conditions.push(eq(policies.agentId, filters.agentId));
+    }
+    if (filters?.effectiveYear) {
+      const startDate = `${filters.effectiveYear}-01-01`;
+      const endDate = `${filters.effectiveYear + 1}-01-01`;
+      conditions.push(
+        and(
+          gte(policies.effectiveDate, startDate),
+          sql`${policies.effectiveDate} < ${endDate}`
+        )!
+      );
+    }
+    if (filters?.status) {
+      conditions.push(eq(policies.status, filters.status));
+    }
+    if (filters?.state) {
+      conditions.push(eq(policies.physical_state, filters.state));
+    }
+    
+    // Fetch all policies with their members for the company (with filters applied)
+    const allPolicies = await db
+      .select()
+      .from(policies)
+      .where(and(...conditions));
+    
+    // If carrier filter is provided, filter by selected plan carrier
+    let filteredPolicies = allPolicies;
+    if (filters?.carrier) {
+      filteredPolicies = allPolicies.filter(p => {
+        if (p.selectedPlan && typeof p.selectedPlan === 'object') {
+          const plan: any = p.selectedPlan;
+          const planCarrier = (plan.issuer?.name || plan.carrier || '').toLowerCase();
+          return planCarrier.includes(filters.carrier!.toLowerCase());
+        }
+        return false;
+      });
+    }
+    
+    // Fetch all policy members for these policies in one query
+    const policyIds = filteredPolicies.map(p => p.id);
+    let allMembers: any[] = [];
+    
+    if (policyIds.length > 0) {
+      allMembers = await db
+        .select()
+        .from(policyMembers)
+        .where(
+          and(
+            eq(policyMembers.companyId, companyId),
+            inArray(policyMembers.policyId, policyIds)
+          )
+        );
+    }
+    
+    // Helper function to normalize name (remove accents, trim, uppercase)
+    function normalizeName(name: string | null): string {
+      if (!name) return '';
+      return name
+        .normalize('NFD') // Decompose accented characters
+        .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+        .trim()
+        .toUpperCase();
+    }
+    
+    // Helper function to normalize SSN (trim, uppercase, remove dashes/spaces)
+    function normalizeSSN(ssn: string | null): string {
+      if (!ssn) return '';
+      return ssn.replace(/[-\s]/g, '').trim().toUpperCase();
+    }
+    
+    // Helper function to normalize email (lowercase, trim)
+    function normalizeEmail(email: string | null): string {
+      if (!email) return '';
+      return email.trim().toLowerCase();
+    }
+    
+    // Deduplication map: uniqueIdentifier -> policy IDs
+    const uniqueIdentifiers = new Map<string, { policyIds: string[]; identifier: string; identifierType: 'ssn' | 'email' | 'name-dob' }>();
+    
+    // Process each policy
+    for (const policy of filteredPolicies) {
+      let uniqueKey: string | null = null;
+      let identifierType: 'ssn' | 'email' | 'name-dob' = 'name-dob';
+      let identifier = '';
+      
+      // Check policy members for this policy (applicant = primary identifier)
+      const policyMembersList = allMembers.filter(m => m.policyId === policy.id);
+      
+      // Find applicant member or use first member
+      let primaryMember = policyMembersList.find(m => m.isApplicant) || policyMembersList[0];
+      
+      // If no members, use client data from policy
+      if (!primaryMember) {
+        // Priority 1: SSN
+        if (policy.clientSsn) {
+          const normalizedSSN = normalizeSSN(policy.clientSsn);
+          if (normalizedSSN) {
+            uniqueKey = `ssn:${normalizedSSN}`;
+            identifierType = 'ssn';
+            identifier = normalizedSSN;
+          }
+        }
+        
+        // Priority 2: Email (if no SSN)
+        if (!uniqueKey && policy.clientEmail) {
+          const normalizedEmail = normalizeEmail(policy.clientEmail);
+          if (normalizedEmail) {
+            uniqueKey = `email:${normalizedEmail}`;
+            identifierType = 'email';
+            identifier = normalizedEmail;
+          }
+        }
+        
+        // Priority 3: Full name + DOB (if no SSN or email)
+        if (!uniqueKey) {
+          const firstName = normalizeName(policy.clientFirstName);
+          const lastName = normalizeName(policy.clientLastName);
+          const dob = policy.clientDateOfBirth || '';
+          if (firstName && lastName) {
+            uniqueKey = `name-dob:${firstName}:${lastName}:${dob}`;
+            identifierType = 'name-dob';
+            identifier = `${firstName} ${lastName} (${dob || 'no DOB'})`;
+          }
+        }
+      } else {
+        // Use primary member data
+        // Priority 1: SSN
+        if (primaryMember.ssn) {
+          const normalizedSSN = normalizeSSN(primaryMember.ssn);
+          if (normalizedSSN) {
+            uniqueKey = `ssn:${normalizedSSN}`;
+            identifierType = 'ssn';
+            identifier = normalizedSSN;
+          }
+        }
+        
+        // Priority 2: Email (if no SSN)
+        if (!uniqueKey && primaryMember.email) {
+          const normalizedEmail = normalizeEmail(primaryMember.email);
+          if (normalizedEmail) {
+            uniqueKey = `email:${normalizedEmail}`;
+            identifierType = 'email';
+            identifier = normalizedEmail;
+          }
+        }
+        
+        // Priority 3: Full name + DOB (if no SSN or email)
+        if (!uniqueKey) {
+          const firstName = normalizeName(primaryMember.firstName);
+          const lastName = normalizeName(primaryMember.lastName);
+          const dob = primaryMember.dateOfBirth || '';
+          if (firstName && lastName) {
+            uniqueKey = `name-dob:${firstName}:${lastName}:${dob}`;
+            identifierType = 'name-dob';
+            identifier = `${firstName} ${lastName} (${dob || 'no DOB'})`;
+          }
+        }
+      }
+      
+      // If we found a unique key, add it to the map
+      if (uniqueKey) {
+        if (uniqueIdentifiers.has(uniqueKey)) {
+          // Add this policy ID to existing entry
+          uniqueIdentifiers.get(uniqueKey)!.policyIds.push(policy.id);
+        } else {
+          // Create new entry
+          uniqueIdentifiers.set(uniqueKey, {
+            policyIds: [policy.id],
+            identifier,
+            identifierType
+          });
+        }
+      }
+    }
+    
+    return {
+      count: uniqueIdentifiers.size,
+      uniqueIdentifiers
+    };
   }
   
   async submitQuoteAsPolicy(quoteId: string): Promise<Policy> {
