@@ -64,6 +64,8 @@ const STATE_ABBR_TO_NAME: Record<string, string> = {
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [hoveredState, setHoveredState] = useState<{ name: string; count: number; percentage: number } | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   const handleWebSocketMessage = useCallback((message: any) => {
     if (message.type === 'notification_update' || message.type === 'dashboard_update' || message.type === 'data_invalidation') {
@@ -359,9 +361,6 @@ export default function Dashboard() {
                   return [fullName.toUpperCase(), s.count];
                 })
               );
-
-              const [hoveredState, setHoveredState] = useState<{ name: string; count: number; percentage: number } | null>(null);
-              const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
               const sortedStates = [...statesData].sort((a, b) => b.count - a.count).slice(0, 5);
 
