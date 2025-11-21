@@ -92,6 +92,11 @@ export default function Dashboard() {
     refetchInterval: 5 * 60 * 1000,
   });
 
+  const { data: carriersData } = useQuery<{ carriers: { carrier: string; policies: number; applicants: number }[] }>({
+    queryKey: ["/api/dashboard-carriers"],
+    refetchInterval: 5 * 60 * 1000,
+  });
+
   const pendingTasks = statsData?.pendingTasks || 0;
   const birthdaysThisWeek = statsData?.birthdaysThisWeek || 0;
   const failedLoginAttempts = statsData?.failedLoginAttempts || 0;
@@ -670,29 +675,153 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Status Distribution */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <PieChart className="h-4 w-4" />
-            Policies per status (Top 10)
-          </CardTitle>
-          <p className="text-xs text-gray-500 mt-1">What is the status of your policies</p>
-        </CardHeader>
-        <CardContent>
-          {analyticsData?.byStatus && analyticsData.byStatus.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <RechartsPie data={analyticsData.byStatus.slice(0, 10)} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count">
-                {analyticsData.byStatus.slice(0, 10).map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                ))}
-              </RechartsPie>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-400">No status data</div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Carriers Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Policies per Carrier */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+              Policies per carrier (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">This is how your policies are segmented by insurance company</p>
+          </CardHeader>
+          <CardContent>
+            {(carriersData?.carriers || []).length > 0 ? (
+              <div className="space-y-1">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-5 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    Insurance company
+                  </div>
+                  <div className="col-span-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Policies
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Percentage
+                  </div>
+                </div>
+
+                {/* Table Rows */}
+                {(() => {
+                  const totalPolicies = carriersData?.carriers.reduce((sum, c) => sum + c.policies, 0) || 1;
+                  return (carriersData?.carriers || []).slice(0, 10).map((carrier, idx) => {
+                    const percentage = ((carrier.policies / totalPolicies) * 100).toFixed(2);
+                    return (
+                      <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
+                        {/* Ranking + Company Name */}
+                        <div className="col-span-5 flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{idx + 1}</span>
+                          </div>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
+                              <Users className="h-3 w-3 text-white" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={carrier.carrier}>
+                              {carrier.carrier}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Policies Count */}
+                        <div className="col-span-4 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {carrier.policies}
+                          </span>
+                        </div>
+
+                        {/* Percentage */}
+                        <div className="col-span-3 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {percentage}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Applicants per Carrier */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+              Applicants per carrier (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">This is how your applicants are segmented by insurance company</p>
+          </CardHeader>
+          <CardContent>
+            {(carriersData?.carriers || []).length > 0 ? (
+              <div className="space-y-1">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-5 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    Insurance company
+                  </div>
+                  <div className="col-span-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Applicants
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Percentage
+                  </div>
+                </div>
+
+                {/* Table Rows */}
+                {(() => {
+                  const sortedByApplicants = [...(carriersData?.carriers || [])].sort((a, b) => b.applicants - a.applicants);
+                  const totalApplicants = sortedByApplicants.reduce((sum, c) => sum + c.applicants, 0) || 1;
+                  return sortedByApplicants.slice(0, 10).map((carrier, idx) => {
+                    const percentage = ((carrier.applicants / totalApplicants) * 100).toFixed(2);
+                    return (
+                      <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
+                        {/* Ranking + Company Name */}
+                        <div className="col-span-5 flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300">{idx + 1}</span>
+                          </div>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                              <Users className="h-3 w-3 text-white" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={carrier.carrier}>
+                              {carrier.carrier}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Applicants Count */}
+                        <div className="col-span-4 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {carrier.applicants}
+                          </span>
+                        </div>
+
+                        {/* Percentage */}
+                        <div className="col-span-3 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {percentage}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

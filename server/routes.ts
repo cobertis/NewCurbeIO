@@ -5982,6 +5982,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Get carriers statistics
+  app.get("/api/dashboard-carriers", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      const carrierMap = new Map<string, { carrier: string; policies: number; applicants: number }>();
+
+      for (const policy of allPolicies) {
+        // Extract carrier from selected_plan JSON
+        let carrierName = 'Unknown Carrier';
+        if (policy.selectedPlan && typeof policy.selectedPlan === 'object') {
+          const plan: any = policy.selectedPlan;
+          if (plan.issuer && plan.issuer.name) {
+            // Normalize carrier name (remove state-specific suffixes)
+            carrierName = plan.issuer.name
+              .replace(/\s+(of|in)\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)?$/i, '')
+              .replace(/Insurance Company/i, '')
+              .replace(/Health Maintenance Organization/i, '')
+              .replace(/\s+Inc\.?/i, '')
+              .trim();
+          }
+        }
+
+        const current = carrierMap.get(carrierName) || {
+          carrier: carrierName,
+          policies: 0,
+          applicants: 0
+        };
+
+        // Count applicants in this policy
+        let applicantsInPolicy = 0;
+        if (policy.clientIsApplicant === true) {
+          applicantsInPolicy += 1;
+        }
+        if (Array.isArray(policy.spouses)) {
+          applicantsInPolicy += policy.spouses.filter((spouse: any) => spouse.isApplicant === true).length;
+        }
+        if (Array.isArray(policy.dependents)) {
+          applicantsInPolicy += policy.dependents.filter((dependent: any) => dependent.isApplicant === true).length;
+        }
+
+        carrierMap.set(carrierName, {
+          ...current,
+          policies: current.policies + 1,
+          applicants: current.applicants + applicantsInPolicy
+        });
+      }
+
+      const carriers = Array.from(carrierMap.values())
+        .sort((a, b) => b.policies - a.policies)
+        .slice(0, 10);
+
+      res.json({ carriers });
+    } catch (error) {
+      console.error("Carriers statistics error:", error);
+      res.status(500).json({ message: "Failed to fetch carriers data" });
+    }
+  });
+
   // ==================== USER ENDPOINTS ====================
 
   // Get all users (superadmin or admin)
