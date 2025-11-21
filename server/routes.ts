@@ -12485,14 +12485,69 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== QUOTES ====================
   
-  // Quote stats endpoint (stub)
+  // Quote stats endpoint
   app.get("/api/quotes/stats", requireActiveCompany, async (req: Request, res: Response) => {
-    res.json({ total: 0, active: 0, pending: 0, archived: 0 });
+    const currentUser = req.user!;
+    
+    try {
+      if (!currentUser.companyId) {
+        return res.status(400).json({ message: "User must belong to a company" });
+      }
+      
+      // Get all quotes for the company
+      let allQuotes = await storage.getQuotesByCompany(currentUser.companyId);
+      
+      // If user doesn't have viewAllCompanyData permission, filter by agentId
+      if (!shouldViewAllCompanyData(currentUser)) {
+        allQuotes = allQuotes.filter(quote => quote.agentId === currentUser.id);
+      }
+      
+      // Calculate statistics
+      const totalQuotes = allQuotes.length;
+      const activeQuotes = allQuotes.filter(q => !q.isArchived && q.status !== 'submitted').length;
+      const submittedQuotes = allQuotes.filter(q => q.status === 'submitted').length;
+      const archivedQuotes = allQuotes.filter(q => q.isArchived).length;
+      
+      // Get unique applicants (count unique people across all quote members)
+      const allMembers = await storage.listAllQuoteMembers(currentUser.companyId);
+      const uniqueApplicantsSet = new Set<string>();
+      
+      // Count unique applicants using SSN or email as unique identifier
+      for (const member of allMembers) {
+        if (member.isApplicant) {
+          const memberKey = member.ssn || member.email || `member-${member.id}`;
+          uniqueApplicantsSet.add(memberKey);
+        }
+      }
+      
+      return res.json({
+        total: totalQuotes,
+        active: activeQuotes,
+        pending: submittedQuotes,
+        archived: archivedQuotes,
+        totalApplicants: uniqueApplicantsSet.size
+      });
+    } catch (error) {
+      console.error("Error fetching quote stats:", error);
+      return res.status(500).json({ message: "Failed to fetch quote statistics" });
+    }
   });
   
-  // Quote OEP stats endpoint (stub)
+  // Quote OEP stats endpoint
+  // OEP stats don't apply to quotes (they're for active policies)
+  // Return zeros to satisfy frontend without breaking
   app.get("/api/quotes/oep-stats", requireActiveCompany, async (req: Request, res: Response) => {
-    res.json({ oepActive: 0, oepPending: 0, oepExpiring: 0 });
+    const currentUser = req.user!;
+    
+    if (!currentUser.companyId) {
+      return res.status(400).json({ message: "User must belong to a company" });
+    }
+    
+    return res.json({
+      oepActive: 0,
+      oepPending: 0,
+      oepExpiring: 0
+    });
   });
   
   // Create quote

@@ -658,6 +658,7 @@ export interface IStorage {
   
   // Quote Members
   listQuoteMembers(quoteId: string): Promise<QuoteMember[]>;
+  listAllQuoteMembers(companyId: string): Promise<QuoteMember[]>;
   getQuoteMembersByQuoteId(quoteId: string, companyId: string): Promise<QuoteMember[]>;
   getQuoteMemberById(memberId: string, companyId: string): Promise<QuoteMember | null>;
   createQuoteMember(data: InsertQuoteMember): Promise<QuoteMember>;
@@ -4042,6 +4043,14 @@ export class DbStorage implements IStorage {
       .select()
       .from(quoteMembers)
       .where(eq(quoteMembers.quoteId, quoteId))
+      .orderBy(quoteMembers.createdAt);
+  }
+  
+  async listAllQuoteMembers(companyId: string): Promise<QuoteMember[]> {
+    return db
+      .select()
+      .from(quoteMembers)
+      .where(eq(quoteMembers.companyId, companyId))
       .orderBy(quoteMembers.createdAt);
   }
   
