@@ -580,22 +580,16 @@ export default function Dashboard() {
 
                       {/* Policies Count */}
                       <div className="col-span-3 text-center">
-                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30">
-                          <span className="text-blue-600 dark:text-blue-400 text-sm">🛡️</span>
-                          <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
-                            {agent.policies}
-                          </span>
-                        </div>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {agent.policies}
+                        </span>
                       </div>
 
                       {/* Applicants Count */}
                       <div className="col-span-3 text-center">
-                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-cyan-50 dark:bg-cyan-900/30">
-                          <span className="text-cyan-600 dark:text-cyan-400 text-sm">👥</span>
-                          <span className="text-sm font-bold text-cyan-700 dark:text-cyan-300">
-                            {agent.applicants}
-                          </span>
-                        </div>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {agent.applicants}
+                        </span>
                       </div>
                     </div>
                   );
@@ -724,17 +718,12 @@ export default function Dashboard() {
                       <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
                         {/* Ranking + Company Name */}
                         <div className="col-span-5 flex items-center gap-3">
-                          <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{idx + 1}</span>
+                          <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{idx + 1}</span>
                           </div>
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0">
-                              <Users className="h-3 w-3 text-white" />
-                            </div>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={carrier.carrier}>
-                              {carrier.carrier}
-                            </p>
-                          </div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate ml-2" title={carrier.carrier}>
+                            {carrier.carrier}
+                          </p>
                         </div>
 
                         {/* Policies Count */}
@@ -797,17 +786,12 @@ export default function Dashboard() {
                       <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
                         {/* Ranking + Company Name */}
                         <div className="col-span-5 flex items-center gap-3">
-                          <div className="w-6 h-6 rounded-full bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300">{idx + 1}</span>
+                          <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{idx + 1}</span>
                           </div>
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center flex-shrink-0">
-                              <Users className="h-3 w-3 text-white" />
-                            </div>
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={carrier.carrier}>
-                              {carrier.carrier}
-                            </p>
-                          </div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate ml-2" title={carrier.carrier}>
+                            {carrier.carrier}
+                          </p>
                         </div>
 
                         {/* Applicants Count */}
