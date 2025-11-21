@@ -1961,11 +1961,7 @@ class WebPhoneManager {
         };
         
         // Call API to create notification (fire and forget, don't block cleanup)
-        apiRequest('/api/notifications/missed-call', {
-          method: 'POST',
-          body: JSON.stringify(notificationData),
-          headers: { 'Content-Type': 'application/json' },
-        }).catch((error) => {
+        apiRequest('POST', '/api/notifications/missed-call', notificationData).catch((error) => {
           console.error('[WebPhone] ❌ Failed to create missed call notification:', error);
         });
       }
