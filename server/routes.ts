@@ -4025,14 +4025,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         userId: currentUser.id,
       };
 
-      // Filter by action (auth_login, auth_login_with_otp, auth_login_trusted_device, or auth_login_failed)
+      // Filter by action (successful logins: auth_login_no_2fa, auth_login_with_otp, auth_login_trusted_device, or failed: auth_login_failed)
       const actions: string[] = [];
       if (resultFilter === "success") {
-        actions.push("auth_login", "auth_login_with_otp", "auth_login_trusted_device");
+        actions.push("auth_login_no_2fa", "auth_login_with_otp", "auth_login_trusted_device");
       } else if (resultFilter === "failed") {
         actions.push("auth_login_failed");
       } else {
-        actions.push("auth_login", "auth_login_with_otp", "auth_login_trusted_device", "auth_login_failed");
+        actions.push("auth_login_no_2fa", "auth_login_with_otp", "auth_login_trusted_device", "auth_login_failed");
       }
 
       // Get all activity logs matching criteria (last 1000)
