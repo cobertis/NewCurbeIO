@@ -322,14 +322,14 @@ export default function Dashboard() {
 
         {/* US Map - Interactive Heat Map */}
         <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
-          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700 pb-3">
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               Interactive US Heat Map - Customer Distribution
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1">Hover over states to see detailed statistics</p>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-0 -mt-4">
             {(() => {
               const statesData = analyticsData?.byState || [];
               const maxCount = Math.max(...statesData.map(s => s.count), 1);
@@ -363,8 +363,8 @@ export default function Dashboard() {
                 >
                     <ComposableMap
                       projection="geoAlbersUsa"
-                      projectionConfig={{ scale: 1000 }}
-                      className="w-full h-[500px]"
+                      projectionConfig={{ scale: 1200 }}
+                      className="w-full h-[580px]"
                     >
                       <defs>
                         <filter id="glow">
