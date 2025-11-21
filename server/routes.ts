@@ -5941,9 +5941,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const agentMap = new Map<string, { name: string; policies: number; applicants: number }>();
 
       for (const policy of allPolicies) {
-        if (policy.assignedAgent) {
-          const current = agentMap.get(policy.assignedAgent) || { 
-            name: policy.assignedAgent, 
+        if (policy.agentId) {
+          const agent = users.find(u => u.id === policy.agentId);
+          const agentName = agent ? `${agent.firstName} ${agent.lastName}` : 'Unknown Agent';
+          
+          const current = agentMap.get(policy.agentId) || { 
+            name: agentName, 
             policies: 0, 
             applicants: 0 
           };
@@ -5960,7 +5963,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             applicantsInPolicy += policy.dependents.filter((dependent: any) => dependent.isApplicant === true).length;
           }
           
-          agentMap.set(policy.assignedAgent, { 
+          agentMap.set(policy.agentId, { 
             ...current, 
             policies: current.policies + 1,
             applicants: current.applicants + applicantsInPolicy
