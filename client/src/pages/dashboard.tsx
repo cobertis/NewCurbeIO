@@ -36,7 +36,7 @@ interface PoliciesAnalytics {
 interface MonthlyData {
   month: string;
   policies: number;
-  quotes: number;
+  customers: number;
 }
 
 interface AgentLeaderboard {
@@ -166,108 +166,138 @@ export default function Dashboard() {
               <BarChart3 className="h-4 w-4" />
               Monthly Performance Overview
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Total Policies and Total Applicants by policy start date</p>
+            <p className="text-xs text-gray-500 mt-1">Total Policies and Total Customers (applicants only) by policy start date</p>
           </CardHeader>
           <CardContent>
             {monthlyData?.data && monthlyData.data.length > 0 ? (
-              <div className="space-y-4">
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart 
-                    data={monthlyData.data} 
-                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                    barGap={8}
-                    barCategoryGap="20%"
-                  >
-                    <defs>
-                      <linearGradient id="policiesGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
-                        <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.7} />
-                      </linearGradient>
-                      <linearGradient id="applicantsGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.9} />
-                        <stop offset="100%" stopColor="#0891b2" stopOpacity={0.7} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
-                    <XAxis 
-                      dataKey="month" 
-                      stroke="#6b7280" 
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={{ stroke: '#d1d5db' }}
-                    />
-                    <YAxis 
-                      stroke="#6b7280" 
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={{ stroke: '#d1d5db' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "12px",
-                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        padding: "12px"
-                      }}
-                      labelStyle={{ 
-                        color: "#111827",
-                        fontWeight: "600",
-                        marginBottom: "8px"
-                      }}
-                      itemStyle={{ 
-                        color: "#374151",
-                        padding: "4px 0"
-                      }}
-                      cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
-                    />
-                    <Legend 
-                      wrapperStyle={{ 
-                        paddingTop: "20px"
-                      }}
-                      iconType="circle"
-                      formatter={(value) => (
-                        <span style={{ 
-                          color: "#374151", 
-                          fontWeight: "500",
-                          fontSize: "13px"
-                        }}>
-                          {value}
-                        </span>
-                      )}
-                    />
-                    <Bar 
-                      dataKey="policies" 
-                      fill="url(#policiesGradient)" 
-                      radius={[8, 8, 0, 0]}
-                      name="Total Policies"
-                      maxBarSize={60}
-                    />
-                    <Bar 
-                      dataKey="quotes" 
-                      fill="url(#applicantsGradient)" 
-                      radius={[8, 8, 0, 0]}
-                      name="Total Applicants"
-                      maxBarSize={60}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-                
-                {/* Summary Stats */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {monthlyData.data.reduce((sum, item) => sum + item.policies, 0).toLocaleString()}
+              <div className="space-y-6">
+                {/* Animated Summary Cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Policies</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.policies, 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">
+                        {Math.round((monthlyData.data.reduce((sum, item) => sum + item.policies, 0) / 12) * 10) / 10} avg/month
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-medium">Total Policies</div>
                   </div>
-                  <div className="text-center p-3 rounded-lg bg-cyan-50 dark:bg-cyan-900/20">
-                    <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
-                      {monthlyData.data.reduce((sum, item) => sum + item.quotes, 0).toLocaleString()}
+                  
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Customers</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.customers, 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">
+                        {Math.round((monthlyData.data.reduce((sum, item) => sum + item.customers, 0) / 12) * 10) / 10} avg/month
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-medium">Total Applicants</div>
+                  </div>
+                  
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Avg per Policy</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.policies, 0) > 0 
+                          ? (monthlyData.data.reduce((sum, item) => sum + item.customers, 0) / monthlyData.data.reduce((sum, item) => sum + item.policies, 0)).toFixed(1)
+                          : 0}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">Customers per Policy</div>
+                    </div>
                   </div>
                 </div>
+
+                {/* Hybrid Area + Line Chart */}
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart 
+                    data={monthlyData.data} 
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorPolicies" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorApplicants" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                      </linearGradient>
+                      <filter id="shadow">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+                      </filter>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis 
+                      dataKey="month" 
+                      stroke="#9ca3af"
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#e5e7eb' }}
+                    />
+                    <YAxis 
+                      stroke="#9ca3af"
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+                              <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
+                              {payload.map((entry, index) => (
+                                <div key={index} className="flex items-center justify-between gap-4 py-1">
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: entry.color }}
+                                    />
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">{entry.name}</span>
+                                  </div>
+                                  <span className="text-sm font-bold text-gray-900 dark:text-white">{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: 20 }}
+                      iconType="circle"
+                      formatter={(value) => <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{value}</span>}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="policies" 
+                      stroke="#3b82f6" 
+                      strokeWidth={3}
+                      dot={{ fill: '#3b82f6', r: 6, strokeWidth: 2, stroke: '#fff', filter: 'url(#shadow)' }}
+                      activeDot={{ r: 8, strokeWidth: 3 }}
+                      name="Total Policies"
+                      fill="url(#colorPolicies)"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="customers" 
+                      stroke="#06b6d4" 
+                      strokeWidth={3}
+                      strokeDasharray="5 5"
+                      dot={{ fill: '#06b6d4', r: 6, strokeWidth: 2, stroke: '#fff', filter: 'url(#shadow)' }}
+                      activeDot={{ r: 8, strokeWidth: 3 }}
+                      name="Total Customers"
+                      fill="url(#colorApplicants)"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             ) : (
               <div className="h-80 flex items-center justify-center text-gray-400">Loading...</div>
@@ -386,21 +416,39 @@ export default function Dashboard() {
             <p className="text-xs text-gray-500 mt-1">Agents with most sales this month / year</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {(agentsData?.agents || []).length > 0 ? (
-                (agentsData?.agents || []).slice(0, 5).map((agent, idx) => (
-                  <div key={idx} className="flex items-center gap-3 py-2">
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-xs font-semibold">
-                      {idx + 1}
+                (agentsData?.agents || []).slice(0, 5).map((agent, idx) => {
+                  const maxCount = Math.max(...(agentsData?.agents || []).slice(0, 5).map(a => a.count));
+                  const percentage = (agent.count / maxCount) * 100;
+                  const medals = ['🥇', '🥈', '🥉'];
+                  
+                  return (
+                    <div key={idx} className="group relative">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg text-lg">
+                          {idx < 3 ? medals[idx] : idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{agent.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{agent.count} policies sold</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-gray-900 dark:text-white">{agent.count}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{Math.round(percentage)}%</div>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-1000 ease-out"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{agent.name}</p>
-                    </div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{agent.count}</div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                <p className="text-sm text-gray-500">No agents data available</p>
+                <p className="text-sm text-gray-500 text-center py-8">No agents data available</p>
               )}
             </div>
           </CardContent>
@@ -417,13 +465,68 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {analyticsData?.byProductType && analyticsData.byProductType.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <RechartsPie data={analyticsData.byProductType.slice(0, 10)} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count">
-                  {analyticsData.byProductType.slice(0, 10).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+              <div className="flex items-center justify-center gap-6">
+                <ResponsiveContainer width="60%" height={280}>
+                  <RechartsPie data={analyticsData.byProductType.slice(0, 10)}>
+                    <defs>
+                      {CHART_COLORS.map((color, idx) => (
+                        <linearGradient key={idx} id={`gradient-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={color} stopOpacity={0.7} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie 
+                      data={analyticsData.byProductType.slice(0, 10)} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={65} 
+                      outerRadius={110} 
+                      dataKey="count"
+                      paddingAngle={3}
+                      label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {analyticsData.byProductType.slice(0, 10).map((_, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={`url(#gradient-${index % CHART_COLORS.length})`}
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+                              <p className="font-semibold text-gray-900 dark:text-white">{payload[0].name}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{payload[0].value} policies</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </RechartsPie>
+                </ResponsiveContainer>
+                
+                <div className="flex-1 space-y-2">
+                  {analyticsData.byProductType.slice(0, 5).map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0" 
+                        style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{item.type}</p>
+                      </div>
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">{item.count}</div>
+                    </div>
                   ))}
-                </RechartsPie>
-              </ResponsiveContainer>
+                </div>
+              </div>
             ) : (
               <div className="h-64 flex items-center justify-center text-gray-400">No product data</div>
             )}

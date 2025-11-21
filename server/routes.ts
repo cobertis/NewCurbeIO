@@ -5871,28 +5871,43 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const allPolicies = await storage.getPoliciesByCompany(companyId);
       const allQuotes = await storage.getQuotesByCompany(companyId);
 
-      const monthlyMap = new Map<string, { policies: number; quotes: number }>();
+      const monthlyMap = new Map<string, { policies: number; customers: number }>();
 
       // Initialize all months
       for (let i = 0; i < 12; i++) {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
         const month = date.toLocaleDateString('en-US', { month: 'short' });
-        monthlyMap.set(month, { policies: 0, quotes: 0 });
+        monthlyMap.set(month, { policies: 0, customers: 0 });
       }
 
-      // Count policies by month (based on effective date / start date)
+      // Count policies and customers by month (based on effective date / start date)
       for (const policy of allPolicies) {
         const month = new Date(policy.effectiveDate || policy.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short' });
-        const data = monthlyMap.get(month) || { policies: 0, quotes: 0 };
-        monthlyMap.set(month, { ...data, policies: data.policies + 1 });
-      }
-
-      // Count quotes by month
-      for (const quote of allQuotes) {
-        const month = new Date(quote.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short' });
-        const data = monthlyMap.get(month) || { policies: 0, quotes: 0 };
-        monthlyMap.set(month, { ...data, quotes: data.quotes + 1 });
+        const data = monthlyMap.get(month) || { policies: 0, customers: 0 };
+        
+        // Count total customers: only those with isApplicant = true
+        let customersInPolicy = 0;
+        
+        // Count client if they are an applicant
+        if (policy.clientIsApplicant === true) {
+          customersInPolicy += 1;
+        }
+        
+        // Count spouses that are applicants
+        if (Array.isArray(policy.spouses)) {
+          customersInPolicy += policy.spouses.filter((spouse: any) => spouse.isApplicant === true).length;
+        }
+        
+        // Count dependents that are applicants
+        if (Array.isArray(policy.dependents)) {
+          customersInPolicy += policy.dependents.filter((dependent: any) => dependent.isApplicant === true).length;
+        }
+        
+        monthlyMap.set(month, { 
+          policies: data.policies + 1,
+          customers: data.customers + customersInPolicy
+        });
       }
 
       const monthlyData = Array.from(monthlyMap.entries())
@@ -5900,7 +5915,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .map(([month, data]) => ({
           month,
           policies: data.policies,
-          quotes: data.quotes,
+          customers: data.customers,
         }));
 
       res.json({ data: monthlyData });
