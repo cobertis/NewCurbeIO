@@ -45,6 +45,21 @@ interface AgentLeaderboard {
 
 const CHART_COLORS = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#6366f1"];
 
+// US State abbreviations to full names mapping
+const STATE_ABBR_TO_NAME: Record<string, string> = {
+  "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
+  "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia",
+  "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa",
+  "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+  "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri",
+  "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey",
+  "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio",
+  "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+  "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
+  "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+  "DC": "District of Columbia", "PR": "Puerto Rico"
+};
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -325,8 +340,12 @@ export default function Dashboard() {
                 .domain([0, maxCount * 0.25, maxCount * 0.5, maxCount * 0.75, maxCount])
                 .range(["#10b981", "#fbbf24", "#f97316", "#ef4444", "#dc2626"]);
               
+              // Convert state abbreviations to full names for matching with map geography
               const stateCountMap = new Map(
-                statesData.map(s => [s.state.toUpperCase(), s.count])
+                statesData.map(s => {
+                  const fullName = STATE_ABBR_TO_NAME[s.state.toUpperCase()] || s.state;
+                  return [fullName.toUpperCase(), s.count];
+                })
               );
 
               const [hoveredState, setHoveredState] = useState<{ name: string; count: number; percentage: number } | null>(null);
