@@ -335,10 +335,10 @@ export default function Dashboard() {
               const maxCount = Math.max(...statesData.map(s => s.count), 1);
               const totalCustomers = statesData.reduce((sum, s) => sum + s.count, 0);
               
-              // Heat map color scale: Green → Yellow → Orange → Red
+              // Professional color scale: Light blue → Medium blue → Dark blue
               const colorScale = scaleLinear<string>()
-                .domain([0, maxCount * 0.25, maxCount * 0.5, maxCount * 0.75, maxCount])
-                .range(["#10b981", "#fbbf24", "#f97316", "#ef4444", "#dc2626"]);
+                .domain([0, maxCount * 0.5, maxCount])
+                .range(["#dbeafe", "#60a5fa", "#1e40af"]);
               
               // Convert state abbreviations to full names for matching with map geography
               const stateCountMap = new Map(
@@ -406,26 +406,20 @@ export default function Dashboard() {
                                   style={{
                                     default: { 
                                       outline: "none",
-                                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                      filter: isTopState && count > 0 ? "drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))" : "none",
+                                      transition: "all 0.2s ease",
                                       cursor: count > 0 ? "pointer" : "default"
                                     },
                                     hover: count > 0 ? { 
-                                      fill: "#6366f1",
-                                      stroke: "#8b5cf6",
-                                      strokeWidth: 2.5,
+                                      fill: "#4f46e5",
+                                      stroke: "#6366f1",
+                                      strokeWidth: 2,
                                       outline: "none",
                                       cursor: "pointer",
-                                      filter: "drop-shadow(0 8px 16px rgba(99, 102, 241, 0.6))",
-                                      transform: "scale(1.08)"
+                                      opacity: 0.9
                                     } : {
                                       outline: "none"
                                     },
-                                    pressed: count > 0 ? { 
-                                      outline: "none",
-                                      transform: "scale(1.05)",
-                                      filter: "drop-shadow(0 4px 8px rgba(99, 102, 241, 0.4))"
-                                    } : {
+                                    pressed: { 
                                       outline: "none"
                                     }
                                   }}
@@ -496,22 +490,6 @@ export default function Dashboard() {
                         </div>
                       </div>
                     )}
-
-                    {/* Heat Map Legend */}
-                    <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-3 border border-gray-200 dark:border-gray-700">
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Heat Map Scale</div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Low</span>
-                        <div className="flex h-4 rounded overflow-hidden">
-                          <div className="w-6 bg-[#10b981]"></div>
-                          <div className="w-6 bg-[#fbbf24]"></div>
-                          <div className="w-6 bg-[#f97316]"></div>
-                          <div className="w-6 bg-[#ef4444]"></div>
-                          <div className="w-6 bg-[#dc2626]"></div>
-                        </div>
-                        <span className="text-xs text-gray-500">High</span>
-                      </div>
-                    </div>
 
                     {statesData.length === 0 && (
                       <div className="absolute inset-0 flex items-center justify-center">
