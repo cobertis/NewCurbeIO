@@ -3904,10 +3904,19 @@ export class DbStorage implements IStorage {
   }
   
   async addQuotePlan(data: InsertQuotePlan): Promise<QuotePlan> {
+    // Get the max displayOrder for this quote to calculate next order
+    const maxOrderResult = await db
+      .select({ maxOrder: sql<number>`COALESCE(MAX(${quotePlans.displayOrder}), -1)` })
+      .from(quotePlans)
+      .where(eq(quotePlans.quoteId, data.quoteId));
+    
+    const nextDisplayOrder = (maxOrderResult[0]?.maxOrder ?? -1) + 1;
+    
     const result = await db
       .insert(quotePlans)
       .values({
         ...data,
+        displayOrder: data.displayOrder ?? nextDisplayOrder,
         updatedAt: new Date(),
       })
       .returning();

@@ -1452,6 +1452,10 @@ export const quotes = pgTable("quotes", {
   memberId: varchar("member_id").references((): AnyPgColumn => quoteMembers.id, { onDelete: "set null" }), // Primary member/client ID reference
   npnMarketplace: text("npn_marketplace"), // NPN for marketplace transactions
   
+  // Archive status
+  isArchived: boolean("is_archived").default(false).notNull(),
+  archivedAt: timestamp("archived_at"),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

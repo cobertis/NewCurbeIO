@@ -12485,6 +12485,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== QUOTES ====================
   
+  // Quote stats endpoint (stub)
+  app.get("/api/quotes/stats", requireActiveCompany, async (req: Request, res: Response) => {
+    res.json({ total: 0, active: 0, pending: 0, archived: 0 });
+  });
+  
+  // Quote OEP stats endpoint (stub)
+  app.get("/api/quotes/oep-stats", requireActiveCompany, async (req: Request, res: Response) => {
+    res.json({ oepActive: 0, oepPending: 0, oepExpiring: 0 });
+  });
+  
   // Create quote
   app.post("/api/quotes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
