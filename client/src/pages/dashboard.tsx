@@ -335,15 +335,13 @@ export default function Dashboard() {
               const sortedStates = [...statesData].sort((a, b) => b.count - a.count).slice(0, 5);
 
               return (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-                  {/* Map Section */}
-                  <div 
-                    className="lg:col-span-8 relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
-                    onMouseMove={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                    }}
-                  >
+                <div 
+                  className="relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                  }}
+                >
                     <ComposableMap
                       projection="geoAlbersUsa"
                       projectionConfig={{ scale: 1000 }}
@@ -488,54 +486,6 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-
-                  {/* Top States Panel */}
-                  <div className="lg:col-span-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-4 border-l border-gray-200 dark:border-gray-700">
-                    <div className="sticky top-4">
-                      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                        <span className="text-lg">🏆</span>
-                        Top 5 States
-                      </h3>
-                      <div className="space-y-2">
-                        {sortedStates.map((state, idx) => {
-                          const percentage = totalCustomers > 0 ? (state.count / totalCustomers * 100).toFixed(1) : 0;
-                          const barColor = idx === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                                          idx === 1 ? 'bg-gradient-to-r from-gray-400 to-gray-500' :
-                                          idx === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
-                                          'bg-gradient-to-r from-blue-400 to-blue-600';
-                          
-                          return (
-                            <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-200 dark:border-gray-700">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg font-bold text-gray-400">#{idx + 1}</span>
-                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{state.state}</span>
-                                </div>
-                                <span className="text-sm font-bold text-gray-900 dark:text-white">{state.count}</span>
-                              </div>
-                              <div className="space-y-1">
-                                <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                  <div 
-                                    className={`h-full ${barColor} rounded-full transition-all duration-1000 ease-out`}
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 text-right">{percentage}% of total</div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Total Summary */}
-                      <div className="mt-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 text-white shadow-lg">
-                        <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Total Customers</div>
-                        <div className="text-3xl font-bold mt-1">{totalCustomers.toLocaleString()}</div>
-                        <div className="text-xs mt-2 opacity-75">Across {statesData.length} states</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               );
             })()}
           </CardContent>
