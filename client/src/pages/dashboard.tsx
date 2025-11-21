@@ -310,6 +310,7 @@ export default function Dashboard() {
                           {geographies.map((geo) => {
                             const stateName = geo.properties.name.toUpperCase();
                             const count = stateCountMap.get(stateName) || 0;
+                            const displayName = geo.properties.name;
                             
                             return (
                               <Geography
@@ -328,7 +329,7 @@ export default function Dashboard() {
                                   pressed: { outline: "none" }
                                 }}
                               >
-                                <title>{`${geo.properties.name}: ${count}`}</title>
+                                <title>{`${displayName}: ${count} ${count === 1 ? 'client' : 'clients'}`}</title>
                               </Geography>
                             );
                           })}
