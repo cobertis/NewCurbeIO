@@ -6,6 +6,8 @@ import { format } from "date-fns";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useCallback } from "react";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { scaleLinear } from "d3-scale";
 
 interface DashboardStats {
   totalUsers: number;
@@ -154,33 +156,106 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Monthly Chart */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Policies effective each month
-          </CardTitle>
-          <p className="text-xs text-gray-500 mt-1">Number of policies vs applicants grouped by month</p>
-        </CardHeader>
-        <CardContent>
-          {monthlyData?.data && monthlyData.data.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData.data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" />
-                <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#fff" }} />
-                <Legend />
-                <Line type="monotone" dataKey="policies" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6" }} name="Policies" />
-                <Line type="monotone" dataKey="quotes" stroke="#06b6d4" strokeWidth={2} dot={{ fill: "#06b6d4" }} name="Applicants" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-400">Loading...</div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Monthly Chart & US Map */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Chart */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Policies effective each month
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Number of policies vs applicants grouped by month</p>
+          </CardHeader>
+          <CardContent>
+            {monthlyData?.data && monthlyData.data.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyData.data}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: "8px", color: "#fff" }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="policies" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6" }} name="Policies" />
+                  <Line type="monotone" dataKey="quotes" stroke="#06b6d4" strokeWidth={2} dot={{ fill: "#06b6d4" }} name="Applicants" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-80 flex items-center justify-center text-gray-400">Loading...</div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* US Map */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Policies per US state (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Where your clients are located</p>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const statesData = analyticsData?.byState || [];
+              const maxCount = Math.max(...statesData.map(s => s.count), 1);
+              const colorScale = scaleLinear<string>()
+                .domain([0, maxCount])
+                .range(["#e0f2fe", "#0369a1"]);
+              
+              // Create a map for quick lookup
+              const stateCountMap = new Map(
+                statesData.map(s => [s.state.toUpperCase(), s.count])
+              );
+
+              return (
+                <div className="relative">
+                  <ComposableMap
+                    projection="geoAlbersUsa"
+                    projectionConfig={{ scale: 1000 }}
+                    className="w-full h-[300px]"
+                  >
+                    <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
+                      {({ geographies }) =>
+                        geographies.map((geo) => {
+                          const stateName = geo.properties.name.toUpperCase();
+                          const count = stateCountMap.get(stateName) || 0;
+                          
+                          return (
+                            <Geography
+                              key={geo.rsmKey}
+                              geography={geo}
+                              fill={count > 0 ? colorScale(count) : "#f3f4f6"}
+                              stroke="#cbd5e1"
+                              strokeWidth={0.5}
+                              style={{
+                                default: { outline: "none" },
+                                hover: { 
+                                  fill: "#3b82f6", 
+                                  outline: "none",
+                                  cursor: "pointer"
+                                },
+                                pressed: { outline: "none" }
+                              }}
+                            >
+                              <title>{`${geo.properties.name}: ${count}`}</title>
+                            </Geography>
+                          );
+                        })
+                      }
+                    </Geographies>
+                  </ComposableMap>
+                  {statesData.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                      No data available
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Agents & Product Type */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -239,59 +314,29 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* States & Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* States Table */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Policies per US state (Top 10)
-            </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Where your clients are located</p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {(analyticsData?.byState || []).slice(0, 10).map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                  <div className="flex items-center gap-3 flex-1">
-                    <span className="text-xs font-semibold text-gray-400 w-5 text-center">{idx + 1}</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{item.state}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{item.count}</span>
-                    <span className="text-xs text-gray-500 ml-2">{item.percentage}%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Status Donut */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <PieChart className="h-4 w-4" />
-              Policies per status (Top 10)
-            </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">What is the status of your policies</p>
-          </CardHeader>
-          <CardContent>
-            {analyticsData?.byStatus && analyticsData.byStatus.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <RechartsPie data={analyticsData.byStatus.slice(0, 10)} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count">
-                  {analyticsData.byStatus.slice(0, 10).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </RechartsPie>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-gray-400">No status data</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Status Distribution */}
+      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <PieChart className="h-4 w-4" />
+            Policies per status (Top 10)
+          </CardTitle>
+          <p className="text-xs text-gray-500 mt-1">What is the status of your policies</p>
+        </CardHeader>
+        <CardContent>
+          {analyticsData?.byStatus && analyticsData.byStatus.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <RechartsPie data={analyticsData.byStatus.slice(0, 10)} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count">
+                {analyticsData.byStatus.slice(0, 10).map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
+              </RechartsPie>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-400">No status data</div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
