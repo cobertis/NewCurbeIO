@@ -5806,7 +5806,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       for (const policy of allPolicies) {
         // Count by state (use mailingState with fallbacks)
-        const state = policy.mailingState || policy.physicalState || policy.clientState || "Unknown";
+        const state = policy.mailingState || policy.physicalState || policy.billingState || "Unknown";
         stateMap.set(state, (stateMap.get(state) || 0) + 1);
 
         // Count by status
