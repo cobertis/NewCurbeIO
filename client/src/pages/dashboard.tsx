@@ -9,6 +9,7 @@ import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAx
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
 import { geoCentroid } from "d3-geo";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 interface DashboardStats {
   totalUsers: number;
@@ -72,30 +73,32 @@ export default function Dashboard() {
   
   useWebSocket(handleWebSocketMessage);
   
-  const { data: statsData } = useQuery<DashboardStats>({
+  const { data: statsData, isLoading: isLoadingStats } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard-stats"],
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const { data: analyticsData } = useQuery<PoliciesAnalytics>({
+  const { data: analyticsData, isLoading: isLoadingAnalytics } = useQuery<PoliciesAnalytics>({
     queryKey: ["/api/policies-analytics"],
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const { data: monthlyData } = useQuery<{ data: MonthlyData[] }>({
+  const { data: monthlyData, isLoading: isLoadingMonthly } = useQuery<{ data: MonthlyData[] }>({
     queryKey: ["/api/dashboard-monthly"],
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const { data: agentsData } = useQuery<AgentLeaderboard>({
+  const { data: agentsData, isLoading: isLoadingAgents } = useQuery<AgentLeaderboard>({
     queryKey: ["/api/dashboard-agents"],
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const { data: carriersData } = useQuery<{ carriers: { carrier: string; policies: number; applicants: number }[] }>({
+  const { data: carriersData, isLoading: isLoadingCarriers } = useQuery<{ carriers: { carrier: string; policies: number; applicants: number }[] }>({
     queryKey: ["/api/dashboard-carriers"],
     refetchInterval: 5 * 60 * 1000,
   });
+
+  const isLoading = isLoadingStats || isLoadingAnalytics || isLoadingMonthly || isLoadingAgents || isLoadingCarriers;
 
   const pendingTasks = statsData?.pendingTasks || 0;
   const birthdaysThisWeek = statsData?.birthdaysThisWeek || 0;
@@ -146,6 +149,10 @@ export default function Dashboard() {
       link: "/leads",
     },
   ];
+
+  if (isLoading) {
+    return <LoadingSpinner text="Loading dashboard data..." />;
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6">
