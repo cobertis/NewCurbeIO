@@ -1526,6 +1526,45 @@ export type Quote = typeof quotes.$inferSelect;
 export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 
 // =====================================================
+// QUOTE PLANS (Multiple plans per quote)
+// =====================================================
+
+export const quotePlans = pgTable("quote_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Plan source: marketplace or manual
+  source: text("source").notNull().default("marketplace"), // "marketplace" | "manual"
+  
+  // Plan data as JSONB (stores full plan object)
+  planData: jsonb("plan_data").notNull(),
+  
+  // Primary plan flag (first plan added is primary by default)
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  
+  // Order for display
+  displayOrder: integer("display_order").notNull().default(0),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertQuotePlanSchema = createInsertSchema(quotePlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateQuotePlanSchema = insertQuotePlanSchema.partial().omit({
+  quoteId: true,
+  companyId: true,
+});
+
+export type QuotePlan = typeof quotePlans.$inferSelect;
+export type InsertQuotePlan = z.infer<typeof insertQuotePlanSchema>;
+
+// =====================================================
 // QUOTE MEMBERS (Normalized member data)
 // =====================================================
 
@@ -1925,6 +1964,60 @@ export const updateQuoteReminderSchema = insertQuoteReminderSchema.partial().omi
 export type QuoteReminder = typeof quoteReminders.$inferSelect;
 export type InsertQuoteReminder = z.infer<typeof insertQuoteReminderSchema>;
 export type UpdateQuoteReminder = z.infer<typeof updateQuoteReminderSchema>;
+
+// =====================================================
+// QUOTE FOLDERS (Organizational folders for quotes)
+// =====================================================
+
+export const quoteFolders = pgTable("quote_folders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  type: text("type").notNull(), // "agency" | "personal"
+  
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+}));
+
+export const insertQuoteFolderSchema = createInsertSchema(quoteFolders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(1, "Folder name is required").max(50, "Folder name must be 50 characters or less"),
+  type: z.enum(["agency", "personal"]),
+});
+
+export const updateQuoteFolderSchema = insertQuoteFolderSchema.partial().omit({
+  companyId: true,
+  createdBy: true,
+});
+
+export type QuoteFolder = typeof quoteFolders.$inferSelect;
+export type InsertQuoteFolder = z.infer<typeof insertQuoteFolderSchema>;
+
+// =====================================================
+// QUOTE FOLDER ASSIGNMENTS (Assign quotes to folders)
+// =====================================================
+
+export const quoteFolderAssignments = pgTable("quote_folder_assignments", {
+  quoteId: varchar("quote_id", { length: 8 }).notNull().references(() => quotes.id, { onDelete: "cascade" }).primaryKey(),
+  folderId: varchar("folder_id").notNull().references(() => quoteFolders.id, { onDelete: "cascade" }),
+  
+  assignedBy: varchar("assigned_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").notNull().defaultNow(),
+});
+
+export const insertQuoteFolderAssignmentSchema = createInsertSchema(quoteFolderAssignments).omit({
+  assignedAt: true,
+});
+
+export type QuoteFolderAssignment = typeof quoteFolderAssignments.$inferSelect;
+export type InsertQuoteFolderAssignment = z.infer<typeof insertQuoteFolderAssignmentSchema>;
 
 // =====================================================
 // CONSENT DOCUMENTS (Legal consent forms for quotes)

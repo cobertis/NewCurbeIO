@@ -75,6 +75,7 @@ import {
   insertTaskSchema,
   updateTaskSchema,
   insertPolicyFolderSchema,
+  insertQuoteFolderSchema,
   insertBlacklistEntrySchema,
   insertCampaignTemplateCategorySchema,
   insertCampaignTemplateSchema,
@@ -12611,47 +12612,114 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // Get all quotes for company
+  // Get all quotes for company (paginated with cursor)
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/quotes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
+    const { oepFilter, limit, cursor, agentId, productType, status, effectiveDateFrom, effectiveDateTo, searchTerm, searchFamilyMembers, folderId } = req.query;
     
     try {
-      let quotes: Awaited<ReturnType<typeof storage.getQuotesByCompany>> = [];
+      if (!currentUser.companyId) {
+        return res.json({ items: [], nextCursor: null });
+      }
+
+      // Build pagination options
+      const options: Parameters<typeof storage.getQuotesList>[1] = {};
       
-      if (currentUser.role === "superadmin") {
-        // Superadmin can see all quotes across all companies
-        // For now, we'll return quotes from current company
-        // TODO: Add query param to filter by companyId for superadmin
-        if (currentUser.companyId) {
-          quotes = await storage.getQuotesByCompany(currentUser.companyId);
-        }
-      } else if (currentUser.companyId) {
-        // Get all quotes for the company
-        quotes = await storage.getQuotesByCompany(currentUser.companyId);
-        
-        // If user doesn't have viewAllCompanyData permission, filter by agentId
-        if (!shouldViewAllCompanyData(currentUser)) {
-          quotes = quotes.filter(quote => quote.agentId === currentUser.id);
+      // Parse limit (default 50, max 200)
+      if (limit && typeof limit === 'string') {
+        const parsedLimit = parseInt(limit, 10);
+        if (!isNaN(parsedLimit) && parsedLimit > 0) {
+          options.limit = parsedLimit;
         }
       }
       
-      // Return quotes with plain text SSN (as stored in database)
-      if (quotes.length > 0) {
+      // Parse cursor
+      if (cursor && typeof cursor === 'string') {
+        options.cursor = cursor;
+      }
+      
+      // Handle agent filtering based on viewAllCompanyData permission
+      if (shouldViewAllCompanyData(currentUser)) {
+        // User has permission to view all company data - skip agent filter
+        options.skipAgentFilter = true;
+        
+        // Superadmin or users with viewAllCompanyData can still filter by specific agent if requested
+        if (agentId && typeof agentId === 'string') {
+          options.agentId = agentId;
+          options.skipAgentFilter = false; // Apply the explicit filter
+        }
+      } else {
+        // User does NOT have viewAllCompanyData permission - filter by their agentId
+        options.agentId = currentUser.id;
+      }
+      
+      // Add productType filter
+      if (productType && typeof productType === 'string') {
+        options.productType = productType;
+      }
+      
+      // Add OEP filter if specified (maps to productType)
+      if (oepFilter === "aca") {
+        options.productType = "Health Insurance ACA";
+      } else if (oepFilter === "medicare") {
+        options.productType = "Medicare";
+      }
+      
+      // Add status filter
+      if (status && typeof status === 'string') {
+        options.status = status;
+      }
+      
+      // Add date range filters
+      if (effectiveDateFrom && typeof effectiveDateFrom === 'string') {
+        options.effectiveDateFrom = effectiveDateFrom;
+      }
+      if (effectiveDateTo && typeof effectiveDateTo === 'string') {
+        options.effectiveDateTo = effectiveDateTo;
+      }
+      
+      // Add search filter (applied server-side BEFORE limit)
+      if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
+        options.searchTerm = searchTerm.trim();
+      }
+      
+      // Add family members search flag
+      if (searchFamilyMembers === 'true' || searchFamilyMembers === true) {
+        options.includeFamilyMembers = true;
+      }
+      
+      // Add folder filter
+      if (folderId !== undefined) {
+        if (folderId === 'null' || folderId === null) {
+          // Show only quotes WITHOUT folder assignment
+          options.folderId = null;
+        } else if (typeof folderId === 'string') {
+          // Show quotes IN that folder
+          options.folderId = folderId;
+        }
+      }
+      
+      // Fetch quotes using optimized function
+      const result = await storage.getQuotesList(currentUser.companyId, options);
+      
+      // Log PII access
+      if (result.items.length > 0) {
         await logger.logAuth({
           req,
-          action: "view_quotes",
+          action: "view_quotes_list",
           userId: currentUser.id,
           email: currentUser.email,
           metadata: {
             entity: "quotes",
-            count: quotes.length,
-            fields: ["clientSsn", "spouses.ssn", "dependents.ssn"],
+            count: result.items.length,
+            fields: ["clientEmail", "clientPhone"],
+            filters: options,
           },
         });
       }
       
-      res.json({ quotes });
+      res.json(result);
     } catch (error: any) {
       console.error("Error fetching quotes:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
@@ -13255,6 +13323,274 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error duplicating quote:", error);
       res.status(500).json({ message: error.message || "Failed to duplicate quote" });
+    }
+  });
+
+  // Get quotes by applicant (same SSN or email)
+  // WARNING: This endpoint returns PII - SSN must be masked
+  app.get("/api/quotes/by-applicant", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { ssn, email, firstName, lastName, dob, effectiveYear, excludeQuoteId } = req.query;
+    
+    if (!ssn && !email) {
+      return res.status(400).json({ message: "Either SSN or email parameter is required" });
+    }
+    
+    try {
+      if (!currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - No company associated" });
+      }
+
+      let quotes = await storage.getQuotesByApplicant(
+        currentUser.companyId,
+        ssn as string | undefined,
+        email as string | undefined,
+        firstName as string | undefined,
+        lastName as string | undefined,
+        dob as string | undefined,
+        effectiveYear ? parseInt(effectiveYear as string) : undefined
+      );
+      
+      // Exclude specific quote if requested (e.g., to exclude the currently viewed quote)
+      if (excludeQuoteId) {
+        quotes = quotes.filter(q => q.id !== excludeQuoteId);
+      }
+      
+      // Log PII access
+      if (quotes.length > 0) {
+        await logger.logAuth({
+          req,
+          action: "view_applicant_quotes",
+          userId: currentUser.id,
+          email: currentUser.email,
+          metadata: {
+            entity: "quotes",
+            count: quotes.length,
+            fields: ["clientSsn", "clientEmail"],
+            searchParams: { ssn: !!ssn, email: !!email, effectiveYear },
+          },
+        });
+      }
+      
+      res.json({ quotes });
+    } catch (error: any) {
+      console.error("Error fetching quotes by applicant:", error);
+      res.status(500).json({ message: "Failed to fetch quotes" });
+    }
+  });
+
+  // ==================== QUOTE PLANS (Multi-plan support) ====================
+  
+  // GET /api/quotes/:id/plans - List all plans for a quote
+  app.get("/api/quotes/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to view this quote" });
+      }
+      
+      const plans = await storage.listQuotePlans(id, quote.companyId);
+      
+      res.json({ plans });
+    } catch (error: any) {
+      console.error("Error listing quote plans:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to list quote plans",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+  
+  // POST /api/quotes/:id/plans - Add a new plan to a quote (APPEND, don't replace)
+  app.post("/api/quotes/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { planData, source, isPrimary } = req.body;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this quote" });
+      }
+      
+      if (!planData) {
+        return res.status(400).json({ message: "planData is required" });
+      }
+      
+      const existingPlans = await storage.listQuotePlans(id, quote.companyId);
+      const displayOrder = existingPlans.length;
+      
+      const newPlan = await storage.addQuotePlan({
+        quoteId: id,
+        companyId: quote.companyId,
+        planData,
+        source: source || "manual",
+        isPrimary: isPrimary === true || existingPlans.length === 0,
+        displayOrder,
+      });
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_plan",
+        entityId: newPlan.id,
+        companyId: quote.companyId,
+        metadata: {
+          createdBy: currentUser.email,
+          quoteId: id,
+          source: newPlan.source,
+        },
+      });
+      
+      res.json({ plan: newPlan });
+    } catch (error: any) {
+      console.error("Error adding quote plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to add quote plan",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+  
+  // DELETE /api/quotes/:id/plans/:planId - Remove a specific plan
+  app.delete("/api/quotes/:id/plans/:planId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id, planId } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this quote" });
+      }
+      
+      const success = await storage.removeQuotePlan(planId, quote.companyId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_plan",
+        entityId: planId,
+        companyId: quote.companyId,
+        metadata: {
+          deletedBy: currentUser.email,
+          quoteId: id,
+        },
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error removing quote plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to remove quote plan",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+  
+  // POST /api/quotes/:id/plans/:planId/set-primary - Set a plan as primary
+  app.post("/api/quotes/:id/plans/:planId/set-primary", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id, planId } = req.params;
+    
+    try {
+      const quote = await storage.getQuote(id);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to update this quote" });
+      }
+      
+      await storage.setPrimaryQuotePlan(planId, id, quote.companyId);
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_plan",
+        entityId: planId,
+        companyId: quote.companyId,
+        metadata: {
+          updatedBy: currentUser.email,
+          quoteId: id,
+          action: "set_primary",
+        },
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error setting primary plan:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to set primary plan",
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  });
+
+  // Archive/Unarchive quote
+  app.post("/api/quotes/:id/archive", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    const { isArchived } = req.body;
+    
+    try {
+      // Validate isArchived value
+      if (typeof isArchived !== "boolean") {
+        return res.status(400).json({ message: "Invalid archive value. Must be true or false" });
+      }
+      
+      // Get existing quote and verify ownership
+      const existingQuote = await storage.getQuote(id);
+      
+      if (!existingQuote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+      
+      // Check access: superadmin can edit any quote, others only their company's quotes
+      if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "You don't have permission to edit this quote" });
+      }
+      
+      // Update the quote archive status
+      const updatedQuote = await storage.updateQuote(id, { isArchived });
+      
+      // Log activity
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          updatedBy: currentUser.email,
+          field: "isArchived",
+          value: isArchived,
+        },
+      });
+      
+      res.json({ quote: updatedQuote });
+    } catch (error: any) {
+      console.error("Error archiving quote:", error);
+      res.status(400).json({ message: error.message || "Failed to update quote status" });
     }
   });
 
@@ -17059,6 +17395,217 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
     }
   });
+
+  // ==================== QUOTE FOLDERS API ====================
+
+  // GET /api/quote-folders - List all folders for current user
+  app.get("/api/quote-folders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const folders = await storage.listQuoteFolders(currentUser.companyId!, currentUser.id);
+      res.json(folders);
+    } catch (error: any) {
+      console.error("Error listing quote folders:", error);
+      res.status(500).json({ message: "Failed to list quote folders" });
+    }
+  });
+
+  // POST /api/quote-folders - Create new folder
+  app.post("/api/quote-folders", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const folderData = {
+        ...req.body,
+        companyId: currentUser.companyId!,
+        createdBy: currentUser.id,
+      };
+      
+      const validatedData = insertQuoteFolderSchema.parse(folderData);
+      
+      const folder = await storage.createQuoteFolder(validatedData);
+      
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "quote_folder",
+        entityId: folder.id,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.status(201).json(folder);
+    } catch (error: any) {
+      console.error("Error creating quote folder:", error);
+      
+      if (error.message && error.message.includes("duplicate")) {
+        return res.status(400).json({ message: "A folder with this name already exists" });
+      }
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid folder data", errors: error.errors });
+      }
+      
+      res.status(500).json({ message: "Failed to create quote folder" });
+    }
+  });
+
+  // PATCH /api/quote-folders/:id - Rename folder
+  app.patch("/api/quote-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const { name } = req.body;
+      
+      if (!name || typeof name !== "string" || name.trim() === "") {
+        return res.status(400).json({ message: "Name is required and must be a non-empty string" });
+      }
+      
+      const folder = await storage.getQuoteFolder(id);
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      if (folder.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const isCreator = folder.createdBy === currentUser.id;
+      const isAdmin = currentUser.role === "admin" || currentUser.role === "superadmin";
+      
+      if (folder.type === "personal" && !isCreator) {
+        return res.status(403).json({ message: "Forbidden - only the creator can rename personal folders" });
+      }
+      
+      if (folder.type === "agency" && !isAdmin) {
+        return res.status(403).json({ message: "Forbidden - admin role required to rename agency folders" });
+      }
+      
+      const updatedFolder = await storage.updateQuoteFolder(id, currentUser.companyId!, { name: name.trim() });
+      
+      if (!updatedFolder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "update",
+        entity: "quote_folder",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.json(updatedFolder);
+    } catch (error: any) {
+      console.error("Error updating quote folder:", error);
+      res.status(500).json({ message: "Failed to update quote folder" });
+    }
+  });
+
+  // DELETE /api/quote-folders/:id - Delete folder
+  app.delete("/api/quote-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { id } = req.params;
+    
+    try {
+      const folder = await storage.getQuoteFolder(id);
+      if (!folder) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      if (folder.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+      
+      const isCreator = folder.createdBy === currentUser.id;
+      const isAdmin = currentUser.role === "admin" || currentUser.role === "superadmin";
+      
+      if (folder.type === "personal" && !isCreator) {
+        return res.status(403).json({ message: "Forbidden - only the creator can delete personal folders" });
+      }
+      
+      if (folder.type === "agency" && !isAdmin) {
+        return res.status(403).json({ message: "Forbidden - admin role required to delete agency folders" });
+      }
+      
+      const deleted = await storage.deleteQuoteFolder(id, currentUser.companyId!);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Folder not found" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "quote_folder",
+        entityId: id,
+        companyId: currentUser.companyId || undefined,
+      });
+      
+      res.json({ message: "Folder deleted successfully" });
+    } catch (error: any) {
+      console.error("Error deleting quote folder:", error);
+      res.status(500).json({ message: "Failed to delete quote folder" });
+    }
+  });
+
+  // POST /api/quotes/bulk/move-to-folder - Bulk move quotes to folder
+  app.post("/api/quotes/bulk/move-to-folder", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    try {
+      const bulkMoveQuotesSchema = z.object({
+        quoteIds: z.array(z.string()).min(1, "At least one quote ID is required"),
+        folderId: z.string().nullable(),
+      });
+      
+      const { quoteIds, folderId } = bulkMoveQuotesSchema.parse(req.body);
+      
+      if (folderId) {
+        const folder = await storage.getQuoteFolder(folderId);
+        if (!folder) {
+          return res.status(404).json({ message: "Folder not found" });
+        }
+        
+        if (folder.companyId !== currentUser.companyId) {
+          return res.status(403).json({ message: "Forbidden - access denied to folder" });
+        }
+        
+        if (folder.type === "personal" && folder.createdBy !== currentUser.id) {
+          return res.status(403).json({ message: "Forbidden - cannot move quotes to another user's personal folder" });
+        }
+      }
+      
+      const count = await storage.assignQuotesToFolder(quoteIds, folderId, currentUser.id, currentUser.companyId!);
+      
+      await logger.logCrud({
+        req,
+        operation: "bulk_move",
+        entity: "quote_folder_assignment",
+        entityId: folderId || "none",
+        companyId: currentUser.companyId || undefined,
+        metadata: {
+          quoteCount: count,
+          folderId: folderId || null,
+        },
+      });
+      
+      res.json({ 
+        message: `${count} ${count === 1 ? 'quote' : 'quotes'} moved successfully`,
+        count 
+      });
+    } catch (error: any) {
+      console.error("Error moving quotes to folder:", error);
+      
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      }
+      
+      res.status(500).json({ message: "Failed to move quotes to folder" });
+    }
+  });
+
   // ==================== POLICIES ====================
   
   // Create policy

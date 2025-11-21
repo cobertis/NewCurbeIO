@@ -34,7 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow, format, startOfMonth, addMonths, parseISO } from "date-fns";
-import { quoteStatusOptions, documentsStatusOptions, paymentStatusOptions, useUpdateStatuses, statusFormSchema, type StatusFormValues } from "@/lib/status-editor";
+import { policyStatusOptions, documentsStatusOptions, paymentStatusOptions, useUpdateStatuses, statusFormSchema, type StatusFormValues } from "@/lib/status-editor";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import {
@@ -934,9 +934,9 @@ function EditMemberSheet({ open, onOpenChange, quote, memberType, memberIndex, o
 
   // Fetch policy members to get member IDs
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
-    queryKey: ['/api/quotes', quote?.id, 'members'],
+    queryKey: ['/api/policies', quote?.id, 'members'],
     queryFn: async () => {
-      const res = await fetch(`/api/quotes/${quote?.id}/members`, {
+      const res = await fetch(`/api/policies/${quote?.id}/members`, {
         credentials: 'include',
       });
       if (!res.ok) {
@@ -1930,9 +1930,9 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
 
   // Fetch policy members to get member IDs
   const { data: membersData, isLoading: isLoadingMembers } = useQuery<{ members: any[] }>({
-    queryKey: ['/api/quotes', quoteId, 'members'],
+    queryKey: ['/api/policies', quoteId, 'members'],
     queryFn: async () => {
-      const res = await fetch(`/api/quotes/${quoteId}/members`, {
+      const res = await fetch(`/api/policies/${quoteId}/members`, {
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Failed to fetch members');
@@ -1959,9 +1959,9 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
 
   // Fetch income data - BUG FIX 1: Guard against null currentMemberId
   const { data: incomeData, isLoading: isLoadingIncome } = useQuery<{ income: any }>({
-    queryKey: ['/api/quotes/members', currentMemberId, 'income'],
+    queryKey: ['/api/policies/members', currentMemberId, 'income'],
     queryFn: async () => {
-      const res = await fetch(`/api/quotes/members/${currentMemberId}/income`, {
+      const res = await fetch(`/api/policies/members/${currentMemberId}/income`, {
         credentials: 'include',
       });
       if (res.status === 404) return { income: null };
@@ -1973,9 +1973,9 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
 
   // Fetch immigration data - BUG FIX 1: Guard against null currentMemberId
   const { data: immigrationData, isLoading: isLoadingImmigration } = useQuery<{ immigration: any }>({
-    queryKey: ['/api/quotes/members', currentMemberId, 'immigration'],
+    queryKey: ['/api/policies/members', currentMemberId, 'immigration'],
     queryFn: async () => {
-      const res = await fetch(`/api/quotes/members/${currentMemberId}/immigration`, {
+      const res = await fetch(`/api/policies/members/${currentMemberId}/immigration`, {
         credentials: 'include',
       });
       if (res.status === 404) return { immigration: null };
@@ -2248,7 +2248,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
           memberBasicData.relation = (data as any).relation;
         }
         
-        const memberResponse = await fetch(`/api/quotes/${quoteId}/members/${currentMemberId}`, {
+        const memberResponse = await fetch(`/api/policies/${quoteId}/members/${currentMemberId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -2261,7 +2261,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
       }
     
       // Ensure member exists and get memberId
-      const ensureResponse = await fetch(`/api/quotes/${quoteId}/ensure-member`, {
+      const ensureResponse = await fetch(`/api/policies/${quoteId}/ensure-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -2338,7 +2338,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
       const hasIncome = data.employerName || data.position || data.annualIncome;
       if (hasIncome) {
         savePromises.push(
-          fetch(`/api/quotes/members/${memberId}/income`, {
+          fetch(`/api/policies/members/${memberId}/income`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2347,7 +2347,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
         );
       } else if (incomeData?.income?.id) {
         savePromises.push(
-          fetch(`/api/quotes/members/${memberId}/income/${incomeData.income.id}`, {
+          fetch(`/api/policies/members/${memberId}/income/${incomeData.income.id}`, {
             method: 'DELETE',
             credentials: 'include',
           })
@@ -2365,7 +2365,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
       const hasImmigration = data.immigrationStatus || data.uscisNumber || data.naturalizationNumber;
       if (hasImmigration) {
         savePromises.push(
-          fetch(`/api/quotes/members/${memberId}/immigration`, {
+          fetch(`/api/policies/members/${memberId}/immigration`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -2374,7 +2374,7 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
         );
       } else if (immigrationData?.immigration?.id) {
         savePromises.push(
-          fetch(`/api/quotes/members/${memberId}/immigration/${immigrationData.immigration.id}`, {
+          fetch(`/api/policies/members/${memberId}/immigration/${immigrationData.immigration.id}`, {
             method: 'DELETE',
             credentials: 'include',
           })
@@ -2389,11 +2389,11 @@ function InlineMemberEditor({ quoteId, quote, memberType, memberIndex, onClose, 
       }
       
       // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId, 'members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quoteId, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', quoteId, 'members'] });
       if (currentMemberId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'income'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes/members', currentMemberId, 'immigration'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/members', currentMemberId, 'income'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies/members', currentMemberId, 'immigration'] });
       }
       
       toast({
@@ -4241,7 +4241,7 @@ const STATE_MARKETPLACE_NAMES: Record<string, string> = {
   'WA': 'Washington Healthplanfinder',
 };
 
-export default function QuotesPage() {
+export default function PoliciesPage() {
   const [location, setLocation] = useLocation();
   const { toast} = useToast();
   const [currentStep, setCurrentStep] = useState(1);
@@ -4518,7 +4518,7 @@ export default function QuotesPage() {
     canceledPolicies: number;
     canceledApplicants: number;
   }>({
-    queryKey: ['/api/quotes/stats'],
+    queryKey: ['/api/policies/stats'],
     enabled: !showWizard,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     refetchOnWindowFocus: false, // Don't refetch on tab switch
@@ -4529,7 +4529,7 @@ export default function QuotesPage() {
     aca: number;
     medicare: number;
   }>({
-    queryKey: ['/api/quotes/oep-stats'],
+    queryKey: ['/api/policies/oep-stats'],
     enabled: !showWizard,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     refetchOnWindowFocus: false, // Don't refetch on tab switch
@@ -4537,7 +4537,7 @@ export default function QuotesPage() {
   
   // Fetch policy folders
   const { data: foldersData } = useQuery<{ agency: any[]; personal: any[] }>({
-    queryKey: ['/api/quote-folders'],
+    queryKey: ['/api/policy-folders'],
     enabled: !showWizard,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -4549,14 +4549,14 @@ export default function QuotesPage() {
   // Bulk move mutation
   const bulkMoveMutation = useMutation({
     mutationFn: async (params: { folderId: string | null; folderName?: string }) => {
-      return apiRequest('POST', '/api/quotes/bulk/move-to-folder', {
+      return apiRequest('POST', '/api/policies/bulk/move-to-folder', {
         policyIds: Array.from(selectedPolicyIds),
         folderId: params.folderId,
       });
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes'], exact: false });
-      queryClient.invalidateQueries({ queryKey: ['/api/quote-folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
       setSelectedPolicyIds(new Set());
       
       const count = data.count || selectedPolicyIds.size;
@@ -4589,13 +4589,13 @@ export default function QuotesPage() {
   // Create folder mutation
   const createFolderMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', '/api/quote-folders', {
+      return apiRequest('POST', '/api/policy-folders', {
         name: newFolderName.trim(),
         type: newFolderType,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quote-folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
       setCreateFolderDialogOpen(false);
       setNewFolderName("");
       toast({
@@ -4618,12 +4618,12 @@ export default function QuotesPage() {
   const renameFolderMutation = useMutation({
     mutationFn: async () => {
       if (!folderToEdit) throw new Error("No folder selected");
-      return apiRequest('PATCH', `/api/quote-folders/${folderToEdit.id}`, {
+      return apiRequest('PATCH', `/api/policy-folders/${folderToEdit.id}`, {
         name: newFolderName.trim(),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quote-folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
       setRenameFolderDialogOpen(false);
       setFolderToEdit(null);
       setNewFolderName("");
@@ -4647,11 +4647,11 @@ export default function QuotesPage() {
   const deleteFolderMutation = useMutation({
     mutationFn: async () => {
       if (!folderToEdit) throw new Error("No folder selected");
-      return apiRequest('DELETE', `/api/quote-folders/${folderToEdit.id}`, {});
+      return apiRequest('DELETE', `/api/policy-folders/${folderToEdit.id}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quote-folders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/policy-folders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'], exact: false });
       setDeleteFolderDialogOpen(false);
       setFolderToEdit(null);
       setSelectedFolderId(null); // Clear selection if viewing deleted folder
@@ -4675,12 +4675,12 @@ export default function QuotesPage() {
   const renewalMutation = useMutation({
     mutationFn: async (policyId: string) => {
       setRenewingPolicyId(policyId);
-      return await apiRequest('POST', `/api/quotes/${policyId}/renewals`, {});
+      return await apiRequest('POST', `/api/policies/${policyId}/renewals`, {});
     },
     onSuccess: (data) => {
       setRenewingPolicyId(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes'], exact: false });
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes/oep-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies/oep-stats'] });
       
       // Navigate directly to the renewed policy after a short delay
       if (data?.renewedPolicy?.id) {
@@ -4757,7 +4757,7 @@ export default function QuotesPage() {
 
   // Fetch policies - Hybrid search: server-side for family members, client-side for primary client
   const { data: policiesResponse, isLoading } = useQuery<{ items: Quote[]; nextCursor: string | null }>({
-    queryKey: ["/api/quotes", { 
+    queryKey: ["/api/policies", { 
       searchTerm: filters.searchFamilyMembers ? debouncedFamilySearch : undefined, 
       includeFamilyMembers: filters.searchFamilyMembers,
       folderId: selectedFolderId
@@ -4777,7 +4777,7 @@ export default function QuotesPage() {
         params.append('folderId', selectedFolderId);
       }
       
-      const url = `/api/quotes${params.toString() ? `?${params.toString()}` : ''}`;
+      const url = `/api/policies${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch policies');
       return response.json();
@@ -4815,10 +4815,10 @@ export default function QuotesPage() {
     paymentMethods: QuotePaymentMethod[];
     totalHouseholdIncome: number;
   }>({
-    queryKey: ['/api/quotes', selectedPolicyId, 'detail'],
+    queryKey: ['/api/policies', selectedPolicyId, 'detail'],
     queryFn: async () => {
       if (!selectedPolicyId) throw new Error('No policy selected');
-      const response = await fetch(`/api/quotes/${selectedPolicyId}/detail`, { credentials: 'include' });
+      const response = await fetch(`/api/policies/${selectedPolicyId}/detail`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch policy details');
       return response.json();
     },
@@ -4884,9 +4884,9 @@ export default function QuotesPage() {
 
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
-    queryKey: ['/api/quotes', selectedPolicyId, 'notes'],
+    queryKey: ['/api/policies', selectedPolicyId, 'notes'],
     queryFn: async () => {
-      const response = await fetch(`/api/quotes/${selectedPolicyId}/notes`, {
+      const response = await fetch(`/api/policies/${selectedPolicyId}/notes`, {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to fetch notes');
@@ -4900,7 +4900,7 @@ export default function QuotesPage() {
 
   // Fetch other policies by applicant
   const { data: otherPoliciesData, isLoading: isLoadingOtherPolicies } = useQuery({
-    queryKey: ['/api/quotes/by-applicant', viewingQuote?.clientSsn, viewingQuote?.clientEmail, viewingQuote?.clientFirstName, viewingQuote?.clientLastName, viewingQuote?.clientDateOfBirth, otherPoliciesYear, viewingQuote?.id],
+    queryKey: ['/api/policies/by-applicant', viewingQuote?.clientSsn, viewingQuote?.clientEmail, viewingQuote?.clientFirstName, viewingQuote?.clientLastName, viewingQuote?.clientDateOfBirth, otherPoliciesYear, viewingQuote?.id],
     enabled: !!(viewingQuote?.clientSsn || viewingQuote?.clientEmail),
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -4914,7 +4914,7 @@ export default function QuotesPage() {
       }
       if (viewingQuote?.id) params.append('excludePolicyId', viewingQuote.id);
       
-      const response = await fetch(`/api/quotes/by-applicant?${params.toString()}`);
+      const response = await fetch(`/api/policies/by-applicant?${params.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch policies');
       return response.json();
     },
@@ -4927,7 +4927,7 @@ export default function QuotesPage() {
     mutationFn: async () => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
       if (!newNoteText.trim()) throw new Error("Note content is required");
-      return apiRequest('POST', `/api/quotes/${viewingQuote.id}/notes`, {
+      return apiRequest('POST', `/api/policies/${viewingQuote.id}/notes`, {
         note: newNoteText.trim(),
         isImportant: isImportant,
         isPinned: notePinned,
@@ -4937,7 +4937,7 @@ export default function QuotesPage() {
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'notes'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'notes'] });
       }
       setNewNoteText("");
       setIsImportant(false);
@@ -4970,7 +4970,7 @@ export default function QuotesPage() {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
       if (!editingNoteId) throw new Error("Note ID not found");
       if (!newNoteText.trim()) throw new Error("Note content is required");
-      return apiRequest('PATCH', `/api/quotes/${viewingQuote.id}/notes/${editingNoteId}`, {
+      return apiRequest('PATCH', `/api/policies/${viewingQuote.id}/notes/${editingNoteId}`, {
         note: newNoteText.trim(),
         isImportant: isImportant,
         isPinned: notePinned,
@@ -4980,7 +4980,7 @@ export default function QuotesPage() {
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'notes'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'notes'] });
       }
       setEditingNoteId(null);
       setNewNoteText("");
@@ -5007,7 +5007,7 @@ export default function QuotesPage() {
     mutationFn: async (noteId: string) => {
       console.log('[DELETE MUTATION] Starting with noteId:', noteId, 'quoteId:', viewingQuote?.id);
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      const url = `/api/quotes/${viewingQuote.id}/notes/${noteId}`;
+      const url = `/api/policies/${viewingQuote.id}/notes/${noteId}`;
       console.log('[DELETE MUTATION] Calling DELETE to:', url);
       const result = await apiRequest('DELETE', url);
       console.log('[DELETE MUTATION] Success:', result);
@@ -5016,7 +5016,7 @@ export default function QuotesPage() {
     onSuccess: () => {
       console.log('[DELETE MUTATION] onSuccess triggered');
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'notes'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'notes'] });
       }
       setNoteToDelete(null);
       setShowDeleteDialog(false);
@@ -5037,7 +5037,7 @@ export default function QuotesPage() {
 
   // Fetch quote documents
   const { data: quoteDocumentsData, isLoading: isLoadingDocuments } = useQuery<{ documents: any[] }>({
-    queryKey: ['/api/quotes', selectedPolicyId, 'documents', selectedCategory, searchDocuments],
+    queryKey: ['/api/policies', selectedPolicyId, 'documents', selectedCategory, searchDocuments],
     queryFn: async () => {
       if (!selectedPolicyId) throw new Error("Quote ID not found");
       const params_obj = new URLSearchParams();
@@ -5047,7 +5047,7 @@ export default function QuotesPage() {
       if (searchDocuments) {
         params_obj.append('q', searchDocuments);
       }
-      const url = `/api/quotes/${selectedPolicyId}/documents${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
+      const url = `/api/policies/${selectedPolicyId}/documents${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch documents');
       return response.json();
@@ -5062,7 +5062,7 @@ export default function QuotesPage() {
   const uploadDocumentMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      const response = await fetch(`/api/quotes/${viewingQuote.id}/documents/upload`, {
+      const response = await fetch(`/api/policies/${viewingQuote.id}/documents/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -5075,7 +5075,7 @@ export default function QuotesPage() {
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'documents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'documents'] });
       }
       setUploadDialogOpen(false);
       toast({
@@ -5096,11 +5096,11 @@ export default function QuotesPage() {
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: string) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/documents/${documentId}`);
+      return apiRequest('DELETE', `/api/policies/${viewingQuote.id}/documents/${documentId}`);
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'documents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'documents'] });
       }
       setDocumentToDelete(null);
       toast({
@@ -5119,10 +5119,10 @@ export default function QuotesPage() {
 
   // Fetch quote reminders count (always enabled for badge)
   const { data: remindersCountData } = useQuery<{ reminders: QuoteReminder[] }>({
-    queryKey: ['/api/quotes', selectedPolicyId, 'reminders', 'pending'],
+    queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'],
     queryFn: async () => {
       if (!selectedPolicyId) throw new Error("Quote ID not found");
-      const url = `/api/quotes/${selectedPolicyId}/reminders?status=pending`;
+      const url = `/api/policies/${selectedPolicyId}/reminders?status=pending`;
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch reminders count');
       return response.json();
@@ -5134,7 +5134,7 @@ export default function QuotesPage() {
 
   // Fetch quote reminders (only when sheet is open)
   const { data: quoteRemindersData, isLoading: isLoadingReminders } = useQuery<{ reminders: QuoteReminder[] }>({
-    queryKey: ['/api/quotes', selectedPolicyId, 'reminders', filterReminderStatus, filterReminderPriority, searchReminders],
+    queryKey: ['/api/policies', selectedPolicyId, 'reminders', filterReminderStatus, filterReminderPriority, searchReminders],
     queryFn: async () => {
       if (!selectedPolicyId) throw new Error("Quote ID not found");
       const params_obj = new URLSearchParams();
@@ -5147,7 +5147,7 @@ export default function QuotesPage() {
       if (searchReminders.trim()) {
         params_obj.append('q', searchReminders);
       }
-      const url = `/api/quotes/${selectedPolicyId}/reminders${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
+      const url = `/api/policies/${selectedPolicyId}/reminders${params_obj.toString() ? `?${params_obj.toString()}` : ''}`;
       const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch reminders');
       return response.json();
@@ -5159,10 +5159,10 @@ export default function QuotesPage() {
 
   // Fetch consent documents for quote (with real-time polling when sheet is open)
   const { data: consentsData, isLoading: isLoadingConsents } = useQuery<{ consents: any[] }>({
-    queryKey: ['/api/quotes', selectedPolicyId, 'consents'],
+    queryKey: ['/api/policies', selectedPolicyId, 'consents'],
     queryFn: async () => {
       if (!selectedPolicyId) throw new Error("Quote ID not found");
-      const response = await fetch(`/api/quotes/${selectedPolicyId}/consents`, { credentials: 'include' });
+      const response = await fetch(`/api/policies/${selectedPolicyId}/consents`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch consents');
       return response.json();
     },
@@ -5178,12 +5178,12 @@ export default function QuotesPage() {
   const createReminderMutation = useMutation({
     mutationFn: async (data: Omit<InsertQuoteReminder, 'companyId' | 'quoteId' | 'createdBy'>) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('POST', `/api/quotes/${viewingQuote.id}/reminders`, data);
+      return apiRequest('POST', `/api/policies/${viewingQuote.id}/reminders`, data);
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders', 'pending'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setReminderFormOpen(false);
       setSelectedReminder(null);
@@ -5207,12 +5207,12 @@ export default function QuotesPage() {
   const updateReminderMutation = useMutation({
     mutationFn: async ({ reminderId, data }: { reminderId: string; data: Partial<InsertQuoteReminder> }) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('PUT', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}`, data);
+      return apiRequest('PUT', `/api/policies/${viewingQuote.id}/reminders/${reminderId}`, data);
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders', 'pending'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setReminderFormOpen(false);
       setSelectedReminder(null);
@@ -5236,12 +5236,12 @@ export default function QuotesPage() {
   const completeReminderMutation = useMutation({
     mutationFn: async (reminderId: string) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('PUT', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}/complete`, {});
+      return apiRequest('PUT', `/api/policies/${viewingQuote.id}/reminders/${reminderId}/complete`, {});
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders', 'pending'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       toast({
         title: "Reminder completed",
@@ -5263,12 +5263,12 @@ export default function QuotesPage() {
   const snoozeReminderMutation = useMutation({
     mutationFn: async ({ reminderId, duration }: { reminderId: string; duration: string }) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('PUT', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}/snooze`, { duration });
+      return apiRequest('PUT', `/api/policies/${viewingQuote.id}/reminders/${reminderId}/snooze`, { duration });
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders', 'pending'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setSnoozeDialogOpen(false);
       setSnoozeReminderId(null);
@@ -5292,12 +5292,12 @@ export default function QuotesPage() {
   const deleteReminderMutation = useMutation({
     mutationFn: async (reminderId: string) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/reminders/${reminderId}`);
+      return apiRequest('DELETE', `/api/policies/${viewingQuote.id}/reminders/${reminderId}`);
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'reminders', 'pending'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'reminders', 'pending'] });
       }
       setReminderToDelete(null);
       toast({
@@ -5323,7 +5323,7 @@ export default function QuotesPage() {
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'consents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'consents'] });
       }
       toast({
         title: "Consent resent",
@@ -5348,7 +5348,7 @@ export default function QuotesPage() {
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'consents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'consents'] });
       }
       toast({
         title: "Consent deleted",
@@ -5451,11 +5451,11 @@ export default function QuotesPage() {
   const deletePaymentMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
       if (!viewingQuote?.id) throw new Error("Quote ID not found");
-      return apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}`);
+      return apiRequest('DELETE', `/api/policies/${viewingQuote.id}/payment-methods/${paymentMethodId}`);
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'detail'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
       }
       toast({
         title: "Payment method deleted",
@@ -5475,11 +5475,11 @@ export default function QuotesPage() {
   const setDefaultPaymentMethodMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
       if (!viewingQuote?.id) return;
-      return apiRequest('POST', `/api/quotes/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`);
+      return apiRequest('POST', `/api/policies/${viewingQuote.id}/payment-methods/${paymentMethodId}/set-default`);
     },
     onSuccess: () => {
       if (selectedPolicyId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'detail'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
       }
       toast({
         title: "Default payment method updated",
@@ -5624,7 +5624,7 @@ export default function QuotesPage() {
         })) || [],
       };
       
-      const result = await apiRequest("POST", "/api/quotes", cleanedData);
+      const result = await apiRequest("POST", "/api/policies", cleanedData);
       console.log('[CREATE QUOTE] Received response:', result);
       return result;
     },
@@ -5643,7 +5643,7 @@ export default function QuotesPage() {
           console.log('[CREATE QUOTE] Navigating to policy:', quoteId);
           
           // Invalidate queries first to ensure fresh data
-          await queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+          await queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
           
           // Small delay to ensure the policy is available in the database
           await new Promise(resolve => setTimeout(resolve, 300));
@@ -5744,7 +5744,7 @@ export default function QuotesPage() {
           setIsCreatingQuote(false);
           
           // Invalidate queries to refresh the list
-          await queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+          await queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
           
           toast({
             title: "Policy Created",
@@ -5760,7 +5760,7 @@ export default function QuotesPage() {
         setIsCreatingQuote(false);
         
         // Invalidate queries to refresh the list
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
         
         toast({
           title: "Policy Created",
@@ -5769,7 +5769,7 @@ export default function QuotesPage() {
       }
       
       // Invalidate queries and reset form in background
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       
       // Reset form state for next quote (delayed to not interfere with navigation)
       setTimeout(() => {
@@ -5841,12 +5841,12 @@ export default function QuotesPage() {
 
   const updateQuoteMutation = useMutation({
     mutationFn: async ({ quoteId, data }: { quoteId: string; data: any }) => {
-      return apiRequest("PATCH", `/api/quotes/${quoteId}`, data);
+      return apiRequest("PATCH", `/api/policies/${quoteId}`, data);
     },
     onSuccess: (_, variables) => {
       // Invalidate UNIFIED query to refresh ALL related data
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', variables.quoteId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', variables.quoteId, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       toast({
         title: "Quote updated",
         description: "Your changes have been saved successfully.",
@@ -5863,10 +5863,10 @@ export default function QuotesPage() {
 
   const deleteQuoteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
-      return apiRequest("DELETE", `/api/quotes/${quoteId}`);
+      return apiRequest("DELETE", `/api/policies/${quoteId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       setDeleteDialogOpen(false);
       setQuoteToDelete(null);
       toast({
@@ -5887,13 +5887,13 @@ export default function QuotesPage() {
   const changeAgentMutation = useMutation({
     mutationFn: async (newAgentId: string) => {
       if (!selectedPolicyId) throw new Error("Policy ID not found");
-      return apiRequest("PATCH", `/api/quotes/${selectedPolicyId}`, {
+      return apiRequest("PATCH", `/api/policies/${selectedPolicyId}`, {
         agentId: newAgentId || null,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       toast({
         title: "Agent Updated",
         description: "The agent has been successfully changed.",
@@ -5916,14 +5916,14 @@ export default function QuotesPage() {
   const changeStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       if (!selectedPolicyId) throw new Error("Policy ID not found");
-      return apiRequest("PATCH", `/api/quotes/${selectedPolicyId}`, {
+      return apiRequest("PATCH", `/api/policies/${selectedPolicyId}`, {
         status: newStatus,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes/stats"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
       toast({
         title: "Status Updated",
         description: "The status has been successfully changed.",
@@ -5944,14 +5944,14 @@ export default function QuotesPage() {
   const deleteMemberMutation = useMutation({
     mutationFn: async (memberId: string) => {
       if (!selectedPolicyId) throw new Error("Quote ID not found");
-      return apiRequest("DELETE", `/api/quotes/${selectedPolicyId}/members/${memberId}`);
+      return apiRequest("DELETE", `/api/policies/${selectedPolicyId}/members/${memberId}`);
     },
     onSuccess: async () => {
       // Invalidate BOTH queries to refresh ALL data
       if (selectedPolicyId) {
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'detail'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/quotes'] })
+          queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/policies'] })
         ]);
       }
       setDeletingMember(null);
@@ -5982,7 +5982,7 @@ export default function QuotesPage() {
       const memberRole = data.relation === 'spouse' ? 'spouse' : 'dependent';
       
       // Step 1: Create member
-      const ensureResponse = await fetch(`/api/quotes/${selectedPolicyId}/ensure-member`, {
+      const ensureResponse = await fetch(`/api/policies/${selectedPolicyId}/ensure-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -6043,7 +6043,7 @@ export default function QuotesPage() {
         }
       }
       
-      const incomeResponse = await fetch(`/api/quotes/members/${memberId}/income`, {
+      const incomeResponse = await fetch(`/api/policies/members/${memberId}/income`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -6063,7 +6063,7 @@ export default function QuotesPage() {
       }
       
       // Step 3: Save immigration data
-      const immigrationResponse = await fetch(`/api/quotes/members/${memberId}/immigration`, {
+      const immigrationResponse = await fetch(`/api/policies/members/${memberId}/immigration`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -6085,8 +6085,8 @@ export default function QuotesPage() {
       // Invalidate BOTH queries to refresh ALL data immediately
       if (selectedPolicyId) {
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['/api/quotes', selectedPolicyId, 'detail'] }),
-          queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false })
+          queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] }),
+          queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false })
         ]);
       }
       
@@ -6313,7 +6313,7 @@ export default function QuotesPage() {
   // Fetch total household income from all family members
   // REPLACED WITH UNIFIED QUERY - householdIncomeData now comes from quoteDetail
   // const { data: householdIncomeData } = useQuery({
-  //   queryKey: ['/api/quotes', selectedPolicyId, 'household-income'],
+  //   queryKey: ['/api/policies', selectedPolicyId, 'household-income'],
   //   enabled: isViewingQuote && !!viewingQuote?.id,
   // });
   const householdIncomeData = quoteDetail ? { totalIncome: quoteDetail.totalHouseholdIncome } : undefined;
@@ -6796,9 +6796,9 @@ export default function QuotesPage() {
     
     // Fetch existing payment method data if editing
     const { data: paymentMethodData, isLoading: isLoadingPaymentMethod } = useQuery<{ paymentMethod: QuotePaymentMethod }>({
-      queryKey: ['/api/quotes', quote?.id, 'payment-methods', paymentMethodId],
+      queryKey: ['/api/policies', quote?.id, 'payment-methods', paymentMethodId],
       queryFn: async () => {
-        const res = await fetch(`/api/quotes/${quote?.id}/payment-methods/${paymentMethodId}`, {
+        const res = await fetch(`/api/policies/${quote?.id}/payment-methods/${paymentMethodId}`, {
           credentials: 'include',
         });
         if (!res.ok) {
@@ -6949,9 +6949,9 @@ export default function QuotesPage() {
           const data = cardForm.getValues();
           
           if (paymentMethodId) {
-            await apiRequest("PATCH", `/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, data);
+            await apiRequest("PATCH", `/api/policies/${quote.id}/payment-methods/${paymentMethodId}`, data);
           } else {
-            await apiRequest("POST", `/api/quotes/${quote.id}/payment-methods`, data);
+            await apiRequest("POST", `/api/policies/${quote.id}/payment-methods`, data);
           }
         } else {
           const isValid = await bankAccountForm.trigger();
@@ -6961,14 +6961,14 @@ export default function QuotesPage() {
           const data = bankAccountForm.getValues();
           
           if (paymentMethodId) {
-            await apiRequest("PATCH", `/api/quotes/${quote.id}/payment-methods/${paymentMethodId}`, data);
+            await apiRequest("PATCH", `/api/policies/${quote.id}/payment-methods/${paymentMethodId}`, data);
           } else {
-            await apiRequest("POST", `/api/quotes/${quote.id}/payment-methods`, data);
+            await apiRequest("POST", `/api/policies/${quote.id}/payment-methods`, data);
           }
         }
         
         // Refresh unified policy detail data
-        await queryClient.invalidateQueries({ queryKey: ['/api/quotes', quote.id, 'detail'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/policies', quote.id, 'detail'] });
         
         toast({
           title: paymentMethodId ? "Payment method updated" : "Payment method added",
@@ -8001,15 +8001,15 @@ export default function QuotesPage() {
                             onClick={async () => {
                               if (!viewingQuote.isArchived) return;
                               try {
-                                await apiRequest(`/api/quotes/${viewingQuote.id}/archive`, {
+                                await apiRequest(`/api/policies/${viewingQuote.id}/archive`, {
                                   method: "POST",
                                   body: JSON.stringify({ isArchived: false }),
                                 });
                                 
                                 // Refresh policy details
-                                queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
-                                queryClient.invalidateQueries({ queryKey: ["/api/quotes/stats"] });
+                                queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                                queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+                                queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                                 
                                 toast({
                                   title: "Policy Unarchived",
@@ -8367,7 +8367,7 @@ export default function QuotesPage() {
                               className="h-7 text-xs"
                               onClick={async () => {
                                 try {
-                                  await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                                  await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
                                     memberId: policyInfo.memberId || null,
                                     npnMarketplace: policyInfo.npnMarketplace || null,
                                     saleType: policyInfo.saleType || null,
@@ -8378,7 +8378,7 @@ export default function QuotesPage() {
                                     cancellationDate: policyInfo.cancellationDate || null,
                                     specialEnrollmentDate: policyInfo.specialEnrollmentDate || null,
                                   });
-                                  queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
+                                  queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
                                   toast({
                                     title: "Saved",
                                     description: "Policy information has been saved.",
@@ -8534,8 +8534,8 @@ export default function QuotesPage() {
                             size="sm"
                             onClick={async () => {
                               try {
-                                await apiRequest("POST", `/api/quotes/${viewingQuote.id}/plans/${policyPlan.id}/set-primary`, {});
-                                queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
+                                await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans/${policyPlan.id}/set-primary`, {});
+                                queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
                                 toast({
                                   title: "Success",
                                   description: "Primary plan has been updated.",
@@ -9841,8 +9841,8 @@ export default function QuotesPage() {
                     onClick={async () => {
                       if (deletingPlan) {
                         try {
-                          await apiRequest("DELETE", `/api/quotes/${viewingQuote.id}/plans/${deletingPlan.id}`);
-                          queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
+                          await apiRequest("DELETE", `/api/policies/${viewingQuote.id}/plans/${deletingPlan.id}`);
+                          queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
                           setDeletingPlan(null);
                           toast({
                             title: "Success",
@@ -10121,7 +10121,7 @@ export default function QuotesPage() {
                                   const formData = new FormData();
                                   formData.append('image', file);
                                   
-                                  const response = await fetch(`/api/quotes/${viewingQuote?.id}/notes/upload`, {
+                                  const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
                                     method: 'POST',
                                     body: formData,
                                   });
@@ -10176,7 +10176,7 @@ export default function QuotesPage() {
                                 const formData = new FormData();
                                 formData.append('image', file);
                                 
-                                const response = await fetch(`/api/quotes/${viewingQuote?.id}/notes/upload`, {
+                                const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
                                   method: 'POST',
                                   body: formData,
                                 });
@@ -10278,7 +10278,7 @@ export default function QuotesPage() {
                                 const formData = new FormData();
                                 formData.append('image', file);
                                 
-                                const response = await fetch(`/api/quotes/${viewingQuote?.id}/notes/upload`, {
+                                const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
                                   method: 'POST',
                                   body: formData,
                                 });
@@ -10380,8 +10380,8 @@ export default function QuotesPage() {
                     onClick={async () => {
                       if (!noteToDelete || !viewingQuote?.id) return;
                       try {
-                        await apiRequest('DELETE', `/api/quotes/${viewingQuote.id}/notes/${noteToDelete}`);
-                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'notes'] });
+                        await apiRequest('DELETE', `/api/policies/${viewingQuote.id}/notes/${noteToDelete}`);
+                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'notes'] });
                         setShowDeleteDialog(false);
                         setNoteToDelete(null);
                         toast({
@@ -10820,7 +10820,7 @@ export default function QuotesPage() {
                     if (isImage) {
                       return (
                         <img
-                          src={`/api/quotes/${viewingQuote.id}/documents/${previewDocument.id}/download`}
+                          src={`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`}
                           alt={previewDocument.fileName}
                           className="max-w-full h-auto"
                           data-testid="preview-image"
@@ -10829,7 +10829,7 @@ export default function QuotesPage() {
                     } else if (isPdf) {
                       return (
                         <iframe
-                          src={`/api/quotes/${viewingQuote.id}/documents/${previewDocument.id}/download`}
+                          src={`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`}
                           className="w-full h-full border-0"
                           data-testid="preview-pdf"
                         />
@@ -10842,7 +10842,7 @@ export default function QuotesPage() {
                             Preview not available for this file type
                           </p>
                           <Button
-                            onClick={() => window.open(`/api/quotes/${viewingQuote.id}/documents/${previewDocument.id}/download`, '_blank')}
+                            onClick={() => window.open(`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`, '_blank')}
                             data-testid="button-download-preview"
                           >
                             <Download className="h-4 w-4 mr-2" />
@@ -11360,7 +11360,7 @@ export default function QuotesPage() {
                       clientPhone={viewingQuote?.clientPhone || ''}
                       onClose={() => {
                         setShowConsentForm(false);
-                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote?.id, 'consents'] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote?.id, 'consents'] });
                       }}
                     />
                   )}
@@ -12472,14 +12472,14 @@ export default function QuotesPage() {
                         },
                       };
                       
-                      await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}/plans/${editingPlanId}`, {
+                      await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
                         planData: mergedPlanData,
                         source: 'manual'
                       });
                     } else {
                       // Add new plan
                       console.log('[EDIT PLAN] Creating new plan');
-                      await apiRequest("POST", `/api/quotes/${viewingQuote.id}/plans`, {
+                      await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
                         planData: planObject,
                         source: 'manual'
                       });
@@ -12489,7 +12489,7 @@ export default function QuotesPage() {
                     if (manualPlanData.memberId || manualPlanData.npnMarketplace || manualPlanData.saleType || 
                         manualPlanData.effectiveDate || manualPlanData.marketplaceId || manualPlanData.ffmMarketplace ||
                         manualPlanData.specialEnrollmentReason || manualPlanData.cancellationDate || manualPlanData.specialEnrollmentDate) {
-                      await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                      await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
                         memberId: manualPlanData.memberId || null,
                         npnMarketplace: manualPlanData.npnMarketplace || null,
                         saleType: manualPlanData.saleType || null,
@@ -12503,8 +12503,8 @@ export default function QuotesPage() {
                     }
                     
                     // Invalidate all policy-related queries to refresh the UI
-                    queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
-                    queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
                     
                     toast({
                       title: "Success",
@@ -12602,11 +12602,11 @@ export default function QuotesPage() {
                   <AlertDialogAction
                     onClick={async () => {
                       try {
-                        await apiRequest("POST", `/api/quotes/${viewingQuote.id}/status`, { status: "canceled" });
+                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/status`, { status: "canceled" });
                         
-                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes/stats"] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                         
                         toast({
                           title: "Policy Canceled",
@@ -12647,17 +12647,17 @@ export default function QuotesPage() {
                   <AlertDialogAction
                     onClick={async () => {
                       try {
-                        await apiRequest("POST", `/api/quotes/${viewingQuote.id}/archive`, { isArchived: true });
+                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/archive`, { isArchived: true });
                         
                         // Invalidate all policies queries (including parameterized ones)
                         queryClient.invalidateQueries({ 
                           predicate: (query) => {
                             const key = query.queryKey;
-                            return Array.isArray(key) && key[0] === '/api/quotes';
+                            return Array.isArray(key) && key[0] === '/api/policies';
                           }
                         });
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes/stats"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes/oep-stats"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/oep-stats"] });
                         
                         toast({
                           title: "Policy Archived",
@@ -12701,7 +12701,7 @@ export default function QuotesPage() {
                   <AlertDialogAction
                     onClick={async () => {
                       try {
-                        const data = await apiRequest("POST", `/api/quotes/${viewingQuote.id}/duplicate`, {});
+                        const data = await apiRequest("POST", `/api/policies/${viewingQuote.id}/duplicate`, {});
                         
                         toast({
                           title: "Policy Duplicated",
@@ -12709,8 +12709,8 @@ export default function QuotesPage() {
                           duration: 3000,
                         });
                         
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes/stats"] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                         
                         setDuplicatePolicyDialogOpen(false);
                         
@@ -12750,7 +12750,7 @@ export default function QuotesPage() {
                   <AlertDialogAction
                     onClick={async () => {
                       try {
-                        await apiRequest("POST", `/api/quotes/${viewingQuote.id}/block`, {});
+                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/block`, {});
                         
                         toast({
                           title: "Policy Blocked",
@@ -12758,9 +12758,9 @@ export default function QuotesPage() {
                           duration: 3000,
                         });
                         
-                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
-                        queryClient.invalidateQueries({ queryKey: ["/api/quotes/stats"] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
                         
                         setBlockPolicyDialogOpen(false);
                       } catch (error: any) {
@@ -12796,10 +12796,10 @@ export default function QuotesPage() {
                   <AlertDialogAction
                     onClick={async () => {
                       try {
-                        await apiRequest("PATCH", `/api/quotes/${viewingQuote.id}`, {
+                        await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
                           selectedPlan: null
                         });
-                        queryClient.invalidateQueries({ queryKey: ['/api/quotes', viewingQuote.id, 'detail'] });
+                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
                         toast({
                           title: "Plan Removed",
                           description: "The selected plan has been removed from this policy.",
@@ -15677,7 +15677,7 @@ function StatusBadgeEditor({
     mutationFn: async (newValue: string) => {
       const endpoint = type === "quote" 
         ? `/api/quotes/${id}/statuses` 
-        : `/api/quotes/${id}/statuses`;
+        : `/api/policies/${id}/statuses`;
       
       // Only send the field being edited, not all fields
       const data: any = {};
@@ -15693,10 +15693,10 @@ function StatusBadgeEditor({
     },
     onMutate: async (newValue) => {
       // OPTIMISTIC UPDATE: Change UI immediately before server responds
-      const listQueryKey = type === "quote" ? ["/api/quotes"] : ["/api/quotes"];
+      const listQueryKey = type === "quote" ? ["/api/quotes"] : ["/api/policies"];
       const detailQueryKey = type === "quote" 
         ? ["/api/quotes", id]
-        : ["/api/quotes", id, "detail"];
+        : ["/api/policies", id, "detail"];
       
       // Cancel outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: listQueryKey });
@@ -15750,7 +15750,7 @@ function StatusBadgeEditor({
       if (type === "quote") {
         queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       } else {
-        queryClient.invalidateQueries({ queryKey: ["/api/quotes"], exact: false });
+        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
       }
       
       toast({
@@ -15761,10 +15761,10 @@ function StatusBadgeEditor({
     },
     onError: (error: Error, newValue, context: any) => {
       // Rollback BOTH queries on error
-      const listQueryKey = type === "quote" ? ["/api/quotes"] : ["/api/quotes"];
+      const listQueryKey = type === "quote" ? ["/api/quotes"] : ["/api/policies"];
       const detailQueryKey = type === "quote" 
         ? ["/api/quotes", id]
-        : ["/api/quotes", id, "detail"];
+        : ["/api/policies", id, "detail"];
       
       if (context?.previousList) {
         queryClient.setQueryData(listQueryKey, context.previousList);
@@ -15784,7 +15784,7 @@ function StatusBadgeEditor({
       // After mutation completes (success or error), resync with server to catch derived fields
       const detailQueryKey = type === "quote" 
         ? ["/api/quotes", id]
-        : ["/api/quotes", id, "detail"];
+        : ["/api/policies", id, "detail"];
       
       queryClient.invalidateQueries({ queryKey: detailQueryKey });
     },
@@ -15795,7 +15795,7 @@ function StatusBadgeEditor({
   let formatDisplay: (value: string) => string;
 
   if (statusType === "status") {
-    options = type === "quote" ? quoteStatusOptions : quoteStatusOptions;
+    options = type === "quote" ? quoteStatusOptions : policyStatusOptions;
     getVariant = getStatusVariant;
     formatDisplay = formatStatusDisplay;
   } else if (statusType === "documentsStatus") {
@@ -15883,7 +15883,7 @@ function StatusEditorDialogContent({
     });
   };
 
-  const statusOptions = type === "quote" ? quoteStatusOptions : quoteStatusOptions;
+  const statusOptions = type === "quote" ? quoteStatusOptions : policyStatusOptions;
 
   return (
     <Form {...form}>
@@ -16015,7 +16015,7 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
 
   // Fetch quote data
   const { data: quoteData } = useQuery<{ quote: any }>({
-    queryKey: ["/api/quotes", quoteId, "detail"],
+    queryKey: ["/api/policies", quoteId, "detail"],
     enabled: !!quoteId,
   });
 
@@ -16038,7 +16038,7 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
       setSending(true);
       
       // First generate the consent document
-      const generateResponse = await fetch(`/api/quotes/${quoteId}/consents/generate`, {
+      const generateResponse = await fetch(`/api/policies/${quoteId}/consents/generate`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -16079,7 +16079,7 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
           title: "Consent Sent",
           description: `Consent form sent successfully via ${channel}`,
         });
-        queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId, 'consents'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', quoteId, 'consents'] });
         setTimeout(() => onClose(), 1500);
       }
     } catch (error: any) {

@@ -92,6 +92,10 @@ import {
   type QuoteReminder,
   type InsertQuoteReminder,
   type UpdateQuoteReminder,
+  type QuoteFolder,
+  type InsertQuoteFolder,
+  type QuoteFolderAssignment,
+  type InsertQuoteFolderAssignment,
   type ConsentDocument,
   type InsertConsentDocument,
   type ConsentSignatureEvent,
@@ -243,6 +247,8 @@ import {
   quoteDocuments,
   quotePaymentMethods,
   quoteReminders,
+  quoteFolders,
+  quoteFolderAssignments,
   consentDocuments,
   consentSignatureEvents,
   policies,
@@ -604,10 +610,54 @@ export interface IStorage {
   getQuotesByAgent(agentId: string): Promise<Array<Quote & {
     creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
   }>>;
+  getQuotesList(companyId: string, options?: {
+    limit?: number;
+    cursor?: string;
+    agentId?: string;
+    productType?: string;
+    status?: string;
+    effectiveDateFrom?: string;
+    effectiveDateTo?: string;
+    skipAgentFilter?: boolean;
+    searchTerm?: string;
+    includeFamilyMembers?: boolean;
+    folderId?: string | null;
+  }): Promise<{
+    items: Array<{
+      id: string;
+      companyId: string;
+      effectiveDate: string;
+      productType: string;
+      status: string;
+      clientFirstName: string;
+      clientMiddleName: string | null;
+      clientLastName: string;
+      clientSecondLastName: string | null;
+      clientEmail: string;
+      clientPhone: string;
+      agentId: string | null;
+      agentName: string | null;
+      isArchived: boolean | null;
+      createdAt: Date;
+    }>;
+    nextCursor: string | null;
+  }>;
   updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined>;
   deleteQuote(id: string): Promise<boolean>;
+  getQuotesByApplicant(companyId: string, ssn?: string | null, email?: string | null, firstName?: string | null, lastName?: string | null, dob?: string | null, effectiveYear?: number): Promise<Array<Quote & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>>;
+  
+  // Quote Plans (Multi-plan support)
+  listQuotePlans(quoteId: string, companyId: string): Promise<QuotePlan[]>;
+  addQuotePlan(data: InsertQuotePlan): Promise<QuotePlan>;
+  updateQuotePlan(planId: string, companyId: string, data: Partial<InsertQuotePlan>): Promise<QuotePlan | null>;
+  removeQuotePlan(planId: string, companyId: string): Promise<boolean>;
+  setPrimaryQuotePlan(planId: string, quoteId: string, companyId: string): Promise<void>;
   
   // Quote Members
+  listQuoteMembers(quoteId: string): Promise<QuoteMember[]>;
   getQuoteMembersByQuoteId(quoteId: string, companyId: string): Promise<QuoteMember[]>;
   getQuoteMemberById(memberId: string, companyId: string): Promise<QuoteMember | null>;
   createQuoteMember(data: InsertQuoteMember): Promise<QuoteMember>;
@@ -669,6 +719,14 @@ export interface IStorage {
   deleteQuoteReminder(id: string, companyId: string): Promise<boolean>;
   completeQuoteReminder(id: string, companyId: string, userId: string): Promise<QuoteReminder | null>;
   snoozeQuoteReminder(id: string, companyId: string, until: Date): Promise<QuoteReminder | null>;
+  
+  // Quote Folders
+  listQuoteFolders(companyId: string, userId: string): Promise<{ agency: QuoteFolder[]; personal: QuoteFolder[] }>;
+  getQuoteFolder(id: string): Promise<QuoteFolder | undefined>;
+  createQuoteFolder(data: InsertQuoteFolder): Promise<QuoteFolder>;
+  updateQuoteFolder(id: string, companyId: string, data: Partial<InsertQuoteFolder>): Promise<QuoteFolder | null>;
+  deleteQuoteFolder(id: string, companyId: string): Promise<boolean>;
+  assignQuotesToFolder(quoteIds: string[], folderId: string | null, userId: string, companyId: string): Promise<number>;
   
   // Consent Documents
   createConsentDocument(quoteId: string, companyId: string, userId: string): Promise<ConsentDocument>;
@@ -3478,6 +3536,250 @@ export class DbStorage implements IStorage {
     })) as any;
   }
 
+  async getQuotesList(companyId: string, options?: {
+    limit?: number;
+    cursor?: string;
+    agentId?: string;
+    productType?: string;
+    status?: string;
+    effectiveDateFrom?: string;
+    effectiveDateTo?: string;
+    skipAgentFilter?: boolean;
+    searchTerm?: string;
+    includeFamilyMembers?: boolean;
+    folderId?: string | null;
+  }): Promise<{
+    items: Array<{
+      id: string;
+      companyId: string;
+      effectiveDate: string;
+      productType: string;
+      status: string;
+      clientFirstName: string;
+      clientMiddleName: string | null;
+      clientLastName: string;
+      clientSecondLastName: string | null;
+      clientEmail: string;
+      clientPhone: string;
+      agentId: string | null;
+      agentName: string | null;
+      isArchived: boolean | null;
+      createdAt: Date;
+    }>;
+    nextCursor: string | null;
+  }> {
+    const limit = options?.limit || 999999;
+    
+    let cursorUpdatedAt: string | null = null;
+    let cursorDate: string | null = null;
+    let cursorId: string | null = null;
+    if (options?.cursor) {
+      const parts = options.cursor.split(',');
+      if (parts.length === 3) {
+        cursorUpdatedAt = parts[0];
+        cursorDate = parts[1];
+        cursorId = parts[2];
+      }
+    }
+    
+    const conditions: any[] = [eq(quotes.companyId, companyId)];
+    
+    if (options?.agentId && !options?.skipAgentFilter) {
+      conditions.push(eq(quotes.agentId, options.agentId));
+    }
+    if (options?.productType) {
+      conditions.push(eq(quotes.productType, options.productType));
+    }
+    if (options?.status) {
+      conditions.push(eq(quotes.status, options.status));
+    }
+    if (options?.effectiveDateFrom) {
+      conditions.push(gte(quotes.effectiveDate, options.effectiveDateFrom));
+    }
+    if (options?.effectiveDateTo) {
+      conditions.push(lt(quotes.effectiveDate, options.effectiveDateTo));
+    }
+    
+    if (options?.searchTerm) {
+      const searchLower = options.searchTerm.toLowerCase();
+      const searchPattern = `%${searchLower}%`;
+      
+      if (!options.includeFamilyMembers) {
+        conditions.push(
+          or(
+            sql`LOWER(CONCAT(${quotes.clientFirstName}, ' ', COALESCE(${quotes.clientMiddleName}, ''), ' ', ${quotes.clientLastName}, ' ', COALESCE(${quotes.clientSecondLastName}, ''))) LIKE ${searchPattern}`,
+            sql`LOWER(${quotes.clientEmail}) LIKE ${searchPattern}`,
+            sql`${quotes.clientPhone} LIKE ${searchPattern}`
+          ) as any
+        );
+      }
+    }
+    
+    if (options?.folderId !== undefined) {
+      if (options.folderId === null) {
+        conditions.push(isNull(quoteFolderAssignments.folderId));
+      } else {
+        conditions.push(eq(quoteFolderAssignments.folderId, options.folderId));
+      }
+    }
+    
+    if (cursorUpdatedAt && cursorDate && cursorId) {
+      conditions.push(
+        or(
+          sql`COALESCE(${quotes.updatedAt}, ${quotes.createdAt}) < ${cursorUpdatedAt}`,
+          and(
+            sql`COALESCE(${quotes.updatedAt}, ${quotes.createdAt}) = ${cursorUpdatedAt}`,
+            or(
+              sql`${quotes.effectiveDate}::date < ${cursorDate}::date`,
+              and(
+                sql`${quotes.effectiveDate}::date = ${cursorDate}::date`,
+                lt(quotes.id, cursorId)
+              )
+            ) as any
+          ) as any
+        ) as any
+      );
+    }
+    
+    let query = db
+      .select({
+        id: quotes.id,
+        companyId: quotes.companyId,
+        effectiveDate: quotes.effectiveDate,
+        productType: quotes.productType,
+        status: quotes.status,
+        clientFirstName: quotes.clientFirstName,
+        clientMiddleName: quotes.clientMiddleName,
+        clientLastName: quotes.clientLastName,
+        clientSecondLastName: quotes.clientSecondLastName,
+        clientEmail: quotes.clientEmail,
+        clientPhone: quotes.clientPhone,
+        agentId: quotes.agentId,
+        agentName: sql<string | null>`CONCAT(${users.firstName}, ' ', ${users.lastName})`.as('agent_name'),
+        isArchived: quotes.isArchived,
+        createdAt: quotes.createdAt,
+        updatedAt: quotes.updatedAt,
+      })
+      .from(quotes)
+      .leftJoin(users, eq(quotes.agentId, users.id))
+      .leftJoin(quoteFolderAssignments, eq(quotes.id, quoteFolderAssignments.quoteId))
+      .where(and(...conditions))
+      .orderBy(
+        desc(sql`COALESCE(${quotes.updatedAt}, ${quotes.createdAt})`),
+        desc(quotes.effectiveDate),
+        desc(quotes.id)
+      )
+      .limit(limit + 1);
+    
+    if (options?.searchTerm && options?.includeFamilyMembers) {
+      const searchLower = options.searchTerm.toLowerCase();
+      const searchPattern = `%${searchLower}%`;
+      
+      const quoteIdsWithMemberMatch = await db
+        .selectDistinct({ quoteId: quoteMembers.quoteId })
+        .from(quoteMembers)
+        .where(
+          and(
+            eq(quoteMembers.companyId, companyId),
+            or(
+              sql`LOWER(CONCAT(${quoteMembers.firstName}, ' ', COALESCE(${quoteMembers.middleName}, ''), ' ', ${quoteMembers.lastName}, ' ', COALESCE(${quoteMembers.secondLastName}, ''))) LIKE ${searchPattern}`,
+              sql`LOWER(COALESCE(${quoteMembers.email}, '')) LIKE ${searchPattern}`,
+              sql`COALESCE(${quoteMembers.phone}, '') LIKE ${searchPattern}`
+            ) as any
+          )
+        );
+      
+      const quoteIds = quoteIdsWithMemberMatch.map(row => row.quoteId);
+      
+      const existingConditions = conditions.filter(c => {
+        const str = String(c);
+        return !str.includes('clientFirstName') && !str.includes('clientEmail') && !str.includes('clientPhone');
+      });
+      
+      if (quoteIds.length > 0) {
+        existingConditions.push(
+          or(
+            sql`LOWER(CONCAT(${quotes.clientFirstName}, ' ', COALESCE(${quotes.clientMiddleName}, ''), ' ', ${quotes.clientLastName}, ' ', COALESCE(${quotes.clientSecondLastName}, ''))) LIKE ${searchPattern}`,
+            sql`LOWER(${quotes.clientEmail}) LIKE ${searchPattern}`,
+            sql`${quotes.clientPhone} LIKE ${searchPattern}`,
+            inArray(quotes.id, quoteIds)
+          ) as any
+        );
+      } else {
+        existingConditions.push(
+          or(
+            sql`LOWER(CONCAT(${quotes.clientFirstName}, ' ', COALESCE(${quotes.clientMiddleName}, ''), ' ', ${quotes.clientLastName}, ' ', COALESCE(${quotes.clientSecondLastName}, ''))) LIKE ${searchPattern}`,
+            sql`LOWER(${quotes.clientEmail}) LIKE ${searchPattern}`,
+            sql`${quotes.clientPhone} LIKE ${searchPattern}`
+          ) as any
+        );
+      }
+      
+      query = db
+        .select({
+          id: quotes.id,
+          companyId: quotes.companyId,
+          effectiveDate: quotes.effectiveDate,
+          productType: quotes.productType,
+          status: quotes.status,
+          clientFirstName: quotes.clientFirstName,
+          clientMiddleName: quotes.clientMiddleName,
+          clientLastName: quotes.clientLastName,
+          clientSecondLastName: quotes.clientSecondLastName,
+          clientEmail: quotes.clientEmail,
+          clientPhone: quotes.clientPhone,
+          agentId: quotes.agentId,
+          agentName: sql<string | null>`CONCAT(${users.firstName}, ' ', ${users.lastName})`.as('agent_name'),
+          isArchived: quotes.isArchived,
+          createdAt: quotes.createdAt,
+          updatedAt: quotes.updatedAt,
+        })
+        .from(quotes)
+        .leftJoin(users, eq(quotes.agentId, users.id))
+        .leftJoin(quoteFolderAssignments, eq(quotes.id, quoteFolderAssignments.quoteId))
+        .where(and(...existingConditions))
+        .orderBy(
+          desc(sql`COALESCE(${quotes.updatedAt}, ${quotes.createdAt})`),
+          desc(quotes.effectiveDate),
+          desc(quotes.id)
+        )
+        .limit(limit + 1);
+    }
+    
+    const results = await query;
+    
+    const hasMore = results.length > limit;
+    const items = hasMore ? results.slice(0, limit) : results;
+    
+    let nextCursor: string | null = null;
+    if (hasMore && items.length > 0) {
+      const lastItem = items[items.length - 1];
+      const lastUpdatedAt = lastItem.updatedAt?.toISOString() || lastItem.createdAt.toISOString();
+      nextCursor = `${lastUpdatedAt},${lastItem.effectiveDate},${lastItem.id}`;
+    }
+    
+    return {
+      items: items.map(item => ({
+        id: item.id,
+        companyId: item.companyId,
+        effectiveDate: item.effectiveDate,
+        productType: item.productType,
+        status: item.status,
+        clientFirstName: item.clientFirstName,
+        clientMiddleName: item.clientMiddleName,
+        clientLastName: item.clientLastName,
+        clientSecondLastName: item.clientSecondLastName,
+        clientEmail: item.clientEmail,
+        clientPhone: item.clientPhone,
+        agentId: item.agentId,
+        agentName: item.agentName,
+        isArchived: item.isArchived,
+        createdAt: item.createdAt,
+      })),
+      nextCursor
+    };
+  }
+
   async updateQuote(id: string, data: Partial<InsertQuote>): Promise<Quote | undefined> {
     const [updated] = await db
       .update(quotes)
@@ -3498,7 +3800,241 @@ export class DbStorage implements IStorage {
     return result.length > 0;
   }
   
+  async getQuotesByApplicant(companyId: string, ssn?: string | null, email?: string | null, firstName?: string | null, lastName?: string | null, dob?: string | null, effectiveYear?: number): Promise<Array<Quote & {
+    agent?: { id: string; firstName: string | null; lastName: string | null; email: string; } | null;
+    creator: { id: string; firstName: string | null; lastName: string | null; email: string; };
+  }>> {
+    // Build identity key using same logic as resolveApplicantIdentity
+    const normalizedSsn = ssn?.replace(/\D/g, '') || '';
+    const normalizedEmail = email?.toLowerCase() || '';
+    
+    let identityConditions: any[] = [];
+    
+    // SSN matching - REQUIRE EXACTLY 9 DIGITS (full SSN only)
+    if (normalizedSsn.length === 9) {
+      identityConditions.push(
+        sql`REPLACE(REPLACE(REPLACE(${quotes.clientSsn}, '-', ''), ' ', ''), '.', '') = ${normalizedSsn}`
+      );
+    } else if (normalizedEmail) {
+      // Email fallback if SSN is not complete
+      identityConditions.push(
+        sql`LOWER(${quotes.clientEmail}) = ${normalizedEmail}`
+      );
+    }
+    
+    // If no valid identifier, return empty
+    if (identityConditions.length === 0) {
+      return [];
+    }
+    
+    const conditions: any[] = [
+      eq(quotes.companyId, companyId),
+      or(...identityConditions)
+    ];
+    
+    // Filter by primary applicant name and DOB to ensure only quotes 
+    // where this person is the primary applicant (not a dependent)
+    if (firstName) {
+      conditions.push(eq(quotes.clientFirstName, firstName));
+    }
+    if (lastName) {
+      conditions.push(eq(quotes.clientLastName, lastName));
+    }
+    if (dob) {
+      conditions.push(eq(quotes.clientDateOfBirth, dob));
+    }
+    
+    if (effectiveYear) {
+      conditions.push(sql`EXTRACT(YEAR FROM ${quotes.effectiveDate}) = ${effectiveYear}`);
+    }
+    
+    // Create aliases for the users table to join it twice
+    const creatorUser = alias(users, 'creatorUser');
+    const agentUser = alias(users, 'agentUser');
+    
+    const results = await db
+      .select({
+        quote: quotes,
+        primaryPlanData: quotePlans.planData,
+        creator: {
+          id: creatorUser.id,
+          firstName: creatorUser.firstName,
+          lastName: creatorUser.lastName,
+          email: creatorUser.email,
+        },
+        agent: {
+          id: agentUser.id,
+          firstName: agentUser.firstName,
+          lastName: agentUser.lastName,
+          email: agentUser.email,
+        },
+      })
+      .from(quotes)
+      .leftJoin(creatorUser, eq(quotes.createdBy, creatorUser.id))
+      .leftJoin(agentUser, eq(quotes.agentId, agentUser.id))
+      .leftJoin(quotePlans, and(
+        eq(quotePlans.quoteId, quotes.id),
+        eq(quotePlans.isPrimary, true)
+      ))
+      .where(and(...conditions))
+      .orderBy(desc(quotes.effectiveDate), desc(quotes.createdAt));
+
+    return results.map((result) => ({
+      ...result.quote,
+      // Use primaryPlanData from quote_plans if selectedPlan is null (legacy field)
+      selectedPlan: result.quote.selectedPlan || result.primaryPlanData || null,
+      creator: result.creator,
+      agent: result.agent.id ? result.agent : null,
+    })) as any;
+  }
+  
+  // ==================== QUOTE PLANS (Multi-plan support) ====================
+  
+  async listQuotePlans(quoteId: string, companyId: string): Promise<QuotePlan[]> {
+    const result = await db
+      .select()
+      .from(quotePlans)
+      .where(and(
+        eq(quotePlans.quoteId, quoteId),
+        eq(quotePlans.companyId, companyId)
+      ))
+      .orderBy(desc(quotePlans.isPrimary), quotePlans.displayOrder, quotePlans.createdAt);
+    
+    return result;
+  }
+  
+  async addQuotePlan(data: InsertQuotePlan): Promise<QuotePlan> {
+    const result = await db
+      .insert(quotePlans)
+      .values({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updateQuotePlan(planId: string, companyId: string, data: Partial<InsertQuotePlan>): Promise<QuotePlan | null> {
+    const result = await db
+      .update(quotePlans)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(quotePlans.id, planId),
+        eq(quotePlans.companyId, companyId)
+      ))
+      .returning();
+    
+    return result[0] || null;
+  }
+  
+  async removeQuotePlan(planId: string, companyId: string): Promise<boolean> {
+    return await db.transaction(async (tx) => {
+      // First, get the plan to know which quote it belongs to and if it's primary
+      const planToDelete = await tx
+        .select()
+        .from(quotePlans)
+        .where(and(
+          eq(quotePlans.id, planId),
+          eq(quotePlans.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (planToDelete.length === 0) {
+        return false;
+      }
+      
+      const quoteId = planToDelete[0].quoteId;
+      const wasPrimary = planToDelete[0].isPrimary;
+      
+      // Delete the plan
+      const result = await tx
+        .delete(quotePlans)
+        .where(and(
+          eq(quotePlans.id, planId),
+          eq(quotePlans.companyId, companyId)
+        ))
+        .returning();
+      
+      if (result.length === 0) {
+        return false;
+      }
+      
+      // Only clear memberId if the deleted plan was primary
+      if (wasPrimary && quoteId) {
+        // Check if any remaining plans exist for this quote
+        const remainingPlans = await tx
+          .select()
+          .from(quotePlans)
+          .where(and(
+            eq(quotePlans.quoteId, quoteId),
+            eq(quotePlans.companyId, companyId)
+          ))
+          .limit(1);
+        
+        // Clear memberId only if no plans remain OR no primary plan remains
+        const remainingPrimary = await tx
+          .select()
+          .from(quotePlans)
+          .where(and(
+            eq(quotePlans.quoteId, quoteId),
+            eq(quotePlans.companyId, companyId),
+            eq(quotePlans.isPrimary, true)
+          ))
+          .limit(1);
+        
+        if (remainingPlans.length === 0 || remainingPrimary.length === 0) {
+          // Clear memberId AND selectedPlan (legacy) when primary plan is deleted and no replacement primary exists
+          await tx
+            .update(quotes)
+            .set({ 
+              memberId: null,
+              selectedPlan: null,
+              updatedAt: new Date()
+            })
+            .where(and(
+              eq(quotes.id, quoteId),
+              eq(quotes.companyId, companyId)
+            ));
+        }
+      }
+      
+      return true;
+    });
+  }
+  
+  async setPrimaryQuotePlan(planId: string, quoteId: string, companyId: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(quotePlans)
+        .set({ isPrimary: false, updatedAt: new Date() })
+        .where(and(
+          eq(quotePlans.quoteId, quoteId),
+          eq(quotePlans.companyId, companyId)
+        ));
+      
+      await tx
+        .update(quotePlans)
+        .set({ isPrimary: true, updatedAt: new Date() })
+        .where(and(
+          eq(quotePlans.id, planId),
+          eq(quotePlans.companyId, companyId)
+        ));
+    });
+  }
+  
   // ==================== QUOTE MEMBERS ====================
+  
+  async listQuoteMembers(quoteId: string): Promise<QuoteMember[]> {
+    return db
+      .select()
+      .from(quoteMembers)
+      .where(eq(quoteMembers.quoteId, quoteId))
+      .orderBy(quoteMembers.createdAt);
+  }
   
   async getQuoteMembersByQuoteId(quoteId: string, companyId: string): Promise<QuoteMember[]> {
     return db
@@ -4172,6 +4708,109 @@ export class DbStorage implements IStorage {
       .returning();
     
     return result[0] || null;
+  }
+  
+  // ==================== QUOTE FOLDERS ====================
+  
+  async listQuoteFolders(companyId: string, userId: string): Promise<{ agency: QuoteFolder[], personal: QuoteFolder[] }> {
+    const agencyFolders = await db
+      .select()
+      .from(quoteFolders)
+      .where(and(
+        eq(quoteFolders.companyId, companyId),
+        eq(quoteFolders.type, 'agency')
+      ))
+      .orderBy(quoteFolders.name);
+    
+    const personalFolders = await db
+      .select()
+      .from(quoteFolders)
+      .where(and(
+        eq(quoteFolders.companyId, companyId),
+        eq(quoteFolders.type, 'personal'),
+        eq(quoteFolders.createdBy, userId)
+      ))
+      .orderBy(quoteFolders.name);
+    
+    return {
+      agency: agencyFolders,
+      personal: personalFolders
+    };
+  }
+  
+  async getQuoteFolder(id: string): Promise<QuoteFolder | undefined> {
+    const result = await db
+      .select()
+      .from(quoteFolders)
+      .where(eq(quoteFolders.id, id))
+      .limit(1);
+    
+    return result[0];
+  }
+  
+  async createQuoteFolder(data: InsertQuoteFolder): Promise<QuoteFolder> {
+    const result = await db
+      .insert(quoteFolders)
+      .values(data)
+      .returning();
+    
+    return result[0];
+  }
+  
+  async updateQuoteFolder(id: string, companyId: string, data: Partial<InsertQuoteFolder>): Promise<QuoteFolder | undefined> {
+    const result = await db
+      .update(quoteFolders)
+      .set({
+        name: data.name,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(quoteFolders.id, id),
+        eq(quoteFolders.companyId, companyId)
+      ))
+      .returning();
+    
+    return result[0];
+  }
+  
+  async deleteQuoteFolder(id: string, companyId: string): Promise<boolean> {
+    const result = await db
+      .delete(quoteFolders)
+      .where(and(
+        eq(quoteFolders.id, id),
+        eq(quoteFolders.companyId, companyId)
+      ))
+      .returning();
+    
+    return result.length > 0;
+  }
+  
+  async assignQuotesToFolder(quoteIds: string[], folderId: string | null, userId: string, companyId: string): Promise<number> {
+    await db.transaction(async (tx) => {
+      if (folderId === null) {
+        await tx
+          .delete(quoteFolderAssignments)
+          .where(inArray(quoteFolderAssignments.quoteId, quoteIds));
+      } else {
+        await tx
+          .delete(quoteFolderAssignments)
+          .where(inArray(quoteFolderAssignments.quoteId, quoteIds));
+        
+        const assignmentsToInsert = quoteIds.map(quoteId => ({
+          quoteId,
+          folderId,
+          assignedBy: userId
+        }));
+        
+        if (assignmentsToInsert.length > 0) {
+          await tx
+            .insert(quoteFolderAssignments)
+            .values(assignmentsToInsert);
+        }
+      }
+    });
+    
+    return quoteIds.length;
   }
   
   // ==================== CONSENT DOCUMENTS ====================
