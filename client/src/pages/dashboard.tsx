@@ -40,7 +40,7 @@ interface MonthlyData {
 }
 
 interface AgentLeaderboard {
-  agents: Array<{ name: string; count: number }>;
+  agents: Array<{ name: string; policies: number; applicants: number }>;
 }
 
 const CHART_COLORS = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#6366f1"];
@@ -413,44 +413,81 @@ export default function Dashboard() {
               <Users className="h-4 w-4" />
               Agents leaderboard (Top 5)
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Agents with most sales this month / year</p>
+            <p className="text-xs text-gray-500 mt-1">Top performing agents by policies and applicants</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {(agentsData?.agents || []).length > 0 ? (
-                (agentsData?.agents || []).slice(0, 5).map((agent, idx) => {
-                  const maxCount = Math.max(...(agentsData?.agents || []).slice(0, 5).map(a => a.count));
-                  const percentage = (agent.count / maxCount) * 100;
-                  const medals = ['🥇', '🥈', '🥉'];
+            {(agentsData?.agents || []).length > 0 ? (
+              <div className="space-y-3">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-6 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Agent
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-center">
+                    Policies
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-center">
+                    Applicants
+                  </div>
+                </div>
+
+                {/* Table Rows */}
+                {(agentsData?.agents || []).slice(0, 5).map((agent, idx) => {
+                  const positions = ['1st place', '2nd place', '3rd place', '4th place', '5th place'];
+                  const avatarGradients = [
+                    'from-yellow-400 via-yellow-500 to-yellow-600',
+                    'from-gray-300 via-gray-400 to-gray-500',
+                    'from-orange-400 via-orange-500 to-orange-600',
+                    'from-blue-400 via-blue-500 to-blue-600',
+                    'from-purple-400 via-purple-500 to-purple-600',
+                  ];
                   
                   return (
-                    <div key={idx} className="group relative">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg text-lg">
-                          {idx < 3 ? medals[idx] : idx + 1}
+                    <div key={idx} className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 transition-colors">
+                      {/* Agent Name with Avatar */}
+                      <div className="col-span-6 flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradients[idx]} flex items-center justify-center text-white font-bold text-sm shadow-md`}>
+                          {agent.name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{agent.name}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{agent.count} policies sold</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-gray-900 dark:text-white">{agent.count}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">{Math.round(percentage)}%</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                            {agent.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            {idx === 0 && <span className="text-yellow-500">🏆</span>}
+                            {positions[idx]}
+                          </p>
                         </div>
                       </div>
-                      <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-1000 ease-out"
-                          style={{ width: `${percentage}%` }}
-                        />
+
+                      {/* Policies Count */}
+                      <div className="col-span-3 text-center">
+                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30">
+                          <span className="text-blue-600 dark:text-blue-400 text-sm">🛡️</span>
+                          <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                            {agent.policies}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Applicants Count */}
+                      <div className="col-span-3 text-center">
+                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-cyan-50 dark:bg-cyan-900/30">
+                          <span className="text-cyan-600 dark:text-cyan-400 text-sm">👥</span>
+                          <span className="text-sm font-bold text-cyan-700 dark:text-cyan-300">
+                            {agent.applicants}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
-                })
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-8">No agents data available</p>
-              )}
-            </div>
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No agents data available</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

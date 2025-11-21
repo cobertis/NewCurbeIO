@@ -5938,17 +5938,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const allPolicies = await storage.getPoliciesByCompany(companyId);
       const users = await storage.getUsersByCompany(companyId);
 
-      const agentMap = new Map<string, { name: string; count: number }>();
+      const agentMap = new Map<string, { name: string; policies: number; applicants: number }>();
 
       for (const policy of allPolicies) {
         if (policy.assignedAgent) {
-          const current = agentMap.get(policy.assignedAgent) || { name: policy.assignedAgent, count: 0 };
-          agentMap.set(policy.assignedAgent, { ...current, count: current.count + 1 });
+          const current = agentMap.get(policy.assignedAgent) || { 
+            name: policy.assignedAgent, 
+            policies: 0, 
+            applicants: 0 
+          };
+          
+          // Count applicants in this policy
+          let applicantsInPolicy = 0;
+          if (policy.clientIsApplicant === true) {
+            applicantsInPolicy += 1;
+          }
+          if (Array.isArray(policy.spouses)) {
+            applicantsInPolicy += policy.spouses.filter((spouse: any) => spouse.isApplicant === true).length;
+          }
+          if (Array.isArray(policy.dependents)) {
+            applicantsInPolicy += policy.dependents.filter((dependent: any) => dependent.isApplicant === true).length;
+          }
+          
+          agentMap.set(policy.assignedAgent, { 
+            ...current, 
+            policies: current.policies + 1,
+            applicants: current.applicants + applicantsInPolicy
+          });
         }
       }
 
       const agents = Array.from(agentMap.values())
-        .sort((a, b) => b.count - a.count)
+        .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
 
       res.json({ agents });
