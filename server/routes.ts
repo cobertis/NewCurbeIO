@@ -5944,7 +5944,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (policy.agentId) {
           const agent = users.find(u => u.id === policy.agentId);
           const agentName = agent ? `${agent.firstName} ${agent.lastName}` : 'Unknown Agent';
-          const agentAvatar = agent?.avatarUrl || null;
+          const agentAvatar = agent?.avatar || null;
           
           const current = agentMap.get(policy.agentId) || { 
             name: agentName,
