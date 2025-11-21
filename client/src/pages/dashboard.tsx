@@ -212,8 +212,8 @@ export default function Dashboard() {
                 <div className="relative">
                   <ComposableMap
                     projection="geoAlbersUsa"
-                    projectionConfig={{ scale: 1000 }}
-                    className="w-full h-[300px]"
+                    projectionConfig={{ scale: 1300 }}
+                    className="w-full h-[500px]"
                   >
                     <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
                       {({ geographies }) =>
@@ -227,7 +227,7 @@ export default function Dashboard() {
                               geography={geo}
                               fill={count > 0 ? colorScale(count) : "#f3f4f6"}
                               stroke="#cbd5e1"
-                              strokeWidth={0.5}
+                              strokeWidth={0.75}
                               style={{
                                 default: { outline: "none" },
                                 hover: { 
