@@ -5881,9 +5881,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         monthlyMap.set(month, { policies: 0, quotes: 0 });
       }
 
-      // Count policies by month (rough estimate based on createdAt)
+      // Count policies by month (based on effective date / start date)
       for (const policy of allPolicies) {
-        const month = new Date(policy.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short' });
+        const month = new Date(policy.effectiveDate || policy.createdAt || new Date()).toLocaleDateString('en-US', { month: 'short' });
         const data = monthlyMap.get(month) || { policies: 0, quotes: 0 };
         monthlyMap.set(month, { ...data, policies: data.policies + 1 });
       }

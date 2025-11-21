@@ -166,7 +166,7 @@ export default function Dashboard() {
               <BarChart3 className="h-4 w-4" />
               Monthly Performance Overview
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Total Policies and Total Applicants by policy effective date</p>
+            <p className="text-xs text-gray-500 mt-1">Total Policies and Total Applicants by policy start date</p>
           </CardHeader>
           <CardContent>
             {monthlyData?.data && monthlyData.data.length > 0 ? (
