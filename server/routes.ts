@@ -5680,6 +5680,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Get year filter from query parameter (optional, default: current year)
           const currentYear = new Date().getFullYear();
           const yearFilter = req.query.year as string | undefined;
+          // Validate year parameter
+          if (yearFilter && yearFilter !== 'all') {
+            const yearNum = parseInt(yearFilter);
+            
+            // Strict validation: must be a valid integer in reasonable range
+            if (
+              isNaN(yearNum) || 
+              !Number.isInteger(yearNum) || 
+              yearNum < 2000 || 
+              yearNum > 2100 || 
+              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
+            ) {
+              return res.status(400).json({ 
+                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
+              });
+            }
+          }
+
+          // Only parse year if it passed validation
           const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
 
           let allPolicies = await storage.getPoliciesByCompany(companyId);
@@ -5814,7 +5833,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get year filter from query parameter (optional, default: current year)
       const currentYear = new Date().getFullYear();
       const yearFilter = req.query.year as string | undefined;
-      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+          // Validate year parameter
+          if (yearFilter && yearFilter !== 'all') {
+            const yearNum = parseInt(yearFilter);
+            
+            // Strict validation: must be a valid integer in reasonable range
+            if (
+              isNaN(yearNum) || 
+              !Number.isInteger(yearNum) || 
+              yearNum < 2000 || 
+              yearNum > 2100 || 
+              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
+            ) {
+              return res.status(400).json({ 
+                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
+              });
+            }
+          }
+
+          // Only parse year if it passed validation
+          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
 
       // Get all policies for company
       let allPolicies = await storage.getPoliciesByCompany(companyId);
@@ -5900,7 +5938,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get year filter from query parameter (optional, default: current year)
       const currentYear = new Date().getFullYear();
       const yearFilter = req.query.year as string | undefined;
-      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+          // Validate year parameter
+          if (yearFilter && yearFilter !== 'all') {
+            const yearNum = parseInt(yearFilter);
+            
+            // Strict validation: must be a valid integer in reasonable range
+            if (
+              isNaN(yearNum) || 
+              !Number.isInteger(yearNum) || 
+              yearNum < 2000 || 
+              yearNum > 2100 || 
+              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
+            ) {
+              return res.status(400).json({ 
+                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
+              });
+            }
+          }
+
+          // Only parse year if it passed validation
+          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
 
       let allPolicies = await storage.getPoliciesByCompany(companyId);
 
@@ -5982,7 +6039,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get year filter from query parameter (optional, default: current year)
       const currentYear = new Date().getFullYear();
       const yearFilter = req.query.year as string | undefined;
-      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+          // Validate year parameter
+          if (yearFilter && yearFilter !== 'all') {
+            const yearNum = parseInt(yearFilter);
+            
+            // Strict validation: must be a valid integer in reasonable range
+            if (
+              isNaN(yearNum) || 
+              !Number.isInteger(yearNum) || 
+              yearNum < 2000 || 
+              yearNum > 2100 || 
+              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
+            ) {
+              return res.status(400).json({ 
+                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
+              });
+            }
+          }
+
+          // Only parse year if it passed validation
+          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
 
       let allPolicies = await storage.getPoliciesByCompany(companyId);
 
@@ -6056,7 +6132,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get year filter from query parameter (optional, default: current year)
       const currentYear = new Date().getFullYear();
       const yearFilter = req.query.year as string | undefined;
-      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+          // Validate year parameter
+          if (yearFilter && yearFilter !== 'all') {
+            const yearNum = parseInt(yearFilter);
+            
+            // Strict validation: must be a valid integer in reasonable range
+            if (
+              isNaN(yearNum) || 
+              !Number.isInteger(yearNum) || 
+              yearNum < 2000 || 
+              yearNum > 2100 || 
+              yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
+            ) {
+              return res.status(400).json({ 
+                message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
+              });
+            }
+          }
+
+          // Only parse year if it passed validation
+          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
 
       let allPolicies = await storage.getPoliciesByCompany(companyId);
 
@@ -18039,6 +18134,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get year filter from query parameter (optional)
       const yearFilter = req.query.year as string | undefined;
+
+      // Validate year parameter
+      if (yearFilter && yearFilter !== 'all') {
+        const yearNum = parseInt(yearFilter);
+        
+        // Strict validation: must be a valid integer in reasonable range
+        if (
+          isNaN(yearNum) || 
+          !Number.isInteger(yearNum) || 
+          yearNum < 2000 || 
+          yearNum > 2100 || 
+          yearFilter !== yearNum.toString() // Prevents "2025abc" from being accepted
+        ) {
+          return res.status(400).json({ 
+            message: `Invalid year parameter. Must be a 4-digit year between 2000-2100 or 'all'.` 
+          });
+        }
+      }
       
       // Get all policies for the company
       let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
@@ -18051,7 +18164,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Filter by year if specified (e.g., ?year=2025)
       if (yearFilter && yearFilter !== 'all') {
         const year = parseInt(yearFilter);
-        if (!isNaN(year)) {
+        // Year already validated above, so no need to check isNaN
+        if (true) {
           const startDate = `${year}-01-01`;
           const endDate = `${year + 1}-01-01`;
           allPolicies = allPolicies.filter(policy => {
