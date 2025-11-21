@@ -6,8 +6,9 @@ import { format } from "date-fns";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useCallback } from "react";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
+import { geoCentroid } from "d3-geo";
 
 interface DashboardStats {
   totalUsers: number;
@@ -304,33 +305,60 @@ export default function Dashboard() {
                     className="w-full h-[500px]"
                   >
                     <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
-                      {({ geographies }) =>
-                        geographies.map((geo) => {
-                          const stateName = geo.properties.name.toUpperCase();
-                          const count = stateCountMap.get(stateName) || 0;
-                          
-                          return (
-                            <Geography
-                              key={geo.rsmKey}
-                              geography={geo}
-                              fill={count > 0 ? colorScale(count) : "#f3f4f6"}
-                              stroke="#cbd5e1"
-                              strokeWidth={0.75}
-                              style={{
-                                default: { outline: "none" },
-                                hover: { 
-                                  fill: "#3b82f6", 
-                                  outline: "none",
-                                  cursor: "pointer"
-                                },
-                                pressed: { outline: "none" }
-                              }}
-                            >
-                              <title>{`${geo.properties.name}: ${count}`}</title>
-                            </Geography>
-                          );
-                        })
-                      }
+                      {({ geographies }) => (
+                        <>
+                          {geographies.map((geo) => {
+                            const stateName = geo.properties.name.toUpperCase();
+                            const count = stateCountMap.get(stateName) || 0;
+                            
+                            return (
+                              <Geography
+                                key={geo.rsmKey}
+                                geography={geo}
+                                fill={count > 0 ? colorScale(count) : "#f3f4f6"}
+                                stroke="#cbd5e1"
+                                strokeWidth={0.75}
+                                style={{
+                                  default: { outline: "none" },
+                                  hover: { 
+                                    fill: "#3b82f6", 
+                                    outline: "none",
+                                    cursor: "pointer"
+                                  },
+                                  pressed: { outline: "none" }
+                                }}
+                              >
+                                <title>{`${geo.properties.name}: ${count}`}</title>
+                              </Geography>
+                            );
+                          })}
+                          {geographies.map((geo) => {
+                            const stateName = geo.properties.name.toUpperCase();
+                            const count = stateCountMap.get(stateName) || 0;
+                            
+                            if (count === 0) return null;
+                            
+                            const centroid = geoCentroid(geo);
+                            
+                            return (
+                              <Marker key={`label-${geo.rsmKey}`} coordinates={centroid}>
+                                <text
+                                  textAnchor="middle"
+                                  fontSize="14"
+                                  fontWeight="700"
+                                  fill="#1f2937"
+                                  stroke="#ffffff"
+                                  strokeWidth="3"
+                                  paintOrder="stroke"
+                                  style={{ pointerEvents: "none" }}
+                                >
+                                  {count}
+                                </text>
+                              </Marker>
+                            );
+                          })}
+                        </>
+                      )}
                     </Geographies>
                   </ComposableMap>
                   {statesData.length === 0 && (
