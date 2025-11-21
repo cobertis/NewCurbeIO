@@ -64,20 +64,21 @@ const PUBLIC_PLANS: PublicPlan[] = [
 
 function PublicPricingView() {
   return (
-    <div className="flex flex-col gap-8 p-4 sm:p-6 max-w-7xl mx-auto">
-      <div className="text-center space-y-4">
-        <Badge className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="badge-planes">
-          PLANES Y PRECIOS
-        </Badge>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
-          Elige el plan <span className="text-blue-600">perfecto para ti</span>
-        </h1>
-        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Comienza con 14 días gratis. Cancela cuando quieras. Sin sorpresas.
-        </p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
+      <div className="flex flex-col gap-8 w-full max-w-7xl">
+        <div className="text-center space-y-4">
+          <Badge className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="badge-planes">
+            PLANES Y PRECIOS
+          </Badge>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
+            Elige el plan <span className="text-blue-600">perfecto para ti</span>
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Comienza con 14 días gratis. Cancela cuando quieras. Sin sorpresas.
+          </p>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3">
         {PUBLIC_PLANS.map((plan, index) => {
           const Icon = plan.icon;
           return (
@@ -140,12 +141,13 @@ function PublicPricingView() {
             </div>
           );
         })}
-      </div>
+        </div>
 
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground">
-          Todos los planes incluyen las características principales del CRM
-        </p>
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            Todos los planes incluyen las características principales del CRM
+          </p>
+        </div>
       </div>
     </div>
   );
