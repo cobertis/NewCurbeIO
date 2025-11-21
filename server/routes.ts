@@ -5677,7 +5677,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Count birthdays from policies (clients + members)
         try {
-          const allPolicies = await storage.getPoliciesByCompany(companyId);
+          // Get year filter from query parameter (optional, default: current year)
+          const currentYear = new Date().getFullYear();
+          const yearFilter = req.query.year as string | undefined;
+          const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+
+          let allPolicies = await storage.getPoliciesByCompany(companyId);
+
+          // Apply year filter
+          if (selectedYear) {
+            const startDate = `${selectedYear}-01-01`;
+            const endDate = `${selectedYear + 1}-01-01`;
+            allPolicies = allPolicies.filter(p => {
+              return p.effectiveDate >= startDate && p.effectiveDate < endDate;
+            });
+          }
           
           for (const policy of allPolicies) {
             // Check policy client birthday
@@ -5797,8 +5811,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
+      // Get year filter from query parameter (optional, default: current year)
+      const currentYear = new Date().getFullYear();
+      const yearFilter = req.query.year as string | undefined;
+      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+
       // Get all policies for company
-      const allPolicies = await storage.getPoliciesByCompany(companyId);
+      let allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Apply year filter
+      if (selectedYear) {
+        const startDate = `${selectedYear}-01-01`;
+        const endDate = `${selectedYear + 1}-01-01`;
+        allPolicies = allPolicies.filter(p => {
+          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
+        });
+      }
 
       // Group by state
       const stateMap = new Map<string, number>();
@@ -5869,7 +5897,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      const allPolicies = await storage.getPoliciesByCompany(companyId);
+      // Get year filter from query parameter (optional, default: current year)
+      const currentYear = new Date().getFullYear();
+      const yearFilter = req.query.year as string | undefined;
+      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+
+      let allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Apply year filter
+      if (selectedYear) {
+        const startDate = `${selectedYear}-01-01`;
+        const endDate = `${selectedYear + 1}-01-01`;
+        allPolicies = allPolicies.filter(p => {
+          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
+        });
+      }
+
       const allQuotes = await storage.getQuotesByCompany(companyId);
 
       const monthlyMap = new Map<string, { policies: number; customers: number }>();
@@ -5936,7 +5979,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      const allPolicies = await storage.getPoliciesByCompany(companyId);
+      // Get year filter from query parameter (optional, default: current year)
+      const currentYear = new Date().getFullYear();
+      const yearFilter = req.query.year as string | undefined;
+      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+
+      let allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Apply year filter
+      if (selectedYear) {
+        const startDate = `${selectedYear}-01-01`;
+        const endDate = `${selectedYear + 1}-01-01`;
+        allPolicies = allPolicies.filter(p => {
+          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
+        });
+      }
+
       const users = await storage.getUsersByCompany(companyId);
 
       const agentMap = new Map<string, { name: string; avatar: string | null; policies: number; applicants: number }>();
@@ -5995,7 +6053,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
 
     try {
-      const allPolicies = await storage.getPoliciesByCompany(companyId);
+      // Get year filter from query parameter (optional, default: current year)
+      const currentYear = new Date().getFullYear();
+      const yearFilter = req.query.year as string | undefined;
+      const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
+
+      let allPolicies = await storage.getPoliciesByCompany(companyId);
+
+      // Apply year filter
+      if (selectedYear) {
+        const startDate = `${selectedYear}-01-01`;
+        const endDate = `${selectedYear + 1}-01-01`;
+        allPolicies = allPolicies.filter(p => {
+          return p.effectiveDate >= startDate && p.effectiveDate < endDate;
+        });
+      }
 
       const carrierMap = new Map<string, { carrier: string; policies: number; applicants: number }>();
 
