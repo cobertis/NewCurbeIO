@@ -12502,43 +12502,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         allQuotes = allQuotes.filter(quote => quote.agentId === currentUser.id);
       }
       
-      
-      // IMPORTANT: Deduplicate quotes to avoid double-counting
-      // Only count the most recent quote per client (identified by SSN or email)
-      const uniqueQuotesMap = new Map<string, any>();
-      
-      for (const quote of allQuotes) {
-        // Create unique identifier: use SSN, fallback to email, fallback to quote ID
-        const clientIdentifier = quote.clientSsn || quote.clientEmail || quote.id;
-        
-        const existing = uniqueQuotesMap.get(clientIdentifier);
-        if (!existing) {
-          // First quote for this client
-          uniqueQuotesMap.set(clientIdentifier, quote);
-        } else {
-          // Keep the most recent quote (by updatedAt or createdAt)
-          const existingDate = new Date(existing.updatedAt || existing.createdAt);
-          const currentDate = new Date(quote.updatedAt || quote.createdAt);
-          
-          if (currentDate > existingDate) {
-            uniqueQuotesMap.set(clientIdentifier, quote);
-          }
-        }
-      }
-      
-      // Get unique quotes (one per client)
-      const uniqueQuotes = Array.from(uniqueQuotesMap.values());
       // Calculate total quotes
-      const totalQuotes = uniqueQuotes.length;
+      const totalQuotes = allQuotes.length;
       
       // Calculate archived quotes
-      const archivedQuotes = uniqueQuotes.filter(q => q.isArchived).length;
+      const archivedQuotes = allQuotes.filter(q => q.isArchived).length;
       
       // Get unique applicants (deduplicate by SSN/email like policies does)
       const uniqueApplicantsSet = new Set<string>();
       const uniqueArchivedApplicantsSet = new Set<string>();
       
-      for (const quote of uniqueQuotes) {
+      for (const quote of allQuotes) {
         const members = await storage.listQuoteMembers(quote.id, currentUser.companyId!);
         const isArchived = quote.isArchived;
         
