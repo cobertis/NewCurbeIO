@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { useWebSocket } from "@/hooks/use-websocket";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
@@ -305,98 +305,236 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* US Map */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
+        {/* US Map - Interactive Heat Map */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700">
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              Policy Distribution Across the United States
+              Interactive US Heat Map - Customer Distribution
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Geographic distribution of all policies nationwide</p>
+            <p className="text-xs text-gray-500 mt-1">Hover over states to see detailed statistics</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {(() => {
               const statesData = analyticsData?.byState || [];
               const maxCount = Math.max(...statesData.map(s => s.count), 1);
-              const colorScale = scaleLinear<string>()
-                .domain([0, maxCount])
-                .range(["#e0f2fe", "#0369a1"]);
+              const totalCustomers = statesData.reduce((sum, s) => sum + s.count, 0);
               
-              // Create a map for quick lookup
+              // Heat map color scale: Green → Yellow → Orange → Red
+              const colorScale = scaleLinear<string>()
+                .domain([0, maxCount * 0.25, maxCount * 0.5, maxCount * 0.75, maxCount])
+                .range(["#10b981", "#fbbf24", "#f97316", "#ef4444", "#dc2626"]);
+              
               const stateCountMap = new Map(
                 statesData.map(s => [s.state.toUpperCase(), s.count])
               );
 
+              const [hoveredState, setHoveredState] = useState<{ name: string; count: number; percentage: number } | null>(null);
+              const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+              const sortedStates = [...statesData].sort((a, b) => b.count - a.count).slice(0, 5);
+
               return (
-                <div className="relative">
-                  <ComposableMap
-                    projection="geoAlbersUsa"
-                    projectionConfig={{ scale: 1300 }}
-                    className="w-full h-[500px]"
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+                  {/* Map Section */}
+                  <div 
+                    className="lg:col-span-8 relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+                    onMouseMove={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                    }}
                   >
-                    <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
-                      {({ geographies }) => (
-                        <>
-                          {geographies.map((geo) => {
-                            const stateName = geo.properties.name.toUpperCase();
-                            const count = stateCountMap.get(stateName) || 0;
-                            const displayName = geo.properties.name;
-                            
-                            return (
-                              <Geography
-                                key={geo.rsmKey}
-                                geography={geo}
-                                fill={count > 0 ? colorScale(count) : "#f3f4f6"}
-                                stroke="#cbd5e1"
-                                strokeWidth={0.75}
-                                style={{
-                                  default: { outline: "none" },
-                                  hover: { 
-                                    fill: "#3b82f6", 
-                                    outline: "none",
-                                    cursor: "pointer"
-                                  },
-                                  pressed: { outline: "none" }
-                                }}
-                              >
-                                <title>{`${displayName}: ${count} ${count === 1 ? 'client' : 'clients'}`}</title>
-                              </Geography>
-                            );
-                          })}
-                          {geographies.map((geo) => {
-                            const stateName = geo.properties.name.toUpperCase();
-                            const count = stateCountMap.get(stateName) || 0;
-                            
-                            if (count === 0) return null;
-                            
-                            const centroid = geoCentroid(geo);
-                            
-                            return (
-                              <Marker key={`label-${geo.rsmKey}`} coordinates={centroid}>
-                                <text
-                                  textAnchor="middle"
-                                  fontSize="14"
-                                  fontWeight="700"
-                                  fill="#1f2937"
+                    <ComposableMap
+                      projection="geoAlbersUsa"
+                      projectionConfig={{ scale: 1000 }}
+                      className="w-full h-[500px]"
+                    >
+                      <defs>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                          <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
+                        {({ geographies }) => (
+                          <>
+                            {geographies.map((geo) => {
+                              const stateName = geo.properties.name.toUpperCase();
+                              const count = stateCountMap.get(stateName) || 0;
+                              const displayName = geo.properties.name;
+                              const percentage = totalCustomers > 0 ? (count / totalCustomers * 100).toFixed(1) : 0;
+                              const isTopState = sortedStates.some(s => s.state.toUpperCase() === stateName);
+                              
+                              return (
+                                <Geography
+                                  key={geo.rsmKey}
+                                  geography={geo}
+                                  fill={count > 0 ? colorScale(count) : "#e5e7eb"}
                                   stroke="#ffffff"
-                                  strokeWidth="3"
-                                  paintOrder="stroke"
-                                  style={{ pointerEvents: "none" }}
-                                >
-                                  {count}
-                                </text>
-                              </Marker>
-                            );
-                          })}
-                        </>
-                      )}
-                    </Geographies>
-                  </ComposableMap>
-                  {statesData.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                      No data available
+                                  strokeWidth={count > 0 ? 1.2 : 0.5}
+                                  onMouseEnter={() => {
+                                    if (count > 0) {
+                                      setHoveredState({ name: displayName, count, percentage: Number(percentage) });
+                                    }
+                                  }}
+                                  onMouseLeave={() => setHoveredState(null)}
+                                  style={{
+                                    default: { 
+                                      outline: "none",
+                                      transition: "all 0.2s ease-in-out",
+                                      filter: isTopState && count > 0 ? "url(#glow)" : "none"
+                                    },
+                                    hover: count > 0 ? { 
+                                      fill: "#8b5cf6",
+                                      outline: "none",
+                                      cursor: "pointer",
+                                      filter: "drop-shadow(0 4px 8px rgba(139, 92, 246, 0.4))",
+                                      transform: "scale(1.05)"
+                                    } : {
+                                      outline: "none"
+                                    },
+                                    pressed: { outline: "none" }
+                                  }}
+                                />
+                              );
+                            })}
+                            {geographies.map((geo) => {
+                              const stateName = geo.properties.name.toUpperCase();
+                              const count = stateCountMap.get(stateName) || 0;
+                              
+                              if (count === 0) return null;
+                              
+                              const centroid = geoCentroid(geo);
+                              
+                              return (
+                                <Marker key={`label-${geo.rsmKey}`} coordinates={centroid}>
+                                  <g>
+                                    <circle
+                                      r={count > maxCount * 0.7 ? 16 : count > maxCount * 0.4 ? 14 : 12}
+                                      fill="rgba(0, 0, 0, 0.6)"
+                                      stroke="#ffffff"
+                                      strokeWidth={2}
+                                      style={{ pointerEvents: "none" }}
+                                    />
+                                    <text
+                                      textAnchor="middle"
+                                      dy={4}
+                                      fontSize={count > maxCount * 0.7 ? "13" : "11"}
+                                      fontWeight="700"
+                                      fill="#ffffff"
+                                      style={{ pointerEvents: "none" }}
+                                    >
+                                      {count}
+                                    </text>
+                                  </g>
+                                </Marker>
+                              );
+                            })}
+                          </>
+                        )}
+                      </Geographies>
+                    </ComposableMap>
+
+                    {/* Custom Tooltip */}
+                    {hoveredState && (
+                      <div 
+                        className="absolute pointer-events-none z-50"
+                        style={{
+                          left: mousePosition.x + 15,
+                          top: mousePosition.y - 60,
+                        }}
+                      >
+                        <div className="bg-gray-900 dark:bg-gray-800 text-white px-4 py-3 rounded-lg shadow-2xl border border-gray-700 min-w-[200px] animate-in fade-in duration-200">
+                          <div className="font-bold text-base mb-2 flex items-center gap-2">
+                            <span className="text-xl">📍</span>
+                            {hoveredState.name}
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-300">Customers:</span>
+                              <span className="font-bold text-cyan-400">{hoveredState.count}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-300">Percentage:</span>
+                              <span className="font-bold text-green-400">{hoveredState.percentage}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Heat Map Legend */}
+                    <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-3 border border-gray-200 dark:border-gray-700">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Heat Map Scale</div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Low</span>
+                        <div className="flex h-4 rounded overflow-hidden">
+                          <div className="w-6 bg-[#10b981]"></div>
+                          <div className="w-6 bg-[#fbbf24]"></div>
+                          <div className="w-6 bg-[#f97316]"></div>
+                          <div className="w-6 bg-[#ef4444]"></div>
+                          <div className="w-6 bg-[#dc2626]"></div>
+                        </div>
+                        <span className="text-xs text-gray-500">High</span>
+                      </div>
                     </div>
-                  )}
+
+                    {statesData.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <p className="text-gray-400">No geographic data available</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Top States Panel */}
+                  <div className="lg:col-span-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-4 border-l border-gray-200 dark:border-gray-700">
+                    <div className="sticky top-4">
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <span className="text-lg">🏆</span>
+                        Top 5 States
+                      </h3>
+                      <div className="space-y-2">
+                        {sortedStates.map((state, idx) => {
+                          const percentage = totalCustomers > 0 ? (state.count / totalCustomers * 100).toFixed(1) : 0;
+                          const barColor = idx === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                                          idx === 1 ? 'bg-gradient-to-r from-gray-400 to-gray-500' :
+                                          idx === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
+                                          'bg-gradient-to-r from-blue-400 to-blue-600';
+                          
+                          return (
+                            <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-200 dark:border-gray-700">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-bold text-gray-400">#{idx + 1}</span>
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{state.state}</span>
+                                </div>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white">{state.count}</span>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full ${barColor} rounded-full transition-all duration-1000 ease-out`}
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 text-right">{percentage}% of total</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Total Summary */}
+                      <div className="mt-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 text-white shadow-lg">
+                        <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Total Customers</div>
+                        <div className="text-3xl font-bold mt-1">{totalCustomers.toLocaleString()}</div>
+                        <div className="text-xs mt-2 opacity-75">Across {statesData.length} states</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })()}
