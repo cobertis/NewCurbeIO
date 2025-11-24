@@ -70,6 +70,7 @@ interface WebPhoneState {
   setConnectionStatus: (status: WebPhoneState['connectionStatus'], error?: string) => void;
   setSipCredentials: (extension: string, password: string) => void;
   setWssServer: (server: string) => void;
+  setSipDomain: (domain: string) => void;
   setCurrentCall: (call?: Call) => void;
   setWaitingCall: (call?: Call) => void;
   setConsultationCall: (call?: Call) => void;
@@ -93,8 +94,8 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   // Initial state
   isConnected: false,
   connectionStatus: 'disconnected',
-  sipDomain: 'pbx1.curbe.io',
-  wssServer: 'wss://pbx1.curbe.io:8089/ws',
+  sipDomain: 'pbx.curbe.io',
+  wssServer: 'wss://pbx.curbe.io:8089/ws',
   isCallActive: false,
   isMuted: false,
   isOnHold: false,
@@ -123,6 +124,7 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   }),
   
   setWssServer: (server: string) => set({ wssServer: server }),
+  setSipDomain: (domain: string) => set({ sipDomain: domain }),
   
   setCurrentCall: (call) => set({ 
     currentCall: call,
@@ -439,9 +441,17 @@ class WebPhoneManager {
       this.reconnectTimeout = undefined;
     }
     
-    // Update server if provided (for storage, not used for connection)
+    // Update server if provided and extract domain
     if (server) {
       store.setWssServer(server);
+      // Extract domain from server URL (e.g., "wss://pbx.curbe.io:8089/ws" -> "pbx.curbe.io")
+      try {
+        const url = new URL(server);
+        const domain = url.hostname;
+        store.setSipDomain(domain);
+      } catch (e) {
+        console.warn('[WebPhone] Failed to extract domain from server URL:', e);
+      }
     }
     
     // Don't reinitialize if already connected with same credentials
@@ -462,15 +472,14 @@ class WebPhoneManager {
         await this.disconnect();
       }
       
-      // USE BACKEND PROXY for SIP WebSocket
-      // Connect through /ws/sip proxy which handles authentication and headers
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const proxyServer = `${wsProtocol}//${window.location.host}/ws/sip`;
+      // CONNECT DIRECTLY TO PBX (No proxy)
+      // Use the PBX server directly from the browser
+      const pbxServer = store.wssServer;
       
       // Create SIP configuration  
       const uriString = `sip:${extension}@${store.sipDomain}`;
       const transportOptions = {
-        server: proxyServer, // Connect through backend proxy
+        server: pbxServer, // Connect directly to PBX
         connectionTimeout: 10,
         keepAliveInterval: 30,
         traceSip: true
@@ -478,7 +487,7 @@ class WebPhoneManager {
       
       console.log('[WebPhone] Initializing with config:', {
         uri: uriString,
-        proxyServer: proxyServer,
+        pbxServer: pbxServer,
         username: extension
       });
       
