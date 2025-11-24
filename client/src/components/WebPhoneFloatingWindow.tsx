@@ -611,7 +611,8 @@ export function WebPhoneFloatingWindow() {
                       {formatCallerNumber(currentCall.phoneNumber)}
                     </p>
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      {currentCall.status === 'ringing' && 'Calling...'}
+                      {currentCall.status === 'ringing' && currentCall.direction === 'inbound' && 'Incoming call...'}
+                      {currentCall.status === 'ringing' && currentCall.direction === 'outbound' && 'Calling...'}
                       {currentCall.status === 'answered' && formatDuration(callDuration)}
                     </p>
                   </div>
@@ -637,7 +638,32 @@ export function WebPhoneFloatingWindow() {
                   
                   {/* Call Controls */}
                   <div className="space-y-3 sm:space-y-4 pb-4 sm:pb-8">
-                    {consultationCall ? (
+                    {currentCall.status === 'ringing' && currentCall.direction === 'inbound' ? (
+                      /* Incoming Call - Show Accept/Reject Buttons */
+                      <div className="grid grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-8">
+                        <button
+                          onClick={() => webPhone.answerCall()}
+                          className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
+                          data-testid="button-accept-call"
+                        >
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg">
+                            <Phone className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                          </div>
+                          <span className="text-sm sm:text-base text-foreground font-medium">Accept</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => webPhone.rejectCall()}
+                          className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
+                          data-testid="button-reject-call"
+                        >
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg">
+                            <PhoneOff className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                          </div>
+                          <span className="text-sm sm:text-base text-foreground font-medium">Reject</span>
+                        </button>
+                      </div>
+                    ) : consultationCall ? (
                       /* Consultation Call Active - Show Complete/Cancel Transfer Buttons */
                       <>
                         {/* Info Banner */}
