@@ -188,7 +188,7 @@ function handleSipConnection(clientWs: WebSocket, req: IncomingMessage) {
         console.log(`[SIP WebSocket] ✅ Connecting to PBX: ${pbxServer}`);
         
         // Create WebSocket connection to actual PBX server with SIP subprotocol
-        pbxWs = new WebSocket(pbxServer, 'sip', {
+        pbxWs = new WebSocket(pbxServer, ['sip'], {
           headers: {
             'Origin': req.headers.origin || 'https://proxy.curbe.io'
           }

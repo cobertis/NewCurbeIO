@@ -146,9 +146,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // Subscribe to WebPhone connection status for real-time updates
-  const webPhoneStatus = useWebPhoneStore(state => state.connectionStatus);
 
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -492,18 +489,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons + User Profile */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              {/* WebPhone Button - Real-time connection status indicator */}
+              {/* WebPhone Button */}
               <Button 
                 size="icon"
                 onClick={() => useWebPhoneStore.getState().toggleDialpad()}
                 data-testid="button-webphone"
-                className={cn(
-                  "rounded-full hover-elevate active-elevate-2 transition-colors",
-                  webPhoneStatus === 'connected'
-                    ? "bg-green-500 hover:bg-green-600 active:bg-green-700"
-                    : "bg-red-500 hover:bg-red-600 active:bg-red-700"
-                )}
-                title={webPhoneStatus === 'connected' ? 'WebPhone Connected' : 'WebPhone Disconnected'}
+                className="rounded-full hover-elevate active-elevate-2 bg-green-500 hover:bg-green-600 active:bg-green-700"
               >
                 <Phone className="h-5 w-5 text-white" />
               </Button>
