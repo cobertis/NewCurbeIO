@@ -25,7 +25,6 @@ interface Contact {
   id: string;
   name: string;
   phoneNumber: string;
-  type: 'quote' | 'policy' | 'lead';
 }
 
 interface ContactsViewProps {
@@ -36,56 +35,24 @@ interface ContactsViewProps {
 function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Fetch quotes
-  const { data: quotes = [] } = useQuery({
-    queryKey: ['/api/quotes'],
+  // Fetch unified contacts (only those with phone numbers)
+  const { data: contactsData } = useQuery({
+    queryKey: ['/api/contacts', { limit: 1000 }],
   });
   
-  // Fetch policies
-  const { data: policies = [] } = useQuery({
-    queryKey: ['/api/policies'],
-  });
-  
-  // Fetch leads (if they exist in your system)
-  // const { data: leads = [] } = useQuery({
-  //   queryKey: ['/api/leads'],
-  // });
-  
-  // Combine all contacts
+  // Transform contacts into the format we need
   const allContacts = useMemo(() => {
-    const contacts: Contact[] = [];
+    if (!contactsData?.contacts) return [];
     
-    // Add quotes
-    if (Array.isArray(quotes)) {
-      quotes.forEach((quote: any) => {
-        if (quote.phoneNumber) {
-          contacts.push({
-            id: quote.id,
-            name: `${quote.firstName} ${quote.lastName}`.trim(),
-            phoneNumber: quote.phoneNumber,
-            type: 'quote'
-          });
-        }
-      });
-    }
-    
-    // Add policies
-    if (Array.isArray(policies)) {
-      policies.forEach((policy: any) => {
-        if (policy.phoneNumber) {
-          contacts.push({
-            id: policy.id,
-            name: `${policy.firstName} ${policy.lastName}`.trim(),
-            phoneNumber: policy.phoneNumber,
-            type: 'policy'
-          });
-        }
-      });
-    }
+    const contacts: Contact[] = contactsData.contacts.map((contact: any) => ({
+      id: contact.id,
+      name: contact.displayName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Unknown',
+      phoneNumber: contact.phoneNormalized || contact.phoneDisplay || ''
+    })).filter((c: Contact) => c.phoneNumber);
     
     // Sort by name
     return contacts.sort((a, b) => a.name.localeCompare(b.name));
-  }, [quotes, policies]);
+  }, [contactsData]);
   
   // Filter contacts based on search
   const filteredContacts = useMemo(() => {
@@ -142,7 +109,7 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
               
               return (
                 <div
-                  key={`${contact.type}-${contact.id}`}
+                  key={contact.id}
                   className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
                   data-testid={`contact-${contact.id}`}
                 >
@@ -153,16 +120,8 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
                   
                   {/* Contact Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm sm:text-base font-normal truncate text-foreground">
-                        {contact.name}
-                      </span>
-                      <Badge 
-                        variant="outline" 
-                        className="text-[8px] sm:text-[10px] px-1 py-0 h-4 capitalize"
-                      >
-                        {contact.type}
-                      </Badge>
+                    <div className="text-sm sm:text-base font-normal truncate text-foreground mb-0.5">
+                      {contact.name}
                     </div>
                     <div className="text-[10px] sm:text-xs text-muted-foreground">
                       {formatCallerNumber(contact.phoneNumber)}
