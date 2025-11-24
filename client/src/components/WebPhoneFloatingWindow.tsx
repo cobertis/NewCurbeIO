@@ -37,7 +37,7 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
   
   // Fetch unified contacts (only those with phone numbers)
   const { data: contactsData } = useQuery({
-    queryKey: ['/api/contacts', { limit: 1000 }],
+    queryKey: ['/api/contacts/list'],
   });
   
   // Transform contacts into the format we need
