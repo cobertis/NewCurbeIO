@@ -78,7 +78,7 @@ import {
   AlertCircle,
   Shield,
 } from "lucide-react";
-import { type ManualContact, type ContactList, type User } from "@shared/schema";
+import { type ManualContact, type Contact, type ContactList, type User } from "@shared/schema";
 import { formatForDisplay, formatForStorage } from "@shared/phone";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -502,12 +502,13 @@ export default function Contacts() {
     createContactMutation.mutate(values);
   };
 
-  const handleEditContact = (contact: ManualContact) => {
-    setEditingContact(contact);
+  const handleEditContact = (contact: Contact & { sourceCount?: number; status?: string; phone?: string }) => {
+    setEditingContact(contact as any);
+    const phoneToDisplay = contact.phoneDisplay || (contact.phoneNormalized ? formatForDisplay(contact.phoneNormalized) : (contact.phone ? formatForDisplay(contact.phone) : ""));
     editForm.reset({
-      firstName: contact.firstName,
-      lastName: contact.lastName,
-      phone: formatForDisplay(contact.phone),
+      firstName: contact.firstName || "",
+      lastName: contact.lastName || "",
+      phone: phoneToDisplay,
       email: contact.email || "",
       status: (contact.status || "Regular contact") as "Regular contact" | "Contacted" | "Not Contacted" | "Blacklist",
       notes: contact.notes || "",
@@ -541,14 +542,15 @@ export default function Contacts() {
     }
   };
 
-  const handleAddToBlacklist = (contact: ManualContact) => {
-    setBlacklistingContact(contact);
+  const handleAddToBlacklist = (contact: Contact & { sourceCount?: number; status?: string; phone?: string }) => {
+    setBlacklistingContact(contact as any);
     setIsBlacklistDialogOpen(true);
   };
 
   const confirmAddToBlacklist = async () => {
     if (blacklistingContact) {
-      const normalizedPhone = formatForStorage(blacklistingContact.phone);
+      const phoneToUse = blacklistingContact.phoneNormalized || blacklistingContact.phone || "";
+      const normalizedPhone = phoneToUse.startsWith('+') ? phoneToUse : formatForStorage(phoneToUse);
       
       // Add to blacklist
       addToBlacklistMutation.mutate({
@@ -980,7 +982,7 @@ export default function Contacts() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contacts.map((contact: ManualContact) => (
+                    {contacts.map((contact: Contact & { sourceCount?: number; status?: string; phone?: string }) => (
                       <TableRow key={contact.id} data-testid={`row-contact-${contact.id}`}>
                         <TableCell>
                           <Checkbox
@@ -999,7 +1001,7 @@ export default function Contacts() {
                           {contact.email || "—"}
                         </TableCell>
                         <TableCell data-testid={`text-contact-phone-${contact.id}`}>
-                          {formatForDisplay(contact.phone)}
+                          {contact.phoneDisplay || (contact.phoneNormalized ? formatForDisplay(contact.phoneNormalized) : "—")}
                         </TableCell>
                         <TableCell data-testid={`text-contact-status-${contact.id}`}>
                           <Badge 
