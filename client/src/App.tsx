@@ -24,7 +24,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
 import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
-import { WebPhoneIncomingCall } from '@/components/WebPhoneIncomingCall';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import type { User } from "@shared/schema";
 import Login from "@/pages/login";
@@ -494,7 +493,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 size="icon"
                 onClick={() => useWebPhoneStore.getState().toggleDialpad()}
                 data-testid="button-webphone"
-                className="rounded-full hover-elevate active-elevate-2 bg-green-500 hover:bg-green-600 active:bg-green-700"
+                className={cn(
+                  "rounded-full hover-elevate active-elevate-2 bg-green-500 hover:bg-green-600 active:bg-green-700",
+                  useWebPhoneStore.getState().currentCall?.status === 'ringing' && 
+                  useWebPhoneStore.getState().currentCall?.direction === 'inbound' && 
+                  "animate-pulse-phone"
+                )}
               >
                 <Phone className="h-5 w-5 text-white" />
               </Button>
@@ -655,9 +659,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       {/* WebPhone Floating Window */}
       <WebPhoneFloatingWindow />
-      
-      {/* WebPhone Incoming Call Modal */}
-      <WebPhoneIncomingCall />
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>

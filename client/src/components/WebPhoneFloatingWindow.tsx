@@ -300,6 +300,15 @@ export function WebPhoneFloatingWindow() {
     }
   }, [callerInfo, currentCall]);
   
+  // Auto-open window when incoming call arrives
+  useEffect(() => {
+    if (currentCall && currentCall.status === 'ringing' && currentCall.direction === 'inbound') {
+      if (!isVisible) {
+        toggleDialpad();
+      }
+    }
+  }, [currentCall, isVisible, toggleDialpad]);
+  
   // Call timer
   useEffect(() => {
     if (currentCall && currentCall.status === 'answered') {
