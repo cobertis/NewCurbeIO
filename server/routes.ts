@@ -11558,6 +11558,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // =====================================================
   // BLACKLIST ENDPOINTS
+
+  // POST /api/contacts/backfill-from-policies - Backfill contacts from existing policies (admin + superadmin)
+  app.post("/api/contacts/backfill-from-policies", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Require admin or superadmin role
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Access denied. Admin or superadmin role required." });
+    }
+
+    try {
+      console.log(`[CONTACTS BACKFILL] Starting backfill for company ${currentUser.companyId}`);
+      
+      const { contactRegistry } = await import("./services/contact-registry");
+      const result = await contactRegistry.backfillContactsFromPolicies(currentUser.companyId!);
+      
+      console.log(`[CONTACTS BACKFILL] Complete: ${result.processed} processed, ${result.created} created, ${result.errors} errors`);
+      
+      res.json({
+        success: true,
+        message: `Backfill complete: ${result.processed} policies processed`,
+        ...result,
+      });
+    } catch (error: any) {
+      console.error("[CONTACTS BACKFILL] Error:", error);
+      res.status(500).json({ message: "Failed to backfill contacts", error: error.message });
+    }
+  });
   // =====================================================
 
   // GET /api/blacklist - List blacklist entries (admin + superadmin)

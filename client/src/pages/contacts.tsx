@@ -385,6 +385,27 @@ export default function Contacts() {
     },
   });
 
+  const backfillMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/contacts/backfill-from-policies", {}),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts/list"] });
+      toast({
+        title: "Sync Complete",
+        description: `${data.processed} policies processed, ${data.created} new contacts created`,
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sync contacts from policies",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
   // List mutations
   const createListMutation = useMutation({
     mutationFn: (data: ListFormValues) =>
@@ -842,6 +863,20 @@ export default function Contacts() {
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Contact
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => backfillMutation.mutate()}
+                  disabled={backfillMutation.isPending}
+                  data-testid="button-sync-policies"
+                >
+                  {backfillMutation.isPending ? (
+                    <LoadingSpinner className="h-4 w-4 mr-2" fullScreen={false} />
+                  ) : (
+                    <Users className="h-4 w-4 mr-2" />
+                  )}
+                  Sync from Policies
                 </Button>
                 
                 <Button

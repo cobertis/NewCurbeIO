@@ -52,72 +52,57 @@ export class ContactRegistry {
   }
 
   /**
-   * Extract and upsert contacts from a quote
-   * Creates contact records for the client and all quote members
+   * Extract and upsert contact from a quote (primary client only)
    */
   async upsertContactFromQuote(quoteId: string, companyId: string): Promise<void> {
     try {
       console.log(`[ContactRegistry] Processing quote ${quoteId} for contacts`);
 
-      // Get quote with all members
+      // Get quote
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         console.error(`[ContactRegistry] Quote ${quoteId} not found`);
         return;
       }
 
-      // Get quote members
-      const members = await storage.listQuoteMembers(quoteId, companyId);
-
-      // Process each member (including the primary client)
-      for (const member of members) {
-        try {
-          // Skip members without contact information
-          if (!member.phone && !member.email) {
-            console.log(`[ContactRegistry] Skipping quote member ${member.id} - no contact info`);
-            continue;
-          }
-
-          // Create contact record
-          const contactData: InsertContact = {
-            companyId,
-            firstName: member.firstName || undefined,
-            lastName: member.lastName || undefined,
-            email: member.email || undefined,
-            phoneNormalized: member.phone ? formatE164(member.phone) : undefined,
-            phoneDisplay: member.phone || undefined,
-          };
-
-          const contact = await this.upsertContact(contactData);
-
-          // Create contact source record
-          const sourceData: InsertContactSource = {
-            contactId: contact.id,
-            companyId,
-            sourceType: "quote",
-            sourceId: quoteId,
-            sourceName: `Quote #${quote.quoteNumber || quoteId.substring(0, 8)}`,
-            sourceData: {
-              quoteMemberId: member.id,
-              role: member.role,
-              firstName: member.firstName,
-              lastName: member.lastName,
-              phone: member.phone,
-              email: member.email,
-              dateOfBirth: member.dateOfBirth,
-            },
-          };
-
-          await this.upsertContactSource(sourceData);
-
-          console.log(`[ContactRegistry] Created contact ${contact.id} from quote member ${member.id}`);
-        } catch (error: any) {
-          console.error(`[ContactRegistry] Error processing quote member ${member.id}:`, error);
-          // Continue processing other members
-        }
+      // Skip if no contact information
+      if (!quote.clientPhone && !quote.clientEmail) {
+        console.log(`[ContactRegistry] Skipping quote ${quoteId} - no contact info`);
+        return;
       }
 
-      console.log(`[ContactRegistry] Completed processing quote ${quoteId}`);
+      // Create contact record from quote client
+      const contactData: InsertContact = {
+        companyId,
+        firstName: quote.clientFirstName || undefined,
+        lastName: quote.clientLastName || undefined,
+        email: quote.clientEmail || undefined,
+        phoneNormalized: quote.clientPhone ? formatE164(quote.clientPhone) : undefined,
+        phoneDisplay: quote.clientPhone || undefined,
+      };
+
+      const contact = await this.upsertContact(contactData);
+
+      // Create contact source record
+      const sourceData: InsertContactSource = {
+        contactId: contact.id,
+        companyId,
+        sourceType: "quote",
+        sourceId: quoteId,
+        sourceName: `Quote ${quoteId.substring(0, 8)}`,
+        sourceData: {
+          quoteId: quote.id,
+          firstName: quote.clientFirstName,
+          lastName: quote.clientLastName,
+          phone: quote.clientPhone,
+          email: quote.clientEmail,
+          status: quote.status,
+        },
+      };
+
+      await this.upsertContactSource(sourceData);
+
+      console.log(`[ContactRegistry] Created contact ${contact.id} from quote ${quoteId}`);
     } catch (error: any) {
       console.error(`[ContactRegistry] Error processing quote ${quoteId}:`, error);
       // Don't throw - we want to continue even if contact creation fails
@@ -125,72 +110,57 @@ export class ContactRegistry {
   }
 
   /**
-   * Extract and upsert contacts from a policy
-   * Creates contact records for the client and all policy members
+   * Extract and upsert contact from a policy (primary client only)
    */
   async upsertContactFromPolicy(policyId: string, companyId: string): Promise<void> {
     try {
       console.log(`[ContactRegistry] Processing policy ${policyId} for contacts`);
 
-      // Get policy with all members
+      // Get policy
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         console.error(`[ContactRegistry] Policy ${policyId} not found`);
         return;
       }
 
-      // Get policy members
-      const members = await storage.listPolicyMembers(policyId, companyId);
-
-      // Process each member (including the primary client)
-      for (const member of members) {
-        try {
-          // Skip members without contact information
-          if (!member.phone && !member.email) {
-            console.log(`[ContactRegistry] Skipping policy member ${member.id} - no contact info`);
-            continue;
-          }
-
-          // Create contact record
-          const contactData: InsertContact = {
-            companyId,
-            firstName: member.firstName || undefined,
-            lastName: member.lastName || undefined,
-            email: member.email || undefined,
-            phoneNormalized: member.phone ? formatE164(member.phone) : undefined,
-            phoneDisplay: member.phone || undefined,
-          };
-
-          const contact = await this.upsertContact(contactData);
-
-          // Create contact source record
-          const sourceData: InsertContactSource = {
-            contactId: contact.id,
-            companyId,
-            sourceType: "policy",
-            sourceId: policyId,
-            sourceName: `Policy #${policy.policyNumber || policyId.substring(0, 8)}`,
-            sourceData: {
-              policyMemberId: member.id,
-              role: member.role,
-              firstName: member.firstName,
-              lastName: member.lastName,
-              phone: member.phone,
-              email: member.email,
-              dateOfBirth: member.dateOfBirth,
-            },
-          };
-
-          await this.upsertContactSource(sourceData);
-
-          console.log(`[ContactRegistry] Created contact ${contact.id} from policy member ${member.id}`);
-        } catch (error: any) {
-          console.error(`[ContactRegistry] Error processing policy member ${member.id}:`, error);
-          // Continue processing other members
-        }
+      // Skip if no contact information
+      if (!policy.clientPhone && !policy.clientEmail) {
+        console.log(`[ContactRegistry] Skipping policy ${policyId} - no contact info`);
+        return;
       }
 
-      console.log(`[ContactRegistry] Completed processing policy ${policyId}`);
+      // Create contact record from policy client
+      const contactData: InsertContact = {
+        companyId,
+        firstName: policy.clientFirstName || undefined,
+        lastName: policy.clientLastName || undefined,
+        email: policy.clientEmail || undefined,
+        phoneNormalized: policy.clientPhone ? formatE164(policy.clientPhone) : undefined,
+        phoneDisplay: policy.clientPhone || undefined,
+      };
+
+      const contact = await this.upsertContact(contactData);
+
+      // Create contact source record
+      const sourceData: InsertContactSource = {
+        contactId: contact.id,
+        companyId,
+        sourceType: "policy",
+        sourceId: policyId,
+        sourceName: `Policy ${policyId.substring(0, 8)}`,
+        sourceData: {
+          policyId: policy.id,
+          firstName: policy.clientFirstName,
+          lastName: policy.clientLastName,
+          phone: policy.clientPhone,
+          email: policy.clientEmail,
+          status: policy.status,
+        },
+      };
+
+      await this.upsertContactSource(sourceData);
+
+      console.log(`[ContactRegistry] Created contact ${contact.id} from policy ${policyId}`);
     } catch (error: any) {
       console.error(`[ContactRegistry] Error processing policy ${policyId}:`, error);
       // Don't throw - we want to continue even if contact creation fails
@@ -344,6 +314,52 @@ export class ContactRegistry {
     } catch (error: any) {
       console.error(`[ContactRegistry] Error processing iMessage from ${handle}:`, error);
       // Don't throw - we want to continue even if contact creation fails
+    }
+  }
+
+  /**
+   * Backfill contacts from all existing policies in a company
+   * Used for migrating existing data to the unified contacts system
+   */
+  async backfillContactsFromPolicies(companyId: string): Promise<{ processed: number; created: number; errors: number }> {
+    console.log(`[ContactRegistry] Starting policy backfill for company ${companyId}`);
+    
+    let processed = 0;
+    let created = 0;
+    let errors = 0;
+    
+    try {
+      // Get all policies for the company using the storage layer
+      const policies = await storage.getPoliciesByCompany(companyId);
+      console.log(`[ContactRegistry] Found ${policies.length} policies to process`);
+      
+      // Process each policy
+      for (const policy of policies) {
+        try {
+          const contactsBefore = await storage.getContacts(companyId, { limit: 1, offset: 0 });
+          await this.upsertContactFromPolicy(policy.id, companyId);
+          const contactsAfter = await storage.getContacts(companyId, { limit: 1, offset: 0 });
+          
+          processed++;
+          if (contactsAfter.total > contactsBefore.total) {
+            created++;
+          }
+          
+          // Log progress every 10 policies
+          if (processed % 10 === 0) {
+            console.log(`[ContactRegistry] Backfill progress: ${processed}/${policies.length} policies processed, ${created} contacts created`);
+          }
+        } catch (error: any) {
+          console.error(`[ContactRegistry] Error processing policy ${policy.id}:`, error);
+          errors++;
+        }
+      }
+      
+      console.log(`[ContactRegistry] Backfill complete: ${processed} policies processed, ${created} contacts created, ${errors} errors`);
+      return { processed, created, errors };
+    } catch (error: any) {
+      console.error(`[ContactRegistry] Fatal error during backfill:`, error);
+      throw error;
     }
   }
 }
