@@ -299,7 +299,7 @@ import {
   campaignSchedules,
   campaignFollowups
 } from "@shared/schema";
-import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull } from "drizzle-orm";
+import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull, isNotNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatForStorage } from "@shared/phone";
 
@@ -8980,7 +8980,10 @@ export class DbStorage implements IStorage {
     // ==================== QUERY UNIFIED CONTACTS TABLE ====================
     
     // Build where conditions for unified contacts
-    const contactConditions = [eq(contacts.companyId, companyId)];
+    const contactConditions = [
+      eq(contacts.companyId, companyId),
+      isNotNull(contacts.phoneNormalized) // Only show contacts with phone numbers
+    ];
     
     if (search) {
       contactConditions.push(
@@ -9046,7 +9049,10 @@ export class DbStorage implements IStorage {
     // ==================== QUERY MANUAL CONTACTS TABLE (BACKWARDS COMPATIBILITY) ====================
     
     // Build where conditions for manual contacts
-    const manualConditions = [eq(manualContacts.companyId, companyId)];
+    const manualConditions = [
+      eq(manualContacts.companyId, companyId),
+      isNotNull(manualContacts.phone) // Only show contacts with phone numbers
+    ];
     
     if (search) {
       manualConditions.push(
