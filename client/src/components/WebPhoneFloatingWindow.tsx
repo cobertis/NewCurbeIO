@@ -776,15 +776,17 @@ export function WebPhoneFloatingWindow() {
                       </div>
                     )}
                     
-                    {/* End Call Button */}
-                    <div className="flex justify-center pt-3 sm:pt-6">
-                      <button
-                        onClick={() => webPhone.hangupCall()}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
-                      >
-                        <PhoneOff className="h-7 w-7 sm:h-9 sm:w-9 text-white" />
-                      </button>
-                    </div>
+                    {/* End Call Button - Only show when call is answered or outbound ringing */}
+                    {!(currentCall.status === 'ringing' && currentCall.direction === 'inbound') && (
+                      <div className="flex justify-center pt-3 sm:pt-6">
+                        <button
+                          onClick={() => webPhone.hangupCall()}
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+                        >
+                          <PhoneOff className="h-7 w-7 sm:h-9 sm:w-9 text-white" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Transfer Dialog */}
