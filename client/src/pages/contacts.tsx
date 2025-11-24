@@ -974,8 +974,8 @@ export default function Contacts() {
                         />
                       </TableHead>
                       <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Lists</TableHead>
                       <TableHead className="w-24">Actions</TableHead>
@@ -997,11 +997,11 @@ export default function Contacts() {
                         <TableCell className="font-medium" data-testid={`text-contact-name-${contact.id}`}>
                           {contact.firstName} {contact.lastName}
                         </TableCell>
-                        <TableCell data-testid={`text-contact-email-${contact.id}`}>
-                          {contact.email || "—"}
-                        </TableCell>
                         <TableCell data-testid={`text-contact-phone-${contact.id}`}>
                           {contact.phoneDisplay || (contact.phoneNormalized ? formatForDisplay(contact.phoneNormalized) : "—")}
+                        </TableCell>
+                        <TableCell data-testid={`text-contact-email-${contact.id}`}>
+                          {contact.email || "—"}
                         </TableCell>
                         <TableCell data-testid={`text-contact-status-${contact.id}`}>
                           <Badge 
