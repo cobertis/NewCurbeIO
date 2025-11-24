@@ -362,6 +362,52 @@ export class ContactRegistry {
       throw error;
     }
   }
+
+  /**
+   * Auto-backfill contacts for all companies on startup
+   * Runs if contacts are significantly fewer than policies (ratio > 5:1)
+   */
+  async autoBackfillOnStartup(): Promise<void> {
+    try {
+      console.log('[ContactRegistry] Checking if auto-backfill is needed...');
+      
+      // Get all companies
+      const companies = await storage.getAllCompanies();
+      
+      for (const company of companies) {
+        try {
+          // Check if company has contacts
+          const contacts = await storage.getContacts(company.id, { limit: 1, offset: 0 });
+          
+          // Check if company has policies
+          const policies = await storage.getPoliciesByCompany(company.id);
+          
+          // Run backfill if:
+          // 1. No contacts but has policies, OR
+          // 2. Policies are 5x more than contacts (indicates missing contact data)
+          const needsBackfill = 
+            (contacts.total === 0 && policies.length > 0) ||
+            (policies.length > 0 && policies.length > contacts.total * 5);
+          
+          if (needsBackfill) {
+            console.log(`[ContactRegistry] Auto-backfill starting for company ${company.id} (${company.name}) - ${policies.length} policies, ${contacts.total} contacts (ratio ${(policies.length / Math.max(contacts.total, 1)).toFixed(1)}:1)`);
+            const result = await this.backfillContactsFromPolicies(company.id);
+            console.log(`[ContactRegistry] Auto-backfill complete for ${company.name}: ${result.created} contacts created from ${result.processed} policies`);
+          } else {
+            console.log(`[ContactRegistry] Skipping auto-backfill for company ${company.id} (${company.name}) - ${contacts.total} contacts, ${policies.length} policies (ratio ${(policies.length / Math.max(contacts.total, 1)).toFixed(1)}:1)`);
+          }
+        } catch (error: any) {
+          console.error(`[ContactRegistry] Error during auto-backfill for company ${company.id}:`, error);
+          // Continue with other companies
+        }
+      }
+      
+      console.log('[ContactRegistry] Auto-backfill check complete');
+    } catch (error: any) {
+      console.error('[ContactRegistry] Fatal error during auto-backfill startup:', error);
+      // Don't throw - we don't want to crash the server
+    }
+  }
 }
 
 // Export singleton instance

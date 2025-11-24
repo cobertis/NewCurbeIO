@@ -137,6 +137,15 @@ app.use((req, res, next) => {
       console.error("Error seeding Campaign Studio data:", error);
     });
     
+    // Auto-backfill contacts from existing policies/quotes on first run
+    import("./services/contact-registry").then(({ contactRegistry }) => {
+      contactRegistry.autoBackfillOnStartup().catch((error) => {
+        console.error("Error during contact auto-backfill:", error);
+      });
+    }).catch((error) => {
+      console.error("Error importing contact registry:", error);
+    });
+    
     // Start the reminder scheduler for snoozed reminders
     startReminderScheduler();
     
