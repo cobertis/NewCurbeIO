@@ -27448,6 +27448,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quotedMsg,
           reactions,
           mediaUrl,
+          location: msg.type === 'location' ? msg.location : undefined,
         };
       });
 
