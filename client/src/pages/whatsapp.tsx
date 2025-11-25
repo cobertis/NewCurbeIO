@@ -1039,12 +1039,18 @@ export default function WhatsAppPage() {
 
   const deleteChatMutation = useMutation({
     mutationFn: async ({ chatId }: { chatId: string }) => {
-      return await apiRequest('DELETE', `/api/whatsapp/chats/${chatId}`, {});
+      const encodedChatId = encodeURIComponent(chatId);
+      return await apiRequest('DELETE', `/api/whatsapp/chats/${encodedChatId}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setSelectedChatId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'], refetchType: 'all' });
+      queryClient.refetchQueries({ queryKey: ['/api/whatsapp/chats'] });
       toast({ title: 'Success', description: 'Chat deleted' });
+    },
+    onError: (error: any) => {
+      console.error('[WhatsApp] Delete chat error:', error);
+      toast({ title: 'Error', description: error?.message || 'Failed to delete chat', variant: 'destructive' });
     },
   });
 
