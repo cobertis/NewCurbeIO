@@ -940,19 +940,54 @@ export default function WhatsAppPage() {
     mutationFn: async ({ chatId, content, quotedMsgId }: { chatId: string; content: string; quotedMsgId?: string }) => {
       return await apiRequest('POST', '/api/whatsapp/messages', { chatId, content, quotedMsgId });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    onMutate: async ({ chatId, content, quotedMsgId }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
+      
+      // Snapshot the previous value
+      const previousMessages = queryClient.getQueryData([`/api/whatsapp/chats/${chatId}/messages`]);
+      
+      // Optimistically update - add new message immediately
+      const optimisticMessage: WhatsAppMessage = {
+        id: `temp-${Date.now()}`,
+        body: content,
+        from: 'me',
+        to: chatId,
+        timestamp: Math.floor(Date.now() / 1000),
+        isFromMe: true,
+        hasMedia: false,
+        type: 'chat',
+        ack: 0, // Pending
+        quotedMsg: replyingTo ? { id: replyingTo.id, body: replyingTo.body, from: replyingTo.from } : undefined,
+      };
+      
+      queryClient.setQueryData([`/api/whatsapp/chats/${chatId}/messages`], (old: any) => {
+        if (!old?.messages) return { success: true, messages: [optimisticMessage] };
+        return { ...old, messages: [...old.messages, optimisticMessage] };
+      });
+      
+      // Clear input immediately for fast UX
       setMessageInput('');
       setReplyingTo(null);
+      
+      return { previousMessages, chatId };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
+      // Rollback on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData([`/api/whatsapp/chats/${context.chatId}/messages`], context.previousMessages);
+      }
       console.error('[WhatsApp] Failed to send message:', error);
       toast({ 
         title: 'Error', 
         description: error.message || 'Failed to send message', 
         variant: 'destructive' 
       });
+    },
+    onSettled: (data, error, variables) => {
+      // Refetch to sync with server
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${variables.chatId}/messages`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
     },
   });
 
@@ -2674,14 +2709,12 @@ export default function WhatsAppPage() {
                       }
                     }}
                     className="w-full bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)]"
-                    disabled={sendMessageMutation.isPending}
                     data-testid="input-message"
                   />
                 </div>
                 {messageInput.trim() ? (
                   <Button
                     onClick={handleSendMessage}
-                    disabled={sendMessageMutation.isPending}
                     size="icon"
                     className="h-10 w-10 rounded-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
                     data-testid="button-send"
