@@ -27153,6 +27153,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // WHATSAPP ROUTES
   // =====================================================
 
+  /**
+   * Helper function to normalize WhatsApp IDs to include @c.us suffix
+   * Prevents duplication if suffix already exists
+   */
+  function normalizeWhatsAppId(id: string): string {
+    return id.includes('@') ? id : `${id}@c.us`;
+  }
+
   // GET /api/whatsapp/qr - Get QR code for scanning
   app.get("/api/whatsapp/qr", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27308,7 +27316,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { chatId } = req.params;
       const limit = parseInt(req.query.limit as string) || 50;
       
-      const messages = await whatsappService.getChatMessages(companyId, chatId, limit);
+      // Normalize chatId to ensure @c.us suffix
+      const normalizedChatId = normalizeWhatsAppId(chatId);
+      
+      const messages = await whatsappService.getChatMessages(companyId, normalizedChatId, limit);
       
       // Transform messages to a simpler format
       const formattedMessages = messages.map(msg => ({
@@ -27349,7 +27360,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ success: false, error: 'Missing required fields: to, message' });
       }
 
-      const sentMessage = await whatsappService.sendMessage(companyId, to, message);
+      // Normalize 'to' to ensure @c.us suffix (prevents duplication)
+      const normalizedTo = normalizeWhatsAppId(to);
+
+      const sentMessage = await whatsappService.sendMessage(companyId, normalizedTo, message);
       
       return res.json({ 
         success: true, 
@@ -27385,7 +27399,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ success: false, error: 'Missing required field: chatId' });
       }
 
-      await whatsappService.markChatAsRead(companyId, chatId);
+      // Normalize chatId to ensure @c.us suffix
+      const normalizedChatId = normalizeWhatsAppId(chatId);
+
+      await whatsappService.markChatAsRead(companyId, normalizedChatId);
       
       return res.json({ success: true, message: 'Chat marked as read' });
     } catch (error) {
@@ -27409,7 +27426,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { contactId } = req.params;
-      const profilePicUrl = await whatsappService.getProfilePicUrl(companyId, contactId);
+      
+      // Normalize contactId to ensure @c.us suffix
+      const normalizedContactId = normalizeWhatsAppId(contactId);
+      
+      const profilePicUrl = await whatsappService.getProfilePicUrl(companyId, normalizedContactId);
       
       return res.json({ success: true, profilePicUrl });
     } catch (error) {

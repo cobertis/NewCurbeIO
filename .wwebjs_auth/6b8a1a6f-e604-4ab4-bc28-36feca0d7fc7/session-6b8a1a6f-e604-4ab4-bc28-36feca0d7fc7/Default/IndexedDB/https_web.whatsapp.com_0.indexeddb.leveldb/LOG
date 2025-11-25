@@ -1,34 +1,15 @@
-2025/11/25-02:21:49.917 6454 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/25-02:21:49.917 6454 Recovering log #67
-2025/11/25-02:21:49.945 6454 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000067.log 
-2025/11/25-02:21:51.634 6455 Level-0 table #72: started
-2025/11/25-02:21:51.671 6455 Level-0 table #72: 631708 bytes OK
-2025/11/25-02:21:51.677 6455 Delete type=0 #67
-2025/11/25-02:21:51.678 6455 Manual compaction at level-0 from '\x00\x18\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x19\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/25-02:21:51.680 6453 Level-0 table #74: started
-2025/11/25-02:21:51.684 6453 Level-0 table #74: 435 bytes OK
-2025/11/25-02:21:51.690 6453 Delete type=0 #71
-2025/11/25-02:21:51.690 6453 Manual compaction at level-0 from '\x00\x19\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1a\x00\x00\x00' @ 0 : 0; will stop at '\x00\x19\x00\x00\x05' @ 124985 : 0
-2025/11/25-02:21:51.690 6453 Compacting 1@0 + 1@1 files
-2025/11/25-02:21:51.720 6453 Generated table #75@0: 12567 keys, 293737 bytes
-2025/11/25-02:21:51.720 6453 Compacted 1@0 + 1@1 files => 293737 bytes
-2025/11/25-02:21:51.725 6453 compacted to: files[ 0 1 1 0 0 0 0 ]
-2025/11/25-02:21:51.725 6453 Delete type=2 #74
-2025/11/25-02:21:51.726 6453 Manual compaction at level-0 from '\x00\x19\x00\x00\x05' @ 124985 : 0 .. '\x00\x1a\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/25-02:21:53.657 6454 Compacting 1@1 + 1@2 files
-2025/11/25-02:21:53.723 6454 Generated table #76@1: 24544 keys, 954003 bytes
-2025/11/25-02:21:53.723 6454 Compacted 1@1 + 1@2 files => 954003 bytes
-2025/11/25-02:21:53.733 6454 compacted to: files[ 0 0 1 0 0 0 0 ]
-2025/11/25-02:21:53.733 6454 Delete type=2 #69
-2025/11/25-02:21:53.733 6454 Delete type=2 #72
-2025/11/25-02:21:53.733 6454 Delete type=2 #75
-2025/11/25-02:26:54.510 6455 Level-0 table #78: started
-2025/11/25-02:26:54.560 6455 Level-0 table #78: 622491 bytes OK
-2025/11/25-02:26:54.571 6455 Delete type=0 #73
-2025/11/25-02:26:54.572 6453 Manual compaction at level-0 from '\x00\x1b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1c\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/25-02:26:59.801 6453 Compacting 1@1 + 1@2 files
-2025/11/25-02:26:59.910 6453 Generated table #79@1: 26525 keys, 1042941 bytes
-2025/11/25-02:26:59.910 6453 Compacted 1@1 + 1@2 files => 1042941 bytes
-2025/11/25-02:26:59.927 6453 compacted to: files[ 0 0 1 0 0 0 0 ]
-2025/11/25-02:26:59.927 6453 Delete type=2 #76
-2025/11/25-02:26:59.927 6453 Delete type=2 #78
+2025/11/25-02:45:06.324 7cbd Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/25-02:45:06.324 7cbd Recovering log #81
+2025/11/25-02:45:06.339 7cbd Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000081.log 
+2025/11/25-02:45:06.339 7cbd Delete type=2 #79
+2025/11/25-02:45:06.339 7cbd Delete type=2 #82
+2025/11/25-02:45:07.855 7cc1 Level-0 table #86: started
+2025/11/25-02:45:07.868 7cc1 Level-0 table #86: 132452 bytes OK
+2025/11/25-02:45:07.884 7cc1 Delete type=0 #81
+2025/11/25-02:45:07.884 7cbd Manual compaction at level-0 from '\x00\x1d\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1e\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/25-02:45:09.602 7cbd Compacting 1@1 + 1@2 files
+2025/11/25-02:45:09.678 7cbd Generated table #87@1: 28428 keys, 1117339 bytes
+2025/11/25-02:45:09.678 7cbd Compacted 1@1 + 1@2 files => 1117339 bytes
+2025/11/25-02:45:09.687 7cbd compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/25-02:45:09.688 7cbd Delete type=2 #83
+2025/11/25-02:45:09.688 7cbd Delete type=2 #86
