@@ -19,11 +19,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   Search, Send, MoreVertical, Phone, Video, 
   CheckCheck, MessageSquare, RefreshCw, Smile, Paperclip, Lock, ArrowLeft,
   X, Reply, Forward, Star, Download, Info, Copy, Trash2, Archive, Pin, BellOff,
-  Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff,
+  Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff, ChevronDown,
   LogOut, ArchiveX, Trash, Bell, PinOff, UserMinus, Shield, ShieldOff, Edit, Plus, Loader2,
   Image, FileIcon, Play, Square, File, Link2, RefreshCcw, Settings, Sticker, AtSign
 } from "lucide-react";
@@ -174,6 +175,7 @@ function getMessageDateKey(timestamp: number): string {
 // =====================================================
 
 const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🙏', '👍', '🎉', '🔥'];
+const QUICK_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
   return (
@@ -188,6 +190,30 @@ function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
           {emoji}
         </button>
       ))}
+    </div>
+  );
+}
+
+function QuickReactionBar({ onSelect, onMore }: { onSelect: (emoji: string) => void; onMore: () => void }) {
+  return (
+    <div className="flex items-center bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 px-1 py-0.5">
+      {QUICK_REACTION_EMOJIS.map((emoji) => (
+        <button
+          key={emoji}
+          onClick={() => onSelect(emoji)}
+          className="text-xl hover:scale-125 transition-transform p-1"
+          data-testid={`quick-react-${emoji}`}
+        >
+          {emoji}
+        </button>
+      ))}
+      <button
+        onClick={onMore}
+        className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1 ml-0.5"
+        data-testid="quick-react-more"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -218,6 +244,7 @@ function MessageItem({
   onCopy: () => void;
 }) {
   const [showDeleteOptions, setShowDeleteOptions] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   const renderAckIcon = () => {
     if (!message.isFromMe) return null;
@@ -340,74 +367,70 @@ function MessageItem({
           </span>
           {renderAckIcon()}
         </div>
+
+        {/* Reactions - positioned at bottom right corner of bubble */}
+        {message.reactions && message.reactions.length > 0 && (
+          <div 
+            className="absolute -bottom-3 right-2 flex items-center bg-white dark:bg-gray-800 rounded-full shadow-md border border-gray-100 dark:border-gray-700 px-1.5 py-0.5"
+            data-testid="message-reactions"
+          >
+            {message.reactions.slice(0, 3).map((reaction, index) => (
+              <span
+                key={reaction.id}
+                className="text-sm"
+                style={{ marginLeft: index > 0 ? '-2px' : '0' }}
+                title={reaction.from}
+                data-testid={`reaction-${reaction.emoji}`}
+              >
+                {reaction.emoji}
+              </span>
+            ))}
+            {message.reactions.length > 3 && (
+              <span className="text-[10px] text-gray-500 ml-0.5">+{message.reactions.length - 3}</span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Reactions */}
-      {message.reactions && message.reactions.length > 0 && (
-        <div className="flex gap-1 mt-1 flex-wrap" data-testid="message-reactions">
-          {message.reactions.map((reaction) => (
-            <span
-              key={reaction.id}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-2 py-0.5 text-sm shadow-sm"
-              title={reaction.from}
-              data-testid={`reaction-${reaction.emoji}`}
-            >
-              {reaction.emoji}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Quick Action Buttons - Visible on Hover */}
+      {/* Quick Reaction Bar - Visible on Hover */}
       <div className={cn(
-        "absolute top-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
-        message.isFromMe ? "-left-20" : "-right-20"
+        "absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity z-10",
+        message.isFromMe ? "right-0" : "left-0"
       )}>
-        {/* Delete Button with dropdown */}
-        <DropdownMenu open={showDeleteOptions} onOpenChange={setShowDeleteOptions}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 rounded-full bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 shadow-sm"
-              data-testid={`button-delete-quick-${message.id}`}
-              title="Delete message"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuItem 
-              onClick={() => { onDelete(false); setShowDeleteOptions(false); }} 
-              className="text-red-600 cursor-pointer"
-              data-testid="quick-delete-for-me"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete for me
-            </DropdownMenuItem>
-            {message.isFromMe && (
-              <DropdownMenuItem 
-                onClick={() => { onDelete(true); setShowDeleteOptions(false); }} 
-                className="text-red-600 cursor-pointer"
-                data-testid="quick-delete-for-everyone"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete for everyone
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+          <PopoverTrigger asChild>
+            <div>
+              <QuickReactionBar 
+                onSelect={(emoji) => {
+                  onReact(emoji);
+                }}
+                onMore={() => setShowEmojiPicker(true)}
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-auto" align={message.isFromMe ? "end" : "start"}>
+            <EmojiPicker onSelect={(emoji) => {
+              onReact(emoji);
+              setShowEmojiPicker(false);
+            }} />
+          </PopoverContent>
+        </Popover>
+      </div>
 
-        {/* More Options Button */}
+      {/* More Options Button */}
+      <div className={cn(
+        "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity",
+        message.isFromMe ? "-left-8" : "-right-8"
+      )}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 rounded-full bg-[var(--whatsapp-bg-secondary)] hover:bg-[var(--whatsapp-hover)] shadow-sm"
+              className="h-6 w-6 rounded-full bg-[var(--whatsapp-bg-secondary)] hover:bg-[var(--whatsapp-hover)] shadow-sm"
               data-testid={`button-message-menu-${message.id}`}
             >
-              <MoreVertical className="h-3.5 w-3.5" />
+              <ChevronDown className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
