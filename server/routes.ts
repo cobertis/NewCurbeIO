@@ -29646,6 +29646,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/whatsapp/labels/:labelId/label-chats - Get chats using Label object's getChats method
+  app.get("/api/whatsapp/labels/:labelId/label-chats", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { labelId } = req.params;
+      const chats = await whatsappService.getLabelChats(companyId, labelId);
+      res.json({ success: true, chats });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting label chats:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // GET /api/whatsapp/contacts/:contactId/about - Get contact's about status
   app.get("/api/whatsapp/contacts/:contactId/about", requireActiveCompany, async (req: Request, res: Response) => {
     try {

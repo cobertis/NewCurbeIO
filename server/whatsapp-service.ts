@@ -2525,6 +2525,13 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Alias for revokeGroupInvite - exact match with documentation
+   */
+  async revokeGroupInviteCode(companyId: string, chatId: string): Promise<string> {
+    return this.revokeGroupInvite(companyId, chatId);
+  }
+
+  /**
    * Set profile status/about message
    */
   async setStatus(companyId: string, status: string): Promise<void> {
@@ -2919,6 +2926,29 @@ class WhatsAppService extends EventEmitter {
       return chats || [];
     } catch (error) {
       console.error(`[WhatsApp] Error getting chats by label ID for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get chats using Label object's getChats method (WhatsApp Business feature)
+   * This uses the Label instance method rather than Client method
+   */
+  async getLabelChats(companyId: string, labelId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const label = await companyClient.client.getLabelById(labelId);
+      if (!label) {
+        throw new Error(`Label not found: ${labelId}`);
+      }
+      const chats = await label.getChats();
+      console.log(`[WhatsApp] Label chats retrieved for company ${companyId}: ${labelId} (${chats?.length || 0} chats)`);
+      return chats || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting label chats for company ${companyId}:`, error);
       throw error;
     }
   }
@@ -3341,6 +3371,13 @@ class WhatsAppService extends EventEmitter {
       console.error(`[WhatsApp] Error getting channel messages for company ${companyId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Alias for getChannelMessages - exact match with Channel.fetchMessages documentation
+   */
+  async fetchChannelMessages(companyId: string, channelId: string, limit: number = 50): Promise<any[]> {
+    return this.getChannelMessages(companyId, channelId, limit);
   }
 
   /**
