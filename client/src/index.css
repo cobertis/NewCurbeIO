@@ -123,6 +123,25 @@
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+  /* WhatsApp Web Theme Tokens */
+  --whatsapp-bg-primary: #f0f2f5;
+  --whatsapp-bg-secondary: #ffffff;
+  --whatsapp-bg-panel-header: #f0f2f5;
+  --whatsapp-bg-chat: #efeae2;
+  --whatsapp-border: #d1d7db;
+  --whatsapp-text-primary: #111b21;
+  --whatsapp-text-secondary: #667781;
+  --whatsapp-text-tertiary: #8696a0;
+  --whatsapp-green-primary: #25d366;
+  --whatsapp-green-dark: #00a884;
+  --whatsapp-green-sent: #d9fdd3;
+  --whatsapp-bubble-sent: #d9fdd3;
+  --whatsapp-bubble-received: #ffffff;
+  --whatsapp-blue-highlight: #34b7f1;
+  --whatsapp-icon: #54656f;
+  --whatsapp-hover: #f5f6f6;
+  --whatsapp-selected: #f0f2f5;
   --radius: .5rem; /* 8px */
   --shadow-2xs: 0px 1px 2px 0px hsl(240 10% 10% / 0.05);
   --shadow-xs: 0px 1px 3px 0px hsl(240 10% 10% / 0.08);
@@ -247,6 +266,23 @@
   --shadow-xl: 0px 20px 30px -6px hsl(0 0% 0% / 0.60), 0px 8px 12px -6px hsl(0 0% 0% / 0.45);
   --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.70);
 
+  /* WhatsApp Web Dark Mode Theme Tokens */
+  --whatsapp-bg-primary: #111b21;
+  --whatsapp-bg-secondary: #202c33;
+  --whatsapp-bg-panel-header: #202c33;
+  --whatsapp-bg-chat: #0b141a;
+  --whatsapp-border: #2a3942;
+  --whatsapp-text-primary: #e9edef;
+  --whatsapp-text-secondary: #8696a0;
+  --whatsapp-text-tertiary: #667781;
+  --whatsapp-green-primary: #00a884;
+  --whatsapp-green-dark: #008069;
+  --whatsapp-bubble-sent: #005c4b;
+  --whatsapp-bubble-received: #202c33;
+  --whatsapp-blue-highlight: #53bdeb;
+  --whatsapp-icon: #aebac1;
+  --whatsapp-hover: #2a3942;
+  --whatsapp-selected: #2a3942;
 }
 
 @layer base {
