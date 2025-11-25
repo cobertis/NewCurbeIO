@@ -1990,7 +1990,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         return;
       }
-      
+
       // If file not found locally, try to fetch from BlueBubbles as fallback (for old attachments)
       console.log(`[iMessage Attachment] File not found in local storage: ${guid}, attempting BlueBubbles fallback`);
       
@@ -27922,12 +27922,54 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       (async () => {
         try {
           console.log(`[WhatsApp] Processing ${mediaType} in background for chat ${chatId}: ${file.originalname}`);
+          
+          let finalBuffer = file.buffer;
+          let finalMimetype = file.mimetype;
+          let finalFilename = file.originalname;
+          
+          // Convert webm audio to ogg/opus for WhatsApp voice notes
+          if (sendAsVoiceNote === 'true' && file.mimetype === 'audio/webm') {
+            try {
+              console.log(`[WhatsApp] Converting webm audio to ogg/opus for voice note...`);
+              const fs = await import('fs/promises');
+              const pathModule = await import('path');
+              const os = await import('os');
+              const { promisify } = await import('util');
+              const { exec } = await import('child_process');
+              const execAsync = promisify(exec);
+              
+              const tempDir = os.tmpdir();
+              const inputPath = pathModule.join(tempDir, `wa_voice_${Date.now()}.webm`);
+              const outputPath = pathModule.join(tempDir, `wa_voice_${Date.now()}.ogg`);
+              
+              // Write input file
+              await fs.writeFile(inputPath, file.buffer);
+              
+              // Convert to ogg/opus using ffmpeg
+              await execAsync(`ffmpeg -i "${inputPath}" -c:a libopus -b:a 64k -vbr on -compression_level 10 -application voip "${outputPath}" -y`);
+              
+              // Read converted file
+              finalBuffer = await fs.readFile(outputPath);
+              finalMimetype = 'audio/ogg; codecs=opus';
+              finalFilename = 'voice-note.ogg';
+              
+              // Cleanup temp files
+              await fs.unlink(inputPath).catch(() => {});
+              await fs.unlink(outputPath).catch(() => {});
+              
+              console.log(`[WhatsApp] Audio converted successfully: ${file.buffer.length} bytes -> ${finalBuffer.length} bytes`);
+            } catch (conversionError) {
+              console.error(`[WhatsApp] Audio conversion failed, sending original:`, conversionError);
+              // Fall back to original file if conversion fails
+            }
+          }
+          
           const message = await whatsappService.sendMedia(
             companyId, 
             chatId, 
-            file.buffer, 
-            file.mimetype, 
-            file.originalname, 
+            finalBuffer, 
+            finalMimetype, 
+            finalFilename, 
             caption,
             sendAsVoiceNote === 'true'
           );
