@@ -34,6 +34,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     - **Email System:** Global SMTP and database-driven templates.
     - **Campaign System:** Unified Email/SMS campaign and contact list management.
     - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with real-time updates.
+    - **WhatsApp Web Integration:** Full WhatsApp Web functionality using whatsapp-web.js with QR code authentication, persistent multi-tenant sessions (isolated per company in .wwebjs_auth/{companyId}/), chat interface, contact list, message sending/receiving, and session management. Each company maintains its own independent WhatsApp session.
     - **iMessage Integration (BlueBubbles):** Full Apple iMessage clone functionality with authentic bubble styling, reactions, reply-to threading, message effects, typing indicators, read receipts, multimedia support, message search, group conversations, message deletion, and native voice memo system.
     - **WebPhone WebRTC System:** Professional SIP-based calling with SIP.js, per-user configuration, call management (mute, hold, blind/attended transfer, recording, DND, call waiting), iPhone-style glassmorphism UI, responsive design, caller ID lookup, missed call notifications, call history, DTMF support, and automatic reconnection with exponential backoff (immediate first attempt, then 2s, 4s, 8s, 16s, max 30s).
 - **Billing & Stripe Integration:** Automated customer and subscription management.
@@ -61,13 +62,14 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 - **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 - **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
+- **WhatsApp Security:** Full multi-tenant session isolation with company-scoped auth directories (.wwebjs_auth/{companyId}/), separate client instances per company, all API endpoints company-scoped via authenticated user's companyId.
 - **iMessage Security:** Webhook secret isolation, admin-only settings, feature gating, multi-tenant GUID scoping, and early-return guards for self-sent webhook duplicates.
 
 ## External Dependencies
 
 - **Database:** PostgreSQL, Drizzle ORM, `postgres`.
 - **Email:** Nodemailer.
-- **SMS/MMS/iMessage:** Twilio, BulkVS, BlueBubbles.
+- **SMS/MMS/iMessage/WhatsApp:** Twilio, BulkVS, BlueBubbles, whatsapp-web.js.
 - **Payments:** Stripe.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 - **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.
