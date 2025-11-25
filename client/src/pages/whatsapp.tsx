@@ -243,7 +243,7 @@ function MessageItem({
       {/* Message Bubble */}
       <div
         className={cn(
-          "rounded-lg px-3 py-2 shadow-sm",
+          "rounded-lg px-2 py-1 shadow-sm",
           message.isFromMe
             ? "bg-[var(--whatsapp-bubble-sent)]"
             : "bg-[var(--whatsapp-bubble-received)]"

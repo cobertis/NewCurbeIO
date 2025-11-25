@@ -27978,8 +27978,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       await whatsappService.reactToMessage(companyId, messageId, emoji);
       
-      // Update reaction cache for immediate display
-      whatsappService.updateReactionCache(companyId, messageId, emoji, user.id);
       
       return res.json({ success: true, message: 'Reaction sent successfully' });
     } catch (error) {
