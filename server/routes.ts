@@ -27404,6 +27404,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           isFromMe: msg.fromMe,
           hasMedia: msg.hasMedia,
           type: msg.type,
+          ack: msg.ack, // 0=error, 1=pending, 2=server, 3=device, 4=read, 5=played
           quotedMsg,
           reactions,
         };

@@ -1,13 +1,7 @@
-2025/11/25-16:18:44.344 525b Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/25-16:18:44.344 525b Recovering log #181
-2025/11/25-16:18:44.364 525b Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000181.log 
-2025/11/25-16:18:45.812 525d Level-0 table #186: started
-2025/11/25-16:18:45.836 525d Level-0 table #186: 432453 bytes OK
-2025/11/25-16:18:45.845 525d Delete type=0 #181
-2025/11/25-16:18:45.847 525b Manual compaction at level-0 from '\x006\x00\x00\x00' @ 72057594037927935 : 1 .. '\x007\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/25-16:18:47.581 525c Compacting 1@1 + 1@2 files
-2025/11/25-16:18:47.680 525c Generated table #187@1: 56356 keys, 2071096 bytes
-2025/11/25-16:18:47.681 525c Compacted 1@1 + 1@2 files => 2071096 bytes
-2025/11/25-16:18:47.689 525c compacted to: files[ 0 0 1 0 0 0 0 ]
-2025/11/25-16:18:47.689 525c Delete type=2 #183
-2025/11/25-16:18:47.689 525c Delete type=2 #186
+2025/11/25-16:24:30.664 58ab Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/25-16:24:30.665 58ab Recovering log #185
+2025/11/25-16:24:30.680 58ab Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000185.log 
+2025/11/25-16:24:32.325 58b6 Level-0 table #190: started
+2025/11/25-16:24:32.353 58b6 Level-0 table #190: 379849 bytes OK
+2025/11/25-16:24:32.368 58b6 Delete type=0 #185
+2025/11/25-16:24:32.370 58ac Manual compaction at level-0 from '\x007\x00\x00\x00' @ 72057594037927935 : 1 .. '\x008\x00\x00\x00' @ 0 : 0; will stop at (end)
