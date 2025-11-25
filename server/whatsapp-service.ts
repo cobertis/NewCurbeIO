@@ -226,13 +226,30 @@ class WhatsAppService extends EventEmitter {
     });
 
     // Client is ready
-    client.on('ready', () => {
+    client.on('ready', async () => {
       console.log(`[WhatsApp] Client is ready for company: ${companyId}`);
       status.isReady = true;
       status.isAuthenticated = true;
       status.status = 'ready';
       status.qrCode = null;
       this.emit('ready', { companyId });
+      // Hydrate reactions from database for this company
+      try {
+        const savedReactions = await db
+          .select()
+          .from(whatsappReactions)
+          .where(eq(whatsappReactions.companyId, companyId));
+        
+        for (const reaction of savedReactions) {
+          const cacheKey = `${companyId}:${reaction.messageId}`;
+          const existingReactions = this.messageReactions.get(cacheKey) || [];
+          existingReactions.push({ emoji: reaction.emoji, senderId: reaction.senderId });
+          this.messageReactions.set(cacheKey, existingReactions);
+        }
+        console.log(`[WhatsApp] Hydrated ${savedReactions.length} reactions from database for company: ${companyId}`);
+      } catch (error) {
+        console.error(`[WhatsApp] Failed to hydrate reactions for company ${companyId}:`, error);
+      }
     });
 
     // Incoming message
