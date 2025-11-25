@@ -27360,17 +27360,49 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const messages = await whatsappService.getChatMessages(companyId, normalizedChatId, limit);
       
-      // Transform messages to a simpler format
-      const formattedMessages = messages.map(msg => ({
-        id: msg.id._serialized,
-        body: msg.body,
-        from: msg.from,
-        to: msg.to,
-        timestamp: msg.timestamp,
-        isFromMe: msg.fromMe,
-        hasMedia: msg.hasMedia,
-        type: msg.type,
-      }));
+      // Transform messages to a simpler format with quoted message support
+      const formattedMessages = messages.map(msg => {
+        let quotedMsg = null;
+        
+        // Check if message has a quoted message (reply)
+        if (msg.hasQuotedMsg && msg._data?.quotedMsg) {
+          const quotedData = msg._data.quotedMsg;
+          // Determine sender name for quoted message - DO NOT add "Group" suffix
+          let quotedFrom = 'Unknown';
+          
+          if (quotedData.fromMe) {
+            quotedFrom = 'You';
+          } else if (quotedData._data?.notifyName) {
+            quotedFrom = quotedData._data.notifyName;
+          } else if (quotedData.participant) {
+            // For group messages, participant contains the sender's JID
+            const participantNumber = quotedData.participant.split('@')[0];
+            quotedFrom = participantNumber;
+          } else if (quotedData.from) {
+            const fromNumber = quotedData.from.split('@')[0];
+            quotedFrom = fromNumber;
+          }
+          
+          quotedMsg = {
+            id: quotedData.id?._serialized || quotedData.id,
+            body: quotedData.body || quotedData.caption || '',
+            from: quotedFrom,
+            type: quotedData.type,
+          };
+        }
+        
+        return {
+          id: msg.id._serialized,
+          body: msg.body,
+          from: msg.from,
+          to: msg.to,
+          timestamp: msg.timestamp,
+          isFromMe: msg.fromMe,
+          hasMedia: msg.hasMedia,
+          type: msg.type,
+          quotedMsg,
+        };
+      });
 
       return res.json({ success: true, messages: formattedMessages });
     } catch (error) {
