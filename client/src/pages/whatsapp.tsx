@@ -869,6 +869,12 @@ export default function WhatsAppPage() {
   const [userStatus, setUserStatus] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
   
+  // Search messages state
+  const [showSearchMessagesDialog, setShowSearchMessagesDialog] = useState(false);
+  const [searchMessagesQuery, setSearchMessagesQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<WhatsAppMessage[]>([]);
+  const [isSearchingMessages, setIsSearchingMessages] = useState(false);
+  
   // Mentions state
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
@@ -1039,51 +1045,74 @@ export default function WhatsAppPage() {
   const archiveMutation = useMutation({
     mutationFn: async ({ chatId, archive }: { chatId: string; archive: boolean }) => {
       const endpoint = archive ? 'archive' : 'unarchive';
-      return await apiRequest('PUT', `/api/whatsapp/chats/${chatId}/${endpoint}`, {});
+      const encodedChatId = encodeURIComponent(chatId);
+      return await apiRequest('POST', `/api/whatsapp/chats/${encodedChatId}/${endpoint}`, {});
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Chat updated' });
+      toast({ title: 'Success', description: variables.archive ? 'Chat archived' : 'Chat unarchived' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to archive chat', variant: 'destructive' });
     },
   });
 
   const pinMutation = useMutation({
     mutationFn: async ({ chatId, pin }: { chatId: string; pin: boolean }) => {
       const endpoint = pin ? 'pin' : 'unpin';
-      return await apiRequest('PUT', `/api/whatsapp/chats/${chatId}/${endpoint}`, {});
+      const encodedChatId = encodeURIComponent(chatId);
+      return await apiRequest('POST', `/api/whatsapp/chats/${encodedChatId}/${endpoint}`, {});
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      toast({ title: 'Success', description: variables.pin ? 'Chat pinned' : 'Chat unpinned' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to pin chat', variant: 'destructive' });
     },
   });
 
   const muteMutation = useMutation({
     mutationFn: async ({ chatId, duration }: { chatId: string; duration: number }) => {
-      return await apiRequest('PUT', `/api/whatsapp/chats/${chatId}/mute`, { duration });
+      const encodedChatId = encodeURIComponent(chatId);
+      const durationMs = duration === -1 ? -1 : duration * 1000;
+      return await apiRequest('POST', `/api/whatsapp/chats/${encodedChatId}/mute`, { durationMs });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       toast({ title: 'Success', description: 'Chat muted' });
     },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to mute chat', variant: 'destructive' });
+    },
   });
 
   const unmuteMutation = useMutation({
     mutationFn: async ({ chatId }: { chatId: string }) => {
-      return await apiRequest('PUT', `/api/whatsapp/chats/${chatId}/unmute`, {});
+      const encodedChatId = encodeURIComponent(chatId);
+      return await apiRequest('POST', `/api/whatsapp/chats/${encodedChatId}/unmute`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       toast({ title: 'Success', description: 'Chat unmuted' });
     },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to unmute chat', variant: 'destructive' });
+    },
   });
 
   const clearChatMutation = useMutation({
     mutationFn: async ({ chatId }: { chatId: string }) => {
-      return await apiRequest('DELETE', `/api/whatsapp/chats/${chatId}/messages`, {});
+      const encodedChatId = encodeURIComponent(chatId);
+      return await apiRequest('DELETE', `/api/whatsapp/chats/${encodedChatId}/messages`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
-      toast({ title: 'Success', description: 'Chat cleared' });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      toast({ title: 'Success', description: 'Messages cleared' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to clear messages', variant: 'destructive' });
     },
   });
 
@@ -1844,6 +1873,37 @@ export default function WhatsAppPage() {
     muteMutation.mutate({ chatId: selectedChatId, duration });
   };
 
+  // Handle search messages in chat
+  const handleSearchMessages = async (query: string) => {
+    if (!selectedChatId || !query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearchingMessages(true);
+    try {
+      const encodedChatId = encodeURIComponent(selectedChatId);
+      const encodedQuery = encodeURIComponent(query.trim());
+      const response = await apiRequest('GET', `/api/whatsapp/search?q=${encodedQuery}&chatId=${encodedChatId}`);
+      
+      if (response.success && response.results) {
+        setSearchResults(response.results);
+        if (response.results.length === 0) {
+          toast({ title: 'No results', description: 'No messages found matching your search' });
+        }
+      } else {
+        setSearchResults([]);
+        toast({ title: 'Search failed', description: response.error || 'Could not search messages', variant: 'destructive' });
+      }
+    } catch (error: any) {
+      console.error('Search error:', error);
+      toast({ title: 'Error', description: error.message || 'Failed to search messages', variant: 'destructive' });
+      setSearchResults([]);
+    } finally {
+      setIsSearchingMessages(false);
+    }
+  };
+
   // Handle file selection for media upload
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -2357,7 +2417,14 @@ export default function WhatsAppPage() {
                     </DropdownMenuSub>
 
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem data-testid="menu-search">
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        setSearchMessagesQuery('');
+                        setSearchResults([]);
+                        setShowSearchMessagesDialog(true);
+                      }}
+                      data-testid="menu-search"
+                    >
                       <Search className="h-4 w-4 mr-2" />
                       Search Messages
                     </DropdownMenuItem>
@@ -3443,6 +3510,95 @@ export default function WhatsAppPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Search Messages Dialog */}
+      <Dialog open={showSearchMessagesDialog} onOpenChange={(open) => {
+        setShowSearchMessagesDialog(open);
+        if (!open) {
+          setSearchMessagesQuery('');
+          setSearchResults([]);
+        }
+      }}>
+        <DialogContent data-testid="dialog-search-messages" className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-[var(--whatsapp-green-primary)]" />
+              Search Messages
+            </DialogTitle>
+            <DialogDescription>
+              Search within {selectedChat?.name || 'this chat'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex gap-2 mt-4">
+            <Input
+              placeholder="Search messages..."
+              value={searchMessagesQuery}
+              onChange={(e) => setSearchMessagesQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearchMessages(searchMessagesQuery);
+                }
+              }}
+              className="flex-1"
+              data-testid="input-search-messages"
+            />
+            <Button 
+              onClick={() => handleSearchMessages(searchMessagesQuery)}
+              disabled={isSearchingMessages || !searchMessagesQuery.trim()}
+              className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+              data-testid="button-search-messages"
+            >
+              {isSearchingMessages ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto mt-4 max-h-[400px]">
+            {isSearchingMessages ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--whatsapp-green-primary)]" />
+                <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
+              </div>
+            ) : searchResults.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchMessagesQuery ? 'No messages found' : 'Enter a search term to find messages'}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Found {searchResults.length} message{searchResults.length !== 1 ? 's' : ''}
+                </p>
+                {searchResults.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className="p-3 rounded-lg bg-[var(--whatsapp-bg-secondary)] hover:bg-[var(--whatsapp-hover)] cursor-pointer transition-colors"
+                    onClick={() => {
+                      setShowSearchMessagesDialog(false);
+                    }}
+                    data-testid={`search-result-${msg.id}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-[var(--whatsapp-green-primary)]">
+                        {formatContactName(msg.from)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatMessageTime(msg.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--whatsapp-text-primary)] line-clamp-2">
+                      {msg.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
