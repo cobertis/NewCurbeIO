@@ -2746,6 +2746,51 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Get current user's profile information
+   */
+  async getMyProfile(companyId: string): Promise<{ wid: string; pushname: string; profilePicUrl: string | null; about: string | null }> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const info = companyClient.client.info;
+      
+      if (!info || !info.wid) {
+        throw new Error('Client info not available');
+      }
+      
+      const wid = info.wid._serialized;
+      const pushname = info.pushname || '';
+      
+      // Get profile picture
+      let profilePicUrl: string | null = null;
+      try {
+        profilePicUrl = await companyClient.client.getProfilePicUrl(wid);
+      } catch {
+        // Profile pic might not be available
+      }
+      
+      // Get about/status
+      let about: string | null = null;
+      try {
+        const contact = await companyClient.client.getContactById(wid);
+        if (contact && contact.getAbout) {
+          about = await contact.getAbout();
+        }
+      } catch {
+        // About might not be available
+      }
+      
+      console.log(`[WhatsApp] Profile retrieved for company ${companyId}: ${wid}`);
+      return { wid, pushname, profilePicUrl, about };
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting profile:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get labels (WhatsApp Business feature)
    */
   async getLabels(companyId: string): Promise<any[]> {

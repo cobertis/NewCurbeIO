@@ -26,7 +26,8 @@ import {
   X, Reply, Forward, Star, Download, Info, Copy, Trash2, Archive, Pin, BellOff,
   Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff, ChevronDown,
   LogOut, ArchiveX, Trash, Bell, PinOff, UserMinus, Shield, ShieldOff, Edit, Plus, Loader2,
-  Image, FileIcon, Play, Square, File, Link2, RefreshCcw, Settings, Sticker, AtSign
+  Image, FileIcon, Play, Square, File, Link2, RefreshCcw, Settings, Sticker, AtSign,
+  Camera, User
 } from "lucide-react";
 
 // =====================================================
@@ -983,6 +984,11 @@ export default function WhatsAppPage() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [userStatus, setUserStatus] = useState('');
   const [isSavingStatus, setIsSavingStatus] = useState(false);
+  const [userDisplayName, setUserDisplayName] = useState('');
+  const [isEditingDisplayName, setIsEditingDisplayName] = useState(false);
+  const [myProfilePicUrl, setMyProfilePicUrl] = useState<string | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const profilePicInputRef = useRef<HTMLInputElement>(null);
   
   // Search messages state
   const [showSearchMessagesDialog, setShowSearchMessagesDialog] = useState(false);
@@ -2105,6 +2111,83 @@ export default function WhatsAppPage() {
     }
     setIsSavingStatus(true);
     setStatusMutation.mutate(userStatus.trim());
+  };
+
+  // Load profile when settings dialog opens
+  const loadMyProfile = async () => {
+    setIsLoadingProfile(true);
+    try {
+      const res = await fetch('/api/whatsapp/profile', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success && data.profile) {
+        setUserDisplayName(data.profile.pushname || '');
+        setUserStatus(data.profile.about || '');
+        setMyProfilePicUrl(data.profile.profilePicUrl);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  // Save display name
+  const handleSaveDisplayName = async () => {
+    if (!userDisplayName.trim()) {
+      toast({ title: 'Error', description: 'Please enter a display name', variant: 'destructive' });
+      return;
+    }
+    try {
+      const res = await fetch('/api/whatsapp/profile/display-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ displayName: userDisplayName.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Success', description: 'Display name updated' });
+        setIsEditingDisplayName(false);
+      } else {
+        toast({ title: 'Error', description: data.error || 'Failed to update display name', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update display name', variant: 'destructive' });
+    }
+  };
+
+  // Handle profile picture upload
+  const handleProfilePicUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' });
+      return;
+    }
+    
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        const res = await fetch('/api/whatsapp/profile/picture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ media: base64 })
+        });
+        const data = await res.json();
+        if (data.success) {
+          toast({ title: 'Success', description: 'Profile picture updated' });
+          loadMyProfile(); // Reload to get new picture
+        } else {
+          toast({ title: 'Error', description: data.error || 'Failed to update profile picture', variant: 'destructive' });
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to upload profile picture', variant: 'destructive' });
+    }
   };
 
   // Handle message input change with @mention detection
@@ -3998,7 +4081,12 @@ export default function WhatsAppPage() {
       </Dialog>
 
       {/* Settings Dialog */}
-      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+      <Dialog open={showSettingsDialog} onOpenChange={(open) => {
+        setShowSettingsDialog(open);
+        if (open && isAuthenticated) {
+          loadMyProfile();
+        }
+      }}>
         <DialogContent data-testid="dialog-settings" className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -4010,80 +4098,153 @@ export default function WhatsAppPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 mt-4">
-            {/* Profile Section */}
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold text-xl">
-                  <MessageSquare className="h-8 w-8" />
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold text-[var(--whatsapp-text-primary)]">Your Profile</h3>
-                <p className="text-sm text-[var(--whatsapp-text-secondary)]">
-                  Edit your status and about info
+          {isLoadingProfile ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-[var(--whatsapp-green-primary)]" />
+            </div>
+          ) : (
+            <div className="space-y-6 mt-4">
+              {/* Profile Picture Section */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative group">
+                  <Avatar className="h-24 w-24 cursor-pointer" onClick={() => profilePicInputRef.current?.click()}>
+                    {myProfilePicUrl ? (
+                      <AvatarImage src={myProfilePicUrl} alt="Profile" />
+                    ) : null}
+                    <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold text-2xl">
+                      {userDisplayName ? getInitials(userDisplayName) : <User className="h-10 w-10" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    onClick={() => profilePicInputRef.current?.click()}
+                  >
+                    <Camera className="h-6 w-6 text-white" />
+                  </div>
+                  <input
+                    ref={profilePicInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleProfilePicUpload}
+                    data-testid="input-profile-pic"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Click to change profile picture</p>
+              </div>
+              
+              <Separator />
+              
+              {/* Display Name Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" />
+                    <Label htmlFor="display-name">Display Name</Label>
+                  </div>
+                  {!isEditingDisplayName && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setIsEditingDisplayName(true)}
+                      data-testid="button-edit-display-name"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {isEditingDisplayName ? (
+                  <div className="flex gap-2">
+                    <Input
+                      id="display-name"
+                      value={userDisplayName}
+                      onChange={(e) => setUserDisplayName(e.target.value)}
+                      placeholder="Your display name"
+                      className="flex-1"
+                      data-testid="input-display-name"
+                    />
+                    <Button 
+                      size="sm" 
+                      onClick={handleSaveDisplayName}
+                      className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)]"
+                      data-testid="button-save-display-name"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => setIsEditingDisplayName(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--whatsapp-text-primary)] py-2">
+                    {userDisplayName || 'Not set'}
+                  </p>
+                )}
+              </div>
+              
+              <Separator />
+              
+              {/* Status/About Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Edit className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" />
+                  <Label htmlFor="user-status">Status / About</Label>
+                </div>
+                <Textarea
+                  id="user-status"
+                  value={userStatus}
+                  onChange={(e) => setUserStatus(e.target.value)}
+                  placeholder="Hey there! I am using WhatsApp"
+                  rows={3}
+                  className="resize-none"
+                  data-testid="input-user-status"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This will be visible to your contacts
                 </p>
               </div>
+              
+              <Button
+                onClick={handleSaveStatus}
+                disabled={!userStatus.trim() || setStatusMutation.isPending}
+                className="w-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                data-testid="button-save-status"
+              >
+                {setStatusMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Save Status
+                  </>
+                )}
+              </Button>
+              
+              <Separator />
+              
+              {/* Logout Section */}
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => {
+                  setShowSettingsDialog(false);
+                  logoutMutation.mutate();
+                }}
+                disabled={logoutMutation.isPending}
+                data-testid="button-logout-settings"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+              </Button>
             </div>
-            
-            <Separator />
-            
-            {/* Status/About Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Edit className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" />
-                <Label htmlFor="user-status">Status / About</Label>
-              </div>
-              <Textarea
-                id="user-status"
-                value={userStatus}
-                onChange={(e) => setUserStatus(e.target.value)}
-                placeholder="Hey there! I am using WhatsApp"
-                rows={3}
-                className="resize-none"
-                data-testid="input-user-status"
-              />
-              <p className="text-xs text-muted-foreground">
-                This will be visible to your contacts
-              </p>
-            </div>
-            
-            <Button
-              onClick={handleSaveStatus}
-              disabled={!userStatus.trim() || setStatusMutation.isPending}
-              className="w-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
-              data-testid="button-save-status"
-            >
-              {setStatusMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  Save Status
-                </>
-              )}
-            </Button>
-            
-            <Separator />
-            
-            {/* Logout Section */}
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() => {
-                setShowSettingsDialog(false);
-                logoutMutation.mutate();
-              }}
-              disabled={logoutMutation.isPending}
-              data-testid="button-logout-settings"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

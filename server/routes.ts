@@ -29674,6 +29674,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
 
+  // GET /api/whatsapp/profile - Get current user's WhatsApp profile
+  app.get("/api/whatsapp/profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: "WhatsApp is not connected" });
+      }
+      
+      const profile = await whatsappService.getMyProfile(companyId);
+      res.json({ success: true, profile });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting profile:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+
   // POST /api/whatsapp/profile/status - Set WhatsApp status message
   app.post("/api/whatsapp/profile/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
