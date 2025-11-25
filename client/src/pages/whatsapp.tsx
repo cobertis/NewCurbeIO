@@ -175,7 +175,6 @@ function getMessageDateKey(timestamp: number): string {
 // =====================================================
 
 const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🙏', '👍', '🎉', '🔥'];
-const QUICK_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
   return (
@@ -194,29 +193,6 @@ function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
   );
 }
 
-function QuickReactionBar({ onSelect, onMore }: { onSelect: (emoji: string) => void; onMore: () => void }) {
-  return (
-    <div className="flex items-center bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 px-1 py-0.5">
-      {QUICK_REACTION_EMOJIS.map((emoji) => (
-        <button
-          key={emoji}
-          onClick={() => onSelect(emoji)}
-          className="text-xl hover:scale-125 transition-transform p-1"
-          data-testid={`quick-react-${emoji}`}
-        >
-          {emoji}
-        </button>
-      ))}
-      <button
-        onClick={onMore}
-        className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1 ml-0.5"
-        data-testid="quick-react-more"
-      >
-        <Plus className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
 
 // =====================================================
 // MESSAGE COMPONENT
@@ -392,21 +368,22 @@ function MessageItem({
         )}
       </div>
 
-      {/* Quick Reaction Bar - Visible on Hover */}
+      {/* Hover Actions - Options Button and React Button */}
       <div className={cn(
-        "absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity z-10",
-        message.isFromMe ? "right-0" : "left-0"
+        "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1",
+        message.isFromMe ? "-left-16" : "-right-16"
       )}>
+        {/* React Button */}
         <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
           <PopoverTrigger asChild>
-            <div>
-              <QuickReactionBar 
-                onSelect={(emoji) => {
-                  onReact(emoji);
-                }}
-                onMore={() => setShowEmojiPicker(true)}
-              />
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-full bg-[var(--whatsapp-bg-secondary)] hover:bg-[var(--whatsapp-hover)] shadow-sm border border-gray-200 dark:border-gray-700"
+              data-testid={`button-react-${message.id}`}
+            >
+              <Smile className="h-4 w-4 text-gray-500" />
+            </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0 w-auto" align={message.isFromMe ? "end" : "start"}>
             <EmojiPicker onSelect={(emoji) => {
@@ -415,13 +392,8 @@ function MessageItem({
             }} />
           </PopoverContent>
         </Popover>
-      </div>
 
-      {/* More Options Button */}
-      <div className={cn(
-        "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity",
-        message.isFromMe ? "-left-8" : "-right-8"
-      )}>
+        {/* More Options Button */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
