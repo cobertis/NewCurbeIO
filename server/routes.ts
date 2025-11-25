@@ -29671,8 +29671,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/whatsapp/channels/search", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = String(req.user!.companyId);
-      const { searchOptions } = req.body;
-      const channels = await whatsappService.searchChannels(companyId, searchOptions || {});
+      const { name, countryCodes, view, sort, limit } = req.body;
+      const searchOptions = { name, countryCodes, view, sort, limit };
+      const channels = await whatsappService.searchChannels(companyId, searchOptions);
       res.json({ success: true, channels });
     } catch (error: any) {
       console.error('[WhatsApp] Error searching channels:', error);
@@ -29873,7 +29874,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ============================================================================
   // CHANNEL ADMIN ENDPOINTS
   // ============================================================================
-
   // POST /api/whatsapp/channels/:channelId/admin-invite - Send admin invite
   app.post("/api/whatsapp/channels/:channelId/admin-invite", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29883,7 +29883,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!chatId) {
         return res.status(400).json({ success: false, error: "chatId is required" });
       }
-      const result = await whatsappService.sendChannelAdminInvite(companyId, channelId, chatId);
+      // Normalize chatId to ensure @c.us suffix for WhatsApp format
+      const normalizedChatId = chatId.includes('@') ? chatId : `${chatId}@c.us`;
+      const result = await whatsappService.sendChannelAdminInvite(companyId, channelId, normalizedChatId);
       res.json({ success: true, result });
     } catch (error: any) {
       console.error('[WhatsApp] Error sending admin invite:', error);
