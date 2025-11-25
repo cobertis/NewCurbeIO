@@ -125,7 +125,7 @@ export default function WhatsAppPage() {
 
   // Fetch messages for selected chat
   const { data: messagesData, isLoading: messagesLoading } = useQuery<{ success: boolean; messages: WhatsAppMessage[] }>({
-    queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'],
+    queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`],
     enabled: !!selectedChatId && isAuthenticated,
     refetchInterval: 3000,
   });
@@ -138,7 +138,7 @@ export default function WhatsAppPage() {
       return await apiRequest('/api/whatsapp/send', 'POST', { to, message });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setMessageInput('');
     },
