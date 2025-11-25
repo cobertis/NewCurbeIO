@@ -32,6 +32,9 @@ class WhatsAppService extends EventEmitter {
   
   // Cache for message reactions (companyId:messageId -> reactions array)
   private messageReactions: Map<string, Array<{ emoji: string; senderId: string }>> = new Map();
+  
+  // Cache for sent media (messageId -> media data) - allows viewing media we sent
+  private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
 
   constructor() {
     super();
@@ -669,6 +672,16 @@ class WhatsAppService extends EventEmitter {
       
       // Send the media message
       const sentMessage = await chat.sendMessage(media, sendOptions);
+      
+      // Cache the sent media so we can display it later
+      if (sentMessage?.id?._serialized) {
+        this.sentMediaCache.set(sentMessage.id._serialized, {
+          mimetype,
+          data: buffer.toString('base64')
+        });
+        console.log(`[WhatsApp] Media cached for message ${sentMessage.id._serialized}`);
+      }
+      
       console.log(`[WhatsApp] Media sent to ${chatId} for company ${companyId}: ${mimetype}, ${filename}`);
       return sentMessage;
     } catch (error) {
@@ -946,6 +959,13 @@ class WhatsAppService extends EventEmitter {
    * Download media from a message
    */
   async downloadMedia(companyId: string, messageId: string): Promise<any> {
+    // First check our sent media cache (for media we sent ourselves)
+    const cachedMedia = this.sentMediaCache.get(messageId);
+    if (cachedMedia) {
+      console.log(`[WhatsApp] Media found in cache for message ${messageId}`);
+      return cachedMedia;
+    }
+    
     if (!this.isReady(companyId)) {
       throw new Error('WhatsApp client is not ready');
     }
