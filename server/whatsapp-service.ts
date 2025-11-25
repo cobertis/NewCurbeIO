@@ -358,6 +358,7 @@ class WhatsAppService extends EventEmitter {
       // Filter out system chats that WhatsApp auto-recreates
       // These cannot be permanently deleted as WhatsApp restores them on new system messages
       const SYSTEM_CHAT_IDS = ['0@c.us', 'status@broadcast'];
+      const SYSTEM_MESSAGE_TYPES = ['notification', 'protocol', 'e2e_notification', 'gp2', 'revoked'];
       
       return chats.filter((chat: any) => {
         const chatId = chat.id?._serialized || chat.id;
@@ -370,6 +371,18 @@ class WhatsAppService extends EventEmitter {
         // Exclude chats with user ID "0" (WhatsApp service notifications)
         if (chat.id?.user === '0' || chat.id?.user === 0) {
           return false;
+        }
+        
+        // Exclude chats where lastMessage is empty or system type
+        const lastMsg = chat.lastMessage;
+        if (lastMsg) {
+          const body = lastMsg.body || '';
+          const type = lastMsg.type || '';
+          
+          // If last message is empty or system type, exclude the chat
+          if (body.trim() === '' || SYSTEM_MESSAGE_TYPES.includes(type)) {
+            return false;
+          }
         }
         
         return true;
@@ -437,7 +450,24 @@ class WhatsAppService extends EventEmitter {
     try {
       const chat = await companyClient.client.getChatById(chatId);
       const messages = await chat.fetchMessages({ limit });
-      return messages;
+      
+      // Filter out empty/system messages that WhatsApp creates
+      const SYSTEM_MESSAGE_TYPES = ['notification', 'protocol', 'e2e_notification', 'gp2', 'revoked'];
+      
+      return messages.filter((msg: any) => {
+        // Filter out system message types
+        if (SYSTEM_MESSAGE_TYPES.includes(msg.type)) {
+          return false;
+        }
+        
+        // Filter out messages with empty body (system placeholders)
+        const body = msg.body || '';
+        if (body.trim() === '') {
+          return false;
+        }
+        
+        return true;
+      });
     } catch (error) {
       console.error(`[WhatsApp] Failed to get chat messages for company ${companyId}:`, error);
       throw error;
@@ -1409,6 +1439,12 @@ class WhatsAppService extends EventEmitter {
     try {
       const companyClient = await this.getClientForCompany(companyId);
       const chat = await companyClient.client.getChatById(chatId);
+      
+      // First clear all messages from the chat history
+      await chat.clearMessages();
+      console.log(`[WhatsApp] Chat messages cleared for company ${companyId}: ${chatId}`);
+      
+      // Then delete the chat itself
       await chat.delete();
       console.log(`[WhatsApp] Chat deleted for company ${companyId}: ${chatId}`);
     } catch (error) {

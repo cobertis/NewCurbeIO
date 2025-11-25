@@ -907,7 +907,20 @@ export default function WhatsAppPage() {
     refetchInterval: 3000,
   });
 
-  const messages = messagesData?.messages || [];
+  // Filter out empty/system messages that WhatsApp creates
+  const SYSTEM_MESSAGE_TYPES = ['notification', 'protocol', 'e2e_notification', 'gp2', 'revoked'];
+  const messages = (messagesData?.messages || []).filter((msg: any) => {
+    // Filter out system message types
+    if (SYSTEM_MESSAGE_TYPES.includes(msg.type)) {
+      return false;
+    }
+    // Filter out messages with empty body
+    const body = msg.body || '';
+    if (body.trim() === '') {
+      return false;
+    }
+    return true;
+  });
 
   // Query for WhatsApp contacts (for New Chat dialog)
   const { data: contactsData, isLoading: contactsLoading } = useQuery<{ success: boolean; contacts: Array<{ id: string; name: string; number: string; pushname?: string }> }>({
