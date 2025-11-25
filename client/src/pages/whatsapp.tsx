@@ -442,15 +442,6 @@ function MessageItem({
               <Forward className="h-4 w-4 mr-2" />
               Forward
             </DropdownMenuItem>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger data-testid="menu-react">
-                <Smile className="h-4 w-4 mr-2" />
-                React
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="p-0">
-                <EmojiPicker onSelect={onReact} />
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
             <DropdownMenuItem onClick={onStar} data-testid="menu-star">
               {message.isStarred ? (
                 <>
@@ -521,15 +512,6 @@ function MessageItem({
           <Copy className="h-4 w-4 mr-2" />
           Copy Text
         </ContextMenuItem>
-        <ContextMenuSub>
-          <ContextMenuSubTrigger data-testid="context-react">
-            <Smile className="h-4 w-4 mr-2" />
-            React
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="p-0">
-            <EmojiPicker onSelect={onReact} />
-          </ContextMenuSubContent>
-        </ContextMenuSub>
         <ContextMenuItem onClick={onStar} data-testid="context-star">
           {message.isStarred ? (
             <>
