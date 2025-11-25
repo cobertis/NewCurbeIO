@@ -27156,7 +27156,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/whatsapp/qr - Get QR code for scanning
   app.get("/api/whatsapp/qr", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const status = whatsappService.getSessionStatus();
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
+      }
+
+      const companyId = user.companyId;
+      
+      // Auto-create client for this company if it doesn't exist
+      await whatsappService.getClientForCompany(companyId);
+      
+      const status = whatsappService.getSessionStatus(companyId);
       
       if (status.status === 'ready' || status.status === 'authenticated') {
         return res.json({ success: true, authenticated: true, qrCode: null });
@@ -27177,7 +27187,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/whatsapp/status - Get session status
   app.get("/api/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const status = whatsappService.getSessionStatus();
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
+      }
+
+      const companyId = user.companyId;
+      const status = whatsappService.getSessionStatus(companyId);
       return res.json({ success: true, status });
     } catch (error) {
       console.error('[WhatsApp] Error getting status:', error);
@@ -27188,7 +27204,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/whatsapp/logout - Logout and destroy session
   app.post("/api/whatsapp/logout", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      await whatsappService.logout();
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
+      }
+
+      const companyId = user.companyId;
+      await whatsappService.logout(companyId);
       return res.json({ success: true, message: 'Logged out successfully' });
     } catch (error) {
       console.error('[WhatsApp] Error logging out:', error);
@@ -27199,11 +27221,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/whatsapp/contacts - Get contact list
   app.get("/api/whatsapp/contacts", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
+      }
+    i      const companyId = user.companyId;
+    s/if (!whatsappService.isReady())/if (!whatsappService.isReady(companyId))/
       if (!whatsappService.isReady()) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 
-      const contacts = await whatsappService.getContacts();
+      const contacts = await whatsappService.getContacts(companyId);
       
       // Transform contacts to a simpler format
       const formattedContacts = contacts.map(contact => ({
@@ -27224,11 +27252,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/whatsapp/chats - Get all chats
   app.get("/api/whatsapp/chats", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
+      }
+    i      const companyId = user.companyId;
+    s/if (!whatsappService.isReady())/if (!whatsappService.isReady(companyId))/
       if (!whatsappService.isReady()) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 
-      const chats = await whatsappService.getChats();
+      const chats = await whatsappService.getChats(companyId);
       
       // Transform chats to include necessary information
       const formattedChats = await Promise.all(chats.map(async (chat) => {
@@ -27256,7 +27290,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/whatsapp/chats/:chatId/messages - Get messages for a chat
   app.get("/api/whatsapp/chats/:chatId/messages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      if (!whatsappService.isReady()) {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 
@@ -27287,7 +27328,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/whatsapp/send - Send message to contact
   app.post("/api/whatsapp/send", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      if (!whatsappService.isReady()) {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 
@@ -27316,7 +27364,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/whatsapp/mark-read - Mark chat as read
   app.post("/api/whatsapp/mark-read", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      if (!whatsappService.isReady()) {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 
@@ -27338,7 +27393,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/whatsapp/profile-pic/:contactId - Get profile picture URL
   app.get("/api/whatsapp/profile-pic/:contactId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      if (!whatsappService.isReady()) {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 

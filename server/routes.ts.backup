@@ -81,6 +81,8 @@ import {
   insertCampaignTemplateSchema,
   insertCampaignPlaceholderSchema,
   insertImessageCampaignSchema,
+  insertWhatsappMessageSchema,
+  insertWhatsappContactSchema,
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
@@ -102,6 +104,7 @@ import { fetchMarketplacePlans, buildCMSPayloadFromPolicy } from "./cms-marketpl
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 import { bulkVSClient } from "./bulkvs";
+import { whatsappService } from "./whatsapp-service";
 import { formatForStorage, formatForDisplay, formatE164 } from "@shared/phone";
 import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
@@ -5412,6 +5415,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Get dashboard stats with billing and company info
   app.get("/api/dashboard-stats", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
 
     try {
@@ -5425,6 +5429,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Company ID required" });
       }
 
+
+      // Check cache first (only for company-specific stats)
+      if (companyId) {
+        const { dashboardCache } = await import("./dashboard-cache");
+        const cached = dashboardCache.getDashboardStats(companyId);
+        if (cached) {
+          console.log(`[Dashboard-Stats] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+          return res.json(cached);
+        }
+        console.log(`[Dashboard-Stats] Cache MISS for company ${companyId}`);
+      }
       // Get users (filtered by company if companyId is provided)
       let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
       if (companyId) {
@@ -5822,10 +5837,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         newLeads,
       };
 
-      // Disable caching for dashboard stats to ensure fresh data
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
+
+      // Cache the result (only for company-specific stats)
+      if (companyId) {
+        const { dashboardCache } = await import("./dashboard-cache");
+        dashboardCache.setDashboardStats(companyId, stats);
+      }
+
       res.json(stats);
     } catch (error) {
       console.error("Dashboard stats error:", error);
@@ -5962,6 +5980,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
 
   app.get("/api/dashboard-monthly", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
     const companyId = currentUser.companyId;
 
@@ -5973,6 +5992,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Year filter parameter is accepted for backwards compatibility but ignored - always return all-time data
       const yearFilter = req.query.year as string | undefined;
 
+      // Check cache first
+      const { dashboardCache } = await import("./dashboard-cache");
+      const cached = dashboardCache.getMonthly(companyId);
+      if (cached) {
+        console.log(`[Dashboard-Monthly] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+        return res.json(cached);
+      }
+      console.log(`[Dashboard-Monthly] Cache MISS for company ${companyId}`);
       // Get all policies for company (all-time data)
       const allPolicies = await storage.getPoliciesByCompany(companyId);
 
@@ -6018,7 +6045,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           customers: peopleSet.size, // Same as policies now since we count unique people
         }));
 
-      res.json({ data: monthlyData });
+
+      // Cache the result
+      const monthlyResult = { data: monthlyData };
+      dashboardCache.setMonthly(companyId, monthlyResult);
+
+      res.json(monthlyResult);
     } catch (error) {
       console.error("Monthly comparison error:", error);
       res.status(500).json({ message: "Failed to fetch monthly data" });
@@ -6027,6 +6059,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Get agents leaderboard
   app.get("/api/dashboard-agents", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
     const companyId = currentUser.companyId;
 
@@ -6038,6 +6071,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Year filter parameter is accepted for backwards compatibility but ignored - always return all-time data
       const yearFilter = req.query.year as string | undefined;
 
+      // Check cache first
+      const { dashboardCache } = await import("./dashboard-cache");
+      const cached = dashboardCache.getAgents(companyId);
+      if (cached) {
+        console.log(`[Dashboard-Agents] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+        return res.json(cached);
+      }
+      console.log(`[Dashboard-Agents] Cache MISS for company ${companyId}`);
       // Get all policies for company (all-time data)
       const allPolicies = await storage.getPoliciesByCompany(companyId);
 
@@ -6091,7 +6132,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
 
-      res.json({ agents });
+
+      // Cache the result
+      const agentsResult = { agents };
+      dashboardCache.setAgents(companyId, agentsResult);
+
+      res.json(agentsResult);
     } catch (error) {
       console.error("Agents leaderboard error:", error);
       res.status(500).json({ message: "Failed to fetch agents data" });
@@ -6099,6 +6145,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   app.get("/api/dashboard-carriers", requireActiveCompany, async (req: Request, res: Response) => {
+    const startTime = Date.now();
     const currentUser = req.user!;
     const companyId = currentUser.companyId;
 
@@ -6110,6 +6157,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Year filter parameter is accepted for backwards compatibility but ignored - always return all-time data
       const yearFilter = req.query.year as string | undefined;
 
+      // Check cache first
+      const { dashboardCache } = await import("./dashboard-cache");
+      const cached = dashboardCache.getCarriers(companyId);
+      if (cached) {
+        console.log(`[Dashboard-Carriers] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
+        return res.json(cached);
+      }
+      console.log(`[Dashboard-Carriers] Cache MISS for company ${companyId}`);
       // Get all policies for company (all-time data)
       const allPolicies = await storage.getPoliciesByCompany(companyId);
 
@@ -6161,7 +6216,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .sort((a, b) => b.policies - a.policies)
         .slice(0, 10);
 
-      res.json({ carriers });
+
+      // Cache the result
+      const carriersResult = { carriers };
+      dashboardCache.setCarriers(companyId, carriersResult);
+
+      res.json(carriersResult);
     } catch (error) {
       console.error("Carriers statistics error:", error);
       res.status(500).json({ message: "Failed to fetch carriers data" });
@@ -7063,7 +7123,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         role: user.role
       }));
       
-      res.json({ agents });
+
+      // Cache the result
+      const agentsResult = { agents };
+      dashboardCache.setAgents(companyId, agentsResult);
+
+      res.json(agentsResult);
     } catch (error: any) {
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
@@ -11496,6 +11561,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // =====================================================
   // BLACKLIST ENDPOINTS
+
+  // POST /api/contacts/backfill-from-policies - Backfill contacts from existing policies (admin + superadmin)
+  app.post("/api/contacts/backfill-from-policies", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+
+    // Require admin or superadmin role
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Access denied. Admin or superadmin role required." });
+    }
+
+    try {
+      console.log(`[CONTACTS BACKFILL] Starting backfill for company ${currentUser.companyId}`);
+      
+      const { contactRegistry } = await import("./services/contact-registry");
+      const result = await contactRegistry.backfillContactsFromPolicies(currentUser.companyId!);
+      
+      console.log(`[CONTACTS BACKFILL] Complete: ${result.processed} processed, ${result.created} created, ${result.errors} errors`);
+      
+      res.json({
+        success: true,
+        message: `Backfill complete: ${result.processed} policies processed`,
+        ...result,
+      });
+    } catch (error: any) {
+      console.error("[CONTACTS BACKFILL] Error:", error);
+      res.status(500).json({ message: "Failed to backfill contacts", error: error.message });
+    }
+  });
   // =====================================================
 
   // GET /api/blacklist - List blacklist entries (admin + superadmin)
@@ -27053,6 +27146,209 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error regenerating webhook secret:", error);
       res.status(500).json({ message: "Failed to regenerate webhook secret" });
+    }
+  });
+
+  // =====================================================
+  // WHATSAPP ROUTES
+  // =====================================================
+
+  // GET /api/whatsapp/qr - Get QR code for scanning
+  app.get("/api/whatsapp/qr", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const status = whatsappService.getSessionStatus();
+      
+      if (status.status === 'ready' || status.status === 'authenticated') {
+        return res.json({ success: true, authenticated: true, qrCode: null });
+      }
+      
+      if (status.qrCode) {
+        return res.json({ success: true, authenticated: false, qrCode: status.qrCode });
+      }
+      
+      // QR code not yet generated
+      return res.json({ success: true, authenticated: false, qrCode: null, message: 'Waiting for QR code...' });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting QR code:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get QR code' });
+    }
+  });
+
+  // GET /api/whatsapp/status - Get session status
+  app.get("/api/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const status = whatsappService.getSessionStatus();
+      return res.json({ success: true, status });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting status:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get status' });
+    }
+  });
+
+  // POST /api/whatsapp/logout - Logout and destroy session
+  app.post("/api/whatsapp/logout", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      await whatsappService.logout();
+      return res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+      console.error('[WhatsApp] Error logging out:', error);
+      return res.status(500).json({ success: false, error: 'Failed to logout' });
+    }
+  });
+
+  // GET /api/whatsapp/contacts - Get contact list
+  app.get("/api/whatsapp/contacts", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const contacts = await whatsappService.getContacts();
+      
+      // Transform contacts to a simpler format
+      const formattedContacts = contacts.map(contact => ({
+        id: contact.id._serialized,
+        name: contact.name || contact.pushname || contact.number,
+        phoneNumber: contact.number,
+        isGroup: contact.isGroup,
+        profilePicUrl: null, // Will be fetched separately if needed
+      }));
+
+      return res.json({ success: true, contacts: formattedContacts });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting contacts:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get contacts' });
+    }
+  });
+
+  // GET /api/whatsapp/chats - Get all chats
+  app.get("/api/whatsapp/chats", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const chats = await whatsappService.getChats();
+      
+      // Transform chats to include necessary information
+      const formattedChats = await Promise.all(chats.map(async (chat) => {
+        return {
+          id: chat.id._serialized,
+          name: chat.name,
+          isGroup: chat.isGroup,
+          timestamp: chat.timestamp,
+          unreadCount: chat.unreadCount,
+          lastMessage: chat.lastMessage ? {
+            body: chat.lastMessage.body,
+            timestamp: chat.lastMessage.timestamp,
+            from: chat.lastMessage.from,
+          } : null,
+        };
+      }));
+
+      return res.json({ success: true, chats: formattedChats });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting chats:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get chats' });
+    }
+  });
+
+  // GET /api/whatsapp/chats/:chatId/messages - Get messages for a chat
+  app.get("/api/whatsapp/chats/:chatId/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const messages = await whatsappService.getChatMessages(chatId, limit);
+      
+      // Transform messages to a simpler format
+      const formattedMessages = messages.map(msg => ({
+        id: msg.id._serialized,
+        body: msg.body,
+        from: msg.from,
+        to: msg.to,
+        timestamp: msg.timestamp,
+        isFromMe: msg.fromMe,
+        hasMedia: msg.hasMedia,
+        type: msg.type,
+      }));
+
+      return res.json({ success: true, messages: formattedMessages });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting messages:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get messages' });
+    }
+  });
+
+  // POST /api/whatsapp/send - Send message to contact
+  app.post("/api/whatsapp/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { to, message } = req.body;
+      
+      if (!to || !message) {
+        return res.status(400).json({ success: false, error: 'Missing required fields: to, message' });
+      }
+
+      const sentMessage = await whatsappService.sendMessage(to, message);
+      
+      return res.json({ 
+        success: true, 
+        message: {
+          id: sentMessage.id._serialized,
+          body: sentMessage.body,
+          timestamp: sentMessage.timestamp,
+        }
+      });
+    } catch (error) {
+      console.error('[WhatsApp] Error sending message:', error);
+      return res.status(500).json({ success: false, error: 'Failed to send message' });
+    }
+  });
+
+  // POST /api/whatsapp/mark-read - Mark chat as read
+  app.post("/api/whatsapp/mark-read", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId } = req.body;
+      
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: 'Missing required field: chatId' });
+      }
+
+      await whatsappService.markChatAsRead(chatId);
+      
+      return res.json({ success: true, message: 'Chat marked as read' });
+    } catch (error) {
+      console.error('[WhatsApp] Error marking chat as read:', error);
+      return res.status(500).json({ success: false, error: 'Failed to mark chat as read' });
+    }
+  });
+
+  // GET /api/whatsapp/profile-pic/:contactId - Get profile picture URL
+  app.get("/api/whatsapp/profile-pic/:contactId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { contactId } = req.params;
+      const profilePicUrl = await whatsappService.getProfilePicUrl(contactId);
+      
+      return res.json({ success: true, profilePicUrl });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting profile picture:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get profile picture' });
     }
   });
 
