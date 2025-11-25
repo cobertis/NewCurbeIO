@@ -474,10 +474,6 @@ function MessageItem({
               <Copy className="h-4 w-4 mr-2" />
               Copy Text
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onInfo} data-testid="menu-info">
-              <Info className="h-4 w-4 mr-2" />
-              Message Info
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onDelete(false)} className="text-red-600" data-testid="menu-delete-for-me">
               <Trash2 className="h-4 w-4 mr-2" />
@@ -553,10 +549,6 @@ function MessageItem({
             Download Media
           </ContextMenuItem>
         )}
-        <ContextMenuItem onClick={onInfo} data-testid="context-info">
-          <Info className="h-4 w-4 mr-2" />
-          Message Info
-        </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => onDelete(false)} className="text-red-600" data-testid="context-delete-for-me">
           <Trash2 className="h-4 w-4 mr-2" />
