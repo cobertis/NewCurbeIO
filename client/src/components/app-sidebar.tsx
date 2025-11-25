@@ -661,15 +661,6 @@ export function AppSidebar() {
                         >
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className="flex-1">{item.title}</span>
-                          {item.title === "SMS" && unreadThreadCount > 0 && (
-                            <Badge 
-                              variant="destructive" 
-                              className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
-                              data-testid="badge-unread-count"
-                            >
-                              {unreadThreadCount > 99 ? "99+" : unreadThreadCount}
-                            </Badge>
-                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
