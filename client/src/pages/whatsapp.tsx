@@ -1300,14 +1300,48 @@ export default function WhatsAppPage() {
     mutationFn: async ({ chatId, latitude, longitude, name }: { chatId: string; latitude: number; longitude: number; name?: string }) => {
       return await apiRequest('POST', '/api/whatsapp/send-location', { chatId, latitude, longitude, name });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+    onMutate: async ({ chatId, latitude, longitude, name }) => {
+      await queryClient.cancelQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
+      
+      const previousMessages = queryClient.getQueryData([`/api/whatsapp/chats/${chatId}/messages`]);
+      
+      const optimisticMessage: WhatsAppMessage = {
+        id: `temp-location-${Date.now()}`,
+        body: name || `${latitude}, ${longitude}`,
+        from: 'me',
+        to: chatId,
+        timestamp: Math.floor(Date.now() / 1000),
+        isFromMe: true,
+        hasMedia: true,
+        type: 'location',
+        ack: 0,
+        location: { latitude, longitude, description: name }
+      };
+      
+      queryClient.setQueryData([`/api/whatsapp/chats/${chatId}/messages`], (old: any) => {
+        if (!old?.messages) return { success: true, messages: [optimisticMessage] };
+        return { ...old, messages: [...old.messages, optimisticMessage] };
+      });
+      
       setShowLocationDialog(false);
       setLocationData({ latitude: '', longitude: '', name: '' });
+      
+      return { previousMessages, chatId };
+    },
+    onError: (error: Error, variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData([`/api/whatsapp/chats/${context.chatId}/messages`], context.previousMessages);
+      }
+      console.error('[WhatsApp] Failed to send location:', error);
+      toast({ title: 'Error', description: 'Failed to send location', variant: 'destructive' });
+    },
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${variables.chatId}/messages`] });
+    },
+    onSuccess: () => {
       toast({ title: 'Success', description: 'Location sent' });
     },
   });
-
   const sendPollMutation = useMutation({
     mutationFn: async ({ chatId, name, options, multipleAnswers }: { chatId: string; name: string; options: string[]; multipleAnswers: boolean }) => {
       return await apiRequest('POST', '/api/whatsapp/send-poll', { chatId, name, options, multipleAnswers });
