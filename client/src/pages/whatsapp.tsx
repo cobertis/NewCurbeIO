@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { 
   Search, Send, MoreVertical, Phone, Video, 
   CheckCheck, MessageSquare, RefreshCw, Smile, Paperclip, Lock, ArrowLeft,
@@ -100,193 +101,6 @@ interface WhatsAppStatus {
   status: 'authenticated' | 'ready' | 'disconnected' | 'qr' | 'loading';
   qrCode?: string;
   message?: string;
-}
-
-// =====================================================
-// LOCATION AUTOCOMPLETE COMPONENT
-// =====================================================
-
-interface LocationResult {
-  place_id: string;
-  display_name: string;
-  lat: string;
-  lon: string;
-  address: {
-    name?: string;
-    house_number?: string;
-    road?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-    state?: string;
-    postcode?: string;
-    country?: string;
-  };
-}
-
-interface LocationAutocompleteProps {
-  onLocationSelect: (lat: number, lng: number, name: string) => void;
-}
-
-function LocationAutocomplete({ onLocationSelect }: LocationAutocompleteProps) {
-  const [searchValue, setSearchValue] = useState('');
-  const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [apiNotConfigured, setApiNotConfigured] = useState(false);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const fetchSuggestions = async (query: string) => {
-    if (query.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/locationiq/autocomplete?q=${encodeURIComponent(query)}`);
-      if (response.status === 503) {
-        const data = await response.json();
-        if (data.requiresApiKey) {
-          setApiNotConfigured(true);
-          setSuggestions([]);
-          return;
-        }
-      }
-      if (response.ok) {
-        const data = await response.json();
-        setSuggestions(data.results || []);
-        setShowSuggestions((data.results || []).length > 0);
-      }
-    } catch (error) {
-      console.error("Failed to fetch location suggestions:", error);
-      setSuggestions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchValue(value);
-
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
-
-    if (!value.trim()) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    debounceTimer.current = setTimeout(() => {
-      fetchSuggestions(value);
-    }, 300);
-  };
-
-  const handleSelectSuggestion = (result: LocationResult) => {
-    const { address } = result;
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    
-    // Build location name from address components
-    const nameParts = [
-      address.house_number,
-      address.road,
-      address.city || address.town || address.village,
-      address.state,
-    ].filter(Boolean);
-    const locationName = nameParts.join(", ") || result.display_name;
-
-    setSearchValue(locationName);
-    onLocationSelect(lat, lng, locationName);
-    setSuggestions([]);
-    setShowSuggestions(false);
-  };
-
-  if (apiNotConfigured) {
-    return (
-      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-        <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400">
-          <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
-          <div className="text-sm">
-            <p className="font-medium">Address search not available</p>
-            <p className="text-xs mt-1 text-amber-600 dark:text-amber-500">
-              Please enter latitude and longitude coordinates manually below.
-              You can find coordinates using Google Maps.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div ref={wrapperRef} className="relative">
-      <Label htmlFor="location-search" className="text-sm font-medium">Search Address</Label>
-      <div className="relative mt-1.5">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          id="location-search"
-          value={searchValue}
-          onChange={handleInputChange}
-          placeholder="Start typing an address..."
-          className="pl-9"
-          autoComplete="off"
-          data-testid="input-location-search"
-        />
-        {isLoading && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
-        )}
-      </div>
-
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
-          {suggestions.map((result) => (
-            <button
-              key={result.place_id}
-              type="button"
-              onClick={() => handleSelectSuggestion(result)}
-              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-              data-testid={`location-suggestion-${result.place_id}`}
-            >
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                    {result.address.house_number && result.address.road
-                      ? `${result.address.house_number} ${result.address.road}`
-                      : result.address.road || result.address.name || result.display_name.split(',')[0]}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {[
-                      result.address.city || result.address.town || result.address.village,
-                      result.address.state,
-                      result.address.postcode,
-                    ].filter(Boolean).join(", ")}
-                  </div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // =====================================================
@@ -3430,14 +3244,21 @@ export default function WhatsAppPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <LocationAutocomplete
-              onLocationSelect={(lat, lng, name) => {
-                setLocationData({
-                  latitude: lat.toString(),
-                  longitude: lng.toString(),
-                  name: name
-                });
+            <GooglePlacesAddressAutocomplete
+              value={locationData.name}
+              onChange={(value) => setLocationData({ ...locationData, name: value })}
+              onAddressSelect={(address, placeDetails) => {
+                if (placeDetails?.latitude && placeDetails?.longitude) {
+                  setLocationData({
+                    latitude: placeDetails.latitude.toString(),
+                    longitude: placeDetails.longitude.toString(),
+                    name: placeDetails.formattedAddress || `${address.street}, ${address.city}`
+                  });
+                }
               }}
+              label="Search Address"
+              placeholder="Start typing an address..."
+              testId="input-location-search"
             />
             <Separator className="my-4" />
             <div className="text-xs text-muted-foreground text-center">Or enter coordinates manually</div>

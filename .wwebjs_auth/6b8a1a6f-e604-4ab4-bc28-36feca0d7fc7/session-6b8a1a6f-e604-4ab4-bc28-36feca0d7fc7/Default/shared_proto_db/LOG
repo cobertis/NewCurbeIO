@@ -1,3 +1,3 @@
-2025/11/25-21:18:01.204 eb0c Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/MANIFEST-000001
-2025/11/25-21:18:01.205 eb0c Recovering log #3
-2025/11/25-21:18:01.205 eb0c Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/000003.log 
+2025/11/25-21:59:40.641 efe4 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/MANIFEST-000001
+2025/11/25-21:59:40.648 efe4 Recovering log #3
+2025/11/25-21:59:40.650 efe4 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/000003.log 
