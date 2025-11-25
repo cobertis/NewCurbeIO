@@ -1213,6 +1213,12 @@ export default function WhatsAppPage() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      if (variables.archive) {
+        setActiveFilter('archived');
+        setSelectedChatId(null);
+      } else {
+        setActiveFilter('all');
+      }
       toast({ title: 'Success', description: variables.archive ? 'Chat archived' : 'Chat unarchived' });
     },
     onError: (error: any) => {
