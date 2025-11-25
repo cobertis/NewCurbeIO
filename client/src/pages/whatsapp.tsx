@@ -2217,23 +2217,6 @@ export default function WhatsAppPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                  data-testid="button-video"
-                >
-                  <Video className="h-5 w-5" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                  data-testid="button-call"
-                >
-                  <Phone className="h-5 w-5" />
-                </Button>
-
                 {/* Chat Options Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
