@@ -29062,6 +29062,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // PUT /api/whatsapp/groups/:chatId/settings/messages-admins-only - Set if only admins can send messages
+  app.put("/api/whatsapp/groups/:chatId/settings/messages-admins-only", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { adminsOnly } = req.body;
+      
+      if (typeof adminsOnly !== 'boolean') {
+        return res.status(400).json({ success: false, error: "adminsOnly must be a boolean" });
+      }
+      
+      const result = await whatsappService.setGroupMessagesAdminsOnly(companyId, chatId, adminsOnly);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting messages admins only:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+
   // POST /api/whatsapp/groups/:chatId/picture - Set group profile picture
   app.post("/api/whatsapp/groups/:chatId/picture", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29238,6 +29258,223 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ success: false, error: error.message });
     }
   });
+
+  // ============================================================================
+  // MESSAGE INFO FROM MESSAGE ID ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/messages/:messageId/chat - Get chat from message
+  app.get("/api/whatsapp/messages/:messageId/chat", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const chat = await whatsappService.getMessageChat(companyId, messageId);
+      res.json({ success: true, chat });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting chat from message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/messages/:messageId/contact - Get contact from message
+  app.get("/api/whatsapp/messages/:messageId/contact", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const contact = await whatsappService.getMessageContact(companyId, messageId);
+      res.json({ success: true, contact });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting contact from message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/messages/:messageId/order - Get order info from message
+  app.get("/api/whatsapp/messages/:messageId/order", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const order = await whatsappService.getMessageOrder(companyId, messageId);
+      res.json({ success: true, order });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting order from message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/messages/:messageId/payment - Get payment info from message
+  app.get("/api/whatsapp/messages/:messageId/payment", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const payment = await whatsappService.getMessagePayment(companyId, messageId);
+      res.json({ success: true, payment });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting payment from message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/messages/:messageId/scheduled-event - Edit scheduled event
+  app.put("/api/whatsapp/messages/:messageId/scheduled-event", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      const { editedEventObject } = req.body;
+      
+      if (!editedEventObject) {
+        return res.status(400).json({ success: false, error: "editedEventObject is required" });
+      }
+      
+      const result = await whatsappService.editScheduledEvent(companyId, messageId, editedEventObject);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error editing scheduled event:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/messages/:messageId/accept-v4-invite - Accept V4 invite from message
+  app.post("/api/whatsapp/messages/:messageId/accept-v4-invite", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const result = await whatsappService.acceptMessageGroupV4Invite(companyId, messageId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error accepting V4 invite:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // CONTACT ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/contacts/:contactId/chat - Get chat from contact
+  app.get("/api/whatsapp/contacts/:contactId/chat", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const contactId = normalizeWhatsAppId(req.params.contactId);
+      
+      const chat = await whatsappService.getContactChat(companyId, contactId);
+      res.json({ success: true, chat });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting chat from contact:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // MISC CLIENT ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/chats/:chatId/sync-history - Sync history for a chat
+  app.get("/api/whatsapp/chats/:chatId/sync-history", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      
+      await whatsappService.syncHistory(companyId, chatId);
+      res.json({ success: true, message: "History sync initiated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error syncing history:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/contact-lid-phone - Get contact LID and phone
+  app.post("/api/whatsapp/contact-lid-phone", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { userIds } = req.body;
+      
+      if (!userIds || !Array.isArray(userIds)) {
+        return res.status(400).json({ success: false, error: "userIds array is required" });
+      }
+      
+      const result = await whatsappService.getContactLidAndPhone(companyId, userIds);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting contact LID and phone:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/call-link - Create call link
+  app.post("/api/whatsapp/call-link", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { startTime, callType } = req.body;
+      
+      const startTimeDate = startTime ? new Date(startTime) : undefined;
+      const validCallType = callType === 'video' ? 'video' : 'voice';
+      
+      const callLink = await whatsappService.createCallLink(companyId, startTimeDate, validCallType);
+      res.json({ success: true, callLink });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error creating call link:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/users/:userId/customer-note - Get customer note
+  app.get("/api/whatsapp/users/:userId/customer-note", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { userId } = req.params;
+      
+      const note = await whatsappService.getCustomerNote(companyId, userId);
+      res.json({ success: true, note });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting customer note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/users/:userId/customer-note - Add/edit customer note
+  app.put("/api/whatsapp/users/:userId/customer-note", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { userId } = req.params;
+      const { note } = req.body;
+      
+      if (typeof note !== 'string') {
+        return res.status(400).json({ success: false, error: "note string is required" });
+      }
+      
+      const result = await whatsappService.addOrEditCustomerNote(companyId, userId, note);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error adding/editing customer note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/scheduled-events/:eventMessageId/respond - Respond to scheduled event
+  app.post("/api/whatsapp/scheduled-events/:eventMessageId/respond", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { eventMessageId } = req.params;
+      const { response } = req.body;
+      
+      if (!response || !['going', 'notGoing', 'maybe'].includes(response)) {
+        return res.status(400).json({ success: false, error: "response must be 'going', 'notGoing', or 'maybe'" });
+      }
+      
+      const result = await whatsappService.sendResponseToScheduledEvent(companyId, response, eventMessageId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error responding to scheduled event:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
 
   // POST /api/whatsapp/profile/status - Set WhatsApp status message
   app.post("/api/whatsapp/profile/status", requireActiveCompany, async (req: Request, res: Response) => {
@@ -29538,6 +29775,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // PUT /api/whatsapp/chats/:chatId/customer-note - Add/edit customer note
+  app.put("/api/whatsapp/chats/:chatId/customer-note", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { note } = req.body;
+      if (note === undefined) {
+        return res.status(400).json({ success: false, error: "Note is required" });
+      }
+      await whatsappService.addOrEditCustomerNote(companyId, chatId, note);
+      res.json({ success: true, message: "Customer note updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error updating customer note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // GET /api/whatsapp/chats/:chatId/labels - Get chat labels
   app.get("/api/whatsapp/chats/:chatId/labels", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29553,6 +29807,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // POST /api/whatsapp/chats/:chatId/labels - Change chat labels
   app.post("/api/whatsapp/chats/:chatId/labels", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { labelIds } = req.body;
+      if (!Array.isArray(labelIds)) {
+        return res.status(400).json({ success: false, error: "labelIds must be an array" });
+      }
+      await whatsappService.changeChatLabels(companyId, chatId, labelIds);
+      res.json({ success: true, message: "Chat labels updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error changing chat labels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/chats/:chatId/labels - Change labels for chat
+  app.put("/api/whatsapp/chats/:chatId/labels", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = String(req.user!.companyId);
       const chatId = normalizeWhatsAppId(req.params.chatId);
@@ -29590,6 +29861,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ success: true, message: "History synced" });
     } catch (error: any) {
       console.error('[WhatsApp] Error syncing history:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/chats/:chatId/clear-state - Clear typing/recording state
+  app.post("/api/whatsapp/chats/:chatId/clear-state", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      await whatsappService.clearState(companyId, chatId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error clearing state:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -30088,6 +30372,168 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ success: true, message: `Background sync ${enabled ? 'enabled' : 'disabled'}` });
     } catch (error: any) {
       console.error('[WhatsApp] Error setting background sync:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PROFILE ENDPOINTS
+  // ============================================================================
+
+  // PUT /api/whatsapp/profile/display-name - Set display name
+  app.put("/api/whatsapp/profile/display-name", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { displayName } = req.body;
+      if (!displayName) {
+        return res.status(400).json({ success: false, error: 'displayName is required' });
+      }
+      await whatsappService.setDisplayName(companyId, displayName);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting display name:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/profile/status - Set status message
+  app.put("/api/whatsapp/profile/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ success: false, error: 'status is required' });
+      }
+      await whatsappService.setStatus(companyId, status);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting status:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // LABEL ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/labels - Get all labels
+  app.get("/api/whatsapp/labels", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const labels = await whatsappService.getLabels(companyId);
+      res.json({ success: true, labels });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting labels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/labels/assign - Add/remove labels from chats
+  app.put("/api/whatsapp/labels/assign", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { labelIds, chatIds } = req.body;
+      if (!labelIds || !Array.isArray(labelIds)) {
+        return res.status(400).json({ success: false, error: 'labelIds array is required' });
+      }
+      if (!chatIds || !Array.isArray(chatIds)) {
+        return res.status(400).json({ success: false, error: 'chatIds array is required' });
+      }
+      await whatsappService.addOrRemoveLabels(companyId, labelIds, chatIds);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error assigning labels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // GROUP CREATION ENDPOINTS
+  // ============================================================================
+
+  // POST /api/whatsapp/groups - Create group
+  app.post("/api/whatsapp/groups", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { title, participants, options } = req.body;
+      if (!title) {
+        return res.status(400).json({ success: false, error: 'title is required' });
+      }
+      if (!participants || !Array.isArray(participants)) {
+        return res.status(400).json({ success: false, error: 'participants array is required' });
+      }
+      const result = await whatsappService.createGroup(companyId, title, participants, options);
+      res.json({ success: true, group: result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error creating group:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/groups/accept-invite - Accept group invite
+  app.post("/api/whatsapp/groups/accept-invite", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { inviteCode } = req.body;
+      if (!inviteCode) {
+        return res.status(400).json({ success: false, error: 'inviteCode is required' });
+      }
+      const chatId = await whatsappService.acceptInvite(companyId, inviteCode);
+      res.json({ success: true, chatId });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error accepting group invite:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/groups/accept-v4-invite - Accept V4 (private) group invite
+  app.post("/api/whatsapp/groups/accept-v4-invite", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { inviteInfo } = req.body;
+      if (!inviteInfo) {
+        return res.status(400).json({ success: false, error: 'inviteInfo is required' });
+      }
+      const result = await whatsappService.acceptGroupV4Invite(companyId, inviteInfo);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error accepting V4 group invite:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // SEARCH ENDPOINTS
+  // ============================================================================
+
+  // POST /api/whatsapp/messages/search - Search messages
+  app.post("/api/whatsapp/messages/search", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { query, options } = req.body;
+      if (!query) {
+        return res.status(400).json({ success: false, error: 'query is required' });
+      }
+      const messages = await whatsappService.searchMessages(companyId, query, options);
+      res.json({ success: true, messages });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error searching messages:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/users/:number/registered - Check if user is registered on WhatsApp
+  app.get("/api/whatsapp/users/:number/registered", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { number } = req.params;
+      if (!number) {
+        return res.status(400).json({ success: false, error: 'number is required' });
+      }
+      const isRegistered = await whatsappService.isRegisteredUser(companyId, number);
+      res.json({ success: true, isRegistered });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error checking user registration:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
