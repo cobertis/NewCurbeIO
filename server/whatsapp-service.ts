@@ -1,5 +1,5 @@
 import pkg from 'whatsapp-web.js';
-const { Client, LocalAuth, Message, Chat, Contact } = pkg as any;
+const { Client, LocalAuth, Message, Chat, Contact, Location } = pkg as any;
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import path from 'path';
@@ -2629,16 +2629,18 @@ class WhatsAppService extends EventEmitter {
 
     try {
       const companyClient = await this.getClientForCompany(companyId);
-      const location = await companyClient.client.sendMessage(chatId, {
-        location: {
-          latitude,
-          longitude,
-          name,
-          address,
-        },
-      } as any);
+      
+      // Build options object only with defined values
+      const options: { name?: string; address?: string } = {};
+      if (name) options.name = name;
+      if (address) options.address = address;
+      
+      // Create Location instance using whatsapp-web.js Location class
+      const locationMessage = new Location(latitude, longitude, options);
+      
+      const sentMessage = await companyClient.client.sendMessage(chatId, locationMessage);
       console.log(`[WhatsApp] Location sent for company ${companyId} to ${chatId}`);
-      return location;
+      return sentMessage;
     } catch (error) {
       console.error(`[WhatsApp] Error sending location for company ${companyId}:`, error);
       throw error;
