@@ -703,7 +703,13 @@ class WhatsAppService extends EventEmitter {
           return false;
         }
         
-        // Filter out messages with empty body (system placeholders)
+        // Keep messages with media (images, videos, audio, documents, stickers)
+        if (msg.hasMedia || msg.type === 'image' || msg.type === 'video' || msg.type === 'audio' || 
+            msg.type === 'ptt' || msg.type === 'document' || msg.type === 'sticker') {
+          return true;
+        }
+        
+        // Filter out messages with empty body (system placeholders) - but only for text messages
         const body = msg.body || '';
         if (body.trim() === '') {
           return false;
