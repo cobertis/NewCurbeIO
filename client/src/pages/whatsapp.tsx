@@ -2655,31 +2655,9 @@ export default function WhatsAppPage() {
                       <File className="h-4 w-4 mr-2" />
                       Document
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      data-testid="menu-attach-sticker"
-                      onClick={() => {
-                        if (stickerInputRef.current) {
-                          stickerInputRef.current.click();
-                        }
-                      }}
-                      disabled={sendStickerMutation.isPending}
-                    >
-                      <Sticker className="h-4 w-4 mr-2" />
-                      {sendStickerMutation.isPending ? 'Sending...' : 'Sticker'}
-                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
                 
-                <input
-                  type="file"
-                  ref={stickerInputRef}
-                  onChange={handleStickerSelect}
-                  className="hidden"
-                  accept="image/*"
-                  data-testid="input-sticker-upload"
-                />
-
                 <div className="flex-1 relative">
                   {/* Mentions Picker */}
                   {showMentionPicker && selectedChat?.isGroup && filteredParticipants.length > 0 && (
