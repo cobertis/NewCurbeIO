@@ -118,6 +118,11 @@ function getAvatarColorFromString(str: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+function formatContactName(name: string): string {
+  if (!name) return 'Unknown';
+  return name.replace(/@c\.us$|@g\.us$|@s\.whatsapp\.net$/gi, '');
+}
+
 function getInitials(name: string): string {
   if (!name || name.trim() === '') return '?';
   if (/^[\+\d\s\-\(\)]+$/.test(name.trim())) return '';
@@ -812,6 +817,12 @@ export default function WhatsAppPage() {
   const [showEditDescriptionDialog, setShowEditDescriptionDialog] = useState(false);
   const [showMessageInfoDialog, setShowMessageInfoDialog] = useState(false);
   const [messageInfoData, setMessageInfoData] = useState<any>(null);
+  
+  // Forward dialog state
+  const [showForwardDialog, setShowForwardDialog] = useState(false);
+  const [forwardingMessage, setForwardingMessage] = useState<WhatsAppMessage | null>(null);
+  const [forwardSearchQuery, setForwardSearchQuery] = useState('');
+  const [selectedForwardChats, setSelectedForwardChats] = useState<string[]>([]);
 
   // Location dialog state
   const [locationData, setLocationData] = useState({ latitude: '', longitude: '', name: '' });
@@ -1552,16 +1563,25 @@ export default function WhatsAppPage() {
   };
 
   const handleForward = (message: WhatsAppMessage) => {
-    const chatIds = prompt('Enter chat IDs (comma-separated):');
-    if (chatIds) {
-      chatIds.split(',').forEach(async (chatId) => {
-        try {
-          await apiRequest('POST', `/api/whatsapp/messages/${message.id}/forward`, { to: chatId.trim() });
-        } catch (error) {
-          toast({ title: 'Error', description: 'Failed to forward message', variant: 'destructive' });
-        }
-      });
-      toast({ title: 'Success', description: 'Message forwarded' });
+    setForwardingMessage(message);
+    setSelectedForwardChats([]);
+    setForwardSearchQuery('');
+    setShowForwardDialog(true);
+  };
+  
+  const handleConfirmForward = async () => {
+    if (!forwardingMessage || selectedForwardChats.length === 0) return;
+    
+    try {
+      for (const chatId of selectedForwardChats) {
+        await apiRequest('POST', `/api/whatsapp/messages/${forwardingMessage.id}/forward`, { chatId });
+      }
+      toast({ title: 'Success', description: `Message forwarded to ${selectedForwardChats.length} chat(s)` });
+      setShowForwardDialog(false);
+      setForwardingMessage(null);
+      setSelectedForwardChats([]);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to forward message', variant: 'destructive' });
     }
   };
 
@@ -2402,7 +2422,7 @@ export default function WhatsAppPage() {
                   <Reply className="h-4 w-4 text-[var(--whatsapp-green-dark)]" />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold text-[var(--whatsapp-green-dark)]">
-                      Replying to {replyingTo.from}
+                      Replying to {formatContactName(replyingTo.from)}
                     </div>
                     <div className="text-xs text-[var(--whatsapp-text-secondary)] truncate">
                       {replyingTo.body}
@@ -2988,6 +3008,110 @@ export default function WhatsAppPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Forward Message Dialog */}
+      <Dialog open={showForwardDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowForwardDialog(false);
+          setForwardingMessage(null);
+          setSelectedForwardChats([]);
+        }
+      }}>
+        <DialogContent data-testid="dialog-forward" className="max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Forward className="h-5 w-5" />
+              Forward Message
+            </DialogTitle>
+            <DialogDescription>
+              Select one or more chats to forward this message to.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {forwardingMessage && (
+            <div className="p-3 bg-muted rounded-lg text-sm mb-4 max-h-20 overflow-y-auto">
+              {forwardingMessage.body}
+            </div>
+          )}
+          
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search chats..."
+              value={forwardSearchQuery}
+              onChange={(e) => setForwardSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="input-forward-search"
+            />
+          </div>
+          
+          <ScrollArea className="flex-1 max-h-[300px] border rounded-lg">
+            <div className="p-2 space-y-1">
+              {chats
+                .filter(chat => 
+                  chat.name.toLowerCase().includes(forwardSearchQuery.toLowerCase()) ||
+                  chat.id.includes(forwardSearchQuery)
+                )
+                .map(chat => (
+                  <button
+                    key={chat.id}
+                    onClick={() => {
+                      setSelectedForwardChats(prev => 
+                        prev.includes(chat.id)
+                          ? prev.filter(id => id !== chat.id)
+                          : [...prev, chat.id]
+                      );
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-2 rounded-lg transition-colors",
+                      selectedForwardChats.includes(chat.id)
+                        ? "bg-[var(--whatsapp-green-primary)]/10 border border-[var(--whatsapp-green-primary)]"
+                        : "hover:bg-muted"
+                    )}
+                    data-testid={`forward-chat-${chat.id}`}
+                  >
+                    <Avatar className="h-10 w-10">
+                      {profilePictures[chat.id] && (
+                        <AvatarImage src={profilePictures[chat.id]!} />
+                      )}
+                      <AvatarFallback
+                        className="text-white text-sm"
+                        style={{ backgroundColor: getAvatarColorFromString(chat.id) }}
+                      >
+                        {chat.isGroup ? <Users className="h-4 w-4" /> : getInitials(chat.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 text-left">
+                      <div className="font-medium text-sm">{chat.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatContactName(chat.id)}
+                      </div>
+                    </div>
+                    {selectedForwardChats.includes(chat.id) && (
+                      <div className="h-5 w-5 rounded-full bg-[var(--whatsapp-green-primary)] flex items-center justify-center">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowForwardDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleConfirmForward}
+              disabled={selectedForwardChats.length === 0}
+              className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)]"
+              data-testid="button-confirm-forward"
+            >
+              Forward to {selectedForwardChats.length} chat{selectedForwardChats.length !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
