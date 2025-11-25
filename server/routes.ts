@@ -27184,7 +27184,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/whatsapp/status - Get session status
+  // GET /api/whatsapp/status - Get session status (auto-initializes client if needed)
   app.get("/api/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -27193,6 +27193,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const companyId = user.companyId;
+      
+      // Initialize client if it doesn't exist (will trigger QR generation)
+      await whatsappService.getClientForCompany(companyId);
+      
       const status = whatsappService.getSessionStatus(companyId);
       return res.json({ success: true, status });
     } catch (error) {
@@ -27225,9 +27229,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user?.companyId) {
         return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
       }
-    i      const companyId = user.companyId;
-    s/if (!whatsappService.isReady())/if (!whatsappService.isReady(companyId))/
-      if (!whatsappService.isReady()) {
+
+      const companyId = user.companyId;
+      if (!whatsappService.isReady(companyId)) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 
@@ -27256,9 +27260,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user?.companyId) {
         return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
       }
-    i      const companyId = user.companyId;
-    s/if (!whatsappService.isReady())/if (!whatsappService.isReady(companyId))/
-      if (!whatsappService.isReady()) {
+
+      const companyId = user.companyId;
+      if (!whatsappService.isReady(companyId)) {
         return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
       }
 

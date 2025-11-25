@@ -1,4 +1,5 @@
-import { Client, LocalAuth, Message, Chat, Contact } from 'whatsapp-web.js';
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth, Message, Chat, Contact } = pkg as any;
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import path from 'path';
@@ -58,6 +59,7 @@ class WhatsAppService extends EventEmitter {
         clientId: companyId, // Use companyId as client identifier
       }),
       puppeteer: {
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium',
         headless: true,
         args: [
           '--no-sandbox',
