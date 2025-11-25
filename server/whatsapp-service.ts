@@ -343,6 +343,7 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Get all chats for a company
+   * Filters out system chats that cannot be permanently deleted (0@c.us, status, broadcast)
    */
   async getChats(companyId: string): Promise<any[]> {
     if (!this.isReady(companyId)) {
@@ -353,7 +354,26 @@ class WhatsAppService extends EventEmitter {
 
     try {
       const chats = await companyClient.client.getChats();
-      return chats;
+      
+      // Filter out system chats that WhatsApp auto-recreates
+      // These cannot be permanently deleted as WhatsApp restores them on new system messages
+      const SYSTEM_CHAT_IDS = ['0@c.us', 'status@broadcast'];
+      
+      return chats.filter((chat: any) => {
+        const chatId = chat.id?._serialized || chat.id;
+        
+        // Exclude known system chat IDs
+        if (SYSTEM_CHAT_IDS.includes(chatId)) {
+          return false;
+        }
+        
+        // Exclude chats with user ID "0" (WhatsApp service notifications)
+        if (chat.id?.user === '0' || chat.id?.user === 0) {
+          return false;
+        }
+        
+        return true;
+      });
     } catch (error) {
       console.error(`[WhatsApp] Failed to get chats for company ${companyId}:`, error);
       throw error;
