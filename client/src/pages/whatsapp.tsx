@@ -491,7 +491,7 @@ function MessageItem({
         )}
 
         {/* Message Body */}
-        <p className="text-sm text-[var(--whatsapp-text-primary)] break-words whitespace-pre-wrap">
+        <p className="text-[15px] text-[var(--whatsapp-text-primary)] break-words whitespace-pre-wrap">
           {message.body}
         </p>
 
