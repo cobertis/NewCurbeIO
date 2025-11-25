@@ -2524,16 +2524,6 @@ export default function WhatsAppPage() {
             >
               <Settings className="h-5 w-5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-              onClick={() => logoutMutation.mutate()}
-              disabled={logoutMutation.isPending}
-              data-testid="button-logout"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </Button>
           </div>
         </div>
 
