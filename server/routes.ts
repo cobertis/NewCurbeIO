@@ -4290,7 +4290,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       if (!process.env.LOCATIONIQ_API_KEY) {
         console.error("[LOCATIONIQ] API KEY not configured");
-        return res.status(500).json({ message: "Address autocomplete service not configured" });
+        return res.status(503).json({ message: "Address search not configured", requiresApiKey: true, suggestion: "Please enter coordinates manually below" });
       }
 
       const url = new URL("https://api.locationiq.com/v1/autocomplete");

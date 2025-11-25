@@ -133,6 +133,7 @@ function LocationAutocomplete({ onLocationSelect }: LocationAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [apiNotConfigured, setApiNotConfigured] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -155,6 +156,14 @@ function LocationAutocomplete({ onLocationSelect }: LocationAutocompleteProps) {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/locationiq/autocomplete?q=${encodeURIComponent(query)}`);
+      if (response.status === 503) {
+        const data = await response.json();
+        if (data.requiresApiKey) {
+          setApiNotConfigured(true);
+          setSuggestions([]);
+          return;
+        }
+      }
       if (response.ok) {
         const data = await response.json();
         setSuggestions(data.results || []);
@@ -206,6 +215,23 @@ function LocationAutocomplete({ onLocationSelect }: LocationAutocompleteProps) {
     setSuggestions([]);
     setShowSuggestions(false);
   };
+
+  if (apiNotConfigured) {
+    return (
+      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <div className="flex items-start gap-2 text-amber-700 dark:text-amber-400">
+          <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <p className="font-medium">Address search not available</p>
+            <p className="text-xs mt-1 text-amber-600 dark:text-amber-500">
+              Please enter latitude and longitude coordinates manually below.
+              You can find coordinates using Google Maps.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div ref={wrapperRef} className="relative">

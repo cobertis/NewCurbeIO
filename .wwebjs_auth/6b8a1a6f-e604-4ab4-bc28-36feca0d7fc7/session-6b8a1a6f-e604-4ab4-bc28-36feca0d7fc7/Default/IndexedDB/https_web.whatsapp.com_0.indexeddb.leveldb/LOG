@@ -1,57 +1,37 @@
-2025/11/25-20:57:32.407 e314 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/25-20:57:32.407 e314 Recovering log #259
-2025/11/25-20:57:32.462 e314 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000259.log 
-2025/11/25-20:57:33.997 e31c Level-0 table #266: started
-2025/11/25-20:57:34.033 e31c Level-0 table #266: 533783 bytes OK
-2025/11/25-20:57:34.042 e31c Delete type=0 #259
-2025/11/25-20:57:34.043 e313 Manual compaction at level-0 from '\x00A\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00B\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/25-20:57:36.221 e313 Compacting 1@1 + 3@2 files
-2025/11/25-20:57:36.493 e313 Generated table #267@1: 63183 keys, 2270893 bytes
-2025/11/25-20:57:36.646 e313 Generated table #268@1: 55378 keys, 2189650 bytes
-2025/11/25-20:57:36.721 e313 Generated table #269@1: 44057 keys, 1039950 bytes
-2025/11/25-20:57:36.722 e313 Compacted 1@1 + 3@2 files => 5500493 bytes
-2025/11/25-20:57:36.740 e313 compacted to: files[ 0 0 3 0 0 0 0 ]
-2025/11/25-20:57:36.740 e313 Delete type=2 #261
-2025/11/25-20:57:36.740 e313 Delete type=2 #262
-2025/11/25-20:57:36.740 e313 Delete type=2 #263
-2025/11/25-20:57:36.740 e313 Delete type=2 #266
-2025/11/25-20:59:06.960 e314 Level-0 table #271: started
-2025/11/25-20:59:07.147 e314 Level-0 table #271: 1403474 bytes OK
-2025/11/25-20:59:07.181 e314 Delete type=0 #265
-2025/11/25-20:59:07.192 e314 Compacting 1@1 + 3@2 files
-2025/11/25-20:59:07.456 e314 Generated table #272@1: 76518 keys, 2286399 bytes
-2025/11/25-20:59:07.559 e314 Level-0 table #275: started
-2025/11/25-20:59:07.658 e314 Level-0 table #275: 1351258 bytes OK
-2025/11/25-20:59:07.666 e314 Delete type=0 #270
-2025/11/25-20:59:07.760 e314 Generated table #273@1: 38680 keys, 2171938 bytes
-2025/11/25-20:59:07.961 e314 Generated table #276@1: 88764 keys, 1997948 bytes
-2025/11/25-20:59:07.962 e314 Compacted 1@1 + 3@2 files => 6456285 bytes
-2025/11/25-20:59:07.992 e314 compacted to: files[ 1 0 3 0 0 0 0 ]
-2025/11/25-20:59:08.008 e314 Moved #275 to level-1 1351258 bytes OK: files[ 0 1 3 0 0 0 0 ]
-2025/11/25-20:59:08.015 e314 Compacting 1@1 + 3@2 files
-2025/11/25-20:59:08.255 e314 Generated table #277@1: 96773 keys, 2248482 bytes
-2025/11/25-20:59:08.255 e314 Level-0 table #279: started
-2025/11/25-20:59:08.302 e314 Level-0 table #279: 1351808 bytes OK
-2025/11/25-20:59:08.311 e314 Delete type=2 #267
-2025/11/25-20:59:08.311 e314 Delete type=2 #268
-2025/11/25-20:59:08.311 e314 Delete type=2 #269
-2025/11/25-20:59:08.311 e314 Delete type=2 #271
-2025/11/25-20:59:08.311 e314 Delete type=0 #274
-2025/11/25-20:59:08.418 e314 Generated table #280@1: 20914 keys, 2215518 bytes
-2025/11/25-20:59:08.549 e314 Generated table #281@1: 95583 keys, 2246892 bytes
-2025/11/25-20:59:08.710 e314 Generated table #282@1: 46964 keys, 1012758 bytes
-2025/11/25-20:59:08.710 e314 Compacted 1@1 + 3@2 files => 7723650 bytes
-2025/11/25-20:59:08.717 e314 compacted to: files[ 1 0 4 0 0 0 0 ]
-2025/11/25-20:59:08.717 e314 Delete type=2 #272
-2025/11/25-20:59:08.717 e314 Delete type=2 #273
-2025/11/25-20:59:08.717 e314 Delete type=2 #275
-2025/11/25-20:59:08.718 e314 Delete type=2 #276
-2025/11/25-20:59:08.720 e314 Level-0 table #284: started
-2025/11/25-20:59:08.857 e314 Level-0 table #284: 1222896 bytes OK
-2025/11/25-20:59:08.874 e314 Delete type=0 #278
-2025/11/25-21:00:26.969 e314 Compacting 2@0 + 0@1 files
-2025/11/25-21:00:27.124 e314 Generated table #285@0: 100456 keys, 1824757 bytes
-2025/11/25-21:00:27.124 e314 Compacted 2@0 + 0@1 files => 1824757 bytes
-2025/11/25-21:00:27.137 e314 compacted to: files[ 0 1 4 0 0 0 0 ]
-2025/11/25-21:00:27.137 e314 Delete type=2 #279
-2025/11/25-21:00:27.137 e314 Delete type=2 #284
+2025/11/25-21:18:02.305 eb0a Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/25-21:18:02.306 eb0a Recovering log #283
+2025/11/25-21:18:02.395 eb0a Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000283.log 
+2025/11/25-21:18:04.699 eb0a Compacting 1@1 + 4@2 files
+2025/11/25-21:18:04.917 eb0a Generated table #287@1: 88424 keys, 2296814 bytes
+2025/11/25-21:18:05.056 eb0a Generated table #288@1: 19459 keys, 2159862 bytes
+2025/11/25-21:18:05.061 eb0a Level-0 table #291: started
+2025/11/25-21:18:05.091 eb0a Level-0 table #291: 342361 bytes OK
+2025/11/25-21:18:05.103 eb0a Delete type=0 #283
+2025/11/25-21:18:05.284 eb0a Generated table #290@1: 88535 keys, 2233783 bytes
+2025/11/25-21:18:06.103 eb0a Generated table #292@1: 99247 keys, 2050940 bytes
+2025/11/25-21:18:06.103 eb0a Compacted 1@1 + 4@2 files => 8741399 bytes
+2025/11/25-21:18:06.122 eb0a compacted to: files[ 1 0 4 0 0 0 0 ]
+2025/11/25-21:18:06.122 eb09 Manual compaction at level-0 from '\x00B\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00C\x00\x00\x00' @ 0 : 0; will stop at '\x00B\x00\x00\x05' @ 1066089 : 1
+2025/11/25-21:18:06.122 eb09 Compacting 1@0 + 0@1 files
+2025/11/25-21:18:06.217 eb09 Generated table #293@0: 39182 keys, 325000 bytes
+2025/11/25-21:18:06.217 eb09 Compacted 1@0 + 0@1 files => 325000 bytes
+2025/11/25-21:18:06.232 eb09 compacted to: files[ 0 1 4 0 0 0 0 ]
+2025/11/25-21:18:06.233 eb09 Delete type=2 #291
+2025/11/25-21:18:06.233 eb09 Manual compaction at level-0 from '\x00B\x00\x00\x05' @ 1066089 : 1 .. '\x00C\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/25-21:18:09.642 eb0a Compacting 1@1 + 4@2 files
+2025/11/25-21:18:09.941 eb0a Generated table #294@1: 62829 keys, 2273478 bytes
+2025/11/25-21:18:10.203 eb0a Generated table #295@1: 19894 keys, 2138205 bytes
+2025/11/25-21:18:10.621 eb0a Generated table #296@1: 109737 keys, 2265479 bytes
+2025/11/25-21:18:10.791 eb0a Generated table #297@1: 64880 keys, 1340213 bytes
+2025/11/25-21:18:10.791 eb0a Compacted 1@1 + 4@2 files => 8017375 bytes
+2025/11/25-21:18:10.819 eb0a compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/11/25-21:18:10.819 eb0a Delete type=2 #277
+2025/11/25-21:18:10.819 eb0a Delete type=2 #280
+2025/11/25-21:18:10.819 eb0a Delete type=2 #281
+2025/11/25-21:18:10.819 eb0a Delete type=2 #282
+2025/11/25-21:18:10.819 eb0a Delete type=2 #285
+2025/11/25-21:18:10.819 eb0a Delete type=2 #287
+2025/11/25-21:18:10.819 eb0a Delete type=2 #288
+2025/11/25-21:18:10.819 eb0a Delete type=2 #290
+2025/11/25-21:18:10.819 eb0a Delete type=2 #292
+2025/11/25-21:18:10.819 eb0a Delete type=2 #293
