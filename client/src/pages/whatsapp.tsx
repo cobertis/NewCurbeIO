@@ -1106,7 +1106,11 @@ export default function WhatsAppPage() {
     if (SYSTEM_MESSAGE_TYPES.includes(msg.type)) {
       return false;
     }
-    // Filter out messages with empty body
+    // Keep messages with media (images, videos, audio, etc.)
+    if (msg.hasMedia) {
+      return true;
+    }
+    // Filter out messages with empty body (only for non-media messages)
     const body = msg.body || '';
     if (body.trim() === '') {
       return false;
