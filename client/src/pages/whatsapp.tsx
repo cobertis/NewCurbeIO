@@ -104,6 +104,50 @@ interface WhatsAppStatus {
 }
 
 // =====================================================
+// VIDEO THUMBNAIL COMPONENT (lazy load video on click)
+// =====================================================
+
+function VideoThumbnail({ messageId, ...props }: { messageId: string; [key: string]: any }) {
+  const [showVideo, setShowVideo] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  if (showVideo) {
+    return (
+      <video 
+        ref={videoRef}
+        controls 
+        autoPlay
+        className="max-w-xs rounded-lg"
+        preload="auto"
+        data-testid="media-video"
+        {...props}
+      >
+        <source src={`/api/whatsapp/messages/${messageId}/media`} />
+        Your browser does not support the video tag.
+      </video>
+    );
+  }
+
+  return (
+    <div 
+      className="relative max-w-xs h-48 rounded-lg bg-black/80 flex items-center justify-center cursor-pointer group"
+      onClick={() => setShowVideo(true)}
+      data-testid="media-video-thumbnail"
+    >
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center group-hover:bg-white transition-colors shadow-lg">
+          <Play className="h-8 w-8 text-black ml-1" />
+        </div>
+      </div>
+      <div className="absolute bottom-2 left-2 text-white/80 text-xs flex items-center gap-1">
+        <Video className="h-3 w-3" />
+        <span>Video</span>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
 // HELPER FUNCTIONS
 // =====================================================
 
@@ -308,26 +352,15 @@ function MessageItem({
               <>
                 {(message as any)._blobUrl ? (
                   <div className="relative">
-                    <video 
-                      className="max-w-xs rounded-lg opacity-70"
-                      data-testid="media-video-optimistic"
-                    >
-                      <source src={(message as any)._blobUrl} />
-                    </video>
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="max-w-xs h-48 rounded-lg bg-black/20 flex items-center justify-center opacity-70">
                       <Loader2 className="h-8 w-8 animate-spin text-white drop-shadow-lg" />
                     </div>
                   </div>
                 ) : (
-                  <video 
-                    controls 
-                    className="max-w-xs rounded-lg"
-                    preload="metadata"
+                  <VideoThumbnail 
+                    messageId={message.id}
                     data-testid="media-video"
-                  >
-                    <source src={`/api/whatsapp/messages/${message.id}/media`} />
-                    Your browser does not support the video tag.
-                  </video>
+                  />
                 )}
               </>
             )}
