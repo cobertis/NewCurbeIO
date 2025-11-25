@@ -1725,12 +1725,6 @@ export default function WhatsAppPage() {
     messageInputRef.current?.focus();
   };
 
-  // Get filtered participants for mentions
-  const filteredParticipants = selectedChat?.participants?.filter(p => 
-    p.name.toLowerCase().includes(mentionFilter) || 
-    p.id.split('@')[0].includes(mentionFilter)
-  ) || [];
-
   // Select contact from list to start chat
   const handleSelectContact = (contactId: string) => {
     setSelectedChatId(contactId);
@@ -1885,6 +1879,13 @@ export default function WhatsAppPage() {
   };
 
   const selectedChat = chats.find(c => c.id === selectedChatId);
+  
+  // Get filtered participants for mentions (must be after selectedChat declaration)
+  const filteredParticipants = selectedChat?.participants?.filter(p => 
+    p.name.toLowerCase().includes(mentionFilter) || 
+    p.id.split('@')[0].includes(mentionFilter)
+  ) || [];
+
   const filteredChats = chats.filter(chat => {
     const matchesSearch = chat.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = 
