@@ -29,6 +29,9 @@ class WhatsAppService extends EventEmitter {
   // Reconnection management
   private reconnectAttempts: Map<string, number> = new Map();
   private reconnectTimers: Map<string, NodeJS.Timeout> = new Map();
+  
+  // Cache for message reactions (companyId:messageId -> reactions array)
+  private messageReactions: Map<string, Array<{ emoji: string; senderId: string }>> = new Map();
 
   constructor() {
     super();
@@ -257,6 +260,44 @@ class WhatsAppService extends EventEmitter {
       this.emit('message_status', { companyId, messageId: message.id._serialized, status: messageStatus });
     });
 
+    // Message reaction event - cache reactions for display
+    client.on('message_reaction', (reaction: any) => {
+      try {
+        const messageId = reaction.msgId?._serialized || reaction.id?.parentMsgKey?._serialized;
+        const senderId = reaction.senderId || reaction.id?.participant;
+        const emoji = reaction.reaction || '';
+        
+        if (messageId) {
+          const cacheKey = `${companyId}:${messageId}`;
+          const existingReactions = this.messageReactions.get(cacheKey) || [];
+          
+          if (emoji === '') {
+            // Reaction removed - filter out this sender's reaction
+            const filtered = existingReactions.filter(r => r.senderId !== senderId);
+            if (filtered.length > 0) {
+              this.messageReactions.set(cacheKey, filtered);
+            } else {
+              this.messageReactions.delete(cacheKey);
+            }
+          } else {
+            // Reaction added/changed - update or add
+            const existingIndex = existingReactions.findIndex(r => r.senderId === senderId);
+            if (existingIndex >= 0) {
+              existingReactions[existingIndex].emoji = emoji;
+            } else {
+              existingReactions.push({ emoji, senderId });
+            }
+            this.messageReactions.set(cacheKey, existingReactions);
+          }
+          
+          console.log(`[WhatsApp] Reaction cached for company ${companyId}: ${emoji} on message ${messageId}`);
+          this.emit('message_reaction', { companyId, messageId, emoji, senderId });
+        }
+      } catch (error) {
+        console.error(`[WhatsApp] Error processing reaction for company ${companyId}:`, error);
+      }
+    });
+
     // Disconnected
     client.on('disconnected', (reason: string) => {
       console.log(`[WhatsApp] Client disconnected for company ${companyId}:`, reason);
@@ -298,6 +339,86 @@ class WhatsAppService extends EventEmitter {
   isReady(companyId: string): boolean {
     const companyClient = this.clients.get(companyId);
     return companyClient?.status.isReady === true && companyClient.client !== null;
+  }
+
+  /**
+   * Get cached reactions for a message
+   */
+  getCachedReactions(companyId: string, messageId: string): Array<{ emoji: string; senderId: string }> {
+    const cacheKey = `${companyId}:${messageId}`;
+    return this.messageReactions.get(cacheKey) || [];
+  }
+
+  /**
+   * Update reaction cache when sending a reaction
+   */
+  updateReactionCache(companyId: string, messageId: string, emoji: string, senderId: string): void {
+    const cacheKey = `${companyId}:${messageId}`;
+    const existingReactions = this.messageReactions.get(cacheKey) || [];
+    
+    if (emoji === '') {
+      // Remove reaction
+      const filtered = existingReactions.filter(r => r.senderId !== senderId);
+      if (filtered.length > 0) {
+        this.messageReactions.set(cacheKey, filtered);
+      } else {
+        this.messageReactions.delete(cacheKey);
+      }
+    } else {
+      // Add/update reaction
+      const existingIndex = existingReactions.findIndex(r => r.senderId === senderId);
+      if (existingIndex >= 0) {
+        existingReactions[existingIndex].emoji = emoji;
+      } else {
+        existingReactions.push({ emoji, senderId });
+      }
+      this.messageReactions.set(cacheKey, existingReactions);
+    }
+  }
+
+  /**
+   * Load message reactions - returns cached or fetches from message.getReactions()
+   */
+  async loadMessageReactions(companyId: string, messageId: string, msg: any): Promise<Array<{ emoji: string; senderId: string }>> {
+    const cacheKey = `${companyId}:${messageId}`;
+    
+    // Return cached if available
+    const cached = this.messageReactions.get(cacheKey);
+    if (cached && cached.length > 0) {
+      return cached;
+    }
+    
+    // Try to fetch reactions from the message object
+    try {
+      if (msg && typeof msg.getReactions === 'function') {
+        const reactionGroups = await msg.getReactions();
+        if (reactionGroups && reactionGroups.length > 0) {
+          const reactions: Array<{ emoji: string; senderId: string }> = [];
+          for (const group of reactionGroups) {
+            // Each group has { id (emoji), aggregateEmoji, senders }
+            const emoji = group.aggregateEmoji || group.id;
+            if (group.senders && Array.isArray(group.senders)) {
+              for (const sender of group.senders) {
+                reactions.push({
+                  emoji,
+                  senderId: sender.id || sender._serialized || 'unknown',
+                });
+              }
+            }
+          }
+          // Cache the results
+          if (reactions.length > 0) {
+            this.messageReactions.set(cacheKey, reactions);
+          }
+          return reactions;
+        }
+      }
+    } catch (error) {
+      // Silently fail - reactions are not critical
+      console.log(`[WhatsApp] Could not load reactions for message ${messageId}:`, error);
+    }
+    
+    return [];
   }
 
   /**

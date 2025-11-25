@@ -27360,8 +27360,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const messages = await whatsappService.getChatMessages(companyId, normalizedChatId, limit);
       
-      // Transform messages to a simpler format with quoted message support
-      const formattedMessages = messages.map(msg => {
+      
+      // Transform messages to a simpler format with quoted message support (async for reactions)
+      const formattedMessages = await Promise.all(messages.map(async (msg) => {
         let quotedMsg = null;
         
         // Check if message has a quoted message (reply)
@@ -27391,6 +27392,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         }
         
+        // Load reactions asynchronously using the service method
+        const reactions = await whatsappService.loadMessageReactions(companyId, msg.id._serialized, msg);
+        
         return {
           id: msg.id._serialized,
           body: msg.body,
@@ -27401,8 +27405,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           hasMedia: msg.hasMedia,
           type: msg.type,
           quotedMsg,
+          reactions,
         };
-      });
+      }));
 
       return res.json({ success: true, messages: formattedMessages });
     } catch (error) {
@@ -27971,6 +27976,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       await whatsappService.reactToMessage(companyId, messageId, emoji);
+      
+      // Update reaction cache for immediate display
+      whatsappService.updateReactionCache(companyId, messageId, emoji, user.id);
       
       return res.json({ success: true, message: 'Reaction sent successfully' });
     } catch (error) {

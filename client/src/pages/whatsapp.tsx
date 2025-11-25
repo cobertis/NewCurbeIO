@@ -965,7 +965,7 @@ export default function WhatsAppPage() {
       }
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
       toast({ title: 'Success', description: variables.star ? 'Message starred' : 'Message unstarred' });
     },
     onError: (error: any) => {
@@ -978,7 +978,7 @@ export default function WhatsAppPage() {
       return await apiRequest('DELETE', `/api/whatsapp/messages/${messageId}`, { deleteForEveryone });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
       toast({ title: 'Success', description: 'Message deleted' });
     },
   });
@@ -988,7 +988,7 @@ export default function WhatsAppPage() {
       return await apiRequest('POST', `/api/whatsapp/messages/${messageId}/react`, { emoji });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
       toast({ title: 'Success', description: 'Reaction sent' });
     },
     onError: (error: any) => {
