@@ -1004,6 +1004,13 @@ export default function WhatsAppPage() {
   const [validatedWhatsAppId, setValidatedWhatsAppId] = useState<string | null>(null);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   
+  // Inline new chat mode state (like iMessage)
+  const [isNewChatMode, setIsNewChatMode] = useState(false);
+  const [newChatToNumber, setNewChatToNumber] = useState('');
+  const [newChatMessage, setNewChatMessage] = useState('');
+  const [isSendingNewChatMessage, setIsSendingNewChatMessage] = useState(false);
+  const [newChatValidationStatus, setNewChatValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  
   // Profile picture cache
   const [profilePictures, setProfilePictures] = useState<Record<string, string | null>>({});
   
@@ -1458,6 +1465,30 @@ export default function WhatsAppPage() {
     onError: () => {
       toast({ title: 'Error', description: 'Failed to validate number. Please try again.', variant: 'destructive' });
       setIsValidatingNumber(false);
+    },
+  });
+
+  // Send message to new chat mutation (creates chat if doesn't exist)
+  const sendNewChatMessageMutation = useMutation({
+    mutationFn: async ({ phoneNumber, content }: { phoneNumber: string; content: string }) => {
+      return await apiRequest('POST', '/api/whatsapp/messages/send-to-number', { phoneNumber, content });
+    },
+    onSuccess: (data: any) => {
+      if (data.success && data.chatId) {
+        setSelectedChatId(data.chatId);
+        setIsNewChatMode(false);
+        setNewChatToNumber('');
+        setNewChatMessage('');
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+        toast({ title: 'Message sent', description: 'Your message has been delivered.' });
+      }
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to send', 
+        description: error.message || 'Could not send message. Please verify the number is registered on WhatsApp.', 
+        variant: 'destructive' 
+      });
     },
   });
 
@@ -1919,6 +1950,99 @@ export default function WhatsAppPage() {
     setNewChatTab('contacts');
   };
 
+  // Handle inline new chat mode
+  const handleValidateNewChatNumber = async (phoneNumber: string) => {
+    if (!phoneNumber.trim()) {
+      setNewChatValidationStatus('idle');
+      return;
+    }
+    
+    // Clean phone number - remove spaces, dashes, parentheses
+    const cleanNumber = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    
+    // Check if it's an existing chat
+    const existingChat = chats.find(chat => {
+      const chatPhone = chat.id.split('@')[0];
+      return chatPhone === cleanNumber || chatPhone === cleanNumber.replace(/^\+/, '');
+    });
+    
+    if (existingChat) {
+      // Switch to existing chat
+      setSelectedChatId(existingChat.id);
+      setIsNewChatMode(false);
+      setNewChatToNumber('');
+      setNewChatMessage('');
+      return;
+    }
+    
+    // Validate with WhatsApp
+    setNewChatValidationStatus('validating');
+    
+    try {
+      const res = await fetch('/api/whatsapp/validate-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phoneNumber: cleanNumber })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success && data.isValid) {
+        setNewChatValidationStatus('valid');
+      } else {
+        setNewChatValidationStatus('invalid');
+      }
+    } catch {
+      setNewChatValidationStatus('invalid');
+    }
+  };
+  
+  const handleSendNewChatMessage = async () => {
+    if (!newChatToNumber.trim() || !newChatMessage.trim()) return;
+    if (newChatValidationStatus !== 'valid') return;
+    
+    setIsSendingNewChatMessage(true);
+    
+    const cleanNumber = newChatToNumber.replace(/[\s\-\(\)]/g, '');
+    
+    try {
+      const res = await fetch('/api/whatsapp/messages/send-to-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          phoneNumber: cleanNumber,
+          content: newChatMessage 
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success && data.chatId) {
+        // Refetch chats and select the new chat
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+        
+        // Wait a bit for the chats to update
+        setTimeout(() => {
+          setSelectedChatId(data.chatId);
+          setIsNewChatMode(false);
+          setNewChatToNumber('');
+          setNewChatMessage('');
+          setNewChatValidationStatus('idle');
+        }, 500);
+        
+        toast({ title: 'Message sent', description: 'Chat started successfully' });
+      } else {
+        toast({ title: 'Error', description: data.error || 'Failed to send message', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
+    } finally {
+      setIsSendingNewChatMessage(false);
+    }
+  };
+
   // Handle sticker file selection
   const handleStickerSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -2295,7 +2419,12 @@ export default function WhatsAppPage() {
               variant="ghost"
               size="icon"
               className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-              onClick={() => setShowNewChatDialog(true)}
+              onClick={() => {
+                setIsNewChatMode(true);
+                setSelectedChatId(null);
+                setNewChatToNumber('');
+                setNewChatMessage('');
+              }}
               data-testid="button-new-chat"
               title="New Chat"
             >
@@ -2885,6 +3014,116 @@ export default function WhatsAppPage() {
               )}
             </div>
           </>
+        ) : isNewChatMode ? (
+          <div className="flex-1 flex flex-col bg-[var(--whatsapp-bg-primary)] border-l border-[var(--whatsapp-border)]">
+            {/* New Chat Header */}
+            <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] border-b border-[var(--whatsapp-border)] flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                onClick={() => {
+                  setIsNewChatMode(false);
+                  setNewChatToNumber('');
+                  setNewChatMessage('');
+                  setNewChatValidationStatus('idle');
+                }}
+                data-testid="button-cancel-new-chat"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1">
+                <h2 className="text-base font-medium text-[var(--whatsapp-text-primary)]">New Chat</h2>
+              </div>
+            </div>
+            
+            {/* To: Input */}
+            <div className="px-4 py-3 bg-[var(--whatsapp-bg-secondary)] border-b border-[var(--whatsapp-border)]">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-[var(--whatsapp-text-secondary)]">To:</span>
+                <div className="flex-1 relative">
+                  <Input
+                    placeholder="Phone number with country code (e.g., +1234567890)"
+                    value={newChatToNumber}
+                    onChange={(e) => {
+                      setNewChatToNumber(e.target.value);
+                      setNewChatValidationStatus('idle');
+                    }}
+                    onBlur={() => handleValidateNewChatNumber(newChatToNumber)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleValidateNewChatNumber(newChatToNumber);
+                      }
+                    }}
+                    className="bg-transparent border-0 h-8 text-sm text-[var(--whatsapp-text-primary)] focus-visible:ring-0 placeholder:text-[var(--whatsapp-text-tertiary)]"
+                    data-testid="input-new-chat-phone"
+                  />
+                  {/* Validation status indicator */}
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    {newChatValidationStatus === 'validating' && (
+                      <Loader2 className="h-4 w-4 animate-spin text-[var(--whatsapp-text-secondary)]" />
+                    )}
+                    {newChatValidationStatus === 'valid' && (
+                      <Check className="h-4 w-4 text-[var(--whatsapp-green-primary)]" />
+                    )}
+                    {newChatValidationStatus === 'invalid' && (
+                      <X className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                </div>
+              </div>
+              {newChatValidationStatus === 'invalid' && (
+                <p className="text-xs text-red-500 mt-1 ml-8">This number is not registered on WhatsApp</p>
+              )}
+            </div>
+            
+            {/* Empty message area */}
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <div className="text-center px-6">
+                <div className="inline-block p-6 rounded-full bg-[var(--whatsapp-bg-secondary)] border border-[var(--whatsapp-border)] mb-4">
+                  <MessageSquare className="h-16 w-16 text-[var(--whatsapp-green-primary)]" />
+                </div>
+                <p className="text-sm text-[var(--whatsapp-text-secondary)]">
+                  Enter a phone number with country code to start a new conversation
+                </p>
+              </div>
+            </div>
+            
+            {/* Message Input */}
+            <div className="p-3 bg-[var(--whatsapp-bg-panel-header)] border-t border-[var(--whatsapp-border)]">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Type a message"
+                    value={newChatMessage}
+                    onChange={(e) => setNewChatMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendNewChatMessage();
+                      }
+                    }}
+                    disabled={newChatValidationStatus !== 'valid'}
+                    className="w-full bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)] disabled:opacity-50"
+                    data-testid="input-new-chat-message"
+                  />
+                </div>
+                <Button
+                  size="icon"
+                  className="h-10 w-10 rounded-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                  onClick={handleSendNewChatMessage}
+                  disabled={newChatValidationStatus !== 'valid' || !newChatMessage.trim() || isSendingNewChatMessage}
+                  data-testid="button-send-new-chat"
+                >
+                  {isSendingNewChatMessage ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center bg-[var(--whatsapp-bg-primary)] border-l border-[var(--whatsapp-border)]">
             <div className="text-center max-w-md px-6">

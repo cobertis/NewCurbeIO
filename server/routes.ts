@@ -28615,6 +28615,52 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/whatsapp/messages/send-to-number - Send message to a phone number (creates chat if needed)
+  app.post("/api/whatsapp/messages/send-to-number", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { phoneNumber, content } = req.body;
+      if (!phoneNumber || !content) {
+        return res.status(400).json({ success: false, error: 'Phone number and content are required' });
+      }
+
+      // Validate and get WhatsApp ID
+      const validation = await whatsappService.validateAndGetNumberId(companyId, phoneNumber);
+      if (!validation.isValid || !validation.whatsappId) {
+        return res.status(400).json({ success: false, error: 'This number is not registered on WhatsApp' });
+      }
+
+      // Send the message
+      const sentMessage = await whatsappService.sendMessage(companyId, validation.whatsappId, content);
+      
+      console.log(`[WhatsApp] Message sent to new chat ${validation.whatsappId} for company ${companyId}`);
+      
+      return res.json({ 
+        success: true, 
+        chatId: validation.whatsappId,
+        message: {
+          id: sentMessage?.id?._serialized,
+          body: content,
+          timestamp: Math.floor(Date.now() / 1000),
+          isFromMe: true
+        }
+      });
+    } catch (error) {
+      console.error('[WhatsApp] Error sending message to number:', error);
+      return res.status(500).json({ success: false, error: 'Failed to send message' });
+    }
+  });
+
   // POST /api/whatsapp/contacts/:contactId/block - Block a contact
   app.post("/api/whatsapp/contacts/:contactId/block", requireActiveCompany, async (req: Request, res: Response) => {
     try {
