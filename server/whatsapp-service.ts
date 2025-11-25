@@ -2152,26 +2152,41 @@ class WhatsAppService extends EventEmitter {
       const companyClient = await this.getClientForCompany(companyId);
       
       // Clean the phone number - remove everything except digits
-      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      let cleanNumber = phoneNumber.replace(/\D/g, '');
       
-      // Get the WhatsApp number ID
-      const numberId = await companyClient.client.getNumberId(cleanNumber);
+      console.log(`[WhatsApp] Validating number for company ${companyId}: original="${phoneNumber}", cleaned="${cleanNumber}"`);
       
-      if (numberId) {
-        console.log(`[WhatsApp] Valid WhatsApp number for company ${companyId}: ${cleanNumber}`);
-        return {
-          isValid: true,
-          whatsappId: numberId._serialized,
-          formattedNumber: numberId.user,
-        };
-      } else {
-        console.log(`[WhatsApp] Invalid WhatsApp number for company ${companyId}: ${cleanNumber}`);
-        return {
-          isValid: false,
-          whatsappId: null,
-          formattedNumber: cleanNumber,
-        };
+      // Try multiple formats for better compatibility
+      const formatsToTry = [
+        cleanNumber,                                    // As-is (e.g., 13054975227)
+        cleanNumber.startsWith('1') && cleanNumber.length === 11 
+          ? cleanNumber.substring(1)                    // Without country code for US (e.g., 3054975227)
+          : null,
+        !cleanNumber.startsWith('1') && cleanNumber.length === 10 
+          ? '1' + cleanNumber                           // With US country code (e.g., 13054975227)
+          : null,
+      ].filter(Boolean) as string[];
+      
+      for (const numberFormat of formatsToTry) {
+        console.log(`[WhatsApp] Trying format: ${numberFormat}`);
+        const numberId = await companyClient.client.getNumberId(numberFormat);
+        
+        if (numberId) {
+          console.log(`[WhatsApp] Valid WhatsApp number found: ${numberFormat} -> ${numberId._serialized}`);
+          return {
+            isValid: true,
+            whatsappId: numberId._serialized,
+            formattedNumber: numberId.user,
+          };
+        }
       }
+      
+      console.log(`[WhatsApp] No valid WhatsApp number found for: ${cleanNumber}`);
+      return {
+        isValid: false,
+        whatsappId: null,
+        formattedNumber: cleanNumber,
+      };
     } catch (error) {
       console.error(`[WhatsApp] Error validating number for company ${companyId}:`, error);
       return {
@@ -2181,7 +2196,6 @@ class WhatsAppService extends EventEmitter {
       };
     }
   }
-
   /**
    * Get chat from a contact
    */
