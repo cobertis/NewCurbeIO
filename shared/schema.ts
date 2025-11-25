@@ -4157,6 +4157,78 @@ export type ImessageCampaignMessage = typeof imessageCampaignMessages.$inferSele
 export type InsertImessageCampaignMessage = z.infer<typeof insertImessageCampaignMessageSchema>;
 
 // =====================================================
+// WHATSAPP INTEGRATION (WhatsApp Web.js)
+// =====================================================
+
+export const whatsappMessages = pgTable("whatsapp_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  chatId: text("chat_id").notNull(), // WhatsApp chat ID
+  messageId: text("message_id").notNull(), // WhatsApp message ID
+  from: text("from").notNull(), // Sender number
+  to: text("to").notNull(), // Recipient number
+  body: text("body"), // Message text content
+  timestamp: timestamp("timestamp").notNull(),
+  isFromMe: boolean("is_from_me").notNull().default(false),
+  status: text("status").notNull().default("pending"), // pending, sent, delivered, read, failed
+  hasMedia: boolean("has_media").default(false),
+  mediaUrl: text("media_url"), // URL to stored media file
+  mimeType: text("mime_type"), // Media MIME type
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("whatsapp_messages_company_idx").on(table.companyId),
+  chatIdIdx: index("whatsapp_messages_chat_id_idx").on(table.chatId),
+  timestampIdx: index("whatsapp_messages_timestamp_idx").on(table.timestamp),
+  companyChatIdx: index("whatsapp_messages_company_chat_idx").on(table.companyId, table.chatId),
+}));
+
+export const whatsappContacts = pgTable("whatsapp_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  contactId: text("contact_id").notNull(), // WhatsApp contact ID
+  name: text("name"), // Contact name
+  phoneNumber: text("phone_number").notNull(), // Phone number
+  profilePicUrl: text("profile_pic_url"), // Profile picture URL
+  isGroup: boolean("is_group").default(false), // Whether this is a group chat
+  lastMessageAt: timestamp("last_message_at"), // Last message timestamp
+  unreadCount: integer("unread_count").default(0), // Unread message count
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("whatsapp_contacts_company_idx").on(table.companyId),
+  phoneNumberIdx: index("whatsapp_contacts_phone_idx").on(table.phoneNumber),
+  companyContactIdx: uniqueIndex("whatsapp_contacts_company_contact_idx").on(table.companyId, table.contactId),
+}));
+
+export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  chatId: z.string().min(1, "Chat ID is required"),
+  messageId: z.string().min(1, "Message ID is required"),
+  from: z.string().min(1, "Sender is required"),
+  to: z.string().min(1, "Recipient is required"),
+  status: z.enum(["pending", "sent", "delivered", "read", "failed"]).default("pending"),
+});
+
+export const insertWhatsappContactSchema = createInsertSchema(whatsappContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  contactId: z.string().min(1, "Contact ID is required"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+});
+
+export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
+export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
+
+export type WhatsappContact = typeof whatsappContacts.$inferSelect;
+export type InsertWhatsappContact = z.infer<typeof insertWhatsappContactSchema>;
+
+// =====================================================
 // CAMPAIGN STUDIO TABLES
 // =====================================================
 

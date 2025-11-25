@@ -75,6 +75,7 @@ import Tasks from "@/pages/tasks";
 import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
+import WhatsAppPage from "@/pages/whatsapp";
 import NotFound from "@/pages/not-found";
 
 // Helper function to get page title from route
@@ -1339,6 +1340,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SmsMmsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/whatsapp">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <WhatsAppPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

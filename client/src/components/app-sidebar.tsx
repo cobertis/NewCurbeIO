@@ -500,41 +500,69 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            {/* iMessage Section - Only show if feature is enabled */}
-            {enabledFeatures.has("imessage") && (
+            {/* Communications Section - Premium Features */}
+            {(enabledFeatures.has("imessage") || true) && (
               <SidebarGroup>
                 <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Premium Feature
+                  Communications
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="space-y-1">
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         asChild
-                        isActive={location === "/imessage"}
-                        data-testid="link-imessage"
+                        isActive={location === "/whatsapp"}
+                        data-testid="link-whatsapp"
                         className={`
                           h-11 rounded-md transition-colors
-                          ${location === "/imessage"
+                          ${location === "/whatsapp"
                             ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
                             : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                           }
                         `}
                       >
                         <Link 
-                          href="/imessage" 
+                          href="/whatsapp" 
                           className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch("/imessage")}
-                          onFocus={() => handlePrefetch("/imessage")}
-                          onTouchStart={() => handlePrefetch("/imessage")}
-                          onClick={() => handlePrefetch("/imessage")}
+                          onMouseEnter={() => handlePrefetch("/whatsapp")}
+                          onFocus={() => handlePrefetch("/whatsapp")}
+                          onTouchStart={() => handlePrefetch("/whatsapp")}
+                          onClick={() => handlePrefetch("/whatsapp")}
                         >
-                          <MessageCircle className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">iMessage</span>
-                          <ImessageUnreadBadge />
+                          <MessageSquare className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">WhatsApp</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
+                    {enabledFeatures.has("imessage") && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location === "/imessage"}
+                          data-testid="link-imessage"
+                          className={`
+                            h-11 rounded-md transition-colors
+                            ${location === "/imessage"
+                              ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                            }
+                          `}
+                        >
+                          <Link 
+                            href="/imessage" 
+                            className="flex items-center gap-3 px-3 w-full"
+                            onMouseEnter={() => handlePrefetch("/imessage")}
+                            onFocus={() => handlePrefetch("/imessage")}
+                            onTouchStart={() => handlePrefetch("/imessage")}
+                            onClick={() => handlePrefetch("/imessage")}
+                          >
+                            <MessageCircle className="h-5 w-5 shrink-0" />
+                            <span className="flex-1">iMessage</span>
+                            <ImessageUnreadBadge />
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         asChild

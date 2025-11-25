@@ -81,6 +81,8 @@ import {
   insertCampaignTemplateSchema,
   insertCampaignPlaceholderSchema,
   insertImessageCampaignSchema,
+  insertWhatsappMessageSchema,
+  insertWhatsappContactSchema,
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
@@ -102,6 +104,7 @@ import { fetchMarketplacePlans, buildCMSPayloadFromPolicy } from "./cms-marketpl
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 import { bulkVSClient } from "./bulkvs";
+import { whatsappService } from "./whatsapp-service";
 import { formatForStorage, formatForDisplay, formatE164 } from "@shared/phone";
 import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
@@ -27143,6 +27146,209 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error regenerating webhook secret:", error);
       res.status(500).json({ message: "Failed to regenerate webhook secret" });
+    }
+  });
+
+  // =====================================================
+  // WHATSAPP ROUTES
+  // =====================================================
+
+  // GET /api/whatsapp/qr - Get QR code for scanning
+  app.get("/api/whatsapp/qr", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const status = whatsappService.getSessionStatus();
+      
+      if (status.status === 'ready' || status.status === 'authenticated') {
+        return res.json({ success: true, authenticated: true, qrCode: null });
+      }
+      
+      if (status.qrCode) {
+        return res.json({ success: true, authenticated: false, qrCode: status.qrCode });
+      }
+      
+      // QR code not yet generated
+      return res.json({ success: true, authenticated: false, qrCode: null, message: 'Waiting for QR code...' });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting QR code:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get QR code' });
+    }
+  });
+
+  // GET /api/whatsapp/status - Get session status
+  app.get("/api/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const status = whatsappService.getSessionStatus();
+      return res.json({ success: true, status });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting status:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get status' });
+    }
+  });
+
+  // POST /api/whatsapp/logout - Logout and destroy session
+  app.post("/api/whatsapp/logout", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      await whatsappService.logout();
+      return res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+      console.error('[WhatsApp] Error logging out:', error);
+      return res.status(500).json({ success: false, error: 'Failed to logout' });
+    }
+  });
+
+  // GET /api/whatsapp/contacts - Get contact list
+  app.get("/api/whatsapp/contacts", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const contacts = await whatsappService.getContacts();
+      
+      // Transform contacts to a simpler format
+      const formattedContacts = contacts.map(contact => ({
+        id: contact.id._serialized,
+        name: contact.name || contact.pushname || contact.number,
+        phoneNumber: contact.number,
+        isGroup: contact.isGroup,
+        profilePicUrl: null, // Will be fetched separately if needed
+      }));
+
+      return res.json({ success: true, contacts: formattedContacts });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting contacts:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get contacts' });
+    }
+  });
+
+  // GET /api/whatsapp/chats - Get all chats
+  app.get("/api/whatsapp/chats", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const chats = await whatsappService.getChats();
+      
+      // Transform chats to include necessary information
+      const formattedChats = await Promise.all(chats.map(async (chat) => {
+        return {
+          id: chat.id._serialized,
+          name: chat.name,
+          isGroup: chat.isGroup,
+          timestamp: chat.timestamp,
+          unreadCount: chat.unreadCount,
+          lastMessage: chat.lastMessage ? {
+            body: chat.lastMessage.body,
+            timestamp: chat.lastMessage.timestamp,
+            from: chat.lastMessage.from,
+          } : null,
+        };
+      }));
+
+      return res.json({ success: true, chats: formattedChats });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting chats:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get chats' });
+    }
+  });
+
+  // GET /api/whatsapp/chats/:chatId/messages - Get messages for a chat
+  app.get("/api/whatsapp/chats/:chatId/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const messages = await whatsappService.getChatMessages(chatId, limit);
+      
+      // Transform messages to a simpler format
+      const formattedMessages = messages.map(msg => ({
+        id: msg.id._serialized,
+        body: msg.body,
+        from: msg.from,
+        to: msg.to,
+        timestamp: msg.timestamp,
+        isFromMe: msg.fromMe,
+        hasMedia: msg.hasMedia,
+        type: msg.type,
+      }));
+
+      return res.json({ success: true, messages: formattedMessages });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting messages:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get messages' });
+    }
+  });
+
+  // POST /api/whatsapp/send - Send message to contact
+  app.post("/api/whatsapp/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { to, message } = req.body;
+      
+      if (!to || !message) {
+        return res.status(400).json({ success: false, error: 'Missing required fields: to, message' });
+      }
+
+      const sentMessage = await whatsappService.sendMessage(to, message);
+      
+      return res.json({ 
+        success: true, 
+        message: {
+          id: sentMessage.id._serialized,
+          body: sentMessage.body,
+          timestamp: sentMessage.timestamp,
+        }
+      });
+    } catch (error) {
+      console.error('[WhatsApp] Error sending message:', error);
+      return res.status(500).json({ success: false, error: 'Failed to send message' });
+    }
+  });
+
+  // POST /api/whatsapp/mark-read - Mark chat as read
+  app.post("/api/whatsapp/mark-read", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId } = req.body;
+      
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: 'Missing required field: chatId' });
+      }
+
+      await whatsappService.markChatAsRead(chatId);
+      
+      return res.json({ success: true, message: 'Chat marked as read' });
+    } catch (error) {
+      console.error('[WhatsApp] Error marking chat as read:', error);
+      return res.status(500).json({ success: false, error: 'Failed to mark chat as read' });
+    }
+  });
+
+  // GET /api/whatsapp/profile-pic/:contactId - Get profile picture URL
+  app.get("/api/whatsapp/profile-pic/:contactId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      if (!whatsappService.isReady()) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { contactId } = req.params;
+      const profilePicUrl = await whatsappService.getProfilePicUrl(contactId);
+      
+      return res.json({ success: true, profilePicUrl });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting profile picture:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get profile picture' });
     }
   });
 
