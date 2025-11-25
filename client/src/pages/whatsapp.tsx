@@ -439,25 +439,57 @@ function MessageItem({
         {message.hasMedia && (
           <div className="mb-2">
             {(message.type === 'image' || message.type === 'sticker') && (
-              <img 
-                src={`/api/whatsapp/messages/${message.id}/media`} 
-                alt="Media" 
-                className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                loading="lazy"
-                onClick={() => window.open(`/api/whatsapp/messages/${message.id}/media`, '_blank')}
-                data-testid="media-image"
-              />
+              <>
+                {(message as any)._blobUrl ? (
+                  <div className="relative">
+                    <img 
+                      src={(message as any)._blobUrl} 
+                      alt="Media" 
+                      className="max-w-xs rounded-lg opacity-70"
+                      data-testid="media-image-optimistic"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-white drop-shadow-lg" />
+                    </div>
+                  </div>
+                ) : (
+                  <img 
+                    src={`/api/whatsapp/messages/${message.id}/media`} 
+                    alt="Media" 
+                    className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    loading="lazy"
+                    onClick={() => window.open(`/api/whatsapp/messages/${message.id}/media`, '_blank')}
+                    data-testid="media-image"
+                  />
+                )}
+              </>
             )}
             {message.type === 'video' && (
-              <video 
-                controls 
-                className="max-w-xs rounded-lg"
-                preload="metadata"
-                data-testid="media-video"
-              >
-                <source src={`/api/whatsapp/messages/${message.id}/media`} />
-                Your browser does not support the video tag.
-              </video>
+              <>
+                {(message as any)._blobUrl ? (
+                  <div className="relative">
+                    <video 
+                      className="max-w-xs rounded-lg opacity-70"
+                      data-testid="media-video-optimistic"
+                    >
+                      <source src={(message as any)._blobUrl} />
+                    </video>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-white drop-shadow-lg" />
+                    </div>
+                  </div>
+                ) : (
+                  <video 
+                    controls 
+                    className="max-w-xs rounded-lg"
+                    preload="metadata"
+                    data-testid="media-video"
+                  >
+                    <source src={`/api/whatsapp/messages/${message.id}/media`} />
+                    Your browser does not support the video tag.
+                  </video>
+                )}
+              </>
             )}
             {(message.type === 'ptt' || message.type === 'audio') && (
               <div className="flex items-center gap-2 min-w-[200px]">
@@ -500,7 +532,7 @@ function MessageItem({
           {message.isStarred && (
             <Star className="h-3 w-3 fill-[var(--whatsapp-text-tertiary)] text-[var(--whatsapp-text-tertiary)]" data-testid="star-indicator" />
           )}
-          <span className="text-[8px] text-[var(--whatsapp-text-tertiary)]">
+          <span className="text-[var(--whatsapp-text-tertiary)] text-[12px]">
             {formatMessageTime(message.timestamp)}
           </span>
           {renderAckIcon()}
@@ -1506,7 +1538,7 @@ export default function WhatsAppPage() {
 
   // Media upload mutation using FormData (cannot use apiRequest)
   const sendMediaMutation = useMutation({
-    mutationFn: async ({ chatId, file, caption, sendAsVoiceNote }: { chatId: string, file: File, caption?: string, sendAsVoiceNote?: boolean }) => {
+    mutationFn: async ({ chatId, file, caption, sendAsVoiceNote, blobUrl }: { chatId: string, file: File, caption?: string, sendAsVoiceNote?: boolean, blobUrl?: string }) => {
       const formData = new FormData();
       formData.append('file', file);
       if (caption) formData.append('caption', caption);
@@ -1539,18 +1571,59 @@ export default function WhatsAppPage() {
       
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    onMutate: async ({ chatId, file, caption, blobUrl }) => {
+      await queryClient.cancelQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
+      
+      const previousMessages = queryClient.getQueryData([`/api/whatsapp/chats/${chatId}/messages`]);
+      
+      let mediaType = 'document';
+      if (file.type.startsWith('image/')) mediaType = 'image';
+      else if (file.type.startsWith('video/')) mediaType = 'video';
+      else if (file.type.startsWith('audio/')) mediaType = 'audio';
+      
+      const tempId = `temp-media-${Date.now()}`;
+      const optimisticMessage: WhatsAppMessage = {
+        id: tempId,
+        body: caption || '',
+        from: 'me',
+        to: chatId,
+        timestamp: Math.floor(Date.now() / 1000),
+        isFromMe: true,
+        hasMedia: true,
+        type: mediaType,
+        ack: 0,
+        _blobUrl: blobUrl,
+      } as WhatsAppMessage & { _blobUrl?: string };
+      
+      queryClient.setQueryData([`/api/whatsapp/chats/${chatId}/messages`], (old: any) => {
+        if (!old?.messages) return { success: true, messages: [optimisticMessage] };
+        return { ...old, messages: [...old.messages, optimisticMessage] };
+      });
+      
       setSelectedFile(null);
       setMediaCaption('');
       setShowMediaPreview(false);
+      
+      return { previousMessages, chatId, tempId, blobUrl };
+    },
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${variables.chatId}/messages`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      if (context?.blobUrl) {
+        URL.revokeObjectURL(context.blobUrl);
+      }
       toast({ 
         title: 'Success', 
         description: 'Sending in background...'
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData([`/api/whatsapp/chats/${context.chatId}/messages`], context.previousMessages);
+      }
+      if (context?.blobUrl) {
+        URL.revokeObjectURL(context.blobUrl);
+      }
       toast({ title: 'Error', description: error.message || 'Failed to send media', variant: 'destructive' });
     },
   });
@@ -2305,10 +2378,15 @@ export default function WhatsAppPage() {
   const handleSendMedia = () => {
     if (!selectedChatId || !selectedFile) return;
     
+    const blobUrl = (selectedFile.type.startsWith('image/') || selectedFile.type.startsWith('video/'))
+      ? URL.createObjectURL(selectedFile)
+      : undefined;
+    
     sendMediaMutation.mutate({
       chatId: selectedChatId,
       file: selectedFile,
-      caption: mediaCaption || undefined
+      caption: mediaCaption || undefined,
+      blobUrl
     });
   };
 
