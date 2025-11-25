@@ -1303,8 +1303,6 @@ export default function WhatsAppPage() {
   // Media upload mutation using FormData (cannot use apiRequest)
   const sendMediaMutation = useMutation({
     mutationFn: async ({ chatId, file, caption, sendAsVoiceNote }: { chatId: string, file: File, caption?: string, sendAsVoiceNote?: boolean }) => {
-      const isVideo = file.type.startsWith('video/');
-      
       const formData = new FormData();
       formData.append('file', file);
       if (caption) formData.append('caption', caption);
@@ -1322,23 +1320,22 @@ export default function WhatsAppPage() {
       }
       const result = await res.json();
       
-      // For videos, schedule a refresh to get the real message after backend finishes processing
-      if (isVideo && result.pending) {
+      // All media now processes async - schedule refreshes to get real message
+      if (result.pending) {
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
-        }, 3000);
+        }, 2000);
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
-        }, 8000);
+        }, 5000);
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
-        }, 15000);
+        }, 10000);
       }
       
       return result;
     },
-    onSuccess: (data, variables) => {
-      const isVideo = variables.file.type.startsWith('video/');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setSelectedFile(null);
@@ -1346,7 +1343,7 @@ export default function WhatsAppPage() {
       setShowMediaPreview(false);
       toast({ 
         title: 'Success', 
-        description: isVideo ? 'Video sending in background...' : 'Media sent' 
+        description: 'Sending in background...'
       });
     },
     onError: (error: Error) => {

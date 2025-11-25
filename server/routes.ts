@@ -27888,64 +27888,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ success: false, error: `File type not allowed: ${file.mimetype}` });
       }
 
-      // For videos, process in background and return immediately
-      if (file.mimetype.startsWith('video/')) {
-        const tempMessageId = `temp_video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Return immediately with a pending status
-        res.json({ 
-          success: true, 
-          message: {
-            id: { _serialized: tempMessageId },
-            body: caption || '',
-            from: 'me',
-            to: chatId,
-            timestamp: Math.floor(Date.now() / 1000),
-            isFromMe: true,
-            hasMedia: true,
-            type: 'video',
-            ack: 1,
-            _isPending: true,
-            _filename: file.originalname,
-            _mimetype: file.mimetype
-          },
-          pending: true
-        });
+      // Determine media type for response
+      let mediaType = 'document';
+      if (file.mimetype.startsWith('image/')) mediaType = 'image';
+      else if (file.mimetype.startsWith('video/')) mediaType = 'video';
+      else if (file.mimetype.startsWith('audio/')) mediaType = 'audio';
+      else if (file.mimetype === 'application/pdf') mediaType = 'document';
 
-        // Process video in background (don't await)
-        (async () => {
-          try {
-            console.log(`[WhatsApp] Processing video in background for chat ${chatId}`);
-            const message = await whatsappService.sendMedia(
-              companyId, 
-              chatId, 
-              file.buffer, 
-              file.mimetype, 
-              file.originalname, 
-              caption,
-              false
-            );
-            console.log(`[WhatsApp] Video sent successfully to ${chatId}: ${message?.id?._serialized}`);
-          } catch (error) {
-            console.error(`[WhatsApp] Background video send failed for chat ${chatId}:`, error);
-          }
-        })();
+      // For all media types, process in background and return immediately
+      const tempMessageId = `temp_media_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Return immediately with a pending status
+      res.json({ 
+        success: true, 
+        message: {
+          id: { _serialized: tempMessageId },
+          body: caption || '',
+          from: 'me',
+          to: chatId,
+          timestamp: Math.floor(Date.now() / 1000),
+          isFromMe: true,
+          hasMedia: true,
+          type: mediaType,
+          ack: 1,
+          _isPending: true,
+          _filename: file.originalname,
+          _mimetype: file.mimetype
+        },
+        pending: true
+      });
 
-        return;
-      }
+      // Process media in background (don't await)
+      (async () => {
+        try {
+          console.log(`[WhatsApp] Processing ${mediaType} in background for chat ${chatId}: ${file.originalname}`);
+          const message = await whatsappService.sendMedia(
+            companyId, 
+            chatId, 
+            file.buffer, 
+            file.mimetype, 
+            file.originalname, 
+            caption,
+            sendAsVoiceNote === 'true'
+          );
+          console.log(`[WhatsApp] ${mediaType} sent successfully to ${chatId}: ${message?.id?._serialized}`);
+        } catch (error) {
+          console.error(`[WhatsApp] Background ${mediaType} send failed for chat ${chatId}:`, error);
+        }
+      })();
 
-      // For non-video media, process synchronously
-      const message = await whatsappService.sendMedia(
-        companyId, 
-        chatId, 
-        file.buffer, 
-        file.mimetype, 
-        file.originalname, 
-        caption,
-        sendAsVoiceNote === 'true'
-      );
-
-      return res.json({ success: true, message });
+      return;
     } catch (error) {
       console.error('[WhatsApp] Error sending media:', error);
       return res.status(500).json({ success: false, error: 'Failed to send media' });
