@@ -27398,6 +27398,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Get reactions from cache only (fast) - populated by message_reaction events
         const reactions = whatsappService.getCachedReactions(companyId, msg.id._serialized);
         
+        // Generate media URL if message has media
+        const hasMediaContent = msg.hasMedia || msg.type === 'image' || msg.type === 'video' || 
+                                msg.type === 'audio' || msg.type === 'ptt' || msg.type === 'document' || 
+                                msg.type === 'sticker';
+        const mediaUrl = hasMediaContent ? `/api/whatsapp/messages/${encodeURIComponent(msg.id._serialized)}/media` : null;
+        
         return {
           id: msg.id._serialized,
           body: msg.body,
@@ -27405,11 +27411,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           to: msg.to,
           timestamp: msg.timestamp,
           isFromMe: msg.fromMe,
-          hasMedia: msg.hasMedia,
+          hasMedia: hasMediaContent,
           type: msg.type,
           ack: msg.ack, // 0=error, 1=pending, 2=server, 3=device, 4=read, 5=played
           quotedMsg,
           reactions,
+          mediaUrl,
         };
       });
 
