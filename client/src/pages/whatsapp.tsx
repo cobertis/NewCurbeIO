@@ -420,9 +420,11 @@ function MessageItem({
         )}
 
         {/* Message Body */}
-        <p className="text-[var(--whatsapp-text-primary)] break-words whitespace-pre-wrap text-[18px]">
-          {message.body}
-        </p>
+        {message.type !== 'location' && message.body && (
+          <p className="text-[var(--whatsapp-text-primary)] break-words whitespace-pre-wrap text-[18px]">
+            {message.body}
+          </p>
+        )}
 
         {/* Time and Status */}
         <div className="flex items-center gap-1 justify-end mt-1">
