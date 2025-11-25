@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, uniqueIndex, AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, uniqueIndex, AnyPgColumn, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { validateCardNumber, validateCVV, validateExpirationDate } from './creditCardUtils';
@@ -4227,6 +4227,27 @@ export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 
 export type WhatsappContact = typeof whatsappContacts.$inferSelect;
 export type InsertWhatsappContact = z.infer<typeof insertWhatsappContactSchema>;
+
+// WhatsApp Message Reactions - for persisting reactions across server restarts
+export const whatsappReactions = pgTable("whatsapp_reactions", {
+  id: serial("id").primaryKey(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  messageId: text("message_id").notNull(),
+  emoji: text("emoji").notNull(),
+  senderId: text("sender_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyMessageIdx: index("whatsapp_reactions_company_message_idx").on(table.companyId, table.messageId),
+  uniqueReaction: uniqueIndex("whatsapp_reactions_unique").on(table.companyId, table.messageId, table.senderId),
+}));
+
+export const insertWhatsappReactionSchema = createInsertSchema(whatsappReactions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WhatsappReaction = typeof whatsappReactions.$inferSelect;
+export type InsertWhatsappReaction = z.infer<typeof insertWhatsappReactionSchema>;
 
 // =====================================================
 // CAMPAIGN STUDIO TABLES

@@ -4,6 +4,9 @@ import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import path from 'path';
 import { EventEmitter } from 'events';
+import { db } from './db';
+import { whatsappReactions } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 
 interface WhatsAppSessionStatus {
   isReady: boolean;
@@ -263,8 +266,8 @@ class WhatsAppService extends EventEmitter {
       this.emit('message_status', { companyId, messageId: message.id._serialized, status: messageStatus });
     });
 
-    // Message reaction event - cache reactions for display
-    client.on('message_reaction', (reaction: any) => {
+    // Message reaction event - cache reactions for display and persist to database
+    client.on('message_reaction', async (reaction: any) => {
       try {
         const messageId = reaction.msgId?._serialized || reaction.id?.parentMsgKey?._serialized;
         const senderId = reaction.senderId || reaction.id?.participant;
@@ -282,6 +285,18 @@ class WhatsAppService extends EventEmitter {
             } else {
               this.messageReactions.delete(cacheKey);
             }
+            // Remove from database
+            try {
+              await db.delete(whatsappReactions).where(
+                and(
+                  eq(whatsappReactions.companyId, companyId),
+                  eq(whatsappReactions.messageId, messageId),
+                  eq(whatsappReactions.senderId, senderId)
+                )
+              );
+            } catch (dbError) {
+              console.error(`[WhatsApp] Error removing reaction from DB:`, dbError);
+            }
           } else {
             // Reaction added/changed - update or add
             const existingIndex = existingReactions.findIndex(r => r.senderId === senderId);
@@ -291,6 +306,20 @@ class WhatsAppService extends EventEmitter {
               existingReactions.push({ emoji, senderId });
             }
             this.messageReactions.set(cacheKey, existingReactions);
+            // Persist to database (upsert)
+            try {
+              await db.insert(whatsappReactions).values({
+                companyId,
+                messageId,
+                emoji,
+                senderId,
+              }).onConflictDoUpdate({
+                target: [whatsappReactions.companyId, whatsappReactions.messageId, whatsappReactions.senderId],
+                set: { emoji },
+              });
+            } catch (dbError) {
+              console.error(`[WhatsApp] Error saving reaction to DB:`, dbError);
+            }
           }
           
           console.log(`[WhatsApp] Reaction cached for company ${companyId}: ${emoji} on message ${messageId}`);
@@ -345,7 +374,7 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
-   * Get cached reactions for a message
+   * Get cached reactions for a message (sync - use loadMessageReactions for async DB fallback)
    */
   getCachedReactions(companyId: string, messageId: string): Array<{ emoji: string; senderId: string }> {
     const cacheKey = `${companyId}:${messageId}`;
@@ -353,9 +382,44 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Get reactions from memory cache or database
+   */
+  async getReactionsWithDbFallback(companyId: string, messageId: string): Promise<Array<{ emoji: string; senderId: string }>> {
+    const cacheKey = `${companyId}:${messageId}`;
+    
+    // Return from memory cache if available
+    const cached = this.messageReactions.get(cacheKey);
+    if (cached && cached.length > 0) {
+      return cached;
+    }
+    
+    // Load from database
+    try {
+      const dbReactions = await db.select()
+        .from(whatsappReactions)
+        .where(
+          and(
+            eq(whatsappReactions.companyId, companyId),
+            eq(whatsappReactions.messageId, messageId)
+          )
+        );
+      
+      if (dbReactions.length > 0) {
+        const reactions = dbReactions.map(r => ({ emoji: r.emoji, senderId: r.senderId }));
+        this.messageReactions.set(cacheKey, reactions);
+        return reactions;
+      }
+    } catch (error) {
+      console.error(`[WhatsApp] Error loading reactions from DB:`, error);
+    }
+    
+    return [];
+  }
+
+  /**
    * Update reaction cache when sending a reaction
    */
-  updateReactionCache(companyId: string, messageId: string, emoji: string, senderId: string): void {
+  async updateReactionCache(companyId: string, messageId: string, emoji: string, senderId: string): Promise<void> {
     const cacheKey = `${companyId}:${messageId}`;
     let existingReactions = this.messageReactions.get(cacheKey) || [];
     
@@ -367,28 +431,74 @@ class WhatsAppService extends EventEmitter {
       } else {
         this.messageReactions.delete(cacheKey);
       }
+      // Remove from database
+      try {
+        await db.delete(whatsappReactions).where(
+          and(
+            eq(whatsappReactions.companyId, companyId),
+            eq(whatsappReactions.messageId, messageId),
+            eq(whatsappReactions.senderId, senderId)
+          )
+        );
+      } catch (dbError) {
+        console.error(`[WhatsApp] Error removing reaction from DB:`, dbError);
+      }
     } else {
       // First, remove any existing reaction from this sender (prevent duplicates)
       existingReactions = existingReactions.filter(r => r.senderId !== senderId);
       // Then add the new reaction
       existingReactions.push({ emoji, senderId });
       this.messageReactions.set(cacheKey, existingReactions);
+      // Persist to database
+      try {
+        await db.insert(whatsappReactions).values({
+          companyId,
+          messageId,
+          emoji,
+          senderId,
+        }).onConflictDoUpdate({
+          target: [whatsappReactions.companyId, whatsappReactions.messageId, whatsappReactions.senderId],
+          set: { emoji },
+        });
+      } catch (dbError) {
+        console.error(`[WhatsApp] Error saving reaction to DB:`, dbError);
+      }
     }
   }
 
   /**
-   * Load message reactions - returns cached or fetches from message.getReactions()
+   * Load message reactions - returns cached, from DB, or fetches from message.getReactions()
    */
   async loadMessageReactions(companyId: string, messageId: string, msg: any): Promise<Array<{ emoji: string; senderId: string }>> {
     const cacheKey = `${companyId}:${messageId}`;
     
-    // Return cached if available
+    // Return from memory cache if available
     const cached = this.messageReactions.get(cacheKey);
     if (cached && cached.length > 0) {
       return cached;
     }
     
-    // Try to fetch reactions from the message object
+    // Try to load from database first (much faster than API call)
+    try {
+      const dbReactions = await db.select()
+        .from(whatsappReactions)
+        .where(
+          and(
+            eq(whatsappReactions.companyId, companyId),
+            eq(whatsappReactions.messageId, messageId)
+          )
+        );
+      
+      if (dbReactions.length > 0) {
+        const reactions = dbReactions.map(r => ({ emoji: r.emoji, senderId: r.senderId }));
+        this.messageReactions.set(cacheKey, reactions);
+        return reactions;
+      }
+    } catch (error) {
+      console.error(`[WhatsApp] Error loading reactions from DB:`, error);
+    }
+    
+    // Try to fetch reactions from the message object (only if not in DB)
     try {
       if (msg && typeof msg.getReactions === 'function') {
         const reactionGroups = await msg.getReactions();
@@ -399,10 +509,19 @@ class WhatsAppService extends EventEmitter {
             const emoji = group.aggregateEmoji || group.id;
             if (group.senders && Array.isArray(group.senders)) {
               for (const sender of group.senders) {
-                reactions.push({
-                  emoji,
-                  senderId: sender.id || sender._serialized || 'unknown',
-                });
+                const sId = sender.id || sender._serialized || 'unknown';
+                reactions.push({ emoji, senderId: sId });
+                // Also persist to DB for future loads
+                try {
+                  await db.insert(whatsappReactions).values({
+                    companyId,
+                    messageId,
+                    emoji,
+                    senderId: sId,
+                  }).onConflictDoNothing();
+                } catch (e) {
+                  // Ignore duplicates
+                }
               }
             }
           }
@@ -1043,7 +1162,15 @@ class WhatsAppService extends EventEmitter {
     try {
       const companyClient = await this.getClientForCompany(companyId);
       const message = await companyClient.client.getMessageById(messageId);
+      
+      // Get current user's ID to persist reaction with correct sender
+      const myId = companyClient.client.info?.wid?._serialized || companyClient.client.info?.wid || 'unknown';
+      
       await message.react(emoji);
+      
+      // Also persist to cache and DB immediately for instant feedback
+      await this.updateReactionCache(companyId, messageId, emoji, myId);
+      
       console.log(`[WhatsApp] Reaction sent for company ${companyId}: ${emoji} on message ${messageId}`);
     } catch (error) {
       console.error(`[WhatsApp] Error reacting to message for company ${companyId}:`, error);
@@ -1156,12 +1283,28 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
-   * Get reactions on a message
+   * Get reactions on a message (with DB fallback for persistence)
    */
   async getMessageReactions(companyId: string, messageId: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
+    // First try to get from cache or database (fast path)
+    const cachedReactions = await this.getReactionsWithDbFallback(companyId, messageId);
+    if (cachedReactions.length > 0) {
+      // Format as reaction groups similar to WhatsApp API response
+      const groupedByEmoji = cachedReactions.reduce((acc: any, r) => {
+        if (!acc[r.emoji]) {
+          acc[r.emoji] = { id: r.emoji, aggregateEmoji: r.emoji, senders: [] };
+        }
+        acc[r.emoji].senders.push({ id: r.senderId });
+        return acc;
+      }, {});
+      return Object.values(groupedByEmoji);
     }
+    
+    // If not in cache/DB and client is ready, try to fetch from WhatsApp
+    if (!this.isReady(companyId)) {
+      return [];
+    }
+    
     const companyClient = this.clients.get(companyId)!;
     try {
       const chats = await companyClient.client.getChats();
@@ -1174,10 +1317,10 @@ class WhatsAppService extends EventEmitter {
           return reactions;
         }
       }
-      throw new Error('Message not found');
+      return [];
     } catch (error) {
       console.error(`[WhatsApp] Error getting message reactions for company ${companyId}:`, error);
-      throw error;
+      return [];
     }
   }
 
