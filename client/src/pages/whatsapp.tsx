@@ -34,7 +34,7 @@ import {
 // TYPES & INTERFACES
 // =====================================================
 
-type FilterTab = 'all' | 'unread' | 'favorites' | 'groups';
+type FilterTab = 'all' | 'unread' | 'favorites' | 'groups' | 'archived';
 
 interface WhatsAppChat {
   id: string;
@@ -2418,9 +2418,10 @@ export default function WhatsAppPage() {
   const filteredChats = chats.filter(chat => {
     const matchesSearch = chat.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = 
-      activeFilter === 'all' ? true :
-      activeFilter === 'unread' ? chat.unreadCount > 0 :
-      activeFilter === 'groups' ? chat.isGroup :
+      activeFilter === 'all' ? !chat.isArchived :
+      activeFilter === 'unread' ? chat.unreadCount > 0 && !chat.isArchived :
+      activeFilter === 'groups' ? chat.isGroup && !chat.isArchived :
+      activeFilter === 'archived' ? chat.isArchived :
       false;
     
     return matchesSearch && matchesFilter;
@@ -2551,8 +2552,8 @@ export default function WhatsAppPage() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-6 px-6 py-2 bg-[var(--whatsapp-bg-secondary)] border-b border-[var(--whatsapp-border)]">
-          {(['all', 'unread', 'favorites', 'groups'] as FilterTab[]).map((tab) => (
+        <div className="flex gap-4 px-4 py-2 bg-[var(--whatsapp-bg-secondary)] border-b border-[var(--whatsapp-border)]">
+          {(['all', 'unread', 'favorites', 'groups', 'archived'] as FilterTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveFilter(tab)}
