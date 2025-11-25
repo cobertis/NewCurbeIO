@@ -27361,8 +27361,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const messages = await whatsappService.getChatMessages(companyId, normalizedChatId, limit);
       
       
-      // Transform messages to a simpler format with quoted message support
-      const formattedMessages = messages.map((msg) => {
+      // Transform messages to a simpler format with quoted message support (async for reactions)
+      const formattedMessages = await Promise.all(messages.map(async (msg) => {
         let quotedMsg = null;
         
         // Check if message has a quoted message (reply)
@@ -27392,8 +27392,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           };
         }
         
-        // Get reactions from cache only (fast) - populated by message_reaction events
-        const reactions = whatsappService.getCachedReactions(companyId, msg.id._serialized);
+        // Load reactions asynchronously using the service method
+        const reactions = await whatsappService.loadMessageReactions(companyId, msg.id._serialized, msg);
         
         return {
           id: msg.id._serialized,
@@ -27407,7 +27407,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quotedMsg,
           reactions,
         };
-      });
+      }));
 
       return res.json({ success: true, messages: formattedMessages });
     } catch (error) {
