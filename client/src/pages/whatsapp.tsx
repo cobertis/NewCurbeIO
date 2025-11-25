@@ -500,7 +500,7 @@ function MessageItem({
           {message.isStarred && (
             <Star className="h-3 w-3 fill-[var(--whatsapp-text-tertiary)] text-[var(--whatsapp-text-tertiary)]" data-testid="star-indicator" />
           )}
-          <span className="text-[11px] text-[var(--whatsapp-text-tertiary)]">
+          <span className="text-[8px] text-[var(--whatsapp-text-tertiary)]">
             {formatMessageTime(message.timestamp)}
           </span>
           {renderAckIcon()}
