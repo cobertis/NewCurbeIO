@@ -34,19 +34,20 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     - **Email System:** Global SMTP and database-driven templates.
     - **Campaign System:** Unified Email/SMS campaign and contact list management.
     - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with real-time updates.
-    - **WhatsApp Web Integration:** 100% WhatsApp Web feature parity using whatsapp-web.js v1.34.2 with 66 service functions and 64+ REST endpoints:
+    - **WhatsApp Web Integration:** Comprehensive WhatsApp Web feature parity using whatsapp-web.js v1.34.2 with 100+ service functions and 80+ REST endpoints:
         - **Session Management:** QR code authentication, persistent multi-tenant sessions (isolated per company in .wwebjs_auth/{companyId}/), automatic reconnection with exponential backoff (2s, 4s, 8s, 16s, max 30s), real-time connection status.
-        - **Client State & Presence:** getState, getWWebVersion, sendPresenceAvailable/Unavailable, getBlockedContacts, profile picture management (set/delete), addressbook operations (save/edit/delete contacts).
-        - **Message Operations:** Send/receive text/media, reply, forward, delete (for everyone/for me), star/unstar, emoji reactions, download media, message info with read receipts, quoted messages display, edit messages, pin/unpin messages, reload messages, get reactions/mentions/poll votes.
-        - **Chat Management:** Archive/unarchive, pin/unpin, mute/unmute (8hrs, 1 week, always), search messages, mark as unread, clear messages, delete chat.
-        - **Typing Indicators:** Real-time "typing..." and "recording audio..." indicators sent and received.
-        - **Contact Operations:** Verify registered numbers, getNumberId, block/unblock, getAbout, getCommonGroups, getCountryCode, getFormattedNumber, getContactDeviceCount, filtered to show ONLY valid phone numbers.
-        - **Label Operations (WhatsApp Business):** getLabelById, getChatsByLabelId, addOrRemoveLabels.
-        - **Group Management:** Create groups, add/remove participants, promote/demote admins, edit group name/description, leave group, membership requests (get/approve/reject), admin-only settings (add members, edit info), group pictures (set/delete), invite info without joining.
+        - **Client State & Presence:** getState, getWWebVersion, sendPresenceAvailable/Unavailable, getBlockedContacts, profile picture management (set/delete), setDisplayName, setStatus, addressbook operations (save/edit/delete contacts).
+        - **Message Operations:** Send/receive text/media, reply, forward, delete (for everyone/for me), star/unstar, emoji reactions, download media, message info with read receipts, quoted messages display, edit messages, pin/unpin messages, reload messages, get reactions/mentions/poll votes, getMessageChat, getMessageContact, getMessageOrder, getMessagePayment.
+        - **Chat Management:** Archive/unarchive, pin/unpin, mute/unmute (8hrs, 1 week, always), search messages, mark as unread, clear messages, delete chat, clearState, syncHistory, getPinnedMessages, changeChatLabels.
+        - **Typing Indicators:** Real-time "typing..." and "recording audio..." indicators sent and received with clearState for immediate stop.
+        - **Contact Operations:** Verify registered numbers, getNumberId, isRegisteredUser, block/unblock, getAbout, getCommonGroups, getCountryCode, getFormattedNumber, getContactDeviceCount, getContactChat, getContactLidAndPhone, filtered to show ONLY valid phone numbers.
+        - **Label Operations (WhatsApp Business):** getLabels, getLabelById, getChatLabels, getChatsByLabelId, addOrRemoveLabels, changeChatLabels.
+        - **Group Management:** createGroup, add/remove participants, promote/demote admins, edit group name/description, leave group, membership requests (get/approve/reject), admin-only settings (add members, edit info, messages-admins-only), group pictures (set/delete), invite info, acceptInvite, acceptGroupV4Invite.
         - **Channel Operations (22 functions):** Create/delete channels, subscribe/unsubscribe, fetch/send messages, settings (subject, description, picture, reactions), mute/unmute, get subscribers, admin management (invite/accept/revoke/demote/transfer ownership), search channels.
         - **Broadcast Operations:** Get all broadcasts, get broadcast chat/contact.
-        - **Call Operations:** Reject incoming calls.
+        - **Call Operations:** Reject incoming calls, createCallLink (voice/video).
         - **Auto-Download Settings:** Configure auto-download for audio/documents/photos/videos, background sync.
+        - **Business Features:** getCustomerNote, addOrEditCustomerNote (chat/user level), sendResponseToScheduledEvent, editScheduledEvent, acceptMessageGroupV4Invite.
         - **Special Content:** Send location (with coordinates modal), send contact cards, emoji reactions (❤️ 😂 😮 😢 🙏 👍 🎉 🔥), create polls (with multi-option modal).
         - **UI Components:** Context menu on messages (reply/forward/react/star/delete/download/copy/info), chat header dropdown (pin/archive/mute/search/clear/delete/group info), GroupInfoSheet with participant management, location/poll modals, emoji picker, authentic WhatsApp Web styling.
         - **Status Indicators:** ✓ sent, ✓✓ delivered, ✓✓ blue read, star indicator (⭐), forwarded indicator, timestamps.
