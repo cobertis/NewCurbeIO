@@ -1,35 +1,26 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LoadingSpinner } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
 import { 
-  Search, Send, MoreVertical, Phone, Video, Info,
-  AlertCircle, CheckCheck, Check, Clock, X, MessageSquare,
-  LogOut, RefreshCw, Wifi, WifiOff
+  Search, Send, MoreVertical, Phone, Video, 
+  CheckCheck, MessageSquare, RefreshCw, Smile, Paperclip, Lock, ArrowLeft
 } from "lucide-react";
 
 // Helper function to generate consistent color from string
 function getAvatarColorFromString(str: string): string {
   const colors = [
-    '#6B7280', // gray-500 - default
-    '#EF4444', // red-500
-    '#F59E0B', // amber-500
-    '#10B981', // emerald-500
-    '#3B82F6', // blue-500
-    '#8B5CF6', // violet-500
-    '#EC4899', // pink-500
-    '#14B8A6', // teal-500
+    '#6B7280', '#EF4444', '#F59E0B', '#10B981', 
+    '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6',
   ];
   
   let hash = 0;
@@ -43,11 +34,7 @@ function getAvatarColorFromString(str: string): string {
 // Helper function to get initials from name
 function getInitials(name: string): string {
   if (!name || name.trim() === '') return '?';
-  
-  // If it's a phone number (starts with + or is all digits), don't show initials
-  if (/^[\+\d\s\-\(\)]+$/.test(name.trim())) {
-    return '';
-  }
+  if (/^[\+\d\s\-\(\)]+$/.test(name.trim())) return '';
   
   const parts = name.trim().split(' ');
   if (parts.length === 1) {
@@ -57,7 +44,7 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Format timestamp
+// Format timestamp for chat list
 function formatTimestamp(timestamp: number): string {
   const date = new Date(timestamp * 1000);
   
@@ -66,7 +53,7 @@ function formatTimestamp(timestamp: number): string {
   } else if (isYesterday(date)) {
     return 'Yesterday';
   } else {
-    return format(date, 'MMM d');
+    return format(date, 'M/d/yy');
   }
 }
 
@@ -75,6 +62,9 @@ function formatMessageTime(timestamp: number): string {
   const date = new Date(timestamp * 1000);
   return format(date, 'h:mm a');
 }
+
+// Filter tab type
+type FilterTab = 'all' | 'unread' | 'favorites' | 'groups';
 
 interface WhatsAppChat {
   id: string;
@@ -111,11 +101,12 @@ export default function WhatsAppPage() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   // Poll for status updates every 3 seconds
-  const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus }>({
+  const { data: statusData } = useQuery<{ success: boolean; status: WhatsAppStatus }>({
     queryKey: ['/api/whatsapp/status'],
     refetchInterval: 3000,
   });
@@ -194,30 +185,37 @@ export default function WhatsAppPage() {
     sendMessageMutation.mutate({ to: selectedChatId, message: messageInput });
   };
 
-  // Filter chats based on search
-  const filteredChats = chats.filter(chat =>
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter chats based on search and active filter
+  const filteredChats = chats.filter(chat => {
+    const matchesSearch = chat.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = 
+      activeFilter === 'all' ? true :
+      activeFilter === 'unread' ? chat.unreadCount > 0 :
+      activeFilter === 'groups' ? chat.isGroup :
+      false; // favorites not implemented
+    
+    return matchesSearch && matchesFilter;
+  });
 
   const selectedChat = chats.find(c => c.id === selectedChatId);
 
   // QR Code Authentication View
   if (!isAuthenticated) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <Card className="w-full max-w-md p-8">
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
+        <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
           <div className="text-center space-y-6">
-            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
+            <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
               <MessageSquare className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-2xl font-bold">WhatsApp Web</h2>
+            <h2 className="text-2xl font-medium text-[var(--whatsapp-text-primary)]">WhatsApp Web</h2>
             
             {status?.qrCode ? (
               <div className="space-y-4">
-                <p className="text-gray-600 dark:text-gray-400">
-                  Scan the QR code below with your WhatsApp mobile app to connect
+                <p className="text-[var(--whatsapp-text-secondary)]">
+                  Scan the QR code with your WhatsApp mobile app
                 </p>
-                <div className="flex justify-center bg-white p-4 rounded-lg">
+                <div className="flex justify-center bg-white p-6 rounded-lg">
                   <img 
                     src={status.qrCode} 
                     alt="QR Code" 
@@ -225,19 +223,19 @@ export default function WhatsAppPage() {
                     data-testid="img-qr-code"
                   />
                 </div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="text-sm text-[var(--whatsapp-text-secondary)] space-y-1 text-left max-w-sm mx-auto">
                   <p>1. Open WhatsApp on your phone</p>
                   <p>2. Tap Menu or Settings and select Linked Devices</p>
                   <p>3. Tap on Link a Device</p>
-                  <p>4. Point your phone to this screen to scan the code</p>
+                  <p>4. Point your phone at this screen to scan the code</p>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex justify-center">
-                  <RefreshCw className="h-12 w-12 text-gray-400 animate-spin" />
+                  <RefreshCw className="h-12 w-12 text-[var(--whatsapp-text-tertiary)] animate-spin" />
                 </div>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-[var(--whatsapp-text-secondary)]">
                   {status?.message || 'Initializing WhatsApp connection...'}
                 </p>
               </div>
@@ -250,56 +248,78 @@ export default function WhatsAppPage() {
 
   // Main Chat View
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
+    <div className="h-[calc(100vh-4rem)] flex bg-[var(--whatsapp-bg-primary)]">
       {/* Sidebar - Chat List */}
       <div className={cn(
-        "w-full md:w-96 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col",
+        "w-full md:w-[420px] border-r border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-secondary)] flex flex-col",
         selectedChatId ? "hidden md:flex" : "flex"
       )}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-semibold flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-green-500" />
-              WhatsApp
-            </h1>
-            <div className="flex items-center gap-2">
-              <Badge variant={isAuthenticated ? "default" : "destructive"} className="gap-1">
-                {isAuthenticated ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-                {isAuthenticated ? 'Connected' : 'Disconnected'}
-              </Badge>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => logoutMutation.mutate()}
-                disabled={logoutMutation.isPending}
-                data-testid="button-logout"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] flex items-center justify-between border-b border-[var(--whatsapp-border)]">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold">
+                <MessageSquare className="h-5 w-5" />
+              </AvatarFallback>
+            </Avatar>
           </div>
-          
-          {/* Search */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              data-testid="button-logout"
+            >
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="p-2 bg-[var(--whatsapp-bg-secondary)]">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--whatsapp-text-tertiary)]" />
             <Input
-              placeholder="Search chats..."
+              placeholder="Search or start new chat"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="pl-12 bg-[var(--whatsapp-bg-primary)] border-0 rounded-lg h-9 text-sm text-[var(--whatsapp-text-primary)] placeholder:text-[var(--whatsapp-text-tertiary)]"
               data-testid="input-search-chats"
             />
           </div>
         </div>
 
+        {/* Filter Tabs */}
+        <div className="flex gap-6 px-6 py-2 bg-[var(--whatsapp-bg-secondary)] border-b border-[var(--whatsapp-border)]">
+          {(['all', 'unread', 'favorites', 'groups'] as FilterTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveFilter(tab)}
+              className={cn(
+                "text-sm capitalize pb-2 relative transition-colors",
+                activeFilter === tab 
+                  ? "text-[var(--whatsapp-green-dark)] font-medium" 
+                  : "text-[var(--whatsapp-text-secondary)]"
+              )}
+              data-testid={`filter-tab-${tab}`}
+            >
+              {tab}
+              {activeFilter === tab && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--whatsapp-green-dark)]" />
+              )}
+            </button>
+          ))}
+        </div>
+
         {/* Chat List */}
         <ScrollArea className="flex-1">
-          {chatsLoading ? (
-            <div className="p-4 space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="h-12 w-12 rounded-full" />
+          {chatsLoading && !chatsData ? (
+            <div className="p-3 space-y-2">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3">
+                  <Skeleton className="h-[52px] w-[52px] rounded-full" />
                   <div className="flex-1">
                     <Skeleton className="h-4 w-32 mb-2" />
                     <Skeleton className="h-3 w-48" />
@@ -307,24 +327,28 @@ export default function WhatsAppPage() {
                 </div>
               ))}
             </div>
-          ) : filteredChats.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-              <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No chats found</p>
+          ) : chatsData?.chats?.length === 0 || !chatsData?.success ? (
+            <div className="p-8 text-center">
+              <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50 text-[var(--whatsapp-text-tertiary)]" />
+              <p className="text-[var(--whatsapp-text-secondary)]">
+                {!chatsData?.success ? 'Failed to load chats. Please try again.' : 'No chats found'}
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+            <div>
               {filteredChats.map((chat) => (
                 <button
                   key={chat.id}
                   onClick={() => setSelectedChatId(chat.id)}
                   className={cn(
-                    "w-full p-4 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left",
-                    selectedChatId === chat.id && "bg-gray-100 dark:bg-gray-700"
+                    "w-full px-4 py-3 flex items-center gap-3 transition-colors text-left border-b border-[var(--whatsapp-border)]",
+                    selectedChatId === chat.id 
+                      ? "bg-[var(--whatsapp-selected)]" 
+                      : "hover:bg-[var(--whatsapp-hover)]"
                   )}
                   data-testid={`chat-item-${chat.id}`}
                 >
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-[52px] w-[52px]">
                     <AvatarFallback
                       className="text-white font-semibold"
                       style={{ backgroundColor: getAvatarColorFromString(chat.id) }}
@@ -333,18 +357,20 @@ export default function WhatsAppPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold text-sm truncate">{chat.name}</h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-start justify-between mb-1">
+                      <h3 className="font-medium text-[var(--whatsapp-text-primary)] truncate">{chat.name}</h3>
+                      <span className="text-xs text-[var(--whatsapp-text-tertiary)] ml-2 flex-shrink-0">
                         {chat.lastMessage && formatTimestamp(chat.lastMessage.timestamp)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
                         {chat.lastMessage?.body || 'No messages yet'}
                       </p>
                       {chat.unreadCount > 0 && (
-                        <Badge variant="default" className="ml-2 bg-green-500">
+                        <Badge 
+                          className="ml-2 bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-primary)] text-white rounded-full h-5 min-w-[20px] px-1.5 text-xs"
+                        >
                           {chat.unreadCount}
                         </Badge>
                       )}
@@ -359,22 +385,22 @@ export default function WhatsAppPage() {
 
       {/* Chat Window */}
       <div className={cn(
-        "flex-1 flex flex-col bg-gray-100 dark:bg-gray-900",
+        "flex-1 flex flex-col",
         !selectedChatId ? "hidden md:flex" : "flex"
       )}>
         {selectedChatId && selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] border-b border-[var(--whatsapp-border)] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="md:hidden"
                   onClick={() => setSelectedChatId(null)}
-                  data-testid="button-back"
+                  data-testid="button-back-to-chats"
                 >
-                  <X className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <Avatar className="h-10 w-10">
                   <AvatarFallback
@@ -385,28 +411,49 @@ export default function WhatsAppPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="font-semibold">{selectedChat.name}</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {selectedChat.isGroup ? 'Group' : 'Contact'}
+                  <h2 className="font-medium text-[var(--whatsapp-text-primary)]">{selectedChat.name}</h2>
+                  <p className="text-xs text-[var(--whatsapp-text-secondary)]">
+                    click here for contact info
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" data-testid="button-call">
-                  <Phone className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  data-testid="button-video"
+                >
+                  <Video className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="sm" data-testid="button-video">
-                  <Video className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  data-testid="button-call"
+                >
+                  <Phone className="h-5 w-5" />
                 </Button>
-                <Button variant="ghost" size="sm" data-testid="button-info">
-                  <Info className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  data-testid="button-info"
+                >
+                  <MoreVertical className="h-5 w-5" />
                 </Button>
               </div>
             </div>
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              {messagesLoading ? (
+            {/* Messages Area with Background Pattern */}
+            <div 
+              className="flex-1 overflow-y-auto p-6 relative"
+              style={{ 
+                backgroundColor: 'var(--whatsapp-bg-chat)',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4dbd7' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+              }}
+            >
+              {messagesLoading && !messagesData ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, i) => (
                     <div key={i} className={cn("flex", i % 2 === 0 ? "justify-end" : "justify-start")}>
@@ -414,8 +461,15 @@ export default function WhatsAppPage() {
                     </div>
                   ))}
                 </div>
+              ) : !messagesData?.success ? (
+                <div className="flex items-center justify-center h-full text-[var(--whatsapp-text-secondary)]">
+                  <div className="text-center">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50 text-[var(--whatsapp-text-tertiary)]" />
+                    <p className="text-[var(--whatsapp-text-secondary)]">Failed to load messages. Please try again.</p>
+                  </div>
+                </div>
               ) : messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center h-full text-[var(--whatsapp-text-secondary)]">
                   <div className="text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
                     <p>No messages yet</p>
@@ -423,7 +477,7 @@ export default function WhatsAppPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -435,22 +489,26 @@ export default function WhatsAppPage() {
                     >
                       <div
                         className={cn(
-                          "max-w-[70%] rounded-lg px-4 py-2",
+                          "max-w-[65%] rounded-lg px-3 py-2 shadow-sm",
                           message.isFromMe
-                            ? "bg-green-500 text-white"
-                            : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            ? "bg-[var(--whatsapp-bubble-sent)]"
+                            : "bg-[var(--whatsapp-bubble-received)]"
                         )}
+                        style={{
+                          borderRadius: message.isFromMe 
+                            ? '7.5px 7.5px 0 7.5px' 
+                            : '7.5px 7.5px 7.5px 0'
+                        }}
                       >
-                        <p className="text-sm break-words">{message.body}</p>
+                        <p className="text-sm text-[var(--whatsapp-text-primary)] break-words whitespace-pre-wrap">
+                          {message.body}
+                        </p>
                         <div className="flex items-center gap-1 justify-end mt-1">
-                          <span className={cn(
-                            "text-xs",
-                            message.isFromMe ? "text-green-100" : "text-gray-500 dark:text-gray-400"
-                          )}>
+                          <span className="text-[11px] text-[var(--whatsapp-text-tertiary)]">
                             {formatMessageTime(message.timestamp)}
                           </span>
                           {message.isFromMe && (
-                            <CheckCheck className="h-3 w-3 text-green-100" />
+                            <CheckCheck className="h-4 w-4 text-[var(--whatsapp-green-dark)]" />
                           )}
                         </div>
                       </div>
@@ -459,13 +517,29 @@ export default function WhatsAppPage() {
                   <div ref={messagesEndRef} />
                 </div>
               )}
-            </ScrollArea>
+            </div>
 
-            {/* Message Input */}
-            <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+            {/* Message Input Footer */}
+            <div className="px-4 py-2 bg-[var(--whatsapp-bg-panel-header)] border-t border-[var(--whatsapp-border)]">
               <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  data-testid="button-emoji"
+                >
+                  <Smile className="h-6 w-6" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  data-testid="button-attach"
+                >
+                  <Paperclip className="h-6 w-6" />
+                </Button>
                 <Input
-                  placeholder="Type a message..."
+                  placeholder="Type a message"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   onKeyPress={(e) => {
@@ -474,30 +548,57 @@ export default function WhatsAppPage() {
                       handleSendMessage();
                     }
                   }}
-                  className="flex-1"
+                  className="flex-1 bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)]"
                   disabled={sendMessageMutation.isPending}
                   data-testid="input-message"
                 />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!messageInput.trim() || sendMessageMutation.isPending}
-                  data-testid="button-send"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                {messageInput.trim() ? (
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={sendMessageMutation.isPending}
+                    size="icon"
+                    className="h-10 w-10 rounded-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                    data-testid="button-send"
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                    data-testid="button-voice"
+                  >
+                    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                    </svg>
+                  </Button>
+                )}
               </div>
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center text-gray-500 dark:text-gray-400">
-              <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mb-4 mx-auto">
-                <MessageSquare className="h-12 w-12 text-white" />
+          /* Empty State */
+          <div className="flex-1 flex flex-col items-center justify-center bg-[var(--whatsapp-bg-primary)] border-l border-[var(--whatsapp-border)]">
+            <div className="text-center max-w-md px-6">
+              <div className="mb-8">
+                <div className="inline-block p-8 rounded-full bg-[var(--whatsapp-bg-secondary)] border border-[var(--whatsapp-border)] mb-6">
+                  <MessageSquare className="h-32 w-32 text-[var(--whatsapp-green-primary)]" />
+                </div>
               </div>
-              <h2 className="text-2xl font-bold mb-2">WhatsApp on Bulk Solutions</h2>
-              <p className="max-w-md mx-auto">
-                Send and receive WhatsApp messages right from your dashboard. Select a conversation to start chatting.
+              <h2 className="text-3xl font-light text-[var(--whatsapp-text-primary)] mb-4">
+                WhatsApp Web
+              </h2>
+              <p className="text-sm text-[var(--whatsapp-text-secondary)] mb-12">
+                Send and receive messages without keeping your phone online.
+                <br />
+                Use WhatsApp on up to 4 linked devices and 1 phone at the same time.
               </p>
+              <div className="pt-12 border-t border-[var(--whatsapp-border)] flex items-center justify-center gap-2 text-[var(--whatsapp-text-tertiary)]">
+                <Lock className="h-3 w-3" />
+                <span className="text-xs">End-to-end encrypted</span>
+              </div>
             </div>
           </div>
         )}
