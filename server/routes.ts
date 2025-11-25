@@ -27304,6 +27304,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[WhatsApp] Error getting chats:', error);
       return res.status(500).json({ success: false, error: 'Failed to get chats' });
     }
+
+  // GET /api/whatsapp/chats/:chatId - Get a specific chat by ID
+  app.get("/api/whatsapp/chats/:chatId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { chatId } = req.params;
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: 'chatId is required' });
+      }
+      const chat = await whatsappService.getChatById(companyId, chatId);
+      res.json({ success: true, chat });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting chat by ID:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/polls/:messageId/votes - Get poll votes for a message (Client-level)
+  app.get("/api/whatsapp/polls/:messageId/votes", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      if (!messageId) {
+        return res.status(400).json({ success: false, error: 'messageId is required' });
+      }
+      const votes = await whatsappService.getPollVotes(companyId, messageId);
+      res.json({ success: true, votes });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting poll votes:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
   });
 
   // GET /api/whatsapp/chats/:chatId/messages - Get messages for a chat

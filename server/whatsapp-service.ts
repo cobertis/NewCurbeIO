@@ -361,6 +361,50 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Get a specific chat by ID
+   * @param companyId Company ID
+   * @param chatId The chat ID to retrieve
+   * @returns The chat object
+   */
+  async getChatById(companyId: string, chatId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    const companyClient = this.clients.get(companyId)!;
+
+    try {
+      const chat = await companyClient.client.getChatById(chatId);
+      return chat;
+    } catch (error) {
+      console.error(`[WhatsApp] Failed to get chat ${chatId} for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get poll votes for a message by message ID (Client-level function)
+   * @param companyId Company ID
+   * @param messageId The message ID of the poll
+   * @returns Array of poll votes
+   */
+  async getPollVotes(companyId: string, messageId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    const companyClient = this.clients.get(companyId)!;
+
+    try {
+      const pollVotes = await companyClient.client.getPollVotes(messageId);
+      return pollVotes || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Failed to get poll votes for message ${messageId} for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get messages for a specific chat (company-scoped)
    */
   async getChatMessages(companyId: string, chatId: string, limit: number = 50): Promise<any[]> {
