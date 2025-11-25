@@ -27291,6 +27291,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           isGroup: chat.isGroup,
           timestamp: chat.timestamp,
           unreadCount: chat.unreadCount,
+          isPinned: chat.pinned || false,
+          isArchived: chat.archived || false,
+          isMuted: chat.isMuted || chat.muteExpiration > 0 || false,
           lastMessage: chat.lastMessage ? {
             body: chat.lastMessage.body,
             timestamp: chat.lastMessage.timestamp,
