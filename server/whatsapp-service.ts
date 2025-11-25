@@ -424,6 +424,62 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Send media to a chat (image, video, audio, document) using raw buffer data
+   * @param companyId Company ID
+   * @param chatId Chat ID to send to
+   * @param buffer File buffer data
+   * @param mimetype MIME type of the file
+   * @param filename Original filename
+   * @param caption Optional caption for the media
+   * @param sendAsVoiceNote If true, send as voice note/PTT (for audio files)
+   */
+  async sendMedia(
+    companyId: string, 
+    chatId: string, 
+    buffer: Buffer, 
+    mimetype: string, 
+    filename: string, 
+    caption?: string,
+    sendAsVoiceNote: boolean = false
+  ): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    const companyClient = this.clients.get(companyId)!;
+
+    try {
+      // Import MessageMedia from whatsapp-web.js
+      const { MessageMedia } = pkg;
+      
+      // Create MessageMedia from buffer
+      const media = new MessageMedia(mimetype, buffer.toString('base64'), filename);
+      
+      // Get the chat
+      const chat = await companyClient.client.getChatById(chatId);
+      
+      // Send options
+      const sendOptions: any = {};
+      if (caption) {
+        sendOptions.caption = caption;
+      }
+      
+      // If it's audio and should be sent as voice note
+      if (sendAsVoiceNote && mimetype.startsWith('audio/')) {
+        sendOptions.sendAudioAsVoice = true;
+      }
+      
+      // Send the media message
+      const sentMessage = await chat.sendMessage(media, sendOptions);
+      console.log(`[WhatsApp] Media sent to ${chatId} for company ${companyId}: ${mimetype}, ${filename}`);
+      return sentMessage;
+    } catch (error) {
+      console.error(`[WhatsApp] Failed to send media for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Mark chat as read (company-scoped)
    */
   async markChatAsRead(companyId: string, chatId: string): Promise<void> {
@@ -439,6 +495,25 @@ class WhatsAppService extends EventEmitter {
       console.log(`[WhatsApp] Chat marked as read for company ${companyId}:`, chatId);
     } catch (error) {
       console.error(`[WhatsApp] Failed to mark chat as read for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send seen/read receipt for a chat (alias for markChatAsRead)
+   */
+  async sendSeen(companyId: string, chatId: string): Promise<void> {
+    const companyClient = await this.getClientForCompany(companyId);
+    if (!companyClient.client || !companyClient.status.isReady) {
+      throw new Error('WhatsApp client not ready');
+    }
+    
+    try {
+      const chat = await companyClient.client.getChatById(chatId);
+      await chat.sendSeen();
+      console.log(`[WhatsApp] Sent seen for company ${companyId} to chat ${chatId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Failed to send seen for company ${companyId}:`, error);
       throw error;
     }
   }
@@ -463,6 +538,13 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Normalize WhatsApp ID to ensure @c.us suffix
+   */
+  private normalizeWhatsAppId(id: string): string {
+    return id.includes('@') ? id : `${id}@c.us`;
+  }
+
+  /**
    * Get profile picture URL for a contact (company-scoped)
    */
   async getProfilePicUrl(companyId: string, contactId: string): Promise<string | null> {
@@ -478,6 +560,86 @@ class WhatsAppService extends EventEmitter {
     } catch (error) {
       console.error(`[WhatsApp] Failed to get profile picture for company ${companyId}:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Get profile picture URL for a contact using normalized ID
+   */
+  async getProfilePicture(companyId: string, contactId: string): Promise<string | null> {
+    const client = await this.getClientForCompany(companyId);
+    if (!client.status.isReady) {
+      throw new Error('WhatsApp not ready');
+    }
+    
+    const normalizedId = this.normalizeWhatsAppId(contactId);
+    try {
+      const url = await client.client.getProfilePicUrl(normalizedId);
+      return url || null;
+    } catch (error) {
+      console.log(`[WhatsApp] Could not get profile picture for ${contactId}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get complete contact info including about status
+   */
+  async getContactInfo(companyId: string, contactId: string): Promise<{
+    id: string;
+    name: string | null;
+    number: string;
+    about: string | null;
+    profilePic: string | null;
+    pushname: string | null;
+    isBusiness: boolean;
+    isBlocked: boolean;
+    isEnterprise: boolean;
+    isUser: boolean;
+    labels: string[];
+  }> {
+    const client = await this.getClientForCompany(companyId);
+    if (!client.status.isReady) {
+      throw new Error('WhatsApp not ready');
+    }
+    
+    const normalizedId = this.normalizeWhatsAppId(contactId);
+    
+    try {
+      const contact = await client.client.getContactById(normalizedId);
+      
+      let about: string | null = null;
+      try {
+        about = await contact.getAbout?.() || null;
+      } catch (e) {
+        console.log(`[WhatsApp] Could not get about for ${contactId}`);
+      }
+      
+      let profilePic: string | null = null;
+      try {
+        profilePic = await client.client.getProfilePicUrl(normalizedId);
+      } catch (e) {
+        console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
+      }
+      
+      console.log(`[WhatsApp] Contact info retrieved for company ${companyId}: ${contactId}`);
+      
+      return {
+        id: contact.id._serialized,
+        name: contact.name || contact.pushname || null,
+        number: contact.number,
+        about,
+        profilePic,
+        pushname: contact.pushname || null,
+        isBusiness: contact.isBusiness || false,
+        isBlocked: contact.isBlocked || false,
+        isEnterprise: contact.isEnterprise || false,
+        isUser: contact.isUser || false,
+        labels: contact.labels || [],
+      };
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting contact info for company ${companyId}:`, error);
+      throw error;
     }
   }
 
@@ -877,6 +1039,26 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Stop typing indicator
+   */
+  async stopTyping(companyId: string, chatId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      await chat.clearState();
+      
+      console.log(`[WhatsApp] Typing indicator stopped for company ${companyId} in chat ${chatId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error stopping typing indicator for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Send recording indicator
    */
   async sendRecording(companyId: string, chatId: string, duration: number = 5000): Promise<void> {
@@ -903,6 +1085,70 @@ class WhatsAppService extends EventEmitter {
     } catch (error) {
       console.error(`[WhatsApp] Error sending recording indicator for company ${companyId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Get contact presence status (typing, recording, online)
+   */
+  async getContactPresence(companyId: string, chatId: string): Promise<{ isTyping: boolean; isRecording: boolean; isOnline: boolean; lastSeen: string | null }> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      
+      let isOnline = false;
+      let lastSeen: string | null = null;
+      
+      if (!chat.isGroup) {
+        const contact = await companyClient.client.getContactById(chatId);
+        if (contact) {
+          try {
+            const presence = await (contact as any).getPresence?.();
+            if (presence) {
+              isOnline = presence.status === 'available' || presence.status === 'composing';
+              if (presence.lastSeen) {
+                const lastSeenDate = new Date(presence.lastSeen * 1000);
+                const now = new Date();
+                const diff = now.getTime() - lastSeenDate.getTime();
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(minutes / 60);
+                const days = Math.floor(hours / 24);
+                
+                if (days > 0) {
+                  lastSeen = `última vez hace ${days} día${days > 1 ? 's' : ''}`;
+                } else if (hours > 0) {
+                  lastSeen = `última vez hace ${hours} hora${hours > 1 ? 's' : ''}`;
+                } else if (minutes > 0) {
+                  lastSeen = `última vez hace ${minutes} min`;
+                } else {
+                  lastSeen = 'en línea recientemente';
+                }
+              }
+            }
+          } catch (presenceError) {
+            console.debug('[WhatsApp] Could not get presence:', presenceError);
+          }
+        }
+      }
+      
+      return {
+        isTyping: false,
+        isRecording: false,
+        isOnline,
+        lastSeen
+      };
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting contact presence for company ${companyId}:`, error);
+      return {
+        isTyping: false,
+        isRecording: false,
+        isOnline: false,
+        lastSeen: null
+      };
     }
   }
 
@@ -1028,6 +1274,102 @@ class WhatsAppService extends EventEmitter {
     } catch (error) {
       console.error(`[WhatsApp] Error unblocking contact for company ${companyId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Get complete contact profile with profile picture URL
+   */
+  async getContactProfile(companyId: string, contactId: string): Promise<{
+    id: string;
+    name: string;
+    number: string;
+    profilePicUrl: string | null;
+    isBlocked: boolean;
+    isBusiness: boolean;
+    pushname: string | null;
+  }> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      
+      // Normalize the contact ID to ensure @c.us suffix
+      const normalizedId = contactId.includes('@') ? contactId : `${contactId}@c.us`;
+      
+      const contact = await companyClient.client.getContactById(normalizedId);
+      
+      // Try to get profile picture URL (may fail silently)
+      let profilePicUrl: string | null = null;
+      try {
+        profilePicUrl = await contact.getProfilePicUrl();
+      } catch (e) {
+        console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
+      }
+
+      console.log(`[WhatsApp] Contact profile retrieved for company ${companyId}: ${contactId}`);
+      
+      return {
+        id: contact.id._serialized,
+        name: contact.pushname || contact.name || contact.number,
+        number: contact.number,
+        profilePicUrl,
+        isBlocked: contact.isBlocked || false,
+        isBusiness: contact.isBusiness || false,
+        pushname: contact.pushname || null,
+      };
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting contact profile for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate a phone number and check if it's registered on WhatsApp
+   * Returns the WhatsApp ID if valid, null otherwise
+   */
+  async validateAndGetNumberId(companyId: string, phoneNumber: string): Promise<{
+    isValid: boolean;
+    whatsappId: string | null;
+    formattedNumber: string;
+  }> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      
+      // Clean the phone number - remove everything except digits
+      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      
+      // Get the WhatsApp number ID
+      const numberId = await companyClient.client.getNumberId(cleanNumber);
+      
+      if (numberId) {
+        console.log(`[WhatsApp] Valid WhatsApp number for company ${companyId}: ${cleanNumber}`);
+        return {
+          isValid: true,
+          whatsappId: numberId._serialized,
+          formattedNumber: numberId.user,
+        };
+      } else {
+        console.log(`[WhatsApp] Invalid WhatsApp number for company ${companyId}: ${cleanNumber}`);
+        return {
+          isValid: false,
+          whatsappId: null,
+          formattedNumber: cleanNumber,
+        };
+      }
+    } catch (error) {
+      console.error(`[WhatsApp] Error validating number for company ${companyId}:`, error);
+      return {
+        isValid: false,
+        whatsappId: null,
+        formattedNumber: phoneNumber.replace(/\D/g, ''),
+      };
     }
   }
 

@@ -128,6 +128,13 @@ const ALLOWED_IMESSAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'im
 const MAX_IMESSAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_CAMPAIGN_MEDIA_SIZE = 100 * 1024 * 1024; // 100MB for campaign attachments
 
+// WhatsApp media upload configuration
+const MAX_WHATSAPP_MEDIA_SIZE = 16 * 1024 * 1024; // 16MB - WhatsApp limit
+const whatsappMediaUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_WHATSAPP_MEDIA_SIZE }
+});
+
 /**
  * Detect STOP keywords in incoming messages for regulatory compliance
  * 
@@ -27380,6 +27387,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // POST /api/whatsapp/mark-read - Mark chat as read
+
+  // POST /api/whatsapp/messages - Send message to chat (alternative format with chatId, content)
+  app.post("/api/whatsapp/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId, content, quotedMsgId } = req.body;
+      
+      if (!chatId || !content) {
+        return res.status(400).json({ success: false, error: 'Missing required fields: chatId, content' });
+      }
+
+      // Normalize chatId to ensure @c.us suffix
+      const normalizedChatId = normalizeWhatsAppId(chatId);
+
+      let sentMessage;
+      
+      if (quotedMsgId) {
+        // If replying to a message, use replyMessage
+        sentMessage = await whatsappService.replyMessage(companyId, quotedMsgId, content);
+      } else {
+        // Otherwise, send a regular message
+        sentMessage = await whatsappService.sendMessage(companyId, normalizedChatId, content);
+      }
+      
+      return res.json({ 
+        success: true, 
+        message: {
+          id: sentMessage.id._serialized,
+          body: sentMessage.body,
+          timestamp: sentMessage.timestamp,
+          from: sentMessage.from,
+          to: sentMessage.to,
+          isFromMe: sentMessage.fromMe
+        }
+      });
+    } catch (error) {
+      console.error('[WhatsApp] Error sending message:', error);
+      return res.status(500).json({ success: false, error: 'Failed to send message' });
+    }
+  });
   app.post("/api/whatsapp/mark-read", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -27411,6 +27468,68 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/whatsapp/chats/:chatId/seen - Mark chat as read (using URL params)
+  app.post("/api/whatsapp/chats/:chatId/seen", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      const { chatId } = req.params;
+      
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: 'Missing chatId parameter' });
+      }
+
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      // Normalize chatId to ensure proper format
+      const normalizedChatId = normalizeWhatsAppId(chatId);
+
+      await whatsappService.sendSeen(companyId, normalizedChatId);
+      
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('[WhatsApp] Error sending seen:', error);
+      return res.status(500).json({ success: false, error: 'Failed to mark chat as seen' });
+    }
+  });
+
+
+  // POST /api/whatsapp/chats/:chatId/read - Mark chat as read (using URL params)
+  app.post("/api/whatsapp/chats/:chatId/read", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      const { chatId } = req.params;
+      
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: 'Missing chatId parameter' });
+      }
+
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      // Normalize chatId to ensure proper format
+      const normalizedChatId = normalizeWhatsAppId(chatId);
+
+      await whatsappService.sendSeen(companyId, normalizedChatId);
+      
+      return res.json({ success: true, message: 'Chat marked as read' });
+    } catch (error) {
+      console.error('[WhatsApp] Error marking chat as read:', error);
+      return res.status(500).json({ success: false, error: 'Failed to mark chat as read' });
+    }
+  });
   // GET /api/whatsapp/profile-pic/:contactId - Get profile picture URL
   app.get("/api/whatsapp/profile-pic/:contactId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27432,7 +27551,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const profilePicUrl = await whatsappService.getProfilePicUrl(companyId, normalizedContactId);
       
-      return res.json({ success: true, profilePicUrl });
+      return res.json({ success: true, url: profilePicUrl });
     } catch (error) {
       console.error('[WhatsApp] Error getting profile picture:', error);
       return res.status(500).json({ success: false, error: 'Failed to get profile picture' });
@@ -27581,7 +27700,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/whatsapp/messages/:messageId/media - Download media from a message
+  // GET /api/whatsapp/messages/:messageId/media - Download media from a message (returns binary data)
   app.get("/api/whatsapp/messages/:messageId/media", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -27599,10 +27718,120 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const media = await whatsappService.downloadMedia(companyId, messageId);
       
-      return res.json({ success: true, media });
+      if (!media || !media.data) {
+        return res.status(404).json({ success: false, error: 'Media not found' });
+      }
+      
+      // Convert base64 to buffer and send as binary data
+      const buffer = Buffer.from(media.data, 'base64');
+      
+      // Set appropriate headers for the media type
+      res.set('Content-Type', media.mimetype);
+      res.set('Content-Length', buffer.length.toString());
+      res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+      
+      // If filename is available, set content disposition
+      if (media.filename) {
+        res.set('Content-Disposition', `inline; filename="${media.filename}"`);
+      }
+      
+      return res.send(buffer);
     } catch (error) {
       console.error('[WhatsApp] Error downloading media:', error);
       return res.status(500).json({ success: false, error: 'Failed to download media' });
+    }
+  });
+
+
+  // GET /api/whatsapp/messages/:messageId/download - Download media (alias for /media with attachment disposition)
+  app.get("/api/whatsapp/messages/:messageId/download", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { messageId } = req.params;
+
+      const media = await whatsappService.downloadMedia(companyId, messageId);
+      
+      if (!media || !media.data) {
+        return res.status(404).json({ success: false, error: 'Media not found' });
+      }
+      
+      // Convert base64 to buffer and send as binary data
+      const buffer = Buffer.from(media.data, 'base64');
+      
+      // Set appropriate headers for download
+      res.set('Content-Type', media.mimetype);
+      res.set('Content-Length', buffer.length.toString());
+      res.set('Content-Disposition', `attachment; filename="${media.filename || 'media-' + messageId}"`);
+      
+      return res.send(buffer);
+    } catch (error) {
+      console.error('[WhatsApp] Error downloading media:', error);
+      return res.status(500).json({ success: false, error: 'Failed to download media' });
+    }
+  });
+
+  // POST /api/whatsapp/chats/:chatId/media - Send media to a chat
+  app.post("/api/whatsapp/chats/:chatId/media", requireActiveCompany, whatsappMediaUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId } = req.params;
+      const { caption, sendAsVoiceNote } = req.body;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ success: false, error: 'No file provided' });
+      }
+
+      // Validate file type
+      const allowedMimetypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'video/mp4', 'video/3gpp', 'video/quicktime', 'video/webm',
+        'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/webm', 'audio/aac', 'audio/mp4',
+        'application/pdf', 
+        'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ];
+
+      if (!allowedMimetypes.includes(file.mimetype)) {
+        return res.status(400).json({ success: false, error: `File type not allowed: ${file.mimetype}` });
+      }
+
+      const message = await whatsappService.sendMedia(
+        companyId, 
+        chatId, 
+        file.buffer, 
+        file.mimetype, 
+        file.originalname, 
+        caption,
+        sendAsVoiceNote === 'true'
+      );
+
+      return res.json({ success: true, message });
+    } catch (error) {
+      console.error('[WhatsApp] Error sending media:', error);
+      return res.status(500).json({ success: false, error: 'Failed to send media' });
     }
   });
 
@@ -27952,6 +28181,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/whatsapp/chats/:chatId/typing/stop - Stop typing indicator
+  app.post("/api/whatsapp/chats/:chatId/typing/stop", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId } = req.params;
+      const normalizedChatId = normalizeWhatsAppId(chatId);
+
+      await whatsappService.stopTyping(companyId, normalizedChatId);
+      
+      return res.json({ success: true, message: 'Typing indicator stopped successfully' });
+    } catch (error) {
+      console.error('[WhatsApp] Error stopping typing indicator:', error);
+      return res.status(500).json({ success: false, error: 'Failed to stop typing indicator' });
+    }
+  });
+
   // POST /api/whatsapp/chats/:chatId/recording - Send recording indicator
   app.post("/api/whatsapp/chats/:chatId/recording", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27976,6 +28231,40 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error('[WhatsApp] Error sending recording indicator:', error);
       return res.status(500).json({ success: false, error: 'Failed to send recording indicator' });
+    }
+  });
+
+  // GET /api/whatsapp/chats/:chatId/presence - Get contact presence status (typing, recording, online)
+  app.get("/api/whatsapp/chats/:chatId/presence", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { chatId } = req.params;
+      const normalizedChatId = normalizeWhatsAppId(chatId);
+
+      const presence = await whatsappService.getContactPresence(companyId, normalizedChatId);
+      
+      return res.json({ 
+        success: true, 
+        presence: {
+          isTyping: presence?.isTyping || false,
+          isRecording: presence?.isRecording || false,
+          isOnline: presence?.isOnline || false,
+          lastSeen: presence?.lastSeen || null
+        }
+      });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting contact presence:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get contact presence' });
     }
   });
 
@@ -28071,6 +28360,106 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error('[WhatsApp] Error checking registration:', error);
       return res.status(500).json({ success: false, error: 'Failed to check registration' });
+    }
+  });
+
+  // GET /api/whatsapp/contacts/:contactId/profile - Get contact profile with profile picture
+  app.get("/api/whatsapp/contacts/:contactId/profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { contactId } = req.params;
+      const profile = await whatsappService.getContactProfile(companyId, contactId);
+      
+      return res.json({ success: true, profile });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting contact profile:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get contact profile' });
+    }
+  });
+
+  // GET /api/whatsapp/contacts/:contactId/profile-pic - Get profile picture URL only
+  app.get("/api/whatsapp/contacts/:contactId/profile-pic", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { contactId } = req.params;
+      const profilePicUrl = await whatsappService.getProfilePicture(companyId, contactId);
+      
+      return res.json({ success: true, url: profilePicUrl });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting profile picture:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get profile picture' });
+    }
+  });
+
+  // GET /api/whatsapp/contacts/:contactId/info - Get complete contact info with about status
+  app.get("/api/whatsapp/contacts/:contactId/info", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { contactId } = req.params;
+      const contactInfo = await whatsappService.getContactInfo(companyId, contactId);
+      
+      return res.json({ success: true, contact: contactInfo });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting contact info:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get contact info' });
+    }
+  });
+
+  // POST /api/whatsapp/validate-number - Validate a phone number for WhatsApp
+  app.post("/api/whatsapp/validate-number", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+      }
+
+      const { phoneNumber } = req.body;
+      if (!phoneNumber) {
+        return res.status(400).json({ success: false, error: 'Phone number is required' });
+      }
+
+      const result = await whatsappService.validateAndGetNumberId(companyId, phoneNumber);
+      
+      return res.json({ success: true, ...result });
+    } catch (error) {
+      console.error('[WhatsApp] Error validating number:', error);
+      return res.status(500).json({ success: false, error: 'Failed to validate number' });
     }
   });
 
