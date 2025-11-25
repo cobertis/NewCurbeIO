@@ -25,9 +25,71 @@ interface CompanyWhatsAppClient {
 class WhatsAppService extends EventEmitter {
   // Map of companyId -> WhatsApp client instance
   private clients: Map<string, CompanyWhatsAppClient> = new Map();
+  
+  // Reconnection management
+  private reconnectAttempts: Map<string, number> = new Map();
+  private reconnectTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
     super();
+  }
+
+  /**
+   * Schedule automatic reconnection with exponential backoff
+   */
+  private async scheduleReconnect(companyId: string) {
+    // Clear existing timer
+    const existingTimer = this.reconnectTimers.get(companyId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // Calculate backoff
+    const attempts = this.reconnectAttempts.get(companyId) || 0;
+    const delays = [2000, 4000, 8000, 16000, 30000]; // 2s, 4s, 8s, 16s, max 30s
+    const delay = delays[Math.min(attempts, delays.length - 1)];
+
+    console.log(`[WhatsApp] Scheduling reconnect for company ${companyId} in ${delay}ms (attempt ${attempts + 1})`);
+
+    const timer = setTimeout(async () => {
+      try {
+        console.log(`[WhatsApp] Attempting to reconnect company ${companyId}...`);
+        
+        // Get existing client
+        const existingClient = this.clients.get(companyId);
+        if (existingClient) {
+          // Update status to show reconnecting
+          existingClient.status.status = 'disconnected';
+          this.emit('status_change', { companyId, status: existingClient.status });
+          
+          // Try to destroy properly
+          try {
+            await existingClient.client.destroy();
+          } catch (e) {
+            console.log(`[WhatsApp] Error destroying old client: ${e}`);
+          }
+          this.clients.delete(companyId);
+        }
+
+        // Create new client
+        await this.createClientForCompany(companyId);
+        
+        // Reset attempts on success
+        this.reconnectAttempts.delete(companyId);
+        this.reconnectTimers.delete(companyId);
+        
+        console.log(`[WhatsApp] Successfully reconnected company ${companyId}`);
+      } catch (error) {
+        console.error(`[WhatsApp] Reconnect failed for company ${companyId}:`, error);
+        
+        // Increment attempts and schedule next try
+        this.reconnectAttempts.set(companyId, attempts + 1);
+        this.scheduleReconnect(companyId);
+      }
+    }, delay);
+
+    this.reconnectTimers.set(companyId, timer);
+    this.reconnectAttempts.set(companyId, attempts + 1);
   }
 
   /**
@@ -149,6 +211,9 @@ class WhatsAppService extends EventEmitter {
       status.isAuthenticated = false;
       status.status = 'disconnected';
       this.emit('auth_failure', { companyId, message: msg });
+      
+      // Schedule automatic reconnection
+      this.scheduleReconnect(companyId);
     });
 
     // Client is ready
@@ -200,6 +265,9 @@ class WhatsAppService extends EventEmitter {
       status.status = 'disconnected';
       status.qrCode = null;
       this.emit('disconnected', { companyId, reason });
+      
+      // Schedule automatic reconnection
+      this.scheduleReconnect(companyId);
     });
 
     // Loading screen
@@ -244,8 +312,29 @@ class WhatsAppService extends EventEmitter {
 
     try {
       const contacts = await companyClient.client.getContacts();
-      // Filter out group chats and return only individual contacts
-      return contacts.filter(contact => !contact.isGroup);
+      
+      // Filter out:
+      // 1. Groups
+      // 2. Broadcast lists and status
+      // 3. Contacts without valid phone numbers
+      return contacts.filter((contact: any) => {
+        // Exclude groups
+        if (contact.isGroup) return false;
+        
+        // Exclude broadcast and status
+        if (contact.id._serialized.includes('broadcast') || 
+            contact.id._serialized.includes('status')) {
+          return false;
+        }
+        
+        // Only include if there's a numeric user ID (phone number)
+        const userId = contact.id.user;
+        if (!userId || !/^\d+$/.test(userId)) {
+          return false;
+        }
+        
+        return true;
+      });
     } catch (error) {
       console.error(`[WhatsApp] Failed to get contacts for company ${companyId}:`, error);
       throw error;
