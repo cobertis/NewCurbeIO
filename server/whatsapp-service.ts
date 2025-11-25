@@ -3852,6 +3852,47 @@ class WhatsAppService extends EventEmitter {
     }
   }
 
+  /**
+   * Request a pairing code for phone number authentication (alternative to QR)
+   * @param companyId Company ID
+   * @param phoneNumber Phone number to request pairing code for (in international format without +)
+   * @param showNotification Whether to show notification on phone
+   * @param intervalMs Interval in ms to wait before sending another code
+   * @returns The pairing code
+   */
+  async requestPairingCode(companyId: string, phoneNumber: string, showNotification: boolean = true, intervalMs?: number): Promise<string> {
+    const companyClient = this.clients.get(companyId);
+    if (!companyClient) {
+      throw new Error('WhatsApp client not found for company');
+    }
+    try {
+      const code = await companyClient.client.requestPairingCode(phoneNumber, showNotification, intervalMs);
+      console.log(`[WhatsApp] Pairing code requested for company ${companyId}`);
+      return code;
+    } catch (error) {
+      console.error(`[WhatsApp] Error requesting pairing code for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset the client state (useful for troubleshooting connection issues)
+   * @param companyId Company ID
+   */
+  async resetState(companyId: string): Promise<void> {
+    const companyClient = this.clients.get(companyId);
+    if (!companyClient) {
+      throw new Error('WhatsApp client not found for company');
+    }
+    try {
+      await companyClient.client.resetState();
+      console.log(`[WhatsApp] State reset for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error resetting state for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
   // ============================================================================
   // LABEL OPERATIONS (WhatsApp Business)
   // ============================================================================

@@ -34,8 +34,8 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     - **Email System:** Global SMTP and database-driven templates.
     - **Campaign System:** Unified Email/SMS campaign and contact list management.
     - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with real-time updates.
-    - **WhatsApp Web Integration:** Comprehensive WhatsApp Web feature parity using whatsapp-web.js v1.34.2 with 100+ service functions and 80+ REST endpoints:
-        - **Session Management:** QR code authentication, persistent multi-tenant sessions (isolated per company in .wwebjs_auth/{companyId}/), automatic reconnection with exponential backoff (2s, 4s, 8s, 16s, max 30s), real-time connection status.
+    - **WhatsApp Web Integration:** Comprehensive WhatsApp Web feature parity using whatsapp-web.js v1.34.2 with 160 service functions and 166 REST endpoints:
+        - **Session Management:** QR code authentication, requestPairingCode (phone number auth without QR), persistent multi-tenant sessions (isolated per company in .wwebjs_auth/{companyId}/), automatic reconnection with exponential backoff (2s, 4s, 8s, 16s, max 30s), real-time connection status, resetState for troubleshooting.
         - **Client State & Presence:** getState, getWWebVersion, sendPresenceAvailable/Unavailable, getBlockedContacts, profile picture management (set/delete), setDisplayName, setStatus, addressbook operations (save/edit/delete contacts).
         - **Message Operations:** Send/receive text/media, reply, forward, delete (for everyone/for me), star/unstar, emoji reactions, download media, message info with read receipts, quoted messages display, edit messages, pin/unpin messages, reload messages, get reactions/mentions/poll votes, getMessageChat, getMessageContact, getMessageOrder, getMessagePayment.
         - **Chat Management:** Archive/unarchive, pin/unpin, mute/unmute (8hrs, 1 week, always), search messages, mark as unread, clear messages, delete chat, clearState, syncHistory, getPinnedMessages, changeChatLabels.
