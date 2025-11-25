@@ -2610,10 +2610,6 @@ export default function WhatsAppPage() {
                       <MapPin className="h-4 w-4 mr-2" />
                       Send Location
                     </DropdownMenuItem>
-                    <DropdownMenuItem data-testid="menu-send-contact">
-                      <Users className="h-4 w-4 mr-2" />
-                      Send Contact
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setShowPollDialog(true)} data-testid="menu-send-poll">
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Send Poll
