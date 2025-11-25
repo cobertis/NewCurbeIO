@@ -1718,6 +1718,145 @@ class WhatsAppService extends EventEmitter {
     await Promise.allSettled(destroyPromises);
     this.clients.clear();
   }
+
+  // ============================================================================
+  // ADDITIONAL FEATURES (STICKERS, INVITES, PROFILE SETTINGS, LABELS)
+  // ============================================================================
+
+  /**
+   * Send a sticker
+   */
+  async sendSticker(companyId: string, chatId: string, stickerMedia: { data: string; mimetype: string }): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const { MessageMedia } = pkg;
+      const media = new MessageMedia(stickerMedia.mimetype, stickerMedia.data);
+      const chat = await companyClient.client.getChatById(chatId);
+      const result = await chat.sendMessage(media, { sendMediaAsSticker: true });
+      console.log(`[WhatsApp] Sticker sent for company ${companyId} to chat ${chatId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error sending sticker:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Join a group by invitation code
+   */
+  async joinGroupByInvite(companyId: string, inviteCode: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const result = await companyClient.client.acceptInvite(inviteCode);
+      console.log(`[WhatsApp] Joined group by invite for company ${companyId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error joining group by invite:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get group invitation code
+   */
+  async getGroupInviteCode(companyId: string, chatId: string): Promise<string> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) {
+        throw new Error('Chat is not a group');
+      }
+      const inviteCode = await chat.getInviteCode();
+      console.log(`[WhatsApp] Got invite code for company ${companyId} group ${chatId}`);
+      return inviteCode;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting group invite code:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Revoke group invitation code (generates a new one)
+   */
+  async revokeGroupInvite(companyId: string, chatId: string): Promise<string> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) {
+        throw new Error('Chat is not a group');
+      }
+      const newInviteCode = await chat.revokeInvite();
+      console.log(`[WhatsApp] Revoked invite code for company ${companyId} group ${chatId}`);
+      return newInviteCode;
+    } catch (error) {
+      console.error(`[WhatsApp] Error revoking group invite:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set profile status/about message
+   */
+  async setStatus(companyId: string, status: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      await companyClient.client.setStatus(status);
+      console.log(`[WhatsApp] Status set for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting status:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set display name (profile name)
+   */
+  async setDisplayName(companyId: string, displayName: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      await companyClient.client.setDisplayName(displayName);
+      console.log(`[WhatsApp] Display name set for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting display name:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get labels (WhatsApp Business feature)
+   */
+  async getLabels(companyId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const labels = await companyClient.client.getLabels();
+      console.log(`[WhatsApp] Labels retrieved for company ${companyId}`);
+      return labels;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting labels:`, error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton service instance (but now it manages multiple clients internally)

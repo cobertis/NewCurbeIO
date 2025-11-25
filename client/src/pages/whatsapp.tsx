@@ -18,13 +18,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Search, Send, MoreVertical, Phone, Video, 
   CheckCheck, MessageSquare, RefreshCw, Smile, Paperclip, Lock, ArrowLeft,
   X, Reply, Forward, Star, Download, Info, Copy, Trash2, Archive, Pin, BellOff,
   Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff,
   LogOut, ArchiveX, Trash, Bell, PinOff, UserMinus, Shield, ShieldOff, Edit, Plus, Loader2,
-  Image, FileIcon, Play, Square, File
+  Image, FileIcon, Play, Square, File, Link2, RefreshCcw, Settings, Sticker, AtSign
 } from "lucide-react";
 
 // =====================================================
@@ -562,7 +563,12 @@ function GroupInfoSheet({
   onRemoveParticipant,
   onPromoteParticipant,
   onDemoteParticipant,
-  onLeaveGroup
+  onLeaveGroup,
+  inviteLink,
+  isLoadingInviteLink,
+  onGetInviteLink,
+  onCopyInviteLink,
+  onRevokeInviteLink
 }: {
   chat: WhatsAppChat;
   open: boolean;
@@ -574,6 +580,11 @@ function GroupInfoSheet({
   onPromoteParticipant: (participantId: string) => void;
   onDemoteParticipant: (participantId: string) => void;
   onLeaveGroup: () => void;
+  inviteLink: string | null;
+  isLoadingInviteLink: boolean;
+  onGetInviteLink: () => void;
+  onCopyInviteLink: () => void;
+  onRevokeInviteLink: () => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -624,6 +635,60 @@ function GroupInfoSheet({
               <Edit className="h-4 w-4 mr-2" />
               Edit Description
             </Button>
+          </div>
+
+          <Separator />
+
+          {/* Invite Link Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Link2 className="h-4 w-4" />
+                Invite Link
+              </h4>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={onGetInviteLink}
+                disabled={isLoadingInviteLink}
+                data-testid="button-get-invite-link"
+              >
+                {isLoadingInviteLink ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Get Link'
+                )}
+              </Button>
+            </div>
+            
+            {inviteLink && (
+              <div className="space-y-2">
+                <div className="p-3 bg-muted rounded-lg break-all text-sm text-muted-foreground" data-testid="text-invite-link">
+                  {inviteLink}
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={onCopyInviteLink}
+                    data-testid="button-copy-invite-link"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy Link
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={onRevokeInviteLink}
+                    data-testid="button-revoke-invite-link"
+                  >
+                    <RefreshCcw className="h-4 w-4 mr-2" />
+                    Revoke
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <Separator />
@@ -762,8 +827,31 @@ export default function WhatsAppPage() {
   const [editSubject, setEditSubject] = useState('');
   const [editDescription, setEditDescription] = useState('');
   
+  // Sticker file input ref
+  const stickerInputRef = useRef<HTMLInputElement>(null);
+  
+  // Join group state
+  const [joinGroupCode, setJoinGroupCode] = useState('');
+  const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+  
+  // Group invite link state
+  const [groupInviteLink, setGroupInviteLink] = useState<string | null>(null);
+  const [isLoadingInviteLink, setIsLoadingInviteLink] = useState(false);
+  
+  // Status/About settings state
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [userStatus, setUserStatus] = useState('');
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
+  
+  // Mentions state
+  const [showMentionPicker, setShowMentionPicker] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [mentionPosition, setMentionPosition] = useState(0);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+  
   // New Chat dialog state
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  const [newChatTab, setNewChatTab] = useState<'contacts' | 'join-group'>('contacts');
   const [newChatPhoneNumber, setNewChatPhoneNumber] = useState('');
   const [isValidatingNumber, setIsValidatingNumber] = useState(false);
   const [validatedWhatsAppId, setValidatedWhatsAppId] = useState<string | null>(null);
@@ -1142,6 +1230,103 @@ export default function WhatsAppPage() {
     },
   });
 
+  // Send sticker mutation
+  const sendStickerMutation = useMutation({
+    mutationFn: async ({ chatId, file }: { chatId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch(`/api/whatsapp/chats/${chatId}/sticker`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to send sticker');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      toast({ title: 'Success', description: 'Sticker sent' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to send sticker', variant: 'destructive' });
+    },
+  });
+
+  // Join group by invitation code
+  const joinGroupMutation = useMutation({
+    mutationFn: async (inviteCode: string) => {
+      return await apiRequest('POST', '/api/whatsapp/groups/join', { inviteCode });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      setShowNewChatDialog(false);
+      setJoinGroupCode('');
+      setNewChatTab('contacts');
+      if (data.chatId) {
+        setSelectedChatId(data.chatId);
+      }
+      toast({ title: 'Success', description: 'Successfully joined the group!' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to join group', variant: 'destructive' });
+    },
+  });
+
+  // Get group invite link
+  const getInviteLinkMutation = useMutation({
+    mutationFn: async (chatId: string) => {
+      return await apiRequest('GET', `/api/whatsapp/groups/${chatId}/invite-link`);
+    },
+    onSuccess: (data: any) => {
+      if (data.inviteLink) {
+        setGroupInviteLink(data.inviteLink);
+      }
+      setIsLoadingInviteLink(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to get invite link', variant: 'destructive' });
+      setIsLoadingInviteLink(false);
+    },
+  });
+
+  // Revoke group invite link
+  const revokeInviteLinkMutation = useMutation({
+    mutationFn: async (chatId: string) => {
+      return await apiRequest('POST', `/api/whatsapp/groups/${chatId}/revoke-invite`);
+    },
+    onSuccess: (data: any) => {
+      if (data.newInviteLink) {
+        setGroupInviteLink(data.newInviteLink);
+        toast({ title: 'Success', description: 'Invite link revoked and new link generated' });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to revoke invite link', variant: 'destructive' });
+    },
+  });
+
+  // Set user status/about
+  const setStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      return await apiRequest('PUT', '/api/whatsapp/profile/status', { status });
+    },
+    onSuccess: () => {
+      setIsSavingStatus(false);
+      setShowSettingsDialog(false);
+      toast({ title: 'Success', description: 'Status updated successfully' });
+    },
+    onError: (error: Error) => {
+      setIsSavingStatus(false);
+      toast({ title: 'Error', description: error.message || 'Failed to update status', variant: 'destructive' });
+    },
+  });
+
   // Function to fetch profile picture for a contact
   const fetchProfilePicture = async (contactId: string): Promise<string | null> => {
     if (profilePictures[contactId] !== undefined) {
@@ -1439,7 +1624,112 @@ export default function WhatsAppPage() {
     setValidatedWhatsAppId(null);
     setIsValidatingNumber(false);
     setContactSearchQuery('');
+    setJoinGroupCode('');
+    setNewChatTab('contacts');
   };
+
+  // Handle sticker file selection
+  const handleStickerSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && selectedChatId) {
+      if (!file.type.startsWith('image/')) {
+        toast({ title: 'Error', description: 'Please select an image file for sticker', variant: 'destructive' });
+        return;
+      }
+      if (file.size > 1 * 1024 * 1024) {
+        toast({ title: 'Error', description: 'Sticker image must be less than 1MB', variant: 'destructive' });
+        return;
+      }
+      sendStickerMutation.mutate({ chatId: selectedChatId, file });
+    }
+    event.target.value = '';
+  };
+
+  // Handle join group by invite code/link
+  const handleJoinGroup = () => {
+    if (!joinGroupCode.trim()) {
+      toast({ title: 'Error', description: 'Please enter an invite code or link', variant: 'destructive' });
+      return;
+    }
+    setIsJoiningGroup(true);
+    let code = joinGroupCode.trim();
+    if (code.includes('chat.whatsapp.com/')) {
+      code = code.split('chat.whatsapp.com/').pop() || code;
+    }
+    joinGroupMutation.mutate(code);
+    setIsJoiningGroup(false);
+  };
+
+  // Handle fetching group invite link
+  const handleGetInviteLink = () => {
+    if (!selectedChatId) return;
+    setIsLoadingInviteLink(true);
+    setGroupInviteLink(null);
+    getInviteLinkMutation.mutate(selectedChatId);
+  };
+
+  // Handle copying invite link to clipboard
+  const handleCopyInviteLink = () => {
+    if (groupInviteLink) {
+      navigator.clipboard.writeText(groupInviteLink);
+      toast({ title: 'Copied!', description: 'Invite link copied to clipboard' });
+    }
+  };
+
+  // Handle revoking invite link
+  const handleRevokeInviteLink = () => {
+    if (!selectedChatId) return;
+    revokeInviteLinkMutation.mutate(selectedChatId);
+  };
+
+  // Handle saving user status
+  const handleSaveStatus = () => {
+    if (!userStatus.trim()) {
+      toast({ title: 'Error', description: 'Please enter a status', variant: 'destructive' });
+      return;
+    }
+    setIsSavingStatus(true);
+    setStatusMutation.mutate(userStatus.trim());
+  };
+
+  // Handle message input change with @mention detection
+  const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const cursorPos = e.target.selectionStart || 0;
+    
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtSymbol !== -1 && !textBeforeCursor.substring(lastAtSymbol).includes(' ')) {
+      const filter = textBeforeCursor.substring(lastAtSymbol + 1);
+      setMentionFilter(filter.toLowerCase());
+      setMentionPosition(lastAtSymbol);
+      if (selectedChat?.isGroup && selectedChat?.participants) {
+        setShowMentionPicker(true);
+      }
+    } else {
+      setShowMentionPicker(false);
+    }
+    
+    setMessageInput(value);
+  };
+
+  // Insert selected mention into message
+  const insertMention = (participant: { id: string; name: string }) => {
+    const participantNumber = participant.id.split('@')[0];
+    const beforeMention = messageInput.substring(0, mentionPosition);
+    const afterMention = messageInput.substring(mentionPosition + mentionFilter.length + 1);
+    const mention = `@${participantNumber} `;
+    setMessageInput(beforeMention + mention + afterMention);
+    setShowMentionPicker(false);
+    messageInputRef.current?.focus();
+  };
+
+  // Get filtered participants for mentions
+  const filteredParticipants = selectedChat?.participants?.filter(p => 
+    p.name.toLowerCase().includes(mentionFilter) || 
+    p.id.split('@')[0].includes(mentionFilter)
+  ) || [];
 
   // Select contact from list to start chat
   const handleSelectContact = (contactId: string) => {
@@ -1687,6 +1977,16 @@ export default function WhatsAppPage() {
               title="New Chat"
             >
               <Plus className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+              onClick={() => setShowSettingsDialog(true)}
+              data-testid="button-settings"
+              title="Settings"
+            >
+              <Settings className="h-5 w-5" />
             </Button>
             <Button
               variant="ghost"
@@ -2203,23 +2503,82 @@ export default function WhatsAppPage() {
                       <File className="h-4 w-4 mr-2" />
                       Document
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      data-testid="menu-attach-sticker"
+                      onClick={() => {
+                        if (stickerInputRef.current) {
+                          stickerInputRef.current.click();
+                        }
+                      }}
+                      disabled={sendStickerMutation.isPending}
+                    >
+                      <Sticker className="h-4 w-4 mr-2" />
+                      {sendStickerMutation.isPending ? 'Sending...' : 'Sticker'}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                <Input
-                  placeholder="Type a message"
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  className="flex-1 bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)]"
-                  disabled={sendMessageMutation.isPending}
-                  data-testid="input-message"
+                
+                <input
+                  type="file"
+                  ref={stickerInputRef}
+                  onChange={handleStickerSelect}
+                  className="hidden"
+                  accept="image/*"
+                  data-testid="input-sticker-upload"
                 />
+
+                <div className="flex-1 relative">
+                  {/* Mentions Picker */}
+                  {showMentionPicker && selectedChat?.isGroup && filteredParticipants.length > 0 && (
+                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-[var(--whatsapp-bg-secondary)] border border-[var(--whatsapp-border)] rounded-lg shadow-lg max-h-48 overflow-y-auto z-50" data-testid="mentions-picker">
+                      <div className="p-2 text-xs text-[var(--whatsapp-text-secondary)] border-b border-[var(--whatsapp-border)] flex items-center gap-1">
+                        <AtSign className="h-3 w-3" />
+                        Mention a participant
+                      </div>
+                      {filteredParticipants.slice(0, 10).map((participant) => (
+                        <button
+                          key={participant.id}
+                          onClick={() => insertMention(participant)}
+                          className="w-full px-3 py-2 flex items-center gap-2 hover:bg-[var(--whatsapp-hover)] transition-colors text-left"
+                          data-testid={`mention-item-${participant.id}`}
+                        >
+                          <Avatar className="h-7 w-7">
+                            <AvatarFallback 
+                              className="text-white text-xs font-medium"
+                              style={{ backgroundColor: getAvatarColorFromString(participant.id) }}
+                            >
+                              {getInitials(participant.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-[var(--whatsapp-text-primary)] truncate">
+                              {participant.name}
+                            </div>
+                            <div className="text-xs text-[var(--whatsapp-text-secondary)] truncate">
+                              {participant.id.split('@')[0]}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <Input
+                    ref={messageInputRef}
+                    placeholder={selectedChat?.isGroup ? "Type a message (use @ to mention)" : "Type a message"}
+                    value={messageInput}
+                    onChange={handleMessageInputChange}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && !showMentionPicker) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    className="w-full bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)]"
+                    disabled={sendMessageMutation.isPending}
+                    data-testid="input-message"
+                  />
+                </div>
                 {messageInput.trim() ? (
                   <Button
                     onClick={handleSendMessage}
@@ -2311,6 +2670,11 @@ export default function WhatsAppPage() {
               leaveGroupMutation.mutate({ chatId: selectedChatId });
             }
           }}
+          inviteLink={groupInviteLink}
+          isLoadingInviteLink={isLoadingInviteLink}
+          onGetInviteLink={handleGetInviteLink}
+          onCopyInviteLink={handleCopyInviteLink}
+          onRevokeInviteLink={handleRevokeInviteLink}
         />
       )}
 
@@ -2604,84 +2968,90 @@ export default function WhatsAppPage() {
               New Chat
             </DialogTitle>
             <DialogDescription>
-              Select a contact or enter a phone number to start a conversation.
+              Start a new conversation or join a group.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-            {/* Phone Number Input */}
-            <div className="space-y-2">
-              <Label htmlFor="phone-number">Phone Number</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="phone-number"
-                  value={newChatPhoneNumber}
-                  onChange={(e) => {
-                    setNewChatPhoneNumber(e.target.value);
-                    setValidatedWhatsAppId(null);
-                  }}
-                  placeholder="+1234567890"
-                  className="flex-1"
-                  data-testid="input-new-chat-phone"
-                  disabled={isValidatingNumber}
-                />
-                <Button
-                  onClick={handleValidateNumber}
-                  disabled={isValidatingNumber || !newChatPhoneNumber.trim()}
-                  variant="outline"
-                  data-testid="button-validate-number"
-                >
-                  {isValidatingNumber ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {validatedWhatsAppId && (
-              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                  <Check className="h-4 w-4" />
-                  <span className="text-sm font-medium">Number verified!</span>
+          <Tabs value={newChatTab} onValueChange={(v) => setNewChatTab(v as 'contacts' | 'join-group')} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="contacts" data-testid="tab-contacts">Contacts</TabsTrigger>
+              <TabsTrigger value="join-group" data-testid="tab-join-group">Join Group</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="contacts" className="flex-1 overflow-hidden flex flex-col mt-4 space-y-4">
+              {/* Phone Number Input */}
+              <div className="space-y-2">
+                <Label htmlFor="phone-number">Phone Number</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="phone-number"
+                    value={newChatPhoneNumber}
+                    onChange={(e) => {
+                      setNewChatPhoneNumber(e.target.value);
+                      setValidatedWhatsAppId(null);
+                    }}
+                    placeholder="+1234567890"
+                    className="flex-1"
+                    data-testid="input-new-chat-phone"
+                    disabled={isValidatingNumber}
+                  />
+                  <Button
+                    onClick={handleValidateNumber}
+                    disabled={isValidatingNumber || !newChatPhoneNumber.trim()}
+                    variant="outline"
+                    data-testid="button-validate-number"
+                  >
+                    {isValidatingNumber ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-                <Button 
-                  onClick={handleStartNewChat}
-                  className="w-full mt-2 bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
-                  data-testid="button-start-new-chat"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Start Chat
-                </Button>
               </div>
-            )}
 
-            <Separator />
+              {validatedWhatsAppId && (
+                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <Check className="h-4 w-4" />
+                    <span className="text-sm font-medium">Number verified!</span>
+                  </div>
+                  <Button 
+                    onClick={handleStartNewChat}
+                    className="w-full mt-2 bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                    data-testid="button-start-new-chat"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Start Chat
+                  </Button>
+                </div>
+              )}
 
-            {/* Contacts List */}
-            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-              <div className="flex items-center justify-between mb-2">
-                <Label>WhatsApp Contacts</Label>
-                <span className="text-xs text-muted-foreground">
-                  {contacts.length} contacts
-                </span>
-              </div>
-              
-              {/* Contact Search */}
-              <div className="relative mb-2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search contacts..."
-                  value={contactSearchQuery}
-                  onChange={(e) => setContactSearchQuery(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-contacts"
-                />
-              </div>
-              
-              {/* Contacts ScrollArea */}
-              <ScrollArea className="flex-1 -mx-2 px-2">
+              <Separator />
+
+              {/* Contacts List */}
+              <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                <div className="flex items-center justify-between mb-2">
+                  <Label>WhatsApp Contacts</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {contacts.length} contacts
+                  </span>
+                </div>
+                
+                {/* Contact Search */}
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search contacts..."
+                    value={contactSearchQuery}
+                    onChange={(e) => setContactSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search-contacts"
+                  />
+                </div>
+                
+                {/* Contacts ScrollArea */}
+                <ScrollArea className="flex-1 -mx-2 px-2">
                 {contactsLoading ? (
                   <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
@@ -2737,8 +3107,55 @@ export default function WhatsAppPage() {
                   </div>
                 )}
               </ScrollArea>
-            </div>
-          </div>
+              </div>
+            </TabsContent>
+            
+            {/* Join Group Tab */}
+            <TabsContent value="join-group" className="mt-4 space-y-4">
+              <div className="text-center mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[var(--whatsapp-green-primary)]/10 mb-3">
+                  <Users className="h-8 w-8 text-[var(--whatsapp-green-primary)]" />
+                </div>
+                <h3 className="font-semibold text-[var(--whatsapp-text-primary)]">Join a Group</h3>
+                <p className="text-sm text-[var(--whatsapp-text-secondary)]">
+                  Enter an invitation link or code to join a WhatsApp group
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="invite-code">Invite Link or Code</Label>
+                <Input
+                  id="invite-code"
+                  value={joinGroupCode}
+                  onChange={(e) => setJoinGroupCode(e.target.value)}
+                  placeholder="https://chat.whatsapp.com/... or invite code"
+                  data-testid="input-join-group-code"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste the full invitation link or just the code at the end
+                </p>
+              </div>
+              
+              <Button
+                onClick={handleJoinGroup}
+                disabled={!joinGroupCode.trim() || joinGroupMutation.isPending}
+                className="w-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                data-testid="button-join-group"
+              >
+                {joinGroupMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Joining...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Join Group
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+          </Tabs>
           
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={handleCloseNewChatDialog}>
@@ -2844,6 +3261,96 @@ export default function WhatsAppPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent data-testid="dialog-settings" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-[var(--whatsapp-green-primary)]" />
+              Settings
+            </DialogTitle>
+            <DialogDescription>
+              Manage your WhatsApp profile and preferences
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 mt-4">
+            {/* Profile Section */}
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold text-xl">
+                  <MessageSquare className="h-8 w-8" />
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="font-semibold text-[var(--whatsapp-text-primary)]">Your Profile</h3>
+                <p className="text-sm text-[var(--whatsapp-text-secondary)]">
+                  Edit your status and about info
+                </p>
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {/* Status/About Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Edit className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" />
+                <Label htmlFor="user-status">Status / About</Label>
+              </div>
+              <Textarea
+                id="user-status"
+                value={userStatus}
+                onChange={(e) => setUserStatus(e.target.value)}
+                placeholder="Hey there! I am using WhatsApp"
+                rows={3}
+                className="resize-none"
+                data-testid="input-user-status"
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be visible to your contacts
+              </p>
+            </div>
+            
+            <Button
+              onClick={handleSaveStatus}
+              disabled={!userStatus.trim() || setStatusMutation.isPending}
+              className="w-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+              data-testid="button-save-status"
+            >
+              {setStatusMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Save Status
+                </>
+              )}
+            </Button>
+            
+            <Separator />
+            
+            {/* Logout Section */}
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => {
+                setShowSettingsDialog(false);
+                logoutMutation.mutate();
+              }}
+              disabled={logoutMutation.isPending}
+              data-testid="button-logout-settings"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
