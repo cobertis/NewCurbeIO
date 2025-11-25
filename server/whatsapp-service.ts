@@ -354,24 +354,21 @@ class WhatsAppService extends EventEmitter {
    */
   updateReactionCache(companyId: string, messageId: string, emoji: string, senderId: string): void {
     const cacheKey = `${companyId}:${messageId}`;
-    const existingReactions = this.messageReactions.get(cacheKey) || [];
+    let existingReactions = this.messageReactions.get(cacheKey) || [];
     
     if (emoji === '') {
-      // Remove reaction
-      const filtered = existingReactions.filter(r => r.senderId !== senderId);
-      if (filtered.length > 0) {
-        this.messageReactions.set(cacheKey, filtered);
+      // Remove reaction - filter out this sender's reaction
+      existingReactions = existingReactions.filter(r => r.senderId !== senderId);
+      if (existingReactions.length > 0) {
+        this.messageReactions.set(cacheKey, existingReactions);
       } else {
         this.messageReactions.delete(cacheKey);
       }
     } else {
-      // Add/update reaction
-      const existingIndex = existingReactions.findIndex(r => r.senderId === senderId);
-      if (existingIndex >= 0) {
-        existingReactions[existingIndex].emoji = emoji;
-      } else {
-        existingReactions.push({ emoji, senderId });
-      }
+      // First, remove any existing reaction from this sender (prevent duplicates)
+      existingReactions = existingReactions.filter(r => r.senderId !== senderId);
+      // Then add the new reaction
+      existingReactions.push({ emoji, senderId });
       this.messageReactions.set(cacheKey, existingReactions);
     }
   }
