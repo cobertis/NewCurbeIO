@@ -3,3 +3,13 @@
 2025/11/25-14:34:42.230 130dd Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000129.log 
 2025/11/25-14:34:42.230 130dd Delete type=2 #127
 2025/11/25-14:34:42.230 130dd Delete type=2 #130
+2025/11/25-14:34:43.588 130df Level-0 table #134: started
+2025/11/25-14:34:43.611 130df Level-0 table #134: 206809 bytes OK
+2025/11/25-14:34:43.619 130df Delete type=0 #129
+2025/11/25-14:34:43.622 130dd Manual compaction at level-0 from '\x00)\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00*\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/25-14:34:46.084 130df Compacting 1@1 + 1@2 files
+2025/11/25-14:34:46.428 130df Generated table #135@1: 41986 keys, 1633982 bytes
+2025/11/25-14:34:46.428 130df Compacted 1@1 + 1@2 files => 1633982 bytes
+2025/11/25-14:34:46.442 130df compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/25-14:34:46.442 130df Delete type=2 #131
+2025/11/25-14:34:46.442 130df Delete type=2 #134

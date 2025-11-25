@@ -1042,15 +1042,44 @@ export default function WhatsAppPage() {
       const encodedChatId = encodeURIComponent(chatId);
       return await apiRequest('DELETE', `/api/whatsapp/chats/${encodedChatId}`, {});
     },
-    onSuccess: () => {
+    onMutate: async ({ chatId }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/whatsapp/chats'] });
+      
+      // Snapshot the previous value
+      const previousChats = queryClient.getQueryData(['/api/whatsapp/chats']);
+      
+      // Optimistically remove the chat from the list
+      queryClient.setQueryData(['/api/whatsapp/chats'], (old: any) => {
+        if (!old?.chats) return old;
+        return {
+          ...old,
+          chats: old.chats.filter((chat: any) => {
+            const id = chat.id?._serialized || chat.id;
+            return id !== chatId;
+          })
+        };
+      });
+      
+      // Clear selected chat immediately
       setSelectedChatId(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'], refetchType: 'all' });
-      queryClient.refetchQueries({ queryKey: ['/api/whatsapp/chats'] });
+      
+      return { previousChats };
+    },
+    onSuccess: () => {
       toast({ title: 'Success', description: 'Chat deleted' });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      // Rollback on error
+      if (context?.previousChats) {
+        queryClient.setQueryData(['/api/whatsapp/chats'], context.previousChats);
+      }
       console.error('[WhatsApp] Delete chat error:', error);
       toast({ title: 'Error', description: error?.message || 'Failed to delete chat', variant: 'destructive' });
+    },
+    onSettled: () => {
+      // Always refetch after mutation settles
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
     },
   });
 
