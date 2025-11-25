@@ -200,14 +200,14 @@ const myAgencyMenuItems = [
 
 const marketingMenuItems = [
   {
-    title: "SMS",
-    url: "/sms",
-    icon: MessageSquare,
+    title: "Campaigns",
+    url: "/imessage-campaigns",
+    icon: Send,
   },
   {
     title: "Contacts",
     url: "/contacts",
-    icon: Mail,
+    icon: Contact,
   },
   {
     title: "Referrals",
@@ -218,11 +218,6 @@ const marketingMenuItems = [
     title: "Landing page",
     url: "/landing-page",
     icon: Globe,
-  },
-  {
-    title: "Email",
-    url: "/email-marketing",
-    icon: Inbox,
   },
 ];
 
@@ -566,26 +561,61 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         asChild
-                        isActive={location === "/imessage-campaigns"}
-                        data-testid="link-campaigns"
+                        isActive={location === "/sms"}
+                        data-testid="link-sms"
                         className={`
                           h-11 rounded-md transition-colors
-                          ${location === "/imessage-campaigns"
+                          ${location === "/sms"
                             ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
                             : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                           }
                         `}
                       >
                         <Link 
-                          href="/imessage-campaigns" 
+                          href="/sms" 
                           className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch("/imessage-campaigns")}
-                          onFocus={() => handlePrefetch("/imessage-campaigns")}
-                          onTouchStart={() => handlePrefetch("/imessage-campaigns")}
-                          onClick={() => handlePrefetch("/imessage-campaigns")}
+                          onMouseEnter={() => handlePrefetch("/sms")}
+                          onFocus={() => handlePrefetch("/sms")}
+                          onTouchStart={() => handlePrefetch("/sms")}
+                          onClick={() => handlePrefetch("/sms")}
                         >
-                          <Send className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">Campaigns</span>
+                          <Inbox className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">SMS</span>
+                          {unreadThreadCount > 0 && (
+                            <Badge 
+                              variant="destructive" 
+                              className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
+                              data-testid="badge-sms-unread"
+                            >
+                              {unreadThreadCount > 99 ? "99+" : unreadThreadCount}
+                            </Badge>
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === "/email-campaigns"}
+                        data-testid="link-email"
+                        className={`
+                          h-11 rounded-md transition-colors
+                          ${location === "/email-campaigns"
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                          }
+                        `}
+                      >
+                        <Link 
+                          href="/email-campaigns" 
+                          className="flex items-center gap-3 px-3 w-full"
+                          onMouseEnter={() => handlePrefetch("/email-campaigns")}
+                          onFocus={() => handlePrefetch("/email-campaigns")}
+                          onTouchStart={() => handlePrefetch("/email-campaigns")}
+                          onClick={() => handlePrefetch("/email-campaigns")}
+                        >
+                          <Mail className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">Email</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
