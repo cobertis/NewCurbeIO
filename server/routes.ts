@@ -4360,6 +4360,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     res.send(loaderScript);
   });
 
+  // Google Static Maps API - proxy endpoint for location previews
+  app.get("/api/google-maps/static", async (req: Request, res: Response) => {
+    try {
+      const { lat, lng, zoom = "15", size = "300x150" } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "lat and lng are required" });
+      }
+      
+      const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "Google Maps API not configured" });
+      }
+      
+      const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=${zoom}&size=${size}&markers=color:red%7C${lat},${lng}&key=${apiKey}`;
+      
+      const response = await fetch(mapUrl);
+      if (!response.ok) {
+        return res.status(response.status).json({ message: "Failed to fetch map" });
+      }
+      
+      const buffer = await response.arrayBuffer();
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("[GOOGLE_MAPS] Static map error:", error);
+      res.status(500).json({ message: "Failed to generate map" });
+    }
+  });
+
   // Autocomplete address using Google Places API
   app.get("/api/google-places/autocomplete-address", async (req: Request, res: Response) => {
     try {

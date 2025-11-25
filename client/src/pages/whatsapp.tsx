@@ -320,7 +320,7 @@ function MessageItem({
         )}
 
         {/* Media Content */}
-        {message.hasMedia && (
+        {(message.hasMedia || message.type === 'location') && (
           <div className="mb-2">
             {(message.type === 'image' || message.type === 'sticker') && (
               <>
@@ -389,6 +389,30 @@ function MessageItem({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">Document</p>
                   <p className="text-xs text-[var(--whatsapp-text-tertiary)]">Click to download</p>
+                </div>
+              </a>
+            )}
+            {message.type === 'location' && (message as any).location && (
+              <a
+                href={`https://www.google.com/maps?q=${(message as any).location.latitude},${(message as any).location.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-lg overflow-hidden hover:opacity-90 transition-opacity max-w-xs"
+                data-testid="media-location"
+              >
+                <img
+                  src={`/api/google-maps/static?lat=${(message as any).location.latitude}&lng=${(message as any).location.longitude}&zoom=15&size=300x150`}
+                  alt="Location map"
+                  className="w-full h-36 object-cover"
+                />
+                <div className="bg-[var(--whatsapp-bg-primary)] px-3 py-2 text-sm border-t border-[var(--whatsapp-border)]">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="text-[var(--whatsapp-text-primary)] truncate">
+                      {(message as any).location.description || (message as any).location.address ||
+                       `${(message as any).location.latitude.toFixed(6)}, ${(message as any).location.longitude.toFixed(6)}`}
+                    </span>
+                  </div>
                 </div>
               </a>
             )}

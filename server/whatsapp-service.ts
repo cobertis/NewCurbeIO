@@ -703,9 +703,9 @@ class WhatsAppService extends EventEmitter {
           return false;
         }
         
-        // Keep messages with media (images, videos, audio, documents, stickers)
+        // Keep messages with media (images, videos, audio, documents, stickers, locations)
         if (msg.hasMedia || msg.type === 'image' || msg.type === 'video' || msg.type === 'audio' || 
-            msg.type === 'ptt' || msg.type === 'document' || msg.type === 'sticker') {
+            msg.type === 'ptt' || msg.type === 'document' || msg.type === 'sticker' || msg.type === 'location') {
           return true;
         }
         
