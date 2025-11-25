@@ -951,17 +951,10 @@ class WhatsAppService extends EventEmitter {
     }
     
     const normalizedId = this.normalizeWhatsAppId(contactId);
+    const phoneNumber = normalizedId.replace('@c.us', '').replace('@g.us', '');
     
     try {
-      const contact = await client.client.getContactById(normalizedId);
-      
-      let about: string | null = null;
-      try {
-        about = await contact.getAbout?.() || null;
-      } catch (e) {
-        console.log(`[WhatsApp] Could not get about for ${contactId}`);
-      }
-      
+      // Get profile picture directly from client (more reliable than getContactById)
       let profilePic: string | null = null;
       try {
         profilePic = await client.client.getProfilePicUrl(normalizedId);
@@ -969,20 +962,31 @@ class WhatsAppService extends EventEmitter {
         console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
       }
       
+      // Try to get chat info for name
+      let name: string | null = null;
+      try {
+        const chat = await client.client.getChatById(normalizedId);
+        if (chat && chat.name) {
+          name = chat.name;
+        }
+      } catch (e) {
+        // Chat may not exist
+      }
+      
       console.log(`[WhatsApp] Contact info retrieved for company ${companyId}: ${contactId}`);
       
       return {
-        id: contact.id._serialized,
-        name: contact.name || contact.pushname || null,
-        number: contact.number,
-        about,
+        id: normalizedId,
+        name: name,
+        number: phoneNumber,
+        about: null,
         profilePic,
-        pushname: contact.pushname || null,
-        isBusiness: contact.isBusiness || false,
-        isBlocked: contact.isBlocked || false,
-        isEnterprise: contact.isEnterprise || false,
-        isUser: contact.isUser || false,
-        labels: contact.labels || [],
+        pushname: null,
+        isBusiness: false,
+        isBlocked: false,
+        isEnterprise: false,
+        isUser: true,
+        labels: [],
       };
     } catch (error) {
       console.error(`[WhatsApp] Error getting contact info for company ${companyId}:`, error);
@@ -1865,48 +1869,14 @@ class WhatsAppService extends EventEmitter {
 
     try {
       const companyClient = await this.getClientForCompany(companyId);
-      const chat = await companyClient.client.getChatById(chatId);
       
-      let isOnline = false;
-      let lastSeen: string | null = null;
-      
-      if (!chat.isGroup) {
-        const contact = await companyClient.client.getContactById(chatId);
-        if (contact) {
-          try {
-            const presence = await (contact as any).getPresence?.();
-            if (presence) {
-              isOnline = presence.status === 'available' || presence.status === 'composing';
-              if (presence.lastSeen) {
-                const lastSeenDate = new Date(presence.lastSeen * 1000);
-                const now = new Date();
-                const diff = now.getTime() - lastSeenDate.getTime();
-                const minutes = Math.floor(diff / 60000);
-                const hours = Math.floor(minutes / 60);
-                const days = Math.floor(hours / 24);
-                
-                if (days > 0) {
-                  lastSeen = `última vez hace ${days} día${days > 1 ? 's' : ''}`;
-                } else if (hours > 0) {
-                  lastSeen = `última vez hace ${hours} hora${hours > 1 ? 's' : ''}`;
-                } else if (minutes > 0) {
-                  lastSeen = `última vez hace ${minutes} min`;
-                } else {
-                  lastSeen = 'en línea recientemente';
-                }
-              }
-            }
-          } catch (presenceError) {
-            console.debug('[WhatsApp] Could not get presence:', presenceError);
-          }
-        }
-      }
-      
+      // For now, return basic presence info without using getContactById
+      // which has compatibility issues with the current WhatsApp Web version
       return {
         isTyping: false,
         isRecording: false,
-        isOnline,
-        lastSeen
+        isOnline: false,
+        lastSeen: null
       };
     } catch (error) {
       console.error(`[WhatsApp] Error getting contact presence for company ${companyId}:`, error);
@@ -2108,26 +2078,38 @@ class WhatsAppService extends EventEmitter {
       // Normalize the contact ID to ensure @c.us suffix
       const normalizedId = contactId.includes('@') ? contactId : `${contactId}@c.us`;
       
-      const contact = await companyClient.client.getContactById(normalizedId);
+      // Extract phone number from contact ID
+      const phoneNumber = normalizedId.replace('@c.us', '').replace('@g.us', '');
       
-      // Try to get profile picture URL (may fail silently)
+      // Get profile picture URL directly from client (more reliable)
       let profilePicUrl: string | null = null;
       try {
-        profilePicUrl = await contact.getProfilePicUrl();
+        profilePicUrl = await companyClient.client.getProfilePicUrl(normalizedId);
       } catch (e) {
         console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
+      }
+      
+      // Try to get chat info for name
+      let name = phoneNumber;
+      try {
+        const chat = await companyClient.client.getChatById(normalizedId);
+        if (chat && chat.name) {
+          name = chat.name;
+        }
+      } catch (e) {
+        // Chat may not exist, use phone number as name
       }
 
       console.log(`[WhatsApp] Contact profile retrieved for company ${companyId}: ${contactId}`);
       
       return {
-        id: contact.id._serialized,
-        name: contact.pushname || contact.name || contact.number,
-        number: contact.number,
+        id: normalizedId,
+        name: name,
+        number: phoneNumber,
         profilePicUrl,
-        isBlocked: contact.isBlocked || false,
-        isBusiness: contact.isBusiness || false,
-        pushname: contact.pushname || null,
+        isBlocked: false,
+        isBusiness: false,
+        pushname: null,
       };
     } catch (error) {
       console.error(`[WhatsApp] Error getting contact profile for company ${companyId}:`, error);
