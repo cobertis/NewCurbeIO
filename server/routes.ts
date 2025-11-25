@@ -29020,6 +29020,110 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ success: false, error: error.message });
     }
   });
+  // ============================================================================
+  // WHATSAPP CHAT ADDITIONAL ENDPOINTS (NOTES, LABELS, PINNED, SYNC)
+  // ============================================================================
+
+  // GET /api/whatsapp/chats/:chatId/customer-note - Get customer note
+  app.get("/api/whatsapp/chats/:chatId/customer-note", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const note = await whatsappService.getCustomerNote(companyId, chatId);
+      res.json({ success: true, note });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting customer note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/chats/:chatId/customer-note - Add or edit customer note
+  app.post("/api/whatsapp/chats/:chatId/customer-note", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { note } = req.body;
+      if (note === undefined) {
+        return res.status(400).json({ success: false, error: "Note is required" });
+      }
+      await whatsappService.addOrEditCustomerNote(companyId, chatId, note);
+      res.json({ success: true, message: "Customer note updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error updating customer note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/chats/:chatId/labels - Get chat labels
+  app.get("/api/whatsapp/chats/:chatId/labels", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const labels = await whatsappService.getChatLabels(companyId, chatId);
+      res.json({ success: true, labels });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting chat labels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/chats/:chatId/labels - Change chat labels
+  app.post("/api/whatsapp/chats/:chatId/labels", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { labelIds } = req.body;
+      if (!Array.isArray(labelIds)) {
+        return res.status(400).json({ success: false, error: "labelIds must be an array" });
+      }
+      await whatsappService.changeChatLabels(companyId, chatId, labelIds);
+      res.json({ success: true, message: "Chat labels updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error changing chat labels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/chats/:chatId/pinned-messages - Get pinned messages
+  app.get("/api/whatsapp/chats/:chatId/pinned-messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const pinnedMessages = await whatsappService.getPinnedMessages(companyId, chatId);
+      res.json({ success: true, messages: pinnedMessages });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting pinned messages:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/chats/:chatId/sync-history - Sync chat history
+  app.post("/api/whatsapp/chats/:chatId/sync-history", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      await whatsappService.syncHistory(companyId, chatId);
+      res.json({ success: true, message: "History synced" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error syncing history:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/chats/:chatId/contact - Get chat contact
+  app.get("/api/whatsapp/chats/:chatId/contact", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const contact = await whatsappService.getChatContact(companyId, chatId);
+      res.json({ success: true, contact });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting chat contact:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+
   // GET /api/imessage/conversations - List all conversations
   app.get("/api/imessage/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     try {

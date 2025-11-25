@@ -1857,6 +1857,140 @@ class WhatsAppService extends EventEmitter {
       throw error;
     }
   }
+
+  // ============================================================================
+  // CHAT ADDITIONAL METHODS (CUSTOMER NOTES, LABELS, PINNED MESSAGES, SYNC)
+  // ============================================================================
+
+  /**
+   * Add or edit customer note for a chat (WhatsApp Business feature)
+   */
+  async addOrEditCustomerNote(companyId: string, chatId: string, note: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      await chat.addOrEditCustomerNote(note);
+      console.log(`[WhatsApp] Customer note updated for chat ${chatId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error updating customer note:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get customer note for a chat (WhatsApp Business feature)
+   */
+  async getCustomerNote(companyId: string, chatId: string): Promise<string | null> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      const note = await chat.getCustomerNote();
+      console.log(`[WhatsApp] Customer note retrieved for chat ${chatId}`);
+      return note;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting customer note:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get labels for a specific chat (WhatsApp Business feature)
+   */
+  async getChatLabels(companyId: string, chatId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      const labels = await chat.getLabels();
+      console.log(`[WhatsApp] Labels retrieved for chat ${chatId}`);
+      return labels || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting chat labels:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Change labels for a chat (WhatsApp Business feature)
+   */
+  async changeChatLabels(companyId: string, chatId: string, labelIds: string[]): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      await chat.changeLabels(labelIds);
+      console.log(`[WhatsApp] Labels changed for chat ${chatId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error changing chat labels:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get pinned messages in a chat
+   */
+  async getPinnedMessages(companyId: string, chatId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      const pinnedMessages = await chat.getPinnedMessages();
+      console.log(`[WhatsApp] Pinned messages retrieved for chat ${chatId}: ${pinnedMessages?.length || 0}`);
+      return pinnedMessages || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting pinned messages:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync chat history
+   */
+  async syncHistory(companyId: string, chatId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      await chat.syncHistory();
+      console.log(`[WhatsApp] History synced for chat ${chatId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error syncing history:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get chat contact
+   */
+  async getChatContact(companyId: string, chatId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      const contact = await chat.getContact();
+      console.log(`[WhatsApp] Contact retrieved for chat ${chatId}`);
+      return contact;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting chat contact:`, error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton service instance (but now it manages multiple clients internally)
