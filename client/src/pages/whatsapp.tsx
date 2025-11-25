@@ -2622,10 +2622,9 @@ export default function WhatsAppPage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <h3 className="font-medium text-[var(--whatsapp-text-primary)] truncate">{chat.name}</h3>
-                        {chat.isPinned && <Pin className="h-3 w-3 text-[var(--whatsapp-text-tertiary)]" />}
-                        {chat.isMuted && <BellOff className="h-3 w-3 text-[var(--whatsapp-text-tertiary)]" />}
+                        {chat.isMuted && <BellOff className="h-3.5 w-3.5 text-[var(--whatsapp-text-tertiary)] flex-shrink-0" />}
                       </div>
                       <span className="text-xs text-[var(--whatsapp-text-tertiary)] ml-2 flex-shrink-0">
                         {chat.lastMessage && formatTimestamp(chat.lastMessage.timestamp)}
@@ -2635,13 +2634,18 @@ export default function WhatsAppPage() {
                       <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
                         {chat.lastMessage?.body || 'No messages yet'}
                       </p>
-                      {chat.unreadCount > 0 && (
-                        <Badge 
-                          className="ml-2 bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-primary)] text-white rounded-full h-5 min-w-[20px] px-1.5 text-xs"
-                        >
-                          {chat.unreadCount}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                        {chat.isPinned && (
+                          <Pin className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" style={{ transform: 'rotate(45deg)' }} />
+                        )}
+                        {chat.unreadCount > 0 && (
+                          <Badge 
+                            className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-primary)] text-white rounded-full h-5 min-w-[20px] px-1.5 text-xs"
+                          >
+                            {chat.unreadCount}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </button>
