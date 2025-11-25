@@ -26,7 +26,7 @@ import {
   X, Reply, Forward, Star, Download, Info, Copy, Trash2, Archive, Pin, BellOff,
   Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff, ChevronDown,
   LogOut, ArchiveX, Trash, Bell, PinOff, UserMinus, Shield, ShieldOff, Edit, Plus, Loader2,
-  Image, FileIcon, Play, Square, File, Link2, RefreshCcw, Settings, Sticker, AtSign,
+  Image, FileIcon, Play, Square, File as FileIconLucide, Link2, RefreshCcw, Settings, Sticker, AtSign,
   Camera, User
 } from "lucide-react";
 
@@ -512,7 +512,7 @@ function MessageItem({
                 className="flex items-center gap-2 p-2 bg-[var(--whatsapp-bg-primary)]/50 rounded-lg hover:bg-[var(--whatsapp-bg-primary)]/70 transition-colors"
                 data-testid="media-document"
               >
-                <File className="h-8 w-8 text-[var(--whatsapp-green-primary)]" />
+                <FileIconLucide className="h-8 w-8 text-[var(--whatsapp-green-primary)]" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">Document</p>
                   <p className="text-xs text-[var(--whatsapp-text-tertiary)]">Click to download</p>
@@ -3100,7 +3100,7 @@ export default function WhatsAppPage() {
                         }
                       }}
                     >
-                      <File className="h-4 w-4 mr-2" />
+                      <FileIconLucide className="h-4 w-4 mr-2" />
                       Document
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -4025,7 +4025,7 @@ export default function WhatsAppPage() {
                  !selectedFile.type.startsWith('video/') && 
                  !selectedFile.type.startsWith('audio/') && (
                   <div className="flex flex-col items-center gap-2 p-8 bg-[var(--whatsapp-bg-secondary)] rounded-lg">
-                    <File className="h-12 w-12 text-[var(--whatsapp-icon)]" />
+                    <FileIconLucide className="h-12 w-12 text-[var(--whatsapp-icon)]" />
                     <span className="text-sm font-medium">{selectedFile.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {(selectedFile.size / 1024).toFixed(1)} KB
