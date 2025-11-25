@@ -34,7 +34,17 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
     - **Email System:** Global SMTP and database-driven templates.
     - **Campaign System:** Unified Email/SMS campaign and contact list management.
     - **BulkVS Chat System:** WhatsApp-style SMS/MMS messaging with real-time updates.
-    - **WhatsApp Web Integration:** Full WhatsApp Web functionality using whatsapp-web.js with QR code authentication, persistent multi-tenant sessions (isolated per company in .wwebjs_auth/{companyId}/), chat interface, contact list, message sending/receiving, and session management. Each company maintains its own independent WhatsApp session.
+    - **WhatsApp Web Integration:** Complete WhatsApp Web feature parity using whatsapp-web.js with:
+        - **Session Management:** QR code authentication, persistent multi-tenant sessions (isolated per company in .wwebjs_auth/{companyId}/), automatic reconnection with exponential backoff (2s, 4s, 8s, 16s, max 30s), real-time connection status.
+        - **Message Operations:** Send/receive text/media, reply, forward, delete (for everyone/for me), star/unstar, emoji reactions, download media, message info with read receipts, quoted messages display.
+        - **Chat Management:** Archive/unarchive, pin/unpin, mute/unmute (8hrs, 1 week, always), search messages, mark as unread, clear messages, delete chat.
+        - **Typing Indicators:** Real-time "typing..." and "recording audio..." indicators sent and received.
+        - **Contact Operations:** Verify registered numbers, getNumberId, block/unblock, filtered to show ONLY valid phone numbers (excludes groups, broadcasts, status@broadcast, system IDs).
+        - **Group Management:** Create groups, add/remove participants, promote/demote admins, edit group name/description, leave group, full participant management UI in Sheet component.
+        - **Special Content:** Send location (with coordinates modal), send contact cards, emoji reactions (❤️ 😂 😮 😢 🙏 👍 🎉 🔥), create polls (with multi-option modal).
+        - **UI Components:** Context menu on messages (reply/forward/react/star/delete/download/copy/info), chat header dropdown (pin/archive/mute/search/clear/delete/group info), GroupInfoSheet with participant management, location/poll modals, emoji picker, authentic WhatsApp Web styling.
+        - **Status Indicators:** ✓ sent, ✓✓ delivered, ✓✓ blue read, star indicator (⭐), forwarded indicator, timestamps.
+        - **Multi-Tenancy:** Each company maintains its own independent WhatsApp session with separate client instances, auth directories, and automatic recovery on disconnect/auth_failure.
     - **iMessage Integration (BlueBubbles):** Full Apple iMessage clone functionality with authentic bubble styling, reactions, reply-to threading, message effects, typing indicators, read receipts, multimedia support, message search, group conversations, message deletion, and native voice memo system.
     - **WebPhone WebRTC System:** Professional SIP-based calling with SIP.js, per-user configuration, call management (mute, hold, blind/attended transfer, recording, DND, call waiting), iPhone-style glassmorphism UI, responsive design, caller ID lookup, missed call notifications, call history, DTMF support, and automatic reconnection with exponential backoff (immediate first attempt, then 2s, 4s, 8s, 16s, max 30s).
 - **Billing & Stripe Integration:** Automated customer and subscription management.
