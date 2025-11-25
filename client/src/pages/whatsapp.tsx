@@ -1006,11 +1006,18 @@ export default function WhatsAppPage() {
 
   const starMutation = useMutation({
     mutationFn: async ({ messageId, star }: { messageId: string; star: boolean }) => {
-      const endpoint = star ? 'star' : 'unstar';
-      return await apiRequest('POST', `/api/whatsapp/messages/${messageId}/${endpoint}`, {});
+      if (star) {
+        return await apiRequest('POST', `/api/whatsapp/messages/${messageId}/star`, {});
+      } else {
+        return await apiRequest('DELETE', `/api/whatsapp/messages/${messageId}/star`, {});
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+      toast({ title: 'Success', description: variables.star ? 'Message starred' : 'Message unstarred' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to star message', variant: 'destructive' });
     },
   });
 
@@ -1030,6 +1037,10 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+      toast({ title: 'Success', description: 'Reaction sent' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message || 'Failed to send reaction', variant: 'destructive' });
     },
   });
 
