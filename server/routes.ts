@@ -28973,6 +28973,272 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ============================================================================
+  // PHASE 3 GROUP MEMBERSHIP ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/groups/:chatId/membership-requests - Get pending group membership requests
+  app.get("/api/whatsapp/groups/:chatId/membership-requests", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const requests = await whatsappService.getGroupMembershipRequests(companyId, chatId);
+      res.json({ success: true, requests });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting membership requests:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/groups/:chatId/membership-requests/approve - Approve group membership requests
+  app.post("/api/whatsapp/groups/:chatId/membership-requests/approve", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { requesterIds } = req.body;
+      
+      const result = await whatsappService.approveGroupMembershipRequests(companyId, chatId, { requesterIds });
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error approving membership requests:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/groups/:chatId/membership-requests/reject - Reject group membership requests
+  app.post("/api/whatsapp/groups/:chatId/membership-requests/reject", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { requesterIds } = req.body;
+      
+      const result = await whatsappService.rejectGroupMembershipRequests(companyId, chatId, { requesterIds });
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error rejecting membership requests:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PHASE 3 GROUP SETTINGS ENDPOINTS
+  // ============================================================================
+
+  // PUT /api/whatsapp/groups/:chatId/settings/add-members-admins-only - Set if only admins can add members
+  app.put("/api/whatsapp/groups/:chatId/settings/add-members-admins-only", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { adminsOnly } = req.body;
+      
+      if (typeof adminsOnly !== 'boolean') {
+        return res.status(400).json({ success: false, error: "adminsOnly must be a boolean" });
+      }
+      
+      await whatsappService.setGroupAddMembersAdminsOnly(companyId, chatId, adminsOnly);
+      res.json({ success: true, message: `Add members setting updated to admins-only: ${adminsOnly}` });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting add-members-admins-only:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/groups/:chatId/settings/info-admins-only - Set if only admins can edit group info
+  app.put("/api/whatsapp/groups/:chatId/settings/info-admins-only", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { adminsOnly } = req.body;
+      
+      if (typeof adminsOnly !== 'boolean') {
+        return res.status(400).json({ success: false, error: "adminsOnly must be a boolean" });
+      }
+      
+      await whatsappService.setGroupInfoAdminsOnly(companyId, chatId, adminsOnly);
+      res.json({ success: true, message: `Info edit setting updated to admins-only: ${adminsOnly}` });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting info-admins-only:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/groups/:chatId/picture - Set group profile picture
+  app.post("/api/whatsapp/groups/:chatId/picture", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { media } = req.body;
+      
+      if (!media) {
+        return res.status(400).json({ success: false, error: "media (base64) is required" });
+      }
+      
+      const result = await whatsappService.setGroupPicture(companyId, chatId, media);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting group picture:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/groups/:chatId/picture - Delete group profile picture
+  app.delete("/api/whatsapp/groups/:chatId/picture", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      
+      const result = await whatsappService.deleteGroupPicture(companyId, chatId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error deleting group picture:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/groups/invite/:inviteCode/info - Get invite info without joining
+  app.get("/api/whatsapp/groups/invite/:inviteCode/info", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { inviteCode } = req.params;
+      
+      const inviteInfo = await whatsappService.getInviteInfo(companyId, inviteCode);
+      res.json({ success: true, inviteInfo });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting invite info:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PHASE 3 MESSAGE EDIT/PIN ENDPOINTS
+  // ============================================================================
+
+  // PUT /api/whatsapp/messages/:messageId - Edit a message
+  app.put("/api/whatsapp/messages/:messageId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      const { content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ success: false, error: "content is required" });
+      }
+      
+      const result = await whatsappService.editMessage(companyId, messageId, content);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error editing message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/messages/:messageId/pin - Pin a message
+  app.post("/api/whatsapp/messages/:messageId/pin", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      const { duration } = req.body;
+      
+      if (typeof duration !== 'number') {
+        return res.status(400).json({ success: false, error: "duration (in seconds) is required" });
+      }
+      
+      const result = await whatsappService.pinMessage(companyId, messageId, duration);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error pinning message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/messages/:messageId/pin - Unpin a message
+  app.delete("/api/whatsapp/messages/:messageId/pin", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const result = await whatsappService.unpinMessage(companyId, messageId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error unpinning message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/messages/:messageId/reload - Reload a message from WhatsApp
+  app.post("/api/whatsapp/messages/:messageId/reload", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const result = await whatsappService.reloadMessage(companyId, messageId);
+      res.json({ success: true, message: result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error reloading message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PHASE 3 MESSAGE INFO ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/messages/:messageId/reactions - Get reactions on a message
+  app.get("/api/whatsapp/messages/:messageId/reactions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const reactions = await whatsappService.getMessageReactions(companyId, messageId);
+      res.json({ success: true, reactions });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting message reactions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/messages/:messageId/mentions - Get users mentioned in a message
+  app.get("/api/whatsapp/messages/:messageId/mentions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const mentions = await whatsappService.getMessageMentions(companyId, messageId);
+      res.json({ success: true, mentions });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting message mentions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/messages/:messageId/group-mentions - Get groups mentioned in a message
+  app.get("/api/whatsapp/messages/:messageId/group-mentions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const groupMentions = await whatsappService.getMessageGroupMentions(companyId, messageId);
+      res.json({ success: true, groupMentions });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting message group mentions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/messages/:messageId/poll-votes - Get poll votes from a poll message
+  app.get("/api/whatsapp/messages/:messageId/poll-votes", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { messageId } = req.params;
+      
+      const votes = await whatsappService.getMessagePollVotes(companyId, messageId);
+      res.json({ success: true, votes });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting poll votes:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // POST /api/whatsapp/profile/status - Set WhatsApp status message
   app.post("/api/whatsapp/profile/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29017,6 +29283,224 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ success: true, labels });
     } catch (error: any) {
       console.error('[WhatsApp] Error getting labels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PHASE 1 & 2 WHATSAPP ENDPOINTS (CLIENT STATE, LABELS, CONTACTS, PROFILE, ADDRESSBOOK)
+  // ============================================================================
+
+  // GET /api/whatsapp/state - Get client connection state
+  app.get("/api/whatsapp/state", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const state = await whatsappService.getState(companyId);
+      res.json({ success: true, state });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting client state:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/version - Get WhatsApp Web version
+  app.get("/api/whatsapp/version", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const version = await whatsappService.getWWebVersion(companyId);
+      res.json({ success: true, version });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting WWeb version:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/presence/available - Set presence as available
+  app.post("/api/whatsapp/presence/available", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      await whatsappService.sendPresenceAvailable(companyId);
+      res.json({ success: true, message: "Presence set to available" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting presence available:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/presence/unavailable - Set presence as unavailable
+  app.post("/api/whatsapp/presence/unavailable", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      await whatsappService.sendPresenceUnavailable(companyId);
+      res.json({ success: true, message: "Presence set to unavailable" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting presence unavailable:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/blocked-contacts - Get blocked contacts
+  app.get("/api/whatsapp/blocked-contacts", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const blockedContacts = await whatsappService.getBlockedContacts(companyId);
+      res.json({ success: true, blockedContacts });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting blocked contacts:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/labels/:labelId - Get label by ID
+  app.get("/api/whatsapp/labels/:labelId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { labelId } = req.params;
+      const label = await whatsappService.getLabelById(companyId, labelId);
+      res.json({ success: true, label });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting label by ID:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/labels/:labelId/chats - Get chats by label ID
+  app.get("/api/whatsapp/labels/:labelId/chats", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { labelId } = req.params;
+      const chats = await whatsappService.getChatsByLabelId(companyId, labelId);
+      res.json({ success: true, chats });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting chats by label ID:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/contacts/:contactId/about - Get contact's about status
+  app.get("/api/whatsapp/contacts/:contactId/about", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const contactId = normalizeWhatsAppId(req.params.contactId);
+      const about = await whatsappService.getContactAbout(companyId, contactId);
+      res.json({ success: true, about });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting contact about:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/numbers/:number/country-code - Get country code for number
+  app.get("/api/whatsapp/numbers/:number/country-code", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { number } = req.params;
+      const countryCode = await whatsappService.getCountryCode(companyId, number);
+      res.json({ success: true, countryCode });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting country code:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/numbers/:number/formatted - Get formatted number
+  app.get("/api/whatsapp/numbers/:number/formatted", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { number } = req.params;
+      const formattedNumber = await whatsappService.getFormattedNumber(companyId, number);
+      res.json({ success: true, formattedNumber });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting formatted number:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/profile/picture - Set profile picture
+  app.post("/api/whatsapp/profile/picture", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { media } = req.body;
+      if (!media) {
+        return res.status(400).json({ success: false, error: "Media (base64) is required" });
+      }
+      await whatsappService.setProfilePicture(companyId, media);
+      res.json({ success: true, message: "Profile picture updated successfully" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting profile picture:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/profile/picture - Delete profile picture
+  app.delete("/api/whatsapp/profile/picture", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      await whatsappService.deleteProfilePicture(companyId);
+      res.json({ success: true, message: "Profile picture deleted successfully" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error deleting profile picture:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/addressbook/contacts - Save/edit addressbook contact
+  app.post("/api/whatsapp/addressbook/contacts", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { phoneNumber, firstName, lastName, syncToAddressbook } = req.body;
+      if (!phoneNumber || !firstName) {
+        return res.status(400).json({ success: false, error: "phoneNumber and firstName are required" });
+      }
+      const result = await whatsappService.saveOrEditAddressbookContact(
+        companyId,
+        phoneNumber,
+        firstName,
+        lastName,
+        syncToAddressbook || false
+      );
+      res.json({ success: true, message: "Contact saved successfully", result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error saving addressbook contact:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/addressbook/contacts/:phoneNumber - Delete addressbook contact
+  app.delete("/api/whatsapp/addressbook/contacts/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { phoneNumber } = req.params;
+      await whatsappService.deleteAddressbookContact(companyId, phoneNumber);
+      res.json({ success: true, message: "Contact deleted successfully" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error deleting addressbook contact:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/contacts/:contactId/common-groups - Get common groups with contact
+  app.get("/api/whatsapp/contacts/:contactId/common-groups", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const contactId = normalizeWhatsAppId(req.params.contactId);
+      const commonGroups = await whatsappService.getCommonGroups(companyId, contactId);
+      res.json({ success: true, commonGroups });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting common groups:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/contacts/:contactId/device-count - Get device count for contact
+  app.get("/api/whatsapp/contacts/:contactId/device-count", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { contactId } = req.params;
+      const deviceCount = await whatsappService.getContactDeviceCount(companyId, contactId);
+      res.json({ success: true, deviceCount });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting device count:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
@@ -29123,6 +29607,488 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+
+  // ============================================================================
+  // CHANNEL BASIC ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/channels - Get all channels
+  app.get("/api/whatsapp/channels", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const channels = await whatsappService.getChannels(companyId);
+      res.json({ success: true, channels });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting channels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels - Create channel
+  app.post("/api/whatsapp/channels", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { title, options } = req.body;
+      if (!title) {
+        return res.status(400).json({ success: false, error: "Title is required" });
+      }
+      const channel = await whatsappService.createChannel(companyId, title, options);
+      res.json({ success: true, channel });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error creating channel:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/channels/:channelId - Delete channel
+  app.delete("/api/whatsapp/channels/:channelId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      await whatsappService.deleteChannel(companyId, channelId);
+      res.json({ success: true, message: "Channel deleted" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error deleting channel:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/channels/invite/:inviteCode - Get channel by invite code
+  app.get("/api/whatsapp/channels/invite/:inviteCode", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { inviteCode } = req.params;
+      const channel = await whatsappService.getChannelByInviteCode(companyId, inviteCode);
+      res.json({ success: true, channel });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting channel by invite code:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/search - Search channels
+  app.post("/api/whatsapp/channels/search", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { searchOptions } = req.body;
+      const channels = await whatsappService.searchChannels(companyId, searchOptions || {});
+      res.json({ success: true, channels });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error searching channels:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // CHANNEL SUBSCRIPTION ENDPOINTS
+  // ============================================================================
+
+  // POST /api/whatsapp/channels/:channelId/subscribe - Subscribe to channel
+  app.post("/api/whatsapp/channels/:channelId/subscribe", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const result = await whatsappService.subscribeToChannel(companyId, channelId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error subscribing to channel:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/unsubscribe - Unsubscribe from channel
+  app.post("/api/whatsapp/channels/:channelId/unsubscribe", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const result = await whatsappService.unsubscribeFromChannel(companyId, channelId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error unsubscribing from channel:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // CHANNEL MESSAGES ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/channels/:channelId/messages - Get channel messages
+  app.get("/api/whatsapp/channels/:channelId/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const messages = await whatsappService.getChannelMessages(companyId, channelId, limit);
+      res.json({ success: true, messages });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting channel messages:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/messages - Send message to channel
+  app.post("/api/whatsapp/channels/:channelId/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const { content } = req.body;
+      if (!content) {
+        return res.status(400).json({ success: false, error: "Content is required" });
+      }
+      const message = await whatsappService.sendChannelMessage(companyId, channelId, content);
+      res.json({ success: true, message });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error sending channel message:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/seen - Mark channel as seen
+  app.post("/api/whatsapp/channels/:channelId/seen", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      await whatsappService.sendChannelSeen(companyId, channelId);
+      res.json({ success: true, message: "Channel marked as seen" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error marking channel as seen:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // CHANNEL SETTINGS ENDPOINTS
+  // ============================================================================
+
+  // PUT /api/whatsapp/channels/:channelId/subject - Update channel subject
+  app.put("/api/whatsapp/channels/:channelId/subject", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const { subject } = req.body;
+      if (!subject) {
+        return res.status(400).json({ success: false, error: "Subject is required" });
+      }
+      await whatsappService.setChannelSubject(companyId, channelId, subject);
+      res.json({ success: true, message: "Channel subject updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error updating channel subject:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/channels/:channelId/description - Update channel description
+  app.put("/api/whatsapp/channels/:channelId/description", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const { description } = req.body;
+      if (description === undefined) {
+        return res.status(400).json({ success: false, error: "Description is required" });
+      }
+      await whatsappService.setChannelDescription(companyId, channelId, description);
+      res.json({ success: true, message: "Channel description updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error updating channel description:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/picture - Set channel picture
+  app.post("/api/whatsapp/channels/:channelId/picture", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const { media } = req.body;
+      if (!media) {
+        return res.status(400).json({ success: false, error: "Media is required" });
+      }
+      await whatsappService.setChannelPicture(companyId, channelId, media);
+      res.json({ success: true, message: "Channel picture updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting channel picture:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PUT /api/whatsapp/channels/:channelId/reactions - Set channel reaction settings
+  app.put("/api/whatsapp/channels/:channelId/reactions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const { reactionCode } = req.body;
+      if (reactionCode === undefined || ![0, 1, 2].includes(reactionCode)) {
+        return res.status(400).json({ success: false, error: "reactionCode must be 0, 1, or 2" });
+      }
+      await whatsappService.setChannelReactionSetting(companyId, channelId, reactionCode);
+      res.json({ success: true, message: "Channel reaction setting updated" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting channel reactions:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/mute - Mute channel
+  app.post("/api/whatsapp/channels/:channelId/mute", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      await whatsappService.muteChannel(companyId, channelId);
+      res.json({ success: true, message: "Channel muted" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error muting channel:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/unmute - Unmute channel
+  app.post("/api/whatsapp/channels/:channelId/unmute", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      await whatsappService.unmuteChannel(companyId, channelId);
+      res.json({ success: true, message: "Channel unmuted" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error unmuting channel:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/channels/:channelId/subscribers - Get channel subscribers
+  app.get("/api/whatsapp/channels/:channelId/subscribers", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const subscribers = await whatsappService.getChannelSubscribers(companyId, channelId, limit);
+      res.json({ success: true, subscribers });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting channel subscribers:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // CHANNEL ADMIN ENDPOINTS
+  // ============================================================================
+
+  // POST /api/whatsapp/channels/:channelId/admin-invite - Send admin invite
+  app.post("/api/whatsapp/channels/:channelId/admin-invite", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const { chatId } = req.body;
+      if (!chatId) {
+        return res.status(400).json({ success: false, error: "chatId is required" });
+      }
+      const result = await whatsappService.sendChannelAdminInvite(companyId, channelId, chatId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error sending admin invite:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/admin-invite/accept - Accept admin invite
+  app.post("/api/whatsapp/channels/:channelId/admin-invite/accept", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const result = await whatsappService.acceptChannelAdminInvite(companyId, channelId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error accepting admin invite:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/channels/:channelId/admin-invite/:userId - Revoke admin invite
+  app.delete("/api/whatsapp/channels/:channelId/admin-invite/:userId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId, userId } = req.params;
+      const result = await whatsappService.revokeChannelAdminInvite(companyId, channelId, userId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error revoking admin invite:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/channels/:channelId/admins/:userId - Demote channel admin
+  app.delete("/api/whatsapp/channels/:channelId/admins/:userId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId, userId } = req.params;
+      const result = await whatsappService.demoteChannelAdmin(companyId, channelId, userId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error demoting channel admin:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/channels/:channelId/transfer-ownership - Transfer channel ownership
+  app.post("/api/whatsapp/channels/:channelId/transfer-ownership", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { channelId } = req.params;
+      const { newOwnerId } = req.body;
+      if (!newOwnerId) {
+        return res.status(400).json({ success: false, error: "newOwnerId is required" });
+      }
+      const result = await whatsappService.transferChannelOwnership(companyId, channelId, newOwnerId);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error transferring channel ownership:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // BROADCAST ENDPOINTS
+  // ============================================================================
+
+  // GET /api/whatsapp/broadcasts - Get all broadcasts
+  app.get("/api/whatsapp/broadcasts", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const broadcasts = await whatsappService.getBroadcasts(companyId);
+      res.json({ success: true, broadcasts });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting broadcasts:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/broadcasts/:broadcastId/chat - Get broadcast chat
+  app.get("/api/whatsapp/broadcasts/:broadcastId/chat", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { broadcastId } = req.params;
+      const chat = await whatsappService.getBroadcastChat(companyId, broadcastId);
+      res.json({ success: true, chat });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting broadcast chat:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/whatsapp/broadcasts/:broadcastId/contact - Get broadcast contact
+  app.get("/api/whatsapp/broadcasts/:broadcastId/contact", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { broadcastId } = req.params;
+      const contact = await whatsappService.getBroadcastContact(companyId, broadcastId);
+      res.json({ success: true, contact });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting broadcast contact:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // CALL ENDPOINTS
+  // ============================================================================
+
+  // POST /api/whatsapp/calls/:callId/reject - Reject call
+  app.post("/api/whatsapp/calls/:callId/reject", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { callId } = req.params;
+      await whatsappService.rejectCall(companyId, callId);
+      res.json({ success: true, message: "Call rejected" });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error rejecting call:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // AUTO-DOWNLOAD SETTINGS ENDPOINTS
+  // ============================================================================
+
+  // POST /api/whatsapp/settings/auto-download/audio - Set auto-download audio
+  app.post("/api/whatsapp/settings/auto-download/audio", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, error: "enabled must be a boolean" });
+      }
+      await whatsappService.setAutoDownloadAudio(companyId, enabled);
+      res.json({ success: true, message: `Auto-download audio ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting auto-download audio:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/settings/auto-download/documents - Set auto-download documents
+  app.post("/api/whatsapp/settings/auto-download/documents", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, error: "enabled must be a boolean" });
+      }
+      await whatsappService.setAutoDownloadDocuments(companyId, enabled);
+      res.json({ success: true, message: `Auto-download documents ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting auto-download documents:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/settings/auto-download/photos - Set auto-download photos
+  app.post("/api/whatsapp/settings/auto-download/photos", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, error: "enabled must be a boolean" });
+      }
+      await whatsappService.setAutoDownloadPhotos(companyId, enabled);
+      res.json({ success: true, message: `Auto-download photos ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting auto-download photos:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/settings/auto-download/videos - Set auto-download videos
+  app.post("/api/whatsapp/settings/auto-download/videos", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, error: "enabled must be a boolean" });
+      }
+      await whatsappService.setAutoDownloadVideos(companyId, enabled);
+      res.json({ success: true, message: `Auto-download videos ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting auto-download videos:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/settings/background-sync - Set background sync
+  app.post("/api/whatsapp/settings/background-sync", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { enabled } = req.body;
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, error: "enabled must be a boolean" });
+      }
+      await whatsappService.setBackgroundSync(companyId, enabled);
+      res.json({ success: true, message: `Background sync ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error setting background sync:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 
   // GET /api/imessage/conversations - List all conversations
   app.get("/api/imessage/conversations", requireActiveCompany, async (req: Request, res: Response) => {

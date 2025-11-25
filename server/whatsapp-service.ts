@@ -833,6 +833,214 @@ class WhatsAppService extends EventEmitter {
     }
   }
 
+  /**
+   * Edit a message
+   */
+  async editMessage(companyId: string, messageId: string, newContent: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const result = await message.edit(newContent);
+          console.log(`[WhatsApp] Message edited for company ${companyId}: ${messageId}`);
+          return result;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error editing message for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pin a message (duration in seconds)
+   */
+  async pinMessage(companyId: string, messageId: string, duration: number): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const result = await message.pin(duration);
+          console.log(`[WhatsApp] Message pinned for company ${companyId}: ${messageId} (duration: ${duration}s)`);
+          return result;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error pinning message for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unpin a message
+   */
+  async unpinMessage(companyId: string, messageId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const result = await message.unpin();
+          console.log(`[WhatsApp] Message unpinned for company ${companyId}: ${messageId}`);
+          return result;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error unpinning message for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reload message from WhatsApp
+   */
+  async reloadMessage(companyId: string, messageId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const result = await message.reload();
+          console.log(`[WhatsApp] Message reloaded for company ${companyId}: ${messageId}`);
+          return result;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error reloading message for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get reactions on a message
+   */
+  async getMessageReactions(companyId: string, messageId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const reactions = await message.getReactions();
+          console.log(`[WhatsApp] Reactions retrieved for company ${companyId}: ${messageId}`);
+          return reactions;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting message reactions for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get users mentioned in message
+   */
+  async getMessageMentions(companyId: string, messageId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const mentions = await message.getMentions();
+          console.log(`[WhatsApp] Mentions retrieved for company ${companyId}: ${messageId}`);
+          return mentions;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting message mentions for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get groups mentioned in message
+   */
+  async getMessageGroupMentions(companyId: string, messageId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const groupMentions = await message.getGroupMentions();
+          console.log(`[WhatsApp] Group mentions retrieved for company ${companyId}: ${messageId}`);
+          return groupMentions;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting message group mentions for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get poll votes from a poll message
+   */
+  async getMessagePollVotes(companyId: string, messageId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChats();
+      for (const chat of chats) {
+        const messages = await chat.fetchMessages({ limit: 100 });
+        const message = messages.find((m: any) => m.id._serialized === messageId);
+        if (message) {
+          const pollVotes = await message.getVotes();
+          console.log(`[WhatsApp] Poll votes retrieved for company ${companyId}: ${messageId}`);
+          return pollVotes;
+        }
+      }
+      throw new Error('Message not found');
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting message poll votes for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
   // ============================================================================
   // CHAT OPERATIONS (IMPORTANTE)
   // ============================================================================
@@ -1548,6 +1756,193 @@ class WhatsAppService extends EventEmitter {
     }
   }
 
+  /**
+   * Get pending group membership requests
+   */
+  async getGroupMembershipRequests(companyId: string, chatId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) throw new Error('Not a group chat');
+      const requests = await chat.getGroupMembershipRequests();
+      console.log(`[WhatsApp] Group membership requests retrieved for company ${companyId}: ${chatId}`);
+      return requests;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting membership requests for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve group membership requests
+   * @param companyId Company ID
+   * @param chatId Group chat ID
+   * @param options Optional options with requesterIds to approve specific requests
+   */
+  async approveGroupMembershipRequests(
+    companyId: string, 
+    chatId: string, 
+    options?: { requesterIds?: string[] }
+  ): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) throw new Error('Not a group chat');
+      const result = await chat.approveGroupMembershipRequests(options);
+      console.log(`[WhatsApp] Group membership requests approved for company ${companyId}: ${chatId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error approving membership requests for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject group membership requests
+   * @param companyId Company ID
+   * @param chatId Group chat ID
+   * @param options Optional options with requesterIds to reject specific requests
+   */
+  async rejectGroupMembershipRequests(
+    companyId: string, 
+    chatId: string, 
+    options?: { requesterIds?: string[] }
+  ): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) throw new Error('Not a group chat');
+      const result = await chat.rejectGroupMembershipRequests(options);
+      console.log(`[WhatsApp] Group membership requests rejected for company ${companyId}: ${chatId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error rejecting membership requests for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set if only admins can add members to the group
+   */
+  async setGroupAddMembersAdminsOnly(companyId: string, chatId: string, adminsOnly: boolean): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) throw new Error('Not a group chat');
+      await chat.setAddMembersAdminsOnly(adminsOnly);
+      console.log(`[WhatsApp] Group add-members-admins-only setting updated for company ${companyId}: ${chatId} - ${adminsOnly}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting add-members-admins-only for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set if only admins can edit group info
+   */
+  async setGroupInfoAdminsOnly(companyId: string, chatId: string, adminsOnly: boolean): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) throw new Error('Not a group chat');
+      await chat.setInfoAdminsOnly(adminsOnly);
+      console.log(`[WhatsApp] Group info-admins-only setting updated for company ${companyId}: ${chatId} - ${adminsOnly}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting info-admins-only for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set group profile picture
+   * @param companyId Company ID
+   * @param chatId Group chat ID
+   * @param base64Image Base64 encoded image data
+   */
+  async setGroupPicture(companyId: string, chatId: string, base64Image: string): Promise<boolean> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) throw new Error('Not a group chat');
+      
+      const { MessageMedia } = pkg;
+      const media = new MessageMedia('image/jpeg', base64Image);
+      const result = await chat.setPicture(media);
+      
+      console.log(`[WhatsApp] Group picture updated for company ${companyId}: ${chatId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting group picture for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete group profile picture
+   */
+  async deleteGroupPicture(companyId: string, chatId: string): Promise<boolean> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      if (!chat.isGroup) throw new Error('Not a group chat');
+      const result = await chat.deletePicture();
+      console.log(`[WhatsApp] Group picture deleted for company ${companyId}: ${chatId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error deleting group picture for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get invite code info without joining the group
+   * @param companyId Company ID
+   * @param inviteCode The invite code (e.g., from a chat.whatsapp.com/XXX link)
+   */
+  async getInviteInfo(companyId: string, inviteCode: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const inviteInfo = await companyClient.client.getInviteInfo(inviteCode);
+      console.log(`[WhatsApp] Invite info retrieved for company ${companyId}: ${inviteCode}`);
+      return inviteInfo;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting invite info for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
   // ============================================================================
   // SPECIAL CONTENT (CONTENIDO ESPECIAL)
   // ============================================================================
@@ -1988,6 +2383,1069 @@ class WhatsAppService extends EventEmitter {
       return contact;
     } catch (error) {
       console.error(`[WhatsApp] Error getting chat contact:`, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // CLIENT STATE/PRESENCE FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Get client connection state
+   */
+  async getState(companyId: string): Promise<string> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const state = await companyClient.client.getState();
+      console.log(`[WhatsApp] State retrieved for company ${companyId}: ${state}`);
+      return state;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting state for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get WhatsApp Web version
+   */
+  async getWWebVersion(companyId: string): Promise<string> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const version = await companyClient.client.getWWebVersion();
+      console.log(`[WhatsApp] WWeb version retrieved for company ${companyId}: ${version}`);
+      return version;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting WWeb version for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send presence available (online status)
+   */
+  async sendPresenceAvailable(companyId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.sendPresenceAvailable();
+      console.log(`[WhatsApp] Presence set to available for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error sending presence available for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send presence unavailable (offline status)
+   */
+  async sendPresenceUnavailable(companyId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.sendPresenceUnavailable();
+      console.log(`[WhatsApp] Presence set to unavailable for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error sending presence unavailable for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all blocked contacts
+   */
+  async getBlockedContacts(companyId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const blockedContacts = await companyClient.client.getBlockedContacts();
+      console.log(`[WhatsApp] Blocked contacts retrieved for company ${companyId}: ${blockedContacts?.length || 0} contacts`);
+      return blockedContacts || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting blocked contacts for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // LABEL FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Get label by ID (WhatsApp Business feature)
+   */
+  async getLabelById(companyId: string, labelId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const label = await companyClient.client.getLabelById(labelId);
+      console.log(`[WhatsApp] Label retrieved for company ${companyId}: ${labelId}`);
+      return label;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting label by ID for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get chats by label ID (WhatsApp Business feature)
+   */
+  async getChatsByLabelId(companyId: string, labelId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chats = await companyClient.client.getChatsByLabelId(labelId);
+      console.log(`[WhatsApp] Chats by label retrieved for company ${companyId}: ${labelId} (${chats?.length || 0} chats)`);
+      return chats || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting chats by label ID for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // CONTACT UTILITY FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Get country code for a phone number
+   */
+  async getCountryCode(companyId: string, number: string): Promise<string> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const countryCode = await companyClient.client.getCountryCode(number);
+      console.log(`[WhatsApp] Country code retrieved for company ${companyId}: ${number} -> ${countryCode}`);
+      return countryCode;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting country code for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get formatted phone number
+   */
+  async getFormattedNumber(companyId: string, number: string): Promise<string> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const formattedNumber = await companyClient.client.getFormattedNumber(number);
+      console.log(`[WhatsApp] Formatted number retrieved for company ${companyId}: ${number} -> ${formattedNumber}`);
+      return formattedNumber;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting formatted number for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get contact's about/status message
+   */
+  async getContactAbout(companyId: string, contactId: string): Promise<string | null> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const normalizedId = this.normalizeWhatsAppId(contactId);
+      const contact = await companyClient.client.getContactById(normalizedId);
+      const about = await contact.getAbout();
+      console.log(`[WhatsApp] About retrieved for company ${companyId}, contact ${contactId}`);
+      return about || null;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting contact about for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // PHASE 2: PROFILE FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Set client's profile picture
+   * @param companyId Company ID
+   * @param media Base64 encoded image data (with or without data URI prefix)
+   */
+  async setProfilePicture(companyId: string, media: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const { MessageMedia } = pkg;
+      
+      let base64Data = media;
+      let mimetype = 'image/jpeg';
+      
+      if (media.includes(',')) {
+        const parts = media.split(',');
+        const mimeMatch = parts[0].match(/data:([^;]+)/);
+        if (mimeMatch) {
+          mimetype = mimeMatch[1];
+        }
+        base64Data = parts[1];
+      }
+      
+      const mediaObj = new MessageMedia(mimetype, base64Data, 'profile-picture');
+      await companyClient.client.setProfilePicture(mediaObj);
+      console.log(`[WhatsApp] Profile picture set for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting profile picture for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete client's profile picture
+   * @param companyId Company ID
+   */
+  async deleteProfilePicture(companyId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.deleteProfilePicture();
+      console.log(`[WhatsApp] Profile picture deleted for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error deleting profile picture for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // PHASE 2: ADDRESSBOOK FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Save or edit an addressbook contact
+   * @param companyId Company ID
+   * @param phoneNumber Phone number of the contact
+   * @param firstName First name of the contact
+   * @param lastName Last name of the contact (optional)
+   * @param syncToAddressbook Whether to sync to phone's addressbook
+   */
+  async saveOrEditAddressbookContact(
+    companyId: string,
+    phoneNumber: string,
+    firstName: string,
+    lastName?: string,
+    syncToAddressbook: boolean = false
+  ): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      const contactId = this.normalizeWhatsAppId(cleanNumber);
+      
+      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+      
+      const result = await companyClient.client.addOrModifyContact(
+        contactId,
+        fullName,
+        { syncToAddressbook }
+      );
+      
+      console.log(`[WhatsApp] Addressbook contact saved/edited for company ${companyId}: ${phoneNumber} -> ${fullName}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error saving/editing addressbook contact for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an addressbook contact
+   * @param companyId Company ID
+   * @param phoneNumber Phone number of the contact to delete
+   */
+  async deleteAddressbookContact(companyId: string, phoneNumber: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      const contactId = this.normalizeWhatsAppId(cleanNumber);
+      
+      await companyClient.client.removeContact(contactId);
+      console.log(`[WhatsApp] Addressbook contact deleted for company ${companyId}: ${phoneNumber}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error deleting addressbook contact for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // PHASE 2: CONTACT INFO FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Get common groups with a contact
+   * @param companyId Company ID
+   * @param contactId Contact ID or phone number
+   * @returns Array of common groups
+   */
+  async getCommonGroups(companyId: string, contactId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const normalizedId = this.normalizeWhatsAppId(contactId);
+      const contact = await companyClient.client.getContactById(normalizedId);
+      const commonGroups = await contact.getCommonGroups();
+      console.log(`[WhatsApp] Common groups retrieved for company ${companyId}, contact ${contactId}: ${commonGroups?.length || 0} groups`);
+      return commonGroups || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting common groups for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get device count for a contact (number of devices/sessions)
+   * @param companyId Company ID
+   * @param userId User ID or phone number
+   * @returns Number of devices registered for this user
+   */
+  async getContactDeviceCount(companyId: string, userId: string): Promise<number> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const cleanNumber = userId.replace(/\D/g, '');
+      const deviceCount = await companyClient.client.getContactDeviceCount(cleanNumber);
+      console.log(`[WhatsApp] Device count retrieved for company ${companyId}, user ${userId}: ${deviceCount}`);
+      return deviceCount || 0;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting device count for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // CHANNEL OPERATIONS
+  // ============================================================================
+
+  // -------------------- CHANNEL BASIC FUNCTIONS --------------------
+
+  /**
+   * Get all channels
+   * @param companyId Company ID
+   * @returns Array of channels
+   */
+  async getChannels(companyId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channels = await companyClient.client.getChannels();
+      console.log(`[WhatsApp] Channels retrieved for company ${companyId}: ${channels?.length || 0} channels`);
+      return channels || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting channels for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new channel
+   * @param companyId Company ID
+   * @param title Channel title/name
+   * @param options Optional channel creation options (description, picture, etc.)
+   * @returns Created channel object
+   */
+  async createChannel(companyId: string, title: string, options?: {
+    description?: string;
+    picture?: string;
+  }): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.createChannel(title, options);
+      console.log(`[WhatsApp] Channel created for company ${companyId}: ${title}`);
+      return channel;
+    } catch (error) {
+      console.error(`[WhatsApp] Error creating channel for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a channel
+   * @param companyId Company ID
+   * @param channelId Channel ID to delete
+   */
+  async deleteChannel(companyId: string, channelId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.delete();
+      console.log(`[WhatsApp] Channel deleted for company ${companyId}: ${channelId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error deleting channel for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get channel by invite code
+   * @param companyId Company ID
+   * @param inviteCode Channel invite code
+   * @returns Channel object
+   */
+  async getChannelByInviteCode(companyId: string, inviteCode: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChannelByInviteCode(inviteCode);
+      console.log(`[WhatsApp] Channel retrieved by invite code for company ${companyId}: ${inviteCode}`);
+      return channel;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting channel by invite code for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search for channels
+   * @param companyId Company ID
+   * @param searchOptions Search options (name, countryCodes, view count range, etc.)
+   * @returns Array of matching channels
+   */
+  async searchChannels(companyId: string, searchOptions: {
+    name?: string;
+    countryCodes?: string[];
+    view?: [number, number];
+    sort?: string;
+    limit?: number;
+  }): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channels = await companyClient.client.searchChannels(searchOptions);
+      console.log(`[WhatsApp] Channels searched for company ${companyId}: found ${channels?.length || 0} channels`);
+      return channels || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error searching channels for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // -------------------- CHANNEL SUBSCRIPTION --------------------
+
+  /**
+   * Subscribe to a channel
+   * @param companyId Company ID
+   * @param channelId Channel ID to subscribe to
+   * @returns Subscription result
+   */
+  async subscribeToChannel(companyId: string, channelId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const result = await channel.subscribe();
+      console.log(`[WhatsApp] Subscribed to channel for company ${companyId}: ${channelId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error subscribing to channel for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unsubscribe from a channel
+   * @param companyId Company ID
+   * @param channelId Channel ID to unsubscribe from
+   * @returns Unsubscription result
+   */
+  async unsubscribeFromChannel(companyId: string, channelId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const result = await channel.unsubscribe();
+      console.log(`[WhatsApp] Unsubscribed from channel for company ${companyId}: ${channelId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error unsubscribing from channel for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // -------------------- CHANNEL MESSAGES --------------------
+
+  /**
+   * Get channel messages
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param limit Number of messages to fetch (default: 50)
+   * @returns Array of channel messages
+   */
+  async getChannelMessages(companyId: string, channelId: string, limit: number = 50): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const messages = await channel.fetchMessages({ limit });
+      console.log(`[WhatsApp] Channel messages retrieved for company ${companyId}: ${channelId} (${messages?.length || 0} messages)`);
+      return messages || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting channel messages for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send message to a channel
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param content Message content (text, media, etc.)
+   * @returns Sent message object
+   */
+  async sendChannelMessage(companyId: string, channelId: string, content: string | any): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const message = await channel.sendMessage(content);
+      console.log(`[WhatsApp] Message sent to channel for company ${companyId}: ${channelId}`);
+      return message;
+    } catch (error) {
+      console.error(`[WhatsApp] Error sending message to channel for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark channel as seen
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   */
+  async sendChannelSeen(companyId: string, channelId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.sendSeen();
+      console.log(`[WhatsApp] Channel marked as seen for company ${companyId}: ${channelId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error marking channel as seen for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // -------------------- CHANNEL SETTINGS --------------------
+
+  /**
+   * Update channel title/subject
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param subject New channel title/subject
+   */
+  async setChannelSubject(companyId: string, channelId: string, subject: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.setSubject(subject);
+      console.log(`[WhatsApp] Channel subject updated for company ${companyId}: ${channelId} -> ${subject}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting channel subject for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update channel description
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param description New channel description
+   */
+  async setChannelDescription(companyId: string, channelId: string, description: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.setDescription(description);
+      console.log(`[WhatsApp] Channel description updated for company ${companyId}: ${channelId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting channel description for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set channel profile picture
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param base64Image Base64 encoded image data (with or without data URI prefix)
+   */
+  async setChannelPicture(companyId: string, channelId: string, base64Image: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const { MessageMedia } = pkg;
+      
+      let base64Data = base64Image;
+      let mimetype = 'image/jpeg';
+      
+      if (base64Image.includes(',')) {
+        const parts = base64Image.split(',');
+        const mimeMatch = parts[0].match(/data:([^;]+)/);
+        if (mimeMatch) {
+          mimetype = mimeMatch[1];
+        }
+        base64Data = parts[1];
+      }
+      
+      const media = new MessageMedia(mimetype, base64Data, 'channel-picture');
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.setPicture(media);
+      console.log(`[WhatsApp] Channel picture set for company ${companyId}: ${channelId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting channel picture for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set channel reaction settings
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param reactionCode Reaction setting code (0=none, 1=basic, 2=all)
+   */
+  async setChannelReactionSetting(companyId: string, channelId: string, reactionCode: 0 | 1 | 2): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.setReactionSetting(reactionCode);
+      const settingNames = { 0: 'none', 1: 'basic', 2: 'all' };
+      console.log(`[WhatsApp] Channel reaction setting updated for company ${companyId}: ${channelId} -> ${settingNames[reactionCode]}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting channel reaction setting for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mute channel notifications
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   */
+  async muteChannel(companyId: string, channelId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.mute();
+      console.log(`[WhatsApp] Channel muted for company ${companyId}: ${channelId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error muting channel for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unmute channel notifications
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   */
+  async unmuteChannel(companyId: string, channelId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      await channel.unmute();
+      console.log(`[WhatsApp] Channel unmuted for company ${companyId}: ${channelId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error unmuting channel for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get channel subscribers
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param limit Maximum number of subscribers to fetch
+   * @returns Array of channel subscribers
+   */
+  async getChannelSubscribers(companyId: string, channelId: string, limit?: number): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const subscribers = await channel.getSubscribers(limit);
+      console.log(`[WhatsApp] Channel subscribers retrieved for company ${companyId}: ${channelId} (${subscribers?.length || 0} subscribers)`);
+      return subscribers || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting channel subscribers for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // -------------------- CHANNEL ADMIN --------------------
+
+  /**
+   * Send admin invite to a user for a channel
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param chatId User's chat ID to invite as admin
+   * @returns Invite result
+   */
+  async sendChannelAdminInvite(companyId: string, channelId: string, chatId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const result = await channel.sendAdminInvite(chatId);
+      console.log(`[WhatsApp] Admin invite sent for channel for company ${companyId}: ${channelId} -> ${chatId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error sending admin invite for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Accept admin invite for a channel
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @returns Accept result
+   */
+  async acceptChannelAdminInvite(companyId: string, channelId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const result = await channel.acceptAdminInvite();
+      console.log(`[WhatsApp] Admin invite accepted for channel for company ${companyId}: ${channelId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error accepting admin invite for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Revoke admin invite for a user
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param userId User ID whose invite to revoke
+   * @returns Revoke result
+   */
+  async revokeChannelAdminInvite(companyId: string, channelId: string, userId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const result = await channel.revokeAdminInvite(userId);
+      console.log(`[WhatsApp] Admin invite revoked for channel for company ${companyId}: ${channelId} -> ${userId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error revoking admin invite for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Demote a channel admin
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param userId User ID to demote
+   * @returns Demote result
+   */
+  async demoteChannelAdmin(companyId: string, channelId: string, userId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const result = await channel.demoteAdmin(userId);
+      console.log(`[WhatsApp] Admin demoted for channel for company ${companyId}: ${channelId} -> ${userId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error demoting admin for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Transfer channel ownership to another user
+   * @param companyId Company ID
+   * @param channelId Channel ID
+   * @param newOwnerId New owner's user ID
+   * @returns Transfer result
+   */
+  async transferChannelOwnership(companyId: string, channelId: string, newOwnerId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const channel = await companyClient.client.getChatById(channelId);
+      const result = await channel.transferOwnership(newOwnerId);
+      console.log(`[WhatsApp] Channel ownership transferred for company ${companyId}: ${channelId} -> ${newOwnerId}`);
+      return result;
+    } catch (error) {
+      console.error(`[WhatsApp] Error transferring channel ownership for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============ BROADCAST OPERATIONS ============
+
+  /**
+   * Get all broadcast lists for a company
+   * @param companyId Company ID
+   * @returns Array of broadcast lists
+   */
+  async getBroadcasts(companyId: string): Promise<any[]> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const broadcasts = await companyClient.client.getBroadcasts();
+      console.log(`[WhatsApp] Broadcasts retrieved for company ${companyId}: ${broadcasts?.length || 0} broadcasts`);
+      return broadcasts || [];
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting broadcasts for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get chat for a specific broadcast list
+   * @param companyId Company ID
+   * @param broadcastId Broadcast list ID
+   * @returns Broadcast chat object
+   */
+  async getBroadcastChat(companyId: string, broadcastId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const chat = await companyClient.client.getChatById(broadcastId);
+      console.log(`[WhatsApp] Broadcast chat retrieved for company ${companyId}: ${broadcastId}`);
+      return chat;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting broadcast chat for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get contact info for a broadcast list
+   * @param companyId Company ID
+   * @param broadcastId Broadcast list ID
+   * @returns Broadcast contact object
+   */
+  async getBroadcastContact(companyId: string, broadcastId: string): Promise<any> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const contact = await companyClient.client.getContactById(broadcastId);
+      console.log(`[WhatsApp] Broadcast contact retrieved for company ${companyId}: ${broadcastId}`);
+      return contact;
+    } catch (error) {
+      console.error(`[WhatsApp] Error getting broadcast contact for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============ CALL OPERATIONS ============
+
+  /**
+   * Reject an incoming call
+   * Note: This requires having the Call object from the 'call' event
+   * @param companyId Company ID
+   * @param callId Call ID to reject
+   */
+  async rejectCall(companyId: string, callId: string): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      const call = await companyClient.client.getCallById(callId);
+      if (!call) {
+        throw new Error('Call not found');
+      }
+      await call.reject();
+      console.log(`[WhatsApp] Call rejected for company ${companyId}: ${callId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error rejecting call for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  // ============ AUTO-DOWNLOAD SETTINGS ============
+
+  /**
+   * Set auto-download audio setting
+   * @param companyId Company ID
+   * @param flag Enable or disable auto-download
+   */
+  async setAutoDownloadAudio(companyId: string, flag: boolean): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.setAutoDownloadAudio(flag);
+      console.log(`[WhatsApp] Auto-download audio set to ${flag} for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting auto-download audio for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set auto-download documents setting
+   * @param companyId Company ID
+   * @param flag Enable or disable auto-download
+   */
+  async setAutoDownloadDocuments(companyId: string, flag: boolean): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.setAutoDownloadDocuments(flag);
+      console.log(`[WhatsApp] Auto-download documents set to ${flag} for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting auto-download documents for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set auto-download photos setting
+   * @param companyId Company ID
+   * @param flag Enable or disable auto-download
+   */
+  async setAutoDownloadPhotos(companyId: string, flag: boolean): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.setAutoDownloadPhotos(flag);
+      console.log(`[WhatsApp] Auto-download photos set to ${flag} for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting auto-download photos for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set auto-download videos setting
+   * @param companyId Company ID
+   * @param flag Enable or disable auto-download
+   */
+  async setAutoDownloadVideos(companyId: string, flag: boolean): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.setAutoDownloadVideos(flag);
+      console.log(`[WhatsApp] Auto-download videos set to ${flag} for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting auto-download videos for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set background sync setting
+   * @param companyId Company ID
+   * @param flag Enable or disable background sync
+   */
+  async setBackgroundSync(companyId: string, flag: boolean): Promise<void> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+    const companyClient = this.clients.get(companyId)!;
+    try {
+      await companyClient.client.setBackgroundSync(flag);
+      console.log(`[WhatsApp] Background sync set to ${flag} for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error setting background sync for company ${companyId}:`, error);
       throw error;
     }
   }
