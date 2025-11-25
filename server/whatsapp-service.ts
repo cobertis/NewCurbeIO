@@ -355,10 +355,8 @@ class WhatsAppService extends EventEmitter {
     try {
       const chats = await companyClient.client.getChats();
       
-      // Filter out system chats that WhatsApp auto-recreates
-      // These cannot be permanently deleted as WhatsApp restores them on new system messages
+      // Filter out only system chats that cannot be permanently deleted
       const SYSTEM_CHAT_IDS = ['0@c.us', 'status@broadcast'];
-      const SYSTEM_MESSAGE_TYPES = ['notification', 'protocol', 'e2e_notification', 'gp2', 'revoked'];
       
       return chats.filter((chat: any) => {
         const chatId = chat.id?._serialized || chat.id;
@@ -371,18 +369,6 @@ class WhatsAppService extends EventEmitter {
         // Exclude chats with user ID "0" (WhatsApp service notifications)
         if (chat.id?.user === '0' || chat.id?.user === 0) {
           return false;
-        }
-        
-        // Exclude chats where lastMessage is empty or system type
-        const lastMsg = chat.lastMessage;
-        if (lastMsg) {
-          const body = lastMsg.body || '';
-          const type = lastMsg.type || '';
-          
-          // If last message is empty or system type, exclude the chat
-          if (body.trim() === '' || SYSTEM_MESSAGE_TYPES.includes(type)) {
-            return false;
-          }
         }
         
         return true;
