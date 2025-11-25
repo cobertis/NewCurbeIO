@@ -102,6 +102,167 @@ interface WhatsAppStatus {
 }
 
 // =====================================================
+// LOCATION AUTOCOMPLETE COMPONENT
+// =====================================================
+
+interface LocationResult {
+  place_id: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address: {
+    name?: string;
+    house_number?: string;
+    road?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+  };
+}
+
+interface LocationAutocompleteProps {
+  onLocationSelect: (lat: number, lng: number, name: string) => void;
+}
+
+function LocationAutocomplete({ onLocationSelect }: LocationAutocompleteProps) {
+  const [searchValue, setSearchValue] = useState('');
+  const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchSuggestions = async (query: string) => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/locationiq/autocomplete?q=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data.results || []);
+        setShowSuggestions((data.results || []).length > 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch location suggestions:", error);
+      setSuggestions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    if (!value.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      fetchSuggestions(value);
+    }, 300);
+  };
+
+  const handleSelectSuggestion = (result: LocationResult) => {
+    const { address } = result;
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    
+    // Build location name from address components
+    const nameParts = [
+      address.house_number,
+      address.road,
+      address.city || address.town || address.village,
+      address.state,
+    ].filter(Boolean);
+    const locationName = nameParts.join(", ") || result.display_name;
+
+    setSearchValue(locationName);
+    onLocationSelect(lat, lng, locationName);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <Label htmlFor="location-search" className="text-sm font-medium">Search Address</Label>
+      <div className="relative mt-1.5">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          id="location-search"
+          value={searchValue}
+          onChange={handleInputChange}
+          placeholder="Start typing an address..."
+          className="pl-9"
+          autoComplete="off"
+          data-testid="input-location-search"
+        />
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-48 overflow-y-auto">
+          {suggestions.map((result) => (
+            <button
+              key={result.place_id}
+              type="button"
+              onClick={() => handleSelectSuggestion(result)}
+              className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+              data-testid={`location-suggestion-${result.place_id}`}
+            >
+              <div className="flex items-start gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {result.address.house_number && result.address.road
+                      ? `${result.address.house_number} ${result.address.road}`
+                      : result.address.road || result.address.name || result.display_name.split(',')[0]}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {[
+                      result.address.city || result.address.town || result.address.village,
+                      result.address.state,
+                      result.address.postcode,
+                    ].filter(Boolean).join(", ")}
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =====================================================
 // HELPER FUNCTIONS
 // =====================================================
 
@@ -2834,42 +2995,58 @@ export default function WhatsAppPage() {
           <DialogHeader>
             <DialogTitle>Send Location</DialogTitle>
             <DialogDescription>
-              Share your location or a specific place
+              Search for an address or enter coordinates manually
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="latitude">Latitude</Label>
-              <Input
-                id="latitude"
-                type="number"
-                step="any"
-                value={locationData.latitude}
-                onChange={(e) => setLocationData({ ...locationData, latitude: e.target.value })}
-                placeholder="40.7128"
-                data-testid="input-latitude"
-              />
+            <LocationAutocomplete
+              onLocationSelect={(lat, lng, name) => {
+                setLocationData({
+                  latitude: lat.toString(),
+                  longitude: lng.toString(),
+                  name: name
+                });
+              }}
+            />
+            <Separator className="my-4" />
+            <div className="text-xs text-muted-foreground text-center">Or enter coordinates manually</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="latitude" className="text-xs">Latitude</Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  value={locationData.latitude}
+                  onChange={(e) => setLocationData({ ...locationData, latitude: e.target.value })}
+                  placeholder="40.7128"
+                  data-testid="input-latitude"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <Label htmlFor="longitude" className="text-xs">Longitude</Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  value={locationData.longitude}
+                  onChange={(e) => setLocationData({ ...locationData, longitude: e.target.value })}
+                  placeholder="-74.0060"
+                  data-testid="input-longitude"
+                  className="h-8 text-sm"
+                />
+              </div>
             </div>
             <div>
-              <Label htmlFor="longitude">Longitude</Label>
-              <Input
-                id="longitude"
-                type="number"
-                step="any"
-                value={locationData.longitude}
-                onChange={(e) => setLocationData({ ...locationData, longitude: e.target.value })}
-                placeholder="-74.0060"
-                data-testid="input-longitude"
-              />
-            </div>
-            <div>
-              <Label htmlFor="location-name">Name (optional)</Label>
+              <Label htmlFor="location-name" className="text-xs">Location Name</Label>
               <Input
                 id="location-name"
                 value={locationData.name}
                 onChange={(e) => setLocationData({ ...locationData, name: e.target.value })}
-                placeholder="New York City"
+                placeholder="Office, Home, etc."
                 data-testid="input-location-name"
+                className="h-8 text-sm"
               />
             </div>
           </div>
@@ -2877,7 +3054,11 @@ export default function WhatsAppPage() {
             <Button variant="outline" onClick={() => setShowLocationDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSendLocation} data-testid="button-confirm-send-location">
+            <Button 
+              onClick={handleSendLocation} 
+              data-testid="button-confirm-send-location"
+              disabled={!locationData.latitude || !locationData.longitude}
+            >
               Send Location
             </Button>
           </DialogFooter>
