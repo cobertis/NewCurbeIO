@@ -1303,6 +1303,8 @@ export default function WhatsAppPage() {
   // Media upload mutation using FormData (cannot use apiRequest)
   const sendMediaMutation = useMutation({
     mutationFn: async ({ chatId, file, caption, sendAsVoiceNote }: { chatId: string, file: File, caption?: string, sendAsVoiceNote?: boolean }) => {
+      const isVideo = file.type.startsWith('video/');
+      
       const formData = new FormData();
       formData.append('file', file);
       if (caption) formData.append('caption', caption);
@@ -1318,15 +1320,34 @@ export default function WhatsAppPage() {
         const error = await res.json();
         throw new Error(error.error || 'Failed to send media');
       }
-      return res.json();
+      const result = await res.json();
+      
+      // For videos, schedule a refresh to get the real message after backend finishes processing
+      if (isVideo && result.pending) {
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
+        }, 3000);
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
+        }, 8000);
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
+        }, 15000);
+      }
+      
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      const isVideo = variables.file.type.startsWith('video/');
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setSelectedFile(null);
       setMediaCaption('');
       setShowMediaPreview(false);
-      toast({ title: 'Success', description: 'Media sent' });
+      toast({ 
+        title: 'Success', 
+        description: isVideo ? 'Video sending in background...' : 'Media sent' 
+      });
     },
     onError: (error: Error) => {
       toast({ title: 'Error', description: error.message || 'Failed to send media', variant: 'destructive' });

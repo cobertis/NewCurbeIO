@@ -27888,6 +27888,53 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ success: false, error: `File type not allowed: ${file.mimetype}` });
       }
 
+      // For videos, process in background and return immediately
+      if (file.mimetype.startsWith('video/')) {
+        const tempMessageId = `temp_video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Return immediately with a pending status
+        res.json({ 
+          success: true, 
+          message: {
+            id: { _serialized: tempMessageId },
+            body: caption || '',
+            from: 'me',
+            to: chatId,
+            timestamp: Math.floor(Date.now() / 1000),
+            isFromMe: true,
+            hasMedia: true,
+            type: 'video',
+            ack: 1,
+            _isPending: true,
+            _filename: file.originalname,
+            _mimetype: file.mimetype
+          },
+          pending: true
+        });
+
+        // Process video in background (don't await)
+        (async () => {
+          try {
+            console.log(`[WhatsApp] Processing video in background for chat ${chatId}`);
+            const message = await whatsappService.sendMedia(
+              companyId, 
+              chatId, 
+              file.buffer, 
+              file.mimetype, 
+              file.originalname, 
+              caption,
+              false
+            );
+            console.log(`[WhatsApp] Video sent successfully to ${chatId}: ${message?.id?._serialized}`);
+          } catch (error) {
+            console.error(`[WhatsApp] Background video send failed for chat ${chatId}:`, error);
+          }
+        })();
+
+        return;
+      }
+
+      // For non-video media, process synchronously
       const message = await whatsappService.sendMedia(
         companyId, 
         chatId, 
