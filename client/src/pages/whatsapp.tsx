@@ -2490,7 +2490,7 @@ export default function WhatsAppPage() {
               onClick={() => {
                 setIsNewChatMode(true);
                 setSelectedChatId(null);
-                setNewChatToNumber('');
+                setNewChatToNumber('+1');
                 setNewChatMessage('');
               }}
               data-testid="button-new-chat"

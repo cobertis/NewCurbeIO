@@ -5,3 +5,9 @@
 2025/11/26-02:43:35.196 19ff1 Level-0 table #112: 122466 bytes OK
 2025/11/26-02:43:35.217 19ff1 Delete type=0 #107
 2025/11/26-02:43:35.218 19fef Manual compaction at level-0 from '\x00%\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00&\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-02:43:37.962 19ff0 Compacting 1@1 + 1@2 files
+2025/11/26-02:43:38.037 19ff0 Generated table #113@1: 28575 keys, 1001893 bytes
+2025/11/26-02:43:38.037 19ff0 Compacted 1@1 + 1@2 files => 1001893 bytes
+2025/11/26-02:43:38.051 19ff0 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/26-02:43:38.052 19ff0 Delete type=2 #109
+2025/11/26-02:43:38.052 19ff0 Delete type=2 #112
