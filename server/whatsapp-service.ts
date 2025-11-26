@@ -127,6 +127,53 @@ class WhatsAppService extends EventEmitter {
     return await this.createClientForCompany(companyId);
   }
 
+  // Watchdog timers for detecting stuck initialization
+  private initWatchdogs: Map<string, NodeJS.Timeout> = new Map();
+  private initRetryCount: Map<string, number> = new Map();
+  private readonly INIT_WATCHDOG_MS = 120000; // 2 minutes watchdog
+  private readonly MAX_INIT_RETRIES = 3; // Max consecutive retry attempts
+
+  /**
+   * Clear watchdog timer for a company (called when initialization succeeds)
+   */
+  private clearInitWatchdog(companyId: string): void {
+    const timer = this.initWatchdogs.get(companyId);
+    if (timer) {
+      clearTimeout(timer);
+      this.initWatchdogs.delete(companyId);
+      console.log(`[WhatsApp] Cleared watchdog for company: ${companyId}`);
+    }
+  }
+
+  /**
+   * Start watchdog timer that restarts client if no events received
+   */
+  private startInitWatchdog(companyId: string): void {
+    // Clear any existing watchdog
+    this.clearInitWatchdog(companyId);
+    
+    const timer = setTimeout(() => {
+      console.log(`[WhatsApp] ⚠️ Watchdog timeout! No events received for company ${companyId} in ${this.INIT_WATCHDOG_MS / 1000}s`);
+      
+      const retries = this.initRetryCount.get(companyId) || 0;
+      if (retries >= this.MAX_INIT_RETRIES) {
+        console.error(`[WhatsApp] ❌ Max retries (${this.MAX_INIT_RETRIES}) reached for company ${companyId}. Giving up.`);
+        this.initRetryCount.delete(companyId);
+        return;
+      }
+      
+      this.initRetryCount.set(companyId, retries + 1);
+      console.log(`[WhatsApp] 🔄 Auto-restarting client for company ${companyId} (attempt ${retries + 1}/${this.MAX_INIT_RETRIES})`);
+      
+      this.restartClientForCompany(companyId).catch(e => {
+        console.error(`[WhatsApp] Auto-restart failed:`, e.message);
+      });
+    }, this.INIT_WATCHDOG_MS);
+    
+    this.initWatchdogs.set(companyId, timer);
+    console.log(`[WhatsApp] Started watchdog for company: ${companyId} (${this.INIT_WATCHDOG_MS / 1000}s timeout)`);
+  }
+
   /**
    * Create a new WhatsApp client instance for a company
    */
@@ -177,18 +224,49 @@ class WhatsAppService extends EventEmitter {
     // Set up event handlers for this specific company client
     this.setupEventHandlers(companyId, companyClient);
 
-    // Initialize the client
+    // Start watchdog timer - will auto-restart if no events received
+    this.startInitWatchdog(companyId);
+
+    // Initialize the client (resolves immediately, actual loading happens async)
     try {
       await client.initialize();
       console.log(`[WhatsApp] Client initialization started for company: ${companyId}`);
-    } catch (error) {
-      console.error(`[WhatsApp] Failed to initialize client for company ${companyId}:`, error);
-      // Remove from map if initialization fails
+    } catch (error: any) {
+      console.error(`[WhatsApp] Failed to initialize client for company ${companyId}:`, error?.message || error);
+      this.clearInitWatchdog(companyId);
       this.clients.delete(companyId);
       throw error;
     }
 
     return companyClient;
+  }
+
+  /**
+   * Restart WhatsApp client for a company (destroy and recreate)
+   */
+  async restartClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
+    console.log(`[WhatsApp] Restarting client for company: ${companyId}`);
+    
+    // First, try to destroy existing client
+    const existingClient = this.clients.get(companyId);
+    if (existingClient) {
+      try {
+        await existingClient.client.destroy();
+        console.log(`[WhatsApp] Destroyed existing client for company: ${companyId}`);
+      } catch (error) {
+        console.error(`[WhatsApp] Error destroying existing client:`, error);
+      }
+      this.clients.delete(companyId);
+    }
+    
+    // Clear watchdog timer
+    this.clearInitWatchdog(companyId);
+    
+    // Wait a moment before recreating
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Create new client
+    return await this.createClientForCompany(companyId);
   }
 
   /**
@@ -200,6 +278,9 @@ class WhatsAppService extends EventEmitter {
     // QR code received - need to scan
     client.on('qr', async (qr: string) => {
       console.log(`[WhatsApp] QR Code received for company: ${companyId}`);
+      
+      // Clear watchdog - we're receiving events, client is alive
+      this.clearInitWatchdog(companyId);
       
       // Generate QR code as data URL for frontend
       try {
@@ -221,6 +302,10 @@ class WhatsAppService extends EventEmitter {
     // Client authenticated
     client.on('authenticated', () => {
       console.log(`[WhatsApp] Client authenticated for company: ${companyId}`);
+      
+      // Clear watchdog - we're receiving events, client is alive
+      this.clearInitWatchdog(companyId);
+      
       status.isAuthenticated = true;
       status.status = 'authenticated';
       status.qrCode = null;
@@ -241,6 +326,11 @@ class WhatsAppService extends EventEmitter {
     // Client is ready
     client.on('ready', async () => {
       console.log(`[WhatsApp] Client is ready for company: ${companyId}`);
+      
+      // Clear watchdog and reset retry count - initialization successful!
+      this.clearInitWatchdog(companyId);
+      this.initRetryCount.delete(companyId);
+      
       status.isReady = true;
       status.isAuthenticated = true;
       status.status = 'ready';
