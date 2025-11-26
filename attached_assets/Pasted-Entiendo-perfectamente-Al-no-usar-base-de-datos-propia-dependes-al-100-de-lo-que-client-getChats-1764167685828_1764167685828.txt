@@ -1,0 +1,62 @@
+Entiendo perfectamente. Al no usar base de datos propia, dependes al 100% de lo que `client.getChats()` te devuelve desde la memoria del navegador (Chromium/Puppeteer).
+
+El problema que describes es el fenómeno de los **"Chats Zombis"**.
+
+Aunque elimines el chat en el teléfono, WhatsApp Web (y por ende `wwebjs`) a veces mantiene el **Objeto Chat** vivo en memoria, aunque su contenido (mensajes) haya desaparecido. Esto sucede porque el contacto sigue existiendo en tu libreta o porque la sesión de Puppeteer no refrescó el índice de conversaciones (`Chat Collection`).
+
+Aquí tienes cómo solucionarlo filtrando esos "fantasmas" antes de mostrarlos en tu CRM:
+
+### Solución 1: Filtrar por existencia de mensajes (`lastMessage`)
+
+Cuando `wwebjs` te devuelve un chat "vacío" que eliminaste, generalmente ese objeto chat tiene la propiedad `lastMessage` como `undefined` o `null`, o su timestamp es muy antiguo.
+
+En tu código donde llamas a `getChats()`, aplica este filtro:
+
+```javascript
+const chats = await client.getChats();
+
+// Filtramos para obtener solo chats REALES
+const chatsActivos = chats.filter((chat) => {
+    // 1. Eliminar grupos o chats que no tienen mensajes (Chats vacíos/zombis)
+    // lastMessage suele ser undefined si el chat fue eliminado o limpiado
+    const tieneMensajes = chat.lastMessage !== undefined && chat.lastMessage !== null;
+
+    // 2. Opcional: Filtrar chats de "Status" (Estados de WhatsApp)
+    const esStatus = chat.id.user === 'status';
+
+    return tieneMensajes && !esStatus;
+});
+
+// Envía 'chatsActivos' a tu CRM en lugar de 'chats'
+console.log(`Chats totales: ${chats.length} | Chats reales: ${chatsActivos.length}`);
+return chatsActivos;
+```
+
+### Solución 2: Verificar el Timestamp (Tiempo)
+
+A veces, el chat vacío se queda con una fecha de modificación antigua. Si tu CRM ordena por fecha, estos chats vacíos deberían irse al fondo. Pero si quieres ocultarlos totalmente, puedes filtrar aquellos cuya fecha sea `0` o inválida.
+
+```javascript
+const chatsActivos = chats.filter(chat => {
+    // timestamp suele ser la hora del último mensaje o interacción
+    return chat.timestamp && chat.timestamp > 0;
+});
+```
+
+### Solución 3: Forzar limpieza de la caché local de Puppeteer (Nuclear)
+
+Si mencionas que el navegador Chromium tiene su propia caché y eso te preocupa, y usas `LocalAuth`, es posible que los archivos de sesión de IndexedDB de Chrome estén "sucios".
+
+Si el problema persiste incluso con los filtros de arriba, el problema está en la carpeta `.wwebjs_auth` (o donde guardes la sesión).
+
+1.  Detén tu bot/CRM.
+2.  Borra la carpeta de autenticación (`.wwebjs_auth` o la carpeta de `session`).
+3.  Vuelve a iniciar y **escanea el QR de nuevo**.
+
+Esto forzará a `wwebjs` a reconstruir la base de datos interna de IndexedDB desde cero, trayendo el estado **real** y actual de tu teléfono, eliminando cualquier chat zombi que se haya quedado pegado en la caché del navegador del servidor.
+
+### Resumen
+
+Lo que estás haciendo mal no es la eliminación en sí, sino confiar en que `client.getChats()` solo devuelve chats visibles. `getChats()` devuelve **todos los objetos de conversación conocidos** por la sesión web, incluidos aquellos que están vacíos pero vinculados a un contacto conocido.
+
+**Aplica el filtro de `lastMessage` (Solución 1)**; esa es la forma estándar de manejar este comportamiento en arquitecturas sin base de datos (stateless).

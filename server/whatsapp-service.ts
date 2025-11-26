@@ -728,6 +728,26 @@ class WhatsAppService extends EventEmitter {
           return false;
         }
         
+        // Exclude empty/ghost chats (deleted from phone but still in web cache)
+        // Ghost chats have no real content - only show chats with actual messages
+        const lastMsg = chat.lastMessage;
+        const hasRealContent = lastMsg && (
+          (lastMsg.body && lastMsg.body.trim() !== '') ||  // Has text content
+          lastMsg.hasMedia ||                               // Has media
+          lastMsg.type === 'image' ||
+          lastMsg.type === 'video' ||
+          lastMsg.type === 'audio' ||
+          lastMsg.type === 'ptt' ||
+          lastMsg.type === 'document' ||
+          lastMsg.type === 'sticker' ||
+          lastMsg.type === 'location'
+        );
+        
+        if (!hasRealContent) {
+          console.log(`[WhatsApp] Filtering ghost chat: ${chatId} (no real content)`);
+          return false;
+        }
+        
         return true;
       });
     } catch (error) {
