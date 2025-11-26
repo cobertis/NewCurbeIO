@@ -3230,11 +3230,15 @@ export default function WhatsAppPage() {
           </>
         ) : isNewChatMode ? (
           <div className="flex-1 flex flex-col bg-[var(--whatsapp-bg-primary)] border-l border-[var(--whatsapp-border)]">
-            {/* New Message Header - To: input with profile preview (like iMessage) */}
+            {/* New Message Header - Contact info when validated, or To: input when not */}
             <div className="px-4 py-3 border-b border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-panel-header)]">
-              {/* Show profile preview when validated */}
-              {newChatValidationStatus === 'valid' && newChatToNumber.trim() && (
-                <div className="flex items-center gap-3 mb-3">
+              {newChatValidationStatus === 'valid' && newChatToNumber.trim() ? (
+                /* Show contact profile when validated - click to edit */
+                <div 
+                  className="flex items-center gap-3 cursor-pointer hover:bg-[var(--whatsapp-hover)] -mx-4 -my-3 px-4 py-3 transition-colors"
+                  onClick={() => setNewChatValidationStatus('idle')}
+                  title="Click to change number"
+                >
                   <Avatar className="h-10 w-10">
                     {newChatProfilePic ? (
                       <AvatarImage src={newChatProfilePic} alt="Contact" />
@@ -3246,30 +3250,32 @@ export default function WhatsAppPage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-[var(--whatsapp-text-primary)] truncate">
-                      {newChatContactName || newChatToNumber}
+                      {newChatContactName || `+${newChatToNumber.replace(/\D/g, '')}`}
                     </p>
                     <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
-                      {newChatToNumber.replace(/\D/g, '')}
+                      +{newChatToNumber.replace(/\D/g, '')}
                     </p>
                   </div>
+                  <X className="h-5 w-5 text-[var(--whatsapp-text-secondary)] hover:text-[var(--whatsapp-text-primary)]" />
+                </div>
+              ) : (
+                /* Show To: input field when not validated */
+                <div className="flex items-center gap-3">
+                  <span className="text-[var(--whatsapp-text-secondary)] font-medium">To:</span>
+                  <input
+                    type="tel"
+                    placeholder="Enter phone number"
+                    value={newChatToNumber}
+                    onChange={(e) => {
+                      setNewChatToNumber(e.target.value);
+                      setNewChatValidationStatus('idle');
+                    }}
+                    className="flex-1 bg-transparent border-0 outline-none text-[var(--whatsapp-text-primary)] placeholder:text-[var(--whatsapp-text-tertiary)]"
+                    data-testid="input-new-chat-phone"
+                    autoFocus
+                  />
                 </div>
               )}
-              {/* To: input field */}
-              <div className="flex items-center gap-3">
-                <span className="text-[var(--whatsapp-text-secondary)] font-medium">To:</span>
-                <input
-                  type="tel"
-                  placeholder="Name or Number"
-                  value={newChatToNumber}
-                  onChange={(e) => {
-                    setNewChatToNumber(e.target.value);
-                    setNewChatValidationStatus('idle');
-                  }}
-                  className="flex-1 bg-transparent border-0 outline-none text-[var(--whatsapp-text-primary)] placeholder:text-[var(--whatsapp-text-tertiary)]"
-                  data-testid="input-new-chat-phone"
-                  autoFocus
-                />
-              </div>
             </div>
 
             {/* Empty Messages Area (like iMessage) - show error if number not on WhatsApp */}
