@@ -3735,21 +3735,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (err) {
             console.error("Error saving session:", err);
             return res.status(500).json({ message: "Failed to save session" });
-            }
-            
-            // Auto-initialize WhatsApp in background for faster access later
-            if (user.companyId && whatsappService.hasSavedSession(user.companyId)) {
-              whatsappService.getClientForCompany(user.companyId).catch(e => {
-                console.log(`[WhatsApp] Background init after login:`, e.message);
-              });
-            }
           }
-          
-          console.log(`[SESSION-DEBUG] Session saved successfully. Session data:`, {
-            userId: req.session.userId,
-            deviceInfo: req.session.deviceInfo,
-            ipAddress: req.session.ipAddress
-          });
           
           // Auto-initialize WhatsApp in background for faster access later
           if (user.companyId && whatsappService.hasSavedSession(user.companyId)) {
@@ -3757,6 +3743,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log(`[WhatsApp] Background init after login:`, e.message);
             });
           }
+          
+          console.log(`[SESSION-DEBUG] Session saved successfully. Session data:`, {
+            userId: req.session.userId,
+            deviceInfo: req.session.deviceInfo,
+            ipAddress: req.session.ipAddress
+          });
           
           res.json({
             success: true,
@@ -4964,14 +4956,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (err) {
           console.error("Error saving session:", err);
           return res.status(500).json({ message: "Failed to save session" });
-            }
-            
-            // Auto-initialize WhatsApp in background for faster access later
-            if (user.companyId && whatsappService.hasSavedSession(user.companyId)) {
-              whatsappService.getClientForCompany(user.companyId).catch(e => {
-                console.log(`[WhatsApp] Background init after login:`, e.message);
-              });
-            }
+        }
+        
+        // Auto-initialize WhatsApp in background for faster access later
+        if (user.companyId && whatsappService.hasSavedSession(user.companyId)) {
+          whatsappService.getClientForCompany(user.companyId).catch(e => {
+            console.log(`[WhatsApp] Background init after login:`, e.message);
+          });
         }
 
         // Set trusted device cookie if generated (httpOnly, secure, 30 days)

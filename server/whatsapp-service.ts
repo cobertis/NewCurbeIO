@@ -612,6 +612,7 @@ class WhatsAppService extends EventEmitter {
 
     try {
       const chats = await companyClient.client.getChats();
+      console.log(`[WhatsApp] getChats for company ${companyId}: ${chats.length} total chats from WhatsApp`);
       
       // Get deleted chats for this company
       const deletedForCompany = this.deletedChats.get(companyId) || new Set();
@@ -745,6 +746,10 @@ class WhatsAppService extends EventEmitter {
     try {
       // Ensure the number is in the correct format (e.g., "1234567890@c.us")
       const chatId = to.includes('@') ? to : `${to}@c.us`;
+      
+      // If this chat was previously deleted, untrack it so it appears in the list again
+      await this.untrackDeletedChat(companyId, chatId);
+      
       const sentMessage = await companyClient.client.sendMessage(chatId, message);
       console.log(`[WhatsApp] Message sent to ${chatId} for company ${companyId}`);
       return sentMessage;

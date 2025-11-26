@@ -1,15 +1,4 @@
-2025/11/26-01:51:20.680 17966 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/26-01:51:20.681 17966 Recovering log #87
-2025/11/26-01:51:20.688 17966 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000087.log 
-2025/11/26-01:51:20.689 17966 Delete type=2 #85
-2025/11/26-01:51:20.689 17966 Delete type=2 #88
-2025/11/26-01:51:23.008 1796e Level-0 table #92: started
-2025/11/26-01:51:23.028 1796e Level-0 table #92: 128772 bytes OK
-2025/11/26-01:51:23.048 1796e Delete type=0 #87
-2025/11/26-01:51:23.049 17966 Manual compaction at level-0 from '\x00\x1f\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00 \x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/26-01:51:26.093 17966 Compacting 1@1 + 1@2 files
-2025/11/26-01:51:26.158 17966 Generated table #93@1: 21232 keys, 733466 bytes
-2025/11/26-01:51:26.159 17966 Compacted 1@1 + 1@2 files => 733466 bytes
-2025/11/26-01:51:26.164 17966 compacted to: files[ 0 0 1 0 0 0 0 ]
-2025/11/26-01:51:26.165 17966 Delete type=2 #89
-2025/11/26-01:51:26.166 17966 Delete type=2 #92
+2025/11/26-02:34:42.153 19577 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/26-02:34:42.153 19577 Recovering log #103
+2025/11/26-02:34:42.158 19577 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000103.log 
+2025/11/26-02:34:43.583 19580 Manual compaction at level-0 from '\x00#\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00$\x00\x00\x00' @ 0 : 0; will stop at (end)
