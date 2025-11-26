@@ -38,9 +38,6 @@ class WhatsAppService extends EventEmitter {
   
   // Cache for sent media (messageId -> media data) - allows viewing media we sent
   private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
-  
-  // Cache for sent locations (companyId:messageId -> location data)
-  private sentLocationsCache: Map<string, { latitude: number; longitude: number; description?: string }> = new Map();
 
   constructor() {
     super();
@@ -399,49 +396,6 @@ class WhatsAppService extends EventEmitter {
   getCachedReactions(companyId: string, messageId: string): Array<{ emoji: string; senderId: string }> {
     const cacheKey = `${companyId}:${messageId}`;
     return this.messageReactions.get(cacheKey) || [];
-  }
-
-  /**
-   * Get cached location for a sent message
-   */
-  getCachedLocation(companyId: string, messageId: string): { latitude: number; longitude: number; description?: string } | null {
-    const cacheKey = `${companyId}:${messageId}`;
-    return this.sentLocationsCache.get(cacheKey) || null;
-  }
-
-  /**
-   * Get reactions from memory cache or database
-   */
-  async getReactionsWithDbFallback(companyId: string, messageId: string): Promise<Array<{ emoji: string; senderId: string }>> {
-    const cacheKey = `${companyId}:${messageId}`;
-    
-    // Return from memory cache if available
-    const cached = this.messageReactions.get(cacheKey);
-    if (cached && cached.length > 0) {
-      return cached;
-    }
-    
-    // Load from database
-    try {
-      const dbReactions = await db.select()
-        .from(whatsappReactions)
-        .where(
-          and(
-            eq(whatsappReactions.companyId, companyId),
-            eq(whatsappReactions.messageId, messageId)
-          )
-        );
-      
-      if (dbReactions.length > 0) {
-        const reactions = dbReactions.map(r => ({ emoji: r.emoji, senderId: r.senderId }));
-        this.messageReactions.set(cacheKey, reactions);
-        return reactions;
-      }
-    } catch (error) {
-      console.error(`[WhatsApp] Error loading reactions from DB:`, error);
-    }
-    
-    return [];
   }
 
   /**
@@ -2622,51 +2576,6 @@ class WhatsAppService extends EventEmitter {
   // ============================================================================
   // SPECIAL CONTENT (CONTENIDO ESPECIAL)
   // ============================================================================
-
-  /**
-   * Send location message
-   */
-  async sendLocation(
-    companyId: string, 
-    chatId: string, 
-    latitude: number, 
-    longitude: number, 
-    name?: string, 
-    address?: string
-  ): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    try {
-      const companyClient = await this.getClientForCompany(companyId);
-      
-      // Build options object only with defined values
-      const options: { name?: string; address?: string } = {};
-      if (name) options.name = name;
-      if (address) options.address = address;
-      
-      // Create Location instance using whatsapp-web.js Location class
-      const locationMessage = new Location(latitude, longitude, options);
-      
-      const sentMessage = await companyClient.client.sendMessage(chatId, locationMessage);
-      
-      // Cache location data for this message so we can show it before WhatsApp returns full data
-      const messageId = sentMessage.id._serialized;
-      const cacheKey = `${companyId}:${messageId}`;
-      this.sentLocationsCache.set(cacheKey, {
-        latitude,
-        longitude,
-        description: locationMessage.description || name
-      });
-      
-      console.log(`[WhatsApp] Location sent for company ${companyId} to ${chatId}, cached with key ${cacheKey}`);
-      return sentMessage;
-    } catch (error) {
-      console.error(`[WhatsApp] Error sending location for company ${companyId}:`, error);
-      throw error;
-    }
-  }
 
   /**
    * Send contact card

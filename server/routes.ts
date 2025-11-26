@@ -27435,23 +27435,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                                 msg.type === 'sticker';
         const mediaUrl = hasMediaContent ? `/api/whatsapp/messages/${encodeURIComponent(msg.id._serialized)}/media` : null;
         
-        // For location messages, try multiple sources: msg.location, msg._data.loc, or our cache
-        let locationData = undefined;
-        if (msg.type === 'location') {
-          if (msg.location) {
-            locationData = msg.location;
-          } else if (msg._data?.loc) {
-            locationData = {
-              latitude: msg._data.loc.lat,
-              longitude: msg._data.loc.lng,
-              description: msg._data.loc.name || msg.body
-            };
-          } else {
-            // Fallback to cache for recently sent locations
-            locationData = whatsappService.getCachedLocation(companyId, msg.id._serialized);
-          }
-        }
-        
         return {
           id: msg.id._serialized,
           body: msg.body,
@@ -27465,7 +27448,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quotedMsg,
           reactions,
           mediaUrl,
-          location: locationData,
+          location: msg.type === 'location' ? (msg.location || (msg._data?.loc ? {
+            latitude: msg._data.loc.lat,
+            longitude: msg._data.loc.lng,
+            description: msg._data.loc.name || msg.body
+          } : undefined)) : undefined,
         };
       });
 
@@ -29063,37 +29050,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // =====================================================
   // SPECIAL CONTENT
   // =====================================================
-
-  // POST /api/whatsapp/send-location - Send location message
-  app.post("/api/whatsapp/send-location", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
-      if (!user?.companyId) {
-        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
-      }
-
-      const companyId = user.companyId;
-      
-      if (!whatsappService.isReady(companyId)) {
-        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
-      }
-
-      const { chatId, latitude, longitude, name, address } = req.body;
-
-      if (!chatId || typeof latitude !== 'number' || typeof longitude !== 'number') {
-        return res.status(400).json({ success: false, error: 'chatId, latitude, and longitude are required' });
-      }
-
-      const normalizedChatId = normalizeWhatsAppId(chatId);
-
-      const message = await whatsappService.sendLocation(companyId, normalizedChatId, latitude, longitude, name, address);
-      
-      return res.json({ success: true, message });
-    } catch (error) {
-      console.error('[WhatsApp] Error sending location:', error);
-      return res.status(500).json({ success: false, error: 'Failed to send location' });
-    }
-  });
 
   // POST /api/whatsapp/send-contact - Send contact card
   app.post("/api/whatsapp/send-contact", requireActiveCompany, async (req: Request, res: Response) => {

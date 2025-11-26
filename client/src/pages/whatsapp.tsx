@@ -871,7 +871,6 @@ export default function WhatsAppPage() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
-  const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [showPollDialog, setShowPollDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
@@ -1293,53 +1292,6 @@ export default function WhatsAppPage() {
         credentials: 'include'
       });
       return res.json();
-    },
-  });
-
-  const sendLocationMutation = useMutation({
-    mutationFn: async ({ chatId, latitude, longitude, name }: { chatId: string; latitude: number; longitude: number; name?: string }) => {
-      return await apiRequest('POST', '/api/whatsapp/send-location', { chatId, latitude, longitude, name });
-    },
-    onMutate: async ({ chatId, latitude, longitude, name }) => {
-      await queryClient.cancelQueries({ queryKey: [`/api/whatsapp/chats/${chatId}/messages`] });
-      
-      const previousMessages = queryClient.getQueryData([`/api/whatsapp/chats/${chatId}/messages`]);
-      
-      const optimisticMessage: WhatsAppMessage = {
-        id: `temp-location-${Date.now()}`,
-        body: name || `${latitude}, ${longitude}`,
-        from: 'me',
-        to: chatId,
-        timestamp: Math.floor(Date.now() / 1000),
-        isFromMe: true,
-        hasMedia: true,
-        type: 'location',
-        ack: 0,
-        location: { latitude, longitude, description: name }
-      };
-      
-      queryClient.setQueryData([`/api/whatsapp/chats/${chatId}/messages`], (old: any) => {
-        if (!old?.messages) return { success: true, messages: [optimisticMessage] };
-        return { ...old, messages: [...old.messages, optimisticMessage] };
-      });
-      
-      setShowLocationDialog(false);
-      setLocationData({ latitude: '', longitude: '', name: '' });
-      
-      return { previousMessages, chatId };
-    },
-    onError: (error: Error, variables, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData([`/api/whatsapp/chats/${context.chatId}/messages`], context.previousMessages);
-      }
-      console.error('[WhatsApp] Failed to send location:', error);
-      toast({ title: 'Error', description: 'Failed to send location', variant: 'destructive' });
-    },
-    onSettled: (data, error, variables) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${variables.chatId}/messages`] });
-    },
-    onSuccess: () => {
-      toast({ title: 'Success', description: 'Location sent' });
     },
   });
   const sendPollMutation = useMutation({
@@ -1915,17 +1867,6 @@ export default function WhatsAppPage() {
   const handleCopy = (message: WhatsAppMessage) => {
     navigator.clipboard.writeText(message.body);
     toast({ title: 'Success', description: 'Text copied to clipboard' });
-  };
-
-  const handleSendLocation = () => {
-    if (!selectedChatId || !locationData.latitude || !locationData.longitude) return;
-    
-    sendLocationMutation.mutate({
-      chatId: selectedChatId,
-      latitude: parseFloat(locationData.latitude),
-      longitude: parseFloat(locationData.longitude),
-      name: locationData.name
-    });
   };
 
   const handleSendPoll = () => {
@@ -2995,10 +2936,6 @@ export default function WhatsAppPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setShowLocationDialog(true)} data-testid="menu-send-location">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      Send Location
-                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       data-testid="menu-attach-image"
@@ -3324,89 +3261,6 @@ export default function WhatsAppPage() {
               Delete for everyone
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Send Location Dialog */}
-      <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
-        <DialogContent data-testid="dialog-send-location">
-          <DialogHeader>
-            <DialogTitle>Send Location</DialogTitle>
-            <DialogDescription>
-              Search for an address or enter coordinates manually
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <GooglePlacesAddressAutocomplete
-              value={locationData.name}
-              onChange={(value) => setLocationData({ ...locationData, name: value })}
-              onAddressSelect={(address, placeDetails) => {
-                if (placeDetails?.latitude && placeDetails?.longitude) {
-                  setLocationData({
-                    latitude: placeDetails.latitude.toString(),
-                    longitude: placeDetails.longitude.toString(),
-                    name: placeDetails.formattedAddress || `${address.street}, ${address.city}`
-                  });
-                }
-              }}
-              label="Search Address"
-              placeholder="Start typing an address..."
-              testId="input-location-search"
-            />
-            <Separator className="my-4" />
-            <div className="text-xs text-muted-foreground text-center">Or enter coordinates manually</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="latitude" className="text-xs">Latitude</Label>
-                <Input
-                  id="latitude"
-                  type="number"
-                  step="any"
-                  value={locationData.latitude}
-                  onChange={(e) => setLocationData({ ...locationData, latitude: e.target.value })}
-                  placeholder="40.7128"
-                  data-testid="input-latitude"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="longitude" className="text-xs">Longitude</Label>
-                <Input
-                  id="longitude"
-                  type="number"
-                  step="any"
-                  value={locationData.longitude}
-                  onChange={(e) => setLocationData({ ...locationData, longitude: e.target.value })}
-                  placeholder="-74.0060"
-                  data-testid="input-longitude"
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="location-name" className="text-xs">Location Name</Label>
-              <Input
-                id="location-name"
-                value={locationData.name}
-                onChange={(e) => setLocationData({ ...locationData, name: e.target.value })}
-                placeholder="Office, Home, etc."
-                data-testid="input-location-name"
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowLocationDialog(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSendLocation} 
-              data-testid="button-confirm-send-location"
-              disabled={!locationData.latitude || !locationData.longitude}
-            >
-              Send Location
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
