@@ -84,9 +84,19 @@ function ImessageUnreadBadge() {
 
 // Component to show unread WhatsApp count (conversations, not messages)
 function WhatsAppUnreadBadge() {
+  // First check if WhatsApp is authenticated
+  const { data: statusData } = useQuery<{ success: boolean; status: { status: string } }>({
+    queryKey: ['/api/whatsapp/status'],
+    refetchInterval: 10000, // Check status less frequently
+    staleTime: 5000,
+  });
+  
+  const isAuthenticated = statusData?.status?.status === 'authenticated' || statusData?.status?.status === 'ready';
+  
   const { data: chatsData } = useQuery<{ success: boolean; chats: Array<{ id: string; unreadCount: number }> }>({
     queryKey: ['/api/whatsapp/chats'],
     refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
+    enabled: isAuthenticated, // Only fetch chats when WhatsApp is ready
   });
 
   // Count conversations with unread messages (NOT total messages)

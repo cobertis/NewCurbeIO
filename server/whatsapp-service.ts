@@ -106,11 +106,15 @@ class WhatsAppService extends EventEmitter {
    * Check if a company has a saved WhatsApp session (without initializing)
    */
   hasSavedSession(companyId: string): boolean {
-    const authPath = path.join('.wwebjs_auth', companyId);
+    // Use absolute path from project root to avoid working directory issues
+    const projectRoot = process.cwd();
+    const authPath = path.join(projectRoot, '.wwebjs_auth', companyId);
     try {
-      const fs = require('fs');
-      return fs.existsSync(authPath);
+      const exists = fs.existsSync(authPath);
+      console.log(`[WhatsApp] hasSavedSession check: ${authPath} = ${exists}`);
+      return exists;
     } catch (error) {
+      console.error(`[WhatsApp] hasSavedSession error for ${companyId}:`, error);
       return false;
     }
   }

@@ -997,33 +997,26 @@ export default function WhatsAppPage() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
-  const { data: statusData, isLoading: statusLoading, isError: statusError } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
+  const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
     refetchInterval: isInitializing ? 2000 : 5000, // Poll faster during initialization
-    retry: 3, // Retry on error
+    retry: 3,
     retryDelay: 1000,
-    staleTime: 10000, // Keep data for 10s even on refetch
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache between sessions
+    refetchOnMount: 'always', // Always refetch when component mounts
   });
 
   const status = statusData?.status;
-  const hasSavedSessionFromServer = statusData?.hasSavedSession ?? false;
-  
-  // Track if we've ever seen a saved session (persists across query errors)
-  const everHadSavedSession = useRef(false);
-  if (hasSavedSessionFromServer) {
-    everHadSavedSession.current = true;
-  }
-  
-  // Use either current server value or remembered value
-  const hasSavedSession = hasSavedSessionFromServer || everHadSavedSession.current;
+  const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   
-  // Show interface immediately if:
-  // - Still loading (avoid flash of connect page)
-  // - Already authenticated
-  // - Has a saved session (current or remembered)
-  // - Had an error but we previously saw a saved session
-  const showInterface = statusLoading || isAuthenticated || hasSavedSession || (statusError && everHadSavedSession.current);
+  // SIMPLE LOGIC: Show connect page ONLY if:
+  // 1. Not loading (query completed)
+  // 2. No saved session
+  // 3. Not authenticated
+  // 4. Not currently initializing
+  const showConnectPage = !statusLoading && !hasSavedSession && !isAuthenticated && !isInitializing;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -2852,7 +2845,7 @@ export default function WhatsAppPage() {
   // RENDER: QR CODE VIEW (only if no saved session)
   // =====================================================
 
-  if (!showInterface) {
+  if (showConnectPage) {
     return (
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
         <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">

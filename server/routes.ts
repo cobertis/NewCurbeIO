@@ -27260,6 +27260,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Get status WITHOUT initializing - just check current state
       const status = whatsappService.getSessionStatus(companyId);
+      console.log('[WhatsApp] Status response:', { status: status.status, isReady: status.isReady, hasSavedSession });
       return res.json({ success: true, status, hasSavedSession });
     } catch (error) {
       console.error('[WhatsApp] Error getting status:', error);
