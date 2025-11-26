@@ -5,7 +5,7 @@ import qrcodeTerminal from 'qrcode-terminal';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { db } from './db';
-import { whatsappReactions, whatsappMessages, whatsappContacts } from '@shared/schema';
+import { whatsappReactions, whatsappMessages, whatsappContacts, whatsappDeletedChats } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 interface WhatsAppSessionStatus {
@@ -249,6 +249,26 @@ class WhatsAppService extends EventEmitter {
         console.log(`[WhatsApp] Hydrated ${savedReactions.length} reactions from database for company: ${companyId}`);
       } catch (error) {
         console.error(`[WhatsApp] Failed to hydrate reactions for company ${companyId}:`, error);
+      }
+      
+      // Hydrate deleted chats from database for this company
+      try {
+        const savedDeletedChats = await db
+          .select()
+          .from(whatsappDeletedChats)
+          .where(eq(whatsappDeletedChats.companyId, companyId));
+        
+        if (savedDeletedChats.length > 0) {
+          if (!this.deletedChats.has(companyId)) {
+            this.deletedChats.set(companyId, new Set());
+          }
+          for (const deleted of savedDeletedChats) {
+            this.deletedChats.get(companyId)!.add(deleted.chatId);
+          }
+          console.log(`[WhatsApp] Hydrated ${savedDeletedChats.length} deleted chats from database for company: ${companyId}`);
+        }
+      } catch (error) {
+        console.error(`[WhatsApp] Failed to hydrate deleted chats for company ${companyId}:`, error);
       }
     });
 
@@ -1781,6 +1801,16 @@ class WhatsAppService extends EventEmitter {
       }
       this.deletedChats.get(companyId)!.add(chatId);
       
+      // Persist to database so deletion survives server restarts
+      try {
+        await db.insert(whatsappDeletedChats)
+          .values({ companyId, chatId })
+          .onConflictDoNothing();
+        console.log(`[WhatsApp] Persisted deleted chat to database`);
+      } catch (dbErr) {
+        console.error(`[WhatsApp] Failed to persist deleted chat:`, dbErr);
+      }
+      
       console.log(`[WhatsApp] ✅ Complete deletion finished for chat ${chatId}`);
     } catch (error) {
       console.error(`[WhatsApp] Error deleting chat from WhatsApp Web:`, error);
@@ -1789,10 +1819,23 @@ class WhatsAppService extends EventEmitter {
   }
   
   // Clear deleted chat from tracking (e.g., when new message arrives)
-  untrackDeletedChat(companyId: string, chatId: string): void {
+  async untrackDeletedChat(companyId: string, chatId: string): Promise<void> {
     const deletedForCompany = this.deletedChats.get(companyId);
-    if (deletedForCompany) {
+    if (deletedForCompany && deletedForCompany.has(chatId)) {
       deletedForCompany.delete(chatId);
+      
+      // Also remove from database
+      try {
+        await db.delete(whatsappDeletedChats).where(
+          and(
+            eq(whatsappDeletedChats.companyId, companyId),
+            eq(whatsappDeletedChats.chatId, chatId)
+          )
+        );
+        console.log(`[WhatsApp] Removed chat ${chatId} from deleted list (new message received)`);
+      } catch (dbErr) {
+        console.error(`[WhatsApp] Failed to remove deleted chat from DB:`, dbErr);
+      }
     }
   }
 

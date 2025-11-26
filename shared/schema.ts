@@ -4249,6 +4249,25 @@ export const insertWhatsappReactionSchema = createInsertSchema(whatsappReactions
 export type WhatsappReaction = typeof whatsappReactions.$inferSelect;
 export type InsertWhatsappReaction = z.infer<typeof insertWhatsappReactionSchema>;
 
+// WhatsApp Deleted Chats - for persisting deleted chat tracking across server restarts
+export const whatsappDeletedChats = pgTable("whatsapp_deleted_chats", {
+  id: serial("id").primaryKey(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  chatId: text("chat_id").notNull(),
+  deletedAt: timestamp("deleted_at").notNull().defaultNow(),
+}, (table) => ({
+  companyChatIdx: uniqueIndex("whatsapp_deleted_chats_unique").on(table.companyId, table.chatId),
+  companyIdx: index("whatsapp_deleted_chats_company_idx").on(table.companyId),
+}));
+
+export const insertWhatsappDeletedChatSchema = createInsertSchema(whatsappDeletedChats).omit({
+  id: true,
+  deletedAt: true,
+});
+
+export type WhatsappDeletedChat = typeof whatsappDeletedChats.$inferSelect;
+export type InsertWhatsappDeletedChat = z.infer<typeof insertWhatsappDeletedChatSchema>;
+
 // =====================================================
 // CAMPAIGN STUDIO TABLES
 // =====================================================
