@@ -27396,7 +27396,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       
       // Transform messages to a simpler format with quoted message support
-      const formattedMessages = messages.map((msg) => {
+      const formattedMessages = messages
+        .filter((msg) => msg.type !== 'location') // Filter out location messages
+        .map((msg) => {
         let quotedMsg = null;
         
         // Check if message has a quoted message (reply)
@@ -27448,11 +27450,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quotedMsg,
           reactions,
           mediaUrl,
-          location: msg.type === 'location' ? (msg.location || (msg._data?.loc ? {
-            latitude: msg._data.loc.lat,
-            longitude: msg._data.loc.lng,
-            description: msg._data.loc.name || msg.body
-          } : undefined)) : undefined,
         };
       });
 
