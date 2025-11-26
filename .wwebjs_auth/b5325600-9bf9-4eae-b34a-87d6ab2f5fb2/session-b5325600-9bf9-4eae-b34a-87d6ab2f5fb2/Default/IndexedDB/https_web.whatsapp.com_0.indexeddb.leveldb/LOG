@@ -1,13 +1,7 @@
-2025/11/26-02:39:54.076 19978 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/26-02:39:54.076 19978 Recovering log #103
-2025/11/26-02:39:54.104 19978 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000103.log 
-2025/11/26-02:39:55.680 19978 Level-0 table #108: started
-2025/11/26-02:39:55.706 19978 Level-0 table #108: 220851 bytes OK
-2025/11/26-02:39:55.713 19978 Delete type=0 #103
-2025/11/26-02:39:55.715 19977 Manual compaction at level-0 from '\x00$\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00%\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/26-02:39:58.523 19979 Compacting 1@1 + 1@2 files
-2025/11/26-02:39:58.693 19979 Generated table #109@1: 27389 keys, 957923 bytes
-2025/11/26-02:39:58.693 19979 Compacted 1@1 + 1@2 files => 957923 bytes
-2025/11/26-02:39:58.707 19979 compacted to: files[ 0 0 1 0 0 0 0 ]
-2025/11/26-02:39:58.707 19979 Delete type=2 #105
-2025/11/26-02:39:58.707 19979 Delete type=2 #108
+2025/11/26-02:43:33.638 19ff0 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/26-02:43:33.638 19ff0 Recovering log #107
+2025/11/26-02:43:33.655 19ff0 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000107.log 
+2025/11/26-02:43:35.169 19ff1 Level-0 table #112: started
+2025/11/26-02:43:35.196 19ff1 Level-0 table #112: 122466 bytes OK
+2025/11/26-02:43:35.217 19ff1 Delete type=0 #107
+2025/11/26-02:43:35.218 19fef Manual compaction at level-0 from '\x00%\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00&\x00\x00\x00' @ 0 : 0; will stop at (end)

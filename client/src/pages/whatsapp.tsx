@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/components/ui/context-menu";
@@ -874,6 +875,7 @@ export default function WhatsAppPage() {
   const [showPollDialog, setShowPollDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
+  const [showDeleteChatDialog, setShowDeleteChatDialog] = useState(false);
   const [showEditSubjectDialog, setShowEditSubjectDialog] = useState(false);
   const [showEditDescriptionDialog, setShowEditDescriptionDialog] = useState(false);
   const [showMessageInfoDialog, setShowMessageInfoDialog] = useState(false);
@@ -2834,7 +2836,7 @@ export default function WhatsAppPage() {
                       Clear Messages
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => deleteChatMutation.mutate({ chatId: selectedChatId })}
+                      onClick={() => setShowDeleteChatDialog(true)}
                       className="text-red-600"
                       data-testid="menu-delete-chat"
                     >
@@ -3296,6 +3298,33 @@ export default function WhatsAppPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Chat Confirmation Dialog */}
+      <AlertDialog open={showDeleteChatDialog} onOpenChange={setShowDeleteChatDialog}>
+        <AlertDialogContent data-testid="dialog-delete-chat-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all messages in this conversation. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-chat">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedChatId) {
+                  deleteChatMutation.mutate({ chatId: selectedChatId });
+                }
+                setShowDeleteChatDialog(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="button-confirm-delete-chat"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Send Poll Dialog */}
       <Dialog open={showPollDialog} onOpenChange={setShowPollDialog}>
