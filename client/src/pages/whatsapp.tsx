@@ -1894,12 +1894,17 @@ export default function WhatsAppPage() {
   };
 
   const handleStartNewChat = () => {
-    if (validatedWhatsAppId) {
-      setSelectedChatId(validatedWhatsAppId);
+    // Clean number and create chatId format
+    const cleanNumber = newChatPhoneNumber.replace(/\D/g, '');
+    if (cleanNumber.length >= 10) {
+      const chatId = cleanNumber + '@c.us';
+      setSelectedChatId(chatId);
       setShowNewChatDialog(false);
       setNewChatPhoneNumber('');
       setValidatedWhatsAppId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    } else {
+      toast({ title: 'Error', description: 'Please enter a valid phone number with country code', variant: 'destructive' });
     }
   };
 
@@ -3614,7 +3619,7 @@ export default function WhatsAppPage() {
                 </div>
               </div>
 
-              {validatedWhatsAppId && (
+              {newChatPhoneNumber.replace(/\D/g, '').length >= 10 && (
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                     <Check className="h-4 w-4" />

@@ -28677,14 +28677,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ success: false, error: 'Phone number and content are required' });
       }
 
-      // Validate and get WhatsApp ID
-      const validation = await whatsappService.validateAndGetNumberId(companyId, phoneNumber);
-      if (!validation.isValid || !validation.whatsappId) {
-        return res.status(400).json({ success: false, error: 'This number is not registered on WhatsApp' });
+      // Clean the phone number - remove everything except digits
+      let cleanNumber = phoneNumber.replace(/\D/g, '');
+      
+      // Ensure we have a valid number format
+      if (cleanNumber.length < 10) {
+        return res.status(400).json({ success: false, error: 'Phone number is too short' });
       }
+      
+      // Create chatId in WhatsApp format: number@c.us
+      // According to whatsapp-web.js docs, just send to number@c.us directly
+      const chatId = cleanNumber + '@c.us';
+      
+      console.log(`[WhatsApp] Sending message to new chat: ${chatId}`);
 
-      // Send the message
-      const sentMessage = await whatsappService.sendMessage(companyId, validation.whatsappId, content);
+      // Send the message directly - this creates the chat automatically
+      const sentMessage = await whatsappService.sendMessage(companyId, chatId, content);
       
       console.log(`[WhatsApp] Message sent to new chat ${validation.whatsappId} for company ${companyId}`);
       
