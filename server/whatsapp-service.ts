@@ -189,20 +189,38 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Keep WhatsApp connections alive with periodic health checks
-   * Only logs status - reconnection happens on demand when user accesses WhatsApp
+   * Proactively reconnects if a saved session exists but connection dropped
    */
   startConnectionHealthCheck(): void {
     const HEALTH_CHECK_INTERVAL = 60000; // Check every 60 seconds
+    const reconnectAttempts = new Map<string, number>();
+    const MAX_AUTO_RECONNECT_ATTEMPTS = 3;
     
     setInterval(async () => {
       for (const [companyId, companyClient] of this.clients) {
         try {
           // Use the correct property path for status
           const isReady = companyClient.status?.isReady === true && companyClient.client !== null;
+          
           if (isReady) {
             console.log(`[WhatsApp] Health check: Company ${companyId} is connected`);
-          } else {
-            console.log(`[WhatsApp] Health check: Company ${companyId} is not ready (will reconnect on demand)`);
+            reconnectAttempts.set(companyId, 0); // Reset attempts on success
+          } else if (this.hasSavedSession(companyId)) {
+            // Proactively reconnect if we have a saved session
+            const attempts = reconnectAttempts.get(companyId) || 0;
+            
+            if (attempts < MAX_AUTO_RECONNECT_ATTEMPTS) {
+              console.log(`[WhatsApp] Health check: Company ${companyId} not ready, auto-reconnecting (attempt ${attempts + 1}/${MAX_AUTO_RECONNECT_ATTEMPTS})...`);
+              reconnectAttempts.set(companyId, attempts + 1);
+              
+              try {
+                await this.restartClientForCompany(companyId);
+              } catch (error) {
+                console.error(`[WhatsApp] Health check reconnect failed for company ${companyId}:`, error);
+              }
+            } else {
+              console.log(`[WhatsApp] Health check: Company ${companyId} not ready, max attempts reached (will reconnect on user request)`);
+            }
           }
         } catch (error) {
           console.error(`[WhatsApp] Health check error for company ${companyId}:`, error);
@@ -210,7 +228,7 @@ class WhatsAppService extends EventEmitter {
       }
     }, HEALTH_CHECK_INTERVAL);
     
-    console.log('[WhatsApp] Connection health check started (every 60s, passive mode)');
+    console.log('[WhatsApp] Connection health check started (every 60s, proactive mode)');
   }
 
   /**

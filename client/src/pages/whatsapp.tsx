@@ -999,9 +999,9 @@ export default function WhatsAppPage() {
 
   const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
-    refetchInterval: isInitializing ? 2000 : 5000, // Poll faster during initialization
+    refetchInterval: isInitializing ? 1500 : 3000, // Poll faster for responsive UX
     retry: 3,
-    retryDelay: 1000,
+    retryDelay: 500,
     staleTime: 0, // Always fetch fresh data
     gcTime: 0, // Don't cache between sessions
     refetchOnMount: 'always', // Always refetch when component mounts
@@ -1085,7 +1085,8 @@ export default function WhatsAppPage() {
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
     enabled: isAuthenticated,
-    refetchInterval: 5000,
+    refetchInterval: 3000, // Faster refresh for real-time feel
+    staleTime: 1000, // Consider data fresh for 1 second
   });
 
   const chats = chatsData?.chats || [];
