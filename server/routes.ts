@@ -27448,7 +27448,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quotedMsg,
           reactions,
           mediaUrl,
-          location: msg.type === 'location' ? msg.location : undefined,
+          location: msg.type === 'location' ? (msg.location || (msg._data?.loc ? {
+            latitude: msg._data.loc.lat,
+            longitude: msg._data.loc.lng,
+            description: msg._data.loc.name || msg.body
+          } : undefined)) : undefined,
         };
       });
 
