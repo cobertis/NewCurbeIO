@@ -567,6 +567,9 @@ class WhatsAppService extends EventEmitter {
    * Get all chats for a company
    * Filters out system chats that cannot be permanently deleted (0@c.us, status, broadcast)
    */
+  // Track deleted chats to filter them out
+  private deletedChats: Map<string, Set<string>> = new Map(); // companyId -> Set of chatIds
+
   async getChats(companyId: string): Promise<any[]> {
     if (!this.isReady(companyId)) {
       throw new Error('WhatsApp client is not ready');
@@ -577,11 +580,19 @@ class WhatsAppService extends EventEmitter {
     try {
       const chats = await companyClient.client.getChats();
       
+      // Get deleted chats for this company
+      const deletedForCompany = this.deletedChats.get(companyId) || new Set();
+      
       // Filter out only system chats that cannot be permanently deleted
       const SYSTEM_CHAT_IDS = ['0@c.us', 'status@broadcast'];
       
       return chats.filter((chat: any) => {
         const chatId = chat.id?._serialized || chat.id;
+        
+        // Exclude deleted chats
+        if (deletedForCompany.has(chatId)) {
+          return false;
+        }
         
         // Exclude known system chat IDs
         if (SYSTEM_CHAT_IDS.includes(chatId)) {
@@ -1764,10 +1775,24 @@ class WhatsAppService extends EventEmitter {
       await chat.delete();
       console.log(`[WhatsApp] Chat deleted from WhatsApp Web`);
       
+      // Track this chat as deleted so it doesn't appear in list
+      if (!this.deletedChats.has(companyId)) {
+        this.deletedChats.set(companyId, new Set());
+      }
+      this.deletedChats.get(companyId)!.add(chatId);
+      
       console.log(`[WhatsApp] ✅ Complete deletion finished for chat ${chatId}`);
     } catch (error) {
       console.error(`[WhatsApp] Error deleting chat from WhatsApp Web:`, error);
       throw error;
+    }
+  }
+  
+  // Clear deleted chat from tracking (e.g., when new message arrives)
+  untrackDeletedChat(companyId: string, chatId: string): void {
+    const deletedForCompany = this.deletedChats.get(companyId);
+    if (deletedForCompany) {
+      deletedForCompany.delete(chatId);
     }
   }
 
