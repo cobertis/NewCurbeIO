@@ -292,10 +292,41 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Clean up stale Chromium lock files that can block new sessions
+   * LocalAuth uses structure: .wwebjs_auth/{companyId}/session-{companyId}/SingletonLock (symlinks)
+   * Also cleans Local State which stores process lock info
+   */
+  private cleanupStaleLocks(companyId: string): void {
+    const sessionPath = path.join('.wwebjs_auth', companyId, `session-${companyId}`);
+    // Singleton files are symlinks at the session root level, not in Default
+    const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'Local State'];
+    
+    for (const lockFile of lockFiles) {
+      const lockPath = path.join(sessionPath, lockFile);
+      try {
+        // Use lstatSync to detect symlinks (existsSync follows symlinks and may return false for broken ones)
+        const stats = fs.lstatSync(lockPath);
+        if (stats.isSymbolicLink() || stats.isFile()) {
+          fs.unlinkSync(lockPath);
+          console.log(`[WhatsApp] Cleaned up stale lock: ${lockPath}`);
+        }
+      } catch (error: any) {
+        // ENOENT means file doesn't exist - that's fine
+        if (error.code !== 'ENOENT') {
+          console.error(`[WhatsApp] Error cleaning lock ${lockPath}:`, error.message);
+        }
+      }
+    }
+  }
+
+  /**
    * Create a new WhatsApp client instance for a company
    */
   async createClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
     console.log(`[WhatsApp] Creating new client for company: ${companyId}`);
+
+    // Clean up any stale lock files from previous crashes
+    this.cleanupStaleLocks(companyId);
 
     // Create company-specific auth directory
     const authPath = path.join('.wwebjs_auth', companyId);
