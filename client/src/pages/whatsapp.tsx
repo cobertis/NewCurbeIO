@@ -3304,8 +3304,8 @@ export default function WhatsAppPage() {
               )}
             </div>
 
-            {/* Empty Messages Area (like iMessage) - show error if number not on WhatsApp */}
-            <div className="flex-1 bg-[var(--whatsapp-bg-primary)] flex items-center justify-center">
+            {/* Messages Area with WhatsApp pattern background */}
+            <div className="flex-1 overflow-y-auto p-6 relative whatsapp-chat-bg flex items-center justify-center">
               {newChatError && (
                 <div className="flex flex-col items-center gap-3 text-center px-6">
                   <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -3325,62 +3325,73 @@ export default function WhatsAppPage() {
               )}
             </div>
 
-            {/* Message Input (like iMessage) */}
-            <div className="px-6 py-4 border-t border-[var(--whatsapp-border)]">
+            {/* Message Input - Same style as existing conversation */}
+            <div className="px-4 py-3 bg-[var(--whatsapp-bg-panel-header)] border-t border-[var(--whatsapp-border)]">
               <div className="flex items-center gap-2">
+                {/* Emoji button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  data-testid="emoji-button-new-chat"
+                >
+                  <Smile className="h-6 w-6" />
+                </Button>
+
                 {/* Attachment button */}
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 rounded-full text-[var(--whatsapp-icon)] hover:text-[var(--whatsapp-text-primary)] flex-shrink-0"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
                   data-testid="attach-button-new-chat"
                 >
-                  <Paperclip className="h-5 w-5" />
+                  <Paperclip className="h-6 w-6" />
                 </Button>
 
                 {/* Message input */}
-                <Input
-                  value={newChatMessage}
-                  onChange={(e) => setNewChatMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && newChatToNumber.trim() && newChatMessage.trim()) {
-                      e.preventDefault();
-                      handleSendNewChatMessage();
-                    }
-                  }}
-                  placeholder="WhatsApp"
-                  className="flex-1 border-0 bg-[var(--whatsapp-bg-secondary)] rounded-full px-4 text-[var(--whatsapp-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--whatsapp-green-primary)]"
-                  disabled={isSendingNewChatMessage}
-                  data-testid="input-new-chat-message"
-                />
+                <div className="flex-1">
+                  <Input
+                    value={newChatMessage}
+                    onChange={(e) => setNewChatMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && newChatToNumber.trim() && newChatMessage.trim()) {
+                        e.preventDefault();
+                        handleSendNewChatMessage();
+                      }
+                    }}
+                    placeholder="Type a message"
+                    className="w-full bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)]"
+                    disabled={isSendingNewChatMessage}
+                    data-testid="input-new-chat-message"
+                  />
+                </div>
 
-                {/* Emoji button */}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 rounded-full text-[var(--whatsapp-icon)] hover:text-[var(--whatsapp-text-primary)] flex-shrink-0"
-                  data-testid="emoji-button-new-chat"
-                >
-                  <Smile className="h-5 w-5" />
-                </Button>
-
-                {/* Send button */}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-full text-[var(--whatsapp-green-primary)] hover:text-[var(--whatsapp-green-dark)] disabled:opacity-50"
-                  onClick={handleSendNewChatMessage}
-                  disabled={!newChatToNumber.trim() || !newChatMessage.trim() || isSendingNewChatMessage}
-                  data-testid="button-send-new-chat"
-                >
-                  {isSendingNewChatMessage ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
-                </Button>
+                {/* Send or Mic button */}
+                {newChatMessage.trim() ? (
+                  <Button
+                    size="icon"
+                    className="h-10 w-10 rounded-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                    onClick={handleSendNewChatMessage}
+                    disabled={!newChatToNumber.trim() || !newChatMessage.trim() || isSendingNewChatMessage}
+                    data-testid="button-send-new-chat"
+                  >
+                    {isSendingNewChatMessage ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Send className="h-5 w-5" />
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                    data-testid="button-voice-new-chat"
+                  >
+                    <Mic className="h-6 w-6" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
