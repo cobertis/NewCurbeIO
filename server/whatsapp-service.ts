@@ -5,7 +5,7 @@ import qrcodeTerminal from 'qrcode-terminal';
 import path from 'path';
 import { EventEmitter } from 'events';
 import { db } from './db';
-import { whatsappReactions } from '@shared/schema';
+import { whatsappReactions, whatsappMessages, whatsappContacts } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 interface WhatsAppSessionStatus {
@@ -1696,16 +1696,65 @@ class WhatsAppService extends EventEmitter {
     }
 
     try {
+      console.log(`[WhatsApp] Starting complete deletion of chat ${chatId} for company ${companyId}`);
+      
+      // Step 1: Get all message IDs from this chat (for cleaning reactions)
+      const messages = await db.select({ messageId: whatsappMessages.messageId })
+        .from(whatsappMessages)
+        .where(and(
+          eq(whatsappMessages.companyId, companyId),
+          eq(whatsappMessages.chatId, chatId)
+        ));
+      
+      const messageIds = messages.map(m => m.messageId);
+      console.log(`[WhatsApp] Found ${messageIds.length} messages to clean up`);
+      
+      // Step 2: Delete all reactions for messages in this chat (DB)
+      if (messageIds.length > 0) {
+        for (const messageId of messageIds) {
+          await db.delete(whatsappReactions).where(
+            and(
+              eq(whatsappReactions.companyId, companyId),
+              eq(whatsappReactions.messageId, messageId)
+            )
+          );
+          
+          // Also clear reaction cache
+          const cacheKey = `${companyId}:${messageId}`;
+          this.messageReactions.delete(cacheKey);
+        }
+        console.log(`[WhatsApp] Deleted reactions for ${messageIds.length} messages`);
+      }
+      
+      // Step 3: Delete all messages from this chat (DB)
+      const deletedMessages = await db.delete(whatsappMessages).where(
+        and(
+          eq(whatsappMessages.companyId, companyId),
+          eq(whatsappMessages.chatId, chatId)
+        )
+      );
+      console.log(`[WhatsApp] Deleted all messages from database`);
+      
+      // Step 4: Delete contact entry for this chat (DB)
+      await db.delete(whatsappContacts).where(
+        and(
+          eq(whatsappContacts.companyId, companyId),
+          eq(whatsappContacts.contactId, chatId)
+        )
+      );
+      console.log(`[WhatsApp] Deleted contact entry from database`);
+      
+      // Step 5: Clear messages and delete chat from WhatsApp Web
       const companyClient = await this.getClientForCompany(companyId);
       const chat = await companyClient.client.getChatById(chatId);
       
-      // First clear all messages from the chat history
       await chat.clearMessages();
-      console.log(`[WhatsApp] Chat messages cleared for company ${companyId}: ${chatId}`);
+      console.log(`[WhatsApp] Chat messages cleared from WhatsApp Web`);
       
-      // Then delete the chat itself
       await chat.delete();
-      console.log(`[WhatsApp] Chat deleted for company ${companyId}: ${chatId}`);
+      console.log(`[WhatsApp] Chat deleted from WhatsApp Web`);
+      
+      console.log(`[WhatsApp] ✅ Complete deletion finished for chat ${chatId}`);
     } catch (error) {
       console.error(`[WhatsApp] Error deleting chat for company ${companyId}:`, error);
       throw error;
