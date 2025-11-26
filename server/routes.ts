@@ -27240,11 +27240,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const companyId = user.companyId;
       
+      
+      // Check if there is a saved session before initializing
+      const hasSavedSession = whatsappService.hasSavedSession(companyId);
       // Initialize client if it doesn't exist (will trigger QR generation)
       await whatsappService.getClientForCompany(companyId);
       
       const status = whatsappService.getSessionStatus(companyId);
-      return res.json({ success: true, status });
+      return res.json({ success: true, status, hasSavedSession });
     } catch (error) {
       console.error('[WhatsApp] Error getting status:', error);
       return res.status(500).json({ success: false, error: 'Failed to get status' });

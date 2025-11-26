@@ -102,6 +102,19 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Check if a company has a saved WhatsApp session (without initializing)
+   */
+  hasSavedSession(companyId: string): boolean {
+    const authPath = path.join('.wwebjs_auth', companyId);
+    try {
+      const fs = require('fs');
+      return fs.existsSync(authPath);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
    * Get or create WhatsApp client for a specific company
    */
   async getClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {

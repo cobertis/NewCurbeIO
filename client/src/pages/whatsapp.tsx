@@ -975,13 +975,16 @@ export default function WhatsAppPage() {
   // QUERIES
   // =====================================================
 
-  const { data: statusData } = useQuery<{ success: boolean; status: WhatsAppStatus }>({
+  const { data: statusData } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
     refetchInterval: 3000,
   });
 
   const status = statusData?.status;
+  const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
+  // Show interface immediately if there's a saved session (even if not fully connected yet)
+  const showInterface = isAuthenticated || hasSavedSession;
 
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
@@ -2395,10 +2398,10 @@ export default function WhatsAppPage() {
   });
 
   // =====================================================
-  // RENDER: QR CODE VIEW
+  // RENDER: QR CODE VIEW (only if no saved session)
   // =====================================================
 
-  if (!isAuthenticated) {
+  if (!showInterface) {
     return (
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
         <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
@@ -2448,8 +2451,20 @@ export default function WhatsAppPage() {
   // RENDER: MAIN CHAT VIEW
   // =====================================================
 
+  // Show reconnecting banner when we have a saved session but not fully connected
+  const isReconnecting = hasSavedSession && !isAuthenticated;
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex bg-[var(--whatsapp-bg-primary)]">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-[var(--whatsapp-bg-primary)]">
+      {/* Reconnecting Banner */}
+      {isReconnecting && (
+        <div className="bg-[var(--whatsapp-green-primary)] text-white px-4 py-2 flex items-center justify-center gap-2 text-sm">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <span>Reconectando a WhatsApp...</span>
+        </div>
+      )}
+      
+      <div className="flex-1 flex overflow-hidden">
       {/* Sidebar - Chat List */}
       <div className={cn(
         "w-full md:w-[420px] border-r border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-secondary)] flex flex-col",
@@ -4142,6 +4157,7 @@ export default function WhatsAppPage() {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
