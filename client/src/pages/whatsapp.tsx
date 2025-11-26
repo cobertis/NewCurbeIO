@@ -1866,25 +1866,17 @@ export default function WhatsAppPage() {
         const contactId = `${cleanNumber}@c.us`;
         
         // Get contact profile (includes profile picture and name)
-        // Use cache: no-store to avoid cached 304 responses without profilePicUrl
         const profileRes = await fetch(`/api/whatsapp/contacts/${encodeURIComponent(contactId)}/profile`, {
-          credentials: 'include',
-          cache: 'no-store'
+          credentials: 'include'
         });
         
         if (profileRes.ok) {
           const data = await profileRes.json();
           console.log('[WhatsApp] Profile data received:', data);
           if (data.success && data.profile) {
-            // Set profile picture using proxy to avoid CORS issues
-            // Use proxy endpoint instead of direct WhatsApp URL
+            // Set profile picture
             if (data.profile.profilePicUrl) {
-              const proxyUrl = `/api/whatsapp/profile-pic-proxy/${encodeURIComponent(contactId)}`;
-              setNewChatProfilePic(proxyUrl);
-              console.log('[WhatsApp] Profile pic proxy URL:', proxyUrl);
-            } else {
-              setNewChatProfilePic(null);
-              console.log('[WhatsApp] No profile pic available');
+              setNewChatProfilePic(data.profile.profilePicUrl);
             }
             // Set contact name - prefer pushname (WhatsApp profile name), then saved name
             // But only if it's a real name (not just the phone number)

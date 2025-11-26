@@ -27230,7 +27230,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const companyId = user.companyId;
       
       // Auto-create client for this company if it doesn't exist
-      await whatsappService.takeOverSession(companyId);
+      await whatsappService.getClientForCompany(companyId);
       
       const status = whatsappService.getSessionStatus(companyId);
       
@@ -27264,7 +27264,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Check if there is a saved session before initializing
       const hasSavedSession = whatsappService.hasSavedSession(companyId);
       // Initialize client if it doesn't exist (will trigger QR generation)
-      await whatsappService.takeOverSession(companyId);
+      await whatsappService.getClientForCompany(companyId);
       
       const status = whatsappService.getSessionStatus(companyId);
       return res.json({ success: true, status, hasSavedSession });
@@ -27691,59 +27691,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       console.error('[WhatsApp] Error getting profile picture:', error);
       return res.status(500).json({ success: false, error: 'Failed to get profile picture' });
-    }
-  });
-
-  // GET /api/whatsapp/profile-pic-proxy/:contactId - Proxy profile picture to avoid CORS
-  app.get("/api/whatsapp/profile-pic-proxy/:contactId", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
-      if (!user?.companyId) {
-        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
-      }
-
-      const companyId = user.companyId;
-      
-      if (!whatsappService.isReady(companyId)) {
-        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
-      }
-
-      const { contactId } = req.params;
-      
-      // Normalize contactId to ensure @c.us suffix
-      const normalizedContactId = normalizeWhatsAppId(contactId);
-      
-      const profilePicUrl = await whatsappService.getProfilePicUrl(companyId, normalizedContactId);
-      
-      if (!profilePicUrl) {
-        return res.status(204).end(); // No content - no profile pic
-      }
-      
-      // Fetch the image from WhatsApp and proxy it
-      try {
-        const imageResponse = await fetch(profilePicUrl);
-        if (!imageResponse.ok) {
-          return res.status(204).end();
-        }
-        
-        const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-        const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-        
-        // Set caching headers (5 minutes)
-        res.set({
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=300',
-          'Content-Length': imageBuffer.length.toString()
-        });
-        
-        return res.send(imageBuffer);
-      } catch (fetchError) {
-        console.log('[WhatsApp] Could not fetch profile pic from URL:', fetchError);
-        return res.status(204).end();
-      }
-    } catch (error) {
-      console.error('[WhatsApp] Error proxying profile picture:', error);
-      return res.status(500).json({ success: false, error: 'Failed to proxy profile picture' });
     }
   });
 

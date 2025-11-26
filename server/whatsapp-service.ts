@@ -25,7 +25,6 @@ interface CompanyWhatsAppClient {
 /**
  * Multi-tenant WhatsApp Service
  * Each company has its own isolated WhatsApp client instance with separate auth data
- * NOTE: Due to Replit resource constraints, only ONE active Chrome/Puppeteer session is allowed at a time
  */
 class WhatsAppService extends EventEmitter {
   // Map of companyId -> WhatsApp client instance
@@ -41,151 +40,8 @@ class WhatsAppService extends EventEmitter {
   // Cache for sent media (messageId -> media data) - allows viewing media we sent
   private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
 
-  // Session slot management - only 1 active Chrome instance allowed due to Replit memory limits
-  private readonly MAX_ACTIVE_SESSIONS = 1;
-  private activeSessionCompanyId: string | null = null;
-  private sessionQueue: string[] = [];
-
   constructor() {
     super();
-  }
-  
-  /**
-   * Check if we can start a new Chrome session
-   */
-  private canStartSession(): boolean {
-    return this.activeSessionCompanyId === null;
-  }
-  
-  /**
-   * Mark a company as having the active session slot
-   */
-  private acquireSessionSlot(companyId: string): boolean {
-    if (this.activeSessionCompanyId === null || this.activeSessionCompanyId === companyId) {
-      this.activeSessionCompanyId = companyId;
-      console.log(`[WhatsApp] Session slot acquired by company: ${companyId}`);
-      return true;
-    }
-    return false;
-  }
-  
-  /**
-   * Release the session slot and start next queued company if any
-   */
-  private async releaseSessionSlot(companyId: string): Promise<void> {
-    if (this.activeSessionCompanyId === companyId) {
-      console.log(`[WhatsApp] Session slot released by company: ${companyId}`);
-      this.activeSessionCompanyId = null;
-      
-      // Remove from queue if present
-      this.sessionQueue = this.sessionQueue.filter(id => id !== companyId);
-      
-      // Start next queued session if any
-      if (this.sessionQueue.length > 0) {
-        const nextCompanyId = this.sessionQueue.shift()!;
-        console.log(`[WhatsApp] Starting next queued session for company: ${nextCompanyId}`);
-        // Use setTimeout to avoid blocking
-        setTimeout(() => {
-          this.createClientForCompany(nextCompanyId).catch(e => {
-            console.error(`[WhatsApp] Failed to start queued session for ${nextCompanyId}:`, e.message);
-          });
-        }, 1000);
-      }
-    }
-  }
-  
-  /**
-   * Add company to session queue if slot is not available
-   */
-  private queueSession(companyId: string): void {
-    if (!this.sessionQueue.includes(companyId)) {
-      this.sessionQueue.push(companyId);
-      console.log(`[WhatsApp] Company ${companyId} queued for session (position ${this.sessionQueue.length}). Active session: ${this.activeSessionCompanyId}`);
-      this.emit('session_queued', { 
-        companyId, 
-        position: this.sessionQueue.length,
-        activeCompanyId: this.activeSessionCompanyId 
-      });
-    }
-  }
-  
-  /**
-   * Get queue status for a company
-   */
-  getQueueStatus(companyId: string): { isQueued: boolean; position: number; activeCompanyId: string | null } {
-    const position = this.sessionQueue.indexOf(companyId);
-    return {
-      isQueued: position !== -1,
-      position: position + 1,
-      activeCompanyId: this.activeSessionCompanyId
-    };
-  }
-  
-  /**
-   * Take over the active session slot - destroys current session and starts this one
-   * Used when user explicitly requests their WhatsApp connection
-   */
-  async takeOverSession(companyId: string): Promise<CompanyWhatsAppClient> {
-    // First check if we already have a client for this company (even if initializing)
-    const existing = this.clients.get(companyId);
-    if (existing && existing.client) {
-      // Client exists - just return it, don't create another
-      console.log(`[WhatsApp] Returning existing client for company ${companyId} (status: ${existing.status.status})`);
-      return existing;
-    }
-    
-    console.log(`[WhatsApp] Company ${companyId} requesting new session`);
-    
-    // If this company already has the slot but no client, just create
-    if (this.activeSessionCompanyId === companyId) {
-      console.log(`[WhatsApp] Company ${companyId} already has slot, creating client`);
-      // Clean up lock files before creating new client
-      this.cleanupLockFiles(companyId);
-      return await this.createClientForCompany(companyId);
-    }
-    
-    // If another company has the slot, destroy their session first
-    if (this.activeSessionCompanyId && this.activeSessionCompanyId !== companyId) {
-      const currentHolder = this.activeSessionCompanyId;
-      console.log(`[WhatsApp] Taking over session from company ${currentHolder}`);
-      
-      // Destroy current session
-      const existingClient = this.clients.get(currentHolder);
-      if (existingClient && existingClient.client) {
-        try {
-          await existingClient.client.destroy();
-          console.log(`[WhatsApp] Destroyed session for company ${currentHolder}`);
-        } catch (e) {
-          console.error(`[WhatsApp] Error destroying session for ${currentHolder}:`, e);
-        }
-      }
-      this.clients.delete(currentHolder);
-      
-      // Clean up lock files for both companies
-      this.cleanupLockFiles(currentHolder);
-      this.cleanupLockFiles(companyId);
-      
-      // Release slot
-      this.activeSessionCompanyId = null;
-      
-      // Add displaced company to queue so they can reconnect later
-      if (!this.sessionQueue.includes(currentHolder)) {
-        this.sessionQueue.push(currentHolder);
-        console.log(`[WhatsApp] Previous session holder ${currentHolder} added to queue`);
-      }
-      
-      // Wait a moment for Chrome to fully close
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    
-    // Clean up any lingering lock files before starting
-    this.cleanupLockFiles(companyId);
-    
-    // Remove from queue if present
-    this.sessionQueue = this.sessionQueue.filter(id => id !== companyId);
-    
-    // Now create session for requesting company
-    return await this.createClientForCompany(companyId);
   }
 
   /**
@@ -321,43 +177,9 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Create a new WhatsApp client instance for a company
-   * NOTE: Only one Chrome session can be active at a time due to resource constraints
    */
   async createClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
     console.log(`[WhatsApp] Creating new client for company: ${companyId}`);
-    
-    // Check if we can acquire the session slot
-    if (!this.acquireSessionSlot(companyId)) {
-      console.log(`[WhatsApp] Session slot occupied by ${this.activeSessionCompanyId}. Queueing company ${companyId}`);
-      this.queueSession(companyId);
-      
-      // Return a placeholder client that indicates queued status
-      const queuedStatus: WhatsAppSessionStatus = {
-        isReady: false,
-        isAuthenticated: false,
-        qrCode: null,
-        status: 'disconnected',
-      };
-      
-      const queuedClient: CompanyWhatsAppClient = {
-        client: null,
-        status: queuedStatus,
-        messageHandlers: new Map(),
-      };
-      
-      // Store queued client so status checks work
-      this.clients.set(companyId, queuedClient);
-      
-      // Emit queued status
-      this.emit('status_change', { 
-        companyId, 
-        status: queuedStatus,
-        queued: true,
-        queuePosition: this.sessionQueue.indexOf(companyId) + 1
-      });
-      
-      return queuedClient;
-    }
 
     // Create company-specific auth directory
     const authPath = path.join('.wwebjs_auth', companyId);
@@ -429,8 +251,6 @@ class WhatsAppService extends EventEmitter {
       console.error(`[WhatsApp] Failed to initialize client for company ${companyId}:`, error?.message || error);
       this.clearInitWatchdog(companyId);
       this.clients.delete(companyId);
-      // Release session slot on failure so next company can try
-      await this.releaseSessionSlot(companyId);
       throw error;
     }
 
@@ -2651,13 +2471,9 @@ class WhatsAppService extends EventEmitter {
       // Get profile picture URL directly from client (more reliable)
       let profilePicUrl: string | null = null;
       try {
-        const picUrl = await companyClient.client.getProfilePicUrl(normalizedId);
-        // Ensure we always have null instead of undefined for proper JSON serialization
-        profilePicUrl = picUrl || null;
-        console.log(`[WhatsApp] Profile pic for ${contactId}: ${profilePicUrl ? 'found' : 'not found'}`);
+        profilePicUrl = await companyClient.client.getProfilePicUrl(normalizedId);
       } catch (e) {
-        console.log(`[WhatsApp] Could not get profile pic for ${contactId}:`, e);
-        profilePicUrl = null;
+        console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
       }
       
       // Try to get contact info for name and pushname
@@ -3289,23 +3105,16 @@ class WhatsAppService extends EventEmitter {
 
     try {
       console.log(`[WhatsApp] Logging out and destroying session for company: ${companyId}`);
-      if (companyClient.client) {
-        await companyClient.client.logout();
-        await companyClient.client.destroy();
-      }
+      await companyClient.client.logout();
+      await companyClient.client.destroy();
       
       // Remove from clients map
       this.clients.delete(companyId);
-      
-      // Release session slot so next queued company can start
-      await this.releaseSessionSlot(companyId);
       
       this.emit('logout', { companyId });
       console.log(`[WhatsApp] Logged out successfully for company: ${companyId}`);
     } catch (error) {
       console.error(`[WhatsApp] Failed to logout for company ${companyId}:`, error);
-      // Still release slot on error
-      await this.releaseSessionSlot(companyId);
       throw error;
     }
   }
@@ -3317,17 +3126,11 @@ class WhatsAppService extends EventEmitter {
     const companyClient = this.clients.get(companyId);
     if (companyClient) {
       try {
-        if (companyClient.client) {
-          await companyClient.client.destroy();
-        }
+        await companyClient.client.destroy();
         this.clients.delete(companyId);
-        // Release session slot so next queued company can start
-        await this.releaseSessionSlot(companyId);
         console.log(`[WhatsApp] Client destroyed for company: ${companyId}`);
       } catch (error) {
         console.error(`[WhatsApp] Failed to destroy client for company ${companyId}:`, error);
-        // Still release slot on error
-        await this.releaseSessionSlot(companyId);
       }
     }
   }
@@ -5046,8 +4849,7 @@ export const whatsappService = new WhatsAppService();
 console.log('[WhatsApp] Multi-tenant WhatsApp service initialized');
 
 // Auto-initialize saved WhatsApp sessions on server startup
-// NOTE: Due to resource constraints, only 1 session can be active at a time
-// Sessions are initialized on-demand when users access WhatsApp
+// This ensures WhatsApp is ready when users access the page
 setTimeout(async () => {
   try {
     const fs = await import('fs');
@@ -5063,14 +4865,19 @@ setTimeout(async () => {
       return fs.statSync(fullPath).isDirectory() && f !== '.git';
     });
     
-    console.log(`[WhatsApp] Found ${companyFolders.length} saved sessions`);
-    console.log(`[WhatsApp] NOTE: Due to resource limits, sessions will be initialized on-demand when users access WhatsApp`);
-    console.log(`[WhatsApp] Only 1 active Chrome session is allowed at a time`);
+    console.log(`[WhatsApp] Found ${companyFolders.length} saved sessions, auto-initializing...`);
     
-    // Don't auto-initialize any sessions - let users trigger initialization on-demand
-    // This prevents resource conflicts and ensures the active user gets priority
+    for (const companyId of companyFolders) {
+      try {
+        console.log(`[WhatsApp] Auto-initializing session for company: ${companyId}`);
+        await whatsappService.getClientForCompany(companyId);
+      } catch (error) {
+        console.error(`[WhatsApp] Failed to auto-initialize session for ${companyId}:`, error);
+      }
+    }
     
+    console.log('[WhatsApp] All saved sessions initialized');
   } catch (error) {
-    console.error('[WhatsApp] Error checking sessions:', error);
+    console.error('[WhatsApp] Error auto-initializing sessions:', error);
   }
 }, 3000);
