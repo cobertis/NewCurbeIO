@@ -29,7 +29,7 @@ import {
   Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff, ChevronDown,
   LogOut, ArchiveX, Trash, Bell, PinOff, UserMinus, Shield, ShieldOff, Edit, Plus, Loader2,
   Image, FileIcon, Play, Square, File as FileIconLucide, Link2, RefreshCcw, Settings, Sticker, AtSign,
-  Camera, User
+  Camera, User, AlertCircle
 } from "lucide-react";
 
 // =====================================================
@@ -950,6 +950,7 @@ export default function WhatsAppPage() {
   const [newChatValidationStatus, setNewChatValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
   const [newChatProfilePic, setNewChatProfilePic] = useState<string | null>(null);
   const [newChatContactName, setNewChatContactName] = useState<string | null>(null);
+  const [newChatError, setNewChatError] = useState<string | null>(null);
   
   // Profile picture cache
   const [profilePictures, setProfilePictures] = useState<Record<string, string | null>>({});
@@ -1786,6 +1787,8 @@ export default function WhatsAppPage() {
       if (!newChatToNumber.trim()) {
         setNewChatProfilePic(null);
         setNewChatContactName(null);
+        setNewChatError(null);
+        setNewChatValidationStatus('idle');
       }
       return;
     }
@@ -1797,6 +1800,8 @@ export default function WhatsAppPage() {
     if (cleanNumber.length < 10) {
       setNewChatProfilePic(null);
       setNewChatContactName(null);
+      setNewChatError(null);
+      setNewChatValidationStatus('idle');
       return;
     }
     
@@ -1820,9 +1825,32 @@ export default function WhatsAppPage() {
       return;
     }
     
-    // Fetch profile picture and contact info for this number
+    // Fetch profile picture and check if number has WhatsApp
     const fetchNewChatProfile = async () => {
       try {
+        setNewChatValidationStatus('validating');
+        setNewChatError(null);
+        
+        // First check if the number is registered on WhatsApp
+        const registeredRes = await fetch(`/api/whatsapp/number/${encodeURIComponent(cleanNumber)}/registered`, {
+          credentials: 'include'
+        });
+        
+        if (registeredRes.ok) {
+          const registeredData = await registeredRes.json();
+          if (!registeredData.isRegistered) {
+            // Number is not on WhatsApp
+            setNewChatError('This number is not registered on WhatsApp');
+            setNewChatValidationStatus('invalid');
+            setNewChatProfilePic(null);
+            setNewChatContactName(null);
+            return;
+          }
+        }
+        
+        // Number has WhatsApp - get profile info
+        setNewChatValidationStatus('valid');
+        setNewChatError(null);
         const contactId = `${cleanNumber}@c.us`;
         
         // Get contact profile (includes profile picture and name)
@@ -1832,23 +1860,21 @@ export default function WhatsAppPage() {
         
         if (profileRes.ok) {
           const data = await profileRes.json();
-          if (data.success) {
+          if (data.success && data.profile) {
             // Set profile picture
-            if (data.profilePictureUrl) {
-              setNewChatProfilePic(data.profilePictureUrl);
+            if (data.profile.profilePicUrl) {
+              setNewChatProfilePic(data.profile.profilePicUrl);
             }
-            // Set contact name from contact object
-            if (data.contact) {
-              const name = data.contact.name || data.contact.pushname || data.contact.shortName;
-              if (name) {
-                setNewChatContactName(name);
-              }
+            // Set contact name from profile object
+            const name = data.profile.name || data.profile.pushname;
+            if (name) {
+              setNewChatContactName(name);
             }
           }
         }
       } catch (error) {
-        // Silently fail - this is expected for numbers without WhatsApp
         console.log('[WhatsApp] Could not fetch profile for:', cleanNumber);
+        setNewChatValidationStatus('idle');
       }
     };
     
@@ -2684,6 +2710,7 @@ export default function WhatsAppPage() {
                           setNewChatValidationStatus('idle');
                           setNewChatProfilePic(null);
                           setNewChatContactName(null);
+                          setNewChatError(null);
                         }}
                         data-testid="button-close-new-message"
                       >
@@ -3227,8 +3254,26 @@ export default function WhatsAppPage() {
               </div>
             </div>
 
-            {/* Empty Messages Area (like iMessage) */}
-            <div className="flex-1 bg-[var(--whatsapp-bg-primary)]"></div>
+            {/* Empty Messages Area (like iMessage) - show error if number not on WhatsApp */}
+            <div className="flex-1 bg-[var(--whatsapp-bg-primary)] flex items-center justify-center">
+              {newChatError && (
+                <div className="flex flex-col items-center gap-3 text-center px-6">
+                  <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+                    <AlertCircle className="h-8 w-8 text-red-500" />
+                  </div>
+                  <p className="text-red-500 font-medium">{newChatError}</p>
+                  <p className="text-sm text-[var(--whatsapp-text-tertiary)]">
+                    Please check the number and try again
+                  </p>
+                </div>
+              )}
+              {newChatValidationStatus === 'validating' && !newChatError && (
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--whatsapp-green-primary)]" />
+                  <p className="text-sm text-[var(--whatsapp-text-secondary)]">Checking WhatsApp...</p>
+                </div>
+              )}
+            </div>
 
             {/* Message Input (like iMessage) */}
             <div className="px-6 py-4 border-t border-[var(--whatsapp-border)]">
