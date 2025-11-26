@@ -1037,6 +1037,21 @@ export default function WhatsAppPage() {
     }
   }, [status?.qrCode, isAuthenticated]);
 
+  // Auto-initialize WhatsApp when there's a saved session but client isn't ready
+  // This prevents showing the "Connect WhatsApp" button when we just need to reconnect
+  const hasTriedAutoInit = useRef(false);
+  useEffect(() => {
+    if (hasSavedSession && !isAuthenticated && !isInitializing && !hasTriedAutoInit.current) {
+      hasTriedAutoInit.current = true;
+      console.log('[WhatsApp] Auto-initializing saved session...');
+      initWhatsAppMutation.mutate();
+    }
+    // Reset the flag when we become authenticated (so it can retry on next disconnect)
+    if (isAuthenticated) {
+      hasTriedAutoInit.current = false;
+    }
+  }, [hasSavedSession, isAuthenticated, isInitializing]);
+
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
     enabled: isAuthenticated,
