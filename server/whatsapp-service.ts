@@ -792,6 +792,15 @@ class WhatsAppService extends EventEmitter {
 
     try {
       const chat = await companyClient.client.getChatById(chatId);
+      
+      // Force sync with WhatsApp servers to get latest messages
+      try {
+        await chat.syncHistory();
+      } catch (syncErr) {
+        // Don't fail if sync fails, just log and continue
+        console.log(`[WhatsApp] syncHistory skipped for ${chatId}: ${(syncErr as Error).message}`);
+      }
+      
       const messages = await chat.fetchMessages({ limit });
       
       // Filter out empty/system messages that WhatsApp creates

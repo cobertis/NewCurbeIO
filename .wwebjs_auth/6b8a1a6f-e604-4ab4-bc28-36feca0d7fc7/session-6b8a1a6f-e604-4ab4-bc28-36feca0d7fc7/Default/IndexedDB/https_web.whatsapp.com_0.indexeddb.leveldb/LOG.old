@@ -1,4 +1,19 @@
-2025/11/26-02:47:19.715 1a5e4 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/26-02:47:19.715 1a5e4 Recovering log #491
-2025/11/26-02:47:19.727 1a5e4 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000491.log 
-2025/11/26-02:47:21.606 1a5e1 Manual compaction at level-0 from '\x00`\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00a\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-14:28:16.717 493 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/26-14:28:16.717 493 Recovering log #505
+2025/11/26-14:28:16.721 493 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000505.log 
+2025/11/26-14:28:18.286 494 Level-0 table #513: started
+2025/11/26-14:28:18.305 494 Level-0 table #513: 170346 bytes OK
+2025/11/26-14:28:18.320 494 Delete type=0 #505
+2025/11/26-14:28:18.321 492 Manual compaction at level-0 from '\x00c\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00d\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-14:28:19.999 494 Compacting 1@1 + 4@2 files
+2025/11/26-14:28:20.135 494 Generated table #514@1: 78127 keys, 2292298 bytes
+2025/11/26-14:28:20.227 494 Generated table #515@1: 20895 keys, 2179904 bytes
+2025/11/26-14:28:20.351 494 Generated table #516@1: 88539 keys, 2235264 bytes
+2025/11/26-14:28:20.448 494 Generated table #517@1: 99322 keys, 2052660 bytes
+2025/11/26-14:28:20.448 494 Compacted 1@1 + 4@2 files => 8760126 bytes
+2025/11/26-14:28:20.461 494 compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/11/26-14:28:20.461 494 Delete type=2 #507
+2025/11/26-14:28:20.461 494 Delete type=2 #508
+2025/11/26-14:28:20.461 494 Delete type=2 #509
+2025/11/26-14:28:20.461 494 Delete type=2 #510
+2025/11/26-14:28:20.461 494 Delete type=2 #513
