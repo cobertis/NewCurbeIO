@@ -1,7 +1,13 @@
-2025/11/26-15:49:27.595 34a2 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/26-15:49:27.599 34a2 Recovering log #143
-2025/11/26-15:49:27.613 34a2 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000143.log 
-2025/11/26-15:49:29.150 34a2 Level-0 table #148: started
-2025/11/26-15:49:29.179 34a2 Level-0 table #148: 150952 bytes OK
-2025/11/26-15:49:29.192 34a2 Delete type=0 #143
-2025/11/26-15:49:29.193 34a4 Manual compaction at level-0 from '\x00/\x00\x00\x00' @ 72057594037927935 : 1 .. '\x000\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-15:54:02.029 3997 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/26-15:54:02.030 3997 Recovering log #147
+2025/11/26-15:54:02.037 3997 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000147.log 
+2025/11/26-15:54:03.613 3996 Level-0 table #152: started
+2025/11/26-15:54:03.643 3996 Level-0 table #152: 149391 bytes OK
+2025/11/26-15:54:03.652 3996 Delete type=0 #147
+2025/11/26-15:54:03.653 3996 Manual compaction at level-0 from '\x000\x00\x00\x00' @ 72057594037927935 : 1 .. '\x001\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-15:54:06.400 3996 Compacting 1@1 + 1@2 files
+2025/11/26-15:54:06.526 3996 Generated table #153@1: 35661 keys, 1198547 bytes
+2025/11/26-15:54:06.527 3996 Compacted 1@1 + 1@2 files => 1198547 bytes
+2025/11/26-15:54:06.533 3996 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/26-15:54:06.534 3996 Delete type=2 #149
+2025/11/26-15:54:06.534 3996 Delete type=2 #152

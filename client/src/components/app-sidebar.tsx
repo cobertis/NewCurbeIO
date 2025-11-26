@@ -82,6 +82,30 @@ function ImessageUnreadBadge() {
   );
 }
 
+// Component to show unread WhatsApp count (conversations, not messages)
+function WhatsAppUnreadBadge() {
+  const { data: chatsData } = useQuery<{ success: boolean; chats: Array<{ id: string; unreadCount: number }> }>({
+    queryKey: ['/api/whatsapp/chats'],
+    refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
+  });
+
+  // Count conversations with unread messages (NOT total messages)
+  // If same number sends 4 messages, that counts as 1 unread conversation
+  const unreadConversationCount = chatsData?.chats?.filter((chat) => chat.unreadCount > 0).length ?? 0;
+
+  if (unreadConversationCount === 0) return null;
+
+  return (
+    <Badge 
+      variant="destructive" 
+      className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
+      data-testid="badge-whatsapp-unread"
+    >
+      {unreadConversationCount > 99 ? '99+' : unreadConversationCount}
+    </Badge>
+  );
+}
+
 // Menu items for superadmin (COMPLETE LIST)
 const superadminMenuItems = [
   {
@@ -526,6 +550,7 @@ export function AppSidebar() {
                         >
                           <MessageSquare className="h-5 w-5 shrink-0" />
                           <span className="flex-1">WhatsApp</span>
+                          <WhatsAppUnreadBadge />
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
