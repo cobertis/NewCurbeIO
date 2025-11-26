@@ -38,6 +38,9 @@ class WhatsAppService extends EventEmitter {
   
   // Cache for sent media (messageId -> media data) - allows viewing media we sent
   private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
+  
+  // Cache for sent locations (companyId:messageId -> location data)
+  private sentLocationsCache: Map<string, { latitude: number; longitude: number; description?: string }> = new Map();
 
   constructor() {
     super();
@@ -396,6 +399,14 @@ class WhatsAppService extends EventEmitter {
   getCachedReactions(companyId: string, messageId: string): Array<{ emoji: string; senderId: string }> {
     const cacheKey = `${companyId}:${messageId}`;
     return this.messageReactions.get(cacheKey) || [];
+  }
+
+  /**
+   * Get cached location for a sent message
+   */
+  getCachedLocation(companyId: string, messageId: string): { latitude: number; longitude: number; description?: string } | null {
+    const cacheKey = `${companyId}:${messageId}`;
+    return this.sentLocationsCache.get(cacheKey) || null;
   }
 
   /**
@@ -2639,7 +2650,17 @@ class WhatsAppService extends EventEmitter {
       const locationMessage = new Location(latitude, longitude, options);
       
       const sentMessage = await companyClient.client.sendMessage(chatId, locationMessage);
-      console.log(`[WhatsApp] Location sent for company ${companyId} to ${chatId}`);
+      
+      // Cache location data for this message so we can show it before WhatsApp returns full data
+      const messageId = sentMessage.id._serialized;
+      const cacheKey = `${companyId}:${messageId}`;
+      this.sentLocationsCache.set(cacheKey, {
+        latitude,
+        longitude,
+        description: locationMessage.description || name
+      });
+      
+      console.log(`[WhatsApp] Location sent for company ${companyId} to ${chatId}, cached with key ${cacheKey}`);
       return sentMessage;
     } catch (error) {
       console.error(`[WhatsApp] Error sending location for company ${companyId}:`, error);

@@ -27435,6 +27435,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                                 msg.type === 'sticker';
         const mediaUrl = hasMediaContent ? `/api/whatsapp/messages/${encodeURIComponent(msg.id._serialized)}/media` : null;
         
+        // For location messages, try multiple sources: msg.location, msg._data.loc, or our cache
+        let locationData = undefined;
+        if (msg.type === 'location') {
+          if (msg.location) {
+            locationData = msg.location;
+          } else if (msg._data?.loc) {
+            locationData = {
+              latitude: msg._data.loc.lat,
+              longitude: msg._data.loc.lng,
+              description: msg._data.loc.name || msg.body
+            };
+          } else {
+            // Fallback to cache for recently sent locations
+            locationData = whatsappService.getCachedLocation(companyId, msg.id._serialized);
+          }
+        }
+        
         return {
           id: msg.id._serialized,
           body: msg.body,
@@ -27448,11 +27465,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           quotedMsg,
           reactions,
           mediaUrl,
-          location: msg.type === 'location' ? (msg.location || (msg._data?.loc ? {
-            latitude: msg._data.loc.lat,
-            longitude: msg._data.loc.lng,
-            description: msg._data.loc.name || msg.body
-          } : undefined)) : undefined,
+          location: locationData,
         };
       });
 
