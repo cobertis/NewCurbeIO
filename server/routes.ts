@@ -28694,11 +28694,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Send the message directly - this creates the chat automatically
       const sentMessage = await whatsappService.sendMessage(companyId, chatId, content);
       
-      console.log(`[WhatsApp] Message sent to new chat ${validation.whatsappId} for company ${companyId}`);
+      console.log(`[WhatsApp] Message sent to new chat ${chatId} for company ${companyId}`);
       
       return res.json({ 
         success: true, 
-        chatId: validation.whatsappId,
+        chatId: chatId,
         message: {
           id: sentMessage?.id?._serialized,
           body: content,
