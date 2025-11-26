@@ -952,6 +952,18 @@ export default function WhatsAppPage() {
   const [newChatContactName, setNewChatContactName] = useState<string | null>(null);
   const [newChatError, setNewChatError] = useState<string | null>(null);
   
+  // New chat media state (for emojis, attachments, audio before first message)
+  const [showNewChatEmojiPicker, setShowNewChatEmojiPicker] = useState(false);
+  const [newChatSelectedFile, setNewChatSelectedFile] = useState<File | null>(null);
+  const [showNewChatMediaPreview, setShowNewChatMediaPreview] = useState(false);
+  const [newChatMediaCaption, setNewChatMediaCaption] = useState('');
+  const [isNewChatRecording, setIsNewChatRecording] = useState(false);
+  const [newChatRecordingTime, setNewChatRecordingTime] = useState(0);
+  const newChatMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const newChatAudioChunksRef = useRef<Blob[]>([]);
+  const newChatRecordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const newChatFileInputRef = useRef<HTMLInputElement>(null);
+  
   // Profile picture cache
   const [profilePictures, setProfilePictures] = useState<Record<string, string | null>>({});
   
@@ -2142,6 +2154,219 @@ export default function WhatsAppPage() {
     }
   };
 
+  // Insert emoji into new chat message
+  const handleNewChatEmojiSelect = (emoji: string) => {
+    setNewChatMessage(prev => prev + emoji);
+    setShowNewChatEmojiPicker(false);
+  };
+
+  // Handle file selection for new chat
+  const handleNewChatFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 16 * 1024 * 1024) {
+        toast({ title: 'Error', description: 'File size exceeds 16MB limit', variant: 'destructive' });
+        return;
+      }
+      setNewChatSelectedFile(file);
+      setShowNewChatMediaPreview(true);
+    }
+    event.target.value = '';
+  };
+
+  // Send media in new chat (creates chat first, then sends media)
+  const handleSendNewChatMedia = async () => {
+    if (!newChatToNumber.trim() || !newChatSelectedFile) return;
+    
+    setIsSendingNewChatMessage(true);
+    const cleanNumber = newChatToNumber.replace(/[^\d+]/g, '').replace(/^\+/, '');
+    
+    try {
+      // First, send a text message to create the chat (or just the caption if provided)
+      const initialMessage = newChatMediaCaption.trim() || '📎';
+      const createRes = await fetch('/api/whatsapp/messages/send-to-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phoneNumber: cleanNumber, content: initialMessage })
+      });
+      
+      const createData = await createRes.json();
+      
+      if (createData.success && createData.chatId) {
+        // Now send the media file to the created chat
+        const formData = new FormData();
+        formData.append('file', newChatSelectedFile);
+        if (newChatMediaCaption.trim()) {
+          formData.append('caption', newChatMediaCaption);
+        }
+        
+        await fetch(`/api/whatsapp/chats/${createData.chatId}/media`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        
+        // Clean up and navigate to the new chat
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+        
+        setTimeout(() => {
+          setSelectedChatId(createData.chatId);
+          setIsNewChatMode(false);
+          setNewChatToNumber('');
+          setNewChatMessage('');
+          setNewChatValidationStatus('idle');
+          setNewChatSelectedFile(null);
+          setNewChatMediaCaption('');
+          setShowNewChatMediaPreview(false);
+        }, 500);
+        
+        toast({ title: 'Media sent', description: 'Chat started with media' });
+      } else {
+        toast({ title: 'Error', description: createData.error || 'Failed to create chat', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to send media', variant: 'destructive' });
+    } finally {
+      setIsSendingNewChatMessage(false);
+    }
+  };
+
+  // Cancel new chat media preview
+  const handleCancelNewChatMedia = () => {
+    setNewChatSelectedFile(null);
+    setNewChatMediaCaption('');
+    setShowNewChatMediaPreview(false);
+  };
+
+  // Get preview URL for new chat file
+  const getNewChatFilePreviewUrl = () => {
+    if (!newChatSelectedFile) return null;
+    if (newChatSelectedFile.type.startsWith('image/') || newChatSelectedFile.type.startsWith('video/')) {
+      return URL.createObjectURL(newChatSelectedFile);
+    }
+    return null;
+  };
+
+  // Voice recording functions for new chat
+  const startNewChatRecording = async () => {
+    if (!newChatToNumber.trim()) {
+      toast({ title: 'Enter number first', description: 'Please enter a phone number before recording', variant: 'destructive' });
+      return;
+    }
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      newChatMediaRecorderRef.current = mediaRecorder;
+      newChatAudioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          newChatAudioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(newChatAudioChunksRef.current, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], 'voice-note.webm', { type: 'audio/webm' });
+        
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Send voice note to new chat
+        await sendNewChatVoiceNote(audioFile);
+        
+        setNewChatRecordingTime(0);
+      };
+      
+      mediaRecorder.start();
+      setIsNewChatRecording(true);
+      
+      newChatRecordingIntervalRef.current = setInterval(() => {
+        setNewChatRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Could not access microphone', variant: 'destructive' });
+    }
+  };
+
+  const stopNewChatRecording = () => {
+    if (newChatMediaRecorderRef.current && isNewChatRecording) {
+      newChatMediaRecorderRef.current.stop();
+      setIsNewChatRecording(false);
+      
+      if (newChatRecordingIntervalRef.current) {
+        clearInterval(newChatRecordingIntervalRef.current);
+        newChatRecordingIntervalRef.current = null;
+      }
+    }
+  };
+
+  const cancelNewChatRecording = () => {
+    if (newChatMediaRecorderRef.current && isNewChatRecording) {
+      newChatMediaRecorderRef.current.stop();
+      setIsNewChatRecording(false);
+      setNewChatRecordingTime(0);
+      newChatAudioChunksRef.current = [];
+      
+      if (newChatRecordingIntervalRef.current) {
+        clearInterval(newChatRecordingIntervalRef.current);
+        newChatRecordingIntervalRef.current = null;
+      }
+    }
+  };
+
+  // Send voice note to new chat (creates chat first)
+  const sendNewChatVoiceNote = async (audioFile: File) => {
+    if (!newChatToNumber.trim()) return;
+    
+    setIsSendingNewChatMessage(true);
+    const cleanNumber = newChatToNumber.replace(/[^\d+]/g, '').replace(/^\+/, '');
+    
+    try {
+      // Create chat with a placeholder message first
+      const createRes = await fetch('/api/whatsapp/messages/send-to-number', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ phoneNumber: cleanNumber, content: '🎤' })
+      });
+      
+      const createData = await createRes.json();
+      
+      if (createData.success && createData.chatId) {
+        // Send voice note
+        const formData = new FormData();
+        formData.append('file', audioFile);
+        formData.append('sendAsVoiceNote', 'true');
+        
+        await fetch(`/api/whatsapp/chats/${createData.chatId}/media`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+        
+        setTimeout(() => {
+          setSelectedChatId(createData.chatId);
+          setIsNewChatMode(false);
+          setNewChatToNumber('');
+          setNewChatMessage('');
+          setNewChatValidationStatus('idle');
+        }, 500);
+        
+        toast({ title: 'Voice note sent', description: 'Chat started with voice note' });
+      } else {
+        toast({ title: 'Error', description: createData.error || 'Failed to send voice note', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to send voice note', variant: 'destructive' });
+    } finally {
+      setIsSendingNewChatMessage(false);
+    }
+  };
+
   // Handle sticker file selection
   const handleStickerSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -3325,29 +3550,130 @@ export default function WhatsAppPage() {
               )}
             </div>
 
-            {/* Message Input - Same style as existing conversation */}
-            <div className="px-4 py-3 bg-[var(--whatsapp-bg-panel-header)] border-t border-[var(--whatsapp-border)]">
-              <div className="flex items-center gap-2">
-                {/* Emoji button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                  data-testid="emoji-button-new-chat"
-                >
-                  <Smile className="h-6 w-6" />
-                </Button>
+            {/* Hidden file input for new chat media uploads */}
+            <input
+              type="file"
+              ref={newChatFileInputRef}
+              onChange={handleNewChatFileSelect}
+              className="hidden"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+              data-testid="input-new-chat-file-upload"
+            />
 
-                {/* Attachment button */}
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                  data-testid="attach-button-new-chat"
-                >
-                  <Paperclip className="h-6 w-6" />
-                </Button>
+            {/* Message Input - Same style as existing conversation */}
+            <div className="px-4 py-2 bg-[var(--whatsapp-bg-panel-header)] border-t border-[var(--whatsapp-border)]">
+              {/* Voice Recording UI for new chat */}
+              {isNewChatRecording ? (
+                <div className="flex items-center gap-4 justify-between">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={cancelNewChatRecording}
+                    className="h-10 w-10 rounded-full text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20"
+                    data-testid="button-cancel-new-chat-recording"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                  
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-medium text-red-500">
+                      Recording {formatRecordingTime(newChatRecordingTime)}
+                    </span>
+                  </div>
+                  
+                  <Button
+                    onClick={stopNewChatRecording}
+                    size="icon"
+                    className="h-10 w-10 rounded-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                    data-testid="button-stop-new-chat-recording"
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
+              ) : (
+              <div className="flex items-center gap-2">
+                {/* Emoji button with picker */}
+                <Popover open={showNewChatEmojiPicker} onOpenChange={setShowNewChatEmojiPicker}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                      data-testid="emoji-button-new-chat"
+                    >
+                      <Smile className="h-6 w-6" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-auto" align="start">
+                    <div className="grid grid-cols-8 gap-1 p-2">
+                      {['😀', '😂', '😍', '🥰', '😊', '🙏', '👍', '👋', '❤️', '🔥', '✨', '🎉', '💪', '😎', '🤔', '😢', '😮', '😡', '🤣', '😘', '🥺', '😇', '🤗', '😴'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleNewChatEmojiSelect(emoji)}
+                          className="text-2xl hover:bg-[var(--whatsapp-hover)] rounded p-1.5 transition-colors"
+                          data-testid={`new-chat-emoji-${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Attachment button with dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                      data-testid="attach-button-new-chat"
+                    >
+                      <Paperclip className="h-6 w-6" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      data-testid="new-chat-menu-attach-image"
+                      onClick={() => {
+                        if (newChatFileInputRef.current) {
+                          newChatFileInputRef.current.accept = 'image/*';
+                          newChatFileInputRef.current.click();
+                        }
+                      }}
+                    >
+                      <Image className="h-4 w-4 mr-2" />
+                      Photos & Images
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      data-testid="new-chat-menu-attach-video"
+                      onClick={() => {
+                        if (newChatFileInputRef.current) {
+                          newChatFileInputRef.current.accept = 'video/*';
+                          newChatFileInputRef.current.click();
+                        }
+                      }}
+                    >
+                      <Video className="h-4 w-4 mr-2" />
+                      Video
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      data-testid="new-chat-menu-attach-document"
+                      onClick={() => {
+                        if (newChatFileInputRef.current) {
+                          newChatFileInputRef.current.accept = '.pdf,.doc,.docx,.xls,.xlsx';
+                          newChatFileInputRef.current.click();
+                        }
+                      }}
+                    >
+                      <FileIconLucide className="h-4 w-4 mr-2" />
+                      Document
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {/* Message input */}
                 <div className="flex-1">
@@ -3387,12 +3713,14 @@ export default function WhatsAppPage() {
                     variant="ghost"
                     size="icon"
                     className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                    onClick={startNewChatRecording}
                     data-testid="button-voice-new-chat"
                   >
                     <Mic className="h-6 w-6" />
                   </Button>
                 )}
               </div>
+              )}
             </div>
           </div>
         ) : (
@@ -4115,6 +4443,105 @@ export default function WhatsAppPage() {
               data-testid="button-send-media"
             >
               {sendMediaMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Chat Media Preview Dialog */}
+      <Dialog open={showNewChatMediaPreview} onOpenChange={(open) => {
+        if (!open) handleCancelNewChatMedia();
+      }}>
+        <DialogContent data-testid="dialog-new-chat-media-preview" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              Send Media to New Chat
+            </DialogTitle>
+            <DialogDescription>
+              Preview your file before sending to {newChatToNumber || 'new contact'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {newChatSelectedFile && (
+              <div className="flex flex-col items-center">
+                {newChatSelectedFile.type.startsWith('image/') && (
+                  <img 
+                    src={getNewChatFilePreviewUrl() || ''} 
+                    alt="Preview" 
+                    className="max-w-full max-h-64 rounded-lg object-contain"
+                    data-testid="new-chat-preview-image"
+                  />
+                )}
+                {newChatSelectedFile.type.startsWith('video/') && (
+                  <video 
+                    src={getNewChatFilePreviewUrl() || ''} 
+                    controls 
+                    className="max-w-full max-h-64 rounded-lg"
+                    data-testid="new-chat-preview-video"
+                  />
+                )}
+                {newChatSelectedFile.type.startsWith('audio/') && (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="p-4 bg-[var(--whatsapp-bg-secondary)] rounded-full">
+                      <Mic className="h-8 w-8 text-[var(--whatsapp-icon)]" />
+                    </div>
+                    <audio 
+                      src={getNewChatFilePreviewUrl() || ''} 
+                      controls 
+                      className="w-full"
+                      data-testid="new-chat-preview-audio"
+                    />
+                  </div>
+                )}
+                {!newChatSelectedFile.type.startsWith('image/') && 
+                 !newChatSelectedFile.type.startsWith('video/') && 
+                 !newChatSelectedFile.type.startsWith('audio/') && (
+                  <div className="flex flex-col items-center gap-2 p-8 bg-[var(--whatsapp-bg-secondary)] rounded-lg">
+                    <FileIconLucide className="h-12 w-12 text-[var(--whatsapp-icon)]" />
+                    <span className="text-sm font-medium">{newChatSelectedFile.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {(newChatSelectedFile.size / 1024).toFixed(1)} KB
+                    </span>
+                  </div>
+                )}
+                <p className="text-sm text-center mt-2 text-muted-foreground">
+                  {newChatSelectedFile.name} • {(newChatSelectedFile.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="new-chat-media-caption">Caption (optional)</Label>
+              <Input
+                id="new-chat-media-caption"
+                value={newChatMediaCaption}
+                onChange={(e) => setNewChatMediaCaption(e.target.value)}
+                placeholder="Add a caption..."
+                data-testid="input-new-chat-media-caption"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancelNewChatMedia} data-testid="button-cancel-new-chat-media">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendNewChatMedia}
+              disabled={isSendingNewChatMessage || !newChatToNumber.trim()}
+              className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+              data-testid="button-send-new-chat-media"
+            >
+              {isSendingNewChatMessage ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Sending...

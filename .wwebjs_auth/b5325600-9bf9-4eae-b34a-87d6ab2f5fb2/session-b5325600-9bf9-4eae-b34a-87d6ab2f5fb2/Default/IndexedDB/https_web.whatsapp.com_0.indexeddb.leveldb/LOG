@@ -1,7 +1,14 @@
-2025/11/26-16:31:52.545 63bf Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/26-16:31:52.546 63bf Recovering log #183
-2025/11/26-16:31:52.546 63bf Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000183.log 
-2025/11/26-16:31:54.258 63b7 Level-0 table #188: started
-2025/11/26-16:31:54.264 63b7 Level-0 table #188: 27928 bytes OK
-2025/11/26-16:31:54.273 63b7 Delete type=0 #183
-2025/11/26-16:31:54.273 63b5 Manual compaction at level-0 from '\x00;\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00<\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-16:40:11.990 6f0c Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/26-16:40:11.991 6f0c Recovering log #199
+2025/11/26-16:40:11.991 6f0c Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000199.log 
+2025/11/26-16:40:13.281 6f0a Compacting 1@1 + 1@2 files
+2025/11/26-16:40:13.373 6f0a Generated table #202@1: 41418 keys, 1354034 bytes
+2025/11/26-16:40:13.373 6f0a Compacted 1@1 + 1@2 files => 1354034 bytes
+2025/11/26-16:40:13.383 6f0a compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/26-16:40:13.383 6f0a Delete type=2 #197
+2025/11/26-16:40:13.383 6f0a Delete type=2 #200
+2025/11/26-16:40:13.613 6f0c Level-0 table #204: started
+2025/11/26-16:40:13.629 6f0c Level-0 table #204: 16636 bytes OK
+2025/11/26-16:40:13.634 6f0c Delete type=0 #199
+2025/11/26-16:40:13.635 6f0c Manual compaction at level-0 from '\x00?\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00@\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-16:40:15.635 6f0b Compacting 1@1 + 1@2 files

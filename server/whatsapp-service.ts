@@ -201,6 +201,21 @@ class WhatsAppService extends EventEmitter {
           '--no-first-run',
           '--no-zygote',
           '--disable-gpu',
+          // Container-friendly flags to prevent crashes
+          '--single-process',
+          '--disable-extensions',
+          '--disable-software-rasterizer',
+          '--disable-background-networking',
+          '--disable-default-apps',
+          '--disable-sync',
+          '--disable-translate',
+          '--mute-audio',
+          '--hide-scrollbars',
+          '--disable-infobars',
+          '--disable-features=TranslateUI',
+          '--disable-hang-monitor',
+          // Memory optimization
+          '--js-flags=--max-old-space-size=512',
         ],
       },
     });
@@ -297,6 +312,110 @@ class WhatsAppService extends EventEmitter {
     
     // Create new client
     return await this.createClientForCompany(companyId);
+  }
+
+  // Track which companies are currently recovering to prevent multiple restarts
+  private recoveringClients: Set<string> = new Set();
+
+  /**
+   * Setup Puppeteer browser/page crash detection listeners
+   * These fire when Chrome crashes unexpectedly (memory issues, etc.)
+   */
+  private setupPuppeteerCrashListeners(companyId: string, client: any): void {
+    const browser = client.pupBrowser;
+    const page = client.pupPage;
+    
+    if (!browser || !page) {
+      console.log(`[WhatsApp] Puppeteer objects not available for company ${companyId}, skipping crash listeners`);
+      return;
+    }
+    
+    // Browser disconnected (Chrome process died)
+    browser.on('disconnected', () => {
+      console.error(`[WhatsApp] 🔴 Browser DISCONNECTED for company ${companyId} - Chrome process died`);
+      this.handlePuppeteerCrash(companyId, 'browser_disconnected');
+    });
+    
+    // Page closed unexpectedly
+    page.on('close', () => {
+      console.error(`[WhatsApp] 🔴 Page CLOSED for company ${companyId}`);
+      this.handlePuppeteerCrash(companyId, 'page_closed');
+    });
+    
+    // Page error (crash)
+    page.on('error', (error: Error) => {
+      console.error(`[WhatsApp] 🔴 Page ERROR for company ${companyId}:`, error.message);
+      this.handlePuppeteerCrash(companyId, 'page_error');
+    });
+    
+    console.log(`[WhatsApp] Puppeteer crash listeners setup for company: ${companyId}`);
+  }
+
+  /**
+   * Handle Puppeteer crash - trigger automatic recovery
+   */
+  private async handlePuppeteerCrash(companyId: string, reason: string): Promise<void> {
+    // Prevent multiple simultaneous recovery attempts
+    if (this.recoveringClients.has(companyId)) {
+      console.log(`[WhatsApp] Already recovering company ${companyId}, skipping duplicate`);
+      return;
+    }
+    
+    this.recoveringClients.add(companyId);
+    
+    try {
+      console.log(`[WhatsApp] 🔄 Auto-recovering from crash: ${reason} for company ${companyId}`);
+      
+      // Update status to show reconnecting
+      const existingClient = this.clients.get(companyId);
+      if (existingClient) {
+        existingClient.status.isReady = false;
+        existingClient.status.status = 'disconnected';
+        this.emit('status_change', { companyId, status: existingClient.status });
+      }
+      
+      // Wait a bit before restarting
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Restart the client
+      await this.restartClientForCompany(companyId);
+      console.log(`[WhatsApp] ✅ Auto-recovery successful for company ${companyId}`);
+    } catch (error: any) {
+      console.error(`[WhatsApp] ❌ Auto-recovery failed for company ${companyId}:`, error.message);
+      // Schedule reconnect with backoff
+      this.scheduleReconnect(companyId);
+    } finally {
+      this.recoveringClients.delete(companyId);
+    }
+  }
+
+  /**
+   * Check if the Puppeteer page is still alive (not crashed)
+   */
+  isClientHealthy(companyId: string): boolean {
+    const companyClient = this.clients.get(companyId);
+    if (!companyClient) return false;
+    
+    const client = companyClient.client;
+    const page = client?.pupPage;
+    
+    // Check if page exists and is not closed
+    if (!page || page.isClosed()) {
+      return false;
+    }
+    
+    return companyClient.status.isReady;
+  }
+
+  /**
+   * Ensure client is healthy before API calls, restart if needed
+   */
+  async ensureHealthyClient(companyId: string): Promise<void> {
+    if (!this.isClientHealthy(companyId)) {
+      console.log(`[WhatsApp] Client unhealthy for company ${companyId}, triggering recovery`);
+      await this.handlePuppeteerCrash(companyId, 'health_check_failed');
+      throw new Error('Client is reconnecting, please retry in a moment');
+    }
   }
 
   /**
@@ -403,6 +522,9 @@ class WhatsAppService extends EventEmitter {
       } catch (error) {
         console.error(`[WhatsApp] Failed to hydrate deleted chats for company ${companyId}:`, error);
       }
+      
+      // Setup Puppeteer crash detection listeners
+      this.setupPuppeteerCrashListeners(companyId, client);
     });
 
     // Incoming message
