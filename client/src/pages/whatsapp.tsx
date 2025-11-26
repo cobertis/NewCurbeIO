@@ -1968,11 +1968,11 @@ export default function WhatsAppPage() {
   
   const handleSendNewChatMessage = async () => {
     if (!newChatToNumber.trim() || !newChatMessage.trim()) return;
-    if (newChatValidationStatus !== 'valid') return;
     
     setIsSendingNewChatMessage(true);
     
-    const cleanNumber = newChatToNumber.replace(/[\s\-\(\)]/g, '');
+    // Clean phone number - remove non-digit characters except leading +
+    const cleanNumber = newChatToNumber.replace(/[^\d+]/g, '').replace(/^\+/, '');
     
     try {
       const res = await fetch('/api/whatsapp/messages/send-to-number', {
@@ -1991,7 +1991,7 @@ export default function WhatsAppPage() {
         // Refetch chats and select the new chat
         queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
         
-        // Wait a bit for the chats to update
+        // Wait a bit for the chats to update then select the new chat
         setTimeout(() => {
           setSelectedChatId(data.chatId);
           setIsNewChatMode(false);
@@ -2002,7 +2002,7 @@ export default function WhatsAppPage() {
         
         toast({ title: 'Message sent', description: 'Chat started successfully' });
       } else {
-        toast({ title: 'Error', description: data.error || 'Failed to send message', variant: 'destructive' });
+        toast({ title: 'Error', description: data.error || 'Failed to send message. Make sure the number is valid.', variant: 'destructive' });
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
@@ -2544,13 +2544,53 @@ export default function WhatsAppPage() {
                 </div>
               ))}
             </div>
-          ) : filteredChats.length === 0 ? (
+          ) : filteredChats.length === 0 && !isNewChatMode ? (
             <div className="p-8 text-center">
               <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50 text-[var(--whatsapp-text-tertiary)]" />
               <p className="text-[var(--whatsapp-text-secondary)]">No chats found</p>
             </div>
           ) : (
             <div>
+              {/* New Message item - shown when in new chat mode (like iMessage) */}
+              {isNewChatMode && (
+                <div
+                  className="group relative flex items-center gap-3 py-3 px-4 bg-[var(--whatsapp-green-primary)] text-white cursor-pointer border-b border-[var(--whatsapp-border)]"
+                  data-testid="chat-new-message"
+                >
+                  <Avatar className="h-[52px] w-[52px]">
+                    <AvatarFallback className="bg-white/20 text-white">
+                      <User className="h-6 w-6" />
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-[15px]">New Message</p>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 text-white hover:bg-white/20 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsNewChatMode(false);
+                          setNewChatToNumber('');
+                          setNewChatMessage('');
+                          setNewChatValidationStatus('idle');
+                        }}
+                        data-testid="button-close-new-message"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {newChatToNumber && (
+                      <p className="text-sm text-white/90 truncate">
+                        {newChatToNumber}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {filteredChats.map((chat) => (
                 <button
                   key={chat.id}
@@ -3057,103 +3097,76 @@ export default function WhatsAppPage() {
           </>
         ) : isNewChatMode ? (
           <div className="flex-1 flex flex-col bg-[var(--whatsapp-bg-primary)] border-l border-[var(--whatsapp-border)]">
-            {/* New Chat Header */}
-            <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] border-b border-[var(--whatsapp-border)] flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                onClick={() => {
-                  setIsNewChatMode(false);
-                  setNewChatToNumber('');
-                  setNewChatMessage('');
-                  setNewChatValidationStatus('idle');
-                }}
-                data-testid="button-cancel-new-chat"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="flex-1">
-                <h2 className="text-base font-medium text-[var(--whatsapp-text-primary)]">New Chat</h2>
-              </div>
-            </div>
-            
-            {/* To: Input */}
-            <div className="px-4 py-3 bg-[var(--whatsapp-bg-secondary)] border-b border-[var(--whatsapp-border)]">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-[var(--whatsapp-text-secondary)]">To:</span>
-                <div className="flex-1 relative">
-                  <Input
-                    placeholder="Phone number with country code (e.g., +1234567890)"
-                    value={newChatToNumber}
-                    onChange={(e) => {
-                      setNewChatToNumber(e.target.value);
-                      setNewChatValidationStatus('idle');
-                    }}
-                    onBlur={() => handleValidateNewChatNumber(newChatToNumber)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleValidateNewChatNumber(newChatToNumber);
-                      }
-                    }}
-                    className="bg-transparent border-0 h-8 text-sm text-[var(--whatsapp-text-primary)] focus-visible:ring-0 placeholder:text-[var(--whatsapp-text-tertiary)]"
-                    data-testid="input-new-chat-phone"
-                  />
-                  {/* Validation status indicator */}
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                    {newChatValidationStatus === 'validating' && (
-                      <Loader2 className="h-4 w-4 animate-spin text-[var(--whatsapp-text-secondary)]" />
-                    )}
-                    {newChatValidationStatus === 'valid' && (
-                      <Check className="h-4 w-4 text-[var(--whatsapp-green-primary)]" />
-                    )}
-                    {newChatValidationStatus === 'invalid' && (
-                      <X className="h-4 w-4 text-red-500" />
-                    )}
-                  </div>
-                </div>
-              </div>
-              {newChatValidationStatus === 'invalid' && (
-                <p className="text-xs text-red-500 mt-1 ml-8">This number is not registered on WhatsApp</p>
-              )}
-            </div>
-            
-            {/* Empty message area */}
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="text-center px-6">
-                <div className="inline-block p-6 rounded-full bg-[var(--whatsapp-bg-secondary)] border border-[var(--whatsapp-border)] mb-4">
-                  <MessageSquare className="h-16 w-16 text-[var(--whatsapp-green-primary)]" />
-                </div>
-                <p className="text-sm text-[var(--whatsapp-text-secondary)]">
-                  Enter a phone number with country code to start a new conversation
-                </p>
-              </div>
-            </div>
-            
-            {/* Message Input */}
-            <div className="p-3 bg-[var(--whatsapp-bg-panel-header)] border-t border-[var(--whatsapp-border)]">
+            {/* New Message Header - To: input (like iMessage) */}
+            <div className="px-6 py-3 border-b border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-panel-header)]">
               <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Type a message"
-                    value={newChatMessage}
-                    onChange={(e) => setNewChatMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendNewChatMessage();
-                      }
-                    }}
-                    disabled={newChatValidationStatus !== 'valid'}
-                    className="w-full bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)] disabled:opacity-50"
-                    data-testid="input-new-chat-message"
-                  />
-                </div>
+                <span className="text-[var(--whatsapp-text-secondary)] font-medium">To:</span>
+                <input
+                  type="tel"
+                  placeholder="Name or Number"
+                  value={newChatToNumber}
+                  onChange={(e) => {
+                    setNewChatToNumber(e.target.value);
+                    setNewChatValidationStatus('idle');
+                  }}
+                  className="flex-1 bg-transparent border-0 outline-none text-[var(--whatsapp-text-primary)] placeholder:text-[var(--whatsapp-text-tertiary)]"
+                  data-testid="input-new-chat-phone"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Empty Messages Area (like iMessage) */}
+            <div className="flex-1 bg-[var(--whatsapp-bg-primary)]"></div>
+
+            {/* Message Input (like iMessage) */}
+            <div className="px-6 py-4 border-t border-[var(--whatsapp-border)]">
+              <div className="flex items-center gap-2">
+                {/* Attachment button */}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full text-[var(--whatsapp-icon)] hover:text-[var(--whatsapp-text-primary)] flex-shrink-0"
+                  data-testid="attach-button-new-chat"
+                >
+                  <Paperclip className="h-5 w-5" />
+                </Button>
+
+                {/* Message input */}
+                <Input
+                  value={newChatMessage}
+                  onChange={(e) => setNewChatMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && newChatToNumber.trim() && newChatMessage.trim()) {
+                      e.preventDefault();
+                      handleSendNewChatMessage();
+                    }
+                  }}
+                  placeholder="WhatsApp"
+                  className="flex-1 border-0 bg-[var(--whatsapp-bg-secondary)] rounded-full px-4 text-[var(--whatsapp-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--whatsapp-green-primary)]"
+                  disabled={isSendingNewChatMessage}
+                  data-testid="input-new-chat-message"
+                />
+
+                {/* Emoji button */}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full text-[var(--whatsapp-icon)] hover:text-[var(--whatsapp-text-primary)] flex-shrink-0"
+                  data-testid="emoji-button-new-chat"
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
+
+                {/* Send button */}
                 <Button
                   size="icon"
-                  className="h-10 w-10 rounded-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                  variant="ghost"
+                  className="rounded-full text-[var(--whatsapp-green-primary)] hover:text-[var(--whatsapp-green-dark)] disabled:opacity-50"
                   onClick={handleSendNewChatMessage}
-                  disabled={newChatValidationStatus !== 'valid' || !newChatMessage.trim() || isSendingNewChatMessage}
+                  disabled={!newChatToNumber.trim() || !newChatMessage.trim() || isSendingNewChatMessage}
                   data-testid="button-send-new-chat"
                 >
                   {isSendingNewChatMessage ? (
