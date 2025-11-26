@@ -3,6 +3,7 @@ const { Client, LocalAuth, Message, Chat, Contact, Location } = pkg as any;
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import path from 'path';
+import fs from 'fs';
 import { EventEmitter } from 'events';
 import { db } from './db';
 import { whatsappReactions, whatsappMessages, whatsappContacts, whatsappDeletedChats } from '@shared/schema';
@@ -130,7 +131,7 @@ class WhatsAppService extends EventEmitter {
   // Watchdog timers for detecting stuck initialization
   private initWatchdogs: Map<string, NodeJS.Timeout> = new Map();
   private initRetryCount: Map<string, number> = new Map();
-  private readonly INIT_WATCHDOG_MS = 120000; // 2 minutes watchdog
+  private readonly INIT_WATCHDOG_MS = 60000; // 1 minute watchdog
   private readonly MAX_INIT_RETRIES = 3; // Max consecutive retry attempts
 
   /**
@@ -242,6 +243,32 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Clean up browser lock files that prevent restart
+   */
+  private cleanupLockFiles(companyId: string): void {
+    const authPath = path.join(process.cwd(), '.wwebjs_auth', companyId);
+    const sessionPath = path.join(authPath, `session-${companyId}`);
+    
+    // Files that can cause "File exists" errors on restart
+    const lockFiles = [
+      path.join(sessionPath, 'SingletonLock'),
+      path.join(sessionPath, 'SingletonSocket'),
+      path.join(sessionPath, 'SingletonCookie'),
+    ];
+    
+    for (const lockFile of lockFiles) {
+      try {
+        if (fs.existsSync(lockFile)) {
+          fs.unlinkSync(lockFile);
+          console.log(`[WhatsApp] Cleaned up lock file: ${lockFile}`);
+        }
+      } catch (error) {
+        console.error(`[WhatsApp] Failed to clean lock file ${lockFile}:`, error);
+      }
+    }
+  }
+
+  /**
    * Restart WhatsApp client for a company (destroy and recreate)
    */
   async restartClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
@@ -261,6 +288,9 @@ class WhatsAppService extends EventEmitter {
     
     // Clear watchdog timer
     this.clearInitWatchdog(companyId);
+    
+    // Clean up lock files that can prevent restart
+    this.cleanupLockFiles(companyId);
     
     // Wait a moment before recreating
     await new Promise(resolve => setTimeout(resolve, 2000));
