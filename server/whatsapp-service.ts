@@ -2324,27 +2324,47 @@ class WhatsAppService extends EventEmitter {
         console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
       }
       
-      // Try to get chat info for name
+      // Try to get contact info for name and pushname
       let name = phoneNumber;
+      let pushname: string | null = null;
+      let isBusiness = false;
+      let isBlocked = false;
+      
       try {
-        const chat = await companyClient.client.getChatById(normalizedId);
-        if (chat && chat.name) {
-          name = chat.name;
+        // Get contact info (this gives us pushname - the name the user set in WhatsApp)
+        const contact = await companyClient.client.getContactById(normalizedId);
+        if (contact) {
+          pushname = contact.pushname || null;
+          name = contact.name || contact.pushname || phoneNumber;
+          isBusiness = contact.isBusiness || false;
+          isBlocked = contact.isBlocked || false;
         }
       } catch (e) {
-        // Chat may not exist, use phone number as name
+        // Contact may not exist, try chat
+      }
+      
+      // If no name from contact, try from chat
+      if (name === phoneNumber) {
+        try {
+          const chat = await companyClient.client.getChatById(normalizedId);
+          if (chat && chat.name) {
+            name = chat.name;
+          }
+        } catch (e) {
+          // Chat may not exist, use phone number as name
+        }
       }
 
-      console.log(`[WhatsApp] Contact profile retrieved for company ${companyId}: ${contactId}`);
+      console.log(`[WhatsApp] Contact profile retrieved for company ${companyId}: ${contactId}, pushname: ${pushname}, name: ${name}`);
       
       return {
         id: normalizedId,
         name: name,
         number: phoneNumber,
         profilePicUrl,
-        isBlocked: false,
-        isBusiness: false,
-        pushname: null,
+        isBlocked,
+        isBusiness,
+        pushname,
       };
     } catch (error) {
       console.error(`[WhatsApp] Error getting contact profile for company ${companyId}:`, error);

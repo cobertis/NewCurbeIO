@@ -1860,13 +1860,15 @@ export default function WhatsAppPage() {
         
         if (profileRes.ok) {
           const data = await profileRes.json();
+          console.log('[WhatsApp] Profile data received:', data);
           if (data.success && data.profile) {
             // Set profile picture
             if (data.profile.profilePicUrl) {
               setNewChatProfilePic(data.profile.profilePicUrl);
             }
-            // Set contact name from profile object
-            const name = data.profile.name || data.profile.pushname;
+            // Set contact name from profile object (pushname is the WhatsApp display name)
+            const name = data.profile.pushname || data.profile.name;
+            console.log('[WhatsApp] Contact name:', name);
             if (name) {
               setNewChatContactName(name);
             }
