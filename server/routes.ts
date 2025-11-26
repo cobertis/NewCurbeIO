@@ -27230,7 +27230,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const companyId = user.companyId;
       
       // Auto-create client for this company if it doesn't exist
-      await whatsappService.getClientForCompany(companyId);
+      await whatsappService.takeOverSession(companyId);
       
       const status = whatsappService.getSessionStatus(companyId);
       
@@ -27264,7 +27264,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Check if there is a saved session before initializing
       const hasSavedSession = whatsappService.hasSavedSession(companyId);
       // Initialize client if it doesn't exist (will trigger QR generation)
-      await whatsappService.getClientForCompany(companyId);
+      await whatsappService.takeOverSession(companyId);
       
       const status = whatsappService.getSessionStatus(companyId);
       return res.json({ success: true, status, hasSavedSession });
