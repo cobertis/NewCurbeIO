@@ -2471,9 +2471,13 @@ class WhatsAppService extends EventEmitter {
       // Get profile picture URL directly from client (more reliable)
       let profilePicUrl: string | null = null;
       try {
-        profilePicUrl = await companyClient.client.getProfilePicUrl(normalizedId);
+        const picUrl = await companyClient.client.getProfilePicUrl(normalizedId);
+        // Ensure we always have null instead of undefined for proper JSON serialization
+        profilePicUrl = picUrl || null;
+        console.log(`[WhatsApp] Profile pic for ${contactId}: ${profilePicUrl ? 'found' : 'not found'}`);
       } catch (e) {
-        console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
+        console.log(`[WhatsApp] Could not get profile pic for ${contactId}:`, e);
+        profilePicUrl = null;
       }
       
       // Try to get contact info for name and pushname
