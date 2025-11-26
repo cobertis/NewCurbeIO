@@ -1777,6 +1777,34 @@ export default function WhatsAppPage() {
     }
   }, [selectedChatId, isAuthenticated]);
 
+  // Auto-detect existing chat when typing in "New Message" mode
+  useEffect(() => {
+    if (!isNewChatMode || !newChatToNumber.trim() || !chats.length) return;
+    
+    // Clean the entered number - remove spaces, dashes, parentheses, and leading +
+    const cleanNumber = newChatToNumber.replace(/[\s\-\(\)\+]/g, '');
+    
+    // Need at least 7 digits to match
+    if (cleanNumber.length < 7) return;
+    
+    // Check if this number matches an existing chat
+    const existingChat = chats.find(chat => {
+      const chatPhone = chat.id.split('@')[0];
+      // Match if the clean number ends with or equals the chat phone
+      return chatPhone === cleanNumber || 
+             chatPhone.endsWith(cleanNumber) || 
+             cleanNumber.endsWith(chatPhone);
+    });
+    
+    if (existingChat) {
+      // Found existing chat - switch to it automatically
+      setSelectedChatId(existingChat.id);
+      setIsNewChatMode(false);
+      setNewChatToNumber('');
+      setNewChatMessage('');
+    }
+  }, [newChatToNumber, chats, isNewChatMode]);
+
   // =====================================================
   // HANDLERS
   // =====================================================
