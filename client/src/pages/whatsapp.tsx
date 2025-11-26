@@ -3237,8 +3237,31 @@ export default function WhatsAppPage() {
           </>
         ) : isNewChatMode ? (
           <div className="flex-1 flex flex-col bg-[var(--whatsapp-bg-primary)] border-l border-[var(--whatsapp-border)]">
-            {/* New Message Header - To: input (like iMessage) */}
-            <div className="px-6 py-3 border-b border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-panel-header)]">
+            {/* New Message Header - To: input with profile preview (like iMessage) */}
+            <div className="px-4 py-3 border-b border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-panel-header)]">
+              {/* Show profile preview when validated */}
+              {newChatValidationStatus === 'valid' && newChatToNumber.trim() && (
+                <div className="flex items-center gap-3 mb-3">
+                  <Avatar className="h-10 w-10">
+                    {newChatProfilePic ? (
+                      <AvatarImage src={newChatProfilePic} alt="Contact" />
+                    ) : (
+                      <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white">
+                        <User className="h-5 w-5" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-[var(--whatsapp-text-primary)] truncate">
+                      {newChatContactName || newChatToNumber}
+                    </p>
+                    <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
+                      {newChatToNumber.replace(/\D/g, '')}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {/* To: input field */}
               <div className="flex items-center gap-3">
                 <span className="text-[var(--whatsapp-text-secondary)] font-medium">To:</span>
                 <input
