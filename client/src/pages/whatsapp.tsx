@@ -29,8 +29,9 @@ import {
   Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff, ChevronDown,
   LogOut, ArchiveX, Trash, Bell, PinOff, UserMinus, Shield, ShieldOff, Edit, Plus, Loader2,
   Image, FileIcon, Play, Square, File as FileIconLucide, Link2, RefreshCcw, Settings, Sticker, AtSign,
-  Camera, User, AlertCircle
+  Camera, User, AlertCircle, GripVertical
 } from "lucide-react";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 // =====================================================
 // TYPES & INTERFACES
@@ -2912,12 +2913,17 @@ export default function WhatsAppPage() {
         </div>
       )}
       
-      <div className="flex-1 flex overflow-hidden">
-      {/* Sidebar - Chat List */}
-      <div className={cn(
-        "w-full md:w-[420px] border-r border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-secondary)] flex flex-col",
-        selectedChatId ? "hidden md:flex" : "flex"
-      )}>
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* Sidebar - Chat List */}
+        <ResizablePanel 
+          defaultSize={30} 
+          minSize={20} 
+          maxSize={50}
+          className={cn(
+            "border-r border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-secondary)] flex flex-col",
+            selectedChatId ? "hidden md:flex" : "flex"
+          )}
+        >
         {/* Header */}
         <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] flex items-center justify-between border-b border-[var(--whatsapp-border)]">
           <div className="flex items-center gap-3">
@@ -3126,13 +3132,18 @@ export default function WhatsAppPage() {
             </div>
           )}
         </ScrollArea>
-      </div>
+        </ResizablePanel>
 
-      {/* Chat Window */}
-      <div className={cn(
-        "flex-1 flex flex-col",
-        !selectedChatId ? "hidden md:flex" : "flex"
-      )}>
+        <ResizableHandle withHandle className="hidden md:flex bg-[var(--whatsapp-border)] hover:bg-[var(--whatsapp-green-primary)] transition-colors" />
+
+        {/* Chat Window */}
+        <ResizablePanel 
+          defaultSize={70}
+          className={cn(
+            "flex flex-col",
+            !selectedChatId ? "hidden md:flex" : "flex"
+          )}
+        >
         {selectedChatId && selectedChat ? (
           <>
             {/* Chat Header */}
@@ -3825,7 +3836,6 @@ export default function WhatsAppPage() {
             </div>
           </div>
         )}
-      </div>
 
       {/* =====================================================
           DIALOGS AND MODALS
@@ -4892,7 +4902,8 @@ export default function WhatsAppPage() {
           )}
         </DialogContent>
       </Dialog>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
