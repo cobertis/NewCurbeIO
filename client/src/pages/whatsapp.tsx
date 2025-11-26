@@ -1668,6 +1668,12 @@ export default function WhatsAppPage() {
     },
   });
 
+  // Helper function to proxy WhatsApp image URLs through our server (bypasses CORS)
+  const getProxiedImageUrl = (url: string): string => {
+    if (!url || !url.includes('whatsapp.net')) return url;
+    return `/api/whatsapp/image-proxy?url=${encodeURIComponent(url)}`;
+  };
+
   // Function to fetch profile picture for a contact
   const fetchProfilePicture = async (contactId: string): Promise<string | null> => {
     if (profilePictures[contactId] !== undefined) {
@@ -1677,8 +1683,10 @@ export default function WhatsAppPage() {
     try {
       const response = await apiRequest('GET', `/api/whatsapp/contacts/${encodeURIComponent(contactId)}/profile`);
       if (response.success && response.profile?.profilePicUrl) {
-        setProfilePictures(prev => ({ ...prev, [contactId]: response.profile.profilePicUrl }));
-        return response.profile.profilePicUrl;
+        // Use proxied URL to bypass CORS
+        const proxiedUrl = getProxiedImageUrl(response.profile.profilePicUrl);
+        setProfilePictures(prev => ({ ...prev, [contactId]: proxiedUrl }));
+        return proxiedUrl;
       }
       setProfilePictures(prev => ({ ...prev, [contactId]: null }));
       return null;
@@ -1908,9 +1916,9 @@ export default function WhatsAppPage() {
           const data = await profileRes.json();
           console.log('[WhatsApp] Profile data received:', data);
           if (data.success && data.profile) {
-            // Set profile picture
+            // Set profile picture (proxied to bypass CORS)
             if (data.profile.profilePicUrl) {
-              setNewChatProfilePic(data.profile.profilePicUrl);
+              setNewChatProfilePic(getProxiedImageUrl(data.profile.profilePicUrl));
             }
             // Set contact name - prefer pushname (WhatsApp profile name), then saved name
             // But only if it's a real name (not just the phone number)
@@ -2474,7 +2482,8 @@ export default function WhatsAppPage() {
       if (data.success && data.profile) {
         setUserDisplayName(data.profile.pushname || '');
         setUserStatus(data.profile.about || '');
-        setMyProfilePicUrl(data.profile.profilePicUrl);
+        // Use proxied URL to bypass CORS
+        setMyProfilePicUrl(data.profile.profilePicUrl ? getProxiedImageUrl(data.profile.profilePicUrl) : null);
       }
     } catch (error) {
       console.error('Error loading profile:', error);

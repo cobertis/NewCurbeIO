@@ -28639,6 +28639,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/whatsapp/image-proxy - Proxy for WhatsApp profile pictures (bypasses CORS)
+  app.get("/api/whatsapp/image-proxy", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ success: false, error: 'URL parameter required' });
+      }
+
+      // Only allow whatsapp.net URLs for security
+      if (!url.includes('whatsapp.net')) {
+        return res.status(400).json({ success: false, error: 'Invalid URL domain' });
+      }
+
+      // Fetch the image from WhatsApp
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, error: 'Failed to fetch image' });
+      }
+
+      // Get the content type
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      
+      // Get the image as buffer
+      const buffer = await response.arrayBuffer();
+      
+      // Set cache headers (cache for 1 hour)
+      res.set({
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+      });
+      
+      return res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('[WhatsApp] Error proxying image:', error);
+      return res.status(500).json({ success: false, error: 'Failed to proxy image' });
+    }
+  });
+
   // GET /api/whatsapp/contacts/:contactId/profile-pic - Get profile picture URL only
   app.get("/api/whatsapp/contacts/:contactId/profile-pic", requireActiveCompany, async (req: Request, res: Response) => {
     try {
