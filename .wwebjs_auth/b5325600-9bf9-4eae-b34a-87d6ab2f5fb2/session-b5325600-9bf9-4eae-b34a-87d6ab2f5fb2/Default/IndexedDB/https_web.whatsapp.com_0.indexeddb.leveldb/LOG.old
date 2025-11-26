@@ -1,7 +1,15 @@
-2025/11/26-16:38:18.428 6add Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/26-16:38:18.429 6add Recovering log #195
-2025/11/26-16:38:18.437 6add Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000195.log 
-2025/11/26-16:38:20.092 6ad6 Level-0 table #200: started
-2025/11/26-16:38:20.109 6ad6 Level-0 table #200: 123155 bytes OK
-2025/11/26-16:38:20.125 6ad6 Delete type=0 #195
-2025/11/26-16:38:20.126 6ad5 Manual compaction at level-0 from '\x00>\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00?\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-18:04:19.549 a365 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/26-18:04:19.550 a365 Recovering log #233
+2025/11/26-18:04:19.550 a365 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000233.log 
+2025/11/26-18:04:19.550 a365 Delete type=2 #231
+2025/11/26-18:04:19.550 a365 Delete type=2 #234
+2025/11/26-18:04:20.875 a35e Level-0 table #238: started
+2025/11/26-18:04:20.886 a35e Level-0 table #238: 28505 bytes OK
+2025/11/26-18:04:20.901 a35e Delete type=0 #233
+2025/11/26-18:04:20.903 a365 Manual compaction at level-0 from '\x00B\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00C\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/26-18:04:23.681 a375 Compacting 1@1 + 1@2 files
+2025/11/26-18:04:23.884 a375 Generated table #239@1: 42940 keys, 1391151 bytes
+2025/11/26-18:04:23.884 a375 Compacted 1@1 + 1@2 files => 1391151 bytes
+2025/11/26-18:04:23.891 a375 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/26-18:04:23.891 a375 Delete type=2 #235
+2025/11/26-18:04:23.891 a375 Delete type=2 #238
