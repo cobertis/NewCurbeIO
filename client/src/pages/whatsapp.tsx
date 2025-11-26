@@ -3201,22 +3201,6 @@ export default function WhatsAppPage() {
                         </>
                       )}
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => archiveMutation.mutate({ chatId: selectedChatId, archive: !selectedChat.isArchived })}
-                      data-testid="menu-archive"
-                    >
-                      {selectedChat.isArchived ? (
-                        <>
-                          <ArchiveX className="h-4 w-4 mr-2" />
-                          Unarchive
-                        </>
-                      ) : (
-                        <>
-                          <Archive className="h-4 w-4 mr-2" />
-                          Archive
-                        </>
-                      )}
-                    </DropdownMenuItem>
                     
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger data-testid="menu-mute">
