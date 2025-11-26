@@ -184,39 +184,57 @@ class WhatsAppService extends EventEmitter {
     // Create company-specific auth directory
     const authPath = path.join('.wwebjs_auth', companyId);
 
+    // Ultra-lean Puppeteer configuration for Replit's memory-constrained environment
+    const chromiumFlags = [
+      '--headless=new',
+      '--no-sandbox',
+      '--no-zygote',
+      '--single-process',
+      '--renderer-process-limit=1',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--disable-accelerated-2d-canvas',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-breakpad',
+      '--disable-component-update',
+      '--disable-client-side-phishing-detection',
+      '--disable-default-apps',
+      '--disable-domain-reliability',
+      '--disable-features=TranslateUI,BlinkGenPropertyTrees,AutomationControlled',
+      '--disable-hang-monitor',
+      '--disable-infobars',
+      '--disable-ipc-flooding-protection',
+      '--disable-notifications',
+      '--disable-renderer-backgrounding',
+      '--disable-sync',
+      '--disable-translate',
+      '--metrics-recording-only',
+      '--mute-audio',
+      '--no-first-run',
+      '--password-store=basic',
+      '--use-gl=swiftshader',
+      '--autoplay-policy=user-gesture-required',
+      '--window-size=800,600',
+      '--force-device-scale-factor=1',
+      '--enable-features=NetworkServiceInProcess',
+      '--js-flags=--max-old-space-size=384',
+    ];
+
     // Create client with company-specific LocalAuth strategy
     const client = new Client({
       authStrategy: new LocalAuth({
         dataPath: authPath,
-        clientId: companyId, // Use companyId as client identifier
+        clientId: companyId,
       }),
       puppeteer: {
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium',
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu',
-          // Container-friendly flags to prevent crashes
-          '--single-process',
-          '--disable-extensions',
-          '--disable-software-rasterizer',
-          '--disable-background-networking',
-          '--disable-default-apps',
-          '--disable-sync',
-          '--disable-translate',
-          '--mute-audio',
-          '--hide-scrollbars',
-          '--disable-infobars',
-          '--disable-features=TranslateUI',
-          '--disable-hang-monitor',
-          // Memory optimization
-          '--js-flags=--max-old-space-size=512',
-        ],
+        args: chromiumFlags,
+        defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
+        ignoreDefaultArgs: ['--disable-extensions'],
       },
     });
 
