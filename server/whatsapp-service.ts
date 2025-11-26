@@ -189,22 +189,20 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Keep WhatsApp connections alive with periodic health checks
-   * Automatically reconnects if a connection drops
+   * Only logs status - reconnection happens on demand when user accesses WhatsApp
    */
   startConnectionHealthCheck(): void {
-    const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
+    const HEALTH_CHECK_INTERVAL = 60000; // Check every 60 seconds
     
     setInterval(async () => {
       for (const [companyId, companyClient] of this.clients) {
         try {
-          // Check if client is still connected
-          if (!companyClient.isReady) {
-            console.log(`[WhatsApp] Health check: Company ${companyId} not ready, attempting reconnect...`);
-            
-            // Only reconnect if there's a saved session
-            if (this.hasSavedSession(companyId)) {
-              await this.restartClientForCompany(companyId);
-            }
+          // Use the correct property path for status
+          const isReady = companyClient.status?.isReady === true && companyClient.client !== null;
+          if (isReady) {
+            console.log(`[WhatsApp] Health check: Company ${companyId} is connected`);
+          } else {
+            console.log(`[WhatsApp] Health check: Company ${companyId} is not ready (will reconnect on demand)`);
           }
         } catch (error) {
           console.error(`[WhatsApp] Health check error for company ${companyId}:`, error);
@@ -212,7 +210,7 @@ class WhatsAppService extends EventEmitter {
       }
     }, HEALTH_CHECK_INTERVAL);
     
-    console.log('[WhatsApp] Connection health check started (every 30s)');
+    console.log('[WhatsApp] Connection health check started (every 60s, passive mode)');
   }
 
   /**
@@ -2590,8 +2588,9 @@ class WhatsAppService extends EventEmitter {
       let profilePicUrl: string | null = null;
       try {
         profilePicUrl = await companyClient.client.getProfilePicUrl(normalizedId);
+        console.log(`[WhatsApp] Profile pic URL for ${contactId}: ${profilePicUrl ? 'found' : 'not found'}`);
       } catch (e) {
-        console.log(`[WhatsApp] Could not get profile pic for ${contactId}`);
+        console.log(`[WhatsApp] Could not get profile pic for ${contactId}:`, e instanceof Error ? e.message : e);
       }
       
       // Try to get contact info for name and pushname

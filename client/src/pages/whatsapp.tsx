@@ -1963,7 +1963,12 @@ export default function WhatsAppPage() {
           if (data.success && data.profile) {
             // Set profile picture (proxied to bypass CORS)
             if (data.profile.profilePicUrl) {
-              setNewChatProfilePic(getProxiedImageUrl(data.profile.profilePicUrl));
+              const proxiedUrl = getProxiedImageUrl(data.profile.profilePicUrl);
+              console.log('[WhatsApp] Setting profile pic - original:', data.profile.profilePicUrl, 'proxied:', proxiedUrl);
+              setNewChatProfilePic(proxiedUrl);
+            } else {
+              console.log('[WhatsApp] No profile pic URL in response');
+              setNewChatProfilePic(null);
             }
             // Set contact name - prefer pushname (WhatsApp profile name), then saved name
             // But only if it's a real name (not just the phone number)
