@@ -2970,14 +2970,7 @@ export default function WhatsAppPage() {
 
             {/* Messages Area */}
             <div 
-              className="flex-1 overflow-y-auto p-6 relative"
-              style={{ 
-                backgroundColor: '#e5ddd5',
-                backgroundImage: `url("https://i.pinimg.com/736x/8c/98/99/8c98994518b575bfd8c949e91d20548b.jpg")`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat'
-              }}
+              className="flex-1 overflow-y-auto p-6 relative whatsapp-chat-bg"
             >
               {messagesLoading && !messagesData ? (
                 <div className="space-y-3">
