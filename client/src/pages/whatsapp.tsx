@@ -997,17 +997,33 @@ export default function WhatsAppPage() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
-  const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
+  const { data: statusData, isLoading: statusLoading, isError: statusError } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
     refetchInterval: isInitializing ? 2000 : 5000, // Poll faster during initialization
+    retry: 3, // Retry on error
+    retryDelay: 1000,
+    staleTime: 10000, // Keep data for 10s even on refetch
   });
 
   const status = statusData?.status;
-  const hasSavedSession = statusData?.hasSavedSession ?? false;
+  const hasSavedSessionFromServer = statusData?.hasSavedSession ?? false;
+  
+  // Track if we've ever seen a saved session (persists across query errors)
+  const everHadSavedSession = useRef(false);
+  if (hasSavedSessionFromServer) {
+    everHadSavedSession.current = true;
+  }
+  
+  // Use either current server value or remembered value
+  const hasSavedSession = hasSavedSessionFromServer || everHadSavedSession.current;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
-  // Show interface immediately if there's a saved session (even if not fully connected yet)
-  // Also show interface while loading status to avoid flash of connect page
-  const showInterface = statusLoading || isAuthenticated || hasSavedSession;
+  
+  // Show interface immediately if:
+  // - Still loading (avoid flash of connect page)
+  // - Already authenticated
+  // - Has a saved session (current or remembered)
+  // - Had an error but we previously saw a saved session
+  const showInterface = statusLoading || isAuthenticated || hasSavedSession || (statusError && everHadSavedSession.current);
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -1041,18 +1057,40 @@ export default function WhatsAppPage() {
 
   // Auto-initialize WhatsApp when there's a saved session but client isn't ready
   // This prevents showing the "Connect WhatsApp" button when we just need to reconnect
-  const hasTriedAutoInit = useRef(false);
+  const autoInitAttempts = useRef(0);
+  const lastAutoInitTime = useRef(0);
+  const MAX_AUTO_INIT_ATTEMPTS = 5;
+  const AUTO_INIT_COOLDOWN = 10000; // 10 seconds between attempts
+  
   useEffect(() => {
-    if (hasSavedSession && !isAuthenticated && !isInitializing && !hasTriedAutoInit.current) {
-      hasTriedAutoInit.current = true;
-      console.log('[WhatsApp] Auto-initializing saved session...');
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastAutoInitTime.current;
+    
+    // Auto-init conditions:
+    // - Has saved session (from server or remembered)
+    // - Not currently authenticated
+    // - Not currently initializing
+    // - Haven't exceeded max attempts
+    // - Cooldown period has passed
+    const shouldAutoInit = hasSavedSession && 
+      !isAuthenticated && 
+      !isInitializing && 
+      !initWhatsAppMutation.isPending &&
+      autoInitAttempts.current < MAX_AUTO_INIT_ATTEMPTS &&
+      timeSinceLastAttempt > AUTO_INIT_COOLDOWN;
+    
+    if (shouldAutoInit) {
+      autoInitAttempts.current += 1;
+      lastAutoInitTime.current = now;
+      console.log(`[WhatsApp] Auto-initializing saved session (attempt ${autoInitAttempts.current}/${MAX_AUTO_INIT_ATTEMPTS})...`);
       initWhatsAppMutation.mutate();
     }
-    // Reset the flag when we become authenticated (so it can retry on next disconnect)
+    
+    // Reset attempts when we become authenticated
     if (isAuthenticated) {
-      hasTriedAutoInit.current = false;
+      autoInitAttempts.current = 0;
     }
-  }, [hasSavedSession, isAuthenticated, isInitializing]);
+  }, [hasSavedSession, isAuthenticated, isInitializing, initWhatsAppMutation.isPending]);
 
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
