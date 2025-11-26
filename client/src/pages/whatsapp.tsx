@@ -948,6 +948,8 @@ export default function WhatsAppPage() {
   const [newChatMessage, setNewChatMessage] = useState('');
   const [isSendingNewChatMessage, setIsSendingNewChatMessage] = useState(false);
   const [newChatValidationStatus, setNewChatValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [newChatProfilePic, setNewChatProfilePic] = useState<string | null>(null);
+  const [newChatContactName, setNewChatContactName] = useState<string | null>(null);
   
   // Profile picture cache
   const [profilePictures, setProfilePictures] = useState<Record<string, string | null>>({});
@@ -1777,15 +1779,26 @@ export default function WhatsAppPage() {
     }
   }, [selectedChatId, isAuthenticated]);
 
-  // Auto-detect existing chat when typing in "New Message" mode
+  // Auto-detect existing chat and fetch profile picture when typing in "New Message" mode
   useEffect(() => {
-    if (!isNewChatMode || !newChatToNumber.trim() || !chats.length) return;
+    if (!isNewChatMode || !newChatToNumber.trim()) {
+      // Clear profile pic when not in new chat mode or no number
+      if (!newChatToNumber.trim()) {
+        setNewChatProfilePic(null);
+        setNewChatContactName(null);
+      }
+      return;
+    }
     
     // Clean the entered number - remove spaces, dashes, parentheses, and leading +
     const cleanNumber = newChatToNumber.replace(/[\s\-\(\)\+]/g, '');
     
-    // Need at least 7 digits to match
-    if (cleanNumber.length < 7) return;
+    // Need at least 10 digits for a valid phone number
+    if (cleanNumber.length < 10) {
+      setNewChatProfilePic(null);
+      setNewChatContactName(null);
+      return;
+    }
     
     // Check if this number matches an existing chat
     const existingChat = chats.find(chat => {
@@ -1802,7 +1815,46 @@ export default function WhatsAppPage() {
       setIsNewChatMode(false);
       setNewChatToNumber('');
       setNewChatMessage('');
+      setNewChatProfilePic(null);
+      setNewChatContactName(null);
+      return;
     }
+    
+    // Fetch profile picture and contact info for this number
+    const fetchNewChatProfile = async () => {
+      try {
+        const contactId = `${cleanNumber}@c.us`;
+        
+        // Get contact profile (includes profile picture and name)
+        const profileRes = await fetch(`/api/whatsapp/contacts/${encodeURIComponent(contactId)}/profile`, {
+          credentials: 'include'
+        });
+        
+        if (profileRes.ok) {
+          const data = await profileRes.json();
+          if (data.success) {
+            // Set profile picture
+            if (data.profilePictureUrl) {
+              setNewChatProfilePic(data.profilePictureUrl);
+            }
+            // Set contact name from contact object
+            if (data.contact) {
+              const name = data.contact.name || data.contact.pushname || data.contact.shortName;
+              if (name) {
+                setNewChatContactName(name);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Silently fail - this is expected for numbers without WhatsApp
+        console.log('[WhatsApp] Could not fetch profile for:', cleanNumber);
+      }
+    };
+    
+    // Debounce the fetch to avoid too many requests
+    const timeoutId = setTimeout(fetchNewChatProfile, 500);
+    return () => clearTimeout(timeoutId);
   }, [newChatToNumber, chats, isNewChatMode]);
 
   // =====================================================
@@ -2603,6 +2655,13 @@ export default function WhatsAppPage() {
                   data-testid="chat-new-message"
                 >
                   <Avatar className="h-[52px] w-[52px]">
+                    {newChatProfilePic ? (
+                      <AvatarImage 
+                        src={newChatProfilePic} 
+                        alt="Contact"
+                        className="object-cover"
+                      />
+                    ) : null}
                     <AvatarFallback className="bg-white/20 text-white">
                       <User className="h-6 w-6" />
                     </AvatarFallback>
@@ -2610,7 +2669,9 @@ export default function WhatsAppPage() {
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold text-[15px]">New Message</p>
+                      <p className="font-semibold text-[15px]">
+                        {newChatContactName || 'New Message'}
+                      </p>
                       <Button
                         size="icon"
                         variant="ghost"
@@ -2621,6 +2682,8 @@ export default function WhatsAppPage() {
                           setNewChatToNumber('');
                           setNewChatMessage('');
                           setNewChatValidationStatus('idle');
+                          setNewChatProfilePic(null);
+                          setNewChatContactName(null);
                         }}
                         data-testid="button-close-new-message"
                       >
