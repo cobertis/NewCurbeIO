@@ -996,7 +996,7 @@ export default function WhatsAppPage() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
-  const { data: statusData } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
+  const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
     refetchInterval: isInitializing ? 2000 : 5000, // Poll faster during initialization
   });
@@ -1005,7 +1005,8 @@ export default function WhatsAppPage() {
   const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   // Show interface immediately if there's a saved session (even if not fully connected yet)
-  const showInterface = isAuthenticated || hasSavedSession;
+  // Also show interface while loading status to avoid flash of connect page
+  const showInterface = statusLoading || isAuthenticated || hasSavedSession;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -2898,7 +2899,8 @@ export default function WhatsAppPage() {
   // =====================================================
 
   // Show reconnecting banner when we have a saved session but not fully connected
-  const isReconnecting = hasSavedSession && !isAuthenticated;
+  // Also show during initial load to indicate we're checking the session
+  const isReconnecting = (statusLoading || hasSavedSession) && !isAuthenticated;
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-[var(--whatsapp-bg-primary)]">
