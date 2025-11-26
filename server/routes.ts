@@ -3835,12 +3835,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               return res.status(500).json({ message: "Failed to save session" });
             }
             
-            // Auto-initialize WhatsApp in background for faster access later
-            if (user.companyId && whatsappService.hasSavedSession(user.companyId)) {
-              whatsappService.getClientForCompany(user.companyId).catch(e => {
-                console.log(`[WhatsApp] Background init after login:`, e.message);
-              });
-            }
+            // WhatsApp lazy initialization - client created on-demand when user visits WhatsApp page
             res.json({
               success: true,
               skipOTP: true,
@@ -27250,7 +27245,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/whatsapp/status - Get session status (auto-initializes client if needed)
+  // GET /api/whatsapp/status - Get session status (NO auto-initialization)
   app.get("/api/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -27260,17 +27255,56 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const companyId = user.companyId;
       
-      
-      // Check if there is a saved session before initializing
+      // Check if there is a saved session
       const hasSavedSession = whatsappService.hasSavedSession(companyId);
-      // Initialize client if it doesn't exist (will trigger QR generation)
-      await whatsappService.getClientForCompany(companyId);
       
+      // Get status WITHOUT initializing - just check current state
       const status = whatsappService.getSessionStatus(companyId);
       return res.json({ success: true, status, hasSavedSession });
     } catch (error) {
       console.error('[WhatsApp] Error getting status:', error);
       return res.status(500).json({ success: false, error: 'Failed to get status' });
+    }
+  });
+
+  // POST /api/whatsapp/init - Manually initialize WhatsApp client
+  app.post("/api/whatsapp/init", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
+      }
+
+      const companyId = user.companyId;
+      
+      // Clean up any leftover lock files before initializing
+      const authPath = `.wwebjs_auth/session-${companyId}`;
+      const fs = await import('fs');
+      const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
+      for (const lockFile of lockFiles) {
+        const lockPath = `${authPath}/${lockFile}`;
+        if (fs.existsSync(lockPath)) {
+          try {
+            fs.unlinkSync(lockPath);
+            console.log(`[WhatsApp] Cleaned up lock file: ${lockPath}`);
+          } catch (e) {
+            console.log(`[WhatsApp] Could not clean lock file ${lockPath}:`, e);
+          }
+        }
+      }
+      
+      console.log(`[WhatsApp] Manual initialization requested for company: ${companyId}`);
+      
+      // Initialize client (will trigger QR generation if needed)
+      await whatsappService.getClientForCompany(companyId);
+      
+      const status = whatsappService.getSessionStatus(companyId);
+      const hasSavedSession = whatsappService.hasSavedSession(companyId);
+      
+      return res.json({ success: true, status, hasSavedSession, message: 'Initialization started' });
+    } catch (error) {
+      console.error('[WhatsApp] Error initializing:', error);
+      return res.status(500).json({ success: false, error: 'Failed to initialize WhatsApp' });
     }
   });
 

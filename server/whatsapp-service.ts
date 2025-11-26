@@ -4846,38 +4846,4 @@ class WhatsAppService extends EventEmitter {
 // Export singleton service instance (but now it manages multiple clients internally)
 export const whatsappService = new WhatsAppService();
 
-console.log('[WhatsApp] Multi-tenant WhatsApp service initialized');
-
-// Auto-initialize saved WhatsApp sessions on server startup
-// This ensures WhatsApp is ready when users access the page
-setTimeout(async () => {
-  try {
-    const fs = await import('fs');
-    const authPath = '.wwebjs_auth';
-    
-    if (!fs.existsSync(authPath)) {
-      console.log('[WhatsApp] No saved sessions found');
-      return;
-    }
-    
-    const companyFolders = fs.readdirSync(authPath).filter((f: string) => {
-      const fullPath = `${authPath}/${f}`;
-      return fs.statSync(fullPath).isDirectory() && f !== '.git';
-    });
-    
-    console.log(`[WhatsApp] Found ${companyFolders.length} saved sessions, auto-initializing...`);
-    
-    for (const companyId of companyFolders) {
-      try {
-        console.log(`[WhatsApp] Auto-initializing session for company: ${companyId}`);
-        await whatsappService.getClientForCompany(companyId);
-      } catch (error) {
-        console.error(`[WhatsApp] Failed to auto-initialize session for ${companyId}:`, error);
-      }
-    }
-    
-    console.log('[WhatsApp] All saved sessions initialized');
-  } catch (error) {
-    console.error('[WhatsApp] Error auto-initializing sessions:', error);
-  }
-}, 3000);
+console.log('[WhatsApp] Multi-tenant WhatsApp service initialized (lazy initialization mode)');

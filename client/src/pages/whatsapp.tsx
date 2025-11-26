@@ -992,9 +992,13 @@ export default function WhatsAppPage() {
   // QUERIES
   // =====================================================
 
+  // State for manual WhatsApp initialization
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
+
   const { data: statusData } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
-    refetchInterval: 3000,
+    refetchInterval: isInitializing ? 2000 : 5000, // Poll faster during initialization
   });
 
   const status = statusData?.status;
@@ -1002,6 +1006,36 @@ export default function WhatsAppPage() {
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   // Show interface immediately if there's a saved session (even if not fully connected yet)
   const showInterface = isAuthenticated || hasSavedSession;
+
+  // Manual WhatsApp initialization mutation
+  const initWhatsAppMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/whatsapp/init', { method: 'POST' });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to initialize WhatsApp');
+      }
+      return response.json();
+    },
+    onMutate: () => {
+      setIsInitializing(true);
+      setInitError(null);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/status'] });
+    },
+    onError: (error: Error) => {
+      setInitError(error.message);
+      setIsInitializing(false);
+    },
+  });
+
+  // Auto-stop initialization state when we get QR code or authenticated
+  useEffect(() => {
+    if (status?.qrCode || isAuthenticated) {
+      setIsInitializing(false);
+    }
+  }, [status?.qrCode, isAuthenticated]);
 
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
@@ -2784,13 +2818,48 @@ export default function WhatsAppPage() {
                   <p>4. Point your phone at this screen to scan the code</p>
                 </div>
               </div>
-            ) : (
+            ) : isInitializing ? (
               <div className="space-y-4">
                 <div className="flex justify-center">
-                  <RefreshCw className="h-12 w-12 text-[var(--whatsapp-text-tertiary)] animate-spin" />
+                  <RefreshCw className="h-12 w-12 text-[var(--whatsapp-green-primary)] animate-spin" />
                 </div>
                 <p className="text-[var(--whatsapp-text-secondary)]">
-                  {status?.message || 'Initializing WhatsApp connection...'}
+                  Connecting to WhatsApp...
+                </p>
+                <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
+                  This may take a moment. Please wait for the QR code to appear.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-[var(--whatsapp-text-secondary)]">
+                  Connect your WhatsApp account to start messaging
+                </p>
+                {initError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+                    {initError}
+                  </div>
+                )}
+                <Button
+                  onClick={() => initWhatsAppMutation.mutate()}
+                  disabled={initWhatsAppMutation.isPending}
+                  className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-secondary)] text-white px-8 py-3 text-lg"
+                  data-testid="button-connect-whatsapp"
+                >
+                  {initWhatsAppMutation.isPending ? (
+                    <>
+                      <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="h-5 w-5 mr-2" />
+                      Connect WhatsApp
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
+                  You'll need to scan a QR code with your phone to link your account
                 </p>
               </div>
             )}
