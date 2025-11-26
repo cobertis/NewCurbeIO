@@ -1866,12 +1866,30 @@ export default function WhatsAppPage() {
             if (data.profile.profilePicUrl) {
               setNewChatProfilePic(data.profile.profilePicUrl);
             }
-            // Set contact name from profile object (pushname is the WhatsApp display name)
-            const name = data.profile.pushname || data.profile.name;
-            console.log('[WhatsApp] Contact name:', name);
-            if (name) {
-              setNewChatContactName(name);
+            // Set contact name - prefer pushname (WhatsApp profile name), then saved name
+            // But only if it's a real name (not just the phone number)
+            const pushname = data.profile.pushname;
+            const savedName = data.profile.name;
+            const phoneNumber = data.profile.number || cleanNumber;
+            
+            // Determine if name is a real name (not just the phone number formatted)
+            const isRealName = (name: string | null) => {
+              if (!name) return false;
+              // Remove all non-digits to compare with phone number
+              const digitsOnly = name.replace(/\D/g, '');
+              // If after removing formatting it equals the phone number, it's not a real name
+              return digitsOnly !== phoneNumber && digitsOnly !== cleanNumber;
+            };
+            
+            let displayName: string | null = null;
+            if (pushname && isRealName(pushname)) {
+              displayName = pushname;
+            } else if (savedName && isRealName(savedName)) {
+              displayName = savedName;
             }
+            
+            console.log('[WhatsApp] Contact name resolved:', displayName, '(pushname:', pushname, ', savedName:', savedName, ')');
+            setNewChatContactName(displayName);
           }
         }
       } catch (error) {
@@ -3249,12 +3267,20 @@ export default function WhatsAppPage() {
                     )}
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-[var(--whatsapp-text-primary)] truncate">
-                      {newChatContactName || `+${newChatToNumber.replace(/\D/g, '')}`}
-                    </p>
-                    <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
-                      +{newChatToNumber.replace(/\D/g, '')}
-                    </p>
+                    {newChatContactName ? (
+                      <>
+                        <p className="font-medium text-[var(--whatsapp-text-primary)] truncate">
+                          {newChatContactName}
+                        </p>
+                        <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
+                          +{newChatToNumber.replace(/\D/g, '')}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-medium text-[var(--whatsapp-text-primary)] truncate">
+                        +{newChatToNumber.replace(/\D/g, '')}
+                      </p>
+                    )}
                   </div>
                   <X className="h-5 w-5 text-[var(--whatsapp-text-secondary)] hover:text-[var(--whatsapp-text-primary)]" />
                 </div>
