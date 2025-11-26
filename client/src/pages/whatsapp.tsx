@@ -1011,12 +1011,9 @@ export default function WhatsAppPage() {
   const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   
-  // SIMPLE LOGIC: Show connect page ONLY if:
-  // 1. Not loading (query completed)
-  // 2. No saved session
-  // 3. Not authenticated
-  // 4. Not currently initializing
-  const showConnectPage = !statusLoading && !hasSavedSession && !isAuthenticated && !isInitializing;
+  // SIMPLE LOGIC: Show connect page ONLY if there's no saved session
+  // If there's a saved session, the server auto-connects on startup - never show connect page
+  const showConnectPage = !statusLoading && !hasSavedSession && !isAuthenticated;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -2930,20 +2927,11 @@ export default function WhatsAppPage() {
   // RENDER: MAIN CHAT VIEW
   // =====================================================
 
-  // Show reconnecting banner when we have a saved session but not fully connected
-  // Also show during initial load to indicate we're checking the session
-  const isReconnecting = (statusLoading || hasSavedSession) && !isAuthenticated;
+  // Connection state - used for subtle indicator, not blocking UI
+  const isConnecting = hasSavedSession && !isAuthenticated;
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-[var(--whatsapp-bg-primary)]">
-      {/* Reconnecting Banner */}
-      {isReconnecting && (
-        <div className="bg-[var(--whatsapp-green-primary)] text-white px-4 py-2 flex items-center justify-center gap-2 text-sm">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          <span>Reconectando a WhatsApp...</span>
-        </div>
-      )}
-      
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Sidebar - Chat List */}
         <ResizablePanel 
@@ -2958,10 +2946,18 @@ export default function WhatsAppPage() {
         {/* Header */}
         <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] flex items-center justify-between border-b border-[var(--whatsapp-border)]">
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-10 w-10 relative">
               <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold">
                 <MessageSquare className="h-5 w-5" />
               </AvatarFallback>
+              {/* Connection status indicator */}
+              <span 
+                className={cn(
+                  "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[var(--whatsapp-bg-panel-header)]",
+                  isConnecting ? "bg-yellow-500 animate-pulse" : "bg-green-500"
+                )}
+                title={isConnecting ? "Connecting..." : "Connected"}
+              />
             </Avatar>
             <span className="text-lg font-semibold text-[var(--whatsapp-text-primary)]">Chats</span>
           </div>

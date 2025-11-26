@@ -111,12 +111,108 @@ class WhatsAppService extends EventEmitter {
     const authPath = path.join(projectRoot, '.wwebjs_auth', companyId);
     try {
       const exists = fs.existsSync(authPath);
-      console.log(`[WhatsApp] hasSavedSession check: ${authPath} = ${exists}`);
       return exists;
     } catch (error) {
       console.error(`[WhatsApp] hasSavedSession error for ${companyId}:`, error);
       return false;
     }
+  }
+
+  /**
+   * Get all company IDs that have saved WhatsApp sessions
+   */
+  getSavedSessionCompanyIds(): string[] {
+    const projectRoot = process.cwd();
+    const authDir = path.join(projectRoot, '.wwebjs_auth');
+    try {
+      if (!fs.existsSync(authDir)) {
+        return [];
+      }
+      const entries = fs.readdirSync(authDir, { withFileTypes: true });
+      return entries
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name);
+    } catch (error) {
+      console.error('[WhatsApp] Error reading saved sessions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Auto-connect saved WhatsApp sessions on server startup
+   * Each company gets its own isolated connection
+   * Connections persist until explicitly disconnected
+   */
+  async autoConnectSavedSessions(): Promise<void> {
+    const savedCompanyIds = this.getSavedSessionCompanyIds();
+    
+    if (savedCompanyIds.length === 0) {
+      console.log('[WhatsApp] No saved sessions found');
+      return;
+    }
+
+    console.log(`[WhatsApp] Found ${savedCompanyIds.length} saved session(s), auto-connecting in background...`);
+    
+    // Connect sessions one at a time with delay to avoid memory spikes
+    for (let i = 0; i < savedCompanyIds.length; i++) {
+      const companyId = savedCompanyIds[i];
+      
+      // Add delay between connections to avoid memory spikes (except for first one)
+      if (i > 0) {
+        console.log(`[WhatsApp] Waiting 5 seconds before connecting next session...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+      
+      try {
+        console.log(`[WhatsApp] Auto-connecting saved session for company: ${companyId} (${i + 1}/${savedCompanyIds.length})`);
+        await this.getClientForCompany(companyId);
+        
+        // Wait for client to be ready
+        const maxWaitTime = 60000; // 60 seconds max
+        const startTime = Date.now();
+        while (!this.isReady(companyId) && (Date.now() - startTime) < maxWaitTime) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        if (this.isReady(companyId)) {
+          console.log(`[WhatsApp] ✓ Auto-connect successful for company: ${companyId}`);
+        } else {
+          console.log(`[WhatsApp] ⚠ Auto-connect timeout for company: ${companyId} (will retry on demand)`);
+        }
+      } catch (error) {
+        console.error(`[WhatsApp] Auto-connect failed for company ${companyId}:`, error);
+      }
+    }
+    
+    console.log('[WhatsApp] Auto-connect process completed');
+  }
+
+  /**
+   * Keep WhatsApp connections alive with periodic health checks
+   * Automatically reconnects if a connection drops
+   */
+  startConnectionHealthCheck(): void {
+    const HEALTH_CHECK_INTERVAL = 30000; // Check every 30 seconds
+    
+    setInterval(async () => {
+      for (const [companyId, companyClient] of this.clients) {
+        try {
+          // Check if client is still connected
+          if (!companyClient.isReady) {
+            console.log(`[WhatsApp] Health check: Company ${companyId} not ready, attempting reconnect...`);
+            
+            // Only reconnect if there's a saved session
+            if (this.hasSavedSession(companyId)) {
+              await this.restartClientForCompany(companyId);
+            }
+          }
+        } catch (error) {
+          console.error(`[WhatsApp] Health check error for company ${companyId}:`, error);
+        }
+      }
+    }, HEALTH_CHECK_INTERVAL);
+    
+    console.log('[WhatsApp] Connection health check started (every 30s)');
   }
 
   /**
@@ -4868,4 +4964,16 @@ class WhatsAppService extends EventEmitter {
 // Export singleton service instance (but now it manages multiple clients internally)
 export const whatsappService = new WhatsAppService();
 
-console.log('[WhatsApp] Multi-tenant WhatsApp service initialized (lazy initialization mode)');
+console.log('[WhatsApp] Multi-tenant WhatsApp service initialized');
+
+// Auto-connect saved sessions on server startup (runs in background)
+// Start connection health check to maintain persistent connections
+setTimeout(() => {
+  // Start health check to keep connections alive
+  whatsappService.startConnectionHealthCheck();
+  
+  // Auto-connect all saved sessions
+  whatsappService.autoConnectSavedSessions().catch(err => {
+    console.error('[WhatsApp] Auto-connect error:', err);
+  });
+}, 2000); // Wait 2 seconds for server to fully start
