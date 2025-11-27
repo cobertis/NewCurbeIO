@@ -791,6 +791,17 @@ class WhatsAppService extends EventEmitter {
       
       // Store call in database
       try {
+        // Try to get caller name from contact
+        let callerName: string | undefined = undefined;
+        try {
+          const contact = await client.getContactById(call.from);
+          if (contact) {
+            callerName = contact.pushname || contact.name || contact.shortName;
+          }
+        } catch (contactError) {
+          console.log(`[WhatsApp] Could not get contact info for caller ${call.from}`);
+        }
+        
         const callData = {
           companyId,
           callId: call.id,
@@ -801,6 +812,7 @@ class WhatsAppService extends EventEmitter {
           status: 'ringing',
           participants: call.participants || [],
           timestamp: new Date(call.timestamp * 1000),
+          callerName,
         };
         
         await storage.createWhatsappCall(callData);

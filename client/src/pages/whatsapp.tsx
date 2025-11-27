@@ -1181,7 +1181,7 @@ export default function WhatsAppPage() {
 
   const chatNotes = chatNotesData?.notes || [];
 
-  // Fetch call history
+  // Fetch call history for selected chat
   const { data: callHistoryData, refetch: refetchCalls } = useQuery<{ success: boolean; calls: Array<{
     id: string;
     callId: string;
@@ -1193,22 +1193,45 @@ export default function WhatsAppPage() {
     timestamp: string;
     duration: number | null;
   }> }>({
-    queryKey: ['/api/whatsapp/calls'],
-    enabled: isAuthenticated,
+    queryKey: ['/api/whatsapp/chats', selectedChatId, 'calls'],
+    queryFn: async () => {
+      if (!selectedChatId) return { success: false, calls: [] };
+      const res = await fetch(`/api/whatsapp/chats/${encodeURIComponent(selectedChatId)}/calls`);
+      if (!res.ok) throw new Error('Failed to fetch chat calls');
+      return res.json();
+    },
+    enabled: !!selectedChatId && isAuthenticated,
   });
 
-  // Merge messages and notes into a timeline sorted by timestamp
-  const timelineItems = useMemo(() => {
-    const items: Array<{ type: 'message'; data: typeof messages[0] } | { type: 'note'; data: typeof chatNotes[0] }> = [
-      ...messages.map(m => ({ type: 'message' as const, data: m })),
-      ...chatNotes.map(n => ({ type: 'note' as const, data: n })),
+  const chatCalls = callHistoryData?.calls || [];
+
+  // Merge messages, notes, and calls into a timeline sorted by timestamp
+  // All timestamps are in SECONDS for consistency with formatTimestamp/formatDateSeparator helpers
+  type TimelineItem = 
+    | { type: 'message'; data: typeof messages[0]; timestamp: number }
+    | { type: 'note'; data: typeof chatNotes[0]; timestamp: number }
+    | { type: 'call'; data: typeof chatCalls[0]; timestamp: number };
+    
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [
+      ...messages.map(m => ({ 
+        type: 'message' as const, 
+        data: m, 
+        timestamp: m.timestamp // Already in seconds
+      })),
+      ...chatNotes.map(n => ({ 
+        type: 'note' as const, 
+        data: n, 
+        timestamp: Math.floor(new Date(n.createdAt).getTime() / 1000) // Convert to seconds
+      })),
+      ...chatCalls.map(c => ({ 
+        type: 'call' as const, 
+        data: c, 
+        timestamp: Math.floor(new Date(c.timestamp).getTime() / 1000) // Convert to seconds
+      })),
     ];
-    return items.sort((a, b) => {
-      const aTime = a.type === 'message' ? (a.data.timestamp * 1000) : new Date(a.data.createdAt).getTime();
-      const bTime = b.type === 'message' ? (b.data.timestamp * 1000) : new Date(b.data.createdAt).getTime();
-      return aTime - bTime;
-    });
-  }, [messages, chatNotes]);
+    return items.sort((a, b) => a.timestamp - b.timestamp);
+  }, [messages, chatNotes, chatCalls]);
 
   // =====================================================
   // MUTATIONS
@@ -3400,12 +3423,9 @@ export default function WhatsAppPage() {
               ) : (
                 <div className="space-y-2">
                   {timelineItems.map((item, index) => {
-                    const getItemTimestamp = (item: typeof timelineItems[0]) => {
-                      return item.type === 'message' ? item.data.timestamp : Math.floor(new Date(item.data.createdAt).getTime() / 1000);
-                    };
-                    
-                    const currentTimestamp = getItemTimestamp(item);
-                    const previousTimestamp = index > 0 ? getItemTimestamp(timelineItems[index - 1]) : null;
+                    // Use the pre-computed timestamp from timeline item (already in seconds)
+                    const currentTimestamp = item.timestamp;
+                    const previousTimestamp = index > 0 ? timelineItems[index - 1].timestamp : null;
                     const showDateSeparator = index === 0 || 
                       (previousTimestamp !== null && getMessageDateKey(currentTimestamp) !== getMessageDateKey(previousTimestamp));
                     
@@ -3438,8 +3458,49 @@ export default function WhatsAppPage() {
                       );
                     }
                     
+                    // Render call event item
+                    if (item.type === 'call') {
+                      const call = item.data;
+                      const isOutgoing = call.fromMe;
+                      const isMissed = call.status === 'missed' || call.status === 'rejected';
+                      const callIcon = call.isVideo ? (
+                        <Video className={`h-4 w-4 ${isMissed ? 'text-red-500' : 'text-green-500'}`} />
+                      ) : (
+                        <Phone className={`h-4 w-4 ${isMissed ? 'text-red-500' : 'text-green-500'}`} />
+                      );
+                      
+                      const callText = isOutgoing 
+                        ? (isMissed ? 'Outgoing call - No answer' : `Outgoing ${call.isVideo ? 'video' : 'voice'} call`)
+                        : (isMissed ? 'Missed call' : `Incoming ${call.isVideo ? 'video' : 'voice'} call`);
+                      
+                      const durationText = call.duration && call.duration > 0 
+                        ? ` (${Math.floor(call.duration / 60)}:${String(call.duration % 60).padStart(2, '0')})` 
+                        : '';
+                      
+                      return (
+                        <div key={`call-${call.id}`}>
+                          {showDateSeparator && (
+                            <div className="flex items-center justify-center my-4" data-testid={`date-separator-${getMessageDateKey(currentTimestamp)}`}>
+                              <div className="bg-[var(--whatsapp-bg-secondary)] text-[var(--whatsapp-text-secondary)] px-3 py-1 rounded-lg text-xs font-medium shadow-sm">
+                                {formatDateSeparator(currentTimestamp)}
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-center my-2">
+                            <div className="flex items-center gap-2 bg-[var(--whatsapp-bg-secondary)] text-[var(--whatsapp-text-secondary)] px-4 py-2 rounded-lg text-sm shadow-sm">
+                              {callIcon}
+                              <span>{callText}{durationText}</span>
+                              <span className="text-xs opacity-70">
+                                {formatTimestamp(currentTimestamp)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
                     // Render message item
-                    const message = item.data;
+                    const message = item.data as typeof messages[0];
                     return (
                       <div key={message.id}>
                         {showDateSeparator && (

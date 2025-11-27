@@ -814,6 +814,7 @@ class NotificationService {
     isGroup: boolean;
     status: string;
     timestamp: Date;
+    callerName?: string;
   }) {
     // Get all users in the company
     const users = await storage.getUsersByCompany(companyId);
@@ -823,23 +824,32 @@ class NotificationService {
       return [];
     }
     
-    // Format caller number
+    // Format caller number (remove WhatsApp suffix)
     const callerNumber = data.from.replace('@c.us', '').replace('@g.us', '');
+    const formattedNumber = callerNumber.startsWith('1') && callerNumber.length === 11
+      ? `+1 (${callerNumber.slice(1, 4)}) ${callerNumber.slice(4, 7)}-${callerNumber.slice(7)}`
+      : `+${callerNumber}`;
+    
     const callType = data.isVideo ? 'Video' : 'Voice';
+    
+    // Build caller display: "Name (number)" or just "number" if no name
+    const callerDisplay = data.callerName 
+      ? `${data.callerName} (${formattedNumber})`
+      : formattedNumber;
     
     // Create notification for each user
     const notifications: InsertNotification[] = users.map((user: any) => ({
       userId: user.id,
       type: "whatsapp_call",
-      title: `WhatsApp ${callType} Call`,
-      message: `Incoming ${callType.toLowerCase()} call from ${callerNumber}`,
-      link: `/whatsapp`,
+      title: `Incoming ${callType} Call`,
+      message: callerDisplay,
+      link: `/whatsapp?chat=${encodeURIComponent(data.from)}`,
       isRead: false,
     }));
     
     const result = await Promise.all(notifications.map((n: InsertNotification) => storage.createNotification(n)));
     broadcastNotificationUpdate();
-    console.log(`[NOTIFICATION] WhatsApp call: Notified ${users.length} users in company ${companyId}`);
+    console.log(`[NOTIFICATION] WhatsApp call from ${callerDisplay}: Notified ${users.length} users in company ${companyId}`);
     return result;
   }
 

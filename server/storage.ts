@@ -1242,6 +1242,7 @@ export interface IStorage {
   // WhatsApp Calls
   createWhatsappCall(call: InsertWhatsappCall): Promise<WhatsappCall>;
   getWhatsappCallsByCompany(companyId: string, limit?: number): Promise<WhatsappCall[]>;
+  getWhatsappCallsByChat(companyId: string, chatId: string): Promise<WhatsappCall[]>;
   updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null>;
   getWhatsappCallByCallId(companyId: string, callId: string): Promise<WhatsappCall | null>;
 }
@@ -11504,6 +11505,16 @@ export class DbStorage implements IStorage {
       .where(eq(whatsappCalls.companyId, companyId))
       .orderBy(desc(whatsappCalls.timestamp))
       .limit(limit);
+  }
+
+  async getWhatsappCallsByChat(companyId: string, chatId: string): Promise<WhatsappCall[]> {
+    return db.select()
+      .from(whatsappCalls)
+      .where(and(
+        eq(whatsappCalls.companyId, companyId),
+        eq(whatsappCalls.from, chatId)
+      ))
+      .orderBy(desc(whatsappCalls.timestamp));
   }
 
   async updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null> {
