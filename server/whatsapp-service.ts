@@ -593,16 +593,21 @@ class WhatsAppService extends EventEmitter {
         }
       }
       
-      // Send notification for incoming messages (not from self)
-      if (!message.fromMe) {
-        try {
-          // Get contact and chat info for notification
-          const contact = await message.getContact();
-          const chat = await message.getChat();
-          
-          // Extract sender info
-          const senderName = contact?.pushname || contact?.name || contact?.number || 'Unknown';
+      // Auto-unarchive chat when receiving new messages
+      try {
+        const chat = await message.getChat();
+        if (chat && chat.archived) {
+          console.log(`[WhatsApp] Auto-unarchiving chat ${message.from} for company ${companyId} (new message received)`);
+          await chat.unarchive();
+        }
+        
+        // Send notification for incoming messages (not from self)
+        if (!message.fromMe) {
+          // Extract sender info directly from message properties to avoid getContact() errors
+          // Use _data for pushname as it's more reliable
+          const pushname = message._data?.notifyName || message.notifyName;
           const senderNumber = message.from.replace('@c.us', '').replace('@g.us', '');
+          const senderName = pushname || this.formatPhoneNumber(senderNumber) || 'Unknown';
           
           // Check if group chat
           const isGroup = chat?.isGroup || message.from.includes('@g.us');
@@ -619,9 +624,9 @@ class WhatsAppService extends EventEmitter {
             isGroup,
             groupName,
           });
-        } catch (notifyError) {
-          console.error(`[WhatsApp] Error sending notification for company ${companyId}:`, notifyError);
         }
+      } catch (notifyError) {
+        console.error(`[WhatsApp] Error in message handler for company ${companyId}:`, notifyError);
       }
     });
 
@@ -1099,6 +1104,18 @@ class WhatsAppService extends EventEmitter {
       // Ensure the number is in the correct format (e.g., "1234567890@c.us")
       const chatId = to.includes('@') ? to : `${to}@c.us`;
       
+      // Auto-unarchive chat when sending messages (outbound interaction)
+      try {
+        const chat = await companyClient.client.getChatById(chatId);
+        if (chat && chat.archived) {
+          console.log(`[WhatsApp] Auto-unarchiving chat ${chatId} for company ${companyId} (outbound message)`);
+          await chat.unarchive();
+        }
+      } catch (unarchiveErr) {
+        // Don't fail the message send if unarchive fails
+        console.log(`[WhatsApp] Could not check/unarchive chat ${chatId}: ${(unarchiveErr as Error).message}`);
+      }
+      
       const sentMessage = await companyClient.client.sendMessage(chatId, message);
       console.log(`[WhatsApp] Message sent to ${chatId} for company ${companyId}`);
       return sentMessage;
@@ -1163,6 +1180,12 @@ class WhatsAppService extends EventEmitter {
       
       // Get the chat
       const chat = await companyClient.client.getChatById(chatId);
+      
+      // Auto-unarchive chat when sending media (outbound interaction)
+      if (chat && chat.archived) {
+        console.log(`[WhatsApp] Auto-unarchiving chat ${chatId} for company ${companyId} (outbound media)`);
+        await chat.unarchive();
+      }
       
       // Send options
       const sendOptions: any = {};
@@ -1258,6 +1281,24 @@ class WhatsAppService extends EventEmitter {
    */
   private normalizeWhatsAppId(id: string): string {
     return id.includes('@') ? id : `${id}@c.us`;
+  }
+
+  /**
+   * Format a phone number for display (e.g., "13055551234" -> "+1 (305) 555-1234")
+   */
+  private formatPhoneNumber(number: string): string {
+    // Remove any non-digit characters
+    const digits = number.replace(/\D/g, '');
+    
+    // Handle US numbers (11 digits starting with 1, or 10 digits)
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+    } else if (digits.length === 10) {
+      return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    
+    // For other numbers, just add + prefix
+    return `+${digits}`;
   }
 
   /**
