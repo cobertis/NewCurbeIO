@@ -668,24 +668,24 @@ class WhatsAppService extends EventEmitter {
         console.error(`[WhatsApp] Failed to hydrate reactions for company ${companyId}:`, error);
       }
       
-      // Hydrate deleted chats from database for this company
+      // Hydrate archived chats from database for this company
       try {
-        const savedDeletedChats = await db
+        const savedArchivedChats = await db
           .select()
           .from(whatsappDeletedChats)
           .where(eq(whatsappDeletedChats.companyId, companyId));
         
-        if (savedDeletedChats.length > 0) {
+        if (savedArchivedChats.length > 0) {
           if (!this.deletedChats.has(companyId)) {
             this.deletedChats.set(companyId, new Set());
           }
-          for (const deleted of savedDeletedChats) {
-            this.deletedChats.get(companyId)!.add(deleted.chatId);
+          for (const archived of savedArchivedChats) {
+            this.deletedChats.get(companyId)!.add(archived.chatId);
           }
-          console.log(`[WhatsApp] Hydrated ${savedDeletedChats.length} deleted chats from database for company: ${companyId}`);
+          console.log(`[WhatsApp] Hydrated ${savedArchivedChats.length} archived chats from database for company: ${companyId}`);
         }
       } catch (error) {
-        console.error(`[WhatsApp] Failed to hydrate deleted chats for company ${companyId}:`, error);
+        console.error(`[WhatsApp] Failed to hydrate archived chats for company ${companyId}:`, error);
       }
       
       // Setup Puppeteer crash detection listeners
@@ -695,6 +695,29 @@ class WhatsAppService extends EventEmitter {
     // Incoming message
     client.on('message', async (message: any) => {
       console.log(`[WhatsApp] Message received for company ${companyId}:`, message.from, message.body);
+      
+      // Unarchive chats when new message arrives - remove from archived list
+      // This mimics WhatsApp behavior: archived chats reappear in main list when new messages arrive
+      const chatId = message.from;
+      const archivedForCompany = this.deletedChats.get(companyId);
+      if (archivedForCompany && archivedForCompany.has(chatId)) {
+        archivedForCompany.delete(chatId);
+        console.log(`[WhatsApp] Unarchived chat ${chatId} for company ${companyId} (new message received)`);
+        
+        // Also remove from database
+        try {
+          await db.delete(whatsappDeletedChats)
+            .where(
+              and(
+                eq(whatsappDeletedChats.companyId, companyId),
+                eq(whatsappDeletedChats.chatId, chatId)
+              )
+            );
+        } catch (err) {
+          // Table might not exist yet, ignore
+        }
+      }
+      
       this.emit('message', { companyId, message });
       
       // Call registered message handlers for this company
@@ -1030,11 +1053,6 @@ class WhatsAppService extends EventEmitter {
       return chats.filter((chat: any) => {
         const chatId = chat.id?._serialized || chat.id;
         
-        // Exclude deleted chats
-        if (deletedForCompany.has(chatId)) {
-          return false;
-        }
-        
         // Exclude known system chat IDs
         if (SYSTEM_CHAT_IDS.includes(chatId)) {
           return false;
@@ -1063,6 +1081,13 @@ class WhatsAppService extends EventEmitter {
         if (!hasRealContent) {
           console.log(`[WhatsApp] Filtering ghost chat: ${chatId} (no real content)`);
           return false;
+        }
+        
+        // Mark chat as archived if it's in the archived list, don't exclude it
+        if (deletedForCompany.has(chatId)) {
+          chat.isArchived = true;
+        } else {
+          chat.isArchived = false;
         }
         
         return true;
@@ -2238,45 +2263,38 @@ class WhatsAppService extends EventEmitter {
       }
     }
     
-    // Step 3: Delete chat from WhatsApp Web (this is the main action)
+    // Step 3: Archive chat (move to archived tab, don't delete from WhatsApp)
+    // This means: mark as archived in DB so it appears in archived tab
+    // When new message arrives, it will be automatically unarchived
     try {
-      const companyClient = await this.getClientForCompany(companyId);
-      const chat = await companyClient.client.getChatById(chatId);
-      
-      await chat.clearMessages();
-      console.log(`[WhatsApp] Chat messages cleared from WhatsApp Web`);
-      
-      await chat.delete();
-      console.log(`[WhatsApp] Chat deleted from WhatsApp Web`);
-      
-      // Track this chat as deleted so it doesn't appear in list
+      // Track this chat as archived so it goes to archived tab
       if (!this.deletedChats.has(companyId)) {
         this.deletedChats.set(companyId, new Set());
       }
       this.deletedChats.get(companyId)!.add(chatId);
       
-      // Persist to database so deletion survives server restarts
+      // Persist to database so archiving survives server restarts
       try {
         await db.insert(whatsappDeletedChats)
           .values({ companyId, chatId })
           .onConflictDoNothing();
-        console.log(`[WhatsApp] Persisted deleted chat to database`);
+        console.log(`[WhatsApp] Archived chat ${chatId} to database`);
       } catch (dbErr) {
-        console.error(`[WhatsApp] Failed to persist deleted chat:`, dbErr);
+        console.error(`[WhatsApp] Failed to archive chat:`, dbErr);
       }
       
-      console.log(`[WhatsApp] ✅ Complete deletion finished for chat ${chatId}`);
+      console.log(`[WhatsApp] ✅ Chat ${chatId} moved to archived tab`);
     } catch (error) {
-      console.error(`[WhatsApp] Error deleting chat from WhatsApp Web:`, error);
+      console.error(`[WhatsApp] Error archiving chat:`, error);
       throw error;
     }
   }
   
-  // Clear deleted chat from tracking (e.g., when new message arrives)
-  async untrackDeletedChat(companyId: string, chatId: string): Promise<void> {
-    const deletedForCompany = this.deletedChats.get(companyId);
-    if (deletedForCompany && deletedForCompany.has(chatId)) {
-      deletedForCompany.delete(chatId);
+  // Unarchive chat (move back from archived to main list)
+  async unarchiveChat(companyId: string, chatId: string): Promise<void> {
+    const archivedForCompany = this.deletedChats.get(companyId);
+    if (archivedForCompany && archivedForCompany.has(chatId)) {
+      archivedForCompany.delete(chatId);
       
       // Also remove from database
       try {
@@ -2286,9 +2304,9 @@ class WhatsAppService extends EventEmitter {
             eq(whatsappDeletedChats.chatId, chatId)
           )
         );
-        console.log(`[WhatsApp] Removed chat ${chatId} from deleted list (new message received)`);
+        console.log(`[WhatsApp] Unarchived chat ${chatId} (new interaction)`);
       } catch (dbErr) {
-        console.error(`[WhatsApp] Failed to remove deleted chat from DB:`, dbErr);
+        console.error(`[WhatsApp] Failed to unarchive chat from DB:`, dbErr);
       }
     }
   }
