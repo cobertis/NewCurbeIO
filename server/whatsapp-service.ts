@@ -1468,8 +1468,27 @@ class WhatsAppService extends EventEmitter {
     console.log(`[WhatsApp] getProfilePicture: contactId="${contactId}" -> normalized="${normalizedId}" (attempt ${retryCount + 1})`);
     
     try {
-      // Use getProfilePicUrl - it fetches fresh URL from WhatsApp
-      const url = await client.client.getProfilePicUrl(normalizedId);
+      // Strategy 1: Get Contact object first, then call getProfilePicUrl on it
+      // This is more reliable than client.getProfilePicUrl() as it hydrates the contact
+      let url: string | undefined;
+      
+      try {
+        const contact = await client.client.getContactById(normalizedId);
+        if (contact && typeof contact.getProfilePicUrl === 'function') {
+          url = await contact.getProfilePicUrl();
+          if (url) {
+            console.log(`[WhatsApp] getProfilePicture: Found via Contact object for ${normalizedId}`);
+            return url;
+          }
+        }
+      } catch (contactErr: any) {
+        console.log(`[WhatsApp] getProfilePicture: Contact method failed for ${normalizedId}: ${contactErr?.message}`);
+      }
+      
+      // Strategy 2: Fallback to client.getProfilePicUrl
+      if (!url) {
+        url = await client.client.getProfilePicUrl(normalizedId);
+      }
       
       // Distinguish between undefined (no pic/privacy) and actual URL
       if (url && typeof url === 'string' && url.length > 0) {
