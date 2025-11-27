@@ -1668,26 +1668,21 @@ export default function WhatsAppPage() {
     return `/api/whatsapp/image-proxy?url=${encodeURIComponent(url)}`;
   };
 
-  // Function to fetch profile picture for a contact
+  // Get avatar URL for a contact - uses the new avatar endpoint that always fetches fresh images
+  const getAvatarUrl = (contactId: string): string => {
+    return `/api/whatsapp/contacts/${encodeURIComponent(contactId)}/avatar`;
+  };
+
+  // Function to fetch profile picture for a contact - now uses direct avatar endpoint
   const fetchProfilePicture = async (contactId: string): Promise<string | null> => {
     if (profilePictures[contactId] !== undefined) {
       return profilePictures[contactId];
     }
     
-    try {
-      const response = await apiRequest('GET', `/api/whatsapp/contacts/${encodeURIComponent(contactId)}/profile`);
-      if (response.success && response.profile?.profilePicUrl) {
-        // Use proxied URL to bypass CORS
-        const proxiedUrl = getProxiedImageUrl(response.profile.profilePicUrl);
-        setProfilePictures(prev => ({ ...prev, [contactId]: proxiedUrl }));
-        return proxiedUrl;
-      }
-      setProfilePictures(prev => ({ ...prev, [contactId]: null }));
-      return null;
-    } catch (error) {
-      setProfilePictures(prev => ({ ...prev, [contactId]: null }));
-      return null;
-    }
+    // Use the new avatar endpoint that always gets fresh images from WhatsApp
+    const avatarUrl = getAvatarUrl(contactId);
+    setProfilePictures(prev => ({ ...prev, [contactId]: avatarUrl }));
+    return avatarUrl;
   };
 
   // =====================================================
@@ -1806,12 +1801,13 @@ export default function WhatsAppPage() {
     }
   }, [selectedChatId, isAuthenticated]);
 
-  // Fetch profile pictures for visible chats (first 10)
+  // Load profile pictures for ALL chats using the new avatar endpoint (has server-side caching)
   useEffect(() => {
     if (!isAuthenticated || !chats.length) return;
     
-    const visibleChats = chats.slice(0, 10);
-    visibleChats.forEach(chat => {
+    // The new avatar endpoint is efficient (30s server cache + always fresh from WhatsApp)
+    // So we can load all chats without worrying about performance
+    chats.forEach(chat => {
       if (!chat.isGroup && profilePictures[chat.id] === undefined) {
         fetchProfilePicture(chat.id);
       }
@@ -1910,15 +1906,9 @@ export default function WhatsAppPage() {
           const data = await profileRes.json();
           console.log('[WhatsApp] Profile data received:', data);
           if (data.success && data.profile) {
-            // Set profile picture (proxied to bypass CORS)
-            if (data.profile.profilePicUrl) {
-              const proxiedUrl = getProxiedImageUrl(data.profile.profilePicUrl);
-              console.log('[WhatsApp] Setting profile pic - original:', data.profile.profilePicUrl, 'proxied:', proxiedUrl);
-              setNewChatProfilePic(proxiedUrl);
-            } else {
-              console.log('[WhatsApp] No profile pic URL in response');
-              setNewChatProfilePic(null);
-            }
+            // Use the avatar endpoint that always gets fresh images from WhatsApp
+            setNewChatProfilePic(getAvatarUrl(contactId));
+            console.log('[WhatsApp] Setting profile pic via avatar endpoint for:', contactId);
             // Set contact name - prefer pushname (WhatsApp profile name), then saved name
             // But only if it's a real name (not just the phone number)
             const pushname = data.profile.pushname;
@@ -2471,8 +2461,14 @@ export default function WhatsAppPage() {
         setUserDisplayName(data.profile.pushname || '');
         setUserStatus(data.profile.about || '');
         setMyPhoneNumber(data.profile.phoneNumber || '');
-        // Use proxied URL to bypass CORS
-        setMyProfilePicUrl(data.profile.profilePicUrl ? getProxiedImageUrl(data.profile.profilePicUrl) : null);
+        // Use avatar endpoint for fresh profile picture (phone number is the contact ID for self)
+        if (data.profile.phoneNumber) {
+          setMyProfilePicUrl(getAvatarUrl(`${data.profile.phoneNumber}@c.us`));
+        } else if (data.profile.profilePicUrl) {
+          setMyProfilePicUrl(getProxiedImageUrl(data.profile.profilePicUrl));
+        } else {
+          setMyProfilePicUrl(null);
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);

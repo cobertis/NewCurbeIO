@@ -28705,6 +28705,85 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/whatsapp/contacts/:contactId/avatar - Serve profile picture directly (fresh from WhatsApp)
+  // This endpoint always gets a fresh URL from WhatsApp and serves the image as binary
+  const avatarCache = new Map<string, { data: Buffer; contentType: string; timestamp: number }>();
+  const AVATAR_CACHE_TTL = 30000; // 30 seconds TTL - short enough to catch updates
+  
+  app.get("/api/whatsapp/contacts/:contactId/avatar", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: "Unauthorized: No company ID" });
+      }
+
+      const companyId = user.companyId;
+      const { contactId } = req.params;
+      const cacheKey = `${companyId}:${contactId}`;
+      
+      // Check cache first (very short TTL)
+      const cached = avatarCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < AVATAR_CACHE_TTL) {
+        res.set({
+          'Content-Type': cached.contentType,
+          'Cache-Control': 'public, max-age=30',
+        });
+        return res.send(cached.data);
+      }
+      
+      if (!whatsappService.isReady(companyId)) {
+        // Return placeholder for disconnected state
+        return res.status(204).end();
+      }
+
+      // Get fresh profile picture URL from WhatsApp
+      const profilePicUrl = await whatsappService.getProfilePicture(companyId, contactId);
+      
+      if (!profilePicUrl) {
+        // No profile picture - return 204 No Content
+        return res.status(204).end();
+      }
+
+      // Fetch the image from WhatsApp CDN
+      const response = await fetch(profilePicUrl);
+      
+      if (!response.ok) {
+        console.log(`[WhatsApp Avatar] Failed to fetch image for ${contactId}: ${response.status}`);
+        return res.status(204).end();
+      }
+
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const buffer = Buffer.from(await response.arrayBuffer());
+      
+      // Cache the result
+      avatarCache.set(cacheKey, {
+        data: buffer,
+        contentType,
+        timestamp: Date.now()
+      });
+      
+      // Clean old cache entries periodically
+      if (avatarCache.size > 500) {
+        const now = Date.now();
+        for (const [key, value] of avatarCache.entries()) {
+          if (now - value.timestamp > AVATAR_CACHE_TTL * 2) {
+            avatarCache.delete(key);
+          }
+        }
+      }
+
+      res.set({
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=30',
+      });
+      
+      return res.send(buffer);
+    } catch (error) {
+      console.error('[WhatsApp Avatar] Error:', error);
+      return res.status(204).end();
+    }
+  });
+
   // GET /api/whatsapp/contacts/:contactId/info - Get complete contact info with about status
   app.get("/api/whatsapp/contacts/:contactId/info", requireActiveCompany, async (req: Request, res: Response) => {
     try {
