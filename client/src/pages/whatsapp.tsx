@@ -2882,18 +2882,10 @@ export default function WhatsAppPage() {
         {/* Header */}
         <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] flex items-center justify-between border-b border-[var(--whatsapp-border)]">
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 relative">
+            <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold">
                 <MessageSquare className="h-5 w-5" />
               </AvatarFallback>
-              {/* Connection status indicator */}
-              <span 
-                className={cn(
-                  "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[var(--whatsapp-bg-panel-header)]",
-                  isConnecting ? "bg-yellow-500 animate-pulse" : "bg-green-500"
-                )}
-                title={isConnecting ? "Connecting..." : "Connected"}
-              />
             </Avatar>
             <span className="text-lg font-semibold text-[var(--whatsapp-text-primary)]">Chats</span>
           </div>
