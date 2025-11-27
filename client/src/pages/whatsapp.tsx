@@ -3863,28 +3863,28 @@ export default function WhatsAppPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Chat Confirmation Dialog */}
+      {/* Archive Chat Confirmation Dialog */}
       <AlertDialog open={showDeleteChatDialog} onOpenChange={setShowDeleteChatDialog}>
-        <AlertDialogContent data-testid="dialog-delete-chat-confirm">
+        <AlertDialogContent data-testid="dialog-archive-chat-confirm">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogTitle>Archive this chat?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all messages in this conversation. This action cannot be undone.
+              This chat will be moved to your archived chats. Your message history will be preserved and you can access it anytime from the Archived section.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete-chat">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-archive-chat">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (selectedChatId) {
-                  deleteChatMutation.mutate({ chatId: selectedChatId });
+                  archiveMutation.mutate({ chatId: selectedChatId, archive: true });
                 }
                 setShowDeleteChatDialog(false);
               }}
-              className="bg-red-600 hover:bg-red-700"
-              data-testid="button-confirm-delete-chat"
+              className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)]"
+              data-testid="button-confirm-archive-chat"
             >
-              Delete
+              Archive
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
