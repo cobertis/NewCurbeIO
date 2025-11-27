@@ -849,16 +849,34 @@ class WhatsAppService extends EventEmitter {
         }
         
         // FALLBACK 1: Try getContactLidAndPhone API if still no phone number
+        // This is the PRIMARY method since call.getContact() is not available
         if (!callerNumber && call.from.includes('@lid')) {
-          console.log(`[WhatsApp] Trying getContactLidAndPhone fallback...`);
+          console.log(`[WhatsApp] Trying getContactLidAndPhone to resolve LID...`);
           try {
             const lidPhoneResult = await client.getContactLidAndPhone(call.from);
             console.log(`[WhatsApp] getContactLidAndPhone result:`, JSON.stringify(lidPhoneResult));
             
-            if (lidPhoneResult && lidPhoneResult.pn) {
-              callerNumber = lidPhoneResult.pn.split('@')[0].replace(/[^0-9+]/g, '');
-              chatId = lidPhoneResult.pn;
-              console.log(`[WhatsApp] Resolved via getContactLidAndPhone: ${callerNumber}`);
+            // Result is an ARRAY like [{"lid":"156333135396907@lid","pn":"13053936666@c.us"}]
+            const resultItem = Array.isArray(lidPhoneResult) ? lidPhoneResult[0] : lidPhoneResult;
+            
+            if (resultItem && resultItem.pn) {
+              // pn is in format "13053936666@c.us"
+              chatId = resultItem.pn;
+              callerNumber = resultItem.pn.split('@')[0].replace(/[^0-9+]/g, '');
+              console.log(`[WhatsApp] ✓ LID resolved via getContactLidAndPhone: number=${callerNumber}, chatId=${chatId}`);
+              
+              // Now try to get the contact name using the resolved phone number
+              try {
+                const contact = await client.getContactById(chatId);
+                if (contact) {
+                  callerName = contact.pushname || contact.name || contact.shortName;
+                  console.log(`[WhatsApp] ✓ Contact name resolved: ${callerName}`);
+                }
+              } catch (contactErr) {
+                console.log(`[WhatsApp] Could not get contact name:`, contactErr);
+              }
+            } else {
+              console.log(`[WhatsApp] getContactLidAndPhone returned no pn field`);
             }
           } catch (lidError) {
             console.log(`[WhatsApp] getContactLidAndPhone failed:`, lidError);
