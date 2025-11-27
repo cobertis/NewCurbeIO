@@ -1,15 +1,7 @@
-2025/11/27-16:10:09.574 4443 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/27-16:10:09.575 4443 Recovering log #473
-2025/11/27-16:10:09.580 4443 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000473.log 
-2025/11/27-16:10:11.385 4443 Level-0 table #479: started
-2025/11/27-16:10:11.403 4443 Level-0 table #479: 150409 bytes OK
-2025/11/27-16:10:11.428 4443 Delete type=0 #473
-2025/11/27-16:10:11.430 444d Manual compaction at level-0 from '\x00\x7f\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x80\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/27-16:10:13.998 4444 Compacting 1@1 + 2@2 files
-2025/11/27-16:10:14.085 4444 Generated table #480@1: 76232 keys, 2271148 bytes
-2025/11/27-16:10:14.097 4444 Generated table #481@1: 854 keys, 27163 bytes
-2025/11/27-16:10:14.097 4444 Compacted 1@1 + 2@2 files => 2298311 bytes
-2025/11/27-16:10:14.104 4444 compacted to: files[ 0 0 2 0 0 0 0 ]
-2025/11/27-16:10:14.104 4444 Delete type=2 #475
-2025/11/27-16:10:14.104 4444 Delete type=2 #476
-2025/11/27-16:10:14.104 4444 Delete type=2 #479
+2025/11/27-16:14:58.468 4afe Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/27-16:14:58.469 4afe Recovering log #483
+2025/11/27-16:14:58.477 4afe Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000483.log 
+2025/11/27-16:14:59.974 4b06 Level-0 table #489: started
+2025/11/27-16:14:59.986 4b06 Level-0 table #489: 138684 bytes OK
+2025/11/27-16:14:59.993 4b06 Delete type=0 #483
+2025/11/27-16:14:59.993 4b06 Manual compaction at level-0 from '\x00\x81\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x82\x00\x00\x00' @ 0 : 0; will stop at (end)
