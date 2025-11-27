@@ -1086,9 +1086,10 @@ class WhatsAppService extends EventEmitter {
           return false;
         }
         
-        // Use native chat.archived property from WhatsApp - no need for custom tracking
+        // Use native chat.archived and chat.pinned properties from WhatsApp
         // This is always in sync with WhatsApp's state
         chat.isArchived = chat.archived === true;
+        chat.isPinned = chat.pinned === true;
         
         return true;
       });

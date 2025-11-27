@@ -3056,18 +3056,20 @@ export default function WhatsAppPage() {
                         <h3 className="font-medium text-[var(--whatsapp-text-primary)] truncate">{chat.name}</h3>
                         {chat.isMuted && <BellOff className="h-3.5 w-3.5 text-[var(--whatsapp-text-tertiary)] flex-shrink-0" />}
                       </div>
-                      <span className="text-xs text-[var(--whatsapp-text-tertiary)] ml-2 flex-shrink-0">
-                        {chat.lastMessage && formatTimestamp(chat.lastMessage.timestamp)}
-                      </span>
+                      <div className="flex flex-col items-end ml-2 flex-shrink-0">
+                        <span className="text-xs text-[var(--whatsapp-text-tertiary)]">
+                          {chat.lastMessage && formatTimestamp(chat.lastMessage.timestamp)}
+                        </span>
+                        {chat.isPinned && (
+                          <Pin className="h-3.5 w-3.5 text-[var(--whatsapp-text-secondary)] mt-0.5" style={{ transform: 'rotate(45deg)' }} />
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
                         {chat.lastMessage?.body || 'No messages yet'}
                       </p>
                       <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                        {chat.isPinned && (
-                          <Pin className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" style={{ transform: 'rotate(45deg)' }} />
-                        )}
                         {chat.unreadCount > 0 && (
                           <Badge 
                             className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-primary)] text-white rounded-full h-5 min-w-[20px] px-1.5 text-xs"
