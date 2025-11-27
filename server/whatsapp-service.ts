@@ -40,6 +40,71 @@ class WhatsAppService extends EventEmitter {
   
   // Cache for sent media (messageId -> media data) - allows viewing media we sent
   private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
+  
+  // Directory for persistent avatar storage
+  private readonly AVATARS_DIR = path.join(process.cwd(), 'server', 'avatars');
+  
+  /**
+   * Try to fetch and save avatar for a contact in background
+   * Called when receiving messages to ensure we have the latest avatar
+   * Never blocks or throws - runs silently in background
+   */
+  private async tryUpdateAvatarInBackground(companyId: string, contactId: string): Promise<void> {
+    // Run completely in background, never block
+    setImmediate(async () => {
+      try {
+        if (!this.isReady(companyId)) return;
+        
+        // Sanitize contactId for filesystem
+        const safeContactId = contactId.replace(/[@:]/g, '_');
+        const filePath = path.join(this.AVATARS_DIR, `${companyId}_${safeContactId}.jpg`);
+        
+        // Check if we already have a recent avatar (less than 1 hour old)
+        try {
+          const stats = fs.statSync(filePath);
+          const ageMs = Date.now() - stats.mtimeMs;
+          if (ageMs < 60 * 60 * 1000) {
+            return; // Avatar is fresh, no need to update
+          }
+        } catch {
+          // File doesn't exist, proceed to fetch
+        }
+        
+        // Try to get profile picture
+        const companyClient = await this.getClientForCompany(companyId);
+        const normalizedId = this.normalizeWhatsAppId(contactId);
+        
+        let profilePicUrl: string | undefined;
+        try {
+          profilePicUrl = await companyClient.client.getProfilePicUrl(normalizedId);
+        } catch {
+          return; // Silently fail
+        }
+        
+        if (!profilePicUrl) return;
+        
+        // Fetch and save the image
+        try {
+          const response = await fetch(profilePicUrl);
+          if (!response.ok) return;
+          
+          const buffer = Buffer.from(await response.arrayBuffer());
+          
+          // Ensure directory exists
+          if (!fs.existsSync(this.AVATARS_DIR)) {
+            fs.mkdirSync(this.AVATARS_DIR, { recursive: true });
+          }
+          
+          fs.writeFileSync(filePath, buffer);
+          console.log(`[WhatsApp Avatar] Background update saved for ${contactId}`);
+        } catch {
+          // Silently fail - we'll try again next message
+        }
+      } catch {
+        // Silently fail
+      }
+    });
+  }
 
   constructor() {
     super();
@@ -582,6 +647,9 @@ class WhatsAppService extends EventEmitter {
     client.on('message', async (message: any) => {
       console.log(`[WhatsApp] Message received for company ${companyId}:`, message.from, message.body);
       
+      
+      // Try to update avatar in background when receiving a message
+      this.tryUpdateAvatarInBackground(companyId, message.from);
       this.emit('message', { companyId, message });
       
       // Call registered message handlers for this company

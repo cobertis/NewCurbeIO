@@ -1,3 +1,3 @@
-2025/11/27-15:11:42.744 1127 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Sync Data/LevelDB/MANIFEST-000001
-2025/11/27-15:11:42.747 1127 Recovering log #3
-2025/11/27-15:11:42.747 1127 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Sync Data/LevelDB/000003.log 
+2025/11/27-15:16:39.079 178b Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Sync Data/LevelDB/MANIFEST-000001
+2025/11/27-15:16:39.080 178b Recovering log #3
+2025/11/27-15:16:39.081 178b Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Sync Data/LevelDB/000003.log 
