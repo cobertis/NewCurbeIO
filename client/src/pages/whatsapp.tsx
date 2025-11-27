@@ -2672,10 +2672,25 @@ export default function WhatsAppPage() {
     }
   };
 
-  // Handle message input change with @mention detection
+  // Handle message input change with @mention detection and auto-note mode
   const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     const cursorPos = e.target.selectionStart || 0;
+    
+    // Auto-activate note mode when typing "@" at the beginning
+    // Activate when: "@" alone, or "@ " followed by text
+    if (value.startsWith('@') && !isNoteMode) {
+      setIsNoteMode(true);
+      // Remove the leading "@" or "@ " from the message
+      const cleanedValue = value.replace(/^@\s*/, '');
+      setMessageInput(cleanedValue);
+      return;
+    }
+    
+    // Deactivate note mode if the input becomes empty (user deleted everything)
+    if (value === '' && isNoteMode) {
+      setIsNoteMode(false);
+    }
     
     const textBeforeCursor = value.substring(0, cursorPos);
     const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
