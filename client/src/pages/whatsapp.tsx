@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -861,7 +860,6 @@ function GroupInfoSheet({
 // =====================================================
 
 export default function WhatsAppPage() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // State
@@ -1186,11 +1184,6 @@ export default function WhatsAppPage() {
         queryClient.setQueryData([`/api/whatsapp/chats/${context.chatId}/messages`], context.previousMessages);
       }
       console.error('[WhatsApp] Failed to send message:', error);
-      toast({ 
-        title: 'Error', 
-        description: error.message || 'Failed to send message', 
-        variant: 'destructive' 
-      });
     },
     onSettled: (data, error, variables) => {
       // Refetch to sync with server
@@ -1209,10 +1202,8 @@ export default function WhatsAppPage() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
-      toast({ title: 'Success', description: variables.star ? 'Message starred' : 'Message unstarred' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to star message', variant: 'destructive' });
     },
   });
 
@@ -1222,7 +1213,6 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
-      toast({ title: 'Success', description: 'Message deleted' });
     },
   });
 
@@ -1232,10 +1222,8 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
-      toast({ title: 'Success', description: 'Reaction sent' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to send reaction', variant: 'destructive' });
     },
   });
 
@@ -1253,10 +1241,8 @@ export default function WhatsAppPage() {
       } else {
         setActiveFilter('all');
       }
-      toast({ title: 'Success', description: variables.archive ? 'Chat archived' : 'Chat unarchived' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to archive chat', variant: 'destructive' });
     },
   });
 
@@ -1268,10 +1254,8 @@ export default function WhatsAppPage() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: variables.pin ? 'Chat pinned' : 'Chat unpinned' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to pin chat', variant: 'destructive' });
     },
   });
 
@@ -1283,10 +1267,8 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Chat muted' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to mute chat', variant: 'destructive' });
     },
   });
 
@@ -1297,10 +1279,8 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Chat unmuted' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to unmute chat', variant: 'destructive' });
     },
   });
 
@@ -1312,10 +1292,8 @@ export default function WhatsAppPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Messages cleared' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message || 'Failed to clear messages', variant: 'destructive' });
     },
   });
 
@@ -1349,7 +1327,6 @@ export default function WhatsAppPage() {
       return { previousChats };
     },
     onSuccess: () => {
-      toast({ title: 'Success', description: 'Chat deleted' });
     },
     onError: (error: any, _variables, context) => {
       // Rollback on error
@@ -1357,7 +1334,6 @@ export default function WhatsAppPage() {
         queryClient.setQueryData(['/api/whatsapp/chats'], context.previousChats);
       }
       console.error('[WhatsApp] Delete chat error:', error);
-      toast({ title: 'Error', description: error?.message || 'Failed to delete chat', variant: 'destructive' });
     },
     onSettled: () => {
       // Always refetch after mutation settles
@@ -1402,7 +1378,6 @@ export default function WhatsAppPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
       setShowPollDialog(false);
       setPollData({ name: '', options: ['', ''], multipleAnswers: false });
-      toast({ title: 'Success', description: 'Poll sent' });
     },
   });
 
@@ -1413,7 +1388,6 @@ export default function WhatsAppPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setShowEditSubjectDialog(false);
-      toast({ title: 'Success', description: 'Group name updated' });
     },
   });
 
@@ -1424,7 +1398,6 @@ export default function WhatsAppPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setShowEditDescriptionDialog(false);
-      toast({ title: 'Success', description: 'Description updated' });
     },
   });
 
@@ -1436,7 +1409,6 @@ export default function WhatsAppPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setSelectedChatId(null);
       setShowGroupInfo(false);
-      toast({ title: 'Success', description: 'Left group' });
     },
   });
 
@@ -1446,7 +1418,6 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Participant removed' });
     },
   });
 
@@ -1456,7 +1427,6 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Participant promoted to admin' });
     },
   });
 
@@ -1466,7 +1436,6 @@ export default function WhatsAppPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Admin privileges removed' });
     },
   });
 
@@ -1478,7 +1447,6 @@ export default function WhatsAppPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setSelectedChatId(null);
-      toast({ title: 'Success', description: 'Logged out of WhatsApp' });
     },
   });
 
@@ -1489,14 +1457,10 @@ export default function WhatsAppPage() {
     onSuccess: (data: any) => {
       if (data.isValid && data.whatsappId) {
         setValidatedWhatsAppId(data.whatsappId);
-        toast({ title: 'Success', description: 'Number verified! You can start chatting.' });
-      } else {
-        toast({ title: 'Invalid Number', description: 'This number is not registered on WhatsApp.', variant: 'destructive' });
       }
       setIsValidatingNumber(false);
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to validate number. Please try again.', variant: 'destructive' });
       setIsValidatingNumber(false);
     },
   });
@@ -1513,15 +1477,9 @@ export default function WhatsAppPage() {
         setNewChatToNumber('');
         setNewChatMessage('');
         queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-        toast({ title: 'Message sent', description: 'Your message has been delivered.' });
       }
     },
     onError: (error: any) => {
-      toast({ 
-        title: 'Failed to send', 
-        description: error.message || 'Could not send message. Please verify the number is registered on WhatsApp.', 
-        variant: 'destructive' 
-      });
     },
   });
 
@@ -1601,10 +1559,6 @@ export default function WhatsAppPage() {
       if (context?.blobUrl) {
         URL.revokeObjectURL(context.blobUrl);
       }
-      toast({ 
-        title: 'Success', 
-        description: 'Sending in background...'
-      });
     },
     onError: (error: Error, variables, context) => {
       if (context?.previousMessages) {
@@ -1613,7 +1567,6 @@ export default function WhatsAppPage() {
       if (context?.blobUrl) {
         URL.revokeObjectURL(context.blobUrl);
       }
-      toast({ title: 'Error', description: error.message || 'Failed to send media', variant: 'destructive' });
     },
   });
 
@@ -1638,10 +1591,8 @@ export default function WhatsAppPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`] });
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      toast({ title: 'Success', description: 'Sticker sent' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to send sticker', variant: 'destructive' });
     },
   });
 
@@ -1658,10 +1609,8 @@ export default function WhatsAppPage() {
       if (data.chatId) {
         setSelectedChatId(data.chatId);
       }
-      toast({ title: 'Success', description: 'Successfully joined the group!' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to join group', variant: 'destructive' });
     },
   });
 
@@ -1677,7 +1626,6 @@ export default function WhatsAppPage() {
       setIsLoadingInviteLink(false);
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to get invite link', variant: 'destructive' });
       setIsLoadingInviteLink(false);
     },
   });
@@ -1690,11 +1638,9 @@ export default function WhatsAppPage() {
     onSuccess: (data: any) => {
       if (data.newInviteLink) {
         setGroupInviteLink(data.newInviteLink);
-        toast({ title: 'Success', description: 'Invite link revoked and new link generated' });
       }
     },
     onError: (error: Error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to revoke invite link', variant: 'destructive' });
     },
   });
 
@@ -1706,11 +1652,9 @@ export default function WhatsAppPage() {
     onSuccess: () => {
       setIsSavingStatus(false);
       setShowSettingsDialog(false);
-      toast({ title: 'Success', description: 'Status updated successfully' });
     },
     onError: (error: Error) => {
       setIsSavingStatus(false);
-      toast({ title: 'Error', description: error.message || 'Failed to update status', variant: 'destructive' });
     },
   });
 
@@ -2040,12 +1984,10 @@ export default function WhatsAppPage() {
       for (const chatId of selectedForwardChats) {
         await apiRequest('POST', `/api/whatsapp/messages/${forwardingMessage.id}/forward`, { chatId });
       }
-      toast({ title: 'Success', description: `Message forwarded to ${selectedForwardChats.length} chat(s)` });
       setShowForwardDialog(false);
       setForwardingMessage(null);
       setSelectedForwardChats([]);
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to forward message', variant: 'destructive' });
     }
   };
 
@@ -2083,9 +2025,7 @@ export default function WhatsAppPage() {
       a.href = url;
       a.download = `media-${message.id}`;
       a.click();
-      toast({ title: 'Success', description: 'Media downloaded' });
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to download media', variant: 'destructive' });
     }
   };
 
@@ -2096,18 +2036,15 @@ export default function WhatsAppPage() {
       setMessageInfoData(data);
       setShowMessageInfoDialog(true);
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to get message info', variant: 'destructive' });
     }
   };
 
   const handleCopy = (message: WhatsAppMessage) => {
     navigator.clipboard.writeText(message.body);
-    toast({ title: 'Success', description: 'Text copied to clipboard' });
   };
 
   const handleSendPoll = () => {
     if (!selectedChatId || !pollData.name || pollData.options.filter(o => o.trim()).length < 2) {
-      toast({ title: 'Error', description: 'Please enter poll name and at least 2 options', variant: 'destructive' });
       return;
     }
     
@@ -2121,7 +2058,6 @@ export default function WhatsAppPage() {
 
   const handleValidateNumber = () => {
     if (!newChatPhoneNumber.trim()) {
-      toast({ title: 'Error', description: 'Please enter a phone number', variant: 'destructive' });
       return;
     }
     setIsValidatingNumber(true);
@@ -2139,8 +2075,6 @@ export default function WhatsAppPage() {
       setNewChatPhoneNumber('');
       setValidatedWhatsAppId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-    } else {
-      toast({ title: 'Error', description: 'Please enter a valid phone number with country code', variant: 'destructive' });
     }
   };
 
@@ -2235,13 +2169,8 @@ export default function WhatsAppPage() {
           setNewChatMessage('');
           setNewChatValidationStatus('idle');
         }, 500);
-        
-        toast({ title: 'Message sent', description: 'Chat started successfully' });
-      } else {
-        toast({ title: 'Error', description: data.error || 'Failed to send message. Make sure the number is valid.', variant: 'destructive' });
       }
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
     } finally {
       setIsSendingNewChatMessage(false);
     }
@@ -2258,7 +2187,6 @@ export default function WhatsAppPage() {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 16 * 1024 * 1024) {
-        toast({ title: 'Error', description: 'File size exceeds 16MB limit', variant: 'destructive' });
         return;
       }
       setNewChatSelectedFile(file);
@@ -2313,13 +2241,8 @@ export default function WhatsAppPage() {
           setNewChatMediaCaption('');
           setShowNewChatMediaPreview(false);
         }, 500);
-        
-        toast({ title: 'Media sent', description: 'Chat started with media' });
-      } else {
-        toast({ title: 'Error', description: createData.error || 'Failed to create chat', variant: 'destructive' });
       }
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to send media', variant: 'destructive' });
     } finally {
       setIsSendingNewChatMessage(false);
     }
@@ -2344,7 +2267,6 @@ export default function WhatsAppPage() {
   // Voice recording functions for new chat
   const startNewChatRecording = async () => {
     if (!newChatToNumber.trim()) {
-      toast({ title: 'Enter number first', description: 'Please enter a phone number before recording', variant: 'destructive' });
       return;
     }
     
@@ -2379,7 +2301,6 @@ export default function WhatsAppPage() {
         setNewChatRecordingTime(prev => prev + 1);
       }, 1000);
     } catch (error) {
-      toast({ title: 'Error', description: 'Could not access microphone', variant: 'destructive' });
     }
   };
 
@@ -2448,13 +2369,8 @@ export default function WhatsAppPage() {
           setNewChatMessage('');
           setNewChatValidationStatus('idle');
         }, 500);
-        
-        toast({ title: 'Voice note sent', description: 'Chat started with voice note' });
-      } else {
-        toast({ title: 'Error', description: createData.error || 'Failed to send voice note', variant: 'destructive' });
       }
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to send voice note', variant: 'destructive' });
     } finally {
       setIsSendingNewChatMessage(false);
     }
@@ -2465,11 +2381,9 @@ export default function WhatsAppPage() {
     const file = event.target.files?.[0];
     if (file && selectedChatId) {
       if (!file.type.startsWith('image/')) {
-        toast({ title: 'Error', description: 'Please select an image file for sticker', variant: 'destructive' });
         return;
       }
       if (file.size > 1 * 1024 * 1024) {
-        toast({ title: 'Error', description: 'Sticker image must be less than 1MB', variant: 'destructive' });
         return;
       }
       sendStickerMutation.mutate({ chatId: selectedChatId, file });
@@ -2480,7 +2394,6 @@ export default function WhatsAppPage() {
   // Handle join group by invite code/link
   const handleJoinGroup = () => {
     if (!joinGroupCode.trim()) {
-      toast({ title: 'Error', description: 'Please enter an invite code or link', variant: 'destructive' });
       return;
     }
     setIsJoiningGroup(true);
@@ -2504,7 +2417,6 @@ export default function WhatsAppPage() {
   const handleCopyInviteLink = () => {
     if (groupInviteLink) {
       navigator.clipboard.writeText(groupInviteLink);
-      toast({ title: 'Copied!', description: 'Invite link copied to clipboard' });
     }
   };
 
@@ -2517,7 +2429,6 @@ export default function WhatsAppPage() {
   // Handle saving user status
   const handleSaveStatus = () => {
     if (!userStatus.trim()) {
-      toast({ title: 'Error', description: 'Please enter a status', variant: 'destructive' });
       return;
     }
     setIsSavingStatus(true);
@@ -2546,7 +2457,6 @@ export default function WhatsAppPage() {
   // Save display name
   const handleSaveDisplayName = async () => {
     if (!userDisplayName.trim()) {
-      toast({ title: 'Error', description: 'Please enter a display name', variant: 'destructive' });
       return;
     }
     try {
@@ -2558,13 +2468,9 @@ export default function WhatsAppPage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast({ title: 'Success', description: 'Display name updated' });
         setIsEditingDisplayName(false);
-      } else {
-        toast({ title: 'Error', description: data.error || 'Failed to update display name', variant: 'destructive' });
       }
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update display name', variant: 'destructive' });
     }
   };
 
@@ -2574,7 +2480,6 @@ export default function WhatsAppPage() {
     if (!file) return;
     
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' });
       return;
     }
     
@@ -2590,15 +2495,11 @@ export default function WhatsAppPage() {
         });
         const data = await res.json();
         if (data.success) {
-          toast({ title: 'Success', description: 'Profile picture updated' });
           loadMyProfile(); // Reload to get new picture
-        } else {
-          toast({ title: 'Error', description: data.error || 'Failed to update profile picture', variant: 'destructive' });
         }
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to upload profile picture', variant: 'destructive' });
     }
   };
 
@@ -2675,16 +2576,11 @@ export default function WhatsAppPage() {
       
       if (response.success && response.results) {
         setSearchResults(response.results);
-        if (response.results.length === 0) {
-          toast({ title: 'No results', description: 'No messages found matching your search' });
-        }
       } else {
         setSearchResults([]);
-        toast({ title: 'Search failed', description: response.error || 'Could not search messages', variant: 'destructive' });
       }
     } catch (error: any) {
       console.error('Search error:', error);
-      toast({ title: 'Error', description: error.message || 'Failed to search messages', variant: 'destructive' });
       setSearchResults([]);
     } finally {
       setIsSearchingMessages(false);
@@ -2697,7 +2593,6 @@ export default function WhatsAppPage() {
     if (file) {
       // Check file size (16MB limit)
       if (file.size > 16 * 1024 * 1024) {
-        toast({ title: 'Error', description: 'File size exceeds 16MB limit', variant: 'destructive' });
         return;
       }
       setSelectedFile(file);
@@ -2789,7 +2684,6 @@ export default function WhatsAppPage() {
         }
       }, 1000);
     } catch (error) {
-      toast({ title: 'Error', description: 'Could not access microphone', variant: 'destructive' });
     }
   };
 
@@ -3889,7 +3783,6 @@ export default function WhatsAppPage() {
             setShowEditDescriptionDialog(true);
           }}
           onAddParticipants={() => {
-            toast({ title: 'Coming soon', description: 'Add participants feature' });
           }}
           onRemoveParticipant={(participantId) => {
             if (selectedChatId) {
