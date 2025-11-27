@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { 
-  Search, Send, MoreVertical, Phone, Video, 
+  Search, Send, MoreVertical, Phone, PhoneOff, Video, 
   CheckCheck, MessageSquare, RefreshCw, Smile, Paperclip, Lock, ArrowLeft,
   X, Reply, Forward, Star, Download, Info, Copy, Trash2, Archive, Pin, BellOff,
   Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff, ChevronDown,
@@ -986,6 +986,15 @@ export default function WhatsAppPage() {
   const [contactLastSeen, setContactLastSeen] = useState<string | null>(null);
   const contactPresenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Incoming call state
+  const [incomingCall, setIncomingCall] = useState<{
+    id: string;
+    from: string;
+    fromName: string;
+    isVideo: boolean;
+    timestamp: Date;
+  } | null>(null);
+
   // =====================================================
   // QUERIES
   // =====================================================
@@ -1165,6 +1174,22 @@ export default function WhatsAppPage() {
   });
 
   const chatNotes = chatNotesData?.notes || [];
+
+  // Fetch call history
+  const { data: callHistoryData, refetch: refetchCalls } = useQuery<{ success: boolean; calls: Array<{
+    id: string;
+    callId: string;
+    from: string;
+    fromMe: boolean;
+    isVideo: boolean;
+    isGroup: boolean;
+    status: string;
+    timestamp: string;
+    duration: number | null;
+  }> }>({
+    queryKey: ['/api/whatsapp/calls'],
+    enabled: isAuthenticated,
+  });
 
   // Merge messages and notes into a timeline sorted by timestamp
   const timelineItems = useMemo(() => {
@@ -1717,6 +1742,18 @@ export default function WhatsAppPage() {
     },
   });
 
+  // Reject incoming call mutation
+  const rejectCallMutation = useMutation({
+    mutationFn: async (callId: string) => {
+      const res = await apiRequest('POST', `/api/whatsapp/calls/${encodeURIComponent(callId)}/reject`);
+      return res.json();
+    },
+    onSuccess: () => {
+      setIncomingCall(null);
+      refetchCalls();
+    },
+  });
+
   // Helper function to proxy WhatsApp image URLs through our server (bypasses CORS)
   const getProxiedImageUrl = (url: string): string => {
     if (!url || !url.includes('whatsapp.net')) return url;
@@ -1747,6 +1784,46 @@ export default function WhatsAppPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Poll for incoming call notifications
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const pollForCalls = async () => {
+      try {
+        const res = await fetch('/api/notifications?unread=true', {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.notifications) {
+            for (const notification of data.notifications) {
+              if (notification.type === 'whatsapp_call' || notification.message?.includes('Incoming')) {
+                const callerMatch = notification.message?.match(/from (.+)/);
+                setIncomingCall({
+                  id: notification.id || Date.now().toString(),
+                  from: notification.link?.split('/').pop() || 'Unknown',
+                  fromName: callerMatch?.[1] || 'Unknown Caller',
+                  isVideo: notification.message?.includes('Video'),
+                  timestamp: new Date(),
+                });
+                
+                setTimeout(() => setIncomingCall(null), 30000);
+                break;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[WhatsApp] Error polling for call notifications:', error);
+      }
+    };
+
+    pollForCalls();
+    const intervalId = setInterval(pollForCalls, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [isAuthenticated]);
 
   // Typing indicator effect with debounce
   useEffect(() => {
@@ -2918,6 +2995,54 @@ export default function WhatsAppPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-[var(--whatsapp-bg-primary)]">
+      {/* Incoming Call Banner */}
+      {incomingCall && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-pulse">
+          <div className="bg-green-600 dark:bg-green-700 text-white rounded-xl shadow-2xl p-4 min-w-[320px] max-w-md">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                  {incomingCall.isVideo ? (
+                    <Video className="h-6 w-6" />
+                  ) : (
+                    <Phone className="h-6 w-6" />
+                  )}
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full animate-ping" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm opacity-80">
+                  Incoming {incomingCall.isVideo ? 'Video' : 'Voice'} Call
+                </p>
+                <p className="font-semibold text-lg">{incomingCall.fromName}</p>
+                <p className="text-xs opacity-70">{incomingCall.from}</p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="destructive"
+                className="flex-1 bg-red-500 hover:bg-red-600"
+                onClick={() => {
+                  rejectCallMutation.mutate(incomingCall.id);
+                }}
+                disabled={rejectCallMutation.isPending}
+                data-testid="button-reject-call"
+              >
+                <PhoneOff className="h-4 w-4 mr-2" />
+                Decline
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 bg-white/20 hover:bg-white/30 border-white/30 text-white"
+                onClick={() => setIncomingCall(null)}
+                data-testid="button-dismiss-call"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Sidebar - Chat List */}
         <ResizablePanel 
