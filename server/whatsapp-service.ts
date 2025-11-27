@@ -1379,36 +1379,53 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Get profile picture URL for a contact using normalized ID
+   * Uses retry logic because WhatsApp CDN tokens rotate and may temporarily return null
    * 
    * Note: getProfilePicUrl() from whatsapp-web.js returns undefined (not null) when:
    * - Contact has no profile picture set
    * - Contact's privacy settings prevent viewing their picture
    * - The contact ID format is incorrect
+   * - CDN token is rotating (temporary - retry helps)
    */
-  async getProfilePicture(companyId: string, contactId: string): Promise<string | null> {
+  async getProfilePicture(companyId: string, contactId: string, retryCount: number = 0): Promise<string | null> {
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY = 500; // 500ms between retries
+    
     const client = await this.getClientForCompany(companyId);
     if (!client.status.isReady) {
       throw new Error('WhatsApp not ready');
     }
     
     const normalizedId = this.normalizeWhatsAppId(contactId);
-    console.log(`[WhatsApp] getProfilePicture: contactId="${contactId}" -> normalized="${normalizedId}"`);
+    console.log(`[WhatsApp] getProfilePicture: contactId="${contactId}" -> normalized="${normalizedId}" (attempt ${retryCount + 1})`);
     
     try {
+      // Use getProfilePicUrl - it fetches fresh URL from WhatsApp
       const url = await client.client.getProfilePicUrl(normalizedId);
       
       // Distinguish between undefined (no pic/privacy) and actual URL
-      if (url === undefined) {
-        console.log(`[WhatsApp] getProfilePicture: No profile picture for ${normalizedId} (privacy or not set)`);
-        return null;
-      } else if (url) {
+      if (url && typeof url === 'string' && url.length > 0) {
         console.log(`[WhatsApp] getProfilePicture: Found profile picture for ${normalizedId}`);
         return url;
-      } else {
-        console.log(`[WhatsApp] getProfilePicture: Empty response for ${normalizedId}`);
-        return null;
       }
+      
+      // If no URL and we haven't exceeded retries, try again
+      // This helps with CDN token rotation issues
+      if (retryCount < MAX_RETRIES) {
+        console.log(`[WhatsApp] getProfilePicture: No URL for ${normalizedId}, retrying in ${RETRY_DELAY}ms...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        return this.getProfilePicture(companyId, contactId, retryCount + 1);
+      }
+      
+      console.log(`[WhatsApp] getProfilePicture: No profile picture for ${normalizedId} after ${MAX_RETRIES + 1} attempts`);
+      return null;
     } catch (error: any) {
+      // On error, also retry
+      if (retryCount < MAX_RETRIES) {
+        console.log(`[WhatsApp] getProfilePicture: Error for ${normalizedId}, retrying: ${error?.message}`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        return this.getProfilePicture(companyId, contactId, retryCount + 1);
+      }
       console.error(`[WhatsApp] getProfilePicture ERROR for ${normalizedId}:`, error?.message || error);
       return null;
     }
