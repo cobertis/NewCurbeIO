@@ -4268,6 +4268,31 @@ export const insertWhatsappDeletedChatSchema = createInsertSchema(whatsappDelete
 export type WhatsappDeletedChat = typeof whatsappDeletedChats.$inferSelect;
 export type InsertWhatsappDeletedChat = z.infer<typeof insertWhatsappDeletedChatSchema>;
 
+// WhatsApp Chat Notes - Internal notes associated with chats
+export const whatsappChatNotes = pgTable("whatsapp_chat_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  chatId: text("chat_id").notNull(), // WhatsApp chat ID (e.g., "17866302522@c.us")
+  authorUserId: varchar("author_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at"),
+}, (table) => ({
+  companyChatIdx: index("whatsapp_chat_notes_company_chat_idx").on(table.companyId, table.chatId),
+  companyIdx: index("whatsapp_chat_notes_company_idx").on(table.companyId),
+  authorIdx: index("whatsapp_chat_notes_author_idx").on(table.authorUserId),
+  timestampIdx: index("whatsapp_chat_notes_timestamp_idx").on(table.createdAt),
+}));
+
+export const insertWhatsappChatNoteSchema = createInsertSchema(whatsappChatNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type WhatsappChatNote = typeof whatsappChatNotes.$inferSelect;
+export type InsertWhatsappChatNote = z.infer<typeof insertWhatsappChatNoteSchema>;
+
 // =====================================================
 // CAMPAIGN STUDIO TABLES
 // =====================================================

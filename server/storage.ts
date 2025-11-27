@@ -65,6 +65,8 @@ import {
   type InsertOutgoingSmsMessage,
   type SmsChatNote,
   type InsertSmsChatNote,
+  type WhatsappChatNote,
+  type InsertWhatsappChatNote,
   type QuoteNote,
   type InsertQuoteNote,
   type SubscriptionDiscount,
@@ -236,6 +238,7 @@ import {
   incomingSmsMessages,
   outgoingSmsMessages,
   smsChatNotes,
+  whatsappChatNotes,
   quoteNotes,
   subscriptionDiscounts,
   financialSupportTickets,
@@ -554,6 +557,12 @@ export interface IStorage {
   getChatNotes(phoneNumber: string, companyId: string): Promise<SmsChatNote[]>;
   updateChatNote(id: string, note: string, companyId?: string): Promise<SmsChatNote | undefined>;
   deleteChatNote(id: string, companyId?: string): Promise<void>;
+  
+  // WhatsApp Chat Notes
+  createWhatsappChatNote(note: InsertWhatsappChatNote): Promise<WhatsappChatNote>;
+  getWhatsappChatNotes(chatId: string, companyId: string): Promise<WhatsappChatNote[]>;
+  updateWhatsappChatNote(id: string, body: string, companyId: string): Promise<WhatsappChatNote | undefined>;
+  deleteWhatsappChatNote(id: string, companyId: string): Promise<void>;
   
   // Quote Notes
   createQuoteNote(note: InsertQuoteNote): Promise<QuoteNote>;
@@ -3001,6 +3010,41 @@ export class DbStorage implements IStorage {
     
     await db.delete(smsChatNotes)
       .where(and(...conditions));
+  }
+  
+  // ==================== WHATSAPP CHAT NOTES ====================
+  
+  async createWhatsappChatNote(note: InsertWhatsappChatNote): Promise<WhatsappChatNote> {
+    const result = await db.insert(whatsappChatNotes).values(note).returning();
+    return result[0];
+  }
+
+  async getWhatsappChatNotes(chatId: string, companyId: string): Promise<WhatsappChatNote[]> {
+    return db.select().from(whatsappChatNotes)
+      .where(and(
+        eq(whatsappChatNotes.chatId, chatId),
+        eq(whatsappChatNotes.companyId, companyId)
+      ))
+      .orderBy(whatsappChatNotes.createdAt);
+  }
+
+  async updateWhatsappChatNote(id: string, body: string, companyId: string): Promise<WhatsappChatNote | undefined> {
+    const result = await db.update(whatsappChatNotes)
+      .set({ body, updatedAt: new Date() })
+      .where(and(
+        eq(whatsappChatNotes.id, id),
+        eq(whatsappChatNotes.companyId, companyId)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  async deleteWhatsappChatNote(id: string, companyId: string): Promise<void> {
+    await db.delete(whatsappChatNotes)
+      .where(and(
+        eq(whatsappChatNotes.id, id),
+        eq(whatsappChatNotes.companyId, companyId)
+      ));
   }
   
   // ==================== QUOTE NOTES ====================
