@@ -244,53 +244,6 @@ class WhatsAppService extends EventEmitter {
     return await this.createClientForCompany(companyId);
   }
 
-  // Watchdog timers for detecting stuck initialization
-  private initWatchdogs: Map<string, NodeJS.Timeout> = new Map();
-  private initRetryCount: Map<string, number> = new Map();
-  private readonly INIT_WATCHDOG_MS = 60000; // 1 minute watchdog
-  private readonly MAX_INIT_RETRIES = 3; // Max consecutive retry attempts
-
-  /**
-   * Clear watchdog timer for a company (called when initialization succeeds)
-   */
-  private clearInitWatchdog(companyId: string): void {
-    const timer = this.initWatchdogs.get(companyId);
-    if (timer) {
-      clearTimeout(timer);
-      this.initWatchdogs.delete(companyId);
-      console.log(`[WhatsApp] Cleared watchdog for company: ${companyId}`);
-    }
-  }
-
-  /**
-   * Start watchdog timer that restarts client if no events received
-   */
-  private startInitWatchdog(companyId: string): void {
-    // Clear any existing watchdog
-    this.clearInitWatchdog(companyId);
-    
-    const timer = setTimeout(() => {
-      console.log(`[WhatsApp] ⚠️ Watchdog timeout! No events received for company ${companyId} in ${this.INIT_WATCHDOG_MS / 1000}s`);
-      
-      const retries = this.initRetryCount.get(companyId) || 0;
-      if (retries >= this.MAX_INIT_RETRIES) {
-        console.error(`[WhatsApp] ❌ Max retries (${this.MAX_INIT_RETRIES}) reached for company ${companyId}. Giving up.`);
-        this.initRetryCount.delete(companyId);
-        return;
-      }
-      
-      this.initRetryCount.set(companyId, retries + 1);
-      console.log(`[WhatsApp] 🔄 Auto-restarting client for company ${companyId} (attempt ${retries + 1}/${this.MAX_INIT_RETRIES})`);
-      
-      this.restartClientForCompany(companyId).catch(e => {
-        console.error(`[WhatsApp] Auto-restart failed:`, e.message);
-      });
-    }, this.INIT_WATCHDOG_MS);
-    
-    this.initWatchdogs.set(companyId, timer);
-    console.log(`[WhatsApp] Started watchdog for company: ${companyId} (${this.INIT_WATCHDOG_MS / 1000}s timeout)`);
-  }
-
   /**
    * Clean up stale Chromium lock files that can block new sessions
    * LocalAuth uses structure: .wwebjs_auth/{companyId}/session-{companyId}/SingletonLock (symlinks)
@@ -331,43 +284,11 @@ class WhatsAppService extends EventEmitter {
     // Create company-specific auth directory
     const authPath = path.join('.wwebjs_auth', companyId);
 
-    // Ultra-lean Puppeteer configuration for Replit's memory-constrained environment
+    // Puppeteer configuration per official whatsapp-web.js docs
+    // Only use documented flags for stability
     const chromiumFlags = [
-      '--headless=new',
       '--no-sandbox',
-      '--no-zygote',
-      '--single-process',
-      '--renderer-process-limit=1',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-software-rasterizer',
-      '--disable-accelerated-2d-canvas',
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-breakpad',
-      '--disable-component-update',
-      '--disable-client-side-phishing-detection',
-      '--disable-default-apps',
-      '--disable-domain-reliability',
-      '--disable-features=TranslateUI,BlinkGenPropertyTrees,AutomationControlled',
-      '--disable-hang-monitor',
-      '--disable-infobars',
-      '--disable-ipc-flooding-protection',
-      '--disable-notifications',
-      '--disable-renderer-backgrounding',
-      '--disable-sync',
-      '--disable-translate',
-      '--metrics-recording-only',
-      '--mute-audio',
-      '--no-first-run',
-      '--password-store=basic',
-      '--use-gl=swiftshader',
-      '--autoplay-policy=user-gesture-required',
-      '--window-size=800,600',
-      '--force-device-scale-factor=1',
-      '--enable-features=NetworkServiceInProcess',
-      '--js-flags=--max-old-space-size=384',
+      '--disable-setuid-sandbox',
     ];
 
     // Create client with company-specific LocalAuth strategy
@@ -405,16 +326,12 @@ class WhatsAppService extends EventEmitter {
     // Set up event handlers for this specific company client
     this.setupEventHandlers(companyId, companyClient);
 
-    // Start watchdog timer - will auto-restart if no events received
-    this.startInitWatchdog(companyId);
-
     // Initialize the client (resolves immediately, actual loading happens async)
     try {
       await client.initialize();
       console.log(`[WhatsApp] Client initialization started for company: ${companyId}`);
     } catch (error: any) {
       console.error(`[WhatsApp] Failed to initialize client for company ${companyId}:`, error?.message || error);
-      this.clearInitWatchdog(companyId);
       this.clients.delete(companyId);
       throw error;
     }
@@ -465,9 +382,6 @@ class WhatsAppService extends EventEmitter {
       }
       this.clients.delete(companyId);
     }
-    
-    // Clear watchdog timer
-    this.clearInitWatchdog(companyId);
     
     // Clean up lock files that can prevent restart
     this.cleanupLockFiles(companyId);
@@ -593,9 +507,6 @@ class WhatsAppService extends EventEmitter {
     client.on('qr', async (qr: string) => {
       console.log(`[WhatsApp] QR Code received for company: ${companyId}`);
       
-      // Clear watchdog - we're receiving events, client is alive
-      this.clearInitWatchdog(companyId);
-      
       // Generate QR code as data URL for frontend
       try {
         const qrDataUrl = await qrcode.toDataURL(qr);
@@ -616,9 +527,6 @@ class WhatsAppService extends EventEmitter {
     // Client authenticated
     client.on('authenticated', () => {
       console.log(`[WhatsApp] Client authenticated for company: ${companyId}`);
-      
-      // Clear watchdog - we're receiving events, client is alive
-      this.clearInitWatchdog(companyId);
       
       status.isAuthenticated = true;
       status.status = 'authenticated';
@@ -641,15 +549,12 @@ class WhatsAppService extends EventEmitter {
     client.on('ready', async () => {
       console.log(`[WhatsApp] Client is ready for company: ${companyId}`);
       
-      // Clear watchdog and reset retry count - initialization successful!
-      this.clearInitWatchdog(companyId);
-      this.initRetryCount.delete(companyId);
-      
       status.isReady = true;
       status.isAuthenticated = true;
       status.status = 'ready';
       status.qrCode = null;
       this.emit('ready', { companyId });
+      
       // Hydrate reactions from database for this company
       try {
         const savedReactions = await db
@@ -668,26 +573,6 @@ class WhatsAppService extends EventEmitter {
         console.error(`[WhatsApp] Failed to hydrate reactions for company ${companyId}:`, error);
       }
       
-      // Hydrate archived chats from database for this company
-      try {
-        const savedArchivedChats = await db
-          .select()
-          .from(whatsappDeletedChats)
-          .where(eq(whatsappDeletedChats.companyId, companyId));
-        
-        if (savedArchivedChats.length > 0) {
-          if (!this.deletedChats.has(companyId)) {
-            this.deletedChats.set(companyId, new Set());
-          }
-          for (const archived of savedArchivedChats) {
-            this.deletedChats.get(companyId)!.add(archived.chatId);
-          }
-          console.log(`[WhatsApp] Hydrated ${savedArchivedChats.length} archived chats from database for company: ${companyId}`);
-        }
-      } catch (error) {
-        console.error(`[WhatsApp] Failed to hydrate archived chats for company ${companyId}:`, error);
-      }
-      
       // Setup Puppeteer crash detection listeners
       this.setupPuppeteerCrashListeners(companyId, client);
     });
@@ -695,28 +580,6 @@ class WhatsAppService extends EventEmitter {
     // Incoming message
     client.on('message', async (message: any) => {
       console.log(`[WhatsApp] Message received for company ${companyId}:`, message.from, message.body);
-      
-      // Unarchive chats when new message arrives - remove from archived list
-      // This mimics WhatsApp behavior: archived chats reappear in main list when new messages arrive
-      const chatId = message.from;
-      const archivedForCompany = this.deletedChats.get(companyId);
-      if (archivedForCompany && archivedForCompany.has(chatId)) {
-        archivedForCompany.delete(chatId);
-        console.log(`[WhatsApp] Unarchived chat ${chatId} for company ${companyId} (new message received)`);
-        
-        // Also remove from database
-        try {
-          await db.delete(whatsappDeletedChats)
-            .where(
-              and(
-                eq(whatsappDeletedChats.companyId, companyId),
-                eq(whatsappDeletedChats.chatId, chatId)
-              )
-            );
-        } catch (err) {
-          // Table might not exist yet, ignore
-        }
-      }
       
       this.emit('message', { companyId, message });
       
@@ -821,6 +684,31 @@ class WhatsAppService extends EventEmitter {
       
       // Schedule automatic reconnection
       this.scheduleReconnect(companyId);
+    });
+
+    // Connection state changes - CRITICAL for detecting session issues
+    // States: CONFLICT, CONNECTED, DEPRECATED_VERSION, OPENING, PAIRING, PROXYBLOCK, SMB_TOS_BLOCK, TIMEOUT, TOS_BLOCK, UNLAUNCHED, UNPAIRED, UNPAIRED_IDLE
+    client.on('change_state', (state: string) => {
+      console.log(`[WhatsApp] State changed for company ${companyId}:`, state);
+      this.emit('state_change', { companyId, state });
+      
+      // Handle disconnection states that require re-authentication
+      if (state === 'CONFLICT' || state === 'UNPAIRED' || state === 'UNPAIRED_IDLE') {
+        console.log(`[WhatsApp] Session issue detected for company ${companyId}: ${state}`);
+        status.isReady = false;
+        status.isAuthenticated = false;
+        status.status = 'disconnected';
+        this.emit('status_change', { companyId, status });
+        
+        // Schedule reconnection for session recovery
+        this.scheduleReconnect(companyId);
+      }
+    });
+
+    // Contact changed event - for real-time profile updates
+    client.on('contact_changed', async (message: any, oldId: string, newId: string, isContact: boolean) => {
+      console.log(`[WhatsApp] Contact changed for company ${companyId}:`, oldId, '->', newId);
+      this.emit('contact_changed', { companyId, message, oldId, newId, isContact });
     });
 
     // Loading screen
@@ -1030,9 +918,6 @@ class WhatsAppService extends EventEmitter {
    * Get all chats for a company
    * Filters out system chats that cannot be permanently deleted (0@c.us, status, broadcast)
    */
-  // Track deleted chats to filter them out
-  private deletedChats: Map<string, Set<string>> = new Map(); // companyId -> Set of chatIds
-
   async getChats(companyId: string): Promise<any[]> {
     if (!this.isReady(companyId)) {
       throw new Error('WhatsApp client is not ready');
@@ -1043,9 +928,6 @@ class WhatsAppService extends EventEmitter {
     try {
       const chats = await companyClient.client.getChats();
       console.log(`[WhatsApp] getChats for company ${companyId}: ${chats.length} total chats from WhatsApp`);
-      
-      // Get deleted chats for this company
-      const deletedForCompany = this.deletedChats.get(companyId) || new Set();
       
       // Filter out only system chats that cannot be permanently deleted
       const SYSTEM_CHAT_IDS = ['0@c.us', 'status@broadcast'];
@@ -1063,32 +945,9 @@ class WhatsAppService extends EventEmitter {
           return false;
         }
         
-        // Exclude empty/ghost chats (deleted from phone but still in web cache)
-        // Ghost chats have no real content - only show chats with actual messages
-        const lastMsg = chat.lastMessage;
-        const hasRealContent = lastMsg && (
-          (lastMsg.body && lastMsg.body.trim() !== '') ||  // Has text content
-          lastMsg.hasMedia ||                               // Has media
-          lastMsg.type === 'image' ||
-          lastMsg.type === 'video' ||
-          lastMsg.type === 'audio' ||
-          lastMsg.type === 'ptt' ||
-          lastMsg.type === 'document' ||
-          lastMsg.type === 'sticker' ||
-          lastMsg.type === 'location'
-        );
-        
-        if (!hasRealContent) {
-          console.log(`[WhatsApp] Filtering ghost chat: ${chatId} (no real content)`);
-          return false;
-        }
-        
-        // Mark chat as archived if it's in the archived list, don't exclude it
-        if (deletedForCompany.has(chatId)) {
-          chat.isArchived = true;
-        } else {
-          chat.isArchived = false;
-        }
+        // Use native chat.archived property from WhatsApp - no need for custom tracking
+        // This is always in sync with WhatsApp's state
+        chat.isArchived = chat.archived === true;
         
         return true;
       });
@@ -1207,9 +1066,6 @@ class WhatsAppService extends EventEmitter {
     try {
       // Ensure the number is in the correct format (e.g., "1234567890@c.us")
       const chatId = to.includes('@') ? to : `${to}@c.us`;
-      
-      // If this chat was previously deleted, untrack it so it appears in the list again
-      await this.untrackDeletedChat(companyId, chatId);
       
       const sentMessage = await companyClient.client.sendMessage(chatId, message);
       console.log(`[WhatsApp] Message sent to ${chatId} for company ${companyId}`);
@@ -2263,51 +2119,33 @@ class WhatsAppService extends EventEmitter {
       }
     }
     
-    // Step 3: Archive chat (move to archived tab, don't delete from WhatsApp)
-    // This means: mark as archived in DB so it appears in archived tab
-    // When new message arrives, it will be automatically unarchived
+    // Step 3: Archive chat using native WhatsApp method
+    // This moves the chat to archived tab - WhatsApp handles unarchiving on new messages
     try {
-      // Track this chat as archived so it goes to archived tab
-      if (!this.deletedChats.has(companyId)) {
-        this.deletedChats.set(companyId, new Set());
-      }
-      this.deletedChats.get(companyId)!.add(chatId);
-      
-      // Persist to database so archiving survives server restarts
-      try {
-        await db.insert(whatsappDeletedChats)
-          .values({ companyId, chatId })
-          .onConflictDoNothing();
-        console.log(`[WhatsApp] Archived chat ${chatId} to database`);
-      } catch (dbErr) {
-        console.error(`[WhatsApp] Failed to archive chat:`, dbErr);
-      }
-      
-      console.log(`[WhatsApp] ✅ Chat ${chatId} moved to archived tab`);
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      await chat.archive();
+      console.log(`[WhatsApp] ✅ Chat ${chatId} archived using native WhatsApp method`);
     } catch (error) {
       console.error(`[WhatsApp] Error archiving chat:`, error);
       throw error;
     }
   }
   
-  // Unarchive chat (move back from archived to main list)
+  // Unarchive chat using native WhatsApp method (move back from archived to main list)
   async unarchiveChat(companyId: string, chatId: string): Promise<void> {
-    const archivedForCompany = this.deletedChats.get(companyId);
-    if (archivedForCompany && archivedForCompany.has(chatId)) {
-      archivedForCompany.delete(chatId);
-      
-      // Also remove from database
-      try {
-        await db.delete(whatsappDeletedChats).where(
-          and(
-            eq(whatsappDeletedChats.companyId, companyId),
-            eq(whatsappDeletedChats.chatId, chatId)
-          )
-        );
-        console.log(`[WhatsApp] Unarchived chat ${chatId} (new interaction)`);
-      } catch (dbErr) {
-        console.error(`[WhatsApp] Failed to unarchive chat from DB:`, dbErr);
-      }
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    try {
+      const companyClient = await this.getClientForCompany(companyId);
+      const chat = await companyClient.client.getChatById(chatId);
+      await chat.unarchive();
+      console.log(`[WhatsApp] Unarchived chat ${chatId} for company ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Error unarchiving chat for company ${companyId}:`, error);
+      throw error;
     }
   }
 
