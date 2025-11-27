@@ -1170,6 +1170,12 @@ export default function WhatsAppPage() {
     authorName: string;
   }> }>({
     queryKey: ['/api/whatsapp/chats', selectedChatId, 'notes'],
+    queryFn: async () => {
+      if (!selectedChatId) return { success: false, notes: [] };
+      const res = await fetch(`/api/whatsapp/chats/${encodeURIComponent(selectedChatId)}/notes`);
+      if (!res.ok) throw new Error('Failed to fetch chat notes');
+      return res.json();
+    },
     enabled: !!selectedChatId && isAuthenticated,
   });
 
