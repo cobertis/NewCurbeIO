@@ -1,10 +1,15 @@
-2025/11/27-22:45:59.386 12abf Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/27-22:45:59.387 12abf Recovering log #688
-2025/11/27-22:45:59.388 12abf Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000688.log 
-2025/11/27-22:46:00.834 12ac2 Level-0 table #694: started
-2025/11/27-22:46:00.840 12ac2 Level-0 table #694: 33919 bytes OK
-2025/11/27-22:46:00.852 12ac2 Delete type=0 #688
-2025/11/27-22:46:00.852 12ac2 Manual compaction at level-0 from '\x00\xab\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xac\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/27-22:46:03.241 12ac2 Compacting 1@1 + 2@2 files
-2025/11/27-22:46:05.937 12ac2 Generated table #695@1: 86973 keys, 2236790 bytes
-2025/11/27-22:46:05.937 12ac2 compacted to: files[ 0 1 2 0 0 0 0 ]
+2025/11/27-23:16:20.443 13eed Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/27-23:16:20.443 13eed Recovering log #728
+2025/11/27-23:16:20.449 13eed Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000728.log 
+2025/11/27-23:16:22.086 13eee Level-0 table #734: started
+2025/11/27-23:16:22.095 13eee Level-0 table #734: 121097 bytes OK
+2025/11/27-23:16:22.103 13eee Delete type=0 #728
+2025/11/27-23:16:22.104 13eec Manual compaction at level-0 from '\x00\xb3\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xb4\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/27-23:16:24.502 13eec Compacting 1@1 + 2@2 files
+2025/11/27-23:16:24.578 13eec Generated table #735@1: 86736 keys, 2235423 bytes
+2025/11/27-23:16:24.627 13eec Generated table #736@1: 19389 keys, 837365 bytes
+2025/11/27-23:16:24.628 13eec Compacted 1@1 + 2@2 files => 3072788 bytes
+2025/11/27-23:16:24.634 13eec compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/27-23:16:24.634 13eec Delete type=2 #730
+2025/11/27-23:16:24.634 13eec Delete type=2 #731
+2025/11/27-23:16:24.634 13eec Delete type=2 #734

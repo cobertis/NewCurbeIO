@@ -30511,6 +30511,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const chatId = normalizeWhatsAppId(req.params.chatId);
       const calls = await storage.getWhatsappCallsByChat(companyId, chatId);
       
+      console.log(`[WhatsApp Calls] Chat ${chatId} has ${calls.length} calls:`, calls.map(c => ({ id: c.id, status: c.status, timestamp: c.timestamp })));
       res.json({ success: true, calls });
     } catch (error: any) {
       console.error("[WhatsApp] Error getting chat calls:", error);
@@ -30952,6 +30953,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const companyId = String(req.user!.companyId);
       const limit = parseInt(req.query.limit as string) || 50;
       const calls = await whatsappService.getCallHistory(companyId, limit);
+      console.log(`[WhatsApp Calls] Chat ${chatId} has ${calls.length} calls:`, calls.map(c => ({ id: c.id, status: c.status, timestamp: c.timestamp })));
       res.json({ success: true, calls });
     } catch (error: any) {
       console.error("[WhatsApp] Error fetching call history:", error);

@@ -1291,6 +1291,9 @@ export default function WhatsAppPage() {
   });
 
   const chatCalls = callHistoryData?.calls || [];
+  
+  // Debug: Log calls data
+  console.log('[WhatsApp Timeline] Chat:', selectedChatId, 'Calls:', chatCalls.length, chatCalls);
 
   // Merge messages, notes, and calls into a timeline sorted by timestamp
   // All timestamps are in SECONDS for consistency with formatTimestamp/formatDateSeparator helpers
