@@ -1343,7 +1343,7 @@ export default function WhatsAppPage() {
       return res.json();
     },
     onSuccess: () => {
-      refetchNotes();
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'notes'] });
       setIsNoteMode(false);
       setMessageInput('');
     },
