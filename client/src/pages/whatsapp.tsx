@@ -1112,6 +1112,12 @@ export default function WhatsAppPage() {
 
   const chats = chatsData?.chats || [];
 
+  // Get current user session for role check
+  const { data: sessionData } = useQuery<{ user: { id: string; role: string; } }>({
+    queryKey: ['/api/session'],
+  });
+  const isAdmin = sessionData?.user?.role === 'admin' || sessionData?.user?.role === 'superadmin';
+
   const { data: messagesData, isLoading: messagesLoading } = useQuery<{ success: boolean; messages: WhatsAppMessage[] }>({
     queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`],
     enabled: !!selectedChatId && isAuthenticated,
@@ -1236,6 +1242,27 @@ export default function WhatsAppPage() {
   // =====================================================
   // MUTATIONS
   // =====================================================
+
+  // Delete note mutation
+  const deleteNoteMutation = useMutation({
+    mutationFn: async ({ chatId, noteId }: { chatId: string; noteId: string }) => {
+      return await apiRequest('DELETE', `/api/whatsapp/chats/${chatId}/notes/${noteId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'notes'] });
+      toast({
+        title: "Note deleted",
+        description: "The note has been removed from this conversation.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete note",
+        variant: "destructive",
+      });
+    },
+  });
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ chatId, content, quotedMsgId }: { chatId: string; content: string; quotedMsgId?: string }) => {
@@ -3442,14 +3469,32 @@ export default function WhatsAppPage() {
                           )}
                           <div className="w-full px-4 py-2">
                             <div className="bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 rounded-lg p-3 w-full">
-                              <div className="flex items-center gap-2 mb-1">
-                                <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                                  @{item.data.authorName}
-                                </span>
-                                <span className="text-xs text-amber-600/70 dark:text-amber-400/70">
-                                  {formatTimestamp(currentTimestamp)}
-                                </span>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                    @{item.data.authorName}
+                                  </span>
+                                  <span className="text-xs text-amber-600/70 dark:text-amber-400/70">
+                                    {formatTimestamp(currentTimestamp)}
+                                  </span>
+                                </div>
+                                {isAdmin && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-amber-600 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                    onClick={() => {
+                                      if (selectedChatId) {
+                                        deleteNoteMutation.mutate({ chatId: selectedChatId, noteId: item.data.id });
+                                      }
+                                    }}
+                                    disabled={deleteNoteMutation.isPending}
+                                    data-testid={`button-delete-note-${item.data.id}`}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
                               </div>
                               <p className="text-sm text-amber-800 dark:text-amber-200">{item.data.body}</p>
                             </div>
