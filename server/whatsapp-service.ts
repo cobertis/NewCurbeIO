@@ -1230,6 +1230,11 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Get profile picture URL for a contact (company-scoped)
+   * 
+   * Note: getProfilePicUrl() from whatsapp-web.js returns undefined (not null) when:
+   * - Contact has no profile picture set
+   * - Contact's privacy settings prevent viewing their picture
+   * - The contact ID format is incorrect
    */
   async getProfilePicUrl(companyId: string, contactId: string): Promise<string | null> {
     if (!this.isReady(companyId)) {
@@ -1238,17 +1243,38 @@ class WhatsAppService extends EventEmitter {
 
     const companyClient = this.clients.get(companyId)!;
 
+    // Normalize contact ID to ensure proper format
+    const normalizedId = this.normalizeWhatsAppId(contactId);
+    console.log(`[WhatsApp] getProfilePicUrl: contactId="${contactId}" -> normalized="${normalizedId}"`);
+
     try {
-      const profilePicUrl = await companyClient.client.getProfilePicUrl(contactId);
-      return profilePicUrl || null;
-    } catch (error) {
-      console.error(`[WhatsApp] Failed to get profile picture for company ${companyId}:`, error);
+      const profilePicUrl = await companyClient.client.getProfilePicUrl(normalizedId);
+      
+      // Distinguish between undefined (no pic/privacy) and actual URL
+      if (profilePicUrl === undefined) {
+        console.log(`[WhatsApp] getProfilePicUrl: No profile picture for ${normalizedId} (undefined - privacy settings or no pic set)`);
+        return null;
+      } else if (profilePicUrl) {
+        console.log(`[WhatsApp] getProfilePicUrl: Found profile picture for ${normalizedId}`);
+        return profilePicUrl;
+      } else {
+        console.log(`[WhatsApp] getProfilePicUrl: Empty/falsy response for ${normalizedId}`);
+        return null;
+      }
+    } catch (error: any) {
+      // Only log actual errors, not "no profile pic" cases
+      console.error(`[WhatsApp] getProfilePicUrl ERROR for ${normalizedId}:`, error?.message || error);
       return null;
     }
   }
 
   /**
    * Get profile picture URL for a contact using normalized ID
+   * 
+   * Note: getProfilePicUrl() from whatsapp-web.js returns undefined (not null) when:
+   * - Contact has no profile picture set
+   * - Contact's privacy settings prevent viewing their picture
+   * - The contact ID format is incorrect
    */
   async getProfilePicture(companyId: string, contactId: string): Promise<string | null> {
     const client = await this.getClientForCompany(companyId);
@@ -1257,11 +1283,24 @@ class WhatsAppService extends EventEmitter {
     }
     
     const normalizedId = this.normalizeWhatsAppId(contactId);
+    console.log(`[WhatsApp] getProfilePicture: contactId="${contactId}" -> normalized="${normalizedId}"`);
+    
     try {
       const url = await client.client.getProfilePicUrl(normalizedId);
-      return url || null;
-    } catch (error) {
-      console.log(`[WhatsApp] Could not get profile picture for ${contactId}`);
+      
+      // Distinguish between undefined (no pic/privacy) and actual URL
+      if (url === undefined) {
+        console.log(`[WhatsApp] getProfilePicture: No profile picture for ${normalizedId} (privacy or not set)`);
+        return null;
+      } else if (url) {
+        console.log(`[WhatsApp] getProfilePicture: Found profile picture for ${normalizedId}`);
+        return url;
+      } else {
+        console.log(`[WhatsApp] getProfilePicture: Empty response for ${normalizedId}`);
+        return null;
+      }
+    } catch (error: any) {
+      console.error(`[WhatsApp] getProfilePicture ERROR for ${normalizedId}:`, error?.message || error);
       return null;
     }
   }
@@ -2466,6 +2505,13 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Get complete contact profile with profile picture URL
+   * 
+   * Note: getProfilePicUrl() from whatsapp-web.js returns undefined (not null) when:
+   * - Contact has no profile picture set
+   * - Contact's privacy settings prevent viewing their picture
+   * - The contact ID format is incorrect
+   * 
+   * This is NOT an error - it's expected behavior for contacts without profile pics.
    */
   async getContactProfile(companyId: string, contactId: string): Promise<{
     id: string;
@@ -2483,19 +2529,35 @@ class WhatsAppService extends EventEmitter {
     try {
       const companyClient = await this.getClientForCompany(companyId);
       
-      // Normalize the contact ID to ensure @c.us suffix
-      const normalizedId = contactId.includes('@') ? contactId : `${contactId}@c.us`;
+      // Normalize the contact ID to ensure proper @c.us/@g.us suffix
+      // Individual contacts use @c.us, groups use @g.us (with format: groupId@g.us)
+      const normalizedId = this.normalizeWhatsAppId(contactId);
+      console.log(`[WhatsApp] getContactProfile: input="${contactId}" -> normalized="${normalizedId}"`);
       
       // Extract phone number from contact ID
       const phoneNumber = normalizedId.replace('@c.us', '').replace('@g.us', '');
       
-      // Get profile picture URL directly from client (more reliable)
+      // Get profile picture URL directly from client
+      // IMPORTANT: getProfilePicUrl returns undefined (not null) when no pic exists
       let profilePicUrl: string | null = null;
       try {
-        profilePicUrl = await companyClient.client.getProfilePicUrl(normalizedId);
-        console.log(`[WhatsApp] Profile pic URL for ${contactId}: ${profilePicUrl ? 'found' : 'not found'}`);
-      } catch (e) {
-        console.log(`[WhatsApp] Could not get profile pic for ${contactId}:`, e instanceof Error ? e.message : e);
+        const picResult = await companyClient.client.getProfilePicUrl(normalizedId);
+        
+        // Distinguish between undefined (no pic/privacy) vs actual URL vs error
+        if (picResult === undefined) {
+          console.log(`[WhatsApp] getContactProfile: No profile pic for ${normalizedId} (undefined - contact may have privacy settings or no pic set)`);
+          profilePicUrl = null;
+        } else if (picResult) {
+          console.log(`[WhatsApp] getContactProfile: Found profile pic URL for ${normalizedId}`);
+          profilePicUrl = picResult;
+        } else {
+          console.log(`[WhatsApp] getContactProfile: Empty/falsy profile pic result for ${normalizedId}`);
+          profilePicUrl = null;
+        }
+      } catch (e: any) {
+        // Only log actual errors - not the "no picture" case (which returns undefined, not throws)
+        console.error(`[WhatsApp] getContactProfile: ERROR getting profile pic for ${normalizedId}:`, e?.message || e);
+        profilePicUrl = null;
       }
       
       // Try to get contact info for name and pushname
@@ -2529,7 +2591,7 @@ class WhatsAppService extends EventEmitter {
         }
       }
 
-      console.log(`[WhatsApp] Contact profile retrieved for company ${companyId}: ${contactId}, pushname: ${pushname}, name: ${name}`);
+      console.log(`[WhatsApp] getContactProfile: Retrieved for company ${companyId}: id=${normalizedId}, pushname=${pushname}, name=${name}, profilePic=${profilePicUrl ? 'YES' : 'NO'}`);
       
       return {
         id: normalizedId,
@@ -2540,8 +2602,8 @@ class WhatsAppService extends EventEmitter {
         isBusiness,
         pushname,
       };
-    } catch (error) {
-      console.error(`[WhatsApp] Error getting contact profile for company ${companyId}:`, error);
+    } catch (error: any) {
+      console.error(`[WhatsApp] getContactProfile: CRITICAL ERROR for company ${companyId}, contact ${contactId}:`, error?.message || error);
       throw error;
     }
   }
