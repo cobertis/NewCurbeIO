@@ -2158,6 +2158,11 @@ export default function WhatsAppPage() {
       const data = await res.json();
       
       if (data.success && data.chatId) {
+        // Transfer profile picture to the profilePictures cache before transitioning
+        if (newChatProfilePic) {
+          setProfilePictures(prev => ({ ...prev, [data.chatId]: newChatProfilePic }));
+        }
+        
         // Refetch chats and select the new chat
         queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
         
@@ -2167,6 +2172,8 @@ export default function WhatsAppPage() {
           setIsNewChatMode(false);
           setNewChatToNumber('');
           setNewChatMessage('');
+          setNewChatProfilePic(null);
+          setNewChatContactName(null);
           setNewChatValidationStatus('idle');
         }, 500);
       }
@@ -2215,6 +2222,11 @@ export default function WhatsAppPage() {
       const createData = await createRes.json();
       
       if (createData.success && createData.chatId) {
+        // Transfer profile picture to the profilePictures cache before transitioning
+        if (newChatProfilePic) {
+          setProfilePictures(prev => ({ ...prev, [createData.chatId]: newChatProfilePic }));
+        }
+        
         // Now send the media file to the created chat
         const formData = new FormData();
         formData.append('file', newChatSelectedFile);
@@ -2236,6 +2248,8 @@ export default function WhatsAppPage() {
           setIsNewChatMode(false);
           setNewChatToNumber('');
           setNewChatMessage('');
+          setNewChatProfilePic(null);
+          setNewChatContactName(null);
           setNewChatValidationStatus('idle');
           setNewChatSelectedFile(null);
           setNewChatMediaCaption('');
@@ -2349,6 +2363,11 @@ export default function WhatsAppPage() {
       const createData = await createRes.json();
       
       if (createData.success && createData.chatId) {
+        // Transfer profile picture to the profilePictures cache before transitioning
+        if (newChatProfilePic) {
+          setProfilePictures(prev => ({ ...prev, [createData.chatId]: newChatProfilePic }));
+        }
+        
         // Send voice note
         const formData = new FormData();
         formData.append('file', audioFile);
@@ -2367,6 +2386,8 @@ export default function WhatsAppPage() {
           setIsNewChatMode(false);
           setNewChatToNumber('');
           setNewChatMessage('');
+          setNewChatProfilePic(null);
+          setNewChatContactName(null);
           setNewChatValidationStatus('idle');
         }, 500);
       }
