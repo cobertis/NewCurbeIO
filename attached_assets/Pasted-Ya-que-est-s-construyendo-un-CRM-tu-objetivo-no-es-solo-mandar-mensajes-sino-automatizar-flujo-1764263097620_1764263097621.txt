@@ -1,0 +1,93 @@
+Ya que estás construyendo un CRM, tu objetivo no es solo "mandar mensajes", sino **automatizar flujos, organizar leads y simular comportamiento humano** para evitar bloqueos.
+
+Basado en mi experiencia con `whatsapp-web.js`, estas son las **5 funciones más valiosas ("Killer Features")** que deberías implementar sí o sí para llevar tu CRM al siguiente nivel:
+
+-----
+
+### 1\. Simulación de "Escribiendo..." y "Grabando Audio" (Anti-Bloqueo y UX)
+
+Esta es fundamental. Si tu CRM responde en 0.01 segundos, WhatsApp sabe que es un bot y el cliente se siente atendido por una máquina. Debes simular que un agente está redactando.
+
+  * **La Función:** `chat.sendStateTyping()` y `chat.sendStateRecording()`.
+  * **El Truco:** Antes de enviar el mensaje, activa el estado, espera unos segundos aleatorios (basados en la longitud del mensaje) y luego envía.
+
+<!-- end list -->
+
+```javascript
+// Ejemplo: Simular que escribes antes de responder
+const chat = await msg.getChat();
+
+// Activa "Escribiendo..." en la barra de estado del cliente
+await chat.sendStateTyping(); 
+
+// Espera 3 segundos (simulando tiempo de redacción)
+await new Promise(resolve => setTimeout(resolve, 3000));
+
+// Envía el mensaje y borra el estado
+await client.sendMessage(msg.from, 'Hola, aquí tienes la info solicitada.');
+```
+
+### 2\. Detección Inteligente de Archivos (Facturas y Comprobantes)
+
+En un CRM, los clientes envían fotos de pagos o PDFs. Debes detectarlos y descargarlos automáticamente a tu servidor para adjuntarlos a la ficha del cliente.
+
+  * **La Función:** `msg.hasMedia` y `msg.downloadMedia()`.
+  * **Implementación:**
+    1.  Escucha el evento `message_create`.
+    2.  Si `msg.hasMedia` es `true`, descárgalo.
+    3.  Guarda el archivo en tu carpeta `/storage` y la ruta en tu base de datos.
+
+<!-- end list -->
+
+```javascript
+client.on('message', async msg => {
+    if (msg.hasMedia) {
+        const media = await msg.downloadMedia();
+        // media.data contiene el base64 del archivo
+        // Aquí lo guardas en tu disco con fs.writeFileSync...
+        console.log(`Recibido archivo: ${media.filename || 'sin-nombre'}`);
+    }
+});
+```
+
+### 3\. Sistema de Etiquetas (Labels) *Solo WhatsApp Business*
+
+Si el número que conectaste es **WhatsApp Business**, puedes usar esta librería para etiquetar usuarios automáticamente (ej: "Nuevo Lead", "Pagado", "Pendiente").
+
+  * **La Función:** `chat.changeLabels([labelIds])`.
+  * **Uso CRM:** Cuando un cliente paga o avanza en tu embudo de ventas, el código actualiza su etiqueta en WhatsApp automáticamente. Esto sincroniza tu CRM visual con el celular físico.
+
+### 4\. Menciones y Respuestas (Replies)
+
+Para mantener el contexto, tu CRM debe poder responder a un mensaje específico (citándolo), no solo lanzar texto al aire.
+
+  * **La Función:** `msg.reply('Texto', chatId)`.
+  * **Uso CRM:** Si un cliente pregunta "¿Cuánto cuesta esto?" citando una foto específica de un producto, tu bot puede detectar *qué* mensaje citó y responder sobre *ese* producto.
+
+<!-- end list -->
+
+```javascript
+// Responde citando el mensaje original del cliente
+await msg.reply('Ese modelo específico cuesta $50'); 
+```
+
+### 5\. Gestión de Grupos (Comunidad)
+
+Si tu CRM gestiona comunidades (ej: alumnos, inversores), puedes automatizar la moderación.
+
+  * **Las Funciones:**
+      * `chat.promoteParticipants(ids)`: Hacer admin a alguien automáticamente.
+      * `chat.addParticipants(ids)`: Agregar clientes a un grupo VIP tras la compra.
+      * `chat.setSubject('Nuevo Título')`: Cambiar nombre del grupo dinámicamente.
+
+-----
+
+### Resumen: ¿Qué priorizar?
+
+Si tengo que elegir solo 3 para empezar:
+
+1.  **Simulación de Typing (Prioridad Alta):** Hace que tu bot se sienta "premium" y protege tu número.
+2.  **Manejo de Media (Prioridad Media):** Para recibir comprobantes de pago sin intervención manual.
+3.  **Respuestas con Contexto (Prioridad Media):** Usar `reply` en lugar de `sendMessage` cuando el usuario pregunta algo específico.
+
+¿Te interesa ver un ejemplo de cómo calcular el tiempo de espera "realista" basado en qué tan largo es el texto que va a enviar el bot?

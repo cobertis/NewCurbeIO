@@ -5,3 +5,11 @@
 2025/11/27-16:14:59.986 4b06 Level-0 table #489: 138684 bytes OK
 2025/11/27-16:14:59.993 4b06 Delete type=0 #483
 2025/11/27-16:14:59.993 4b06 Manual compaction at level-0 from '\x00\x81\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x82\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/27-16:15:02.336 4afe Compacting 1@1 + 2@2 files
+2025/11/27-16:15:02.480 4afe Generated table #490@1: 75735 keys, 2271688 bytes
+2025/11/27-16:15:02.513 4afe Generated table #491@1: 2510 keys, 56676 bytes
+2025/11/27-16:15:02.513 4afe Compacted 1@1 + 2@2 files => 2328364 bytes
+2025/11/27-16:15:02.531 4afe compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/27-16:15:02.532 4afe Delete type=2 #485
+2025/11/27-16:15:02.532 4afe Delete type=2 #486
+2025/11/27-16:15:02.532 4afe Delete type=2 #489
