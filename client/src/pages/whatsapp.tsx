@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -900,7 +900,14 @@ export default function WhatsAppPage() {
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' | 'document' } | null>(null);
   
   // Pin notification state
-  const [pinNotification, setPinNotification] = useState<{ message: string; isPinned: boolean } | null>(null);
+  const [pinNotification, setPinNotification] = useState<{
+    action: 'pinned' | 'unpinned';
+    chatName: string;
+    userName: string;
+  } | null>(null);
+  
+  // Note mode state
+  const [isNoteMode, setIsNoteMode] = useState(false);
   
   // Status/About settings state
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -1145,6 +1152,33 @@ export default function WhatsAppPage() {
 
   const contactInfo = contactInfoData?.contact;
 
+  // Fetch chat notes for selected chat
+  const { data: chatNotesData, refetch: refetchNotes } = useQuery<{ success: boolean; notes: Array<{
+    id: string;
+    chatId: string;
+    body: string;
+    createdAt: string;
+    authorName: string;
+  }> }>({
+    queryKey: ['/api/whatsapp/chats', selectedChatId, 'notes'],
+    enabled: !!selectedChatId && isAuthenticated,
+  });
+
+  const chatNotes = chatNotesData?.notes || [];
+
+  // Merge messages and notes into a timeline sorted by timestamp
+  const timelineItems = useMemo(() => {
+    const items: Array<{ type: 'message'; data: typeof messages[0] } | { type: 'note'; data: typeof chatNotes[0] }> = [
+      ...messages.map(m => ({ type: 'message' as const, data: m })),
+      ...chatNotes.map(n => ({ type: 'note' as const, data: n })),
+    ];
+    return items.sort((a, b) => {
+      const aTime = a.type === 'message' ? (a.data.timestamp * 1000) : new Date(a.data.createdAt).getTime();
+      const bTime = b.type === 'message' ? (b.data.timestamp * 1000) : new Date(b.data.createdAt).getTime();
+      return aTime - bTime;
+    });
+  }, [messages, chatNotes]);
+
   // =====================================================
   // MUTATIONS
   // =====================================================
@@ -1254,19 +1288,33 @@ export default function WhatsAppPage() {
   });
 
   const pinMutation = useMutation({
-    mutationFn: async ({ chatId, pin, chatName }: { chatId: string; pin: boolean; chatName?: string }) => {
+    mutationFn: async ({ chatId, pin, chatName, userName }: { chatId: string; pin: boolean; chatName?: string; userName?: string }) => {
       const endpoint = pin ? 'pin' : 'unpin';
       const encodedChatId = encodeURIComponent(chatId);
       return await apiRequest('POST', `/api/whatsapp/chats/${encodedChatId}/${endpoint}`, {});
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-      const action = variables.pin ? 'pinned' : 'unpinned';
-      const name = variables.chatName || 'Chat';
-      setPinNotification({ message: `${name} ${action}`, isPinned: variables.pin });
+      setPinNotification({
+        action: variables.pin ? 'pinned' : 'unpinned',
+        chatName: variables.chatName || 'Chat',
+        userName: variables.userName || 'You',
+      });
       setTimeout(() => setPinNotification(null), 3000);
     },
     onError: (error: any) => {
+    },
+  });
+
+  const createNoteMutation = useMutation({
+    mutationFn: async (body: string) => {
+      const res = await apiRequest('POST', `/api/whatsapp/chats/${encodeURIComponent(selectedChatId!)}/notes`, { body });
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchNotes();
+      setIsNoteMode(false);
+      setMessageInput('');
     },
   });
 
@@ -1959,6 +2007,12 @@ export default function WhatsAppPage() {
 
   const handleSendMessage = () => {
     if (!messageInput.trim() || !selectedChatId) return;
+    
+    // If in note mode, create a note instead of sending a message
+    if (isNoteMode) {
+      createNoteMutation.mutate(messageInput);
+      return;
+    }
     
     sendMessageMutation.mutate({ 
       chatId: selectedChatId, 
@@ -3175,13 +3229,9 @@ export default function WhatsAppPage() {
               {/* Pin Notification */}
               {pinNotification && (
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="bg-[var(--whatsapp-panel-header)] text-[var(--whatsapp-text-primary)] px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 border border-[var(--whatsapp-border)]">
-                    {pinNotification.isPinned ? (
-                      <Pin className="h-4 w-4 text-[#25D366]" />
-                    ) : (
-                      <PinOff className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" />
-                    )}
-                    <span className="text-sm font-medium">{pinNotification.message}</span>
+                  <div className="bg-slate-800/90 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+                    <Pin className="h-4 w-4" style={{ transform: 'rotate(45deg)' }} />
+                    <span className="text-sm font-medium">{pinNotification.userName} {pinNotification.action} this chat</span>
                   </div>
                 </div>
               )}
@@ -3193,7 +3243,7 @@ export default function WhatsAppPage() {
                     </div>
                   ))}
                 </div>
-              ) : messages.length === 0 ? (
+              ) : timelineItems.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-[var(--whatsapp-text-secondary)]">
                   <div className="text-center">
                     <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -3203,13 +3253,49 @@ export default function WhatsAppPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {messages.map((message, index) => {
-                    const showDateSeparator = index === 0 || 
-                      getMessageDateKey(message.timestamp) !== getMessageDateKey(messages[index - 1].timestamp);
+                  {timelineItems.map((item, index) => {
+                    const getItemTimestamp = (item: typeof timelineItems[0]) => {
+                      return item.type === 'message' ? item.data.timestamp : Math.floor(new Date(item.data.createdAt).getTime() / 1000);
+                    };
                     
+                    const currentTimestamp = getItemTimestamp(item);
+                    const previousTimestamp = index > 0 ? getItemTimestamp(timelineItems[index - 1]) : null;
+                    const showDateSeparator = index === 0 || 
+                      (previousTimestamp !== null && getMessageDateKey(currentTimestamp) !== getMessageDateKey(previousTimestamp));
+                    
+                    // Render note item
+                    if (item.type === 'note') {
+                      return (
+                        <div key={`note-${item.data.id}`}>
+                          {showDateSeparator && (
+                            <div className="flex items-center justify-center my-4" data-testid={`date-separator-${getMessageDateKey(currentTimestamp)}`}>
+                              <div className="bg-[var(--whatsapp-bg-secondary)] text-[var(--whatsapp-text-secondary)] px-3 py-1 rounded-lg text-xs font-medium shadow-sm">
+                                {formatDateSeparator(currentTimestamp)}
+                              </div>
+                            </div>
+                          )}
+                          <div className="w-full px-4 py-2">
+                            <div className="bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 rounded-lg p-3 w-full">
+                              <div className="flex items-center gap-2 mb-1">
+                                <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                  @{item.data.authorName}
+                                </span>
+                                <span className="text-xs text-amber-600/70 dark:text-amber-400/70">
+                                  {formatTimestamp(currentTimestamp)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-amber-800 dark:text-amber-200">{item.data.body}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    // Render message item
+                    const message = item.data;
                     return (
                       <div key={message.id}>
-                        {/* Date Separator */}
                         {showDateSeparator && (
                           <div className="flex items-center justify-center my-4" data-testid={`date-separator-${getMessageDateKey(message.timestamp)}`}>
                             <div className="bg-[var(--whatsapp-bg-secondary)] text-[var(--whatsapp-text-secondary)] px-3 py-1 rounded-lg text-xs font-medium shadow-sm">
@@ -3315,6 +3401,23 @@ export default function WhatsAppPage() {
                   <Smile className="h-6 w-6" />
                 </Button>
 
+                {/* Note mode toggle button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-10 w-10 rounded-full",
+                    isNoteMode 
+                      ? "bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400" 
+                      : "text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  )}
+                  onClick={() => setIsNoteMode(!isNoteMode)}
+                  title={isNoteMode ? "Exit note mode" : "Add internal note"}
+                  data-testid="button-toggle-note-mode"
+                >
+                  <AtSign className="h-5 w-5" />
+                </Button>
+
                 {/* Special send buttons */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -3405,7 +3508,7 @@ export default function WhatsAppPage() {
                   )}
                   <Input
                     ref={messageInputRef}
-                    placeholder={selectedChat?.isGroup ? "Type a message (use @ to mention)" : "Type a message"}
+                    placeholder={isNoteMode ? "Write an internal note..." : (selectedChat?.isGroup ? "Type a message (use @ to mention)" : "Type a message")}
                     value={messageInput}
                     onChange={handleMessageInputChange}
                     onKeyPress={(e) => {
@@ -3414,7 +3517,12 @@ export default function WhatsAppPage() {
                         handleSendMessage();
                       }
                     }}
-                    className="w-full bg-[var(--whatsapp-bg-secondary)] border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)]"
+                    className={cn(
+                      "w-full border-0 rounded-lg h-10 text-sm text-[var(--whatsapp-text-primary)]",
+                      isNoteMode 
+                        ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700" 
+                        : "bg-[var(--whatsapp-bg-secondary)]"
+                    )}
                     data-testid="input-message"
                   />
                 </div>
