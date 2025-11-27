@@ -1,0 +1,112 @@
+¡Entiendo perfectamente la frustración\! El problema no es que el sistema "olvide" a propósito, es que tu lógica de caché es **demasiado volátil** y **no tiene tolerancia a fallos**.
+
+Como bien identificaste, `whatsapp-web.js` (y la API subyacente de WhatsApp) a veces falla al entregar la URL o devuelve `null` momentáneamente. Tu código actual asume que si falla *ahora*, la foto ya no existe, y borra (o no guarda) nada, dejando al cliente sin avatar hasta el próximo intento exitoso.
+
+Aquí tienes la solución técnica: necesitas **Persistencia Local** y una estrategia de **"Stale-While-Revalidate" (Usar dato viejo mientras se actualiza)**.
+
+### El Error Principal
+
+Estás confiando 100% en la memoria RAM y en que WhatsApp *siempre* responda bien.
+
+  * **Mal:** Si WhatsApp falla una vez, el avatar desaparece.
+  * **Mal:** Si reinicias el servidor, todos los avatares desaparecen.
+
+-----
+
+### La Solución Definitiva
+
+Implementa un sistema de **dos niveles de caché** (Memoria + Disco) con una lógica de fallback.
+
+#### 1\. La Estrategia Nueva
+
+En lugar de solo preguntar a WhatsApp, tu endpoint debe hacer esto:
+
+1.  **Busca en disco/BD local:** ¿Tengo una foto guardada de hace menos de X tiempo (ej. 24 horas)? -\> **Úsala**.
+2.  **Segundo plano (Background):** Aunque mostraste la foto vieja, pregunta a WhatsApp si hay una nueva.
+      * Si WhatsApp da una nueva URL -\> Descárgala y actualiza el archivo local.
+      * Si WhatsApp devuelve `null` o error -\> **No hagas nada**, mantén la foto vieja (así el usuario no ve el avatar roto).
+
+#### 2\. Código Corregido (Conceptual)
+
+Aquí te dejo cómo deberías reestructurar tu `whatsapp-service.ts` o el controlador donde manejas esto. Asumo que tienes una carpeta `public/avatars` o similar.
+
+```typescript
+import fs from 'fs';
+import path from 'path';
+
+// Mapa para evitar pedir la misma foto 100 veces por segundo si el front la pide mucho
+const pendingRequests = new Map();
+
+export const getContactAvatar = async (contactId) => {
+    const localFilePath = path.join(__dirname, 'public/avatars', `${contactId}.jpg`);
+    const fileExists = fs.existsSync(localFilePath);
+    
+    // 1. Si existe archivo local, DEVUÉLVELO DE INMEDIATO (Velocidad pura)
+    // Dejamos que la actualización ocurra asíncronamente
+    if (fileExists) {
+        // Lanza la actualización en "background" sin detener la respuesta
+        updateAvatarInBackground(contactId); 
+        return fs.readFileSync(localFilePath); 
+    }
+
+    // 2. Si NO existe localmente, ahí sí esperamos a WhatsApp
+    return await fetchAndSaveAvatar(contactId);
+};
+
+// Función para actualizar sin bloquear
+const updateAvatarInBackground = async (contactId) => {
+    // Evitar spam a WhatsApp si ya estamos actualizando este ID
+    if (pendingRequests.has(contactId)) return;
+    
+    // Rate limit simple: No intentes actualizar si el archivo es muy reciente (ej. 1 hora)
+    const stats = fs.statSync(path.join(__dirname, 'public/avatars', `${contactId}.jpg`));
+    const hoursSinceLastUpdate = (new Date() - stats.mtime) / 1000 / 60 / 60;
+    if (hoursSinceLastUpdate < 1) return; // Si tiene menos de 1 hora, no molestes a WhatsApp
+
+    pendingRequests.set(contactId, true);
+
+    try {
+        await fetchAndSaveAvatar(contactId);
+    } catch (err) {
+        console.error("Fallo actualizando avatar en background, pero el viejo sigue sirviendo.");
+    } finally {
+        pendingRequests.delete(contactId);
+    }
+}
+
+// Lógica principal de obtención
+const fetchAndSaveAvatar = async (contactId) => {
+    try {
+        // Pedir URL a wwebjs
+        const picUrl = await client.getProfilePicUrl(contactId);
+        
+        if (picUrl) {
+            // Descargar la imagen real (fetch normal de node)
+            const response = await fetch(picUrl);
+            const buffer = await response.arrayBuffer();
+            
+            // GUARDAR EN DISCO (Persistencia)
+            fs.writeFileSync(
+                path.join(__dirname, 'public/avatars', `${contactId}.jpg`), 
+                Buffer.from(buffer)
+            );
+            
+            return Buffer.from(buffer);
+        } else {
+            // IMPORTANTE: Si WhatsApp dice null, NO borres lo que tienes.
+            // Simplemente retorna null o una imagen default.
+            return null;
+        }
+    } catch (e) {
+        return null;
+    }
+}
+```
+
+### Resumen de cambios clave para tu código:
+
+1.  **Elimina el Caché de Memoria de 30s:** No sirve para imágenes, solo consume RAM y causa parpadeos. Usa el disco (file system) como caché.
+2.  **Ignora los fallos de WhatsApp:** Si `getProfilePicUrl` falla o devuelve null, verifica si tienes una imagen antigua en disco. Si la tienes, **devuelve la antigua**. Es mejor mostrar una foto de ayer que un avatar gris hoy.
+3.  **Descarga la imagen:** No guardes la URL del CDN de WhatsApp (esos enlaces caducan). Descarga el binario (`.jpg`) y guárdalo en tu servidor. Tu frontend debe apuntar a *tu* servidor, no a los servidores de Facebook.
+
+**¿Te hace sentido este enfoque de guardar el archivo físico en lugar de solo la URL?** Si lo implementas así, el problema de "parpadeo" desaparecerá instantáneamente.

@@ -1,4 +1,6 @@
 import type { Express, Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
 import bcrypt from "bcrypt";
@@ -28705,10 +28707,94 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/whatsapp/contacts/:contactId/avatar - Serve profile picture directly (fresh from WhatsApp)
-  // This endpoint always gets a fresh URL from WhatsApp and serves the image as binary
-  const avatarCache = new Map<string, { data: Buffer; contentType: string; timestamp: number }>();
-  const AVATAR_CACHE_TTL = 30000; // 30 seconds TTL - short enough to catch updates
+  // GET /api/whatsapp/contacts/:contactId/avatar - Serve profile picture with disk persistence
+  // Uses "Stale-While-Revalidate" strategy: serve from disk immediately, update in background
+  // NEVER delete existing avatar if WhatsApp fails - better to show old photo than no photo
+  
+  const AVATARS_DIR = path.join(process.cwd(), 'server', 'avatars');
+  const AVATAR_REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour - don't refresh more often than this
+  const pendingAvatarUpdates = new Set<string>(); // Prevent duplicate background updates
+  
+  // Ensure avatars directory exists
+  if (!fs.existsSync(AVATARS_DIR)) {
+    fs.mkdirSync(AVATARS_DIR, { recursive: true });
+  }
+  
+  // Helper: Get avatar file path for a contact
+  const getAvatarFilePath = (companyId: string, contactId: string): string => {
+    // Sanitize contactId for filesystem (replace @ and other special chars)
+    const safeContactId = contactId.replace(/[@:]/g, '_');
+    return path.join(AVATARS_DIR, `${companyId}_${safeContactId}.jpg`);
+  };
+  
+  // Helper: Check if file exists and get its age
+  const getFileInfo = (filePath: string): { exists: boolean; ageMs: number } => {
+    try {
+      const stats = fs.statSync(filePath);
+      return { exists: true, ageMs: Date.now() - stats.mtimeMs };
+    } catch {
+      return { exists: false, ageMs: Infinity };
+    }
+  };
+  
+  // Helper: Fetch and save avatar to disk (used for both initial fetch and background updates)
+  const fetchAndSaveAvatar = async (companyId: string, contactId: string, filePath: string): Promise<Buffer | null> => {
+    try {
+      if (!whatsappService.isReady(companyId)) {
+        return null;
+      }
+      
+      const profilePicUrl = await whatsappService.getProfilePicture(companyId, contactId);
+      
+      if (!profilePicUrl) {
+        // WhatsApp returned null - DO NOT delete existing file
+        // The contact might have a photo, WhatsApp just failed to return it
+        console.log(`[WhatsApp Avatar] No URL from WhatsApp for ${contactId}, keeping existing file if any`);
+        return null;
+      }
+      
+      const response = await fetch(profilePicUrl);
+      
+      if (!response.ok) {
+        console.log(`[WhatsApp Avatar] CDN fetch failed for ${contactId}: ${response.status}`);
+        return null;
+      }
+      
+      const buffer = Buffer.from(await response.arrayBuffer());
+      
+      // Save to disk (this is the persistent cache)
+      fs.writeFileSync(filePath, buffer);
+      console.log(`[WhatsApp Avatar] Saved avatar to disk for ${contactId}`);
+      
+      return buffer;
+    } catch (error) {
+      console.error(`[WhatsApp Avatar] Error fetching avatar for ${contactId}:`, error);
+      return null;
+    }
+  };
+  
+  // Helper: Update avatar in background without blocking response
+  const updateAvatarInBackground = (companyId: string, contactId: string, filePath: string) => {
+    const updateKey = `${companyId}:${contactId}`;
+    
+    // Don't start duplicate updates
+    if (pendingAvatarUpdates.has(updateKey)) {
+      return;
+    }
+    
+    pendingAvatarUpdates.add(updateKey);
+    
+    // Run async without blocking
+    (async () => {
+      try {
+        await fetchAndSaveAvatar(companyId, contactId, filePath);
+      } catch (err) {
+        console.error(`[WhatsApp Avatar] Background update failed for ${contactId}:`, err);
+      } finally {
+        pendingAvatarUpdates.delete(updateKey);
+      }
+    })();
+  };
   
   app.get("/api/whatsapp/contacts/:contactId/avatar", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28719,64 +28805,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const companyId = user.companyId;
       const { contactId } = req.params;
-      const cacheKey = `${companyId}:${contactId}`;
+      const filePath = getAvatarFilePath(companyId, contactId);
+      const fileInfo = getFileInfo(filePath);
       
-      // Check cache first (very short TTL)
-      const cached = avatarCache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < AVATAR_CACHE_TTL) {
-        res.set({
-          'Content-Type': cached.contentType,
-          'Cache-Control': 'public, max-age=30',
-        });
-        return res.send(cached.data);
-      }
+      // STRATEGY: Stale-While-Revalidate
+      // 1. If file exists on disk, serve it IMMEDIATELY
+      // 2. If file is old (> 1 hour), trigger background refresh
+      // 3. If no file exists, fetch from WhatsApp and wait
       
-      if (!whatsappService.isReady(companyId)) {
-        // Return placeholder for disconnected state
-        return res.status(204).end();
-      }
-
-      // Get fresh profile picture URL from WhatsApp
-      const profilePicUrl = await whatsappService.getProfilePicture(companyId, contactId);
-      
-      if (!profilePicUrl) {
-        // No profile picture - return 204 No Content
-        return res.status(204).end();
-      }
-
-      // Fetch the image from WhatsApp CDN
-      const response = await fetch(profilePicUrl);
-      
-      if (!response.ok) {
-        console.log(`[WhatsApp Avatar] Failed to fetch image for ${contactId}: ${response.status}`);
-        return res.status(204).end();
-      }
-
-      const contentType = response.headers.get('content-type') || 'image/jpeg';
-      const buffer = Buffer.from(await response.arrayBuffer());
-      
-      // Cache the result
-      avatarCache.set(cacheKey, {
-        data: buffer,
-        contentType,
-        timestamp: Date.now()
-      });
-      
-      // Clean old cache entries periodically
-      if (avatarCache.size > 500) {
-        const now = Date.now();
-        for (const [key, value] of avatarCache.entries()) {
-          if (now - value.timestamp > AVATAR_CACHE_TTL * 2) {
-            avatarCache.delete(key);
-          }
+      if (fileInfo.exists) {
+        // Serve from disk immediately (fast!)
+        const buffer = fs.readFileSync(filePath);
+        
+        // If file is older than refresh interval, update in background
+        if (fileInfo.ageMs > AVATAR_REFRESH_INTERVAL) {
+          updateAvatarInBackground(companyId, contactId, filePath);
         }
+        
+        res.set({
+          'Content-Type': 'image/jpeg',
+          'Cache-Control': 'public, max-age=3600', // Browser can cache for 1 hour
+        });
+        return res.send(buffer);
       }
-
-      res.set({
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=30',
-      });
       
+      // No file on disk - need to fetch from WhatsApp (blocking)
+      if (!whatsappService.isReady(companyId)) {
+        return res.status(204).end();
+      }
+      
+      const buffer = await fetchAndSaveAvatar(companyId, contactId, filePath);
+      
+      if (!buffer) {
+        return res.status(204).end();
+      }
+      
+      res.set({
+        'Content-Type': 'image/jpeg',
+        'Cache-Control': 'public, max-age=3600',
+      });
       return res.send(buffer);
     } catch (error) {
       console.error('[WhatsApp Avatar] Error:', error);
