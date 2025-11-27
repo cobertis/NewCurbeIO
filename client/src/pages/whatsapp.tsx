@@ -1409,17 +1409,9 @@ export default function WhatsAppPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', variables.chatId, 'notes'] });
       setIsNoteMode(false);
       setMessageInput('');
-      toast({
-        title: "Note created",
-        description: "Your internal note has been saved.",
-      });
     },
     onError: (error: any) => {
-      toast({
-        title: "Error creating note",
-        description: error.message || "Failed to create note. Please try again.",
-        variant: "destructive",
-      });
+      console.error('[WhatsApp] Error creating note:', error);
     },
   });
 
