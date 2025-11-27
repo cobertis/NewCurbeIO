@@ -1114,11 +1114,12 @@ export default function WhatsAppPage() {
 
   const chats = chatsData?.chats || [];
 
-  // Get current user session for role check
-  const { data: sessionData } = useQuery<{ user: { id: string; role: string; } }>({
+  // Get current user session for role check and user info
+  const { data: sessionData } = useQuery<{ user: { id: string; role: string; firstName: string; lastName: string; avatar?: string | null; } }>({
     queryKey: ['/api/session'],
   });
   const isAdmin = sessionData?.user?.role === 'admin' || sessionData?.user?.role === 'superadmin';
+  const currentUser = sessionData?.user;
 
   const { data: messagesData, isLoading: messagesLoading } = useQuery<{ success: boolean; messages: WhatsAppMessage[] }>({
     queryKey: [`/api/whatsapp/chats/${selectedChatId}/messages`],
@@ -1176,6 +1177,7 @@ export default function WhatsAppPage() {
     body: string;
     createdAt: string;
     authorName: string;
+    authorAvatar: string | null;
   }> }>({
     queryKey: ['/api/whatsapp/chats', selectedChatId, 'notes'],
     queryFn: async () => {
@@ -1391,13 +1393,33 @@ export default function WhatsAppPage() {
 
   const createNoteMutation = useMutation({
     mutationFn: async ({ chatId, body }: { chatId: string; body: string }) => {
-      const res = await apiRequest('POST', `/api/whatsapp/chats/${encodeURIComponent(chatId)}/notes`, { body });
-      return res.json();
+      const res = await fetch(`/api/whatsapp/chats/${encodeURIComponent(chatId)}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create note');
+      }
+      return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', variables.chatId, 'notes'] });
       setIsNoteMode(false);
       setMessageInput('');
+      toast({
+        title: "Note created",
+        description: "Your internal note has been saved.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error creating note",
+        description: error.message || "Failed to create note. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -3472,8 +3494,11 @@ export default function WhatsAppPage() {
                           <div className="w-full px-4 py-2">
                             <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-4 w-full shadow-sm">
                               <div className="flex items-start gap-3">
-                                {/* Agent Avatar */}
+                                {/* Agent Avatar - use author's photo if available */}
                                 <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-amber-200 dark:ring-amber-700">
+                                  {item.data.authorAvatar ? (
+                                    <AvatarImage src={item.data.authorAvatar} alt={item.data.authorName} />
+                                  ) : null}
                                   <AvatarFallback 
                                     className="bg-amber-500 text-white text-sm font-semibold"
                                   >
@@ -3488,10 +3513,9 @@ export default function WhatsAppPage() {
                                       <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
                                         {item.data.authorName}
                                       </span>
-                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-600">
-                                        <AtSign className="h-2.5 w-2.5 mr-0.5" />
-                                        Note
-                                      </Badge>
+                                      <span className="text-xs text-amber-600/70 dark:text-amber-400/60">
+                                        {format(new Date(currentTimestamp * 1000), 'MMM d, yyyy')} at {formatTimestamp(currentTimestamp)}
+                                      </span>
                                     </div>
                                     {isAdmin && (
                                       <Button
@@ -3512,17 +3536,9 @@ export default function WhatsAppPage() {
                                   </div>
                                   
                                   {/* Note Body */}
-                                  <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed mb-2">
+                                  <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed">
                                     {item.data.body}
                                   </p>
-                                  
-                                  {/* Timestamp */}
-                                  <div className="flex items-center gap-1 text-xs text-amber-600/70 dark:text-amber-400/60">
-                                    <Clock className="h-3 w-3" />
-                                    <span>
-                                      {format(new Date(currentTimestamp * 1000), 'MMM d, yyyy')} at {formatTimestamp(currentTimestamp)}
-                                    </span>
-                                  </div>
                                 </div>
                               </div>
                             </div>

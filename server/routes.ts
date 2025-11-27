@@ -30364,6 +30364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return {
           ...note,
           authorName: author ? `${author.firstName} ${author.lastName}`.trim() : 'Unknown',
+          authorAvatar: author?.avatar || null,
         };
       }));
       
@@ -30398,6 +30399,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const enrichedNote = {
         ...note,
         authorName: author ? `${author.firstName} ${author.lastName}`.trim() : 'Unknown',
+          authorAvatar: author?.avatar || null,
       };
       
       console.log('[WhatsApp] Note created for chat:', chatId, 'by user:', userId);
@@ -30430,6 +30432,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const enrichedNote = {
         ...note,
         authorName: author ? `${author.firstName} ${author.lastName}`.trim() : 'Unknown',
+          authorAvatar: author?.avatar || null,
       };
       
       res.json({ success: true, note: enrichedNote });
