@@ -4677,57 +4677,67 @@ export default function WhatsAppPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Media Lightbox Dialog */}
-      <Dialog open={!!lightboxMedia} onOpenChange={(open) => !open && setLightboxMedia(null)}>
-        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-black/95 border-none" data-testid="dialog-lightbox" aria-describedby={undefined}>
-          <DialogHeader className="sr-only">
-            <DialogTitle>Media Preview</DialogTitle>
-          </DialogHeader>
-          <button
-            onClick={() => setLightboxMedia(null)}
-            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
-            data-testid="button-close-lightbox"
-          >
-            <X className="h-6 w-6" />
-          </button>
+      {/* Media Lightbox - WhatsApp Web Style */}
+      {lightboxMedia && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(11, 20, 26, 0.95)' }}
+          onClick={() => setLightboxMedia(null)}
+          data-testid="dialog-lightbox"
+        >
+          {/* Top toolbar */}
+          <div className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-4 bg-[#1f2c33]">
+            <div className="flex items-center gap-3">
+              <span className="text-white/80 text-sm">Media Preview</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={lightboxMedia.url}
+                download
+                onClick={(e) => e.stopPropagation()}
+                className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                data-testid="button-download-media"
+              >
+                <Download className="h-5 w-5" />
+              </a>
+              <button
+                onClick={() => setLightboxMedia(null)}
+                className="p-2 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+                data-testid="button-close-lightbox"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
           
-          {lightboxMedia?.type === 'image' && (
-            <div className="flex items-center justify-center w-full h-full min-h-[50vh]">
+          {/* Media content */}
+          <div 
+            className="flex items-center justify-center pt-14 pb-4 px-4 w-full h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {lightboxMedia.type === 'image' && (
               <img 
                 src={lightboxMedia.url} 
                 alt="Media" 
-                className="max-w-full max-h-[85vh] object-contain"
+                className="max-w-full max-h-[calc(100vh-80px)] object-contain rounded-sm shadow-2xl"
                 data-testid="lightbox-image"
               />
-            </div>
-          )}
-          
-          {lightboxMedia?.type === 'video' && (
-            <div className="flex items-center justify-center w-full h-full min-h-[50vh]">
+            )}
+            
+            {lightboxMedia.type === 'video' && (
               <video 
                 src={lightboxMedia.url}
                 controls
                 autoPlay
-                className="max-w-full max-h-[85vh]"
+                className="max-w-full max-h-[calc(100vh-80px)] rounded-sm shadow-2xl"
                 data-testid="lightbox-video"
               >
                 Your browser does not support the video tag.
               </video>
-            </div>
-          )}
-          
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            <a
-              href={lightboxMedia?.url || '#'}
-              download
-              className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
-              data-testid="button-download-media"
-            >
-              <Download className="h-5 w-5" />
-            </a>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {/* Settings Dialog */}
       <Dialog open={showSettingsDialog} onOpenChange={(open) => {
