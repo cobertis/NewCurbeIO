@@ -779,7 +779,7 @@ class WhatsAppService extends EventEmitter {
       }
     });
 
-    // Call event handler - CRITICAL: Properly resolve LID to phone number
+    // Call event handler - CRITICAL: Use call.getContact() to resolve LID to phone number
     client.on('call', async (call: any) => {
       console.log(`[WhatsApp] Incoming call for company ${companyId}:`, {
         id: call.id,
@@ -795,102 +795,111 @@ class WhatsAppService extends EventEmitter {
         // Try to get caller name and REAL phone number
         let callerName: string | undefined = undefined;
         let callerNumber: string | undefined = undefined;
-        let resolvedFrom = call.from;
         let chatId: string | undefined = undefined;
         
-        // STEP 1: For LID format, use getContactLidAndPhone to resolve to real phone
-        if (call.from.includes('@lid')) {
-          console.log(`[WhatsApp] Caller ID is LID format, attempting resolution...`);
+        // PRIMARY METHOD: Use call.getContact() - This is the correct way per whatsapp-web.js docs
+        // call.getContact() returns the Contact object for this call with proper phone number
+        try {
+          console.log(`[WhatsApp] Using call.getContact() to resolve caller...`);
+          const contact = await call.getContact();
           
-          // Method 1: Use getContactLidAndPhone API (added in v1.32.0)
+          if (contact) {
+            console.log(`[WhatsApp] call.getContact() returned:`, {
+              id: contact.id?._serialized,
+              number: contact.number,
+              name: contact.name,
+              pushname: contact.pushname,
+              shortName: contact.shortName,
+            });
+            
+            // Get the caller name from contact
+            callerName = contact.pushname || contact.name || contact.shortName;
+            
+            // Get the phone number - prefer contact.number, then contact.id._serialized
+            if (contact.number) {
+              // contact.number is the actual phone number without @c.us suffix
+              callerNumber = contact.number.replace(/[^0-9+]/g, '');
+              chatId = `${contact.number}@c.us`;
+              console.log(`[WhatsApp] Resolved via contact.number: ${callerNumber}`);
+            } else if (contact.id && contact.id._serialized && !contact.id._serialized.includes('@lid')) {
+              // contact.id._serialized should be in format "1234567890@c.us"
+              callerNumber = contact.id._serialized.split('@')[0].replace(/[^0-9+]/g, '');
+              chatId = contact.id._serialized;
+              console.log(`[WhatsApp] Resolved via contact.id: ${callerNumber}`);
+            }
+            
+            // If contact has a chat, use the chat's ID for proper conversation matching
+            if (!chatId) {
+              try {
+                const chat = await contact.getChat();
+                if (chat && chat.id && chat.id._serialized) {
+                  chatId = chat.id._serialized;
+                  if (!callerNumber && !chatId.includes('@lid')) {
+                    callerNumber = chatId.split('@')[0].replace(/[^0-9+]/g, '');
+                  }
+                  console.log(`[WhatsApp] Resolved via contact.getChat(): ${chatId}`);
+                }
+              } catch (chatErr) {
+                console.log(`[WhatsApp] contact.getChat() failed:`, chatErr);
+              }
+            }
+          }
+        } catch (getContactErr) {
+          console.log(`[WhatsApp] call.getContact() failed:`, getContactErr);
+        }
+        
+        // FALLBACK 1: Try getContactLidAndPhone API if still no phone number
+        if (!callerNumber && call.from.includes('@lid')) {
+          console.log(`[WhatsApp] Trying getContactLidAndPhone fallback...`);
           try {
             const lidPhoneResult = await client.getContactLidAndPhone(call.from);
             console.log(`[WhatsApp] getContactLidAndPhone result:`, JSON.stringify(lidPhoneResult));
             
             if (lidPhoneResult && lidPhoneResult.pn) {
-              resolvedFrom = lidPhoneResult.pn;
-              callerNumber = lidPhoneResult.pn.split('@')[0];
+              callerNumber = lidPhoneResult.pn.split('@')[0].replace(/[^0-9+]/g, '');
               chatId = lidPhoneResult.pn;
-              console.log(`[WhatsApp] LID resolved via API - phone: ${callerNumber}, chatId: ${chatId}`);
+              console.log(`[WhatsApp] Resolved via getContactLidAndPhone: ${callerNumber}`);
             }
           } catch (lidError) {
             console.log(`[WhatsApp] getContactLidAndPhone failed:`, lidError);
           }
-          
-          // Method 2: Try to get contact directly by LID
-          if (!callerNumber) {
-            try {
-              const contact = await client.getContactById(call.from);
-              if (contact) {
-                callerName = contact.pushname || contact.name || contact.shortName;
-                // The contact.number property should have the actual phone
-                if (contact.number) {
-                  callerNumber = contact.number;
-                  chatId = `${contact.number}@c.us`;
-                  resolvedFrom = chatId;
-                  console.log(`[WhatsApp] LID resolved via contact - phone: ${callerNumber}, name: ${callerName}`);
-                }
-                // Also try contact.id if it's in phone format
-                if (!callerNumber && contact.id && contact.id._serialized && !contact.id._serialized.includes('@lid')) {
-                  callerNumber = contact.id._serialized.split('@')[0];
-                  chatId = contact.id._serialized;
-                  resolvedFrom = chatId;
-                  console.log(`[WhatsApp] LID resolved via contact.id - phone: ${callerNumber}`);
-                }
-              }
-            } catch (contactErr) {
-              console.log(`[WhatsApp] getContactById for LID failed:`, contactErr);
+        }
+        
+        // FALLBACK 2: Check participants array for phone numbers
+        if (!callerNumber && call.participants && Array.isArray(call.participants)) {
+          for (const participant of call.participants) {
+            const pId = participant.id?._serialized || participant.id || participant;
+            if (typeof pId === 'string' && pId.includes('@c.us')) {
+              callerNumber = pId.split('@')[0].replace(/[^0-9+]/g, '');
+              chatId = pId;
+              console.log(`[WhatsApp] Resolved via participants: ${callerNumber}`);
+              break;
             }
           }
-          
-          // Method 3: Check participants array for phone numbers
-          if (!callerNumber && call.participants && Array.isArray(call.participants)) {
-            for (const participant of call.participants) {
-              const pId = participant.id?._serialized || participant.id || participant;
-              if (typeof pId === 'string' && pId.includes('@c.us')) {
-                callerNumber = pId.split('@')[0];
-                chatId = pId;
-                resolvedFrom = pId;
-                console.log(`[WhatsApp] LID resolved via participants - phone: ${callerNumber}`);
-                break;
-              }
-            }
-          }
-          
-          // If still no phone number, the contact is truly unknown - don't use LID as phone
-          if (!callerNumber) {
-            console.log(`[WhatsApp] Could not resolve LID to phone number - caller is unknown`);
-            // Keep the LID for storage but mark as unknown
-            chatId = call.from;
-          }
-        } else {
-          // Not LID format - should be regular @c.us format
-          callerNumber = call.from.split('@')[0].replace(/[^0-9]/g, '');
+        }
+        
+        // FALLBACK 3: If call.from is already in @c.us format (not LID)
+        if (!callerNumber && call.from && !call.from.includes('@lid')) {
+          callerNumber = call.from.split('@')[0].replace(/[^0-9+]/g, '');
           chatId = call.from;
+          console.log(`[WhatsApp] Using call.from directly (not LID): ${callerNumber}`);
         }
         
-        // STEP 2: Get contact name if we don't have it yet
-        if (!callerName && resolvedFrom) {
-          try {
-            const contact = await client.getContactById(resolvedFrom);
-            if (contact) {
-              callerName = contact.pushname || contact.name || contact.shortName;
-              // Also get number from contact if we still don't have it
-              if (!callerNumber && contact.number) {
-                callerNumber = contact.number;
-              }
-            }
-          } catch (err) {
-            console.log(`[WhatsApp] Could not get contact info for ${resolvedFrom}`);
+        // FINAL: If we still don't have a chatId, use the original from
+        if (!chatId) {
+          chatId = call.from;
+          console.log(`[WhatsApp] WARNING: Could not resolve to canonical chatId, using raw: ${chatId}`);
+        }
+        
+        // Format the phone number for display (E.164)
+        if (callerNumber) {
+          // Ensure it starts with + for international format
+          if (!callerNumber.startsWith('+') && callerNumber.length >= 10) {
+            callerNumber = '+' + callerNumber;
           }
         }
         
-        // STEP 3: Ensure chatId is in proper format for matching
-        if (!chatId) {
-          chatId = callerNumber ? `${callerNumber}@c.us` : call.from;
-        }
-        
-        console.log(`[WhatsApp] Call resolved - name: ${callerName || 'Unknown'}, number: ${callerNumber || 'Unknown'}, chatId: ${chatId}`);
+        console.log(`[WhatsApp] Call FINAL resolved - name: ${callerName || 'Unknown'}, number: ${callerNumber || 'Unknown'}, chatId: ${chatId}`);
         
         const callData = {
           companyId,
