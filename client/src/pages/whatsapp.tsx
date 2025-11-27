@@ -2461,13 +2461,15 @@ export default function WhatsAppPage() {
         setUserDisplayName(data.profile.pushname || '');
         setUserStatus(data.profile.about || '');
         setMyPhoneNumber(data.profile.phoneNumber || '');
-        // Use avatar endpoint for fresh profile picture (phone number is the contact ID for self)
-        if (data.profile.phoneNumber) {
-          setMyProfilePicUrl(getAvatarUrl(`${data.profile.phoneNumber}@c.us`));
-        } else if (data.profile.profilePicUrl) {
+        // Use profilePicUrl directly from backend - WhatsApp blocks self-avatar via contact proxy
+        // The backend fetches it directly using client.getProfilePicUrl(wid) which works for self
+        if (data.profile.profilePicUrl) {
+          // Backend returns the CDN URL directly, use image proxy for CORS
           setMyProfilePicUrl(getProxiedImageUrl(data.profile.profilePicUrl));
+          console.log('[WhatsApp Settings] Set profile pic from backend URL');
         } else {
           setMyProfilePicUrl(null);
+          console.log('[WhatsApp Settings] No profile pic URL from backend');
         }
       }
     } catch (error) {

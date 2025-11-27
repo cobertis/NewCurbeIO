@@ -3470,7 +3470,8 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Get current user's profile information
-   * Uses Contact object to get accurate profile data per whatsapp-web.js docs
+   * Uses client.info.me per whatsapp-web.js docs for self-contact data
+   * Note: WhatsApp blocks fetching own avatar via contact proxy, so we use direct methods
    */
   async getMyProfile(companyId: string): Promise<{ wid: string; pushname: string; profilePicUrl: string | null; about: string | null; phoneNumber: string }> {
     if (!this.isReady(companyId)) {
@@ -3478,7 +3479,8 @@ class WhatsAppService extends EventEmitter {
     }
     try {
       const companyClient = await this.getClientForCompany(companyId);
-      const info = companyClient.client.info;
+      const client = companyClient.client;
+      const info = client.info;
       
       console.log(`[WhatsApp] getMyProfile: Starting for company ${companyId}`);
       
@@ -3489,51 +3491,55 @@ class WhatsAppService extends EventEmitter {
       const wid = info.wid._serialized;
       const phoneNumber = info.wid.user || '';
       
-      console.log(`[WhatsApp] getMyProfile: wid=${wid}, phone=${phoneNumber}, info.pushname="${info.pushname || ''}"`);
-      
-      // Get my contact to get accurate profile data
+      // Get pushname from client.info - this is the authenticated user's display name
       let pushname = info.pushname || '';
       let profilePicUrl: string | null = null;
       let about: string | null = null;
       
+      console.log(`[WhatsApp] getMyProfile: wid=${wid}, phone=${phoneNumber}, info.pushname="${pushname}"`);
+      
+      // Method 1: Try to get self-contact using client.info.me if available
+      // Per whatsapp-web.js docs, client.info.me contains the self ClientInfo
       try {
-        const myContact = await companyClient.client.getContactById(wid);
-        console.log(`[WhatsApp] getMyProfile: Contact retrieved - name="${myContact.name}", pushname="${myContact.pushname}", verifiedName="${(myContact as any).verifiedName}", isMe=${myContact.isMe}`);
+        // Get own profile picture - use the wid directly with client.getProfilePicUrl
+        // This works for self because we're passing our own wid
+        profilePicUrl = await client.getProfilePicUrl(wid);
+        console.log(`[WhatsApp] getMyProfile: Self profilePicUrl=${profilePicUrl ? 'FOUND' : 'NULL'}`);
+      } catch (picErr: any) {
+        console.log(`[WhatsApp] getMyProfile: getProfilePicUrl for self failed:`, picErr?.message);
+      }
+      
+      // Method 2: Try getting contact by ID to get about/status
+      try {
+        const myContact = await client.getContactById(wid);
+        console.log(`[WhatsApp] getMyProfile: Self contact retrieved - name="${myContact.name}", pushname="${myContact.pushname}", isMe=${myContact.isMe}`);
         
-        // Get the best available name: verifiedName > name > pushname > info.pushname
-        pushname = (myContact as any).verifiedName || myContact.name || myContact.pushname || info.pushname || '';
+        // Use contact's name if available (may have more info than info.pushname)
+        if (!pushname && (myContact.name || myContact.pushname)) {
+          pushname = myContact.name || myContact.pushname || '';
+        }
         
-        // Get profile picture URL from contact
-        if (myContact.getProfilePicUrl) {
+        // Get about/status from contact
+        if (myContact.getAbout) {
+          try {
+            about = await myContact.getAbout();
+            console.log(`[WhatsApp] getMyProfile: about="${about}"`);
+          } catch (aboutErr: any) {
+            console.log(`[WhatsApp] getMyProfile: getAbout failed:`, aboutErr?.message);
+          }
+        }
+        
+        // If we couldn't get profile pic from client, try from contact
+        if (!profilePicUrl && myContact.getProfilePicUrl) {
           try {
             profilePicUrl = await myContact.getProfilePicUrl();
             console.log(`[WhatsApp] getMyProfile: Contact profilePicUrl=${profilePicUrl ? 'FOUND' : 'NULL'}`);
-          } catch (picErr) {
-            console.log(`[WhatsApp] getMyProfile: Contact.getProfilePicUrl failed, trying client method`);
+          } catch (picErr: any) {
+            console.log(`[WhatsApp] getMyProfile: Contact.getProfilePicUrl failed:`, picErr?.message);
           }
         }
-        
-        // Fallback to client method if contact method failed
-        if (!profilePicUrl) {
-          try {
-            profilePicUrl = await companyClient.client.getProfilePicUrl(wid);
-            console.log(`[WhatsApp] getMyProfile: Client profilePicUrl=${profilePicUrl ? 'FOUND' : 'NULL'}`);
-          } catch (picErr) {
-            console.log(`[WhatsApp] getMyProfile: Client.getProfilePicUrl also failed`);
-          }
-        }
-        
-        // Get about/status
-        if (myContact.getAbout) {
-          about = await myContact.getAbout();
-          console.log(`[WhatsApp] getMyProfile: about="${about}"`);
-        }
-      } catch (contactError) {
-        console.log(`[WhatsApp] getMyProfile: Error getting contact:`, (contactError as Error).message);
-        // Fallback to client methods
-        try {
-          profilePicUrl = await companyClient.client.getProfilePicUrl(wid);
-        } catch {}
+      } catch (contactError: any) {
+        console.log(`[WhatsApp] getMyProfile: Error getting self contact:`, contactError?.message);
       }
       
       console.log(`[WhatsApp] Profile retrieved for company ${companyId}: wid=${wid}, pushname="${pushname}", about="${about}", phone=${phoneNumber}, hasPic=${!!profilePicUrl}`);
