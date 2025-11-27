@@ -108,31 +108,13 @@ interface WhatsAppStatus {
 // VIDEO THUMBNAIL COMPONENT (lazy load video on click)
 // =====================================================
 
-function VideoThumbnail({ messageId, ...props }: { messageId: string; [key: string]: any }) {
-  const [showVideo, setShowVideo] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  if (showVideo) {
-    return (
-      <video 
-        ref={videoRef}
-        controls 
-        autoPlay
-        className="max-w-xs rounded-lg"
-        preload="auto"
-        data-testid="media-video"
-        {...props}
-      >
-        <source src={`/api/whatsapp/messages/${messageId}/media`} />
-        Your browser does not support the video tag.
-      </video>
-    );
-  }
+function VideoThumbnail({ messageId, onOpenMedia, ...props }: { messageId: string; onOpenMedia?: (url: string, type: 'image' | 'video' | 'document') => void; [key: string]: any }) {
+  const videoUrl = `/api/whatsapp/messages/${messageId}/media`;
 
   return (
     <div 
       className="relative max-w-xs h-48 rounded-lg bg-black/80 flex items-center justify-center cursor-pointer group"
-      onClick={() => setShowVideo(true)}
+      onClick={() => onOpenMedia ? onOpenMedia(videoUrl, 'video') : window.open(videoUrl, '_blank')}
       data-testid="media-video-thumbnail"
     >
       <div className="absolute inset-0 flex items-center justify-center">
@@ -254,7 +236,8 @@ function MessageItem({
   onReact, 
   onDownload,
   onInfo,
-  onCopy 
+  onCopy,
+  onOpenMedia
 }: { 
   message: WhatsAppMessage;
   onReply: () => void;
@@ -265,6 +248,7 @@ function MessageItem({
   onDownload: () => void;
   onInfo: () => void;
   onCopy: () => void;
+  onOpenMedia: (url: string, type: 'image' | 'video' | 'document') => void;
 }) {
   const [showDeleteOptions, setShowDeleteOptions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -343,7 +327,7 @@ function MessageItem({
                     alt="Media" 
                     className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                     loading="lazy"
-                    onClick={() => window.open(`/api/whatsapp/messages/${message.id}/media`, '_blank')}
+                    onClick={() => onOpenMedia(`/api/whatsapp/messages/${message.id}/media`, 'image')}
                     data-testid="media-image"
                   />
                 )}
@@ -360,6 +344,7 @@ function MessageItem({
                 ) : (
                   <VideoThumbnail 
                     messageId={message.id}
+                    onOpenMedia={onOpenMedia}
                     data-testid="media-video"
                   />
                 )}
@@ -910,6 +895,9 @@ export default function WhatsAppPage() {
   // Group invite link state
   const [groupInviteLink, setGroupInviteLink] = useState<string | null>(null);
   const [isLoadingInviteLink, setIsLoadingInviteLink] = useState(false);
+  
+  // Media lightbox state
+  const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' | 'document' } | null>(null);
   
   // Status/About settings state
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -3305,6 +3293,7 @@ export default function WhatsAppPage() {
                           onDownload={() => handleDownload(message)}
                           onInfo={() => handleMessageInfo(message)}
                           onCopy={() => handleCopy(message)}
+                          onOpenMedia={(url, type) => setLightboxMedia({ url, type })}
                         />
                       </div>
                     );
@@ -4688,6 +4677,58 @@ export default function WhatsAppPage() {
                 ))}
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Media Lightbox Dialog */}
+      <Dialog open={!!lightboxMedia} onOpenChange={(open) => !open && setLightboxMedia(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-black/95 border-none" data-testid="dialog-lightbox" aria-describedby={undefined}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Media Preview</DialogTitle>
+          </DialogHeader>
+          <button
+            onClick={() => setLightboxMedia(null)}
+            className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+            data-testid="button-close-lightbox"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          
+          {lightboxMedia?.type === 'image' && (
+            <div className="flex items-center justify-center w-full h-full min-h-[50vh]">
+              <img 
+                src={lightboxMedia.url} 
+                alt="Media" 
+                className="max-w-full max-h-[85vh] object-contain"
+                data-testid="lightbox-image"
+              />
+            </div>
+          )}
+          
+          {lightboxMedia?.type === 'video' && (
+            <div className="flex items-center justify-center w-full h-full min-h-[50vh]">
+              <video 
+                src={lightboxMedia.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[85vh]"
+                data-testid="lightbox-video"
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          )}
+          
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <a
+              href={lightboxMedia?.url || '#'}
+              download
+              className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+              data-testid="button-download-media"
+            >
+              <Download className="h-5 w-5" />
+            </a>
           </div>
         </DialogContent>
       </Dialog>
