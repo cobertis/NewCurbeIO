@@ -1,15 +1,4 @@
-2025/11/27-20:26:26.763 c556 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/27-20:26:26.764 c556 Recovering log #593
-2025/11/27-20:26:26.776 c556 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000593.log 
-2025/11/27-20:26:28.327 c556 Level-0 table #599: started
-2025/11/27-20:26:28.348 c556 Level-0 table #599: 146255 bytes OK
-2025/11/27-20:26:28.378 c556 Delete type=0 #593
-2025/11/27-20:26:28.380 c556 Manual compaction at level-0 from '\x00\x97\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x98\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/27-20:26:30.904 c558 Compacting 1@1 + 2@2 files
-2025/11/27-20:26:30.981 c558 Generated table #600@1: 80002 keys, 2268491 bytes
-2025/11/27-20:26:31.010 c558 Generated table #601@1: 10581 keys, 394541 bytes
-2025/11/27-20:26:31.011 c558 Compacted 1@1 + 2@2 files => 2663032 bytes
-2025/11/27-20:26:31.026 c558 compacted to: files[ 0 0 2 0 0 0 0 ]
-2025/11/27-20:26:31.027 c558 Delete type=2 #595
-2025/11/27-20:26:31.027 c558 Delete type=2 #596
-2025/11/27-20:26:31.027 c558 Delete type=2 #599
+2025/11/27-20:47:42.345 ccfe Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/27-20:47:42.345 ccfe Recovering log #603
+2025/11/27-20:47:42.354 ccfe Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000603.log 
+2025/11/27-20:47:43.860 ccfe Manual compaction at level-0 from '\x00\x99\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x9a\x00\x00\x00' @ 0 : 0; will stop at (end)
