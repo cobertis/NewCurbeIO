@@ -3134,17 +3134,41 @@ export default function WhatsAppPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                {/* Quick Action: Archive */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => archiveMutation.mutate({ chatId: selectedChatId, archive: !selectedChat.isArchived })}
+                  className="h-9 w-9 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  title={selectedChat.isArchived ? "Unarchive chat" : "Archive chat"}
+                  data-testid="button-archive-quick"
+                >
+                  {selectedChat.isArchived ? <ArchiveX className="h-[18px] w-[18px]" /> : <Archive className="h-[18px] w-[18px]" />}
+                </Button>
+                
+                {/* Quick Action: Pin */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => pinMutation.mutate({ chatId: selectedChatId, pin: !selectedChat.isPinned })}
+                  className="h-9 w-9 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  title={selectedChat.isPinned ? "Unpin chat" : "Pin chat"}
+                  data-testid="button-pin-quick"
+                >
+                  {selectedChat.isPinned ? <PinOff className="h-[18px] w-[18px]" /> : <Pin className="h-[18px] w-[18px]" />}
+                </Button>
+                
                 {/* Chat Options Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                      className="h-9 w-9 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
                       data-testid="button-chat-menu"
                     >
-                      <MoreVertical className="h-5 w-5" />
+                      <MoreVertical className="h-[18px] w-[18px]" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
