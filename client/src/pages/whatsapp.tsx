@@ -29,7 +29,7 @@ import {
   Users, MapPin, UserPlus, BarChart3, Check, Mic, Clock, StarOff, ChevronDown,
   LogOut, ArchiveX, Trash, Bell, PinOff, UserMinus, Shield, ShieldOff, Edit, Plus, Loader2,
   Image, FileIcon, Play, Square, File as FileIconLucide, Link2, RefreshCcw, Settings, Sticker, AtSign,
-  Camera, User, AlertCircle, GripVertical
+  Camera, User, AlertCircle, GripVertical, ArrowUpRight, ArrowDownLeft
 } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
@@ -3539,23 +3539,32 @@ export default function WhatsAppPage() {
                       );
                     }
                     
-                    // Render call event item
+                    // Render call event item - WhatsApp-style call notification
                     if (item.type === 'call') {
                       const call = item.data;
                       const isOutgoing = call.fromMe;
-                      const isMissed = call.status === 'missed' || call.status === 'rejected';
-                      const callIcon = call.isVideo ? (
-                        <Video className={`h-4 w-4 ${isMissed ? 'text-red-500' : 'text-green-500'}`} />
-                      ) : (
-                        <Phone className={`h-4 w-4 ${isMissed ? 'text-red-500' : 'text-green-500'}`} />
-                      );
+                      const isMissed = call.status === 'missed' || call.status === 'rejected' || call.status === 'ringing';
+                      const isAnswered = call.status === 'answered' || call.status === 'ended';
                       
-                      const callText = isOutgoing 
-                        ? (isMissed ? 'Outgoing call - No answer' : `Outgoing ${call.isVideo ? 'video' : 'voice'} call`)
-                        : (isMissed ? 'Missed call' : `Incoming ${call.isVideo ? 'video' : 'voice'} call`);
+                      // Determine call title
+                      let callTitle = '';
+                      if (isOutgoing) {
+                        if (isMissed) {
+                          callTitle = call.isVideo ? 'Cancelled video call' : 'Cancelled voice call';
+                        } else {
+                          callTitle = call.isVideo ? 'Outgoing video call' : 'Outgoing voice call';
+                        }
+                      } else {
+                        if (isMissed) {
+                          callTitle = call.isVideo ? 'Missed video call' : 'Missed voice call';
+                        } else {
+                          callTitle = call.isVideo ? 'Incoming video call' : 'Incoming voice call';
+                        }
+                      }
                       
+                      // Duration text for answered calls
                       const durationText = call.duration && call.duration > 0 
-                        ? ` (${Math.floor(call.duration / 60)}:${String(call.duration % 60).padStart(2, '0')})` 
+                        ? `${Math.floor(call.duration / 60)}:${String(call.duration % 60).padStart(2, '0')}`
                         : '';
                       
                       return (
@@ -3567,13 +3576,49 @@ export default function WhatsAppPage() {
                               </div>
                             </div>
                           )}
-                          <div className="flex items-center justify-center my-2">
-                            <div className="flex items-center gap-2 bg-[var(--whatsapp-bg-secondary)] text-[var(--whatsapp-text-secondary)] px-4 py-2 rounded-lg text-sm shadow-sm">
-                              {callIcon}
-                              <span>{callText}{durationText}</span>
-                              <span className="text-xs opacity-70">
+                          {/* WhatsApp-style call notification bubble */}
+                          <div className="flex items-center justify-center my-3 px-4">
+                            <div 
+                              className="flex items-center gap-3 bg-white dark:bg-[#1f2c34] rounded-lg shadow-sm px-4 py-3 max-w-[340px] w-full border border-gray-100 dark:border-gray-700"
+                              data-testid={`call-notification-${call.id}`}
+                            >
+                              {/* Call icon with arrow indicator */}
+                              <div className="relative flex-shrink-0">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isMissed ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+                                  {call.isVideo ? (
+                                    <Video className={`h-5 w-5 ${isMissed ? 'text-red-500' : 'text-green-600'}`} />
+                                  ) : (
+                                    <Phone className={`h-5 w-5 ${isMissed ? 'text-red-500' : 'text-green-600'}`} />
+                                  )}
+                                </div>
+                                {/* Direction arrow */}
+                                <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center ${isMissed ? 'bg-red-500' : 'bg-green-600'}`}>
+                                  {isOutgoing ? (
+                                    <ArrowUpRight className="h-2.5 w-2.5 text-white" />
+                                  ) : (
+                                    <ArrowDownLeft className="h-2.5 w-2.5 text-white" />
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Call info */}
+                              <div className="flex-1 min-w-0">
+                                <div className={`font-medium text-sm ${isMissed ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                                  {callTitle}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {durationText ? (
+                                    <span>Duration: {durationText}</span>
+                                  ) : (
+                                    <span>Tap to call back</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Timestamp */}
+                              <div className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
                                 {formatTimestamp(currentTimestamp)}
-                              </span>
+                              </div>
                             </div>
                           </div>
                         </div>
