@@ -3470,35 +3470,61 @@ export default function WhatsAppPage() {
                             </div>
                           )}
                           <div className="w-full px-4 py-2">
-                            <div className="bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 rounded-lg p-3 w-full">
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                  <AtSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                                  <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                                    @{item.data.authorName}
-                                  </span>
-                                  <span className="text-xs text-amber-600/70 dark:text-amber-400/70">
-                                    {formatTimestamp(currentTimestamp)}
-                                  </span>
-                                </div>
-                                {isAdmin && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-amber-600 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"
-                                    onClick={() => {
-                                      if (selectedChatId) {
-                                        deleteNoteMutation.mutate({ chatId: selectedChatId, noteId: item.data.id });
-                                      }
-                                    }}
-                                    disabled={deleteNoteMutation.isPending}
-                                    data-testid={`button-delete-note-${item.data.id}`}
+                            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-4 w-full shadow-sm">
+                              <div className="flex items-start gap-3">
+                                {/* Agent Avatar */}
+                                <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-amber-200 dark:ring-amber-700">
+                                  <AvatarFallback 
+                                    className="bg-amber-500 text-white text-sm font-semibold"
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
+                                    {item.data.authorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                
+                                {/* Note Content */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                                        {item.data.authorName}
+                                      </span>
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-600">
+                                        <AtSign className="h-2.5 w-2.5 mr-0.5" />
+                                        Note
+                                      </Badge>
+                                    </div>
+                                    {isAdmin && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-amber-500 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 opacity-60 hover:opacity-100 transition-opacity"
+                                        onClick={() => {
+                                          if (selectedChatId) {
+                                            deleteNoteMutation.mutate({ chatId: selectedChatId, noteId: item.data.id });
+                                          }
+                                        }}
+                                        disabled={deleteNoteMutation.isPending}
+                                        data-testid={`button-delete-note-${item.data.id}`}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Note Body */}
+                                  <p className="text-sm text-amber-900 dark:text-amber-100 leading-relaxed mb-2">
+                                    {item.data.body}
+                                  </p>
+                                  
+                                  {/* Timestamp */}
+                                  <div className="flex items-center gap-1 text-xs text-amber-600/70 dark:text-amber-400/60">
+                                    <Clock className="h-3 w-3" />
+                                    <span>
+                                      {format(new Date(currentTimestamp * 1000), 'MMM d, yyyy')} at {formatTimestamp(currentTimestamp)}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-sm text-amber-800 dark:text-amber-200">{item.data.body}</p>
                             </div>
                           </div>
                         </div>
