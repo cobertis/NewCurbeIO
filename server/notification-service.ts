@@ -729,6 +729,81 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a new WhatsApp message is received
+   */
+  async notifyWhatsAppMessage(companyId: string, data: {
+    chatId: string;
+    senderName: string;
+    senderNumber: string;
+    messageText: string;
+    hasMedia?: boolean;
+    mediaType?: string;
+    isGroup?: boolean;
+    groupName?: string;
+  }) {
+    // Get all users in the company
+    const users = await storage.getUsersByCompany(companyId);
+    
+    if (users.length === 0) {
+      console.log(`[NOTIFICATION] No users found for company ${companyId} to notify about WhatsApp message`);
+      return [];
+    }
+    
+    // Determine message preview
+    let messagePreview = "";
+    if (data.hasMedia && data.mediaType) {
+      if (data.mediaType.startsWith("image")) {
+        messagePreview = "Photo";
+      } else if (data.mediaType.startsWith("audio") || data.mediaType === "ptt") {
+        messagePreview = "Voice message";
+      } else if (data.mediaType.startsWith("video")) {
+        messagePreview = "Video";
+      } else if (data.mediaType === "document") {
+        messagePreview = "Document";
+      } else if (data.mediaType === "sticker") {
+        messagePreview = "Sticker";
+      } else {
+        messagePreview = "Attachment";
+      }
+      
+      // Add text if present
+      if (data.messageText) {
+        messagePreview += `: ${data.messageText.substring(0, 50)}${data.messageText.length > 50 ? '...' : ''}`;
+      }
+    } else {
+      messagePreview = data.messageText 
+        ? (data.messageText.substring(0, 100) + (data.messageText.length > 100 ? '...' : ''))
+        : "New message";
+    }
+    
+    // Build title with sender info
+    let title = "";
+    if (data.isGroup && data.groupName) {
+      title = `${data.senderName} in ${data.groupName}`;
+    } else {
+      title = data.senderName || data.senderNumber;
+    }
+    
+    // Encode chatId for URL
+    const encodedChatId = encodeURIComponent(data.chatId);
+    
+    // Create notification for each user
+    const notifications: InsertNotification[] = users.map((user: any) => ({
+      userId: user.id,
+      type: "whatsapp_message",
+      title: `WhatsApp: ${title}`,
+      message: messagePreview,
+      link: `/whatsapp?chat=${encodedChatId}`,
+      isRead: false,
+    }));
+    
+    const result = await Promise.all(notifications.map((n: InsertNotification) => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    console.log(`[NOTIFICATION] WhatsApp message: Notified ${users.length} users in company ${companyId}`);
+    return result;
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {

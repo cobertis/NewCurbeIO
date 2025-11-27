@@ -1080,6 +1080,21 @@ export default function WhatsAppPage() {
     }
   }, [hasSavedSession, isAuthenticated, isInitializing, initWhatsAppMutation.isPending]);
 
+  // Handle URL parameter to open specific chat from notifications
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const chatIdFromUrl = urlParams.get('chat');
+    
+    if (chatIdFromUrl && isAuthenticated) {
+      // Decode the chat ID and set it as selected
+      const decodedChatId = decodeURIComponent(chatIdFromUrl);
+      setSelectedChatId(decodedChatId);
+      
+      // Clean the URL after setting the chat
+      window.history.replaceState({}, '', '/whatsapp');
+    }
+  }, [isAuthenticated]);
+
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
     enabled: isAuthenticated,

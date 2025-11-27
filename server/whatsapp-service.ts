@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import { db } from './db';
 import { whatsappReactions, whatsappMessages, whatsappContacts, whatsappDeletedChats } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { notificationService } from './notification-service';
 
 interface WhatsAppSessionStatus {
   isReady: boolean;
@@ -589,6 +590,37 @@ class WhatsAppService extends EventEmitter {
           handler(message);
         } catch (error) {
           console.error(`[WhatsApp] Error in message handler for company ${companyId}:`, error);
+        }
+      }
+      
+      // Send notification for incoming messages (not from self)
+      if (!message.fromMe) {
+        try {
+          // Get contact and chat info for notification
+          const contact = await message.getContact();
+          const chat = await message.getChat();
+          
+          // Extract sender info
+          const senderName = contact?.pushname || contact?.name || contact?.number || 'Unknown';
+          const senderNumber = message.from.replace('@c.us', '').replace('@g.us', '');
+          
+          // Check if group chat
+          const isGroup = chat?.isGroup || message.from.includes('@g.us');
+          const groupName = isGroup ? chat?.name : undefined;
+          
+          // Send notification
+          await notificationService.notifyWhatsAppMessage(companyId, {
+            chatId: message.from,
+            senderName,
+            senderNumber,
+            messageText: message.body || '',
+            hasMedia: message.hasMedia,
+            mediaType: message.type,
+            isGroup,
+            groupName,
+          });
+        } catch (notifyError) {
+          console.error(`[WhatsApp] Error sending notification for company ${companyId}:`, notifyError);
         }
       }
     });
