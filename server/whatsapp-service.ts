@@ -942,6 +942,17 @@ class WhatsAppService extends EventEmitter {
         // Send notification for incoming calls (not from self)
         if (!call.fromMe) {
           await notificationService.notifyWhatsAppCall(companyId, callData);
+          
+          // Mark the chat as unread so it shows as having a new "message" (the call)
+          try {
+            const chat = await client.getChatById(chatId);
+            if (chat) {
+              await chat.markUnread();
+              console.log(`[WhatsApp] Chat marked as unread due to incoming call: ${chatId}`);
+            }
+          } catch (markErr) {
+            console.log(`[WhatsApp] Could not mark chat as unread:`, markErr);
+          }
         }
         
         console.log(`[WhatsApp] Call saved to database for company ${companyId}`);
