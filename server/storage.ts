@@ -201,7 +201,9 @@ import {
   type CampaignSchedule,
   type InsertCampaignSchedule,
   type CampaignFollowup,
-  type InsertCampaignFollowup
+  type InsertCampaignFollowup,
+  type WhatsappCall,
+  type InsertWhatsappCall
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -300,7 +302,8 @@ import {
   campaignPlaceholders,
   campaignVariants,
   campaignSchedules,
-  campaignFollowups
+  campaignFollowups,
+  whatsappCalls
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull, isNotNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -1235,6 +1238,12 @@ export interface IStorage {
   createCampaignPlaceholder(data: InsertCampaignPlaceholder): Promise<CampaignPlaceholder>;
   updateCampaignPlaceholder(id: string, companyId: string, data: Partial<InsertCampaignPlaceholder>): Promise<CampaignPlaceholder>;
   deleteCampaignPlaceholder(id: string, companyId: string): Promise<void>;
+  
+  // WhatsApp Calls
+  createWhatsappCall(call: InsertWhatsappCall): Promise<WhatsappCall>;
+  getWhatsappCallsByCompany(companyId: string, limit?: number): Promise<WhatsappCall[]>;
+  updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null>;
+  getWhatsappCallByCallId(companyId: string, callId: string): Promise<WhatsappCall | null>;
 }
 
 export class DbStorage implements IStorage {
@@ -11480,6 +11489,47 @@ export class DbStorage implements IStorage {
           eq(campaignPlaceholders.companyId, companyId)
         )
       );
+  }
+
+  // ==================== WHATSAPP CALLS ====================
+
+  async createWhatsappCall(call: InsertWhatsappCall): Promise<WhatsappCall> {
+    const [created] = await db.insert(whatsappCalls).values(call).returning();
+    return created;
+  }
+
+  async getWhatsappCallsByCompany(companyId: string, limit: number = 50): Promise<WhatsappCall[]> {
+    return db.select()
+      .from(whatsappCalls)
+      .where(eq(whatsappCalls.companyId, companyId))
+      .orderBy(desc(whatsappCalls.timestamp))
+      .limit(limit);
+  }
+
+  async updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null> {
+    const updateData: any = { status };
+    if (endedAt) updateData.endedAt = endedAt;
+    if (duration !== undefined) updateData.duration = duration;
+    
+    const [updated] = await db.update(whatsappCalls)
+      .set(updateData)
+      .where(and(
+        eq(whatsappCalls.companyId, companyId),
+        eq(whatsappCalls.callId, callId)
+      ))
+      .returning();
+    return updated || null;
+  }
+
+  async getWhatsappCallByCallId(companyId: string, callId: string): Promise<WhatsappCall | null> {
+    const [call] = await db.select()
+      .from(whatsappCalls)
+      .where(and(
+        eq(whatsappCalls.companyId, companyId),
+        eq(whatsappCalls.callId, callId)
+      ))
+      .limit(1);
+    return call || null;
   }
 }
 

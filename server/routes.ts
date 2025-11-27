@@ -30881,6 +30881,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // CALL ENDPOINTS
   // ============================================================================
 
+  // GET /api/whatsapp/calls - Get call history
+  app.get("/api/whatsapp/calls", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const limit = parseInt(req.query.limit as string) || 50;
+      const calls = await whatsappService.getCallHistory(companyId, limit);
+      res.json({ success: true, calls });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error fetching call history:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // POST /api/whatsapp/calls/:callId/reject - Reject call
   app.post("/api/whatsapp/calls/:callId/reject", requireActiveCompany, async (req: Request, res: Response) => {
     try {

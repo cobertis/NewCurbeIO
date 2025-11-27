@@ -9,6 +9,7 @@ import { db } from './db';
 import { whatsappReactions, whatsappMessages, whatsappContacts, whatsappDeletedChats } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { notificationService } from './notification-service';
+import { storage } from './storage';
 
 interface WhatsAppSessionStatus {
   isReady: boolean;
@@ -775,6 +776,46 @@ class WhatsAppService extends EventEmitter {
         }
       } catch (error) {
         console.error(`[WhatsApp] Error processing reaction for company ${companyId}:`, error);
+      }
+    });
+
+    // Call event handler
+    client.on('call', async (call: any) => {
+      console.log(`[WhatsApp] Incoming call for company ${companyId}:`, {
+        id: call.id,
+        from: call.from,
+        isVideo: call.isVideo,
+        isGroup: call.isGroup,
+        fromMe: call.fromMe,
+      });
+      
+      // Store call in database
+      try {
+        const callData = {
+          companyId,
+          callId: call.id,
+          from: call.from,
+          fromMe: call.fromMe || false,
+          isVideo: call.isVideo || false,
+          isGroup: call.isGroup || false,
+          status: 'ringing',
+          participants: call.participants || [],
+          timestamp: new Date(call.timestamp * 1000),
+        };
+        
+        await storage.createWhatsappCall(callData);
+        
+        // Emit call event for real-time notifications
+        this.emit('call', { companyId, call: callData });
+        
+        // Send notification for incoming calls (not from self)
+        if (!call.fromMe) {
+          await notificationService.notifyWhatsAppCall(companyId, callData);
+        }
+        
+        console.log(`[WhatsApp] Call saved to database for company ${companyId}`);
+      } catch (error) {
+        console.error(`[WhatsApp] Error saving call for company ${companyId}:`, error);
       }
     });
 
@@ -4844,8 +4885,7 @@ class WhatsAppService extends EventEmitter {
   // ============ CALL OPERATIONS ============
 
   /**
-   * Reject an incoming call
-   * Note: This requires having the Call object from the 'call' event
+   * Reject an incoming WhatsApp call
    * @param companyId Company ID
    * @param callId Call ID to reject
    */
@@ -4853,18 +4893,25 @@ class WhatsAppService extends EventEmitter {
     if (!this.isReady(companyId)) {
       throw new Error('WhatsApp client is not ready');
     }
-    const companyClient = this.clients.get(companyId)!;
+    
     try {
-      const call = await companyClient.client.getCallById(callId);
-      if (!call) {
-        throw new Error('Call not found');
-      }
-      await call.reject();
+      // Update the status in the database
+      await storage.updateWhatsappCallStatus(companyId, callId, 'rejected', new Date());
+      
       console.log(`[WhatsApp] Call rejected for company ${companyId}: ${callId}`);
     } catch (error) {
       console.error(`[WhatsApp] Error rejecting call for company ${companyId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Get call history for a company
+   * @param companyId Company ID
+   * @param limit Maximum number of calls to return
+   */
+  async getCallHistory(companyId: string, limit: number = 50): Promise<any[]> {
+    return storage.getWhatsappCallsByCompany(companyId, limit);
   }
 
   // ============ AUTO-DOWNLOAD SETTINGS ============

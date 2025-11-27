@@ -804,6 +804,46 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for when a WhatsApp call is received
+   */
+  async notifyWhatsAppCall(companyId: string, data: {
+    callId: string;
+    from: string;
+    fromMe: boolean;
+    isVideo: boolean;
+    isGroup: boolean;
+    status: string;
+    timestamp: Date;
+  }) {
+    // Get all users in the company
+    const users = await storage.getUsersByCompany(companyId);
+    
+    if (users.length === 0) {
+      console.log(`[NOTIFICATION] No users found for company ${companyId} to notify about WhatsApp call`);
+      return [];
+    }
+    
+    // Format caller number
+    const callerNumber = data.from.replace('@c.us', '').replace('@g.us', '');
+    const callType = data.isVideo ? 'Video' : 'Voice';
+    
+    // Create notification for each user
+    const notifications: InsertNotification[] = users.map((user: any) => ({
+      userId: user.id,
+      type: "whatsapp_call",
+      title: `WhatsApp ${callType} Call`,
+      message: `Incoming ${callType.toLowerCase()} call from ${callerNumber}`,
+      link: `/whatsapp`,
+      isRead: false,
+    }));
+    
+    const result = await Promise.all(notifications.map((n: InsertNotification) => storage.createNotification(n)));
+    broadcastNotificationUpdate();
+    console.log(`[NOTIFICATION] WhatsApp call: Notified ${users.length} users in company ${companyId}`);
+    return result;
+  }
+
+  /**
    * Get all superadmin user IDs
    */
   async getSuperadminUserIds(): Promise<string[]> {
