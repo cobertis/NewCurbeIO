@@ -45,7 +45,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
         - **Group Management:** createGroup, add/remove participants, promote/demote admins, edit group name/description, leave group, membership requests (get/approve/reject), admin-only settings (add members, edit info, messages-admins-only), group pictures (set/delete), invite info, acceptInvite, acceptGroupV4Invite.
         - **Channel Operations (22 functions):** Create/delete channels, subscribe/unsubscribe, fetch/send messages, settings (subject, description, picture, reactions), mute/unmute, get subscribers, admin management (invite/accept/revoke/demote/transfer ownership), search channels.
         - **Broadcast Operations:** Get all broadcasts, get broadcast chat/contact.
-        - **Call Operations:** Reject incoming calls, createCallLink (voice/video).
+        - **Call Operations:** Incoming call detection with database persistence, reject incoming calls via UI banner (decline/dismiss buttons), createCallLink (voice/video), call history tracking with status (ringing/missed/rejected/answered/ended), real-time call notifications for all company users.
         - **Auto-Download Settings:** Configure auto-download for audio/documents/photos/videos, background sync.
         - **Business Features:** getCustomerNote, addOrEditCustomerNote (chat/user level), sendResponseToScheduledEvent, editScheduledEvent, acceptMessageGroupV4Invite.
         - **Special Content:** Send location (with coordinates modal), send contact cards, emoji reactions (❤️ 😂 😮 😢 🙏 👍 🎉 🔥), create polls (with multi-option modal).
