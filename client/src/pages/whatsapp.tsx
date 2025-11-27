@@ -918,6 +918,7 @@ export default function WhatsAppPage() {
   const [userDisplayName, setUserDisplayName] = useState('');
   const [isEditingDisplayName, setIsEditingDisplayName] = useState(false);
   const [myProfilePicUrl, setMyProfilePicUrl] = useState<string | null>(null);
+  const [myPhoneNumber, setMyPhoneNumber] = useState('');
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const profilePicInputRef = useRef<HTMLInputElement>(null);
   
@@ -2477,9 +2478,11 @@ export default function WhatsAppPage() {
     try {
       const res = await fetch('/api/whatsapp/profile', { credentials: 'include' });
       const data = await res.json();
+      console.log('[WhatsApp Settings] Profile data:', data);
       if (data.success && data.profile) {
         setUserDisplayName(data.profile.pushname || '');
         setUserStatus(data.profile.about || '');
+        setMyPhoneNumber(data.profile.phoneNumber || '');
         // Use proxied URL to bypass CORS
         setMyProfilePicUrl(data.profile.profilePicUrl ? getProxiedImageUrl(data.profile.profilePicUrl) : null);
       }
@@ -4713,15 +4716,15 @@ export default function WhatsAppPage() {
             </div>
           ) : (
             <div className="space-y-6 mt-4">
-              {/* Profile Picture Section */}
-              <div className="flex flex-col items-center gap-3">
+              {/* Profile Picture and Basic Info Section */}
+              <div className="flex flex-col items-center gap-4">
                 <div className="relative group">
-                  <Avatar className="h-24 w-24 cursor-pointer" onClick={() => profilePicInputRef.current?.click()}>
+                  <Avatar className="h-28 w-28 cursor-pointer border-4 border-[var(--whatsapp-green-primary)]" onClick={() => profilePicInputRef.current?.click()}>
                     {myProfilePicUrl ? (
                       <AvatarImage src={myProfilePicUrl} alt="Profile" />
                     ) : null}
-                    <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold text-2xl">
-                      {userDisplayName ? getInitials(userDisplayName) : <User className="h-10 w-10" />}
+                    <AvatarFallback className="bg-[var(--whatsapp-green-primary)] text-white font-semibold text-3xl">
+                      {userDisplayName ? getInitials(userDisplayName) : <User className="h-12 w-12" />}
                     </AvatarFallback>
                   </Avatar>
                   <div 
@@ -4739,7 +4742,17 @@ export default function WhatsAppPage() {
                     data-testid="input-profile-pic"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Click to change profile picture</p>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-[var(--whatsapp-text-primary)]">
+                    {userDisplayName || 'No Name Set'}
+                  </p>
+                  {myPhoneNumber && (
+                    <p className="text-sm text-[var(--whatsapp-text-secondary)]">
+                      +{myPhoneNumber.replace(/(\d{1})(\d{3})(\d{3})(\d{4})/, '$1 ($2) $3-$4')}
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Click photo to change</p>
               </div>
               
               <Separator />
@@ -4789,7 +4802,7 @@ export default function WhatsAppPage() {
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-[var(--whatsapp-text-primary)] py-2">
+                  <p className="text-sm text-[var(--whatsapp-text-primary)] py-2 px-3 bg-muted rounded-md">
                     {userDisplayName || 'Not set'}
                   </p>
                 )}

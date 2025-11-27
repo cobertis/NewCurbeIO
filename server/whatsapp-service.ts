@@ -3435,7 +3435,7 @@ class WhatsAppService extends EventEmitter {
   /**
    * Get current user's profile information
    */
-  async getMyProfile(companyId: string): Promise<{ wid: string; pushname: string; profilePicUrl: string | null; about: string | null }> {
+  async getMyProfile(companyId: string): Promise<{ wid: string; pushname: string; profilePicUrl: string | null; about: string | null; phoneNumber: string }> {
     if (!this.isReady(companyId)) {
       throw new Error('WhatsApp client is not ready');
     }
@@ -3443,19 +3443,25 @@ class WhatsAppService extends EventEmitter {
       const companyClient = await this.getClientForCompany(companyId);
       const info = companyClient.client.info;
       
+      console.log(`[WhatsApp] getMyProfile: Client info for company ${companyId}:`, JSON.stringify(info, null, 2));
+      
       if (!info || !info.wid) {
         throw new Error('Client info not available');
       }
       
       const wid = info.wid._serialized;
       const pushname = info.pushname || '';
+      const phoneNumber = info.wid.user || '';
+      
+      console.log(`[WhatsApp] getMyProfile: wid=${wid}, pushname=${pushname}, phone=${phoneNumber}`);
       
       // Get profile picture
       let profilePicUrl: string | null = null;
       try {
         profilePicUrl = await companyClient.client.getProfilePicUrl(wid);
-      } catch {
-        // Profile pic might not be available
+        console.log(`[WhatsApp] getMyProfile: profilePicUrl=${profilePicUrl ? 'FOUND' : 'NULL'}`);
+      } catch (picError) {
+        console.log(`[WhatsApp] getMyProfile: Could not get profile pic:`, (picError as Error).message);
       }
       
       // Get about/status
@@ -3464,13 +3470,14 @@ class WhatsAppService extends EventEmitter {
         const contact = await companyClient.client.getContactById(wid);
         if (contact && contact.getAbout) {
           about = await contact.getAbout();
+          console.log(`[WhatsApp] getMyProfile: about=${about}`);
         }
-      } catch {
-        // About might not be available
+      } catch (aboutError) {
+        console.log(`[WhatsApp] getMyProfile: Could not get about:`, (aboutError as Error).message);
       }
       
-      console.log(`[WhatsApp] Profile retrieved for company ${companyId}: ${wid}`);
-      return { wid, pushname, profilePicUrl, about };
+      console.log(`[WhatsApp] Profile retrieved for company ${companyId}: wid=${wid}, pushname="${pushname}", about="${about}", phone=${phoneNumber}`);
+      return { wid, pushname, profilePicUrl, about, phoneNumber };
     } catch (error) {
       console.error(`[WhatsApp] Error getting profile:`, error);
       throw error;
