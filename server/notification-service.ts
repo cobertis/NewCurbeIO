@@ -815,6 +815,7 @@ class NotificationService {
     status: string;
     timestamp: Date;
     callerName?: string;
+    callerNumber?: string;
   }) {
     // Get all users in the company
     const users = await storage.getUsersByCompany(companyId);
@@ -824,11 +825,17 @@ class NotificationService {
       return [];
     }
     
-    // Format caller number (remove WhatsApp suffix)
-    const callerNumber = data.from.replace('@c.us', '').replace('@g.us', '');
-    const formattedNumber = callerNumber.startsWith('1') && callerNumber.length === 11
-      ? `+1 (${callerNumber.slice(1, 4)}) ${callerNumber.slice(4, 7)}-${callerNumber.slice(7)}`
-      : `+${callerNumber}`;
+    // Use the resolved caller number if available, otherwise parse from 'from' field
+    let rawNumber = data.callerNumber;
+    if (!rawNumber) {
+      // Remove WhatsApp suffixes (@c.us, @g.us, @lid, @s.whatsapp.net)
+      rawNumber = data.from.split('@')[0].replace(/[^0-9]/g, '');
+    }
+    
+    // Format the phone number for display
+    const formattedNumber = rawNumber.startsWith('1') && rawNumber.length === 11
+      ? `+1 (${rawNumber.slice(1, 4)}) ${rawNumber.slice(4, 7)}-${rawNumber.slice(7)}`
+      : `+${rawNumber}`;
     
     const callType = data.isVideo ? 'Video' : 'Voice';
     

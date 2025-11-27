@@ -1,5 +1,0 @@
-2025/11/27-20:08:20.361 b5a2 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/27-20:08:20.361 b5a2 Recovering log #692
-2025/11/27-20:08:20.362 b5a2 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000692.log 
-2025/11/27-20:08:20.987 b5a3 Compacting 1@1 + 2@2 files
-2025/11/27-20:08:21.090 b5a3 Generated table #695@1: 86830 keys, 2235962 bytes

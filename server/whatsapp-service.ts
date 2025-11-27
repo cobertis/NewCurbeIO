@@ -791,21 +791,59 @@ class WhatsAppService extends EventEmitter {
       
       // Store call in database
       try {
-        // Try to get caller name from contact
+        // Try to get caller name and REAL phone number from contact
         let callerName: string | undefined = undefined;
+        let callerNumber: string | undefined = undefined;
+        let resolvedFrom = call.from;
+        
         try {
           const contact = await client.getContactById(call.from);
           if (contact) {
             callerName = contact.pushname || contact.name || contact.shortName;
+            // Get real phone number from contact - this resolves LID to actual number
+            if (contact.number) {
+              callerNumber = contact.number;
+              // Create proper WhatsApp ID from the real number
+              resolvedFrom = `${contact.number}@c.us`;
+              console.log(`[WhatsApp] Resolved caller number from contact: ${callerNumber}`);
+            } else if (contact.id && contact.id.user) {
+              callerNumber = contact.id.user;
+              resolvedFrom = contact.id._serialized || `${contact.id.user}@c.us`;
+              console.log(`[WhatsApp] Resolved caller number from contact ID: ${callerNumber}`);
+            }
           }
         } catch (contactError) {
           console.log(`[WhatsApp] Could not get contact info for caller ${call.from}`);
         }
         
+        // If we couldn't get the number from contact, try to parse from call.from
+        if (!callerNumber) {
+          // Handle @lid format - try to get formatted number
+          if (call.from.includes('@lid')) {
+            try {
+              const formattedNumber = await client.getFormattedNumber(call.from);
+              if (formattedNumber) {
+                callerNumber = formattedNumber.replace(/[^0-9]/g, '');
+                resolvedFrom = `${callerNumber}@c.us`;
+                console.log(`[WhatsApp] Got formatted number for LID: ${callerNumber}`);
+              }
+            } catch (formatError) {
+              console.log(`[WhatsApp] Could not get formatted number for ${call.from}`);
+            }
+          }
+          
+          // Fallback: parse number from ID (remove @c.us, @s.whatsapp.net, @lid, etc)
+          if (!callerNumber) {
+            callerNumber = call.from.split('@')[0].replace(/[^0-9]/g, '');
+          }
+        }
+        
+        console.log(`[WhatsApp] Call resolved - name: ${callerName}, number: ${callerNumber}, from: ${resolvedFrom}`);
+        
         const callData = {
           companyId,
           callId: call.id,
-          from: call.from,
+          from: resolvedFrom,
           fromMe: call.fromMe || false,
           isVideo: call.isVideo || false,
           isGroup: call.isGroup || false,
@@ -813,6 +851,7 @@ class WhatsAppService extends EventEmitter {
           participants: call.participants || [],
           timestamp: new Date(call.timestamp * 1000),
           callerName,
+          callerNumber, // Add the resolved phone number
         };
         
         await storage.createWhatsappCall(callData);
