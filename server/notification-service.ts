@@ -829,13 +829,23 @@ class NotificationService {
     let rawNumber = data.callerNumber;
     if (!rawNumber) {
       // Remove WhatsApp suffixes (@c.us, @g.us, @lid, @s.whatsapp.net)
-      rawNumber = data.from.split('@')[0].replace(/[^0-9]/g, '');
+      rawNumber = data.from.split('@')[0];
     }
+    // Strip any + prefix and non-digits for clean processing
+    rawNumber = rawNumber.replace(/[^0-9]/g, '');
     
-    // Format the phone number for display
-    const formattedNumber = rawNumber.startsWith('1') && rawNumber.length === 11
-      ? `+1 (${rawNumber.slice(1, 4)}) ${rawNumber.slice(4, 7)}-${rawNumber.slice(7)}`
-      : `+${rawNumber}`;
+    // Format as US phone number: +1 (305) 393-6666
+    let formattedNumber: string;
+    if (rawNumber.startsWith('1') && rawNumber.length === 11) {
+      // US number with country code: 13053936666 -> +1 (305) 393-6666
+      formattedNumber = `+1 (${rawNumber.slice(1, 4)}) ${rawNumber.slice(4, 7)}-${rawNumber.slice(7)}`;
+    } else if (rawNumber.length === 10) {
+      // US number without country code: 3053936666 -> +1 (305) 393-6666
+      formattedNumber = `+1 (${rawNumber.slice(0, 3)}) ${rawNumber.slice(3, 6)}-${rawNumber.slice(6)}`;
+    } else {
+      // International or other format
+      formattedNumber = `+${rawNumber}`;
+    }
     
     const callType = data.isVideo ? 'Video' : 'Voice';
     
