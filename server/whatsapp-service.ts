@@ -10,6 +10,7 @@ import { whatsappReactions, whatsappMessages, whatsappContacts, whatsappDeletedC
 import { eq, and } from 'drizzle-orm';
 import { notificationService } from './notification-service';
 import { storage } from './storage';
+import { broadcastWhatsAppCall } from './websocket';
 
 interface WhatsAppSessionStatus {
   isReady: boolean;
@@ -942,6 +943,16 @@ class WhatsAppService extends EventEmitter {
         // Send notification for incoming calls (not from self)
         if (!call.fromMe) {
           await notificationService.notifyWhatsAppCall(companyId, callData);
+          
+          // Broadcast the call event to all connected clients (for real-time timeline update)
+          broadcastWhatsAppCall(companyId, {
+            chatId,
+            callerName: callerName || undefined,
+            callerNumber: callerNumber || undefined,
+            isVideo: call.isVideo || false,
+            status: 'ringing',
+            timestamp: new Date(call.timestamp * 1000),
+          });
           
           // Mark the chat as unread so it shows as having a new "message" (the call)
           try {

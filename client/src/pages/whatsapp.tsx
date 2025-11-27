@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useWebSocket } from "@/hooks/use-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1924,6 +1925,41 @@ export default function WhatsAppPage() {
     setProfilePictures(prev => ({ ...prev, [contactId]: avatarUrl }));
     return avatarUrl;
   };
+
+  // =====================================================
+  // WEBSOCKET HANDLER
+  // =====================================================
+
+  const handleWebSocketMessage = useCallback((message: any) => {
+    if (message.type === 'whatsapp_call') {
+      console.log('[WhatsApp WebSocket] Received call event:', message.data);
+      
+      // Update the incoming call banner
+      if (message.data) {
+        setIncomingCall({
+          id: Date.now().toString(),
+          from: message.data.chatId || 'Unknown',
+          fromName: message.data.callerName || message.data.callerNumber || 'Unknown Caller',
+          isVideo: message.data.isVideo || false,
+          timestamp: new Date(message.data.timestamp),
+        });
+        
+        // Auto-dismiss after 30 seconds
+        setTimeout(() => setIncomingCall(null), 30000);
+      }
+      
+      // Immediately refetch calls for the selected chat to show in timeline
+      if (selectedChatId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'calls'] });
+      }
+      
+      // Refetch chat list to update unread count and last event preview
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    }
+  }, [selectedChatId, queryClient]);
+
+  // Connect WebSocket
+  useWebSocket(handleWebSocketMessage);
 
   // =====================================================
   // EFFECTS

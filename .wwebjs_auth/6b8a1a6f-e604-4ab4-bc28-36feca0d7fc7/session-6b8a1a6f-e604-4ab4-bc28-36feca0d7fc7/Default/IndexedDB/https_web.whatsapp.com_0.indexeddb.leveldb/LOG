@@ -1,4 +1,15 @@
-2025/11/27-22:36:10.821 11813 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/27-22:36:10.822 11813 Recovering log #857
-2025/11/27-22:36:10.828 11813 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000857.log 
-2025/11/27-22:36:12.686 11815 Manual compaction at level-0 from '\x00\xc9\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xca\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/27-22:45:41.943 12906 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/27-22:45:41.943 12906 Recovering log #892
+2025/11/27-22:45:41.944 12906 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000892.log 
+2025/11/27-22:45:43.703 12909 Level-0 table #898: started
+2025/11/27-22:45:43.712 12909 Level-0 table #898: 31861 bytes OK
+2025/11/27-22:45:43.724 12909 Delete type=0 #892
+2025/11/27-22:45:43.725 12909 Manual compaction at level-0 from '\x00\xd1\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xd2\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/27-22:45:46.518 12907 Compacting 1@1 + 2@2 files
+2025/11/27-22:45:46.724 12907 Generated table #899@1: 86168 keys, 2235009 bytes
+2025/11/27-22:45:46.927 12907 Generated table #900@1: 47302 keys, 1810015 bytes
+2025/11/27-22:45:46.927 12907 Compacted 1@1 + 2@2 files => 4045024 bytes
+2025/11/27-22:45:46.932 12907 compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/27-22:45:46.932 12907 Delete type=2 #894
+2025/11/27-22:45:46.932 12907 Delete type=2 #895
+2025/11/27-22:45:46.932 12907 Delete type=2 #898
