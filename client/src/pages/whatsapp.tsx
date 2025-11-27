@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -846,6 +847,7 @@ function GroupInfoSheet({
 
 export default function WhatsAppPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // State
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -1388,12 +1390,12 @@ export default function WhatsAppPage() {
   });
 
   const createNoteMutation = useMutation({
-    mutationFn: async (body: string) => {
-      const res = await apiRequest('POST', `/api/whatsapp/chats/${encodeURIComponent(selectedChatId!)}/notes`, { body });
+    mutationFn: async ({ chatId, body }: { chatId: string; body: string }) => {
+      const res = await apiRequest('POST', `/api/whatsapp/chats/${encodeURIComponent(chatId)}/notes`, { body });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'notes'] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', variables.chatId, 'notes'] });
       setIsNoteMode(false);
       setMessageInput('');
     },
@@ -2143,7 +2145,7 @@ export default function WhatsAppPage() {
     
     // If in note mode, create a note instead of sending a message
     if (isNoteMode) {
-      createNoteMutation.mutate(messageInput);
+      createNoteMutation.mutate({ chatId: selectedChatId, body: messageInput });
       return;
     }
     
