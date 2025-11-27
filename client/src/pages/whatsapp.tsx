@@ -899,6 +899,9 @@ export default function WhatsAppPage() {
   // Media lightbox state
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string; type: 'image' | 'video' | 'document' } | null>(null);
   
+  // Pin notification state
+  const [pinNotification, setPinNotification] = useState<{ message: string; isPinned: boolean } | null>(null);
+  
   // Status/About settings state
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [userStatus, setUserStatus] = useState('');
@@ -1251,13 +1254,17 @@ export default function WhatsAppPage() {
   });
 
   const pinMutation = useMutation({
-    mutationFn: async ({ chatId, pin }: { chatId: string; pin: boolean }) => {
+    mutationFn: async ({ chatId, pin, chatName }: { chatId: string; pin: boolean; chatName?: string }) => {
       const endpoint = pin ? 'pin' : 'unpin';
       const encodedChatId = encodeURIComponent(chatId);
       return await apiRequest('POST', `/api/whatsapp/chats/${encodedChatId}/${endpoint}`, {});
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      const action = variables.pin ? 'pinned' : 'unpinned';
+      const name = variables.chatName || 'Chat';
+      setPinNotification({ message: `${name} ${action}`, isPinned: variables.pin });
+      setTimeout(() => setPinNotification(null), 3000);
     },
     onError: (error: any) => {
     },
@@ -3135,6 +3142,18 @@ export default function WhatsAppPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {/* Quick Action: Pin */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => pinMutation.mutate({ chatId: selectedChatId, pin: !selectedChat.isPinned, chatName: selectedChat.name })}
+                  className="h-9 w-9 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  title={selectedChat.isPinned ? "Unpin chat" : "Pin chat"}
+                  data-testid="button-pin-quick"
+                >
+                  {selectedChat.isPinned ? <PinOff className="h-[18px] w-[18px]" /> : <Pin className="h-[18px] w-[18px]" />}
+                </Button>
+                
                 {/* Quick Action: Archive */}
                 <Button
                   variant="ghost"
@@ -3146,126 +3165,6 @@ export default function WhatsAppPage() {
                 >
                   {selectedChat.isArchived ? <ArchiveX className="h-[18px] w-[18px]" /> : <Archive className="h-[18px] w-[18px]" />}
                 </Button>
-                
-                {/* Quick Action: Pin */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => pinMutation.mutate({ chatId: selectedChatId, pin: !selectedChat.isPinned })}
-                  className="h-9 w-9 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                  title={selectedChat.isPinned ? "Unpin chat" : "Pin chat"}
-                  data-testid="button-pin-quick"
-                >
-                  {selectedChat.isPinned ? <PinOff className="h-[18px] w-[18px]" /> : <Pin className="h-[18px] w-[18px]" />}
-                </Button>
-                
-                {/* Chat Options Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-9 w-9 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                      data-testid="button-chat-menu"
-                    >
-                      <MoreVertical className="h-[18px] w-[18px]" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {selectedChat.isGroup && (
-                      <>
-                        <DropdownMenuItem onClick={() => setShowGroupInfo(true)} data-testid="menu-group-info">
-                          <Users className="h-4 w-4 mr-2" />
-                          Group Info
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-                    <DropdownMenuItem 
-                      onClick={() => pinMutation.mutate({ chatId: selectedChatId, pin: !selectedChat.isPinned })}
-                      data-testid="menu-pin"
-                    >
-                      {selectedChat.isPinned ? (
-                        <>
-                          <PinOff className="h-4 w-4 mr-2" />
-                          Unpin Chat
-                        </>
-                      ) : (
-                        <>
-                          <Pin className="h-4 w-4 mr-2" />
-                          Pin Chat
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger data-testid="menu-mute">
-                        {selectedChat.isMuted ? (
-                          <>
-                            <Bell className="h-4 w-4 mr-2" />
-                            Unmute
-                          </>
-                        ) : (
-                          <>
-                            <BellOff className="h-4 w-4 mr-2" />
-                            Mute
-                          </>
-                        )}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {selectedChat.isMuted ? (
-                          <DropdownMenuItem 
-                            onClick={() => unmuteMutation.mutate({ chatId: selectedChatId })}
-                            data-testid="menu-unmute"
-                          >
-                            Unmute Notifications
-                          </DropdownMenuItem>
-                        ) : (
-                          <>
-                            <DropdownMenuItem onClick={() => handleMuteChat(8 * 3600)} data-testid="menu-mute-8h">
-                              8 hours
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleMuteChat(7 * 24 * 3600)} data-testid="menu-mute-1w">
-                              1 week
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleMuteChat(-1)} data-testid="menu-mute-always">
-                              Always
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        setSearchMessagesQuery('');
-                        setSearchResults([]);
-                        setShowSearchMessagesDialog(true);
-                      }}
-                      data-testid="menu-search"
-                    >
-                      <Search className="h-4 w-4 mr-2" />
-                      Search Messages
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => clearChatMutation.mutate({ chatId: selectedChatId })}
-                      data-testid="menu-clear"
-                    >
-                      <Trash className="h-4 w-4 mr-2" />
-                      Clear Messages
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setShowDeleteChatDialog(true)}
-                      className="text-red-600"
-                      data-testid="menu-delete-chat"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Chat
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
 
@@ -3273,6 +3172,19 @@ export default function WhatsAppPage() {
             <div 
               className="flex-1 overflow-y-auto p-6 relative whatsapp-chat-bg"
             >
+              {/* Pin Notification */}
+              {pinNotification && (
+                <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="bg-[var(--whatsapp-panel-header)] text-[var(--whatsapp-text-primary)] px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 border border-[var(--whatsapp-border)]">
+                    {pinNotification.isPinned ? (
+                      <Pin className="h-4 w-4 text-[#25D366]" />
+                    ) : (
+                      <PinOff className="h-4 w-4 text-[var(--whatsapp-text-secondary)]" />
+                    )}
+                    <span className="text-sm font-medium">{pinNotification.message}</span>
+                  </div>
+                </div>
+              )}
               {messagesLoading && !messagesData ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, i) => (
