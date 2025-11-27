@@ -911,6 +911,42 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Get reactions with database fallback (without needing the message object)
+   * Used when we only need cached/stored reactions, not fetching from WhatsApp API
+   */
+  async getReactionsWithDbFallback(companyId: string, messageId: string): Promise<Array<{ emoji: string; senderId: string }>> {
+    const cacheKey = `${companyId}:${messageId}`;
+    
+    // Return from memory cache if available
+    const cached = this.messageReactions.get(cacheKey);
+    if (cached && cached.length > 0) {
+      return cached;
+    }
+    
+    // Try to load from database
+    try {
+      const dbReactions = await db.select()
+        .from(whatsappReactions)
+        .where(
+          and(
+            eq(whatsappReactions.companyId, companyId),
+            eq(whatsappReactions.messageId, messageId)
+          )
+        );
+      
+      if (dbReactions.length > 0) {
+        const reactions = dbReactions.map((r: { emoji: string; senderId: string }) => ({ emoji: r.emoji, senderId: r.senderId }));
+        this.messageReactions.set(cacheKey, reactions);
+        return reactions;
+      }
+    } catch (error) {
+      console.error(`[WhatsApp] Error loading reactions from DB:`, error);
+    }
+    
+    return [];
+  }
+
+  /**
    * Get all contacts for a company
    */
   async getContacts(companyId: string): Promise<any[]> {
@@ -2220,7 +2256,7 @@ class WhatsAppService extends EventEmitter {
       );
       console.log(`[WhatsApp] Deleted contact from database`);
     } catch (dbError) {
-      console.log(`[WhatsApp] DB cleanup skipped (tables may not exist): ${dbError.message}`);
+      console.log(`[WhatsApp] DB cleanup skipped (tables may not exist): ${(dbError as Error).message}`);
     }
     
     // Step 2: Clear all reaction cache entries for this chat
@@ -2240,23 +2276,6 @@ class WhatsAppService extends EventEmitter {
       console.log(`[WhatsApp] ✅ Chat ${chatId} archived using native WhatsApp method`);
     } catch (error) {
       console.error(`[WhatsApp] Error archiving chat:`, error);
-      throw error;
-    }
-  }
-  
-  // Unarchive chat using native WhatsApp method (move back from archived to main list)
-  async unarchiveChat(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    try {
-      const companyClient = await this.getClientForCompany(companyId);
-      const chat = await companyClient.client.getChatById(chatId);
-      await chat.unarchive();
-      console.log(`[WhatsApp] Unarchived chat ${chatId} for company ${companyId}`);
-    } catch (error) {
-      console.error(`[WhatsApp] Error unarchiving chat for company ${companyId}:`, error);
       throw error;
     }
   }
@@ -3434,6 +3453,7 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Get current user's profile information
+   * Uses Contact object to get accurate profile data per whatsapp-web.js docs
    */
   async getMyProfile(companyId: string): Promise<{ wid: string; pushname: string; profilePicUrl: string | null; about: string | null; phoneNumber: string }> {
     if (!this.isReady(companyId)) {
@@ -3443,40 +3463,63 @@ class WhatsAppService extends EventEmitter {
       const companyClient = await this.getClientForCompany(companyId);
       const info = companyClient.client.info;
       
-      console.log(`[WhatsApp] getMyProfile: Client info for company ${companyId}:`, JSON.stringify(info, null, 2));
+      console.log(`[WhatsApp] getMyProfile: Starting for company ${companyId}`);
       
       if (!info || !info.wid) {
         throw new Error('Client info not available');
       }
       
       const wid = info.wid._serialized;
-      const pushname = info.pushname || '';
       const phoneNumber = info.wid.user || '';
       
-      console.log(`[WhatsApp] getMyProfile: wid=${wid}, pushname=${pushname}, phone=${phoneNumber}`);
+      console.log(`[WhatsApp] getMyProfile: wid=${wid}, phone=${phoneNumber}, info.pushname="${info.pushname || ''}"`);
       
-      // Get profile picture
+      // Get my contact to get accurate profile data
+      let pushname = info.pushname || '';
       let profilePicUrl: string | null = null;
-      try {
-        profilePicUrl = await companyClient.client.getProfilePicUrl(wid);
-        console.log(`[WhatsApp] getMyProfile: profilePicUrl=${profilePicUrl ? 'FOUND' : 'NULL'}`);
-      } catch (picError) {
-        console.log(`[WhatsApp] getMyProfile: Could not get profile pic:`, (picError as Error).message);
-      }
-      
-      // Get about/status
       let about: string | null = null;
+      
       try {
-        const contact = await companyClient.client.getContactById(wid);
-        if (contact && contact.getAbout) {
-          about = await contact.getAbout();
-          console.log(`[WhatsApp] getMyProfile: about=${about}`);
+        const myContact = await companyClient.client.getContactById(wid);
+        console.log(`[WhatsApp] getMyProfile: Contact retrieved - name="${myContact.name}", pushname="${myContact.pushname}", verifiedName="${(myContact as any).verifiedName}", isMe=${myContact.isMe}`);
+        
+        // Get the best available name: verifiedName > name > pushname > info.pushname
+        pushname = (myContact as any).verifiedName || myContact.name || myContact.pushname || info.pushname || '';
+        
+        // Get profile picture URL from contact
+        if (myContact.getProfilePicUrl) {
+          try {
+            profilePicUrl = await myContact.getProfilePicUrl();
+            console.log(`[WhatsApp] getMyProfile: Contact profilePicUrl=${profilePicUrl ? 'FOUND' : 'NULL'}`);
+          } catch (picErr) {
+            console.log(`[WhatsApp] getMyProfile: Contact.getProfilePicUrl failed, trying client method`);
+          }
         }
-      } catch (aboutError) {
-        console.log(`[WhatsApp] getMyProfile: Could not get about:`, (aboutError as Error).message);
+        
+        // Fallback to client method if contact method failed
+        if (!profilePicUrl) {
+          try {
+            profilePicUrl = await companyClient.client.getProfilePicUrl(wid);
+            console.log(`[WhatsApp] getMyProfile: Client profilePicUrl=${profilePicUrl ? 'FOUND' : 'NULL'}`);
+          } catch (picErr) {
+            console.log(`[WhatsApp] getMyProfile: Client.getProfilePicUrl also failed`);
+          }
+        }
+        
+        // Get about/status
+        if (myContact.getAbout) {
+          about = await myContact.getAbout();
+          console.log(`[WhatsApp] getMyProfile: about="${about}"`);
+        }
+      } catch (contactError) {
+        console.log(`[WhatsApp] getMyProfile: Error getting contact:`, (contactError as Error).message);
+        // Fallback to client methods
+        try {
+          profilePicUrl = await companyClient.client.getProfilePicUrl(wid);
+        } catch {}
       }
       
-      console.log(`[WhatsApp] Profile retrieved for company ${companyId}: wid=${wid}, pushname="${pushname}", about="${about}", phone=${phoneNumber}`);
+      console.log(`[WhatsApp] Profile retrieved for company ${companyId}: wid=${wid}, pushname="${pushname}", about="${about}", phone=${phoneNumber}, hasPic=${!!profilePicUrl}`);
       return { wid, pushname, profilePicUrl, about, phoneNumber };
     } catch (error) {
       console.error(`[WhatsApp] Error getting profile:`, error);
@@ -4810,48 +4853,6 @@ class WhatsAppService extends EventEmitter {
     }
   }
 
-  // ============================================================================
-  // CLIENT PROFILE OPERATIONS
-  // ============================================================================
-
-  /**
-   * Set display name for the WhatsApp client
-   * @param companyId Company ID
-   * @param displayName The display name to set
-   */
-  async setDisplayName(companyId: string, displayName: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-    const companyClient = this.clients.get(companyId)!;
-    try {
-      await companyClient.client.setDisplayName(displayName);
-      console.log(`[WhatsApp] Display name set for company ${companyId}`);
-    } catch (error) {
-      console.error(`[WhatsApp] Error setting display name for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Set status message for the WhatsApp client
-   * @param companyId Company ID
-   * @param status The status message to set
-   */
-  async setStatus(companyId: string, status: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-    const companyClient = this.clients.get(companyId)!;
-    try {
-      await companyClient.client.setStatus(status);
-      console.log(`[WhatsApp] Status set for company ${companyId}`);
-    } catch (error) {
-      console.error(`[WhatsApp] Error setting status for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
   /**
    * Request a pairing code for phone number authentication (alternative to QR)
    * @param companyId Company ID
@@ -4893,118 +4894,6 @@ class WhatsAppService extends EventEmitter {
     }
   }
 
-  // ============================================================================
-  // LABEL OPERATIONS (WhatsApp Business)
-  // ============================================================================
-
-  /**
-   * Get all labels (WhatsApp Business feature)
-   * @param companyId Company ID
-   * @returns Array of labels
-   */
-  async getLabels(companyId: string): Promise<any[]> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-    const companyClient = this.clients.get(companyId)!;
-    try {
-      const labels = await companyClient.client.getLabels();
-      console.log(`[WhatsApp] Labels retrieved for company ${companyId}: ${labels?.length || 0} labels`);
-      return labels || [];
-    } catch (error) {
-      console.error(`[WhatsApp] Error getting labels for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Add or remove labels from chats (WhatsApp Business feature)
-   * @param companyId Company ID
-   * @param labelIds Array of label IDs to add/remove
-   * @param chatIds Array of chat IDs to apply labels to
-   */
-  async addOrRemoveLabels(companyId: string, labelIds: string[], chatIds: string[]): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-    const companyClient = this.clients.get(companyId)!;
-    try {
-      await companyClient.client.addOrRemoveLabels(labelIds, chatIds);
-      console.log(`[WhatsApp] Labels modified for company ${companyId}: ${labelIds.length} labels on ${chatIds.length} chats`);
-    } catch (error) {
-      console.error(`[WhatsApp] Error adding/removing labels for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  // ============================================================================
-  // CLIENT OPERATIONS (WhatsApp Business)
-  // ============================================================================
-
-  /**
-   * Get customer note for a user (WhatsApp Business feature)
-   * @param companyId Company ID
-   * @param userId The user ID to get the note for
-   * @returns The customer note or null if not found
-   */
-  async getCustomerNote(companyId: string, userId: string): Promise<any | null> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-    const companyClient = this.clients.get(companyId)!;
-    try {
-      const note = await companyClient.client.getCustomerNote(userId);
-      console.log(`[WhatsApp] Got customer note for company ${companyId}`);
-      return note;
-    } catch (error) {
-      console.error(`[WhatsApp] Error getting customer note:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Add or edit customer note for a user (WhatsApp Business feature)
-   * @param companyId Company ID
-   * @param userId The user ID to set the note for
-   * @param note The note content to add or edit
-   * @returns The result of the operation
-   */
-  async addOrEditCustomerNote(companyId: string, userId: string, note: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-    const companyClient = this.clients.get(companyId)!;
-    try {
-      const result = await companyClient.client.addOrEditCustomerNote(userId, note);
-      console.log(`[WhatsApp] Added/edited customer note for company ${companyId}, user ${userId}`);
-      return result;
-    } catch (error) {
-      console.error(`[WhatsApp] Error adding/editing customer note for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Send a response to a scheduled event (WhatsApp Business feature)
-   * @param companyId Company ID
-   * @param response The response to send ('going', 'notGoing', or 'maybe')
-   * @param eventMessageId The message ID of the scheduled event
-   * @returns The result of the operation
-   */
-  async sendResponseToScheduledEvent(companyId: string, response: 'going' | 'notGoing' | 'maybe', eventMessageId: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-    const companyClient = this.clients.get(companyId)!;
-    try {
-      const result = await companyClient.client.sendResponseToScheduledEvent(response, eventMessageId);
-      console.log(`[WhatsApp] Sent response '${response}' to scheduled event for company ${companyId}, event ${eventMessageId}`);
-      return result;
-    } catch (error) {
-      console.error(`[WhatsApp] Error sending response to scheduled event for company ${companyId}:`, error);
-      throw error;
-    }
-  }
 }
 
 // Export singleton service instance (but now it manages multiple clients internally)
