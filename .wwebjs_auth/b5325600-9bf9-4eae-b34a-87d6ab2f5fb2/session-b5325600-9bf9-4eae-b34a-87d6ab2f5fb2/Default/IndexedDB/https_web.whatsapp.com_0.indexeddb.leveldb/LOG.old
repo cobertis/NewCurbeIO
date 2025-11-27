@@ -1,4 +1,15 @@
-2025/11/27-20:47:42.345 ccfe Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/27-20:47:42.345 ccfe Recovering log #603
-2025/11/27-20:47:42.354 ccfe Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000603.log 
-2025/11/27-20:47:43.860 ccfe Manual compaction at level-0 from '\x00\x99\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x9a\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/27-21:13:56.432 e399 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/27-21:13:56.433 e399 Recovering log #608
+2025/11/27-21:13:56.445 e399 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000608.log 
+2025/11/27-21:13:58.299 e399 Level-0 table #614: started
+2025/11/27-21:13:58.313 e399 Level-0 table #614: 156910 bytes OK
+2025/11/27-21:13:58.319 e399 Delete type=0 #608
+2025/11/27-21:13:58.319 e399 Manual compaction at level-0 from '\x00\x9b\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x9c\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/27-21:14:00.498 e39a Compacting 1@1 + 2@2 files
+2025/11/27-21:14:00.600 e39a Generated table #615@1: 82325 keys, 2258941 bytes
+2025/11/27-21:14:00.644 e39a Generated table #616@1: 10689 keys, 469142 bytes
+2025/11/27-21:14:00.644 e39a Compacted 1@1 + 2@2 files => 2728083 bytes
+2025/11/27-21:14:00.655 e39a compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/27-21:14:00.655 e39a Delete type=2 #610
+2025/11/27-21:14:00.656 e39a Delete type=2 #611
+2025/11/27-21:14:00.656 e39a Delete type=2 #614

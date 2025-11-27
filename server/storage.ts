@@ -1243,8 +1243,12 @@ export interface IStorage {
   createWhatsappCall(call: InsertWhatsappCall): Promise<WhatsappCall>;
   getWhatsappCallsByCompany(companyId: string, limit?: number): Promise<WhatsappCall[]>;
   getWhatsappCallsByChat(companyId: string, chatId: string): Promise<WhatsappCall[]>;
+  getLatestCallByChat(companyId: string, chatId: string): Promise<WhatsappCall | null>;
   updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null>;
   getWhatsappCallByCallId(companyId: string, callId: string): Promise<WhatsappCall | null>;
+  
+  // WhatsApp Chat Notes
+  getLatestNoteByChat(companyId: string, chatId: string): Promise<WhatsappChatNote | null>;
 }
 
 export class DbStorage implements IStorage {
@@ -3055,6 +3059,18 @@ export class DbStorage implements IStorage {
         eq(whatsappChatNotes.id, id),
         eq(whatsappChatNotes.companyId, companyId)
       ));
+  }
+  
+  async getLatestNoteByChat(companyId: string, chatId: string): Promise<WhatsappChatNote | null> {
+    const [note] = await db.select()
+      .from(whatsappChatNotes)
+      .where(and(
+        eq(whatsappChatNotes.companyId, companyId),
+        eq(whatsappChatNotes.chatId, chatId)
+      ))
+      .orderBy(desc(whatsappChatNotes.createdAt))
+      .limit(1);
+    return note || null;
   }
   
   // ==================== QUOTE NOTES ====================
@@ -11508,13 +11524,32 @@ export class DbStorage implements IStorage {
   }
 
   async getWhatsappCallsByChat(companyId: string, chatId: string): Promise<WhatsappCall[]> {
+    // Query by chatId (preferred) OR by from field (backwards compatibility)
     return db.select()
       .from(whatsappCalls)
       .where(and(
         eq(whatsappCalls.companyId, companyId),
-        eq(whatsappCalls.from, chatId)
+        or(
+          eq(whatsappCalls.chatId, chatId),
+          eq(whatsappCalls.from, chatId)
+        )
       ))
       .orderBy(desc(whatsappCalls.timestamp));
+  }
+  
+  async getLatestCallByChat(companyId: string, chatId: string): Promise<WhatsappCall | null> {
+    const [call] = await db.select()
+      .from(whatsappCalls)
+      .where(and(
+        eq(whatsappCalls.companyId, companyId),
+        or(
+          eq(whatsappCalls.chatId, chatId),
+          eq(whatsappCalls.from, chatId)
+        )
+      ))
+      .orderBy(desc(whatsappCalls.timestamp))
+      .limit(1);
+    return call || null;
   }
 
   async updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null> {

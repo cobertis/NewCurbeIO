@@ -4298,7 +4298,10 @@ export const whatsappCalls = pgTable("whatsapp_calls", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   callId: text("call_id").notNull(), // WhatsApp call ID
-  from: text("from").notNull(), // Caller ID (e.g., "17866302522@c.us")
+  chatId: text("chat_id"), // Resolved chat ID in @c.us format for matching to conversations
+  from: text("from").notNull(), // Caller ID (e.g., "17866302522@c.us" or LID if unresolved)
+  callerName: text("caller_name"), // Resolved caller name
+  callerNumber: text("caller_number"), // Resolved phone number (E.164 format without @c.us)
   fromMe: boolean("from_me").notNull().default(false), // Whether this call was initiated by us
   isVideo: boolean("is_video").notNull().default(false), // Video call or voice call
   isGroup: boolean("is_group").notNull().default(false), // Group call
@@ -4313,6 +4316,7 @@ export const whatsappCalls = pgTable("whatsapp_calls", {
   companyCallIdx: uniqueIndex("whatsapp_calls_company_call_idx").on(table.companyId, table.callId),
   timestampIdx: index("whatsapp_calls_timestamp_idx").on(table.timestamp),
   statusIdx: index("whatsapp_calls_status_idx").on(table.companyId, table.status),
+  chatIdx: index("whatsapp_calls_chat_idx").on(table.companyId, table.chatId),
 }));
 
 export const insertWhatsappCallSchema = createInsertSchema(whatsappCalls).omit({

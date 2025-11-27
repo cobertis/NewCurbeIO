@@ -27359,7 +27359,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/whatsapp/chats - Get all chats
+  // GET /api/whatsapp/chats - Get all chats with lastEvent (notes/calls)
   app.get("/api/whatsapp/chats", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -27374,10 +27374,55 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const chats = await whatsappService.getChats(companyId);
       
-      // Transform chats to include necessary information
+      // Transform chats to include necessary information including lastEvent
       const formattedChats = await Promise.all(chats.map(async (chat) => {
+        const chatId = chat.id._serialized;
+        
+        // Get latest note and call for this chat
+        const [latestNote, latestCall] = await Promise.all([
+          storage.getLatestNoteByChat(companyId, chatId),
+          storage.getLatestCallByChat(companyId, chatId),
+        ]);
+        
+        // Get author name for note if exists
+        let noteAuthorName = 'Agent';
+        if (latestNote) {
+          try {
+            const author = await storage.getUser(latestNote.authorUserId);
+            if (author) {
+              noteAuthorName = ((author.firstName || '') + ' ' + (author.lastName || '')).trim() || 'Agent';
+            }
+          } catch (err) {
+            // Use default name
+          }
+        }
+        
+        // Determine the latest event between note and call
+        let lastEvent = null;
+        const noteTimestamp = latestNote ? new Date(latestNote.createdAt).getTime() / 1000 : 0;
+        const callTimestamp = latestCall ? new Date(latestCall.timestamp).getTime() / 1000 : 0;
+        
+        if (noteTimestamp > 0 || callTimestamp > 0) {
+          if (noteTimestamp >= callTimestamp && latestNote) {
+            lastEvent = {
+              type: 'note',
+              timestamp: noteTimestamp,
+              authorName: noteAuthorName,
+            };
+          } else if (latestCall) {
+            lastEvent = {
+              type: 'call',
+              timestamp: callTimestamp,
+              isVideoCall: latestCall.isVideo,
+              isMissedCall: latestCall.status === 'missed' || latestCall.status === 'rejected' || latestCall.status === 'ringing',
+              callerName: latestCall.callerName || undefined,
+              callerNumber: latestCall.callerNumber || undefined,
+            };
+          }
+        }
+        
         return {
-          id: chat.id._serialized,
+          id: chatId,
           name: chat.name,
           isGroup: chat.isGroup,
           timestamp: chat.timestamp,
@@ -27389,7 +27434,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             body: chat.lastMessage.body,
             timestamp: chat.lastMessage.timestamp,
             from: chat.lastMessage.from,
+            type: chat.lastMessage.type || 'chat',
+            hasMedia: chat.lastMessage.hasMedia || false,
           } : null,
+          lastEvent,
         };
       }));
 
