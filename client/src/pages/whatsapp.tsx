@@ -1286,6 +1286,7 @@ export default function WhatsAppPage() {
       return res.json();
     },
     enabled: !!selectedChatId && isAuthenticated,
+    refetchInterval: 5000, // Poll every 5 seconds for new calls
   });
 
   const chatCalls = callHistoryData?.calls || [];
@@ -1955,6 +1956,11 @@ export default function WhatsAppPage() {
                   timestamp: new Date(),
                 });
                 
+                // Refetch calls for the currently selected chat to show the call in timeline
+                if (selectedChatId) {
+                  refetchCalls();
+                }
+                
                 setTimeout(() => setIncomingCall(null), 30000);
                 break;
               }
@@ -1970,7 +1976,7 @@ export default function WhatsAppPage() {
     const intervalId = setInterval(pollForCalls, 5000);
 
     return () => clearInterval(intervalId);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, selectedChatId, refetchCalls]);
 
   // Typing indicator effect with debounce
   useEffect(() => {
