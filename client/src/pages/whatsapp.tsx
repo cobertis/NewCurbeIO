@@ -53,6 +53,16 @@ interface WhatsAppChat {
     body: string;
     timestamp: number;
     from: string;
+    type?: string;
+    hasMedia?: boolean;
+  };
+  lastEvent?: {
+    type: 'message' | 'note' | 'call';
+    timestamp: number;
+    preview: string;
+    authorName?: string;
+    isMissedCall?: boolean;
+    isVideoCall?: boolean;
   };
   participants?: Array<{
     id: string;
@@ -198,6 +208,71 @@ function formatDateSeparator(timestamp: number): string {
 function getMessageDateKey(timestamp: number): string {
   const date = new Date(timestamp * 1000);
   return format(date, 'yyyy-MM-dd');
+}
+
+// Generate chat preview text based on last message or event
+function getChatPreview(chat: WhatsAppChat): { text: string; icon?: 'image' | 'video' | 'audio' | 'document' | 'call' | 'note'; isMissed?: boolean } {
+  // If we have a lastEvent (note or call), use it if it's more recent
+  if (chat.lastEvent) {
+    const lastMessageTime = chat.lastMessage?.timestamp || 0;
+    if (chat.lastEvent.timestamp >= lastMessageTime) {
+      if (chat.lastEvent.type === 'note') {
+        return { 
+          text: `${chat.lastEvent.authorName} left a note`, 
+          icon: 'note' 
+        };
+      }
+      if (chat.lastEvent.type === 'call') {
+        const callType = chat.lastEvent.isVideoCall ? 'video' : 'voice';
+        if (chat.lastEvent.isMissedCall) {
+          return { 
+            text: `Missed ${callType} call`, 
+            icon: 'call',
+            isMissed: true
+          };
+        }
+        return { 
+          text: `${callType.charAt(0).toUpperCase() + callType.slice(1)} call`, 
+          icon: 'call' 
+        };
+      }
+    }
+  }
+
+  // Fall back to last message
+  if (!chat.lastMessage) {
+    return { text: 'No messages yet' };
+  }
+
+  const msg = chat.lastMessage;
+  
+  // Check message type for media
+  if (msg.type) {
+    switch (msg.type) {
+      case 'image':
+        return { text: msg.body || 'Photo', icon: 'image' };
+      case 'video':
+        return { text: msg.body || 'Video', icon: 'video' };
+      case 'ptt':
+      case 'audio':
+        return { text: 'Voice message', icon: 'audio' };
+      case 'document':
+        return { text: msg.body || 'Document', icon: 'document' };
+      case 'sticker':
+        return { text: 'Sticker', icon: 'image' };
+      case 'location':
+        return { text: 'Location' };
+      case 'vcard':
+        return { text: 'Contact' };
+    }
+  }
+  
+  // Check hasMedia flag
+  if (msg.hasMedia && !msg.body) {
+    return { text: 'Media', icon: 'image' };
+  }
+
+  return { text: msg.body || 'No messages yet' };
 }
 
 // =====================================================
@@ -3289,63 +3364,79 @@ export default function WhatsAppPage() {
                 </div>
               )}
 
-              {filteredChats.map((chat) => (
-                <button
-                  key={chat.id}
-                  onClick={() => setSelectedChatId(chat.id)}
-                  className={cn(
-                    "w-full px-4 py-3 flex items-center gap-3 transition-colors text-left border-b border-[var(--whatsapp-border)]",
-                    selectedChatId === chat.id 
-                      ? "bg-[var(--whatsapp-selected)]" 
-                      : "hover:bg-[var(--whatsapp-hover)]"
-                  )}
-                  data-testid={`chat-item-${chat.id}`}
-                >
-                  <Avatar className="h-[52px] w-[52px]">
-                    {profilePictures[chat.id] && (
-                      <AvatarImage 
-                        src={profilePictures[chat.id]!} 
-                        alt={chat.name}
-                        className="object-cover"
-                      />
+              {filteredChats.map((chat) => {
+                const preview = getChatPreview(chat);
+                const previewTimestamp = chat.lastEvent?.timestamp && chat.lastEvent.timestamp > (chat.lastMessage?.timestamp || 0)
+                  ? chat.lastEvent.timestamp
+                  : chat.lastMessage?.timestamp;
+                
+                return (
+                  <button
+                    key={chat.id}
+                    onClick={() => setSelectedChatId(chat.id)}
+                    className={cn(
+                      "w-full px-4 py-3 flex items-center gap-3 transition-colors text-left border-b border-[var(--whatsapp-border)]",
+                      selectedChatId === chat.id 
+                        ? "bg-[var(--whatsapp-selected)]" 
+                        : "hover:bg-[var(--whatsapp-hover)]"
                     )}
-                    <AvatarFallback
-                      className="text-white font-semibold"
-                      style={{ backgroundColor: getAvatarColorFromString(chat.id) }}
-                    >
-                      {chat.isGroup ? <Users className="h-6 w-6" /> : getInitials(chat.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <h3 className="font-medium text-[var(--whatsapp-text-primary)] truncate">{chat.name}</h3>
-                        {chat.isMuted && <BellOff className="h-3.5 w-3.5 text-[var(--whatsapp-text-tertiary)] flex-shrink-0" />}
+                    data-testid={`chat-item-${chat.id}`}
+                  >
+                    <Avatar className="h-[52px] w-[52px]">
+                      {profilePictures[chat.id] && (
+                        <AvatarImage 
+                          src={profilePictures[chat.id]!} 
+                          alt={chat.name}
+                          className="object-cover"
+                        />
+                      )}
+                      <AvatarFallback
+                        className="text-white font-semibold"
+                        style={{ backgroundColor: getAvatarColorFromString(chat.id) }}
+                      >
+                        {chat.isGroup ? <Users className="h-6 w-6" /> : getInitials(chat.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h3 className="font-medium text-[var(--whatsapp-text-primary)] truncate">{chat.name}</h3>
+                          {chat.isMuted && <BellOff className="h-3.5 w-3.5 text-[var(--whatsapp-text-tertiary)] flex-shrink-0" />}
+                        </div>
+                        <span className="text-xs text-[var(--whatsapp-text-tertiary)] ml-2 flex-shrink-0">
+                          {previewTimestamp && formatTimestamp(previewTimestamp)}
+                        </span>
                       </div>
-                      <span className="text-xs text-[var(--whatsapp-text-tertiary)] ml-2 flex-shrink-0">
-                        {chat.lastMessage && formatTimestamp(chat.lastMessage.timestamp)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-[var(--whatsapp-text-secondary)] truncate">
-                        {chat.lastMessage?.body || 'No messages yet'}
-                      </p>
-                      <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                        {chat.isPinned && (
-                          <Pin className="h-3.5 w-3.5 text-[var(--whatsapp-text-secondary)]" style={{ transform: 'rotate(45deg)' }} />
-                        )}
-                        {chat.unreadCount > 0 && (
-                          <Badge 
-                            className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-primary)] text-white rounded-full h-5 min-w-[20px] px-1.5 text-xs"
-                          >
-                            {chat.unreadCount}
-                          </Badge>
-                        )}
+                      <div className="flex items-center justify-between">
+                        <div className={cn(
+                          "flex items-center gap-1.5 text-sm truncate",
+                          preview.isMissed ? "text-red-500" : "text-[var(--whatsapp-text-secondary)]"
+                        )}>
+                          {preview.icon === 'image' && <Image className="h-4 w-4 flex-shrink-0" />}
+                          {preview.icon === 'video' && <Video className="h-4 w-4 flex-shrink-0" />}
+                          {preview.icon === 'audio' && <Mic className="h-4 w-4 flex-shrink-0" />}
+                          {preview.icon === 'document' && <FileIconLucide className="h-4 w-4 flex-shrink-0" />}
+                          {preview.icon === 'call' && <Phone className={cn("h-4 w-4 flex-shrink-0", preview.isMissed && "text-red-500")} />}
+                          {preview.icon === 'note' && <AtSign className="h-4 w-4 flex-shrink-0 text-amber-500" />}
+                          <span className="truncate">{preview.text}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                          {chat.isPinned && (
+                            <Pin className="h-3.5 w-3.5 text-[var(--whatsapp-text-secondary)]" style={{ transform: 'rotate(45deg)' }} />
+                          )}
+                          {chat.unreadCount > 0 && (
+                            <Badge 
+                              className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-primary)] text-white rounded-full h-5 min-w-[20px] px-1.5 text-xs"
+                            >
+                              {chat.unreadCount}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </ScrollArea>
