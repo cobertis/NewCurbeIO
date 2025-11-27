@@ -30346,6 +30346,114 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // =====================================================
+  // WHATSAPP CHAT NOTES - Internal notes for chats
+  // =====================================================
+
+  // GET /api/whatsapp/chats/:chatId/notes - Get all notes for a chat
+  app.get("/api/whatsapp/chats/:chatId/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const notes = await storage.getWhatsappChatNotes(chatId, companyId);
+      
+      // Enrich notes with author info
+      const enrichedNotes = await Promise.all(notes.map(async (note) => {
+        const author = await storage.getUser(note.authorUserId);
+        return {
+          ...note,
+          authorName: author ? `${author.firstName} ${author.lastName}`.trim() : 'Unknown',
+        };
+      }));
+      
+      res.json({ success: true, notes: enrichedNotes });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error getting chat notes:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // POST /api/whatsapp/chats/:chatId/notes - Create a new note
+  app.post("/api/whatsapp/chats/:chatId/notes", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const userId = String(req.user!.id);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
+      const { body } = req.body;
+      
+      if (!body || typeof body !== 'string' || body.trim().length === 0) {
+        return res.status(400).json({ success: false, error: 'Note body is required' });
+      }
+      
+      const note = await storage.createWhatsappChatNote({
+        companyId,
+        chatId,
+        authorUserId: userId,
+        body: body.trim(),
+      });
+      
+      // Enrich with author info
+      const author = await storage.getUser(userId);
+      const enrichedNote = {
+        ...note,
+        authorName: author ? `${author.firstName} ${author.lastName}`.trim() : 'Unknown',
+      };
+      
+      console.log('[WhatsApp] Note created for chat:', chatId, 'by user:', userId);
+      res.json({ success: true, note: enrichedNote });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error creating chat note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // PATCH /api/whatsapp/chats/:chatId/notes/:noteId - Update a note
+  app.patch("/api/whatsapp/chats/:chatId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { noteId } = req.params;
+      const { body } = req.body;
+      
+      if (!body || typeof body !== 'string' || body.trim().length === 0) {
+        return res.status(400).json({ success: false, error: 'Note body is required' });
+      }
+      
+      const note = await storage.updateWhatsappChatNote(noteId, body.trim(), companyId);
+      
+      if (!note) {
+        return res.status(404).json({ success: false, error: 'Note not found' });
+      }
+      
+      // Enrich with author info
+      const author = await storage.getUser(note.authorUserId);
+      const enrichedNote = {
+        ...note,
+        authorName: author ? `${author.firstName} ${author.lastName}`.trim() : 'Unknown',
+      };
+      
+      res.json({ success: true, note: enrichedNote });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error updating chat note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/whatsapp/chats/:chatId/notes/:noteId - Delete a note
+  app.delete("/api/whatsapp/chats/:chatId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = String(req.user!.companyId);
+      const { noteId } = req.params;
+      
+      await storage.deleteWhatsappChatNote(noteId, companyId);
+      
+      console.log('[WhatsApp] Note deleted:', noteId);
+      res.json({ success: true, message: 'Note deleted' });
+    } catch (error: any) {
+      console.error('[WhatsApp] Error deleting chat note:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
   // POST /api/whatsapp/chats/:chatId/sync-history - Sync chat history
   app.post("/api/whatsapp/chats/:chatId/sync-history", requireActiveCompany, async (req: Request, res: Response) => {
     try {
