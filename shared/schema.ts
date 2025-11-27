@@ -4293,6 +4293,36 @@ export const insertWhatsappChatNoteSchema = createInsertSchema(whatsappChatNotes
 export type WhatsappChatNote = typeof whatsappChatNotes.$inferSelect;
 export type InsertWhatsappChatNote = z.infer<typeof insertWhatsappChatNoteSchema>;
 
+// WhatsApp Calls - Track incoming/outgoing WhatsApp calls
+export const whatsappCalls = pgTable("whatsapp_calls", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  callId: text("call_id").notNull(), // WhatsApp call ID
+  from: text("from").notNull(), // Caller ID (e.g., "17866302522@c.us")
+  fromMe: boolean("from_me").notNull().default(false), // Whether this call was initiated by us
+  isVideo: boolean("is_video").notNull().default(false), // Video call or voice call
+  isGroup: boolean("is_group").notNull().default(false), // Group call
+  status: text("status").notNull().default("ringing"), // ringing, missed, rejected, answered, ended
+  participants: jsonb("participants").default([]), // Array of participant IDs for group calls
+  timestamp: timestamp("timestamp").notNull(), // When the call was initiated
+  endedAt: timestamp("ended_at"), // When the call ended
+  duration: integer("duration"), // Call duration in seconds (if answered)
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("whatsapp_calls_company_idx").on(table.companyId),
+  companyCallIdx: uniqueIndex("whatsapp_calls_company_call_idx").on(table.companyId, table.callId),
+  timestampIdx: index("whatsapp_calls_timestamp_idx").on(table.timestamp),
+  statusIdx: index("whatsapp_calls_status_idx").on(table.companyId, table.status),
+}));
+
+export const insertWhatsappCallSchema = createInsertSchema(whatsappCalls).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WhatsappCall = typeof whatsappCalls.$inferSelect;
+export type InsertWhatsappCall = z.infer<typeof insertWhatsappCallSchema>;
+
 // =====================================================
 // CAMPAIGN STUDIO TABLES
 // =====================================================
