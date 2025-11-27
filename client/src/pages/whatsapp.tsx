@@ -3253,9 +3253,9 @@ export default function WhatsAppPage() {
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Sidebar - Chat List */}
         <ResizablePanel 
-          defaultSize={30} 
-          minSize={20} 
-          maxSize={50}
+          defaultSize={20} 
+          minSize={15} 
+          maxSize={40}
           className={cn(
             "border-r border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-secondary)] flex flex-col",
             selectedChatId ? "hidden md:flex" : "flex"
