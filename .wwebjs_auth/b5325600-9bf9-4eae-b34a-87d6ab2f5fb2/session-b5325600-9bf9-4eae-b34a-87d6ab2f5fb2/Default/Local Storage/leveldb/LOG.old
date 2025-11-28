@@ -1,3 +1,15 @@
-2025/11/28-02:19:40.509 1e7f6 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/MANIFEST-000001
-2025/11/28-02:19:40.515 1e7f6 Recovering log #56
-2025/11/28-02:19:40.516 1e7f6 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/000056.log 
+2025/11/28-02:23:10.939 1eb07 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/MANIFEST-000001
+2025/11/28-02:23:10.960 1eb07 Recovering log #56
+2025/11/28-02:23:10.960 1eb07 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/000056.log 
+2025/11/28-02:24:10.979 1eb08 Level-0 table #60: started
+2025/11/28-02:24:11.026 1eb08 Level-0 table #60: 14127 bytes OK
+2025/11/28-02:24:11.063 1eb08 Delete type=0 #56
+2025/11/28-02:24:11.065 1eb07 Compacting 4@0 + 1@1 files
+2025/11/28-02:24:11.084 1eb07 Generated table #61@0: 679 keys, 41328 bytes
+2025/11/28-02:24:11.084 1eb07 Compacted 4@0 + 1@1 files => 41328 bytes
+2025/11/28-02:24:11.092 1eb07 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/11/28-02:24:11.094 1eb07 Delete type=2 #48
+2025/11/28-02:24:11.094 1eb07 Delete type=2 #50
+2025/11/28-02:24:11.094 1eb07 Delete type=2 #54
+2025/11/28-02:24:11.094 1eb07 Delete type=2 #57
+2025/11/28-02:24:11.094 1eb07 Delete type=2 #60

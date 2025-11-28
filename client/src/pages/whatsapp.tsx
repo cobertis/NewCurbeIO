@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/use-websocket";
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -277,12 +279,12 @@ function getChatPreview(chat: WhatsAppChat): { text: string; icon?: 'image' | 'v
 }
 
 // =====================================================
-// EMOJI PICKER COMPONENT
+// EMOJI PICKER COMPONENTS
 // =====================================================
 
 const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🙏', '👍', '🎉', '🔥'];
 
-function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
+function ReactionEmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
   return (
     <div className="grid grid-cols-4 gap-2 p-2">
       {REACTION_EMOJIS.map((emoji) => (
@@ -296,6 +298,20 @@ function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
         </button>
       ))}
     </div>
+  );
+}
+
+function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
+  return (
+    <Picker 
+      data={data} 
+      onEmojiSelect={(emoji: any) => onSelect(emoji.native)}
+      theme="light"
+      previewPosition="none"
+      skinTonePosition="none"
+      maxFrequentRows={2}
+      perLine={8}
+    />
   );
 }
 
@@ -542,7 +558,7 @@ function MessageItem({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="p-0 w-auto" align={message.isFromMe ? "end" : "start"}>
-            <EmojiPicker onSelect={(emoji) => {
+            <ReactionEmojiPicker onSelect={(emoji) => {
               onReact(emoji);
               setShowEmojiPicker(false);
             }} />
