@@ -3733,8 +3733,13 @@ export default function WhatsAppPage() {
                               
                               {/* Call info */}
                               <div className="flex-1 min-w-0">
-                                <div className={`font-medium text-sm ${isMissed ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
-                                  {callTitle}
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className={`font-medium text-sm ${isMissed ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                                    {callTitle}
+                                  </span>
+                                  <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                                    {formatTimestamp(currentTimestamp)}
+                                  </span>
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                   {durationText ? (
@@ -3743,11 +3748,6 @@ export default function WhatsAppPage() {
                                     <span>Don't forget to contact the customer</span>
                                   )}
                                 </div>
-                              </div>
-                              
-                              {/* Timestamp */}
-                              <div className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
-                                {formatTimestamp(currentTimestamp)}
                               </div>
                             </div>
                           </div>
