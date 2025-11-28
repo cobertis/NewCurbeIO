@@ -697,15 +697,33 @@ const MessageItem = memo(function MessageItem({
     </ContextMenu>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison: only re-render if message properties changed
-  // Ignore callback functions as they change every render
+  // Custom comparison: re-render only when message content/state actually changes
+  // Ignore callback functions as they change every render but don't affect display
+  const prev = prevProps.message;
+  const next = nextProps.message;
+  
+  // Compare all render-relevant properties
   return (
-    prevProps.message.id === nextProps.message.id &&
-    prevProps.message.ack === nextProps.message.ack &&
-    prevProps.message.isStarred === nextProps.message.isStarred &&
-    prevProps.message.body === nextProps.message.body &&
-    prevProps.message.type === nextProps.message.type &&
-    prevProps.message.hasMedia === nextProps.message.hasMedia
+    prev.id === next.id &&
+    prev.ack === next.ack &&
+    prev.isStarred === next.isStarred &&
+    prev.body === next.body &&
+    prev.type === next.type &&
+    prev.hasMedia === next.hasMedia &&
+    prev.timestamp === next.timestamp &&
+    prev.isForwarded === next.isForwarded &&
+    prev.isFromMe === next.isFromMe &&
+    // Compare media URLs (both server and optimistic blob)
+    prev.mediaUrl === next.mediaUrl &&
+    (prev as any)._blobUrl === (next as any)._blobUrl &&
+    // Compare location data for map thumbnails
+    JSON.stringify((prev as any).location || null) === JSON.stringify((next as any).location || null) &&
+    // Compare reactions array (check length and content)
+    JSON.stringify(prev.reactions || []) === JSON.stringify(next.reactions || []) &&
+    // Compare quoted message (if present)
+    JSON.stringify(prev.quotedMsg || null) === JSON.stringify(next.quotedMsg || null) &&
+    // Compare vCards for contact sharing
+    JSON.stringify((prev as any).vCards || []) === JSON.stringify((next as any).vCards || [])
   );
 });
 
