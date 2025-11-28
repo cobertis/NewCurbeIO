@@ -1,3 +1,15 @@
-2025/11/28-02:07:30.902 1d00c Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/28-02:07:30.902 1d00c Recovering log #843
-2025/11/28-02:07:30.909 1d00c Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000843.log 
+2025/11/28-02:09:47.655 1d81a Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/28-02:09:47.655 1d81a Recovering log #863
+2025/11/28-02:09:47.656 1d81a Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000863.log 
+2025/11/28-02:09:49.188 1d823 Level-0 table #869: started
+2025/11/28-02:09:49.196 1d823 Level-0 table #869: 31571 bytes OK
+2025/11/28-02:09:49.204 1d823 Delete type=0 #863
+2025/11/28-02:09:49.205 1d81c Manual compaction at level-0 from '\x00\xce\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xcf\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/28-02:09:51.203 1d81b Compacting 1@1 + 2@2 files
+2025/11/28-02:09:51.283 1d81b Generated table #870@1: 86268 keys, 2235075 bytes
+2025/11/28-02:09:51.356 1d81b Generated table #871@1: 34478 keys, 1231779 bytes
+2025/11/28-02:09:51.356 1d81b Compacted 1@1 + 2@2 files => 3466854 bytes
+2025/11/28-02:09:51.371 1d81b compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/28-02:09:51.372 1d81b Delete type=2 #865
+2025/11/28-02:09:51.373 1d81b Delete type=2 #866
+2025/11/28-02:09:51.373 1d81b Delete type=2 #869

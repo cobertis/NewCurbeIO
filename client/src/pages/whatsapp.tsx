@@ -1098,9 +1098,9 @@ export default function WhatsAppPage() {
   const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   
-  // SIMPLE LOGIC: Show connect page ONLY if there's no saved session
-  // If there's a saved session, the server auto-connects on startup - never show connect page
-  const showConnectPage = !statusLoading && !hasSavedSession && !isAuthenticated;
+  // SIMPLE LOGIC: Show QR page when not authenticated and either no session OR QR is available
+  // If there's a saved session, the server auto-connects on startup
+  const showQRPage = !statusLoading && !isAuthenticated;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -1132,8 +1132,8 @@ export default function WhatsAppPage() {
     }
   }, [status?.qrCode, isAuthenticated]);
 
-  // Auto-initialize WhatsApp when there's a saved session but client isn't ready
-  // This prevents showing the "Connect WhatsApp" button when we just need to reconnect
+  // Auto-initialize WhatsApp when not authenticated
+  // This automatically starts connection and shows QR code without user clicking a button
   const autoInitAttempts = useRef(0);
   const lastAutoInitTime = useRef(0);
   const MAX_AUTO_INIT_ATTEMPTS = 5;
@@ -1144,22 +1144,22 @@ export default function WhatsAppPage() {
     const timeSinceLastAttempt = now - lastAutoInitTime.current;
     
     // Auto-init conditions:
-    // - Has saved session (from server or remembered)
     // - Not currently authenticated
     // - Not currently initializing
     // - Haven't exceeded max attempts
     // - Cooldown period has passed
-    const shouldAutoInit = hasSavedSession && 
-      !isAuthenticated && 
+    // - No QR code already available
+    const shouldAutoInit = !isAuthenticated && 
       !isInitializing && 
       !initWhatsAppMutation.isPending &&
+      !status?.qrCode &&
       autoInitAttempts.current < MAX_AUTO_INIT_ATTEMPTS &&
       timeSinceLastAttempt > AUTO_INIT_COOLDOWN;
     
     if (shouldAutoInit) {
       autoInitAttempts.current += 1;
       lastAutoInitTime.current = now;
-      console.log(`[WhatsApp] Auto-initializing saved session (attempt ${autoInitAttempts.current}/${MAX_AUTO_INIT_ATTEMPTS})...`);
+      console.log(`[WhatsApp] Auto-initializing connection (attempt ${autoInitAttempts.current}/${MAX_AUTO_INIT_ATTEMPTS})...`);
       initWhatsAppMutation.mutate();
     }
     
@@ -1167,7 +1167,7 @@ export default function WhatsAppPage() {
     if (isAuthenticated) {
       autoInitAttempts.current = 0;
     }
-  }, [hasSavedSession, isAuthenticated, isInitializing, initWhatsAppMutation.isPending]);
+  }, [isAuthenticated, isInitializing, initWhatsAppMutation.isPending, status?.qrCode]);
 
   // Handle URL parameter to open specific chat from notifications
   useEffect(() => {
@@ -3192,10 +3192,10 @@ export default function WhatsAppPage() {
   });
 
   // =====================================================
-  // RENDER: QR CODE VIEW (only if no saved session)
+  // RENDER: QR CODE VIEW (when not authenticated)
   // =====================================================
 
-  if (showConnectPage) {
+  if (showQRPage) {
     return (
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
         <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
@@ -3203,7 +3203,6 @@ export default function WhatsAppPage() {
             <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
               <MessageSquare className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-2xl font-medium text-[var(--whatsapp-text-primary)]">WhatsApp Web</h2>
             
             {status?.qrCode ? (
               <div className="space-y-4">
@@ -3225,7 +3224,7 @@ export default function WhatsAppPage() {
                   <p>4. Point your phone at this screen to scan the code</p>
                 </div>
               </div>
-            ) : isInitializing ? (
+            ) : (
               <div className="space-y-4">
                 <div className="flex justify-center">
                   <RefreshCw className="h-12 w-12 text-[var(--whatsapp-green-primary)] animate-spin" />
@@ -3234,40 +3233,27 @@ export default function WhatsAppPage() {
                   Connecting to WhatsApp...
                 </p>
                 <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
-                  This may take a moment. Please wait for the QR code to appear.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-[var(--whatsapp-text-secondary)]">
-                  Connect your WhatsApp account to start messaging
+                  Please wait for the QR code to appear.
                 </p>
                 {initError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 mt-4">
                     {initError}
+                    <Button
+                      onClick={() => {
+                        autoInitAttempts.current = 0;
+                        lastAutoInitTime.current = 0;
+                        initWhatsAppMutation.mutate();
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 w-full"
+                      data-testid="button-retry-connection"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
                   </div>
                 )}
-                <Button
-                  onClick={() => initWhatsAppMutation.mutate()}
-                  disabled={initWhatsAppMutation.isPending}
-                  className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-secondary)] text-white px-8 py-3 text-lg"
-                  data-testid="button-connect-whatsapp"
-                >
-                  {initWhatsAppMutation.isPending ? (
-                    <>
-                      <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <MessageSquare className="h-5 w-5 mr-2" />
-                      Connect WhatsApp
-                    </>
-                  )}
-                </Button>
-                <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
-                  You'll need to scan a QR code with your phone to link your account
-                </p>
               </div>
             )}
           </div>
