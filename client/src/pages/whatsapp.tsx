@@ -3463,7 +3463,7 @@ export default function WhatsAppPage() {
                           {preview.icon === 'document' && <FileIconLucide className="h-4 w-4 flex-shrink-0" />}
                           {preview.icon === 'call' && <Phone className={cn("h-4 w-4 flex-shrink-0", preview.isMissed && "text-red-500")} />}
                           {preview.icon === 'note' && <AtSign className="h-4 w-4 flex-shrink-0 text-amber-500" />}
-                          <span className="truncate">{preview.text}</span>
+                          <span className="block min-w-0 flex-1 truncate">{preview.text}</span>
                         </div>
                         <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                           {chat.isPinned && (
