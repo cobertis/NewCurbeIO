@@ -2953,6 +2953,11 @@ export default function WhatsAppPage() {
     if (!file) return;
     
     if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -2968,11 +2973,26 @@ export default function WhatsAppPage() {
         });
         const data = await res.json();
         if (data.success) {
-          loadMyProfile(); // Reload to get new picture
+          toast({
+            title: "Profile picture updated",
+            description: "Your WhatsApp profile picture has been changed",
+          });
+          loadMyProfile();
+        } else {
+          toast({
+            title: "Failed to update picture",
+            description: data.error || "Please try again",
+            variant: "destructive",
+          });
         }
       };
       reader.readAsDataURL(file);
     } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Could not upload profile picture",
+        variant: "destructive",
+      });
     }
   };
 
