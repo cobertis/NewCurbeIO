@@ -5894,7 +5894,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
 
 
-      res.json(agentsResult);
+      res.json(stats);
     } catch (error) {
       console.error("Agents leaderboard error:", error);
       res.status(500).json({ message: "Failed to fetch agents data" });
@@ -5975,7 +5975,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
 
 
-      res.json(agentsResult);
+      res.json({ carriers });
     } catch (error: any) {
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
