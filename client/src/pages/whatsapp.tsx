@@ -2908,6 +2908,7 @@ export default function WhatsAppPage() {
 
   // Load profile when settings dialog opens
   const loadMyProfile = async () => {
+    console.log('[WhatsApp Settings] loadMyProfile called, isAuthenticated:', isAuthenticated);
     setIsLoadingProfile(true);
     try {
       const res = await fetch('/api/whatsapp/profile', { credentials: 'include' });
@@ -2917,10 +2918,7 @@ export default function WhatsAppPage() {
         setUserDisplayName(data.profile.pushname || '');
         setUserStatus(data.profile.about || '');
         setMyPhoneNumber(data.profile.phoneNumber || '');
-        // Use profilePicUrl directly from backend - WhatsApp blocks self-avatar via contact proxy
-        // The backend fetches it directly using client.getProfilePicUrl(wid) which works for self
         if (data.profile.profilePicUrl) {
-          // Backend returns the CDN URL directly, use image proxy for CORS
           setMyProfilePicUrl(getProxiedImageUrl(data.profile.profilePicUrl));
           console.log('[WhatsApp Settings] Set profile pic from backend URL');
         } else {
@@ -2934,6 +2932,14 @@ export default function WhatsAppPage() {
       setIsLoadingProfile(false);
     }
   };
+
+  // Effect to load profile when settings dialog opens and authenticated
+  useEffect(() => {
+    if (showSettingsDialog && isAuthenticated) {
+      console.log('[WhatsApp Settings] useEffect triggering loadMyProfile');
+      loadMyProfile();
+    }
+  }, [showSettingsDialog, isAuthenticated]);
 
   // Save display name
   const handleSaveDisplayName = async () => {
@@ -5329,12 +5335,7 @@ export default function WhatsAppPage() {
       )}
 
       {/* Settings Dialog */}
-      <Dialog open={showSettingsDialog} onOpenChange={(open) => {
-        setShowSettingsDialog(open);
-        if (open && isAuthenticated) {
-          loadMyProfile();
-        }
-      }}>
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent data-testid="dialog-settings" className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
