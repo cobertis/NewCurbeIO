@@ -1905,14 +1905,22 @@ export default function WhatsAppPage() {
   // Set user status/about
   const setStatusMutation = useMutation({
     mutationFn: async (status: string) => {
-      return await apiRequest('PUT', '/api/whatsapp/profile/status', { status });
+      return await apiRequest('POST', '/api/whatsapp/profile/status', { status });
     },
     onSuccess: () => {
       setIsSavingStatus(false);
-      setShowSettingsDialog(false);
+      toast({
+        title: "Status updated",
+        description: "Your WhatsApp status has been changed",
+      });
     },
     onError: (error: Error) => {
       setIsSavingStatus(false);
+      toast({
+        title: "Failed to update status",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
     },
   });
 
@@ -2942,8 +2950,23 @@ export default function WhatsAppPage() {
       const data = await res.json();
       if (data.success) {
         setIsEditingDisplayName(false);
+        toast({
+          title: "Display name updated",
+          description: "Your WhatsApp display name has been changed",
+        });
+      } else {
+        toast({
+          title: "Failed to update name",
+          description: data.error || "Please try again",
+          variant: "destructive",
+        });
       }
     } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Could not update display name",
+        variant: "destructive",
+      });
     }
   };
 
@@ -5443,41 +5466,41 @@ export default function WhatsAppPage() {
                 </p>
               </div>
               
-              <Button
-                onClick={handleSaveStatus}
-                disabled={!userStatus.trim() || setStatusMutation.isPending}
-                className="w-full bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
-                data-testid="button-save-status"
-              >
-                {setStatusMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-4 w-4 mr-2" />
-                    Save Status
-                  </>
-                )}
-              </Button>
-              
-              <Separator />
-              
-              {/* Logout Section */}
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={() => {
-                  setShowSettingsDialog(false);
-                  logoutMutation.mutate();
-                }}
-                disabled={logoutMutation.isPending}
-                data-testid="button-logout-settings"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
-              </Button>
+              {/* Action Buttons Side by Side */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSaveStatus}
+                  disabled={!userStatus.trim() || setStatusMutation.isPending}
+                  className="flex-1 bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+                  data-testid="button-save-status"
+                >
+                  {setStatusMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Save Status
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowSettingsDialog(false);
+                    logoutMutation.mutate();
+                  }}
+                  disabled={logoutMutation.isPending}
+                  data-testid="button-logout-settings"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

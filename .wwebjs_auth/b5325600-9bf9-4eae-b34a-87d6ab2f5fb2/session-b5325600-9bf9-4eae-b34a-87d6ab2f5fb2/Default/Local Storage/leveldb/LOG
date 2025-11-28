@@ -1,3 +1,6 @@
-2025/11/28-02:52:28.387 219bb Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/MANIFEST-000001
-2025/11/28-02:52:28.393 219bb Recovering log #59
-2025/11/28-02:52:28.393 219bb Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/000059.log 
+2025/11/28-02:58:28.759 223aa Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/MANIFEST-000001
+2025/11/28-02:58:28.766 223aa Recovering log #59
+2025/11/28-02:58:28.767 223aa Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/000059.log 
+2025/11/28-02:59:28.771 223aa Level-0 table #64: started
+2025/11/28-02:59:28.783 223aa Level-0 table #64: 14464 bytes OK
+2025/11/28-02:59:28.794 223aa Delete type=0 #59
