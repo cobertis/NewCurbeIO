@@ -3253,7 +3253,7 @@ export default function WhatsAppPage() {
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Sidebar - Chat List */}
         <ResizablePanel 
-          defaultSize={20} 
+          defaultSize={15} 
           minSize={15} 
           maxSize={40}
           className={cn(
