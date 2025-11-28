@@ -3452,9 +3452,9 @@ export default function WhatsAppPage() {
                           {previewTimestamp && formatTimestamp(previewTimestamp)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className={cn(
-                          "flex items-center gap-1.5 text-sm truncate",
+                          "flex items-center gap-1.5 text-sm min-w-0 flex-1",
                           preview.isMissed ? "text-red-500" : "text-[var(--whatsapp-text-secondary)]"
                         )}>
                           {preview.icon === 'image' && <Image className="h-4 w-4 flex-shrink-0" />}
@@ -3463,7 +3463,7 @@ export default function WhatsAppPage() {
                           {preview.icon === 'document' && <FileIconLucide className="h-4 w-4 flex-shrink-0" />}
                           {preview.icon === 'call' && <Phone className={cn("h-4 w-4 flex-shrink-0", preview.isMissed && "text-red-500")} />}
                           {preview.icon === 'note' && <AtSign className="h-4 w-4 flex-shrink-0 text-amber-500" />}
-                          <span className="truncate">{preview.text}</span>
+                          <span className="truncate block">{preview.text}</span>
                         </div>
                         <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                           {chat.isPinned && (
