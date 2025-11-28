@@ -3877,34 +3877,6 @@ export default function WhatsAppPage() {
                 </div>
               ) : (
               <div className="flex items-center gap-2">
-                {/* Emoji button with picker */}
-                <Popover open={showChatEmojiPicker} onOpenChange={setShowChatEmojiPicker}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                      data-testid="button-emoji"
-                    >
-                      <Smile className="h-6 w-6" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-0 w-auto" align="start">
-                    <div className="grid grid-cols-8 gap-1 p-2">
-                      {['😀', '😂', '😍', '🥰', '😊', '🙏', '👍', '👋', '❤️', '🔥', '✨', '🎉', '💪', '😎', '🤔', '😢', '😮', '😡', '🤣', '😘', '🥺', '😇', '🤗', '😴'].map((emoji) => (
-                        <button
-                          key={emoji}
-                          onClick={() => handleChatEmojiSelect(emoji)}
-                          className="text-2xl hover:bg-[var(--whatsapp-hover)] rounded p-1.5 transition-colors"
-                          data-testid={`chat-emoji-${emoji}`}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
                 {/* Note mode toggle button */}
                 <Button
                   variant="ghost"
@@ -3922,58 +3894,21 @@ export default function WhatsAppPage() {
                   <AtSign className="h-5 w-5" />
                 </Button>
 
-                {/* Special send buttons */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                      data-testid="button-attach"
-                    >
-                      <Paperclip className="h-6 w-6" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      data-testid="menu-attach-image"
-                      onClick={() => {
-                        if (fileInputRef.current) {
-                          fileInputRef.current.accept = 'image/*';
-                          fileInputRef.current.click();
-                        }
-                      }}
-                    >
-                      <Image className="h-4 w-4 mr-2" />
-                      Photos & Images
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      data-testid="menu-attach-video"
-                      onClick={() => {
-                        if (fileInputRef.current) {
-                          fileInputRef.current.accept = 'video/*';
-                          fileInputRef.current.click();
-                        }
-                      }}
-                    >
-                      <Video className="h-4 w-4 mr-2" />
-                      Video
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      data-testid="menu-attach-document"
-                      onClick={() => {
-                        if (fileInputRef.current) {
-                          fileInputRef.current.accept = '.pdf,.doc,.docx,.xls,.xlsx';
-                          fileInputRef.current.click();
-                        }
-                      }}
-                    >
-                      <FileIconLucide className="h-4 w-4 mr-2" />
-                      Document
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Attachment button - opens file picker directly */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = 'image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx';
+                      fileInputRef.current.click();
+                    }
+                  }}
+                  data-testid="button-attach"
+                >
+                  <Paperclip className="h-6 w-6" />
+                </Button>
                 
                 <div className="flex-1 relative">
                   {/* Mentions Picker */}
