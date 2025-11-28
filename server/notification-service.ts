@@ -858,7 +858,7 @@ class NotificationService {
     const notifications: InsertNotification[] = users.map((user: any) => ({
       userId: user.id,
       type: "whatsapp_call",
-      title: `Incoming ${callType} Call`,
+      title: `Incoming WhatsApp ${callType} Call`,
       message: callerDisplay,
       link: `/whatsapp?chat=${encodeURIComponent(data.from)}`,
       isRead: false,

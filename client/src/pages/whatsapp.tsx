@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -1043,7 +1043,7 @@ export default function WhatsAppPage() {
   // Profile picture cache
   const [profilePictures, setProfilePictures] = useState<Record<string, string | null>>({});
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatViewportRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Media upload state
@@ -1968,9 +1968,15 @@ export default function WhatsAppPage() {
   // EFFECTS
   // =====================================================
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // Instant scroll to bottom when chat changes or messages update
+  useLayoutEffect(() => {
+    const viewport = chatViewportRef.current;
+    if (viewport) {
+      requestAnimationFrame(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      });
+    }
+  }, [selectedChatId, messages]);
 
   // Poll for incoming call notifications
   useEffect(() => {
@@ -3535,7 +3541,9 @@ export default function WhatsAppPage() {
 
             {/* Messages Area */}
             <div 
+              ref={chatViewportRef}
               className="flex-1 overflow-y-auto p-6 relative whatsapp-chat-bg"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }}
             >
               {/* Pin Notification */}
               {pinNotification && (
@@ -3750,7 +3758,6 @@ export default function WhatsAppPage() {
                       </div>
                     );
                   })}
-                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>

@@ -642,6 +642,25 @@
   background-size: 200px 200px;
 }
 
+/* WhatsApp Chat Scrollbar - Hidden by default, visible on hover */
+.whatsapp-chat-bg::-webkit-scrollbar {
+  width: 6px;
+}
+.whatsapp-chat-bg::-webkit-scrollbar-track {
+  background: transparent;
+}
+.whatsapp-chat-bg::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+.whatsapp-chat-bg:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+.dark .whatsapp-chat-bg:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 /* WhatsApp Chat Background Pattern - Dark Mode */
 .dark .whatsapp-chat-bg {
   background-color: #0b141a;
