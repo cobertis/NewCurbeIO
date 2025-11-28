@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { format, isToday, isYesterday } from "date-fns";
@@ -318,21 +318,10 @@ function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
 
 
 // =====================================================
-// MESSAGE COMPONENT
+// MESSAGE COMPONENT (Memoized to prevent audio/video restart on parent re-render)
 // =====================================================
 
-function MessageItem({ 
-  message, 
-  onReply, 
-  onForward, 
-  onStar, 
-  onDelete, 
-  onReact, 
-  onDownload,
-  onInfo,
-  onCopy,
-  onOpenMedia
-}: { 
+interface MessageItemProps {
   message: WhatsAppMessage;
   onReply: () => void;
   onForward: () => void;
@@ -343,7 +332,20 @@ function MessageItem({
   onInfo: () => void;
   onCopy: () => void;
   onOpenMedia: (url: string, type: 'image' | 'video' | 'document') => void;
-}) {
+}
+
+const MessageItem = memo(function MessageItem({ 
+  message, 
+  onReply, 
+  onForward, 
+  onStar, 
+  onDelete, 
+  onReact, 
+  onDownload,
+  onInfo,
+  onCopy,
+  onOpenMedia
+}: MessageItemProps) {
   const [showDeleteOptions, setShowDeleteOptions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
@@ -694,7 +696,18 @@ function MessageItem({
       </ContextMenuContent>
     </ContextMenu>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if message properties changed
+  // Ignore callback functions as they change every render
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.ack === nextProps.message.ack &&
+    prevProps.message.isStarred === nextProps.message.isStarred &&
+    prevProps.message.body === nextProps.message.body &&
+    prevProps.message.type === nextProps.message.type &&
+    prevProps.message.hasMedia === nextProps.message.hasMedia
+  );
+});
 
 // =====================================================
 // GROUP INFO SHEET COMPONENT
