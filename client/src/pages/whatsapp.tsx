@@ -1028,6 +1028,9 @@ export default function WhatsAppPage() {
   const [newChatContactName, setNewChatContactName] = useState<string | null>(null);
   const [newChatError, setNewChatError] = useState<string | null>(null);
   
+  // Chat emoji picker state
+  const [showChatEmojiPicker, setShowChatEmojiPicker] = useState(false);
+  
   // New chat media state (for emojis, attachments, audio before first message)
   const [showNewChatEmojiPicker, setShowNewChatEmojiPicker] = useState(false);
   const [newChatSelectedFile, setNewChatSelectedFile] = useState<File | null>(null);
@@ -1991,15 +1994,29 @@ export default function WhatsAppPage() {
   // EFFECTS
   // =====================================================
 
-  // Instant scroll to bottom when chat changes or messages update
-  useLayoutEffect(() => {
+  // Instant scroll to bottom when chat changes or messages load
+  // Uses multiple attempts to ensure scroll happens after full render
+  useEffect(() => {
     const viewport = chatViewportRef.current;
-    if (viewport) {
-      requestAnimationFrame(() => {
+    if (!viewport || messagesLoading) return;
+    
+    const scrollToBottom = () => {
+      if (viewport) {
         viewport.scrollTop = viewport.scrollHeight;
-      });
-    }
-  }, [selectedChatId, messages]);
+      }
+    };
+    
+    // Immediate scroll
+    scrollToBottom();
+    
+    // Scroll after next frame (ensures DOM is updated)
+    requestAnimationFrame(() => {
+      scrollToBottom();
+      // And again after a small delay (handles async image/media loading)
+      setTimeout(scrollToBottom, 50);
+      setTimeout(scrollToBottom, 150);
+    });
+  }, [selectedChatId, messages, messagesLoading]);
 
   // Poll for incoming call notifications
   useEffect(() => {
@@ -2534,6 +2551,12 @@ export default function WhatsAppPage() {
     } finally {
       setIsSendingNewChatMessage(false);
     }
+  };
+
+  // Insert emoji into chat message
+  const handleChatEmojiSelect = (emoji: string) => {
+    setMessageInput(prev => prev + emoji);
+    setShowChatEmojiPicker(false);
   };
 
   // Insert emoji into new chat message
@@ -3854,14 +3877,33 @@ export default function WhatsAppPage() {
                 </div>
               ) : (
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
-                  data-testid="button-emoji"
-                >
-                  <Smile className="h-6 w-6" />
-                </Button>
+                {/* Emoji button with picker */}
+                <Popover open={showChatEmojiPicker} onOpenChange={setShowChatEmojiPicker}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                      data-testid="button-emoji"
+                    >
+                      <Smile className="h-6 w-6" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-auto" align="start">
+                    <div className="grid grid-cols-8 gap-1 p-2">
+                      {['😀', '😂', '😍', '🥰', '😊', '🙏', '👍', '👋', '❤️', '🔥', '✨', '🎉', '💪', '😎', '🤔', '😢', '😮', '😡', '🤣', '😘', '🥺', '😇', '🤗', '😴'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleChatEmojiSelect(emoji)}
+                          className="text-2xl hover:bg-[var(--whatsapp-hover)] rounded p-1.5 transition-colors"
+                          data-testid={`chat-emoji-${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
                 {/* Note mode toggle button */}
                 <Button
