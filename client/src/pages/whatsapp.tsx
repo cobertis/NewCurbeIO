@@ -3452,20 +3452,20 @@ export default function WhatsAppPage() {
                           {previewTimestamp && formatTimestamp(previewTimestamp)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className={cn(
-                          "flex items-center gap-1.5 text-sm min-w-0 flex-1 overflow-hidden",
+                      <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                        <p className={cn(
+                          "flex-1 min-w-0 text-sm truncate",
                           preview.isMissed ? "text-red-500" : "text-[var(--whatsapp-text-secondary)]"
                         )}>
-                          {preview.icon === 'image' && <Image className="h-4 w-4 flex-shrink-0" />}
-                          {preview.icon === 'video' && <Video className="h-4 w-4 flex-shrink-0" />}
-                          {preview.icon === 'audio' && <Mic className="h-4 w-4 flex-shrink-0" />}
-                          {preview.icon === 'document' && <FileIconLucide className="h-4 w-4 flex-shrink-0" />}
-                          {preview.icon === 'call' && <Phone className={cn("h-4 w-4 flex-shrink-0", preview.isMissed && "text-red-500")} />}
-                          {preview.icon === 'note' && <AtSign className="h-4 w-4 flex-shrink-0 text-amber-500" />}
-                          <span className="block min-w-0 flex-1 truncate">{preview.text}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                          {preview.icon === 'image' && <Image className="h-4 w-4 inline-block mr-1 align-text-bottom" />}
+                          {preview.icon === 'video' && <Video className="h-4 w-4 inline-block mr-1 align-text-bottom" />}
+                          {preview.icon === 'audio' && <Mic className="h-4 w-4 inline-block mr-1 align-text-bottom" />}
+                          {preview.icon === 'document' && <FileIconLucide className="h-4 w-4 inline-block mr-1 align-text-bottom" />}
+                          {preview.icon === 'call' && <Phone className={cn("h-4 w-4 inline-block mr-1 align-text-bottom", preview.isMissed && "text-red-500")} />}
+                          {preview.icon === 'note' && <AtSign className="h-4 w-4 inline-block mr-1 align-text-bottom text-amber-500" />}
+                          {preview.text}
+                        </p>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                           {chat.isPinned && (
                             <Pin className="h-3.5 w-3.5 text-[var(--whatsapp-text-secondary)]" style={{ transform: 'rotate(45deg)' }} />
                           )}
