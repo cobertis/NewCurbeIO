@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { format, isToday, isYesterday } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -940,6 +941,7 @@ function GroupInfoSheet({
 export default function WhatsAppPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [location, setWouterLocation] = useLocation();
 
   // State
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -1189,18 +1191,42 @@ export default function WhatsAppPage() {
   }, [isAuthenticated, isInitializing, initWhatsAppMutation.isPending, status?.qrCode]);
 
   // Handle URL parameter to open specific chat from notifications
+  // This effect handles both initial page load and custom events from notification clicks
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const chatIdFromUrl = urlParams.get('chat');
-    
-    if (chatIdFromUrl && isAuthenticated) {
-      // Decode the chat ID and set it as selected
-      const decodedChatId = decodeURIComponent(chatIdFromUrl);
-      setSelectedChatId(decodedChatId);
+    // Check URL params on mount and when location changes
+    const checkForChatParam = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const chatIdFromUrl = urlParams.get('chat');
       
-      // Clean the URL after setting the chat
-      window.history.replaceState({}, '', '/whatsapp');
-    }
+      if (chatIdFromUrl && isAuthenticated) {
+        const decodedChatId = decodeURIComponent(chatIdFromUrl);
+        console.log('[WhatsApp] Opening chat from URL param:', decodedChatId);
+        setSelectedChatId(decodedChatId);
+        
+        // Clean the URL after setting the chat
+        window.history.replaceState({}, '', '/whatsapp');
+      }
+    };
+    
+    // Check immediately on mount and when auth changes
+    checkForChatParam();
+  }, [location, isAuthenticated]);
+  
+  // Listen for custom event from notification clicks
+  // This handles the case when user is already on /whatsapp and clicks a notification
+  useEffect(() => {
+    const handleOpenChat = (event: CustomEvent<{ chatId: string }>) => {
+      if (event.detail?.chatId && isAuthenticated) {
+        console.log('[WhatsApp] Opening chat from notification event:', event.detail.chatId);
+        setSelectedChatId(event.detail.chatId);
+      }
+    };
+    
+    window.addEventListener('whatsapp-open-chat', handleOpenChat as EventListener);
+    
+    return () => {
+      window.removeEventListener('whatsapp-open-chat', handleOpenChat as EventListener);
+    };
   }, [isAuthenticated]);
 
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({

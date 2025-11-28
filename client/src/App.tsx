@@ -949,9 +949,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                                 if (notification.link) {
                                   // Close notifications panel first
                                   setNotificationsOpen(false);
+                                  
+                                  // Extract chat ID from WhatsApp notification links
+                                  const isWhatsAppLink = notification.link.startsWith('/whatsapp?chat=');
+                                  
                                   // Navigate after a small delay to ensure sheet closes smoothly
                                   setTimeout(() => {
                                     setLocation(notification.link);
+                                    
+                                    // For WhatsApp notifications, dispatch a custom event
+                                    // This ensures the chat opens even if already on /whatsapp
+                                    if (isWhatsAppLink) {
+                                      const chatId = new URLSearchParams(notification.link.split('?')[1]).get('chat');
+                                      if (chatId) {
+                                        window.dispatchEvent(new CustomEvent('whatsapp-open-chat', { 
+                                          detail: { chatId: decodeURIComponent(chatId) } 
+                                        }));
+                                      }
+                                    }
                                   }, 100);
                                 }
                               }}
