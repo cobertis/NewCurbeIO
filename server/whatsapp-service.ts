@@ -10,7 +10,7 @@ import { whatsappReactions, whatsappMessages, whatsappContacts, whatsappDeletedC
 import { eq, and } from 'drizzle-orm';
 import { notificationService } from './notification-service';
 import { storage } from './storage';
-import { broadcastWhatsAppCall } from './websocket';
+import { broadcastWhatsAppCall, broadcastWhatsAppMessage } from './websocket';
 
 interface WhatsAppSessionStatus {
   isReady: boolean;
@@ -693,6 +693,19 @@ class WhatsAppService extends EventEmitter {
             mediaType: message.type,
             isGroup,
             groupName,
+          });
+          
+          // Broadcast to frontend via WebSocket so UI can show unread badge immediately
+          broadcastWhatsAppMessage(companyId, {
+            chatId: message.from,
+            senderName,
+            senderNumber,
+            messageText: message.body || '',
+            hasMedia: message.hasMedia,
+            mediaType: message.type,
+            isGroup,
+            groupName,
+            timestamp: new Date(),
           });
         }
       } catch (notifyError) {

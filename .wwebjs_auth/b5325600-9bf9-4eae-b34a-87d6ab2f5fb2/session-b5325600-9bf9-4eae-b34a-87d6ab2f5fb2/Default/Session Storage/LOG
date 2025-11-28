@@ -1,6 +1,3 @@
-2025/11/28-01:40:57.736 1a514 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Session Storage/MANIFEST-000001
-2025/11/28-01:40:57.737 1a514 Recovering log #3
-2025/11/28-01:40:57.740 1a514 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Session Storage/000003.log 
-2025/11/28-01:41:03.702 1a514 Level-0 table #5: started
-2025/11/28-01:41:03.741 1a514 Level-0 table #5: 18921 bytes OK
-2025/11/28-01:41:03.752 1a514 Delete type=0 #3
+2025/11/28-01:48:34.766 1b24c Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Session Storage/MANIFEST-000001
+2025/11/28-01:48:34.773 1b24c Recovering log #4
+2025/11/28-01:48:34.774 1b24c Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Session Storage/000004.log 

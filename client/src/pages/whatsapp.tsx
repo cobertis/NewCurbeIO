@@ -1937,6 +1937,38 @@ export default function WhatsAppPage() {
   // =====================================================
 
   const handleWebSocketMessage = useCallback((message: any) => {
+    // Handle incoming WhatsApp messages
+    if (message.type === 'whatsapp_message') {
+      console.log('[WhatsApp WebSocket] Received new message:', message.data);
+      
+      const messageChatId = message.data?.chatId;
+      
+      // Only show badge if this is NOT the currently selected chat
+      if (messageChatId && messageChatId !== selectedChatId) {
+        console.log(`[WhatsApp] Setting unread badge for chat ${messageChatId} due to new message`);
+        queryClient.setQueryData(['/api/whatsapp/chats'], (oldData: any) => {
+          if (!oldData?.chats) return oldData;
+          const updatedChats = oldData.chats.map((chat: any) => {
+            if (chat.id === messageChatId) {
+              console.log(`[WhatsApp] ✓ Incremented unreadCount for chat ${messageChatId}: ${(chat.unreadCount || 0)} -> ${(chat.unreadCount || 0) + 1}`);
+              return {
+                ...chat,
+                unreadCount: (chat.unreadCount || 0) + 1,
+              };
+            }
+            return chat;
+          });
+          return { ...oldData, chats: updatedChats };
+        });
+      }
+      
+      // Refresh messages if we're viewing this chat
+      if (messageChatId === selectedChatId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'messages'] });
+      }
+    }
+    
+    // Handle incoming WhatsApp calls
     if (message.type === 'whatsapp_call') {
       console.log('[WhatsApp WebSocket] Received call event:', message.data);
       
@@ -1964,26 +1996,25 @@ export default function WhatsAppPage() {
       // CRITICAL: Increment unreadCount locally for the chat that received the call
       // This ensures the user sees a badge indicating pending activity (the incoming call)
       if (callChatId) {
+        console.log(`[WhatsApp] Setting unread badge for chat ${callChatId} due to incoming call`);
         queryClient.setQueryData(['/api/whatsapp/chats'], (oldData: any) => {
           if (!oldData?.chats) return oldData;
-          return {
-            ...oldData,
-            chats: oldData.chats.map((chat: any) => {
-              if (chat.id === callChatId) {
-                console.log(`[WhatsApp] Incrementing unreadCount for chat ${callChatId} due to incoming call`);
-                return {
-                  ...chat,
-                  unreadCount: (chat.unreadCount || 0) + 1,
-                };
-              }
-              return chat;
-            }),
-          };
+          const updatedChats = oldData.chats.map((chat: any) => {
+            if (chat.id === callChatId) {
+              console.log(`[WhatsApp] ✓ Incremented unreadCount for chat ${callChatId}: ${(chat.unreadCount || 0)} -> ${(chat.unreadCount || 0) + 1}`);
+              return {
+                ...chat,
+                unreadCount: (chat.unreadCount || 0) + 1,
+              };
+            }
+            return chat;
+          });
+          return { ...oldData, chats: updatedChats };
         });
       }
       
-      // Also refetch chat list to sync with server state
-      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+      // NOTE: Do NOT invalidate queries here - it would overwrite the unreadCount we just set
+      // The chat list will sync on next regular poll
     }
   }, [selectedChatId, queryClient]);
 

@@ -419,6 +419,48 @@ export function broadcastWhatsAppCall(companyId: string, callData: {
   console.log(`[WebSocket] Broadcasting whatsapp_call to ${sentCount} authenticated clients (company: ${companyId})`);
 }
 
+// Broadcast new WhatsApp message event to tenant-scoped clients only
+export function broadcastWhatsAppMessage(companyId: string, messageData: {
+  chatId: string;
+  senderName?: string;
+  senderNumber?: string;
+  messageText?: string;
+  hasMedia?: boolean;
+  mediaType?: string;
+  isGroup?: boolean;
+  groupName?: string;
+  timestamp: Date;
+}) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'whatsapp_message',
+    companyId,
+    data: messageData
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    const shouldSend = authClient.companyId === companyId || authClient.role === 'superadmin';
+    
+    if (shouldSend) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting whatsapp_message to ${sentCount} authenticated clients (company: ${companyId})`);
+}
+
 // Broadcast notification update to tenant-scoped clients only
 export function broadcastNotificationUpdate(companyId?: string) {
   if (!wss) {
