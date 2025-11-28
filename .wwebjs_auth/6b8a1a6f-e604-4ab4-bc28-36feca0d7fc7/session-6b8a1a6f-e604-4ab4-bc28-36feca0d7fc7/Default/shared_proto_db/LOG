@@ -1,3 +1,2 @@
-2025/11/28-01:50:44.373 1b978 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/MANIFEST-000001
-2025/11/28-01:50:44.373 1b978 Recovering log #4
-2025/11/28-01:50:44.375 1b978 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/000004.log 
+2025/11/28-01:57:25.934 1bfae Creating DB /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db since it was missing.
+2025/11/28-01:57:25.987 1bfae Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/MANIFEST-000001

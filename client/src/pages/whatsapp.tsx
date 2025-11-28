@@ -4274,24 +4274,8 @@ export default function WhatsAppPage() {
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center bg-[var(--whatsapp-bg-primary)] border-l border-[var(--whatsapp-border)]">
-            <div className="text-center max-w-md px-6">
-              <div className="mb-8">
-                <div className="inline-block p-8 rounded-full bg-[var(--whatsapp-bg-secondary)] border border-[var(--whatsapp-border)] mb-6">
-                  <MessageSquare className="h-32 w-32 text-[var(--whatsapp-green-primary)]" />
-                </div>
-              </div>
-              <h2 className="text-3xl font-light text-[var(--whatsapp-text-primary)] mb-4">
-                WhatsApp Web
-              </h2>
-              <p className="text-sm text-[var(--whatsapp-text-secondary)] mb-12">
-                Send and receive messages without keeping your phone online.
-                <br />
-                Use WhatsApp on up to 4 linked devices and 1 phone at the same time.
-              </p>
-              <div className="pt-12 border-t border-[var(--whatsapp-border)] flex items-center justify-center gap-2 text-[var(--whatsapp-text-tertiary)]">
-                <Lock className="h-3 w-3" />
-                <span className="text-xs">End-to-end encrypted</span>
-              </div>
+            <div className="inline-block p-8 rounded-full bg-[var(--whatsapp-bg-secondary)] border border-[var(--whatsapp-border)]">
+              <MessageSquare className="h-32 w-32 text-[var(--whatsapp-green-primary)]" />
             </div>
           </div>
         )}

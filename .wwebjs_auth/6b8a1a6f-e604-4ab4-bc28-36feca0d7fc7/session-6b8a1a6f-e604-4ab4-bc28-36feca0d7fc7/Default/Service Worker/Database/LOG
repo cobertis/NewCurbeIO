@@ -1,3 +1,2 @@
-2025/11/28-01:50:44.276 1b981 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Service Worker/Database/MANIFEST-000001
-2025/11/28-01:50:44.276 1b981 Recovering log #3
-2025/11/28-01:50:44.277 1b981 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Service Worker/Database/000003.log 
+2025/11/28-01:57:27.195 1bfac Creating DB /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Service Worker/Database since it was missing.
+2025/11/28-01:57:27.215 1bfac Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Service Worker/Database/MANIFEST-000001

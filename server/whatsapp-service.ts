@@ -3587,20 +3587,37 @@ class WhatsAppService extends EventEmitter {
    */
   async logout(companyId: string): Promise<void> {
     const companyClient = this.clients.get(companyId);
-    if (!companyClient) {
-      throw new Error('WhatsApp client is not initialized for this company');
-    }
-
+    
     try {
       console.log(`[WhatsApp] Logging out and destroying session for company: ${companyId}`);
-      await companyClient.client.logout();
-      await companyClient.client.destroy();
       
-      // Remove from clients map
-      this.clients.delete(companyId);
+      // Try to logout and destroy client if it exists
+      if (companyClient) {
+        try {
+          await companyClient.client.logout();
+        } catch (logoutError) {
+          console.log(`[WhatsApp] Client logout error (continuing with cleanup): ${logoutError}`);
+        }
+        try {
+          await companyClient.client.destroy();
+        } catch (destroyError) {
+          console.log(`[WhatsApp] Client destroy error (continuing with cleanup): ${destroyError}`);
+        }
+        
+        // Remove from clients map
+        this.clients.delete(companyId);
+      }
+      
+      // CRITICAL: Delete the session directory to ensure hasSavedSession returns false
+      const projectRoot = process.cwd();
+      const sessionPath = path.join(projectRoot, '.wwebjs_auth', companyId);
+      if (fs.existsSync(sessionPath)) {
+        console.log(`[WhatsApp] Deleting session directory: ${sessionPath}`);
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+      }
       
       this.emit('logout', { companyId });
-      console.log(`[WhatsApp] Logged out successfully for company: ${companyId}`);
+      console.log(`[WhatsApp] Logged out and session deleted for company: ${companyId}`);
     } catch (error) {
       console.error(`[WhatsApp] Failed to logout for company ${companyId}:`, error);
       throw error;
