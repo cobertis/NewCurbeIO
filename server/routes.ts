@@ -29296,6 +29296,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[WhatsApp] Error deleting chat note:', error);
       res.status(500).json({ success: false, error: error.message });
     }
+  });
   // GET /api/whatsapp/chats/:chatId/calls - Get all calls for a chat
   app.get("/api/whatsapp/chats/:chatId/calls", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29311,7 +29312,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  });
   // POST /api/whatsapp/chats/:chatId/sync-history - Sync chat history
   app.post("/api/whatsapp/chats/:chatId/sync-history", requireActiveCompany, async (req: Request, res: Response) => {
     try {
