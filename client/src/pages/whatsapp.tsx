@@ -3202,54 +3202,6 @@ export default function WhatsAppPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-[var(--whatsapp-bg-primary)]">
-      {/* Incoming Call Banner */}
-      {incomingCall && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-pulse">
-          <div className="bg-green-600 dark:bg-green-700 text-white rounded-xl shadow-2xl p-4 min-w-[320px] max-w-md">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                  {incomingCall.isVideo ? (
-                    <Video className="h-6 w-6" />
-                  ) : (
-                    <Phone className="h-6 w-6" />
-                  )}
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full animate-ping" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm opacity-80">
-                  Incoming {incomingCall.isVideo ? 'Video' : 'Voice'} Call
-                </p>
-                <p className="font-semibold text-lg">{incomingCall.fromName}</p>
-                <p className="text-xs opacity-70">{incomingCall.from}</p>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-4">
-              <Button
-                variant="destructive"
-                className="flex-1 bg-red-500 hover:bg-red-600"
-                onClick={() => {
-                  rejectCallMutation.mutate(incomingCall.id);
-                }}
-                disabled={rejectCallMutation.isPending}
-                data-testid="button-reject-call"
-              >
-                <PhoneOff className="h-4 w-4 mr-2" />
-                Decline
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 bg-white/20 hover:bg-white/30 border-white/30 text-white"
-                onClick={() => setIncomingCall(null)}
-                data-testid="button-dismiss-call"
-              >
-                Dismiss
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Sidebar - Chat List */}
         <ResizablePanel 
@@ -3261,7 +3213,8 @@ export default function WhatsAppPage() {
             selectedChatId ? "hidden md:flex" : "flex"
           )}
         >
-        {/* Header */}
+          <div className="flex h-full flex-col">
+            {/* Header */}
         <div className="h-[60px] px-4 bg-[var(--whatsapp-bg-panel-header)] flex items-center justify-between border-b border-[var(--whatsapp-border)]">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
@@ -3494,6 +3447,7 @@ export default function WhatsAppPage() {
             </div>
           )}
         </ScrollArea>
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle className="hidden md:flex bg-[var(--whatsapp-border)] hover:bg-[var(--whatsapp-green-primary)] transition-colors" />
