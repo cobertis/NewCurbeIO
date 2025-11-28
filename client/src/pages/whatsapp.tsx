@@ -3740,7 +3740,7 @@ export default function WhatsAppPage() {
                                   {durationText ? (
                                     <span>Duration: {durationText}</span>
                                   ) : (
-                                    <span>Tap to call back</span>
+                                    <span>Contact the client</span>
                                   )}
                                 </div>
                               </div>
