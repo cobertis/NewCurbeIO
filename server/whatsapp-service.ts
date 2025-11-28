@@ -298,12 +298,17 @@ class WhatsAppService extends EventEmitter {
         try {
           // Use the correct property path for status
           const isReady = companyClient.status?.isReady === true && companyClient.client !== null;
+          const hasQRActive = companyClient.status?.status === 'qr_received' && companyClient.status?.qrCode;
           
           if (isReady) {
             console.log(`[WhatsApp] Health check: Company ${companyId} is connected`);
             reconnectAttempts.set(companyId, 0); // Reset attempts on success
+          } else if (hasQRActive) {
+            // CRITICAL: Do NOT reconnect if QR code is active - user is trying to scan
+            console.log(`[WhatsApp] Health check: Company ${companyId} has active QR code, skipping reconnect`);
+            reconnectAttempts.set(companyId, 0); // Reset attempts - QR is valid state
           } else if (this.hasSavedSession(companyId)) {
-            // Proactively reconnect if we have a saved session
+            // Proactively reconnect if we have a saved session and no active QR
             const attempts = reconnectAttempts.get(companyId) || 0;
             
             if (attempts < MAX_AUTO_RECONNECT_ATTEMPTS) {
@@ -464,12 +469,22 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Restart WhatsApp client for a company (destroy and recreate)
+   * CRITICAL: Does NOT restart if there's an active QR code being displayed
    */
-  async restartClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
+  async restartClientForCompany(companyId: string, force: boolean = false): Promise<CompanyWhatsAppClient> {
+    // First, check if there's an active QR code - don't restart in that case
+    const existingClient = this.clients.get(companyId);
+    if (existingClient && !force) {
+      const hasQRActive = existingClient.status?.status === 'qr_received' && existingClient.status?.qrCode;
+      if (hasQRActive) {
+        console.log(`[WhatsApp] SKIPPING restart for company ${companyId} - QR code is active, user should scan it`);
+        return existingClient;
+      }
+    }
+    
     console.log(`[WhatsApp] Restarting client for company: ${companyId}`);
     
-    // First, try to destroy existing client
-    const existingClient = this.clients.get(companyId);
+    // Destroy existing client
     if (existingClient) {
       try {
         await existingClient.client.destroy();

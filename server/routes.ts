@@ -26061,7 +26061,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ success: false, error: 'Failed to get status' });
     }
   });
-
   // POST /api/whatsapp/init - Manually initialize WhatsApp client
   app.post("/api/whatsapp/init", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -26072,24 +26071,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const companyId = user.companyId;
       
-      
-      // IMPORTANT: Clear logged out status when user explicitly requests initialization
-      whatsappService.clearLoggedOutStatus(companyId);
-      // Clean up any leftover lock files before initializing
-      const authPath = `.wwebjs_auth/session-${companyId}`;
-      const fs = await import('fs');
-      const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
-      for (const lockFile of lockFiles) {
-        const lockPath = `${authPath}/${lockFile}`;
-        if (fs.existsSync(lockPath)) {
-          try {
-            fs.unlinkSync(lockPath);
-            console.log(`[WhatsApp] Cleaned up lock file: ${lockPath}`);
-          } catch (e) {
-            console.log(`[WhatsApp] Could not clean lock file ${lockPath}:`, e);
-          }
-        }
+      // CRITICAL: Check if there's already an active QR code - don't restart anything
+      const existingStatus = whatsappService.getSessionStatus(companyId);
+      if (existingStatus?.status === 'qr_received' && existingStatus?.qrCode) {
+        console.log(`[WhatsApp] QR already active for company ${companyId}, returning existing status`);
+        return res.json({ 
+          success: true, 
+          status: existingStatus, 
+          hasSavedSession: whatsappService.hasSavedSession(companyId),
+          message: 'QR code already available' 
+        });
       }
+      
+      // Also skip if already ready/authenticated
+      if (existingStatus?.isReady || existingStatus?.status === 'authenticated') {
+        console.log(`[WhatsApp] Already connected for company ${companyId}`);
+        return res.json({ 
+          success: true, 
+          status: existingStatus, 
+          hasSavedSession: whatsappService.hasSavedSession(companyId),
+          message: 'Already connected' 
+        });
+      }
+      
+      // Clear logged out status when user explicitly requests initialization
+      whatsappService.clearLoggedOutStatus(companyId);
       
       console.log(`[WhatsApp] Manual initialization requested for company: ${companyId}`);
       
@@ -26105,7 +26111,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ success: false, error: 'Failed to initialize WhatsApp' });
     }
   });
-
   // POST /api/whatsapp/logout - Logout and destroy session
   app.post("/api/whatsapp/logout", requireActiveCompany, async (req: Request, res: Response) => {
     try {
