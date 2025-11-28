@@ -1937,11 +1937,13 @@ export default function WhatsAppPage() {
     if (message.type === 'whatsapp_call') {
       console.log('[WhatsApp WebSocket] Received call event:', message.data);
       
+      const callChatId = message.data?.chatId;
+      
       // Update the incoming call banner
       if (message.data) {
         setIncomingCall({
           id: Date.now().toString(),
-          from: message.data.chatId || 'Unknown',
+          from: callChatId || 'Unknown',
           fromName: message.data.callerName || message.data.callerNumber || 'Unknown Caller',
           isVideo: message.data.isVideo || false,
           timestamp: new Date(message.data.timestamp),
@@ -1956,7 +1958,28 @@ export default function WhatsAppPage() {
         queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'calls'] });
       }
       
-      // Refetch chat list to update unread count and last event preview
+      // CRITICAL: Increment unreadCount locally for the chat that received the call
+      // This ensures the user sees a badge indicating pending activity (the incoming call)
+      if (callChatId) {
+        queryClient.setQueryData(['/api/whatsapp/chats'], (oldData: any) => {
+          if (!oldData?.chats) return oldData;
+          return {
+            ...oldData,
+            chats: oldData.chats.map((chat: any) => {
+              if (chat.id === callChatId) {
+                console.log(`[WhatsApp] Incrementing unreadCount for chat ${callChatId} due to incoming call`);
+                return {
+                  ...chat,
+                  unreadCount: (chat.unreadCount || 0) + 1,
+                };
+              }
+              return chat;
+            }),
+          };
+        });
+      }
+      
+      // Also refetch chat list to sync with server state
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
     }
   }, [selectedChatId, queryClient]);

@@ -1,3 +1,6 @@
-2025/11/28-01:12:34.340 17f0a Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Site Characteristics Database/MANIFEST-000001
-2025/11/28-01:12:34.348 17f0a Recovering log #6
-2025/11/28-01:12:34.349 17f0a Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Site Characteristics Database/000006.log 
+2025/11/28-01:27:47.112 18f1a Log #6: 45 ops saved to Table #7 OK
+2025/11/28-01:27:47.113 18f1a Archiving /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Site Characteristics Database/000006.log: OK
+2025/11/28-01:27:47.113 18f1a Table #4: 36 entries OK
+2025/11/28-01:27:47.113 18f1a Table #7: 45 entries OK
+2025/11/28-01:27:47.117 18f1a Archiving /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Site Characteristics Database/MANIFEST-000001: OK
+2025/11/28-01:27:47.120 18f1a **** Repaired leveldb /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Site Characteristics Database; recovered 2 files; 1213 bytes. Some data may have been lost. ****
