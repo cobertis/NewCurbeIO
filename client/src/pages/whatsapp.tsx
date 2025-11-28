@@ -1244,6 +1244,15 @@ export default function WhatsAppPage() {
     }
   }, [searchString, isAuthenticated]);
 
+  // Reset message input when switching chats
+  useEffect(() => {
+    setMessageInput('');
+    setReplyingTo(null);
+    setIsNoteMode(false);
+    setShowMentionPicker(false);
+    setMentionFilter('');
+  }, [selectedChatId]);
+
   const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
     enabled: isAuthenticated,
