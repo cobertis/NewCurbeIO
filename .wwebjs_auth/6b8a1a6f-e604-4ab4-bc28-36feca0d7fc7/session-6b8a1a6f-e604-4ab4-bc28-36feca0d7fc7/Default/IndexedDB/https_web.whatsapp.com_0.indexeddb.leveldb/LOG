@@ -195,3 +195,41 @@
 2025/11/28-02:23:15.515 1e90a Generated table #345@0: 58372 keys, 1231534 bytes
 2025/11/28-02:23:15.515 1e90a Compacted 1@0 + 1@1 files => 1231534 bytes
 2025/11/28-02:23:15.522 1e90a compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/11/28-02:26:33.673 1e90a Compacting 1@1 + 1@2 files
+2025/11/28-02:26:33.764 1e90a Generated table #346@1: 26352 keys, 970639 bytes
+2025/11/28-02:26:33.764 1e90a Compacted 1@1 + 1@2 files => 970639 bytes
+2025/11/28-02:26:33.777 1e90a compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/28-02:26:33.777 1e90a Delete type=2 #304
+2025/11/28-02:26:33.778 1e90a Delete type=2 #342
+2025/11/28-02:26:33.778 1e90a Delete type=2 #344
+2025/11/28-02:26:33.778 1e90a Delete type=2 #345
+2025/11/28-02:27:02.539 1e90b Level-0 table #348: started
+2025/11/28-02:27:02.591 1e90b Level-0 table #348: 1353065 bytes OK
+2025/11/28-02:27:02.598 1e90b Delete type=0 #343
+2025/11/28-02:27:03.221 1e90b Compacting 1@1 + 1@2 files
+2025/11/28-02:27:03.322 1e90b Generated table #349@1: 29048 keys, 1204200 bytes
+2025/11/28-02:27:03.322 1e90b Compacted 1@1 + 1@2 files => 1204200 bytes
+2025/11/28-02:27:03.334 1e90b compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/11/28-02:27:03.455 1e90b Level-0 table #351: started
+2025/11/28-02:27:03.507 1e90b Level-0 table #351: 1411857 bytes OK
+2025/11/28-02:27:03.512 1e90b Delete type=2 #346
+2025/11/28-02:27:03.512 1e90b Delete type=0 #347
+2025/11/28-02:27:03.512 1e90b Delete type=2 #348
+2025/11/28-02:27:03.514 1e90b Compacting 1@1 + 1@2 files
+2025/11/28-02:27:03.584 1e90b Generated table #352@1: 70983 keys, 2223503 bytes
+2025/11/28-02:27:03.604 1e90b Generated table #353@1: 12113 keys, 249376 bytes
+2025/11/28-02:27:03.604 1e90b Compacted 1@1 + 1@2 files => 2472879 bytes
+2025/11/28-02:27:03.610 1e90b compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/28-02:27:03.610 1e90b Delete type=2 #349
+2025/11/28-02:27:03.610 1e90b Delete type=2 #351
+2025/11/28-02:27:04.597 1e90b Level-0 table #355: started
+2025/11/28-02:27:04.648 1e90b Level-0 table #355: 1250316 bytes OK
+2025/11/28-02:27:04.654 1e90b Delete type=0 #350
+2025/11/28-02:27:24.719 1e90b Compacting 1@1 + 2@2 files
+2025/11/28-02:27:24.820 1e90b Generated table #356@1: 57511 keys, 2204885 bytes
+2025/11/28-02:27:24.845 1e90b Generated table #357@1: 17560 keys, 386472 bytes
+2025/11/28-02:27:24.845 1e90b Compacted 1@1 + 2@2 files => 2591357 bytes
+2025/11/28-02:27:24.856 1e90b compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/28-02:27:24.856 1e90b Delete type=2 #352
+2025/11/28-02:27:24.857 1e90b Delete type=2 #353
+2025/11/28-02:27:24.857 1e90b Delete type=2 #355
