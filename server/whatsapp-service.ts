@@ -3649,18 +3649,36 @@ class WhatsAppService extends EventEmitter {
       }
       
       // CRITICAL: Delete the session directory to ensure hasSavedSession returns false
+      // Use retry logic because Chromium may still have file locks
       const projectRoot = process.cwd();
       const sessionPath = path.join(projectRoot, '.wwebjs_auth', companyId);
-      if (fs.existsSync(sessionPath)) {
-        console.log(`[WhatsApp] Deleting session directory: ${sessionPath}`);
-        fs.rmSync(sessionPath, { recursive: true, force: true });
+      
+      // Wait a moment for browser to fully close
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Try to delete with retries
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          if (fs.existsSync(sessionPath)) {
+            console.log(`[WhatsApp] Deleting session directory (attempt ${attempt}): ${sessionPath}`);
+            fs.rmSync(sessionPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+            console.log(`[WhatsApp] Session directory deleted successfully`);
+          }
+          break;
+        } catch (deleteError: any) {
+          console.log(`[WhatsApp] Delete attempt ${attempt} failed: ${deleteError.message}`);
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
       }
       
       this.emit('logout', { companyId });
-      console.log(`[WhatsApp] Logged out and session deleted for company: ${companyId}`);
+      console.log(`[WhatsApp] Logged out for company: ${companyId}`);
     } catch (error) {
       console.error(`[WhatsApp] Failed to logout for company ${companyId}:`, error);
-      throw error;
+      // Don't throw - we've already cleaned up what we could
+      this.emit('logout', { companyId });
     }
   }
 
