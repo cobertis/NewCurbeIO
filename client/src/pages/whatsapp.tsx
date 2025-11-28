@@ -3452,11 +3452,20 @@ export default function WhatsAppPage() {
                           {previewTimestamp && formatTimestamp(previewTimestamp)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                        <p className={cn(
-                          "flex-1 min-w-0 text-sm truncate",
-                          preview.isMissed ? "text-red-500" : "text-[var(--whatsapp-text-secondary)]"
-                        )}>
+                      <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
+                        <p 
+                          className={cn(
+                            "text-sm",
+                            preview.isMissed ? "text-red-500" : "text-[var(--whatsapp-text-secondary)]"
+                          )}
+                          style={{ 
+                            flex: '1 1 0', 
+                            minWidth: 0, 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis', 
+                            whiteSpace: 'nowrap' 
+                          }}
+                        >
                           {preview.icon === 'image' && <Image className="h-4 w-4 inline-block mr-1 align-text-bottom" />}
                           {preview.icon === 'video' && <Video className="h-4 w-4 inline-block mr-1 align-text-bottom" />}
                           {preview.icon === 'audio' && <Mic className="h-4 w-4 inline-block mr-1 align-text-bottom" />}
@@ -3491,7 +3500,7 @@ export default function WhatsAppPage() {
 
         {/* Chat Window */}
         <ResizablePanel 
-          defaultSize={70}
+          defaultSize={85}
           className={cn(
             "flex flex-col",
             !selectedChatId ? "hidden md:flex" : "flex"
