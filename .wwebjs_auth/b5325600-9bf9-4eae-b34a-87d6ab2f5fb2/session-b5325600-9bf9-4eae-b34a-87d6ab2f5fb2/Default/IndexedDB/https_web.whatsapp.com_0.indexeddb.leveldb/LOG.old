@@ -1,7 +1,15 @@
-2025/11/28-02:37:31.938 202b5 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/28-02:37:31.938 202b5 Recovering log #903
-2025/11/28-02:37:31.949 202b5 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000903.log 
-2025/11/28-02:37:33.304 202b7 Level-0 table #909: started
-2025/11/28-02:37:33.320 202b7 Level-0 table #909: 144245 bytes OK
-2025/11/28-02:37:33.327 202b7 Delete type=0 #903
-2025/11/28-02:37:33.328 202b5 Manual compaction at level-0 from '\x00\xd7\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xd8\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/28-02:44:11.909 20ecc Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/28-02:44:11.910 20ecc Recovering log #918
+2025/11/28-02:44:11.914 20ecc Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000918.log 
+2025/11/28-02:44:13.145 20ecc Level-0 table #924: started
+2025/11/28-02:44:13.159 20ecc Level-0 table #924: 120113 bytes OK
+2025/11/28-02:44:13.168 20ecc Delete type=0 #918
+2025/11/28-02:44:13.168 20ecc Manual compaction at level-0 from '\x00\xda\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xdb\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/28-02:44:15.443 20ece Compacting 1@1 + 2@2 files
+2025/11/28-02:44:15.535 20ece Generated table #925@1: 86085 keys, 2234866 bytes
+2025/11/28-02:44:15.675 20ece Generated table #926@1: 40046 keys, 1376620 bytes
+2025/11/28-02:44:15.675 20ece Compacted 1@1 + 2@2 files => 3611486 bytes
+2025/11/28-02:44:15.683 20ece compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/28-02:44:15.683 20ece Delete type=2 #920
+2025/11/28-02:44:15.683 20ece Delete type=2 #921
+2025/11/28-02:44:15.684 20ece Delete type=2 #924

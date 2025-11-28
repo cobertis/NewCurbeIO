@@ -2035,6 +2035,22 @@ export default function WhatsAppPage() {
       // NOTE: Do NOT invalidate queries here - it would overwrite the unreadCount we just set
       // The chat list will sync on next regular poll
     }
+    
+    // Handle WhatsApp notes (real-time sync across agents)
+    if (message.type === 'whatsapp_note') {
+      console.log('[WhatsApp WebSocket] Received note event:', message.data);
+      
+      const noteChatId = message.data?.chatId;
+      
+      // Refresh notes if we're viewing this chat
+      if (noteChatId === selectedChatId) {
+        console.log(`[WhatsApp] Refreshing notes for chat ${noteChatId} due to note ${message.data?.action}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChatId, 'notes'] });
+      }
+      
+      // Also refresh the chat list to update lastEvent
+      queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+    }
   }, [selectedChatId, queryClient]);
 
   // Connect WebSocket
@@ -3290,12 +3306,16 @@ export default function WhatsAppPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-[var(--whatsapp-bg-primary)]">
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
+      <ResizablePanelGroup 
+        direction="horizontal" 
+        className="flex-1"
+        autoSaveId="whatsapp-panel-layout"
+      >
         {/* Sidebar - Chat List */}
         <ResizablePanel 
-          defaultSize={15} 
-          minSize={15} 
-          maxSize={40}
+          defaultSize={25} 
+          minSize={20} 
+          maxSize={45}
           className={cn(
             "border-r border-[var(--whatsapp-border)] bg-[var(--whatsapp-bg-secondary)] flex flex-col",
             selectedChatId ? "hidden md:flex" : "flex"

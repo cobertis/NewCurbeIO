@@ -461,6 +461,43 @@ export function broadcastWhatsAppMessage(companyId: string, messageData: {
   console.log(`[WebSocket] Broadcasting whatsapp_message to ${sentCount} authenticated clients (company: ${companyId})`);
 }
 
+// Broadcast WhatsApp note event to tenant-scoped clients only
+export function broadcastWhatsAppNote(companyId: string, noteData: {
+  chatId: string;
+  noteId: string;
+  authorName: string;
+  action: 'created' | 'updated' | 'deleted';
+}) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'whatsapp_note',
+    companyId,
+    data: noteData
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    const shouldSend = authClient.companyId === companyId || authClient.role === 'superadmin';
+    
+    if (shouldSend) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting whatsapp_note to ${sentCount} authenticated clients (company: ${companyId})`);
+}
+
 // Broadcast notification update to tenant-scoped clients only
 export function broadcastNotificationUpdate(companyId?: string) {
   if (!wss) {

@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppNote } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -29251,6 +29251,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       };
       
       console.log('[WhatsApp] Note created for chat:', chatId, 'by user:', userId);
+      
+      // Broadcast to all company users so notes appear in real-time
+      broadcastWhatsAppNote(companyId, {
+        chatId,
+        noteId: note.id,
+        authorName: enrichedNote.authorName,
+        action: 'created',
+      });
       res.json({ success: true, note: enrichedNote });
     } catch (error: any) {
       console.error('[WhatsApp] Error creating chat note:', error);
@@ -29262,6 +29270,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.patch("/api/whatsapp/chats/:chatId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
       const { noteId } = req.params;
       const { body } = req.body;
       
@@ -29294,9 +29303,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.delete("/api/whatsapp/chats/:chatId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = String(req.user!.companyId);
+      const chatId = normalizeWhatsAppId(req.params.chatId);
       const { noteId } = req.params;
       
       await storage.deleteWhatsappChatNote(noteId, companyId);
+      
+      // Broadcast to all company users so notes disappear in real-time
+      broadcastWhatsAppNote(companyId, {
+        chatId,
+        noteId,
+        authorName: '',
+        action: 'deleted',
+      });
       
       console.log('[WhatsApp] Note deleted:', noteId);
       res.json({ success: true, message: 'Note deleted' });
