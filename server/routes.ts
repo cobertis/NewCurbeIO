@@ -26072,6 +26072,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const companyId = user.companyId;
       
+      
+      // IMPORTANT: Clear logged out status when user explicitly requests initialization
+      whatsappService.clearLoggedOutStatus(companyId);
       // Clean up any leftover lock files before initializing
       const authPath = `.wwebjs_auth/session-${companyId}`;
       const fs = await import('fs');

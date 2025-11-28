@@ -37,6 +37,9 @@ class WhatsAppService extends EventEmitter {
   private reconnectAttempts: Map<string, number> = new Map();
   private reconnectTimers: Map<string, NodeJS.Timeout> = new Map();
   
+  // Track companies that have intentionally logged out (prevents auto-reconnect)
+  private loggedOutCompanies: Set<string> = new Set();
+  
   // Cache for message reactions (companyId:messageId -> reactions array)
   private messageReactions: Map<string, Array<{ emoji: string; senderId: string }>> = new Map();
   
@@ -172,18 +175,44 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Check if a company has a saved WhatsApp session (without initializing)
+   * Returns false if the company was intentionally logged out (to prevent auto-reconnect)
    */
   hasSavedSession(companyId: string): boolean {
+    // If company was intentionally logged out, don't report as having session
+    if (this.loggedOutCompanies.has(companyId)) {
+      return false;
+    }
+    
     // Use absolute path from project root to avoid working directory issues
     const projectRoot = process.cwd();
     const authPath = path.join(projectRoot, '.wwebjs_auth', companyId);
     try {
       const exists = fs.existsSync(authPath);
-      return exists;
+      // Also check if the directory has actual session content (not just empty)
+      if (exists) {
+        const contents = fs.readdirSync(authPath);
+        return contents.length > 0;
+      }
+      return false;
     } catch (error) {
       console.error(`[WhatsApp] hasSavedSession error for ${companyId}:`, error);
       return false;
     }
+  }
+  
+  /**
+   * Check if company was intentionally logged out
+   */
+  isLoggedOut(companyId: string): boolean {
+    return this.loggedOutCompanies.has(companyId);
+  }
+  
+  /**
+   * Clear logged out status (when user explicitly wants to connect)
+   */
+  clearLoggedOutStatus(companyId: string): void {
+    this.loggedOutCompanies.delete(companyId);
+    console.log(`[WhatsApp] Cleared logged out status for company: ${companyId}`);
   }
 
   /**
@@ -3590,6 +3619,17 @@ class WhatsAppService extends EventEmitter {
     
     try {
       console.log(`[WhatsApp] Logging out and destroying session for company: ${companyId}`);
+      
+      // FIRST: Mark as intentionally logged out to prevent auto-reconnect
+      this.loggedOutCompanies.add(companyId);
+      
+      // Cancel any pending reconnection timers
+      const existingTimer = this.reconnectTimers.get(companyId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        this.reconnectTimers.delete(companyId);
+      }
+      this.reconnectAttempts.delete(companyId);
       
       // Try to logout and destroy client if it exists
       if (companyClient) {
