@@ -3442,9 +3442,9 @@ export default function WhatsAppPage() {
                         {chat.isGroup ? <Users className="h-6 w-6" /> : getInitials(chat.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 overflow-hidden">
                       <div className="flex items-start justify-between mb-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 overflow-hidden flex-1">
                           <h3 className="font-medium text-[var(--whatsapp-text-primary)] truncate">{chat.name}</h3>
                           {chat.isMuted && <BellOff className="h-3.5 w-3.5 text-[var(--whatsapp-text-tertiary)] flex-shrink-0" />}
                         </div>
@@ -3454,7 +3454,7 @@ export default function WhatsAppPage() {
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <div className={cn(
-                          "flex items-center gap-1.5 text-sm min-w-0 flex-1",
+                          "flex items-center gap-1.5 text-sm min-w-0 flex-1 overflow-hidden",
                           preview.isMissed ? "text-red-500" : "text-[var(--whatsapp-text-secondary)]"
                         )}>
                           {preview.icon === 'image' && <Image className="h-4 w-4 flex-shrink-0" />}
@@ -3463,7 +3463,7 @@ export default function WhatsAppPage() {
                           {preview.icon === 'document' && <FileIconLucide className="h-4 w-4 flex-shrink-0" />}
                           {preview.icon === 'call' && <Phone className={cn("h-4 w-4 flex-shrink-0", preview.isMissed && "text-red-500")} />}
                           {preview.icon === 'note' && <AtSign className="h-4 w-4 flex-shrink-0 text-amber-500" />}
-                          <span className="truncate block">{preview.text}</span>
+                          <span className="truncate">{preview.text}</span>
                         </div>
                         <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
                           {chat.isPinned && (
