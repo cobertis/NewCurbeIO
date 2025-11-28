@@ -1,15 +1,7 @@
-2025/11/28-02:32:26.352 1f8fc Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/11/28-02:32:26.352 1f8fc Recovering log #363
-2025/11/28-02:32:26.397 1f8fc Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000363.log 
-2025/11/28-02:32:28.000 1f8fd Level-0 table #369: started
-2025/11/28-02:32:28.037 1f8fd Level-0 table #369: 632113 bytes OK
-2025/11/28-02:32:28.051 1f8fd Delete type=0 #363
-2025/11/28-02:32:28.053 1f8fc Manual compaction at level-0 from '\x00w\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00x\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/11/28-02:32:30.297 1f905 Compacting 1@1 + 2@2 files
-2025/11/28-02:32:30.410 1f905 Generated table #370@1: 53479 keys, 2203023 bytes
-2025/11/28-02:32:30.476 1f905 Generated table #371@1: 25841 keys, 568812 bytes
-2025/11/28-02:32:30.476 1f905 Compacted 1@1 + 2@2 files => 2771835 bytes
-2025/11/28-02:32:30.482 1f905 compacted to: files[ 0 0 2 0 0 0 0 ]
-2025/11/28-02:32:30.482 1f905 Delete type=2 #365
-2025/11/28-02:32:30.482 1f905 Delete type=2 #366
-2025/11/28-02:32:30.483 1f905 Delete type=2 #369
+2025/11/28-02:37:31.938 202c1 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/11/28-02:37:31.938 202c1 Recovering log #373
+2025/11/28-02:37:31.946 202c1 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000373.log 
+2025/11/28-02:37:33.414 202d7 Level-0 table #379: started
+2025/11/28-02:37:33.435 202d7 Level-0 table #379: 128214 bytes OK
+2025/11/28-02:37:33.442 202d7 Delete type=0 #373
+2025/11/28-02:37:33.443 202bf Manual compaction at level-0 from '\x00y\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00z\x00\x00\x00' @ 0 : 0; will stop at (end)

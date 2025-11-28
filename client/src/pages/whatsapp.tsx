@@ -1114,9 +1114,12 @@ export default function WhatsAppPage() {
   const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   
-  // SIMPLE LOGIC: Show QR page when not authenticated and either no session OR QR is available
-  // If there's a saved session, the server auto-connects on startup
-  const showQRPage = !statusLoading && !isAuthenticated;
+  // OPTIMIZED LOGIC: 
+  // - During loading: if we have saved session, assume connected (show main UI faster)
+  // - After loading: use actual authentication status
+  // - Only show QR page when: not loading AND not authenticated AND no saved session
+  // This prevents the "Connecting..." flash when reloading with an active session
+  const showQRPage = !statusLoading && !isAuthenticated && !hasSavedSession;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
