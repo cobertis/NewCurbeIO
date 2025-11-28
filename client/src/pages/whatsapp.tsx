@@ -3911,6 +3911,27 @@ export default function WhatsAppPage() {
                   <AtSign className="h-5 w-5" />
                 </Button>
 
+                {/* Emoji picker button */}
+                <Popover open={showChatEmojiPicker} onOpenChange={setShowChatEmojiPicker}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-full text-[var(--whatsapp-icon)] hover:bg-[var(--whatsapp-hover)]"
+                      data-testid="button-emoji"
+                    >
+                      <Smile className="h-6 w-6" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 border-0" align="start" side="top">
+                    <EmojiPicker onSelect={(emoji) => {
+                      setMessageInput(prev => prev + emoji);
+                      setShowChatEmojiPicker(false);
+                      messageInputRef.current?.focus();
+                    }} />
+                  </PopoverContent>
+                </Popover>
+
                 {/* Attachment button - opens file picker directly */}
                 <Button
                   variant="ghost"

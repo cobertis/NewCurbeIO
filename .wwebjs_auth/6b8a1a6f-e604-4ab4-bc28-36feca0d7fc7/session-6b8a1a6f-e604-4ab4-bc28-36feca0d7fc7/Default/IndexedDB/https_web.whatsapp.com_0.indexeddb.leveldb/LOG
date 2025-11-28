@@ -233,3 +233,15 @@
 2025/11/28-02:27:24.856 1e90b Delete type=2 #352
 2025/11/28-02:27:24.857 1e90b Delete type=2 #353
 2025/11/28-02:27:24.857 1e90b Delete type=2 #355
+2025/11/28-02:28:11.295 1e90b Level-0 table #359: started
+2025/11/28-02:28:11.309 1e90b Level-0 table #359: 116276 bytes OK
+2025/11/28-02:28:11.316 1e90b Delete type=0 #354
+2025/11/28-02:28:11.317 1e90a Manual compaction at level-0 from '\x00u\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00v\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/11/28-02:28:11.557 1e90d Compacting 1@1 + 2@2 files
+2025/11/28-02:28:11.655 1e90d Generated table #360@1: 56555 keys, 2205160 bytes
+2025/11/28-02:28:11.687 1e90d Generated table #361@1: 19462 keys, 428266 bytes
+2025/11/28-02:28:11.687 1e90d Compacted 1@1 + 2@2 files => 2633426 bytes
+2025/11/28-02:28:11.692 1e90d compacted to: files[ 0 0 2 0 0 0 0 ]
+2025/11/28-02:28:11.692 1e90d Delete type=2 #356
+2025/11/28-02:28:11.692 1e90d Delete type=2 #357
+2025/11/28-02:28:11.692 1e90d Delete type=2 #359

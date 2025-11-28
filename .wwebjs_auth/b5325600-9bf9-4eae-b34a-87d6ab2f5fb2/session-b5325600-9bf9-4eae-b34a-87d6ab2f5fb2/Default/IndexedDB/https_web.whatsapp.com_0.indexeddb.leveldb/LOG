@@ -13,3 +13,4 @@
 2025/11/28-02:23:16.152 1eaf0 Delete type=2 #890
 2025/11/28-02:23:16.152 1eaf0 Delete type=2 #891
 2025/11/28-02:23:16.152 1eaf0 Delete type=2 #894
+2025/11/28-02:28:16.734 1eaf8 Manual compaction at level-0 from '\x00\xd4\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xd5\x00\x00\x00' @ 0 : 0; will stop at (end)
