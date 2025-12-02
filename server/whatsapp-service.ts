@@ -28,10 +28,14 @@ interface CompanyWhatsAppClient {
 /**
  * Multi-tenant WhatsApp Service
  * Each company has its own isolated WhatsApp client instance with separate auth data
+ * IMPORTANT: Only ONE active Puppeteer session at a time due to memory constraints
  */
 class WhatsAppService extends EventEmitter {
   // Map of companyId -> WhatsApp client instance
   private clients: Map<string, CompanyWhatsAppClient> = new Map();
+  
+  // Track the currently active company (only one allowed at a time)
+  private activeCompanyId: string | null = null;
   
   // Reconnection management
   private reconnectAttempts: Map<string, number> = new Map();
@@ -237,8 +241,8 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Auto-connect saved WhatsApp sessions on server startup
-   * Each company gets its own isolated connection
-   * Connections persist until explicitly disconnected
+   * DISABLED: Due to memory constraints, sessions are now on-demand only
+   * Connections happen when user navigates to WhatsApp page
    */
   async autoConnectSavedSessions(): Promise<void> {
     const savedCompanyIds = this.getSavedSessionCompanyIds();
@@ -248,101 +252,139 @@ class WhatsAppService extends EventEmitter {
       return;
     }
 
-    console.log(`[WhatsApp] Found ${savedCompanyIds.length} saved session(s), auto-connecting in background...`);
-    
-    // Connect sessions one at a time with delay to avoid memory spikes
-    for (let i = 0; i < savedCompanyIds.length; i++) {
-      const companyId = savedCompanyIds[i];
-      
-      // Add delay between connections to avoid memory spikes (except for first one)
-      if (i > 0) {
-        console.log(`[WhatsApp] Waiting 5 seconds before connecting next session...`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-      }
-      
-      try {
-        console.log(`[WhatsApp] Auto-connecting saved session for company: ${companyId} (${i + 1}/${savedCompanyIds.length})`);
-        await this.getClientForCompany(companyId);
-        
-        // Wait for client to be ready
-        const maxWaitTime = 60000; // 60 seconds max
-        const startTime = Date.now();
-        while (!this.isReady(companyId) && (Date.now() - startTime) < maxWaitTime) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-        if (this.isReady(companyId)) {
-          console.log(`[WhatsApp] ✓ Auto-connect successful for company: ${companyId}`);
-        } else {
-          console.log(`[WhatsApp] ⚠ Auto-connect timeout for company: ${companyId} (will retry on demand)`);
-        }
-      } catch (error) {
-        console.error(`[WhatsApp] Auto-connect failed for company ${companyId}:`, error);
-      }
-    }
-    
-    console.log('[WhatsApp] Auto-connect process completed');
+    // SINGLE-SESSION MODE: Don't auto-connect on startup to save memory
+    // Sessions will connect on-demand when user visits WhatsApp page
+    console.log(`[WhatsApp] Found ${savedCompanyIds.length} saved session(s) - will connect on-demand when user visits WhatsApp`);
+    console.log('[WhatsApp] Single-session mode active: Only one WhatsApp session can run at a time');
   }
 
   /**
    * Keep WhatsApp connections alive with periodic health checks
-   * Proactively reconnects if a saved session exists but connection dropped
+   * SINGLE-SESSION MODE: Only checks the currently active session
    */
   startConnectionHealthCheck(): void {
     const HEALTH_CHECK_INTERVAL = 60000; // Check every 60 seconds
     const reconnectAttempts = new Map<string, number>();
-    const MAX_AUTO_RECONNECT_ATTEMPTS = 3;
+    const MAX_AUTO_RECONNECT_ATTEMPTS = 2;
     
     setInterval(async () => {
-      for (const [companyId, companyClient] of this.clients) {
-        try {
-          // Use the correct property path for status
-          const isReady = companyClient.status?.isReady === true && companyClient.client !== null;
-          const hasQRActive = companyClient.status?.status === 'qr_received' && companyClient.status?.qrCode;
+      // SINGLE-SESSION MODE: Only check the active session
+      if (!this.activeCompanyId) {
+        console.log('[WhatsApp] Health check: No active session');
+        return;
+      }
+      
+      const companyClient = this.clients.get(this.activeCompanyId);
+      if (!companyClient) {
+        console.log(`[WhatsApp] Health check: Active company ${this.activeCompanyId} has no client`);
+        this.activeCompanyId = null;
+        return;
+      }
+      
+      try {
+        const companyId = this.activeCompanyId;
+        const isReady = companyClient.status?.isReady === true && companyClient.client !== null;
+        const hasQRActive = companyClient.status?.status === 'qr_received' && companyClient.status?.qrCode;
+        
+        if (isReady) {
+          console.log(`[WhatsApp] Health check: Active session ${companyId} is connected`);
+          reconnectAttempts.set(companyId, 0);
+        } else if (hasQRActive) {
+          console.log(`[WhatsApp] Health check: Active session ${companyId} has QR code, waiting for scan`);
+          reconnectAttempts.set(companyId, 0);
+        } else if (this.hasSavedSession(companyId)) {
+          const attempts = reconnectAttempts.get(companyId) || 0;
           
-          if (isReady) {
-            console.log(`[WhatsApp] Health check: Company ${companyId} is connected`);
-            reconnectAttempts.set(companyId, 0); // Reset attempts on success
-          } else if (hasQRActive) {
-            // CRITICAL: Do NOT reconnect if QR code is active - user is trying to scan
-            console.log(`[WhatsApp] Health check: Company ${companyId} has active QR code, skipping reconnect`);
-            reconnectAttempts.set(companyId, 0); // Reset attempts - QR is valid state
-          } else if (this.hasSavedSession(companyId)) {
-            // Proactively reconnect if we have a saved session and no active QR
-            const attempts = reconnectAttempts.get(companyId) || 0;
+          if (attempts < MAX_AUTO_RECONNECT_ATTEMPTS) {
+            console.log(`[WhatsApp] Health check: Active session ${companyId} not ready, reconnecting (${attempts + 1}/${MAX_AUTO_RECONNECT_ATTEMPTS})...`);
+            reconnectAttempts.set(companyId, attempts + 1);
             
-            if (attempts < MAX_AUTO_RECONNECT_ATTEMPTS) {
-              console.log(`[WhatsApp] Health check: Company ${companyId} not ready, auto-reconnecting (attempt ${attempts + 1}/${MAX_AUTO_RECONNECT_ATTEMPTS})...`);
-              reconnectAttempts.set(companyId, attempts + 1);
-              
-              try {
-                await this.restartClientForCompany(companyId);
-              } catch (error) {
-                console.error(`[WhatsApp] Health check reconnect failed for company ${companyId}:`, error);
-              }
-            } else {
-              console.log(`[WhatsApp] Health check: Company ${companyId} not ready, max attempts reached (will reconnect on user request)`);
+            try {
+              await this.restartClientForCompany(companyId);
+            } catch (error) {
+              console.error(`[WhatsApp] Health check reconnect failed:`, error);
             }
+          } else {
+            console.log(`[WhatsApp] Health check: Max attempts reached for ${companyId}, will reconnect on user request`);
           }
-        } catch (error) {
-          console.error(`[WhatsApp] Health check error for company ${companyId}:`, error);
         }
+      } catch (error) {
+        console.error(`[WhatsApp] Health check error:`, error);
       }
     }, HEALTH_CHECK_INTERVAL);
     
-    console.log('[WhatsApp] Connection health check started (every 60s, proactive mode)');
+    console.log('[WhatsApp] Connection health check started (every 60s, single-session mode)');
+  }
+
+  /**
+   * Shut down all active clients to free memory
+   */
+  async shutdownAllClients(): Promise<void> {
+    for (const [companyId, companyClient] of this.clients) {
+      try {
+        console.log(`[WhatsApp] Shutting down client for company: ${companyId}`);
+        await companyClient.client.destroy();
+      } catch (error) {
+        console.error(`[WhatsApp] Error shutting down client for ${companyId}:`, error);
+      }
+    }
+    this.clients.clear();
+    this.activeCompanyId = null;
+  }
+
+  /**
+   * Shut down a specific company's client
+   */
+  async shutdownClientForCompany(companyId: string): Promise<void> {
+    const client = this.clients.get(companyId);
+    if (client) {
+      try {
+        console.log(`[WhatsApp] Shutting down client for company: ${companyId}`);
+        await client.client.destroy();
+        this.clients.delete(companyId);
+        if (this.activeCompanyId === companyId) {
+          this.activeCompanyId = null;
+        }
+      } catch (error) {
+        console.error(`[WhatsApp] Error shutting down client for ${companyId}:`, error);
+        this.clients.delete(companyId);
+      }
+    }
   }
 
   /**
    * Get or create WhatsApp client for a specific company
+   * IMPORTANT: Only ONE session can be active at a time due to memory constraints
+   * If another company has an active session, it will be shut down first
    */
   async getClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
-    // Return existing client if already initialized
-    if (this.clients.has(companyId)) {
+    // Return existing client if already initialized for this company
+    if (this.clients.has(companyId) && this.activeCompanyId === companyId) {
       return this.clients.get(companyId)!;
     }
 
+    // SINGLE SESSION ENFORCEMENT: Shut down any other active session first
+    if (this.activeCompanyId && this.activeCompanyId !== companyId) {
+      console.log(`[WhatsApp] ⚠️ Single-session mode: Shutting down session for ${this.activeCompanyId} to start ${companyId}`);
+      await this.shutdownClientForCompany(this.activeCompanyId);
+      // Wait for cleanup
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // If we have an existing client for this company but it wasn't active, clean it up
+    if (this.clients.has(companyId)) {
+      const existingClient = this.clients.get(companyId)!;
+      if (!existingClient.status.isReady) {
+        await this.shutdownClientForCompany(companyId);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        this.activeCompanyId = companyId;
+        return existingClient;
+      }
+    }
+
     // Create new client for this company
+    this.activeCompanyId = companyId;
     return await this.createClientForCompany(companyId);
   }
 
@@ -386,11 +428,21 @@ class WhatsAppService extends EventEmitter {
     // Create company-specific auth directory
     const authPath = path.join('.wwebjs_auth', companyId);
 
-    // Puppeteer configuration per official whatsapp-web.js docs
-    // Only use documented flags for stability
+    // Puppeteer configuration optimized for low memory environments
+    // Single-session mode: Only one Chrome instance runs at a time
     const chromiumFlags = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',      // Prevents /dev/shm from filling up
+      '--disable-gpu',                 // Reduce GPU memory usage
+      '--disable-software-rasterizer', // Reduce memory
+      '--disable-extensions',          // No extensions needed
+      '--disable-background-networking',
+      '--disable-sync',
+      '--disable-translate',
+      '--no-first-run',
+      '--single-process',              // Run in single process for lower memory
+      '--js-flags=--max-old-space-size=128', // Limit V8 heap
     ];
 
     // Create client with company-specific LocalAuth strategy
@@ -544,11 +596,19 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Handle Puppeteer crash - trigger automatic recovery
+   * SINGLE-SESSION MODE: Only recover if this is still the active company
    */
   private async handlePuppeteerCrash(companyId: string, reason: string): Promise<void> {
     // Prevent multiple simultaneous recovery attempts
     if (this.recoveringClients.has(companyId)) {
       console.log(`[WhatsApp] Already recovering company ${companyId}, skipping duplicate`);
+      return;
+    }
+    
+    // SINGLE-SESSION MODE: Only recover if this is the active session
+    if (this.activeCompanyId !== companyId) {
+      console.log(`[WhatsApp] Company ${companyId} is not active session, skipping recovery`);
+      this.clients.delete(companyId);
       return;
     }
     
@@ -568,13 +628,18 @@ class WhatsAppService extends EventEmitter {
       // Wait a bit before restarting
       await new Promise(resolve => setTimeout(resolve, 3000));
       
+      // Double-check we're still the active session before restarting
+      if (this.activeCompanyId !== companyId) {
+        console.log(`[WhatsApp] Company ${companyId} no longer active, aborting recovery`);
+        return;
+      }
+      
       // Restart the client
       await this.restartClientForCompany(companyId);
       console.log(`[WhatsApp] ✅ Auto-recovery successful for company ${companyId}`);
     } catch (error: any) {
       console.error(`[WhatsApp] ❌ Auto-recovery failed for company ${companyId}:`, error.message);
-      // Schedule reconnect with backoff
-      this.scheduleReconnect(companyId);
+      // Don't schedule reconnect - user will trigger it manually when they visit WhatsApp
     } finally {
       this.recoveringClients.delete(companyId);
     }
