@@ -476,8 +476,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex flex-col h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        {/* Floating Header - SugarCRM Style - offset for sidebar (w-16 = 64px + gap) */}
-        <div className="pl-20 pr-4 pt-4">
+        {/* Full-Width Header - SugarCRM Style */}
+        <div className="px-4 pt-4">
           <header className="h-14 bg-white/40 dark:bg-gray-900/30 backdrop-blur-2xl rounded-2xl flex items-center px-6">
             {/* Left: Company Logo - Always links to dashboard */}
             <div className="flex items-center shrink-0 mr-8 h-10">
@@ -648,13 +648,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </header>
         </div>
         
-        {/* Main content area with sidebar */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Utility Sidebar */}
-          <AppSidebar />
+        {/* Main content area with sidebar - starts BELOW header */}
+        <div className="flex flex-1 overflow-hidden mt-2">
+          {/* Utility Sidebar - Left column below header */}
+          <div className="w-16 shrink-0 pl-4">
+            <AppSidebar />
+          </div>
           
           {/* Content Area */}
-          <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex flex-col flex-1 min-w-0 pr-4">
             {/* Page Title Bar - SugarCRM Style - Floating */}
             <div className="h-14 bg-transparent flex items-center px-4 sm:px-6">
               <Button 
