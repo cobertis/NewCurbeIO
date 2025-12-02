@@ -5446,6 +5446,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== STATS ENDPOINTS ====================
 
+  app.get("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      
+      let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
+      
+      if (currentUser.role === "superadmin") {
+        users = await storage.getAllUsers();
+      } else if (currentUser.companyId) {
+        users = await storage.getUsersByCompany(currentUser.companyId);
+      } else {
+        users = [];
+      }
+
+      res.json({ users });
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+
+
+
   app.get("/api/stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
 
