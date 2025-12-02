@@ -433,16 +433,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Header - Spans both columns (full width) */}
         <div className="col-span-2 p-4 pb-2">
           <header className="h-14 bg-transparent flex items-center px-6">
-            {/* Left: Company Logo - Always links to dashboard */}
+            {/* Left: Company Logo - Always links to dashboard (SPA navigation) */}
             <div className="flex items-center shrink-0 mr-8 h-10">
               {displayLogo && (
-                <a href="/dashboard" data-testid="logo-link">
+                <Link href="/dashboard" data-testid="logo-link">
                   <img 
                     src={displayLogo} 
                     alt="Logo" 
                     className="h-9 max-w-[140px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
                   />
-                </a>
+                </Link>
               )}
             </div>
 

@@ -2423,6 +2423,7 @@ export default function IMessagePage() {
 
 // Contact Info Component
 function ContactInfoContent({ phone, displayName }: { phone?: string; displayName?: string }) {
+  const [, setLocation] = useLocation();
   const { data: contact, isLoading } = useQuery({
     queryKey: ['/api/contacts/search-by-phone', phone],
     enabled: !!phone && isValidPhoneNumber(phone),
@@ -2505,7 +2506,7 @@ function ContactInfoContent({ phone, displayName }: { phone?: string; displayNam
         <Button 
           className="w-full" 
           variant="outline"
-          onClick={() => window.location.href = `/contacts?id=${contactData.id}`}
+          onClick={() => setLocation(`/contacts?id=${contactData.id}`)}
           data-testid="button-view-full-contact"
         >
           <UserIcon className="h-4 w-4 mr-2" />

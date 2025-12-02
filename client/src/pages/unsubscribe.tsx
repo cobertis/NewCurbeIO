@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from "react";
 import { z } from "zod";
-import { useSearch } from "wouter";
+import { useSearch, Link, useLocation } from "wouter";
 
 const unsubscribeSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -20,6 +20,7 @@ const unsubscribeSchema = z.object({
 type UnsubscribeForm = z.infer<typeof unsubscribeSchema>;
 
 export default function Unsubscribe() {
+  const [, setLocation] = useLocation();
   const searchParams = new URLSearchParams(useSearch());
   const emailFromUrl = searchParams.get("email");
   const tokenFromUrl = searchParams.get("token");
@@ -81,7 +82,7 @@ export default function Unsubscribe() {
             </p>
             <Button
               variant="outline"
-              onClick={() => window.location.href = "/"}
+              onClick={() => setLocation("/")}
               className="w-full"
               data-testid="button-return-home"
             >
@@ -182,9 +183,9 @@ export default function Unsubscribe() {
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>
               Changed your mind?{" "}
-              <a href="/" className="text-primary hover:underline">
+              <Link href="/" className="text-primary hover:underline">
                 Return to home
-              </a>
+              </Link>
             </p>
           </div>
         </CardContent>
