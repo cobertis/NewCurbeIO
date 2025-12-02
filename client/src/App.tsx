@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -135,8 +135,8 @@ const getPageTitle = (path: string): string => {
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const style = {
-    "--sidebar-width": "13rem",
-    "--sidebar-width-icon": "3rem",
+    "--sidebar-width": "4rem",
+    "--sidebar-width-icon": "4rem",
   };
 
   const [location, setLocation] = useLocation();
@@ -457,22 +457,36 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="flex h-screen w-full bg-gray-50 dark:bg-gray-900">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="h-14 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-6 sticky top-0 z-10 shadow-sm">
-            {/* Left: Horizontal Navigation Links */}
-            <nav className="flex items-center gap-1">
+          {/* SugarCRM-style Header */}
+          <header className="h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl flex items-center px-4 sm:px-6 sticky top-0 z-10 shadow-sm">
+            {/* Left: Company Logo */}
+            <div className="flex items-center shrink-0">
+              {companyData?.company?.logo ? (
+                <img 
+                  src={companyData.company.logo} 
+                  alt="Company Logo" 
+                  className="h-8 max-w-[120px] object-contain"
+                />
+              ) : (
+                <span className="text-xl font-bold text-gray-900 dark:text-white">curbe</span>
+              )}
+            </div>
+
+            {/* Center: Navigation Pills */}
+            <nav className="flex-1 flex items-center justify-center gap-1">
               {navigationItems.map((item) => (
                 <Link key={item.url} href={item.url}>
                   <Button 
                     variant="ghost" 
                     size="sm"
                     className={cn(
-                      "text-sm font-medium transition-colors rounded-lg px-3 py-1.5",
+                      "text-sm font-medium transition-all duration-200 px-4 py-1.5",
                       location === item.url 
-                        ? "bg-primary/10 text-primary" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+                        ? "bg-gray-900 text-white rounded-full hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100" 
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
                     )}
                     data-testid={`nav-${item.title.toLowerCase()}`}
                   >
@@ -480,45 +494,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </Link>
               ))}
-              
-              {/* Create Button with Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5 ml-2 text-primary" data-testid="button-create">
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Create</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-0 shadow-xl rounded-xl">
-                  <DropdownMenuItem 
-                    onClick={() => setLocation("/quotes/new")} 
-                    data-testid="menu-item-new-quote"
-                    className="py-3 px-4 cursor-pointer rounded-lg"
-                  >
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
-                      <UserPlus className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">New Quote</div>
-                      <div className="text-xs text-muted-foreground">Add a new client or lead</div>
-                    </div>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem 
-                    onClick={() => setLocation("/policies/new")} 
-                    data-testid="menu-item-new-policy"
-                    className="py-3 px-4 cursor-pointer rounded-lg"
-                  >
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
-                      <Shield className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">New Policy</div>
-                      <div className="text-xs text-muted-foreground">Add a new insurance policy</div>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </nav>
 
             {/* Right: Action Icons + User Profile */}
@@ -686,7 +661,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenu>
             </div>
           </header>
-          <main className="flex-1 overflow-auto">
+          
+          {/* Page Title Bar - SugarCRM Style */}
+          <div className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4 sm:px-6">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => window.history.back()}
+              className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              data-testid="button-back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white" data-testid="page-title">
+              {pageTitle}
+            </h1>
+          </div>
+
+          <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
             {children}
           </main>
         </div>
