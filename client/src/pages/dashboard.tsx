@@ -1,16 +1,15 @@
-import { ChevronLeft, Plus, Upload, Calendar, Check, Archive, MessageSquare, MoreHorizontal, Star, Users } from "lucide-react";
+import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, BarChart3, PieChart, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useCallback, useState } from "react";
-import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer } from "recharts";
+import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import { scaleLinear } from "d3-scale";
+import { geoCentroid } from "d3-geo";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 interface DashboardStats {
   totalUsers: number;
@@ -35,114 +34,38 @@ interface PoliciesAnalytics {
   byProductType?: Array<{ type: string; count: number; percentage: string }>;
 }
 
+interface MonthlyData {
+  month: string;
+  policies: number;
+  customers: number;
+}
+
 interface AgentLeaderboard {
   agents: Array<{ name: string; avatar: string | null; policies: number; applicants: number }>;
 }
 
-interface WorkflowData {
-  policyAssignment: Array<{ id: string; title: string; agent?: { name: string; avatar: string | null }; status: 'pending' | 'done' }>;
-  statusReview: Array<{ id: string; title: string; status: 'pending' | 'done' | 'in_progress' }>;
-  processing: Array<{ id: string; title: string; status: 'pending' | 'done' | 'in_progress'; hasEstimate?: boolean }>;
-  pendingActions: Array<{ id: string; title: string; category: string }>;
-}
+const CHART_COLORS = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#6366f1"];
 
-interface RecentPolicy {
-  id: string;
-  policyNumber: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  agentName: string;
-}
-
-const STATUS_COLORS: Record<string, { bg: string; text: string; ring: string }> = {
-  'Active': { bg: 'bg-emerald-100', text: 'text-emerald-700', ring: 'ring-emerald-500/20' },
-  'Pending': { bg: 'bg-amber-100', text: 'text-amber-700', ring: 'ring-amber-500/20' },
-  'Cancelled': { bg: 'bg-red-100', text: 'text-red-700', ring: 'ring-red-500/20' },
-  'Executed': { bg: 'bg-blue-100', text: 'text-blue-700', ring: 'ring-blue-500/20' },
-  'Scheduled': { bg: 'bg-purple-100', text: 'text-purple-700', ring: 'ring-purple-500/20' },
-  'Terminated': { bg: 'bg-gray-100', text: 'text-gray-700', ring: 'ring-gray-500/20' },
-  'Expired': { bg: 'bg-slate-100', text: 'text-slate-700', ring: 'ring-slate-500/20' },
-  'In Review': { bg: 'bg-indigo-100', text: 'text-indigo-700', ring: 'ring-indigo-500/20' },
-  'Approved': { bg: 'bg-teal-100', text: 'text-teal-700', ring: 'ring-teal-500/20' },
-  'Rejected': { bg: 'bg-rose-100', text: 'text-rose-700', ring: 'ring-rose-500/20' },
+// US State abbreviations to full names mapping
+const STATE_ABBR_TO_NAME: Record<string, string> = {
+  "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
+  "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia",
+  "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa",
+  "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+  "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri",
+  "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey",
+  "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio",
+  "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+  "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
+  "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+  "DC": "District of Columbia", "PR": "Puerto Rico"
 };
-
-const getStatusColor = (status: string) => {
-  return STATUS_COLORS[status] || { bg: 'bg-gray-100', text: 'text-gray-700', ring: 'ring-gray-500/20' };
-};
-
-function WorkflowCard({ 
-  children, 
-  hasCheck, 
-  hasArchive, 
-  hasChat,
-  hasMore,
-  className 
-}: { 
-  children: React.ReactNode; 
-  hasCheck?: boolean;
-  hasArchive?: boolean;
-  hasChat?: boolean;
-  hasMore?: boolean;
-  className?: string;
-}) {
-  return (
-    <div className={cn(
-      "bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center gap-3 hover:shadow-md transition-shadow",
-      className
-    )}>
-      {children}
-      <div className="flex items-center gap-1.5 ml-auto">
-        {hasCheck && (
-          <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
-            <Check className="w-3 h-3 text-gray-500" />
-          </div>
-        )}
-        {hasArchive && (
-          <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
-            <Archive className="w-3 h-3 text-gray-500" />
-          </div>
-        )}
-        {hasChat && (
-          <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
-            <MessageSquare className="w-3 h-3 text-gray-500" />
-          </div>
-        )}
-        {hasMore && (
-          <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
-            <MoreHorizontal className="w-3 h-3 text-gray-500" />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TaskGridCard({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer">
-      <p className="text-xs font-medium text-gray-900 leading-tight">{title}</p>
-      {subtitle && <p className="text-[10px] text-gray-500 mt-0.5">{subtitle}</p>}
-    </div>
-  );
-}
-
-function ConnectingLine({ from, to }: { from: string; to: string }) {
-  return (
-    <svg className="absolute pointer-events-none" style={{ width: '100%', height: '100%', left: 0, top: 0, zIndex: 0 }}>
-      <defs>
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#d1d5db" />
-        </marker>
-      </defs>
-    </svg>
-  );
-}
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [hoveredState, setHoveredState] = useState<{ name: string; count: number; percentage: number } | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   const handleWebSocketMessage = useCallback((message: any) => {
     if (message.type === 'notification_update' || message.type === 'dashboard_update' || message.type === 'data_invalidation') {
@@ -162,327 +85,740 @@ export default function Dashboard() {
     refetchInterval: 5 * 60 * 1000,
   });
 
+  const { data: monthlyData, isLoading: isLoadingMonthly } = useQuery<{ data: MonthlyData[] }>({
+    queryKey: ["/api/dashboard-monthly"],
+    refetchInterval: 5 * 60 * 1000,
+  });
+
   const { data: agentsData, isLoading: isLoadingAgents } = useQuery<AgentLeaderboard>({
     queryKey: ["/api/dashboard-agents"],
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const { data: recentPoliciesData, isLoading: isLoadingRecent } = useQuery<{ policies: RecentPolicy[] }>({
-    queryKey: ["/api/dashboard-recent-policies"],
+  const { data: carriersData, isLoading: isLoadingCarriers } = useQuery<{ carriers: { carrier: string; policies: number; applicants: number }[] }>({
+    queryKey: ["/api/dashboard-carriers"],
     refetchInterval: 5 * 60 * 1000,
   });
 
-  const isLoading = isLoadingStats || isLoadingAnalytics || isLoadingAgents || isLoadingRecent;
+  const isLoading = isLoadingStats || isLoadingAnalytics || isLoadingMonthly || isLoadingAgents || isLoadingCarriers;
 
-  const agents = agentsData?.agents || [];
-  const topAgents = agents.slice(0, 8);
+  const pendingTasks = statsData?.pendingTasks || 0;
+  const birthdaysThisWeek = statsData?.birthdaysThisWeek || 0;
+  const failedLoginAttempts = statsData?.failedLoginAttempts || 0;
+  const newLeads = statsData?.newLeads || 0;
 
-  const statusData = analyticsData?.byStatus || [];
-  const activeCount = statusData.find(s => s.status === 'Active')?.count || 0;
-  const pendingCount = statusData.find(s => s.status === 'Pending')?.count || 0;
-  const cancelledCount = statusData.find(s => s.status === 'Cancelled')?.count || 0;
-  const terminatedCount = statusData.reduce((sum, s) => 
-    (s.status === 'Terminated' || s.status === 'Expired') ? sum + s.count : sum, 0
-  );
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-  const recentPolicies = recentPoliciesData?.policies || [];
+  const quickStats = [
+    {
+      count: pendingTasks,
+      title: "Today's reminders",
+      subtitle: format(today, 'EEEE, MMMM dd, yyyy'),
+      icon: Bell,
+      iconBg: "bg-purple-100 dark:bg-purple-900",
+      iconColor: "text-purple-600 dark:text-purple-400",
+      link: "/tasks",
+    },
+    {
+      count: birthdaysThisWeek,
+      title: "Birthdays this week",
+      subtitle: `${format(startOfWeek, 'MMM dd')} - ${format(endOfWeek, 'MMM dd')}`,
+      icon: Cake,
+      iconBg: "bg-blue-100 dark:bg-blue-900",
+      iconColor: "text-blue-600 dark:text-blue-400",
+      link: "/calendar?initialView=listWeek",
+    },
+    {
+      count: failedLoginAttempts,
+      title: "Failed login",
+      subtitle: "Last 14 days",
+      icon: AlertTriangle,
+      iconBg: "bg-orange-100 dark:bg-orange-900",
+      iconColor: "text-orange-600 dark:text-orange-400",
+      link: "/settings/sessions",
+    },
+    {
+      count: newLeads,
+      title: "New leads",
+      subtitle: "Click here for more",
+      icon: UserPlus,
+      iconBg: "bg-cyan-100 dark:bg-cyan-900",
+      iconColor: "text-cyan-600 dark:text-cyan-400",
+      link: "/leads",
+    },
+  ];
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading dashboard data..." />;
+    return <LoadingSpinner text="Loading dashboard data..." />;
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]" data-testid="dashboard-container">
-      <div className="max-w-[1600px] mx-auto p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full bg-white shadow-sm hover:bg-gray-50"
-            onClick={() => setLocation('/')}
-            data-testid="button-back"
+    <div className="flex flex-col gap-6 p-6 min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {quickStats.map((stat, index) => (
+          <Card 
+            key={index} 
+            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1"
+            onClick={() => setLocation(stat.link)}
+            data-testid={`card-quick-stat-${index}`}
           >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-semibold text-gray-900" data-testid="text-page-title">
-            Policy Journeys
-          </h1>
-        </div>
-
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl overflow-hidden">
-          <CardHeader className="border-b border-gray-100 pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-gray-900">
-                Policy Management
-              </CardTitle>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center -space-x-2">
-                  {topAgents.map((agent, idx) => (
-                    <div key={idx} className="relative" data-testid={`avatar-agent-${idx}`}>
-                      <Avatar className="w-10 h-10 border-2 border-white shadow-sm">
-                        {agent.avatar ? (
-                          <AvatarImage src={agent.avatar} alt={agent.name} />
-                        ) : null}
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-medium">
-                          {agent.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      {idx < 3 && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5 text-white" />
-                        </div>
-                      )}
-                      {idx >= 3 && idx < 6 && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 border-2 border-white flex items-center justify-center">
-                          <span className="text-[8px] text-white font-bold">{idx - 2}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {agents.length > 8 && (
-                    <div className="w-10 h-10 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center shadow-sm">
-                      <span className="text-xs font-medium text-gray-600">+{agents.length - 8}</span>
-                    </div>
-                  )}
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className={`w-11 h-11 rounded-lg ${stat.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.count}</h3>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">{stat.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.subtitle}</p>
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100" data-testid="button-add">
-                    <Plus className="h-4 w-4 text-gray-600" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100" data-testid="button-upload">
-                    <Upload className="h-4 w-4 text-gray-600" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100" data-testid="button-calendar">
-                    <Calendar className="h-4 w-4 text-gray-600" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-6">
-            <div className="grid grid-cols-4 gap-4 relative">
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" style={{ overflow: 'visible' }}>
-                <defs>
-                  <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                    <polygon points="0 0, 8 3, 0 6" fill="#d1d5db" />
-                  </marker>
-                </defs>
-                <path d="M 190 80 Q 220 80 235 80" stroke="#d1d5db" strokeWidth="2" fill="none" markerEnd="url(#arrow)" />
-                <path d="M 420 80 Q 450 80 465 80" stroke="#d1d5db" strokeWidth="2" fill="none" markerEnd="url(#arrow)" />
-                <path d="M 650 80 Q 680 80 695 80" stroke="#d1d5db" strokeWidth="2" fill="none" markerEnd="url(#arrow)" />
-              </svg>
-
-              <div className="space-y-3 relative z-10" data-testid="column-new-policies">
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200 text-center">
-                  <div className="text-3xl font-bold text-blue-700">{pendingCount}</div>
-                  <div className="text-xs text-blue-600 font-medium mt-1">New Policies</div>
-                </div>
-                <WorkflowCard hasCheck hasArchive>
-                  <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-500 text-white text-xs">
-                      {topAgents[0]?.name?.charAt(0) || 'A'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs font-medium text-gray-700 flex-1">Assign to Agent</span>
-                </WorkflowCard>
-                <WorkflowCard hasCheck>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-medium text-gray-700 flex-1">Welcome Email</span>
-                </WorkflowCard>
-                <p className="text-xs font-medium text-gray-500 text-center pt-2">New Submissions</p>
-              </div>
-
-              <div className="space-y-3 relative z-10" data-testid="column-review">
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200 text-center">
-                  <div className="text-3xl font-bold text-amber-700">{Math.round(pendingCount * 0.6)}</div>
-                  <div className="text-xs text-amber-600 font-medium mt-1">Under Review</div>
-                </div>
-                <WorkflowCard hasCheck hasArchive>
-                  <div className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span className="text-xs font-medium text-gray-700 flex-1">Verify Coverage</span>
-                </WorkflowCard>
-                <WorkflowCard hasArchive hasMore>
-                  <div className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span className="text-xs font-medium text-gray-700 flex-1">Check Documents</span>
-                </WorkflowCard>
-                <p className="text-xs font-medium text-gray-500 text-center pt-2">Verification</p>
-              </div>
-
-              <div className="space-y-3 relative z-10" data-testid="column-active">
-                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200 text-center">
-                  <div className="text-3xl font-bold text-emerald-700">{activeCount}</div>
-                  <div className="text-xs text-emerald-600 font-medium mt-1">Active Policies</div>
-                </div>
-                <WorkflowCard hasCheck>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-medium text-gray-700 flex-1">Coverage Active</span>
-                </WorkflowCard>
-                <WorkflowCard hasCheck hasChat>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-medium text-gray-700 flex-1">Notify Customer</span>
-                </WorkflowCard>
-                <p className="text-xs font-medium text-gray-500 text-center pt-2">Active Coverage</p>
-              </div>
-
-              <div className="space-y-3 relative z-10" data-testid="column-actions">
-                <div className="grid grid-cols-2 gap-2">
-                  <TaskGridCard title="Renewals" subtitle={`${Math.round(activeCount * 0.15)} due`} />
-                  <TaskGridCard title="Claims" subtitle="Process" />
-                  <TaskGridCard title="Updates" subtitle="Documents" />
-                  <TaskGridCard title="Support" subtitle="Requests" />
-                </div>
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-3 border border-gray-200 text-center">
-                  <div className="text-xl font-bold text-gray-700">{terminatedCount + cancelledCount}</div>
-                  <div className="text-xs text-gray-600 font-medium">Closed</div>
-                </div>
-                <p className="text-xs font-medium text-gray-500 text-center pt-1">Actions & Closed</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold text-gray-900">
-                  Recent Policies
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100 h-8 w-8">
-                    <Plus className="h-4 w-4 text-gray-600" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100 h-8 w-8">
-                    <Upload className="h-4 w-4 text-gray-600" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100 h-8 w-8">
-                    <Calendar className="h-4 w-4 text-gray-600" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full" data-testid="table-recent-policies">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Policy</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Agent</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentPolicies.length > 0 ? (
-                      recentPolicies.map((policy, idx) => {
-                        const statusStyle = getStatusColor(policy.status);
-                        return (
-                          <tr 
-                            key={policy.id} 
-                            className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer transition-colors"
-                            onClick={() => setLocation(`/policies?id=${policy.id}`)}
-                            data-testid={`row-policy-${idx}`}
-                          >
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-2">
-                                <Star className="w-4 h-4 text-gray-300 hover:text-amber-400 cursor-pointer" />
-                                <span className="text-sm font-medium text-gray-900">{policy.policyNumber}</span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-3">
-                              <Badge className={cn("text-xs font-medium", statusStyle.bg, statusStyle.text, "border-0")}>
-                                {policy.status}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-3 text-sm text-gray-600">{policy.startDate}</td>
-                            <td className="py-3 px-3 text-sm text-gray-600">{policy.endDate}</td>
-                            <td className="py-3 px-3 text-sm text-gray-600">{policy.agentName}</td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-sm text-gray-400">
-                          No recent policies found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-1" />
               </div>
             </CardContent>
           </Card>
+        ))}
+      </div>
 
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold text-gray-900">
-                  Policy Status Journey
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100 h-8 w-8">
-                    <Plus className="h-4 w-4 text-gray-600" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100 h-8 w-8">
-                    <Upload className="h-4 w-4 text-gray-600" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="rounded-lg hover:bg-gray-100 h-8 w-8">
-                    <Calendar className="h-4 w-4 text-gray-600" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center gap-6 flex-wrap" data-testid="charts-policy-status">
-                {(() => {
-                  const totalPolicies = analyticsData?.totalPolicies || 1;
+      {/* Monthly Chart & US Map */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Chart */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Monthly Performance Overview
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Total Policies and Total Customers (applicants only) by policy start date</p>
+          </CardHeader>
+          <CardContent>
+            {monthlyData?.data && monthlyData.data.length > 0 ? (
+              <div className="space-y-6">
+                {/* Animated Summary Cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Policies</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.policies, 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">
+                        {Math.round((monthlyData.data.reduce((sum, item) => sum + item.policies, 0) / 12) * 10) / 10} avg/month
+                      </div>
+                    </div>
+                  </div>
                   
-                  const donutItems = [
-                    { label: 'Closed', count: terminatedCount, color: '#ef4444', bgColor: '#fee2e2' },
-                    { label: 'Active', count: activeCount, color: '#06b6d4', bgColor: '#cffafe' },
-                    { label: 'Pending', count: pendingCount, color: '#f59e0b', bgColor: '#fef3c7' },
-                    { label: 'Cancelled', count: cancelledCount, color: '#6b7280', bgColor: '#f3f4f6' },
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Customers</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.customers, 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">
+                        {Math.round((monthlyData.data.reduce((sum, item) => sum + item.customers, 0) / 12) * 10) / 10} avg/month
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Avg per Policy</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.policies, 0) > 0 
+                          ? (monthlyData.data.reduce((sum, item) => sum + item.customers, 0) / monthlyData.data.reduce((sum, item) => sum + item.policies, 0)).toFixed(1)
+                          : 0}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">Customers per Policy</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hybrid Area + Line Chart */}
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart 
+                    data={monthlyData.data} 
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorPolicies" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorApplicants" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                      </linearGradient>
+                      <filter id="shadow">
+                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+                      </filter>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis 
+                      dataKey="month" 
+                      stroke="#9ca3af"
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#e5e7eb' }}
+                    />
+                    <YAxis 
+                      stroke="#9ca3af"
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+                              <p className="font-bold text-gray-900 dark:text-white mb-2">{label}</p>
+                              {payload.map((entry, index) => (
+                                <div key={index} className="flex items-center justify-between gap-4 py-1">
+                                  <div className="flex items-center gap-2">
+                                    <div 
+                                      className="w-3 h-3 rounded-full" 
+                                      style={{ backgroundColor: entry.color }}
+                                    />
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">{entry.name}</span>
+                                  </div>
+                                  <span className="text-sm font-bold text-gray-900 dark:text-white">{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: 20 }}
+                      iconType="circle"
+                      formatter={(value) => <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{value}</span>}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="policies" 
+                      stroke="#3b82f6" 
+                      strokeWidth={3}
+                      dot={{ fill: '#3b82f6', r: 6, strokeWidth: 2, stroke: '#fff', filter: 'url(#shadow)' }}
+                      activeDot={{ r: 8, strokeWidth: 3 }}
+                      name="Total Policies"
+                      fill="url(#colorPolicies)"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="customers" 
+                      stroke="#06b6d4" 
+                      strokeWidth={3}
+                      strokeDasharray="5 5"
+                      dot={{ fill: '#06b6d4', r: 6, strokeWidth: 2, stroke: '#fff', filter: 'url(#shadow)' }}
+                      activeDot={{ r: 8, strokeWidth: 3 }}
+                      name="Total Customers"
+                      fill="url(#colorApplicants)"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-80 flex items-center justify-center text-gray-400">Loading...</div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* US Map - Interactive Heat Map */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
+          <CardHeader className="border-b border-gray-200 dark:border-gray-700 pb-3">
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Interactive US Heat Map - Customer Distribution
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Hover over states to see detailed statistics</p>
+          </CardHeader>
+          <CardContent className="p-0 -mt-4">
+            {(() => {
+              const statesData = analyticsData?.byState || [];
+              const maxCount = Math.max(...statesData.map(s => s.count), 1);
+              const totalCustomers = statesData.reduce((sum, s) => sum + s.count, 0);
+              
+              // Professional color scale: Light blue → Medium blue → Dark blue
+              const colorScale = scaleLinear<string>()
+                .domain([0, maxCount * 0.5, maxCount])
+                .range(["#dbeafe", "#60a5fa", "#1e40af"]);
+              
+              // Convert state abbreviations to full names for matching with map geography
+              const stateCountMap = new Map(
+                statesData.map(s => {
+                  const fullName = STATE_ABBR_TO_NAME[s.state.toUpperCase()] || s.state;
+                  return [fullName.toUpperCase(), s.count];
+                })
+              );
+
+              const sortedStates = [...statesData].sort((a, b) => b.count - a.count).slice(0, 5);
+
+              return (
+                <div 
+                  className="relative"
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                  }}
+                >
+                    <ComposableMap
+                      projection="geoAlbersUsa"
+                      projectionConfig={{ scale: 1200 }}
+                      className="w-full h-[580px]"
+                    >
+                      <defs>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                          <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
+                        {({ geographies }) => (
+                          <>
+                            {geographies.map((geo) => {
+                              const stateName = geo.properties.name.toUpperCase();
+                              const count = stateCountMap.get(stateName) || 0;
+                              const displayName = geo.properties.name;
+                              const percentage = totalCustomers > 0 ? (count / totalCustomers * 100).toFixed(1) : 0;
+                              const isTopState = sortedStates.some(s => s.state.toUpperCase() === stateName);
+                              
+                              return (
+                                <Geography
+                                  key={geo.rsmKey}
+                                  geography={geo}
+                                  fill={count > 0 ? colorScale(count) : "#f3f4f6"}
+                                  stroke="#ffffff"
+                                  strokeWidth={count > 0 ? 1.5 : 0.8}
+                                  onMouseEnter={() => {
+                                    if (count > 0) {
+                                      setHoveredState({ name: displayName, count, percentage: Number(percentage) });
+                                    }
+                                  }}
+                                  onMouseLeave={() => setHoveredState(null)}
+                                  onClick={() => {
+                                    if (count > 0) {
+                                      console.log(`Clicked on ${displayName} with ${count} customers`);
+                                    }
+                                  }}
+                                  style={{
+                                    default: { 
+                                      outline: "none",
+                                      transition: "all 0.2s ease",
+                                      cursor: count > 0 ? "pointer" : "default"
+                                    },
+                                    hover: count > 0 ? { 
+                                      fill: "#4f46e5",
+                                      stroke: "#6366f1",
+                                      strokeWidth: 2,
+                                      outline: "none",
+                                      cursor: "pointer",
+                                      opacity: 0.9
+                                    } : {
+                                      outline: "none"
+                                    },
+                                    pressed: { 
+                                      outline: "none"
+                                    }
+                                  }}
+                                />
+                              );
+                            })}
+                            {geographies.map((geo) => {
+                              const stateName = geo.properties.name.toUpperCase();
+                              const count = stateCountMap.get(stateName) || 0;
+                              
+                              if (count === 0) return null;
+                              
+                              const centroid = geoCentroid(geo);
+                              
+                              return (
+                                <Marker key={`label-${geo.rsmKey}`} coordinates={centroid}>
+                                  <g>
+                                    <circle
+                                      r={count > maxCount * 0.7 ? 16 : count > maxCount * 0.4 ? 14 : 12}
+                                      fill="rgba(0, 0, 0, 0.6)"
+                                      stroke="#ffffff"
+                                      strokeWidth={2}
+                                      style={{ pointerEvents: "none" }}
+                                    />
+                                    <text
+                                      textAnchor="middle"
+                                      dy={4}
+                                      fontSize={count > maxCount * 0.7 ? "13" : "11"}
+                                      fontWeight="700"
+                                      fill="#ffffff"
+                                      style={{ pointerEvents: "none" }}
+                                    >
+                                      {count}
+                                    </text>
+                                  </g>
+                                </Marker>
+                              );
+                            })}
+                          </>
+                        )}
+                      </Geographies>
+                    </ComposableMap>
+
+                    {/* Custom Tooltip */}
+                    {hoveredState && (
+                      <div 
+                        className="absolute pointer-events-none z-50"
+                        style={{
+                          left: mousePosition.x + 15,
+                          top: mousePosition.y - 60,
+                        }}
+                      >
+                        <div className="bg-gray-900 dark:bg-gray-800 text-white px-4 py-3 rounded-lg shadow-2xl border border-gray-700 min-w-[200px] animate-in fade-in duration-200">
+                          <div className="font-bold text-base mb-2 flex items-center gap-2">
+                            <span className="text-xl">📍</span>
+                            {hoveredState.name}
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-300">Customers:</span>
+                              <span className="font-bold text-cyan-400">{hoveredState.count}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-300">Percentage:</span>
+                              <span className="font-bold text-green-400">{hoveredState.percentage}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {statesData.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <p className="text-gray-400">No geographic data available</p>
+                      </div>
+                    )}
+                  </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Agents & Product Type */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Agents Leaderboard */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Agents leaderboard (Top 5)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Top performing agents by policies and applicants</p>
+          </CardHeader>
+          <CardContent>
+            {(agentsData?.agents || []).length > 0 ? (
+              <div className="space-y-3">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-6 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    Agent
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-center">
+                    Policies
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-center">
+                    Applicants
+                  </div>
+                </div>
+
+                {/* Table Rows */}
+                {(agentsData?.agents || []).slice(0, 5).map((agent, idx) => {
+                  const positions = ['1st place', '2nd place', '3rd place', '4th place', '5th place'];
+                  const avatarGradients = [
+                    'from-yellow-400 via-yellow-500 to-yellow-600',
+                    'from-gray-300 via-gray-400 to-gray-500',
+                    'from-orange-400 via-orange-500 to-orange-600',
+                    'from-blue-400 via-blue-500 to-blue-600',
+                    'from-purple-400 via-purple-500 to-purple-600',
                   ];
                   
-                  return donutItems.map((item, idx) => {
-                    const percentage = totalPolicies > 0 ? (item.count / totalPolicies) * 100 : 0;
-                    const displayPercentage = Math.round(percentage);
+                  return (
+                    <div key={idx} className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 transition-colors">
+                      {/* Agent Name with Avatar */}
+                      <div className="col-span-6 flex items-center gap-2">
+                        {agent.avatar ? (
+                          <img 
+                            src={agent.avatar} 
+                            alt={agent.name}
+                            className="w-8 h-8 rounded-full object-cover shadow-md border-2 border-white dark:border-gray-700"
+                          />
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradients[idx]} flex items-center justify-center text-white font-bold text-sm shadow-md`}>
+                            {agent.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                            {agent.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            {idx === 0 && <span className="text-yellow-500">🏆</span>}
+                            {positions[idx]}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Policies Count */}
+                      <div className="col-span-3 text-center">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {agent.policies}
+                        </span>
+                      </div>
+
+                      {/* Applicants Count */}
+                      <div className="col-span-3 text-center">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {agent.applicants}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No agents data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Product Type Donut */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              Policies by Product Type (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Distribution of policies grouped by product category</p>
+          </CardHeader>
+          <CardContent>
+            {analyticsData?.byProductType && analyticsData.byProductType.length > 0 ? (
+              <div className="flex items-center justify-center gap-6">
+                <ResponsiveContainer width="60%" height={280}>
+                  <RechartsPie data={analyticsData.byProductType.slice(0, 10)}>
+                    <defs>
+                      {CHART_COLORS.map((color, idx) => (
+                        <linearGradient key={idx} id={`gradient-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={color} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={color} stopOpacity={0.7} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <Pie 
+                      data={analyticsData.byProductType.slice(0, 10)} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={65} 
+                      outerRadius={110} 
+                      dataKey="count"
+                      paddingAngle={3}
+                      label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {analyticsData.byProductType.slice(0, 10).map((_, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={`url(#gradient-${index % CHART_COLORS.length})`}
+                          stroke="#fff"
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+                              <p className="font-semibold text-gray-900 dark:text-white">{payload[0].name}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{payload[0].value} policies</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </RechartsPie>
+                </ResponsiveContainer>
+                
+                <div className="flex-1 space-y-2">
+                  {analyticsData.byProductType.slice(0, 5).map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0" 
+                        style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{item.type}</p>
+                      </div>
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">{item.count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-400">No product data</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Carriers Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Policies per Carrier */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+              Policies per carrier (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">This is how your policies are segmented by insurance company</p>
+          </CardHeader>
+          <CardContent>
+            {(carriersData?.carriers || []).length > 0 ? (
+              <div className="space-y-1">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-5 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    Insurance company
+                  </div>
+                  <div className="col-span-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Policies
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Percentage
+                  </div>
+                </div>
+
+                {/* Table Rows */}
+                {(() => {
+                  const totalPolicies = carriersData?.carriers.reduce((sum, c) => sum + c.policies, 0) || 1;
+                  return (carriersData?.carriers || []).slice(0, 10).map((carrier, idx) => {
+                    const percentage = ((carrier.policies / totalPolicies) * 100).toFixed(2);
                     return (
-                      <div key={idx} className="relative">
-                        <div className="w-[120px] h-[120px]">
-                          <RechartsPie width={120} height={120}>
-                            <Pie
-                              data={[{ value: percentage }, { value: 100 - percentage }]}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={38}
-                              outerRadius={52}
-                              startAngle={90}
-                              endAngle={-270}
-                              dataKey="value"
-                              stroke="none"
-                            >
-                              <Cell fill={item.color} />
-                              <Cell fill={item.bgColor} />
-                            </Pie>
-                          </RechartsPie>
+                      <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
+                        {/* Ranking + Company Name */}
+                        <div className="col-span-5 flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{idx + 1}</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate ml-2" title={carrier.carrier}>
+                            {carrier.carrier}
+                          </p>
                         </div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-xl font-bold text-gray-900">{item.count}</span>
-                          <span className="text-[10px] text-gray-500">{displayPercentage}%</span>
+
+                        {/* Policies Count */}
+                        <div className="col-span-4 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {carrier.policies}
+                          </span>
                         </div>
-                        <p className="text-center text-xs font-medium text-gray-600 mt-1">{item.label}</p>
+
+                        {/* Percentage */}
+                        <div className="col-span-3 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {percentage}%
+                          </span>
+                        </div>
                       </div>
                     );
                   });
                 })()}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Applicants per Carrier */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+              Applicants per carrier (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">This is how your applicants are segmented by insurance company</p>
+          </CardHeader>
+          <CardContent>
+            {(carriersData?.carriers || []).length > 0 ? (
+              <div className="space-y-1">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-5 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    Insurance company
+                  </div>
+                  <div className="col-span-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Applicants
+                  </div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">
+                    Percentage
+                  </div>
+                </div>
+
+                {/* Table Rows */}
+                {(() => {
+                  const sortedByApplicants = [...(carriersData?.carriers || [])].sort((a, b) => b.applicants - a.applicants);
+                  const totalApplicants = sortedByApplicants.reduce((sum, c) => sum + c.applicants, 0) || 1;
+                  return sortedByApplicants.slice(0, 10).map((carrier, idx) => {
+                    const percentage = ((carrier.applicants / totalApplicants) * 100).toFixed(2);
+                    return (
+                      <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
+                        {/* Ranking + Company Name */}
+                        <div className="col-span-5 flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{idx + 1}</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate ml-2" title={carrier.carrier}>
+                            {carrier.carrier}
+                          </p>
+                        </div>
+
+                        {/* Applicants Count */}
+                        <div className="col-span-4 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {carrier.applicants}
+                          </span>
+                        </div>
+
+                        {/* Percentage */}
+                        <div className="col-span-3 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {percentage}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
