@@ -806,6 +806,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">Settings</TooltipContent>
           </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleLogout}
+                data-testid="sidebar-button-logout"
+                className={cn(circularButtonClass, "text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30")}
+              >
+                <LogOut className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Log out</TooltipContent>
+          </Tooltip>
         </div>
         
         {/* Content Area - Row 2, Column 2 */}

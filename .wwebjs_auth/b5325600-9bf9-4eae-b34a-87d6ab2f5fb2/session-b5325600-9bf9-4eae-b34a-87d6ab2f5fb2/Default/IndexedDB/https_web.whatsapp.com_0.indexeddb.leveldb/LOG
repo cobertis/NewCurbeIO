@@ -1,17 +1,3 @@
-2025/12/02-21:14:51.209 332c Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/12/02-21:14:51.210 332c Recovering log #1329
-2025/12/02-21:14:51.219 332c Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001329.log 
-2025/12/02-21:14:52.542 332e Level-0 table #1336: started
-2025/12/02-21:14:52.553 332e Level-0 table #1336: 153422 bytes OK
-2025/12/02-21:14:52.559 332e Delete type=0 #1329
-2025/12/02-21:14:52.560 332e Manual compaction at level-0 from ' *\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' +\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/12/02-21:14:54.887 3334 Compacting 1@1 + 3@2 files
-2025/12/02-21:14:55.004 3334 Generated table #1337@1: 84571 keys, 2233119 bytes
-2025/12/02-21:14:55.107 3334 Generated table #1338@1: 77815 keys, 2382137 bytes
-2025/12/02-21:14:55.125 3334 Generated table #1339@1: 9100 keys, 290027 bytes
-2025/12/02-21:14:55.125 3334 Compacted 1@1 + 3@2 files => 4905283 bytes
-2025/12/02-21:14:55.128 3334 compacted to: files[ 0 0 3 0 0 0 0 ]
-2025/12/02-21:14:55.129 3334 Delete type=2 #1331
-2025/12/02-21:14:55.132 3334 Delete type=2 #1332
-2025/12/02-21:14:55.132 3334 Delete type=2 #1333
-2025/12/02-21:14:55.132 3334 Delete type=2 #1336
+2025/12/02-21:17:42.037 3873 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/02-21:17:42.037 3873 Recovering log #1341
+2025/12/02-21:17:42.040 3873 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001341.log 
