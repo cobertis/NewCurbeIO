@@ -93,6 +93,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [timezoneDialogOpen, setTimezoneDialogOpen] = useState(false);
   const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>("");
+  
+  // WebPhone state for floating button
+  const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
+  const dialpadVisible = useWebPhoneStore(state => state.dialpadVisible);
+  const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
+  const currentCall = useWebPhoneStore(state => state.currentCall);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const { data: userData } = useQuery<{ user: User }>({
@@ -776,6 +782,34 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+
+      {/* WebPhone Floating Button - Always visible */}
+      {user?.sipEnabled && (
+        <button
+          onClick={toggleDialpad}
+          data-testid="floating-phone-button"
+          className={cn(
+            "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95",
+            currentCall 
+              ? "bg-green-500 hover:bg-green-600 animate-pulse" 
+              : connectionStatus === 'connected'
+                ? "bg-blue-500 hover:bg-blue-600"
+                : "bg-gray-400 hover:bg-gray-500"
+          )}
+        >
+          <Phone className={cn(
+            "h-6 w-6 text-white",
+            currentCall && "animate-bounce"
+          )} />
+          {/* Connection status indicator */}
+          <span className={cn(
+            "absolute top-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+            connectionStatus === 'connected' ? "bg-green-400" : 
+            connectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
+            "bg-red-400"
+          )} />
+        </button>
+      )}
 
       {/* WebPhone Floating Window */}
       <WebPhoneFloatingWindow />
