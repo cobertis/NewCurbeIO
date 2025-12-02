@@ -417,10 +417,37 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
-   * Create a new WhatsApp client instance for a company
+   * Kill any orphaned Chrome processes to free resources before starting a new one
+   */
+  private async killOrphanedChromeProcesses(): Promise<void> {
+    try {
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+      
+      // Find and kill orphaned chromium processes (older than 2 minutes or zombies)
+      try {
+        await execAsync('pkill -9 -f "chromium.*--disable-setuid-sandbox" 2>/dev/null || true');
+        console.log(`[WhatsApp] Cleaned up orphaned Chrome processes`);
+      } catch {
+        // Ignore errors - no processes to kill
+      }
+      
+      // Brief pause to let OS release resources
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      console.log(`[WhatsApp] Note: Could not check for orphaned processes`);
+    }
+  }
+
+  /**
+   * Create a new WhatsApp client instance for a company with retry logic
    */
   async createClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
     console.log(`[WhatsApp] Creating new client for company: ${companyId}`);
+
+    // Clean up orphaned Chrome processes first
+    await this.killOrphanedChromeProcesses();
 
     // Clean up any stale lock files from previous crashes
     this.cleanupStaleLocks(companyId);
@@ -428,69 +455,109 @@ class WhatsAppService extends EventEmitter {
     // Create company-specific auth directory
     const authPath = path.join('.wwebjs_auth', companyId);
 
-    // Puppeteer configuration optimized for low memory environments
-    // Single-session mode: Only one Chrome instance runs at a time
+    // Puppeteer configuration optimized for stability (NOT memory)
+    // REMOVED: --single-process (causes crashes)
+    // PRIORITY: Reliability over memory savings
     const chromiumFlags = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',      // Prevents /dev/shm from filling up
-      '--disable-gpu',                 // Reduce GPU memory usage
-      '--disable-software-rasterizer', // Reduce memory
-      '--disable-extensions',          // No extensions needed
+      '--disable-dev-shm-usage',       // Use /tmp instead of /dev/shm
+      '--disable-gpu',                  // No GPU acceleration needed
+      '--disable-software-rasterizer',
+      '--disable-extensions',
       '--disable-background-networking',
       '--disable-sync',
       '--disable-translate',
       '--no-first-run',
-      '--single-process',              // Run in single process for lower memory
-      '--js-flags=--max-old-space-size=128', // Limit V8 heap
+      '--disable-features=TranslateUI',
+      '--disable-ipc-flooding-protection',
+      '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-breakpad',             // Disable crash reporter
+      '--disable-component-update',
+      '--disable-default-apps',
+      '--disable-hang-monitor',
+      '--metrics-recording-only',
+      '--mute-audio',
+      '--no-default-browser-check',
+      '--autoplay-policy=no-user-gesture-required',
     ];
 
-    // Create client with company-specific LocalAuth strategy
-    const client = new Client({
-      authStrategy: new LocalAuth({
-        dataPath: authPath,
-        clientId: companyId,
-      }),
-      puppeteer: {
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium',
-        headless: true,
-        args: chromiumFlags,
-        defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
-        ignoreDefaultArgs: ['--disable-extensions'],
-      },
-    });
+    // Retry logic for initialization - critical for production reliability
+    const MAX_RETRIES = 3;
+    let lastError: Error | null = null;
 
-    // Initial session status for this company
-    const sessionStatus: WhatsAppSessionStatus = {
-      isReady: false,
-      isAuthenticated: false,
-      qrCode: null,
-      status: 'disconnected',
-    };
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[WhatsApp] Initialization attempt ${attempt}/${MAX_RETRIES} for company: ${companyId}`);
 
-    const companyClient: CompanyWhatsAppClient = {
-      client,
-      status: sessionStatus,
-      messageHandlers: new Map(),
-    };
+        // Create client with company-specific LocalAuth strategy
+        const client = new Client({
+          authStrategy: new LocalAuth({
+            dataPath: authPath,
+            clientId: companyId,
+          }),
+          puppeteer: {
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium',
+            headless: true,
+            args: chromiumFlags,
+            defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
+            timeout: 60000, // 60 second timeout for browser launch
+            protocolTimeout: 60000, // 60 second timeout for CDP protocol
+          },
+        });
 
-    // Store in map before setting up handlers
-    this.clients.set(companyId, companyClient);
+        // Initial session status for this company
+        const sessionStatus: WhatsAppSessionStatus = {
+          isReady: false,
+          isAuthenticated: false,
+          qrCode: null,
+          status: 'disconnected',
+        };
 
-    // Set up event handlers for this specific company client
-    this.setupEventHandlers(companyId, companyClient);
+        const companyClient: CompanyWhatsAppClient = {
+          client,
+          status: sessionStatus,
+          messageHandlers: new Map(),
+        };
 
-    // Initialize the client (resolves immediately, actual loading happens async)
-    try {
-      await client.initialize();
-      console.log(`[WhatsApp] Client initialization started for company: ${companyId}`);
-    } catch (error: any) {
-      console.error(`[WhatsApp] Failed to initialize client for company ${companyId}:`, error?.message || error);
-      this.clients.delete(companyId);
-      throw error;
+        // Store in map before setting up handlers
+        this.clients.set(companyId, companyClient);
+
+        // Set up event handlers for this specific company client
+        this.setupEventHandlers(companyId, companyClient);
+
+        // Initialize the client with timeout
+        const initPromise = client.initialize();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Initialization timeout after 90 seconds')), 90000)
+        );
+
+        await Promise.race([initPromise, timeoutPromise]);
+        console.log(`[WhatsApp] ✅ Client initialization successful for company: ${companyId} (attempt ${attempt})`);
+
+        return companyClient;
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[WhatsApp] Attempt ${attempt}/${MAX_RETRIES} failed for company ${companyId}:`, error?.message || error);
+
+        // Clean up failed client
+        this.clients.delete(companyId);
+
+        if (attempt < MAX_RETRIES) {
+          // Wait before retry (exponential backoff: 2s, 4s, 8s)
+          const waitTime = Math.pow(2, attempt) * 1000;
+          console.log(`[WhatsApp] Waiting ${waitTime/1000}s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+
+          // Kill orphaned processes before retry
+          await this.killOrphanedChromeProcesses();
+          this.cleanupStaleLocks(companyId);
+        }
+      }
     }
 
-    return companyClient;
+    throw lastError || new Error('Failed to initialize WhatsApp client after all retries');
   }
 
   /**
