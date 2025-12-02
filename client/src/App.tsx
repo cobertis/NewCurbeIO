@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { Switch, Route, useLocation, Link } from "wouter";
+import { Switch, Route, useLocation, Link, Redirect } from "wouter";
 import { queryClient, getCompanyQueryOptions } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -1111,11 +1111,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/">
-        <ProtectedRoute fallbackPath="/login">
-          <DashboardLayout>
-            <Dashboard />
-          </DashboardLayout>
-        </ProtectedRoute>
+        <Redirect to="/dashboard" />
       </Route>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
