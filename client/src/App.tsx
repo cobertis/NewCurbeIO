@@ -81,61 +81,6 @@ import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import WhatsAppPage from "@/pages/whatsapp";
 import NotFound from "@/pages/not-found";
 
-// Helper function to get page title from route
-const getPageTitle = (path: string): string => {
-  const routes: Record<string, string> = {
-    '/': 'Dashboard',
-    '/dashboard': 'Dashboard',
-    '/analytics': 'Analytics',
-    '/users': 'Users',
-    '/companies': 'Companies',
-    '/plans': 'Plans',
-    '/features': 'Features',
-    '/quotes': 'Quotes',
-    '/quotes/new': 'New Quote',
-    '/policies': 'Policies',
-    '/policies/new': 'New Policy',
-    '/calendar': 'Calendar',
-    '/calendar/settings': 'Appointment Settings',
-    '/leads': 'Leads',
-    '/tasks': 'Tasks',
-    '/invoices': 'Invoices',
-    '/settings': 'Settings',
-    '/settings/profile': 'Settings - Profile',
-    '/settings/preferences': 'Settings - Preferences',
-    '/settings/company': 'Settings - Company',
-    '/settings/system': 'Settings - Email',
-    '/settings/security': 'Settings - Security',
-    '/settings/automations': 'Settings - Automations',
-    '/audit-logs': 'Audit Logs',
-    '/support': 'Support',
-    '/contacts': 'Email Contacts',
-    '/campaigns': 'Campaigns',
-    '/incoming-sms': 'Incoming SMS',
-    '/tickets': 'Support Tickets',
-    '/email-configuration': 'Email Configuration',
-    '/birthday-images': 'Birthday Images',
-    '/sms': 'SMS',
-    '/imessage': 'iMessage',
-    '/imessage-campaigns': 'iMessage Campaigns',
-    '/settings/imessage': 'Settings - iMessage',
-  };
-  
-  if (path.startsWith('/campaigns/') && path.includes('/stats')) {
-    return 'Campaign Statistics';
-  }
-  
-  if (path.startsWith('/sms-campaigns/') && path.includes('/stats')) {
-    return 'SMS Campaign Statistics';
-  }
-  
-  if (path.startsWith('/imessage-campaigns/')) {
-    return 'Campaign Details';
-  }
-  
-  return routes[path] || 'Dashboard';
-};
-
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const style = {
     "--sidebar-width": "4rem",
@@ -373,7 +318,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       console.error("Failed to mark all notifications as read:", error);
     }
   };
-  const pageTitle = getPageTitle(location);
 
   const handleLogout = async () => {
     try {
@@ -827,13 +771,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         
         {/* Content Area - Row 2, Column 2 */}
         <div className="flex flex-col min-w-0 pr-4 pt-2 overflow-hidden">
-          {/* Page Title Bar - SugarCRM Style */}
-          <div className="h-12 bg-transparent flex items-center px-4">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white" data-testid="page-title">
-              {pageTitle}
-            </h1>
-          </div>
-
           <main className="flex-1 overflow-auto">
             {children}
           </main>
