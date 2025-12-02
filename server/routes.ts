@@ -6338,6 +6338,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // Toggle Email 2FA
+
+  // Update SIP/WebPhone settings
+  app.patch("/api/users/sip", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user!;
+
+    try {
+      const { sipEnabled, sipExtension, sipPassword, sipServer } = req.body;
+      
+      const updateData: any = {};
+      if (sipEnabled !== undefined) updateData.sipEnabled = sipEnabled;
+      if (sipExtension !== undefined) updateData.sipExtension = sipExtension;
+      if (sipPassword !== undefined) updateData.sipPassword = sipPassword;
+      if (sipServer !== undefined) updateData.sipServer = sipServer;
+
+      const updatedUser = await storage.updateUser(user.id, updateData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...sanitizedUser } = updatedUser;
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      console.error("[SIP Update] Error:", error);
+      res.status(400).json({ message: error.message || "Failed to update SIP settings" });
+    }
+  });
   app.patch("/api/settings/2fa/email", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
 
