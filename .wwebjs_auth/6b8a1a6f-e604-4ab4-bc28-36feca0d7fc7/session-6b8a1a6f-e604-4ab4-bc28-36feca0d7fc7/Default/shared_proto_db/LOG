@@ -1,6 +1,3 @@
-2025/12/02-19:40:57.623 b6ee Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/MANIFEST-000001
-2025/12/02-19:40:57.624 b6ee Recovering log #3
-2025/12/02-19:40:57.628 b6ee Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/000003.log 
-2025/12/02-19:40:57.660 b6ec Level-0 table #5: started
-2025/12/02-19:40:57.692 b6ec Level-0 table #5: 68630 bytes OK
-2025/12/02-19:40:57.699 b6ec Delete type=0 #3
+2025/12/02-20:17:54.781 c1b2 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/MANIFEST-000001
+2025/12/02-20:17:54.781 c1b2 Recovering log #4
+2025/12/02-20:17:54.897 c1b2 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/shared_proto_db/000004.log 
