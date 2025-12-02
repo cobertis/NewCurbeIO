@@ -458,43 +458,41 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 min-w-0">
-          {/* SugarCRM-style Header - Floating without borders */}
-          <header className="h-14 bg-transparent flex items-center px-4 sm:px-6 sticky top-0 z-10">
-            {/* Left: Company Logo */}
-            <div className="flex items-center shrink-0">
-              <img 
-                src={companyData?.company?.logo || defaultLogo} 
-                alt={companyData?.company?.logo ? "Company Logo" : "Curbe"} 
-                className="h-8 max-w-[120px] object-contain"
-              />
-            </div>
+      <div className="flex flex-col h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        {/* Full-width Header - SugarCRM Style */}
+        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex items-center px-6 sticky top-0 z-20 shadow-sm shadow-gray-200/50 dark:shadow-gray-900/50">
+          {/* Left: Company Logo - Bigger */}
+          <div className="flex items-center shrink-0 mr-8">
+            <img 
+              src={companyData?.company?.logo || defaultLogo} 
+              alt={companyData?.company?.logo ? "Company Logo" : "Curbe"} 
+              className="h-10 max-w-[160px] object-contain"
+            />
+          </div>
 
-            {/* Center: Navigation Pills */}
-            <nav className="flex-1 flex items-center justify-center gap-1">
-              {navigationItems.map((item) => (
-                <Link key={item.url} href={item.url}>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className={cn(
-                      "text-sm font-medium transition-all duration-200 px-4 py-1.5",
-                      location === item.url 
-                        ? "bg-gray-900 text-white rounded-full hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100" 
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
-                    )}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    {item.title}
-                  </Button>
-                </Link>
-              ))}
-            </nav>
+          {/* Center: Navigation Pills - More eye-catching */}
+          <nav className="flex-1 flex items-center justify-center gap-2">
+            {navigationItems.map((item) => (
+              <Link key={item.url} href={item.url}>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className={cn(
+                    "text-sm font-semibold transition-all duration-300 px-5 py-2 h-9",
+                    location === item.url 
+                      ? "bg-gray-900 text-white rounded-full hover:bg-gray-800 shadow-lg shadow-gray-900/25 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 dark:shadow-white/25" 
+                      : "text-gray-600 hover:text-gray-900 hover:bg-white/80 rounded-full dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/80"
+                  )}
+                  data-testid={`nav-${item.title.toLowerCase()}`}
+                >
+                  {item.title}
+                </Button>
+              </Link>
+            ))}
+          </nav>
 
-            {/* Right: Action Icons + User Profile */}
-            <div className="flex items-center gap-1.5 shrink-0">
+          {/* Right: Action Icons + User Profile */}
+          <div className="flex items-center gap-1.5 shrink-0">
               {/* WebPhone Button */}
               <Button 
                 size="icon"
@@ -656,28 +654,36 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          </header>
-          
-          {/* Page Title Bar - SugarCRM Style - Floating */}
-          <div className="h-14 bg-transparent flex items-center px-4 sm:px-6">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => window.history.back()}
-              className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50"
-              data-testid="button-back"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white" data-testid="page-title">
-              {pageTitle}
-            </h1>
           </div>
+        </header>
+        
+        {/* Main content area with sidebar */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Utility Sidebar */}
+          <AppSidebar />
+          
+          {/* Content Area */}
+          <div className="flex flex-col flex-1 min-w-0">
+            {/* Page Title Bar - SugarCRM Style - Floating */}
+            <div className="h-14 bg-transparent flex items-center px-4 sm:px-6">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => window.history.back()}
+                className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50"
+                data-testid="button-back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white" data-testid="page-title">
+                {pageTitle}
+              </h1>
+            </div>
 
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
+            <main className="flex-1 overflow-auto">
+              {children}
+            </main>
+          </div>
         </div>
       </div>
 
