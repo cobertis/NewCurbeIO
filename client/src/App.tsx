@@ -26,6 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import type { User } from "@shared/schema";
+import defaultLogo from "@assets/logo no fondo_1760457183587.png";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import VerifyOTP from "@/pages/verify-otp";
@@ -464,15 +465,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl flex items-center px-4 sm:px-6 sticky top-0 z-10 shadow-sm">
             {/* Left: Company Logo */}
             <div className="flex items-center shrink-0">
-              {companyData?.company?.logo ? (
-                <img 
-                  src={companyData.company.logo} 
-                  alt="Company Logo" 
-                  className="h-8 max-w-[120px] object-contain"
-                />
-              ) : (
-                <span className="text-xl font-bold text-gray-900 dark:text-white">curbe</span>
-              )}
+              <img 
+                src={companyData?.company?.logo || defaultLogo} 
+                alt={companyData?.company?.logo ? "Company Logo" : "Curbe"} 
+                className="h-8 max-w-[120px] object-contain"
+              />
             </div>
 
             {/* Center: Navigation Pills */}
