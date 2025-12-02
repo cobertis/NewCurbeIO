@@ -5982,6 +5982,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // Get single company by ID
+  app.get("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = req.params.id;
+
+    // Users can only access their own company unless they're superadmin
+    if (currentUser.role !== "superadmin" && currentUser.companyId !== companyId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const company = await storage.getCompany(companyId);
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    res.json({ company });
+  });
   // Toggle company active status (enable/disable)
   app.patch("/api/companies/:id/toggle-status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
