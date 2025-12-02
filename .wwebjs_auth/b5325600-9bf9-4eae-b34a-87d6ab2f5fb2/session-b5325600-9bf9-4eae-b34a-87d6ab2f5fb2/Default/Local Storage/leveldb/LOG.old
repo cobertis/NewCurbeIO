@@ -1,3 +1,14 @@
-2025/12/02-21:17:05.367 3601 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/MANIFEST-000001
-2025/12/02-21:17:05.374 3601 Recovering log #82
-2025/12/02-21:17:05.375 3601 Reusing old log /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/000082.log 
+2025/12/02-21:17:41.512 388d Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/session-b5325600-9bf9-4eae-b34a-87d6ab2f5fb2/Default/Local Storage/leveldb/MANIFEST-000001
+2025/12/02-21:17:41.518 388d Recovering log #82
+2025/12/02-21:17:41.518 388d Level-0 table #85: started
+2025/12/02-21:17:41.522 388d Level-0 table #85: 13960 bytes OK
+2025/12/02-21:17:41.525 388d Delete type=0 #82
+2025/12/02-21:17:41.526 388e Compacting 4@0 + 1@1 files
+2025/12/02-21:17:41.532 388e Generated table #87@0: 1019 keys, 59964 bytes
+2025/12/02-21:17:41.532 388e Compacted 4@0 + 1@1 files => 59964 bytes
+2025/12/02-21:17:41.535 388e compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/12/02-21:17:41.536 388e Delete type=2 #74
+2025/12/02-21:17:41.536 388e Delete type=2 #77
+2025/12/02-21:17:41.536 388e Delete type=2 #80
+2025/12/02-21:17:41.536 388e Delete type=2 #83
+2025/12/02-21:17:41.536 388e Delete type=2 #85

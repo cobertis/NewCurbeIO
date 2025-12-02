@@ -676,110 +676,114 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Separator */}
           <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
-          {/* Communications Popover */}
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <button data-testid="sidebar-button-communications" className={circularButtonClass}>
-                    <MessageCircle className="h-[18px] w-[18px]" />
-                  </button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="font-medium">Communications</TooltipContent>
-            </Tooltip>
-            <PopoverContent side="right" align="start" className="w-48 p-2">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Communications</p>
-                <button
-                  onClick={() => setLocation("/whatsapp")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-whatsapp"
-                >
-                  <SiWhatsapp className="h-4 w-4 text-green-600" />
-                  WhatsApp
-                </button>
-                <button
-                  onClick={() => setLocation("/imessage")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-imessage"
-                >
-                  <MessageSquare className="h-4 w-4 text-blue-500" />
-                  iMessage
-                </button>
-                <button
-                  onClick={() => setLocation("/sms-mms")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-sms"
-                >
-                  <Phone className="h-4 w-4 text-purple-600" />
-                  SMS
-                </button>
-                <button
-                  onClick={() => setLocation("/email-marketing")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-email"
-                >
-                  <Mail className="h-4 w-4 text-orange-500" />
-                  Email
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Communications Icons */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/whatsapp")}
+                data-testid="sidebar-button-whatsapp"
+                className={circularButtonClass}
+              >
+                <SiWhatsapp className="h-[18px] w-[18px] text-green-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">WhatsApp</TooltipContent>
+          </Tooltip>
 
-          {/* Marketing Popover */}
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <button data-testid="sidebar-button-marketing" className={circularButtonClass}>
-                    <Megaphone className="h-[18px] w-[18px]" />
-                  </button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="font-medium">Marketing</TooltipContent>
-            </Tooltip>
-            <PopoverContent side="right" align="start" className="w-48 p-2">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Marketing</p>
-                <button
-                  onClick={() => setLocation("/campaigns")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-campaigns"
-                >
-                  <Megaphone className="h-4 w-4 text-red-500" />
-                  Campaigns
-                </button>
-                <button
-                  onClick={() => setLocation("/contacts")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-contacts"
-                >
-                  <UsersIcon className="h-4 w-4 text-blue-600" />
-                  Contacts
-                </button>
-                <button
-                  onClick={() => setLocation("/referrals")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-referrals"
-                >
-                  <Gift className="h-4 w-4 text-pink-500" />
-                  Referrals
-                </button>
-                <button
-                  onClick={() => setLocation("/landing-page")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="sidebar-link-landing-page"
-                >
-                  <Layout className="h-4 w-4 text-indigo-500" />
-                  Landing Page
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/imessage")}
+                data-testid="sidebar-button-imessage"
+                className={circularButtonClass}
+              >
+                <MessageSquare className="h-[18px] w-[18px] text-blue-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">iMessage</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/sms-mms")}
+                data-testid="sidebar-button-sms"
+                className={circularButtonClass}
+              >
+                <Phone className="h-[18px] w-[18px] text-purple-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">SMS</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/email-marketing")}
+                data-testid="sidebar-button-email"
+                className={circularButtonClass}
+              >
+                <Mail className="h-[18px] w-[18px] text-orange-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Email</TooltipContent>
+          </Tooltip>
 
           {/* Separator */}
           <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
+
+          {/* Marketing Icons */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/campaigns")}
+                data-testid="sidebar-button-campaigns"
+                className={circularButtonClass}
+              >
+                <Megaphone className="h-[18px] w-[18px] text-red-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Campaigns</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/contacts")}
+                data-testid="sidebar-button-contacts"
+                className={circularButtonClass}
+              >
+                <UsersIcon className="h-[18px] w-[18px] text-blue-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Contacts</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/referrals")}
+                data-testid="sidebar-button-referrals"
+                className={circularButtonClass}
+              >
+                <Gift className="h-[18px] w-[18px] text-pink-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Referrals</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/landing-page")}
+                data-testid="sidebar-button-landing-page"
+                className={circularButtonClass}
+              >
+                <Layout className="h-[18px] w-[18px] text-indigo-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Landing Page</TooltipContent>
+          </Tooltip>
 
           {/* Spacer to push bottom icons down */}
           <div className="flex-1" />
