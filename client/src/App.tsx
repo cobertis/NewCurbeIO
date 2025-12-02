@@ -651,19 +651,23 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         
         {/* Sidebar - Row 2, Column 1 - Simple icon column below header */}
         <div className="pl-4 flex flex-col items-center py-4 space-y-2">
-          {/* Back Button - Always First */}
+          {/* Back Button - Disabled on Dashboard */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => window.history.back()}
+                onClick={() => location !== "/dashboard" && window.history.back()}
                 data-testid="sidebar-button-back"
-                className={circularButtonClass}
+                className={cn(
+                  circularButtonClass,
+                  location === "/dashboard" && "opacity-40 cursor-not-allowed"
+                )}
+                disabled={location === "/dashboard"}
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">
-              Go Back
+              {location === "/dashboard" ? "You are at Dashboard" : "Go Back"}
             </TooltipContent>
           </Tooltip>
 
