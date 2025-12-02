@@ -1,4 +1,4 @@
-import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, TrendingUp, Award, Activity, Zap, ArrowUpRight, Layers } from "lucide-react";
+import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, Check, MoreHorizontal, Plus, Upload, Calendar, Star, MapPin } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -57,32 +57,14 @@ const STATE_ABBR_TO_NAME: Record<string, string> = {
   "DC": "District of Columbia", "PR": "Puerto Rico"
 };
 
-const BentoCard = ({ className, children, onClick, glow }: { className?: string; children: React.ReactNode; onClick?: () => void; glow?: 'blue' | 'purple' | 'green' | 'amber' }) => {
-  const glowColors = {
-    blue: 'before:bg-blue-500/20 hover:before:bg-blue-500/30',
-    purple: 'before:bg-purple-500/20 hover:before:bg-purple-500/30',
-    green: 'before:bg-emerald-500/20 hover:before:bg-emerald-500/30',
-    amber: 'before:bg-amber-500/20 hover:before:bg-amber-500/30',
-  };
-
-  return (
-    <div
-      onClick={onClick}
-      className={cn(
-        "relative rounded-[28px] bg-[#1a1a1a] dark:bg-[#1a1a1a] overflow-hidden transition-all duration-500",
-        "border border-white/[0.08]",
-        "shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_2px_20px_rgba(0,0,0,0.4)]",
-        "hover:shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_8px_40px_rgba(0,0,0,0.5)]",
-        "hover:border-white/[0.12]",
-        "before:absolute before:inset-0 before:rounded-[28px] before:opacity-0 before:blur-3xl before:transition-opacity before:duration-500 hover:before:opacity-100",
-        glow && glowColors[glow],
-        onClick && "cursor-pointer",
-        className
-      )}
-    >
-      <div className="relative z-10 h-full">{children}</div>
-    </div>
-  );
+const STATUS_COLORS: Record<string, string> = {
+  "Active": "bg-emerald-400",
+  "Pending": "bg-amber-400",
+  "Submitted": "bg-blue-400",
+  "Cancelled": "bg-red-400",
+  "Expired": "bg-gray-400",
+  "Renewed": "bg-purple-400",
+  "Draft": "bg-slate-400",
 };
 
 export default function Dashboard() {
@@ -132,303 +114,456 @@ export default function Dashboard() {
 
   const pendingTasks = statsData?.pendingTasks || 0;
   const birthdaysThisWeek = statsData?.birthdaysThisWeek || 0;
-  const failedLoginAttempts = statsData?.failedLoginAttempts || 0;
   const newLeads = statsData?.newLeads || 0;
   const policyStatusData = analyticsData?.byStatus || [];
-  const totalPolicies = analyticsData?.totalPolicies || 0;
-  const topAgents = (agentsData?.agents || []).slice(0, 4);
-  const totalCustomersYTD = monthlyData?.data?.reduce((sum, item) => sum + item.customers, 0) || 0;
-  const totalPoliciesYTD = monthlyData?.data?.reduce((sum, item) => sum + item.policies, 0) || 0;
+  const topAgents = (agentsData?.agents || []).slice(0, 8);
+  const topCarriers = (carriersData?.carriers || []).slice(0, 5);
 
   const statesData = analyticsData?.byState || [];
   const maxCount = Math.max(...statesData.map(s => s.count), 1);
   const totalCustomers = statesData.reduce((sum, s) => sum + s.count, 0);
-  const colorScale = scaleLinear<string>().domain([0, maxCount]).range(["#262626", "#3b82f6"]);
+  const colorScale = scaleLinear<string>().domain([0, maxCount]).range(["#e2e8f0", "#3b82f6"]);
   const stateCountMap = new Map(statesData.map(s => {
     const fullName = STATE_ABBR_TO_NAME[s.state.toUpperCase()] || s.state;
     return [fullName.toUpperCase(), s.count];
   }));
 
+  const ActionButtons = () => (
+    <div className="flex items-center gap-1">
+      <button className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+        <Plus className="w-4 h-4" />
+      </button>
+      <button className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+        <Upload className="w-4 h-4" />
+      </button>
+      <button className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+        <Calendar className="w-4 h-4" />
+      </button>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6">
-      {/* Ambient light effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[100px]" />
-      </div>
+    <div className="min-h-screen bg-[#eef2f6] p-6">
+      <div className="max-w-[1600px] mx-auto space-y-6">
+        
+        {/* Page Title */}
+        <div className="flex items-center gap-3">
+          <button className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-400 hover:text-gray-600">
+            <ChevronRight className="w-4 h-4 rotate-180" />
+          </button>
+          <h1 className="text-2xl font-semibold text-gray-800">Policy Journeys</h1>
+        </div>
 
-      <div className="relative z-10 max-w-[1600px] mx-auto">
-        {/* Bento Grid Layout */}
-        <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-4 auto-rows-[100px]">
-          
-          {/* Large Feature Card - Performance Chart */}
-          <BentoCard className="col-span-4 md:col-span-5 lg:col-span-7 row-span-3" glow="blue">
-            <div className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-white/40 text-xs uppercase tracking-widest">Performance</p>
-                  <h2 className="text-white text-xl font-medium mt-1">Monthly Overview</h2>
-                </div>
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />Policies</span>
-                  <span className="flex items-center gap-1.5 text-white/50"><span className="w-2 h-2 rounded-full bg-white/30" />Customers</span>
-                </div>
-              </div>
-              <div className="flex-1 -mx-2">
-                {monthlyData?.data && monthlyData.data.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyData.data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="month" tick={{ fill: '#525252', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#525252', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip 
-                        contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
-                        labelStyle={{ color: '#fff', fontWeight: 500 }}
-                        itemStyle={{ color: '#a1a1aa' }}
+        {/* Policy Management Card - Workflow Style */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-800">Policy Management</h2>
+            
+            {/* Agent Avatars Row */}
+            <div className="flex items-center gap-4">
+              <div className="flex -space-x-2">
+                {topAgents.slice(0, 6).map((agent, idx) => (
+                  <div key={idx} className="relative" style={{ zIndex: 10 - idx }}>
+                    {agent.avatar ? (
+                      <img
+                        src={agent.avatar}
+                        alt={agent.name}
+                        className="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover"
+                        title={agent.name}
                       />
-                      <Area type="monotone" dataKey="customers" stroke="#404040" strokeWidth={1.5} fill="transparent" />
-                      <Area type="monotone" dataKey="policies" stroke="#3b82f6" strokeWidth={2} fill="url(#chartGrad)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-white/20">No data</div>
-                )}
-              </div>
-            </div>
-          </BentoCard>
-
-          {/* Total Policies - Large number */}
-          <BentoCard className="col-span-2 md:col-span-3 lg:col-span-2 row-span-2" glow="purple" onClick={() => setLocation('/policies')}>
-            <div className="p-5 h-full flex flex-col justify-between">
-              <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
-                <Layers className="w-5 h-5 text-purple-400" />
-              </div>
-              <div>
-                <p className="text-5xl font-light text-white tracking-tight">{totalPoliciesYTD}</p>
-                <p className="text-white/40 text-sm mt-1">Total Policies</p>
-              </div>
-            </div>
-          </BentoCard>
-
-          {/* Total Customers */}
-          <BentoCard className="col-span-2 md:col-span-3 lg:col-span-3 row-span-2" glow="green" onClick={() => setLocation('/contacts')}>
-            <div className="p-5 h-full flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-emerald-400" />
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-5xl font-light text-white tracking-tight">{totalCustomersYTD}</p>
-                <p className="text-white/40 text-sm mt-1">Total Customers</p>
-              </div>
-            </div>
-          </BentoCard>
-
-          {/* Quick Stats Row */}
-          <BentoCard className="col-span-2 md:col-span-2 lg:col-span-3 row-span-1" onClick={() => setLocation('/tasks')}>
-            <div className="p-4 h-full flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-                <Bell className="w-5 h-5 text-violet-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-light text-white">{pendingTasks}</p>
-                <p className="text-white/40 text-xs truncate">Reminders today</p>
-              </div>
-            </div>
-          </BentoCard>
-
-          <BentoCard className="col-span-2 md:col-span-2 lg:col-span-3 row-span-1" onClick={() => setLocation('/calendar?initialView=listWeek')}>
-            <div className="p-4 h-full flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-pink-500/10 flex items-center justify-center flex-shrink-0">
-                <Cake className="w-5 h-5 text-pink-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-light text-white">{birthdaysThisWeek}</p>
-                <p className="text-white/40 text-xs truncate">Birthdays this week</p>
-              </div>
-            </div>
-          </BentoCard>
-
-          <BentoCard className="col-span-2 md:col-span-2 lg:col-span-3 row-span-1" onClick={() => setLocation('/settings/sessions')}>
-            <div className="p-4 h-full flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-light text-white">{failedLoginAttempts}</p>
-                <p className="text-white/40 text-xs truncate">Failed logins</p>
-              </div>
-            </div>
-          </BentoCard>
-
-          <BentoCard className="col-span-2 md:col-span-2 lg:col-span-3 row-span-1" onClick={() => setLocation('/leads')}>
-            <div className="p-4 h-full flex items-center gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
-                <UserPlus className="w-5 h-5 text-cyan-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-light text-white">{newLeads}</p>
-                <p className="text-white/40 text-xs truncate">New leads</p>
-              </div>
-            </div>
-          </BentoCard>
-
-          {/* Policy Pipeline */}
-          <BentoCard className="col-span-4 md:col-span-4 lg:col-span-4 row-span-3">
-            <div className="p-5 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-white/40 text-xs uppercase tracking-widest">Pipeline</p>
-                <p className="text-white text-lg font-light">{totalPolicies}</p>
-              </div>
-              <div className="flex-1 space-y-3 overflow-auto">
-                {policyStatusData.slice(0, 6).map((status, idx) => {
-                  const pct = totalPolicies > 0 ? (status.count / totalPolicies) * 100 : 0;
-                  return (
-                    <div 
-                      key={idx} 
-                      className="group cursor-pointer"
-                      onClick={() => setLocation(`/policies?status=${status.status}`)}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-white/60 text-sm">{status.status}</span>
-                        <span className="text-white text-sm">{status.count}</span>
+                    ) : (
+                      <div
+                        className="w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-sm font-medium bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700"
+                        title={agent.name}
+                      >
+                        {agent.name.charAt(0)}
                       </div>
-                      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full transition-all duration-300 group-hover:from-blue-500 group-hover:to-blue-300"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </BentoCard>
-
-          {/* Top Agents */}
-          <BentoCard className="col-span-4 md:col-span-4 lg:col-span-4 row-span-3">
-            <div className="p-5 h-full flex flex-col">
-              <div className="flex items-center gap-2 mb-4">
-                <Award className="w-4 h-4 text-amber-400" />
-                <p className="text-white/40 text-xs uppercase tracking-widest">Top Agents</p>
-              </div>
-              <div className="flex-1 space-y-2">
-                {topAgents.map((agent, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] transition-colors">
-                    <div className="relative">
-                      {agent.avatar ? (
-                        <img src={agent.avatar} alt={agent.name} className="w-10 h-10 rounded-xl object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-white/60 font-medium">
-                          {agent.name.charAt(0)}
-                        </div>
-                      )}
-                      {idx < 3 && (
-                        <div className={cn(
-                          "absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold",
-                          idx === 0 ? "bg-amber-500 text-black" : idx === 1 ? "bg-zinc-400 text-black" : "bg-orange-700 text-white"
-                        )}>
-                          {idx + 1}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm truncate">{agent.name}</p>
-                      <p className="text-white/30 text-xs">{agent.applicants} applicants</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white text-lg font-light">{agent.policies}</p>
+                    )}
+                    <div className={cn(
+                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-[8px] font-bold text-white",
+                      idx === 0 ? "bg-blue-500" : idx === 1 ? "bg-emerald-500" : idx === 2 ? "bg-amber-500" : "bg-gray-400"
+                    )}>
+                      {idx + 1}
                     </div>
                   </div>
                 ))}
               </div>
+              <ActionButtons />
             </div>
-          </BentoCard>
+          </div>
+
+          {/* Workflow Columns */}
+          <div className="grid grid-cols-4 gap-6">
+            {/* Column 1: New Leads */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-500 pb-2 border-b border-gray-100">New Leads</h3>
+              <WorkflowCard 
+                avatar={topAgents[0]} 
+                title="Review new inquiry"
+                hasCheck
+                onClick={() => setLocation('/leads')}
+              />
+              <WorkflowCard 
+                avatar={topAgents[1]} 
+                title="Contact prospect"
+                hasCalendar
+              />
+            </div>
+
+            {/* Column 2: Quote Process */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-500 pb-2 border-b border-gray-100">Quote Process</h3>
+              <WorkflowCard 
+                title="Create Quote"
+                hasCheck
+                hasCalendar
+                onClick={() => setLocation('/quotes')}
+              />
+              <WorkflowCard 
+                title="Compare Plans"
+                hasCheck
+              />
+              <WorkflowCard 
+                title="Send Proposal"
+                hasCheck
+                hasMore
+              />
+              <WorkflowCard 
+                avatar={topAgents[2]}
+                title="Follow up with client"
+                hasMore
+              />
+            </div>
+
+            {/* Column 3: Application */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-500 pb-2 border-b border-gray-100">Application</h3>
+              <WorkflowCard 
+                title="Collect Documents"
+                hasCheck
+                hasCalendar
+              />
+              <WorkflowCard 
+                title="Submit Application"
+                hasCheck
+              />
+              <WorkflowCard 
+                title="Underwriting Review"
+                highlighted
+              />
+              <WorkflowCard 
+                avatar={topAgents[3]}
+                title="Notify client of status"
+                hasMore
+              />
+            </div>
+
+            {/* Column 4: Active Policy */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-500 pb-2 border-b border-gray-100">Active Policy</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <MiniCard title="Policy Issued" />
+                <MiniCard title="Welcome Call" />
+                <MiniCard title="Client Service" />
+                <MiniCard title="Annual Review" />
+                <MiniCard title="Renewal Notice" />
+                <MiniCard title="Retention" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Row: Two Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Recent Activity / Carriers Table */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">Top Carriers</h2>
+              <ActionButtons />
+            </div>
+            
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-4 pb-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <div className="col-span-1"></div>
+              <div className="col-span-5">Carrier</div>
+              <div className="col-span-3 text-center">Policies</div>
+              <div className="col-span-3 text-center">Applicants</div>
+            </div>
+            
+            {/* Table Rows */}
+            <div className="divide-y divide-gray-50">
+              {topCarriers.map((carrier, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-4 py-3 items-center hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className="col-span-1">
+                    <Star className={cn("w-4 h-4", idx === 0 ? "text-amber-400 fill-amber-400" : "text-gray-200")} />
+                  </div>
+                  <div className="col-span-5 text-sm font-medium text-gray-700 truncate">{carrier.carrier}</div>
+                  <div className="col-span-3 text-center">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      {carrier.policies}
+                    </span>
+                  </div>
+                  <div className="col-span-3 text-center text-sm text-gray-500">{carrier.applicants}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Policy Status Journey */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-800">Policy Status Journey</h2>
+              <ActionButtons />
+            </div>
+            
+            {/* Status Bubbles */}
+            <div className="flex flex-wrap justify-center gap-4">
+              {policyStatusData.slice(0, 6).map((status, idx) => {
+                const baseSize = 70;
+                const maxSize = 130;
+                const total = policyStatusData.reduce((sum, s) => sum + s.count, 0) || 1;
+                const ratio = status.count / total;
+                const size = Math.max(baseSize, Math.min(maxSize, baseSize + ratio * 150));
+                const bgColor = STATUS_COLORS[status.status] || "bg-gray-400";
+                
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setLocation(`/policies?status=${status.status}`)}
+                    className="cursor-pointer transition-transform hover:scale-105"
+                  >
+                    <div
+                      className={cn(
+                        "rounded-full flex flex-col items-center justify-center text-white shadow-lg",
+                        bgColor
+                      )}
+                      style={{ width: size, height: size }}
+                    >
+                      <span className="text-2xl font-bold">{status.count}</span>
+                      <span className="text-[10px] font-medium opacity-90 px-2 text-center leading-tight">
+                        {status.status}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Third Row: Chart and Map */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Performance Chart */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">Monthly Performance</h2>
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />Policies</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-300" />Customers</span>
+              </div>
+            </div>
+            
+            {monthlyData?.data && monthlyData.data.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={monthlyData.data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="policyGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
+                    labelStyle={{ color: '#374151', fontWeight: 500 }}
+                  />
+                  <Area type="monotone" dataKey="customers" stroke="#d1d5db" strokeWidth={2} fill="transparent" />
+                  <Area type="monotone" dataKey="policies" stroke="#3b82f6" strokeWidth={2} fill="url(#policyGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[220px] flex items-center justify-center text-gray-400">No data available</div>
+            )}
+          </div>
 
           {/* US Map */}
-          <BentoCard className="col-span-4 md:col-span-8 lg:col-span-4 row-span-3">
-            <div className="h-full flex flex-col">
-              <div className="p-5 pb-0">
-                <p className="text-white/40 text-xs uppercase tracking-widest">Geography</p>
-              </div>
-              <div 
-                className="flex-1 relative -mt-4"
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                }}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold text-gray-800">Customer Distribution</h2>
+              <MapPin className="w-4 h-4 text-gray-400" />
+            </div>
+            
+            <div 
+              className="relative"
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+              }}
+            >
+              <ComposableMap
+                projection="geoAlbersUsa"
+                projectionConfig={{ scale: 800 }}
+                className="w-full h-[220px]"
               >
-                <ComposableMap
-                  projection="geoAlbersUsa"
-                  projectionConfig={{ scale: 800 }}
-                  className="w-full h-full"
+                <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
+                  {({ geographies }) => geographies.map((geo) => {
+                    const stateName = geo.properties.name.toUpperCase();
+                    const count = stateCountMap.get(stateName) || 0;
+                    return (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill={count > 0 ? colorScale(count) : "#f1f5f9"}
+                        stroke="#fff"
+                        strokeWidth={0.5}
+                        onMouseEnter={() => setHoveredState({ name: geo.properties.name, count, percentage: totalCustomers > 0 ? (count / totalCustomers) * 100 : 0 })}
+                        onMouseLeave={() => setHoveredState(null)}
+                        style={{
+                          default: { outline: 'none' },
+                          hover: { fill: count > 0 ? "#2563eb" : "#e2e8f0", outline: 'none', cursor: 'pointer' },
+                          pressed: { outline: 'none' },
+                        }}
+                      />
+                    );
+                  })}
+                </Geographies>
+              </ComposableMap>
+              
+              {hoveredState && (
+                <div 
+                  className="absolute pointer-events-none z-50"
+                  style={{ left: mousePosition.x + 10, top: mousePosition.y - 40 }}
                 >
-                  <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
-                    {({ geographies }) => geographies.map((geo) => {
-                      const stateName = geo.properties.name.toUpperCase();
-                      const count = stateCountMap.get(stateName) || 0;
-                      return (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          fill={count > 0 ? colorScale(count) : "#1a1a1a"}
-                          stroke="#262626"
-                          strokeWidth={0.5}
-                          onMouseEnter={() => setHoveredState({ name: geo.properties.name, count, percentage: totalCustomers > 0 ? (count / totalCustomers) * 100 : 0 })}
-                          onMouseLeave={() => setHoveredState(null)}
-                          style={{
-                            default: { outline: 'none' },
-                            hover: { fill: count > 0 ? "#60a5fa" : "#262626", outline: 'none', cursor: 'pointer' },
-                            pressed: { outline: 'none' },
-                          }}
-                        />
-                      );
-                    })}
-                  </Geographies>
-                </ComposableMap>
-                
-                {hoveredState && (
-                  <div 
-                    className="absolute pointer-events-none z-50"
-                    style={{ left: mousePosition.x + 10, top: mousePosition.y - 40 }}
-                  >
-                    <div className="bg-[#1a1a1a] border border-white/10 px-3 py-2 rounded-xl shadow-xl">
-                      <p className="text-white text-sm font-medium">{hoveredState.name}</p>
-                      <p className="text-white/50 text-xs">{hoveredState.count} customers ({hoveredState.percentage.toFixed(1)}%)</p>
-                    </div>
+                  <div className="bg-white border border-gray-200 px-3 py-2 rounded-xl shadow-lg">
+                    <p className="text-gray-800 text-sm font-medium">{hoveredState.name}</p>
+                    <p className="text-gray-500 text-xs">{hoveredState.count} customers ({hoveredState.percentage.toFixed(1)}%)</p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          </BentoCard>
-
-          {/* Top Carriers */}
-          <BentoCard className="col-span-4 md:col-span-8 lg:col-span-8 row-span-2">
-            <div className="p-5 h-full">
-              <p className="text-white/40 text-xs uppercase tracking-widest mb-4">Top Carriers</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 h-[calc(100%-2rem)]">
-                {(carriersData?.carriers || []).slice(0, 4).map((carrier, idx) => (
-                  <div key={idx} className="bg-white/[0.02] rounded-2xl p-4 flex flex-col justify-between">
-                    <p className="text-white/50 text-xs truncate">{carrier.carrier}</p>
-                    <div>
-                      <p className="text-white text-2xl font-light">{carrier.policies}</p>
-                      <p className="text-white/30 text-xs">{carrier.applicants} applicants</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </BentoCard>
-
+          </div>
         </div>
+
+        {/* Quick Stats Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <QuickStatCard 
+            icon={Bell} 
+            value={pendingTasks} 
+            label="Reminders Today" 
+            color="violet"
+            onClick={() => setLocation('/tasks')}
+          />
+          <QuickStatCard 
+            icon={Cake} 
+            value={birthdaysThisWeek} 
+            label="Birthdays This Week" 
+            color="pink"
+            onClick={() => setLocation('/calendar?initialView=listWeek')}
+          />
+          <QuickStatCard 
+            icon={UserPlus} 
+            value={newLeads} 
+            label="New Leads" 
+            color="cyan"
+            onClick={() => setLocation('/leads')}
+          />
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function WorkflowCard({ avatar, title, hasCheck, hasCalendar, hasMore, highlighted, onClick }: {
+  avatar?: { name: string; avatar: string | null } | null;
+  title: string;
+  hasCheck?: boolean;
+  hasCalendar?: boolean;
+  hasMore?: boolean;
+  highlighted?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <div 
+      onClick={onClick}
+      className={cn(
+        "p-3 rounded-xl border transition-all",
+        highlighted 
+          ? "bg-gray-800 border-gray-700 text-white" 
+          : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm",
+        onClick && "cursor-pointer"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        {avatar && (
+          avatar.avatar ? (
+            <img src={avatar.avatar} alt={avatar.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 text-sm font-medium flex-shrink-0">
+              {avatar.name.charAt(0)}
+            </div>
+          )
+        )}
+        <div className="flex-1 min-w-0">
+          <p className={cn("text-sm", highlighted ? "text-white" : "text-gray-700")}>{title}</p>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-2 mt-2">
+        {hasCheck && (
+          <div className={cn("w-5 h-5 rounded flex items-center justify-center", highlighted ? "bg-white/20" : "bg-gray-100")}>
+            <Check className={cn("w-3 h-3", highlighted ? "text-white" : "text-gray-400")} />
+          </div>
+        )}
+        {hasCalendar && (
+          <div className={cn("w-5 h-5 rounded flex items-center justify-center", highlighted ? "bg-white/20" : "bg-gray-100")}>
+            <Calendar className={cn("w-3 h-3", highlighted ? "text-white" : "text-gray-400")} />
+          </div>
+        )}
+        {hasMore && (
+          <div className={cn("w-5 h-5 rounded flex items-center justify-center ml-auto", highlighted ? "bg-white/20" : "bg-gray-100")}>
+            <MoreHorizontal className={cn("w-3 h-3", highlighted ? "text-white" : "text-gray-400")} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniCard({ title }: { title: string }) {
+  return (
+    <div className="p-2.5 rounded-lg border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+      <p className="text-xs text-gray-600 text-center">{title}</p>
+    </div>
+  );
+}
+
+function QuickStatCard({ icon: Icon, value, label, color, onClick }: {
+  icon: any;
+  value: number;
+  label: string;
+  color: 'violet' | 'pink' | 'cyan';
+  onClick?: () => void;
+}) {
+  const colors = {
+    violet: "bg-violet-50 text-violet-600",
+    pink: "bg-pink-50 text-pink-600",
+    cyan: "bg-cyan-50 text-cyan-600",
+  };
+  
+  return (
+    <div 
+      onClick={onClick}
+      className="bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
+    >
+      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", colors[color])}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <p className="text-2xl font-semibold text-gray-800">{value}</p>
+        <p className="text-sm text-gray-500">{label}</p>
       </div>
     </div>
   );
