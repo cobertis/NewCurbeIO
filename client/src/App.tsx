@@ -479,14 +479,17 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Floating Header - SugarCRM Style - offset for sidebar (w-16 = 64px + gap) */}
         <div className="pl-20 pr-4 pt-4">
           <header className="h-14 bg-white/40 dark:bg-gray-900/30 backdrop-blur-2xl rounded-2xl flex items-center px-6">
-            {/* Left: Company Logo - Only show when displayLogo is ready */}
+            {/* Left: Company Logo - Always links to dashboard */}
             <div className="flex items-center shrink-0 mr-8 h-10">
               {displayLogo && (
-                <img 
-                  src={displayLogo} 
-                  alt="Logo" 
-                  className="h-9 max-w-[140px] object-contain"
-                />
+                <Link href="/dashboard">
+                  <img 
+                    src={displayLogo} 
+                    alt="Logo" 
+                    className="h-9 max-w-[140px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                    data-testid="logo-link"
+                  />
+                </Link>
               )}
             </div>
 
