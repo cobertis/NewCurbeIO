@@ -3,7 +3,7 @@ import { Switch, Route, useLocation, Link } from "wouter";
 import { queryClient, getCompanyQueryOptions } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -649,9 +649,89 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </header>
         </div>
         
-        {/* Sidebar - Row 2, Column 1 */}
-        <div className="pl-4 pt-2 overflow-hidden">
-          <AppSidebar />
+        {/* Sidebar - Row 2, Column 1 - Simple icon column below header */}
+        <div className="pl-4 flex flex-col items-center py-4 space-y-2">
+          {/* Back Button - Always First */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => window.history.back()}
+                data-testid="sidebar-button-back"
+                className={circularButtonClass}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              Go Back
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Separator */}
+          <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
+
+          {/* Utility Icons */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button data-testid="sidebar-button-share" className={circularButtonClass}>
+                <Share2 className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Share</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button data-testid="sidebar-button-favorite" className={circularButtonClass}>
+                <Star className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Favorite</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button data-testid="sidebar-button-add" className={circularButtonClass}>
+                <Plus className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Add New</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button data-testid="sidebar-button-clipboard" className={circularButtonClass}>
+                <ClipboardList className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Clipboard</TooltipContent>
+          </Tooltip>
+
+          {/* Spacer to push bottom icons down */}
+          <div className="flex-1" />
+
+          {/* Bottom Icons */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button data-testid="sidebar-button-history" className={circularButtonClass}>
+                <Clock className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">History</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/settings")}
+                data-testid="sidebar-button-settings"
+                className={circularButtonClass}
+              >
+                <SettingsIcon className="h-[18px] w-[18px]" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Settings</TooltipContent>
+          </Tooltip>
         </div>
         
         {/* Content Area - Row 2, Column 2 */}
