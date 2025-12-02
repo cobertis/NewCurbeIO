@@ -482,14 +482,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             {/* Left: Company Logo - Always links to dashboard */}
             <div className="flex items-center shrink-0 mr-8 h-10">
               {displayLogo && (
-                <Link href="/dashboard">
+                <a href="/dashboard" data-testid="logo-link">
                   <img 
                     src={displayLogo} 
                     alt="Logo" 
                     className="h-9 max-w-[140px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                    data-testid="logo-link"
                   />
-                </Link>
+                </a>
               )}
             </div>
 

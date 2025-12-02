@@ -1,7 +1,17 @@
-2025/12/02-20:16:58.479 bf4c Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/12/02-20:16:58.484 bf4c Recovering log #934
-2025/12/02-20:16:58.500 bf4c Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000934.log 
-2025/12/02-20:17:07.742 bf49 Level-0 table #941: started
-2025/12/02-20:17:07.772 bf49 Level-0 table #941: 183667 bytes OK
-2025/12/02-20:17:07.810 bf49 Delete type=0 #934
-2025/12/02-20:17:07.814 bf4c Manual compaction at level-0 from '\x00\xe6\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xe7\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/02-20:28:49.390 5f1 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/02-20:28:49.392 5f1 Recovering log #952
+2025/12/02-20:28:49.400 5f1 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000952.log 
+2025/12/02-20:28:51.132 5f2 Level-0 table #959: started
+2025/12/02-20:28:51.143 5f2 Level-0 table #959: 162164 bytes OK
+2025/12/02-20:28:51.146 5f2 Delete type=0 #952
+2025/12/02-20:28:51.147 5f2 Manual compaction at level-0 from '\x00\xe9\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\xea\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/02-20:28:53.654 5f1 Compacting 1@1 + 3@2 files
+2025/12/02-20:28:53.805 5f1 Generated table #960@1: 76760 keys, 2295393 bytes
+2025/12/02-20:28:53.919 5f1 Generated table #961@1: 59543 keys, 2206380 bytes
+2025/12/02-20:28:53.964 5f1 Generated table #962@1: 6671 keys, 148761 bytes
+2025/12/02-20:28:53.964 5f1 Compacted 1@1 + 3@2 files => 4650534 bytes
+2025/12/02-20:28:53.998 5f1 compacted to: files[ 0 0 3 0 0 0 0 ]
+2025/12/02-20:28:53.998 5f1 Delete type=2 #954
+2025/12/02-20:28:53.998 5f1 Delete type=2 #955
+2025/12/02-20:28:53.998 5f1 Delete type=2 #956
+2025/12/02-20:28:53.998 5f1 Delete type=2 #959
