@@ -458,11 +458,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
-          {/* SugarCRM-style Header */}
-          <header className="h-14 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl flex items-center px-4 sm:px-6 sticky top-0 z-10 shadow-sm">
+          {/* SugarCRM-style Header - Floating without borders */}
+          <header className="h-14 bg-transparent flex items-center px-4 sm:px-6 sticky top-0 z-10">
             {/* Left: Company Logo */}
             <div className="flex items-center shrink-0">
               <img 
@@ -659,13 +659,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           
-          {/* Page Title Bar - SugarCRM Style */}
-          <div className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4 sm:px-6">
+          {/* Page Title Bar - SugarCRM Style - Floating */}
+          <div className="h-14 bg-transparent flex items-center px-4 sm:px-6">
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => window.history.back()}
-              className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50"
               data-testid="button-back"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -675,7 +675,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </h1>
           </div>
 
-          <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
+          <main className="flex-1 overflow-auto">
             {children}
           </main>
         </div>

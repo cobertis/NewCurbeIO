@@ -79,7 +79,7 @@ export function AppSidebar() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <Sidebar className="w-16 min-w-16 max-w-16 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <Sidebar className="w-16 min-w-16 max-w-16 border-0 bg-transparent">
         <SidebarContent className="py-4">
           <SidebarGroup>
             <SidebarGroupContent>
@@ -110,7 +110,7 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="p-2 border-t border-gray-200 dark:border-gray-700">
+        <SidebarFooter className="p-2">
           <SidebarMenu className="flex flex-col items-center">
             <SidebarMenuItem>
               <Tooltip>
