@@ -17,7 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout } from "lucide-react";
+import { SiWhatsapp } from "react-icons/si";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -674,42 +676,110 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Separator */}
           <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
-          {/* Utility Icons */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button data-testid="sidebar-button-share" className={circularButtonClass}>
-                <Share2 className="h-[18px] w-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">Share</TooltipContent>
-          </Tooltip>
+          {/* Communications Popover */}
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <button data-testid="sidebar-button-communications" className={circularButtonClass}>
+                    <MessageCircle className="h-[18px] w-[18px]" />
+                  </button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">Communications</TooltipContent>
+            </Tooltip>
+            <PopoverContent side="right" align="start" className="w-48 p-2">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Communications</p>
+                <button
+                  onClick={() => setLocation("/whatsapp")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-whatsapp"
+                >
+                  <SiWhatsapp className="h-4 w-4 text-green-600" />
+                  WhatsApp
+                </button>
+                <button
+                  onClick={() => setLocation("/imessage")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-imessage"
+                >
+                  <MessageSquare className="h-4 w-4 text-blue-500" />
+                  iMessage
+                </button>
+                <button
+                  onClick={() => setLocation("/sms-mms")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-sms"
+                >
+                  <Phone className="h-4 w-4 text-purple-600" />
+                  SMS
+                </button>
+                <button
+                  onClick={() => setLocation("/email-marketing")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-email"
+                >
+                  <Mail className="h-4 w-4 text-orange-500" />
+                  Email
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button data-testid="sidebar-button-favorite" className={circularButtonClass}>
-                <Star className="h-[18px] w-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">Favorite</TooltipContent>
-          </Tooltip>
+          {/* Marketing Popover */}
+          <Popover>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <button data-testid="sidebar-button-marketing" className={circularButtonClass}>
+                    <Megaphone className="h-[18px] w-[18px]" />
+                  </button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">Marketing</TooltipContent>
+            </Tooltip>
+            <PopoverContent side="right" align="start" className="w-48 p-2">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Marketing</p>
+                <button
+                  onClick={() => setLocation("/campaigns")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-campaigns"
+                >
+                  <Megaphone className="h-4 w-4 text-red-500" />
+                  Campaigns
+                </button>
+                <button
+                  onClick={() => setLocation("/contacts")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-contacts"
+                >
+                  <UsersIcon className="h-4 w-4 text-blue-600" />
+                  Contacts
+                </button>
+                <button
+                  onClick={() => setLocation("/referrals")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-referrals"
+                >
+                  <Gift className="h-4 w-4 text-pink-500" />
+                  Referrals
+                </button>
+                <button
+                  onClick={() => setLocation("/landing-page")}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="sidebar-link-landing-page"
+                >
+                  <Layout className="h-4 w-4 text-indigo-500" />
+                  Landing Page
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button data-testid="sidebar-button-add" className={circularButtonClass}>
-                <Plus className="h-[18px] w-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">Add New</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button data-testid="sidebar-button-clipboard" className={circularButtonClass}>
-                <ClipboardList className="h-[18px] w-[18px]" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">Clipboard</TooltipContent>
-          </Tooltip>
+          {/* Separator */}
+          <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
           {/* Spacer to push bottom icons down */}
           <div className="flex-1" />
