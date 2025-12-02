@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Link } from "wouter";
 import { queryClient, getCompanyQueryOptions } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -437,71 +437,105 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const navigationItems = user?.role === 'superadmin' 
+    ? [
+        { title: "Dashboard", url: "/dashboard" },
+        { title: "Users", url: "/users" },
+        { title: "Companies", url: "/companies" },
+        { title: "Plans", url: "/plans" },
+        { title: "Tickets", url: "/tickets" },
+        { title: "Settings", url: "/settings" },
+      ]
+    : [
+        { title: "Dashboard", url: "/dashboard" },
+        { title: "Calendar", url: "/calendar" },
+        { title: "Policies", url: "/policies" },
+        { title: "Quotes", url: "/quotes" },
+        { title: "Leads", url: "/leads" },
+        { title: "Tasks", url: "/tasks" },
+      ];
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
-          <header className="h-16 bg-sidebar flex items-center justify-between px-3 sm:px-6 sticky top-0 z-10 border-b border-border">
-            {/* Left: Create Button */}
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <header className="h-14 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-6 sticky top-0 z-10 shadow-sm">
+            {/* Left: Horizontal Navigation Links */}
+            <nav className="flex items-center gap-1">
+              {navigationItems.map((item) => (
+                <Link key={item.url} href={item.url}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className={cn(
+                      "text-sm font-medium transition-colors rounded-lg px-3 py-1.5",
+                      location === item.url 
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                    data-testid={`nav-${item.title.toLowerCase()}`}
+                  >
+                    {item.title}
+                  </Button>
+                </Link>
+              ))}
+              
               {/* Create Button with Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2" data-testid="button-create">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Plus className="h-4 w-4 text-primary" />
-                    </div>
+                  <Button variant="ghost" size="sm" className="gap-1.5 ml-2 text-primary" data-testid="button-create">
+                    <Plus className="h-4 w-4" />
                     <span className="hidden sm:inline">Create</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-96">
+                <DropdownMenuContent align="start" className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-0 shadow-xl rounded-xl">
                   <DropdownMenuItem 
                     onClick={() => setLocation("/quotes/new")} 
                     data-testid="menu-item-new-quote"
-                    className="py-3 px-4 cursor-pointer"
+                    className="py-3 px-4 cursor-pointer rounded-lg"
                   >
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
-                      <UserPlus className="h-5 w-5 text-primary" />
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
+                      <UserPlus className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-sm">New Quote</div>
-                      <div className="text-xs text-muted-foreground">Add a new client or lead to your contact list</div>
+                      <div className="font-medium text-sm">New Quote</div>
+                      <div className="text-xs text-muted-foreground">Add a new client or lead</div>
                     </div>
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem 
                     onClick={() => setLocation("/policies/new")} 
                     data-testid="menu-item-new-policy"
-                    className="py-3 px-4 cursor-pointer"
+                    className="py-3 px-4 cursor-pointer rounded-lg"
                   >
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
-                      <Shield className="h-5 w-5 text-primary" />
+                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mr-3 shrink-0">
+                      <Shield className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-sm">New Policy</div>
-                      <div className="text-xs text-muted-foreground">Add a new insurance policy for a client</div>
+                      <div className="font-medium text-sm">New Policy</div>
+                      <div className="text-xs text-muted-foreground">Add a new insurance policy</div>
                     </div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            </nav>
 
             {/* Right: Action Icons + User Profile */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {/* WebPhone Button */}
               <Button 
                 size="icon"
                 onClick={() => useWebPhoneStore.getState().toggleDialpad()}
                 data-testid="button-webphone"
                 className={cn(
-                  "rounded-full hover-elevate active-elevate-2 bg-green-500 hover:bg-green-600 active:bg-green-700",
+                  "h-8 w-8 rounded-lg bg-green-500 hover:bg-green-600 active:bg-green-700 transition-colors",
                   useWebPhoneStore.getState().currentCall?.status === 'ringing' && 
                   useWebPhoneStore.getState().currentCall?.direction === 'inbound' && 
                   "animate-pulse-phone"
                 )}
               >
-                <Phone className="h-5 w-5 text-white" />
+                <Phone className="h-4 w-4 text-white" />
               </Button>
               
               {/* Search Icon */}
@@ -509,9 +543,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 variant="ghost" 
                 size="icon"
                 data-testid="button-search"
-                className="rounded-md hover-elevate active-elevate-2"
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <Search className="h-8 w-8 text-blue-500" />
+                <Search className="h-4 w-4" />
               </Button>
 
               {/* Theme Toggle */}
@@ -522,9 +556,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 variant="ghost" 
                 size="icon"
                 data-testid="button-messages"
-                className="rounded-md hover-elevate active-elevate-2"
+                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <MessageSquare className="h-8 w-8 text-blue-500" />
+                <MessageSquare className="h-4 w-4" />
               </Button>
 
               {/* Notifications Button */}
@@ -533,12 +567,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 size="icon" 
                 onClick={() => setNotificationsOpen(true)}
                 data-testid="button-notifications" 
-                className="rounded-md relative hover-elevate active-elevate-2"
+                className="h-8 w-8 rounded-lg relative text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <Bell className="h-8 w-8 text-blue-500" />
+                <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center notification-badge">
-                    <span className="text-white text-[10px] font-semibold">!</span>
+                  <div className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-[8px] font-bold">!</span>
                   </div>
                 )}
               </Button>
@@ -549,10 +583,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <Button 
                     variant="ghost" 
                     size="icon"
-                    className="rounded-full" 
+                    className="h-8 w-8 rounded-lg p-0 ml-1" 
                     data-testid="button-user-menu"
                   >
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-7 w-7">
                       <AvatarImage src={user?.avatar || undefined} alt={userName} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                         {userInitial}
@@ -560,29 +594,29 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 p-4">
+                <DropdownMenuContent align="end" className="w-72 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-0 shadow-xl rounded-xl">
                   {/* User Info Header */}
-                  <div className="flex items-center gap-4 mb-4">
+                  <div className="flex items-center gap-3 mb-3">
                     <Avatar 
-                      className="h-16 w-16 cursor-pointer hover-elevate active-elevate-2 transition-transform"
+                      className="h-12 w-12 cursor-pointer hover:scale-105 transition-transform"
                       onClick={() => setUploadAvatarOpen(true)}
                       data-testid="avatar-upload-trigger"
                     >
                       <AvatarImage src={user?.avatar || undefined} alt={userName} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xl font-semibold">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-semibold text-foreground truncate">{userName}</p>
-                      <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
-                      <Badge variant="secondary" className="mt-1.5 text-xs">
+                      <p className="text-sm font-semibold text-foreground truncate">{userName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                      <Badge variant="secondary" className="mt-1 text-[10px] px-1.5 py-0">
                         {userSubtitle}
                       </Badge>
                     </div>
                   </div>
                   
-                  <DropdownMenuSeparator className="my-3" />
+                  <DropdownMenuSeparator className="my-2" />
                   
                   {/* Menu Items */}
                   <div className="space-y-1">

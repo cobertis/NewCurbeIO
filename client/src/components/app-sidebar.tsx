@@ -44,18 +44,19 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarFooter,
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { User, BulkvsThread } from "@shared/schema";
 import logo from "@assets/logo no fondo_1760450756816.png";
 import { useWebPhoneStore, webPhone } from "@/services/webphone";
@@ -64,30 +65,27 @@ import { useWebPhoneStore, webPhone } from "@/services/webphone";
 function ImessageUnreadBadge() {
   const { data: conversations } = useQuery({
     queryKey: ['/api/imessage/conversations'],
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000,
   });
 
-  // Count conversations with unread messages (NOT total messages) - same as SMS
   const unreadConversationCount = ((conversations as any[])?.filter((conv: any) => conv.unreadCount > 0) ?? []).length;
 
   if (unreadConversationCount === 0) return null;
 
   return (
-    <Badge 
-      variant="destructive" 
-      className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
-    >
-      {unreadConversationCount > 99 ? '99+' : unreadConversationCount}
-    </Badge>
+    <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+      <span className="text-white text-[8px] font-bold">
+        {unreadConversationCount > 9 ? '9+' : unreadConversationCount}
+      </span>
+    </div>
   );
 }
 
-// Component to show unread WhatsApp count (conversations, not messages)
+// Component to show unread WhatsApp count
 function WhatsAppUnreadBadge() {
-  // First check if WhatsApp is authenticated
   const { data: statusData } = useQuery<{ success: boolean; status: { status: string } }>({
     queryKey: ['/api/whatsapp/status'],
-    refetchInterval: 10000, // Check status less frequently
+    refetchInterval: 10000,
     staleTime: 5000,
   });
   
@@ -95,172 +93,84 @@ function WhatsAppUnreadBadge() {
   
   const { data: chatsData } = useQuery<{ success: boolean; chats: Array<{ id: string; unreadCount: number }> }>({
     queryKey: ['/api/whatsapp/chats'],
-    refetchInterval: 3000, // Refresh every 3 seconds for real-time updates
-    enabled: isAuthenticated, // Only fetch chats when WhatsApp is ready
+    refetchInterval: 3000,
+    enabled: isAuthenticated,
   });
 
-  // Count conversations with unread messages (NOT total messages)
-  // If same number sends 4 messages, that counts as 1 unread conversation
   const unreadConversationCount = chatsData?.chats?.filter((chat) => chat.unreadCount > 0).length ?? 0;
 
   if (unreadConversationCount === 0) return null;
 
   return (
-    <Badge 
-      variant="destructive" 
-      className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
-      data-testid="badge-whatsapp-unread"
-    >
-      {unreadConversationCount > 99 ? '99+' : unreadConversationCount}
-    </Badge>
+    <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+      <span className="text-white text-[8px] font-bold">
+        {unreadConversationCount > 9 ? '9+' : unreadConversationCount}
+      </span>
+    </div>
   );
 }
 
-// Menu items for superadmin (COMPLETE LIST)
+// SMS Unread Badge component
+function SmsUnreadBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+
+  return (
+    <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+      <span className="text-white text-[8px] font-bold">
+        {count > 9 ? '9+' : count}
+      </span>
+    </div>
+  );
+}
+
+// Menu items for superadmin
 const superadminMenuItems = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Users",
-    url: "/users",
-    icon: Users,
-  },
-  {
-    title: "Companies",
-    url: "/companies",
-    icon: Building2,
-  },
-  {
-    title: "Plans",
-    url: "/plans",
-    icon: CreditCard,
-  },
-  {
-    title: "Features",
-    url: "/features",
-    icon: Package,
-  },
-  {
-    title: "Invoices",
-    url: "/invoices",
-    icon: FileText,
-  },
-  {
-    title: "Billing",
-    url: "/billing",
-    icon: CreditCard,
-  },
-  {
-    title: "Audit Logs",
-    url: "/audit-logs",
-    icon: Shield,
-  },
-  {
-    title: "Tickets",
-    url: "/tickets",
-    icon: Ticket,
-  },
-  {
-    title: "Campaigns",
-    url: "/campaigns",
-    icon: Megaphone,
-  },
-  {
-    title: "Incoming SMS",
-    url: "/incoming-sms",
-    icon: MessageSquare,
-  },
-  {
-    title: "System Alerts",
-    url: "/system-alerts",
-    icon: AlertTriangle,
-  },
-  {
-    title: "Email Config",
-    url: "/email-configuration",
-    icon: AtSign,
-  },
-  {
-    title: "Birthday Images",
-    url: "/birthday-images",
-    icon: ImagePlus,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Users", url: "/users", icon: Users },
+  { title: "Companies", url: "/companies", icon: Building2 },
+  { title: "Plans", url: "/plans", icon: CreditCard },
+  { title: "Features", url: "/features", icon: Package },
+  { title: "Invoices", url: "/invoices", icon: FileText },
+  { title: "Billing", url: "/billing", icon: CreditCard },
+  { title: "Audit Logs", url: "/audit-logs", icon: Shield },
+  { title: "Tickets", url: "/tickets", icon: Ticket },
+  { title: "Campaigns", url: "/campaigns", icon: Megaphone },
+  { title: "Incoming SMS", url: "/incoming-sms", icon: MessageSquare },
+  { title: "System Alerts", url: "/system-alerts", icon: AlertTriangle },
+  { title: "Email Config", url: "/email-configuration", icon: AtSign },
+  { title: "Birthday Images", url: "/birthday-images", icon: ImagePlus },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-// Menu items for regular users (admin, agent, etc.)
+// Menu items for regular users
 const regularUserMenuItems = [
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Calendar",
-    url: "/calendar",
-    icon: Calendar,
-  },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Policies", url: "/policies", icon: FileCheck },
+  { title: "Quotes", url: "/quotes", icon: ClipboardList },
+  { title: "Leads", url: "/leads", icon: Contact },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare },
 ];
 
-const myAgencyMenuItems = [
-  {
-    title: "Policies",
-    url: "/policies",
-    icon: FileCheck,
-  },
-  {
-    title: "Quotes",
-    url: "/quotes",
-    icon: ClipboardList,
-  },
-  {
-    title: "Leads",
-    url: "/leads",
-    icon: Contact,
-  },
-  {
-    title: "Tasks",
-    url: "/tasks",
-    icon: CheckSquare,
-  },
+// Communications menu items
+const communicationsMenuItems = [
+  { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, badge: "whatsapp" },
+  { title: "iMessage", url: "/imessage", icon: MessageCircle, badge: "imessage", featureKey: "imessage" },
+  { title: "SMS", url: "/sms", icon: Inbox, badge: "sms" },
+  { title: "Email", url: "/email-campaigns", icon: Mail },
 ];
 
+// Marketing menu items
 const marketingMenuItems = [
-  {
-    title: "Campaigns",
-    url: "/imessage-campaigns",
-    icon: Send,
-  },
-  {
-    title: "Contacts",
-    url: "/contacts",
-    icon: Contact,
-  },
-  {
-    title: "Referrals",
-    url: "/referrals",
-    icon: UserPlus,
-  },
-  {
-    title: "Landing page",
-    url: "/landing-page",
-    icon: Globe,
-  },
+  { title: "Campaigns", url: "/imessage-campaigns", icon: Send },
+  { title: "Contacts", url: "/contacts", icon: Contact },
+  { title: "Referrals", url: "/referrals", icon: UserPlus },
+  { title: "Landing page", url: "/landing-page", icon: Globe },
 ];
 
+// Configuration menu items
 const configurationMenuItems = [
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -272,7 +182,6 @@ export function AppSidebar() {
     queryKey: ["/api/session"],
   });
 
-  // Prefetch route data on hover/focus/touch/click
   const handlePrefetch = (url: string) => {
     const queries = getRoleAwareQueries(url, userData?.user?.role);
     queries.forEach((queryDescriptor) => {
@@ -283,12 +192,10 @@ export function AppSidebar() {
     });
   };
 
-  // Get company data to access the logo
   const { data: companyData, isSuccess: companyDataLoaded } = useQuery<{ company: { logo?: string } }>({
     ...getCompanyQueryOptions(userData?.user?.companyId),
   });
 
-  // Get company features for feature gating
   const { data: featuresData } = useQuery<{ features: Array<{ key: string }> }>({
     queryKey: [`/api/companies/${userData?.user?.companyId}/features`],
     enabled: !!userData?.user?.companyId,
@@ -296,32 +203,23 @@ export function AppSidebar() {
 
   const enabledFeatures = new Set(featuresData?.features?.map(f => f.key) || []);
 
-  // Get BulkVS threads to count unread messages
   const { data: threadsData } = useQuery<BulkvsThread[]>({
     queryKey: ["/api/bulkvs/threads"],
     enabled: !!userData?.user,
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000,
   });
 
-  // Determine which menu to show based on user role
   const isSuperadmin = userData?.user?.role === "superadmin";
-
-  // Count conversations with unread messages (not total messages)
   const unreadThreadCount = (threadsData?.filter(thread => thread.unreadCount > 0) ?? []).length;
 
-  // Fetch unread Incoming SMS count (Twilio)
   const { data: incomingSmsData } = useQuery<{ unreadCount: number }>({
     queryKey: ["/api/chat/unread-count"],
     enabled: isSuperadmin,
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000,
   });
 
   const incomingSmsUnreadCount = incomingSmsData?.unreadCount ?? 0;
-  
-  // For superadmin and regular users
-  const menuItems = isSuperadmin ? superadminMenuItems : regularUserMenuItems;
 
-  // Load cached logo from localStorage on mount
   useEffect(() => {
     const cached = localStorage.getItem('company_logo');
     if (cached) {
@@ -329,19 +227,16 @@ export function AppSidebar() {
     }
   }, []);
 
-  // Update cache when company data changes
   useEffect(() => {
     if (companyData?.company?.logo) {
       localStorage.setItem('company_logo', companyData.company.logo);
       setCachedLogo(companyData.company.logo);
     } else if (companyData && !companyData.company?.logo) {
-      // Company loaded but no logo - clear cache
       localStorage.removeItem('company_logo');
       setCachedLogo(null);
     }
   }, [companyData]);
 
-  // Close mobile sidebar when location changes
   useEffect(() => {
     if (isMobile) {
       setOpenMobile(false);
@@ -350,10 +245,8 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     try {
-      // If there's an active call, hang up before logout
       const { currentCall } = useWebPhoneStore.getState();
       if (currentCall) {
-        console.log('[Logout] Hanging up active call before logout');
         await webPhone.hangupCall();
       }
       
@@ -362,11 +255,8 @@ export function AppSidebar() {
         credentials: "include",
       });
       if (response.ok) {
-        // Clear all query cache
         queryClient.clear();
-        // Clear company logo cache
         localStorage.removeItem('company_logo');
-        // Redirect to login
         window.location.href = "/login";
       }
     } catch (error) {
@@ -374,392 +264,165 @@ export function AppSidebar() {
     }
   };
 
-  // Determine which logo to display
   const getDisplayLogo = () => {
-    // If company data has loaded successfully
     if (companyDataLoaded) {
-      // Use company logo if exists, otherwise default Curbe logo
       return companyData?.company?.logo || logo;
     }
-    // Company data still loading - use cached logo if available, otherwise default
     return cachedLogo || logo;
   };
   
   const displayLogo = getDisplayLogo();
 
+  const renderMenuItem = (item: any, showBadge: boolean = false, badgeCount: number = 0) => {
+    const isActive = location === item.url;
+    const Icon = item.icon;
+    
+    return (
+      <SidebarMenuItem key={item.title}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarMenuButton
+              asChild
+              isActive={isActive}
+              data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+              className={`
+                h-10 w-10 p-0 rounded-xl transition-all duration-200 flex items-center justify-center mx-auto relative
+                ${isActive 
+                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-gray-700/50'
+                }
+              `}
+            >
+              <Link 
+                href={item.url} 
+                className="flex items-center justify-center w-full h-full"
+                onMouseEnter={() => handlePrefetch(item.url)}
+                onFocus={() => handlePrefetch(item.url)}
+                onTouchStart={() => handlePrefetch(item.url)}
+                onClick={() => handlePrefetch(item.url)}
+              >
+                <Icon className="h-5 w-5" />
+                {item.badge === "whatsapp" && <WhatsAppUnreadBadge />}
+                {item.badge === "imessage" && <ImessageUnreadBadge />}
+                {item.badge === "sms" && <SmsUnreadBadge count={unreadThreadCount} />}
+                {showBadge && badgeCount > 0 && (
+                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-[8px] font-bold">
+                      {badgeCount > 9 ? '9+' : badgeCount}
+                    </span>
+                  </div>
+                )}
+              </Link>
+            </SidebarMenuButton>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            {item.title}
+          </TooltipContent>
+        </Tooltip>
+      </SidebarMenuItem>
+    );
+  };
+
   return (
-    <Sidebar className="border-r border-border bg-background">
-      <SidebarHeader className="px-6 h-16 flex items-center justify-center">
-        <Link href="/" className="flex items-center justify-center w-full h-12">
-          {displayLogo ? (
-            <img 
-              src={displayLogo} 
-              alt={companyData?.company?.logo ? "Company Logo" : "Curbe.io"} 
-              className="max-w-full max-h-12 object-contain"
-            />
+    <TooltipProvider delayDuration={0}>
+      <Sidebar className="border-r-0 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl">
+        <SidebarHeader className="h-16 flex items-center justify-center border-b border-gray-200/50 dark:border-gray-700/50">
+          <Link href="/" className="flex items-center justify-center w-10 h-10">
+            {displayLogo ? (
+              <img 
+                src={displayLogo} 
+                alt={companyData?.company?.logo ? "Company Logo" : "Curbe.io"} 
+                className="max-w-8 max-h-8 object-contain"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <LayoutDashboard className="h-4 w-4 text-primary" />
+              </div>
+            )}
+          </Link>
+        </SidebarHeader>
+
+        <SidebarContent className="py-4 px-2">
+          {isSuperadmin ? (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-2 flex flex-col items-center">
+                  {superadminMenuItems.map((item) => 
+                    renderMenuItem(
+                      item, 
+                      item.title === "Incoming SMS",
+                      item.title === "Incoming SMS" ? incomingSmsUnreadCount : 0
+                    )
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           ) : (
-            <div className="w-full h-12" />
-          )}
-        </Link>
-      </SidebarHeader>
-
-      <SidebarContent className="px-3 pt-2 pb-4">
-        {/* Superadmin Menu - Single list without separators */}
-        {isSuperadmin && (
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
-                {menuItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location === item.url}
-                      data-testid={`link-${item.title.toLowerCase()}`}
-                      className={`
-                        h-11 rounded-md transition-colors
-                        ${location === item.url 
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                        }
-                      `}
-                    >
-                      <Link 
-                        href={item.url} 
-                        className="flex items-center gap-3 px-3 w-full"
-                        onMouseEnter={() => handlePrefetch(item.url)}
-                        onFocus={() => handlePrefetch(item.url)}
-                        onTouchStart={() => handlePrefetch(item.url)}
-                        onClick={() => handlePrefetch(item.url)}
-                      >
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className="flex-1">{item.title}</span>
-                        {item.title === "Incoming SMS" && incomingSmsUnreadCount > 0 && (
-                          <Badge 
-                            variant="destructive" 
-                            className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
-                            data-testid="badge-incoming-sms-unread"
-                          >
-                            {incomingSmsUnreadCount > 99 ? "99+" : incomingSmsUnreadCount}
-                          </Badge>
-                        )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* For regular users: Dashboard, Calendar, My Agency, Marketing, Configuration */}
-        {!isSuperadmin && (
-          <>
-            {/* Dashboard and Calendar */}
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.url}
-                        data-testid={`link-${item.title.toLowerCase()}`}
-                        className={`
-                          h-11 rounded-md transition-colors
-                          ${location === item.url 
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                          }
-                        `}
-                      >
-                        <Link 
-                          href={item.url} 
-                          className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch(item.url)}
-                          onFocus={() => handlePrefetch(item.url)}
-                          onTouchStart={() => handlePrefetch(item.url)}
-                          onClick={() => handlePrefetch(item.url)}
-                        >
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {/* My Agency Section */}
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                My Agency
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
-                  {myAgencyMenuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.url}
-                        data-testid={`link-${item.title.toLowerCase()}`}
-                        className={`
-                          h-11 rounded-md transition-colors
-                          ${location === item.url 
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                          }
-                        `}
-                      >
-                        <Link 
-                          href={item.url} 
-                          className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch(item.url)}
-                          onFocus={() => handlePrefetch(item.url)}
-                          onTouchStart={() => handlePrefetch(item.url)}
-                          onClick={() => handlePrefetch(item.url)}
-                        >
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1 whitespace-nowrap overflow-visible">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {/* Communications Section - Premium Features */}
-            {(enabledFeatures.has("imessage") || true) && (
+            <>
               <SidebarGroup>
-                <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Communications
-                </SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <SidebarMenu className="space-y-1">
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === "/whatsapp"}
-                        data-testid="link-whatsapp"
-                        className={`
-                          h-11 rounded-md transition-colors
-                          ${location === "/whatsapp"
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                          }
-                        `}
-                      >
-                        <Link 
-                          href="/whatsapp" 
-                          className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch("/whatsapp")}
-                          onFocus={() => handlePrefetch("/whatsapp")}
-                          onTouchStart={() => handlePrefetch("/whatsapp")}
-                          onClick={() => handlePrefetch("/whatsapp")}
-                        >
-                          <MessageSquare className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">WhatsApp</span>
-                          <WhatsAppUnreadBadge />
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    {enabledFeatures.has("imessage") && (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={location === "/imessage"}
-                          data-testid="link-imessage"
-                          className={`
-                            h-11 rounded-md transition-colors
-                            ${location === "/imessage"
-                              ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                              : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                            }
-                          `}
-                        >
-                          <Link 
-                            href="/imessage" 
-                            className="flex items-center gap-3 px-3 w-full"
-                            onMouseEnter={() => handlePrefetch("/imessage")}
-                            onFocus={() => handlePrefetch("/imessage")}
-                            onTouchStart={() => handlePrefetch("/imessage")}
-                            onClick={() => handlePrefetch("/imessage")}
-                          >
-                            <MessageCircle className="h-5 w-5 shrink-0" />
-                            <span className="flex-1">iMessage</span>
-                            <ImessageUnreadBadge />
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )}
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === "/sms"}
-                        data-testid="link-sms"
-                        className={`
-                          h-11 rounded-md transition-colors
-                          ${location === "/sms"
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                          }
-                        `}
-                      >
-                        <Link 
-                          href="/sms" 
-                          className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch("/sms")}
-                          onFocus={() => handlePrefetch("/sms")}
-                          onTouchStart={() => handlePrefetch("/sms")}
-                          onClick={() => handlePrefetch("/sms")}
-                        >
-                          <Inbox className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">SMS</span>
-                          {unreadThreadCount > 0 && (
-                            <Badge 
-                              variant="destructive" 
-                              className="ml-auto h-5 min-w-5 px-1 text-xs font-semibold rounded-full flex items-center justify-center"
-                              data-testid="badge-sms-unread"
-                            >
-                              {unreadThreadCount > 99 ? "99+" : unreadThreadCount}
-                            </Badge>
-                          )}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === "/email-campaigns"}
-                        data-testid="link-email"
-                        className={`
-                          h-11 rounded-md transition-colors
-                          ${location === "/email-campaigns"
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                          }
-                        `}
-                      >
-                        <Link 
-                          href="/email-campaigns" 
-                          className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch("/email-campaigns")}
-                          onFocus={() => handlePrefetch("/email-campaigns")}
-                          onTouchStart={() => handlePrefetch("/email-campaigns")}
-                          onClick={() => handlePrefetch("/email-campaigns")}
-                        >
-                          <Mail className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">Email</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                  <SidebarMenu className="space-y-2 flex flex-col items-center">
+                    {regularUserMenuItems.map((item) => renderMenuItem(item))}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
-            )}
 
-            {/* Marketing Section */}
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Marketing
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
-                  {marketingMenuItems
-                    .filter((item: any) => !item.featureKey || enabledFeatures.has(item.featureKey))
-                    .map((item: any) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.url}
-                        data-testid={`link-${item.title.toLowerCase()}`}
-                        className={`
-                          h-11 rounded-md transition-colors
-                          ${item.tone === 'destructive' 
-                            ? (location === item.url 
-                              ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90 font-medium' 
-                              : 'text-destructive hover:bg-destructive/10')
-                            : (location === item.url 
-                              ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                              : 'text-muted-foreground hover:text-foreground hover:bg-accent')
-                          }
-                        `}
-                      >
-                        <Link 
-                          href={item.url} 
-                          className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch(item.url)}
-                          onFocus={() => handlePrefetch(item.url)}
-                          onTouchStart={() => handlePrefetch(item.url)}
-                          onClick={() => handlePrefetch(item.url)}
-                        >
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+              <div className="my-3 mx-2 h-px bg-gray-200/60 dark:bg-gray-700/60" />
 
-            {/* Configuration Section */}
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Configuration
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="space-y-1">
-                  {configurationMenuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={location === item.url}
-                        data-testid={`link-${item.title.toLowerCase()}`}
-                        className={`
-                          h-11 rounded-md transition-colors
-                          ${location === item.url 
-                            ? 'bg-primary text-primary-foreground hover:bg-primary/90 font-medium' 
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                          }
-                        `}
-                      >
-                        <Link 
-                          href={item.url} 
-                          className="flex items-center gap-3 px-3 w-full"
-                          onMouseEnter={() => handlePrefetch(item.url)}
-                          onFocus={() => handlePrefetch(item.url)}
-                          onTouchStart={() => handlePrefetch(item.url)}
-                          onClick={() => handlePrefetch(item.url)}
-                        >
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span className="flex-1">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
-      </SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-2 flex flex-col items-center">
+                    {communicationsMenuItems
+                      .filter((item) => !item.featureKey || enabledFeatures.has(item.featureKey))
+                      .map((item) => renderMenuItem(item))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
 
-      <SidebarFooter className="p-3 border-t border-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleLogout}
-              className="h-11 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
-              data-testid="button-logout"
-            >
-              <LogOut className="h-5 w-5 shrink-0" />
-              <span>Sign Out</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+              <div className="my-3 mx-2 h-px bg-gray-200/60 dark:bg-gray-700/60" />
+
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-2 flex flex-col items-center">
+                    {marketingMenuItems.map((item) => renderMenuItem(item))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+
+              <div className="my-3 mx-2 h-px bg-gray-200/60 dark:bg-gray-700/60" />
+
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu className="space-y-2 flex flex-col items-center">
+                    {configurationMenuItems.map((item) => renderMenuItem(item))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </>
+          )}
+        </SidebarContent>
+
+        <SidebarFooter className="p-2 border-t border-gray-200/50 dark:border-gray-700/50">
+          <SidebarMenu className="flex flex-col items-center">
+            <SidebarMenuItem>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarMenuButton
+                    onClick={handleLogout}
+                    className="h-10 w-10 p-0 rounded-xl text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 flex items-center justify-center mx-auto"
+                    data-testid="button-logout"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </SidebarMenuButton>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  Sign Out
+                </TooltipContent>
+              </Tooltip>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      </Sidebar>
+    </TooltipProvider>
   );
 }
