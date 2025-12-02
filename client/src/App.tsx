@@ -458,80 +458,77 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         { title: "Tasks", url: "/tasks" },
       ];
 
+  const circularButtonClass = "h-10 w-10 rounded-full bg-white/90 dark:bg-gray-800/70 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-all duration-200";
+
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex flex-col h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        {/* Full-width Header - SugarCRM Style */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex items-center px-6 sticky top-0 z-20 shadow-sm shadow-gray-200/50 dark:shadow-gray-900/50">
-          {/* Left: Company Logo - Bigger */}
-          <div className="flex items-center shrink-0 mr-8 h-10">
-            {displayLogo && (
-              <img 
-                src={displayLogo} 
-                alt="Logo" 
-                className="h-10 max-w-[160px] object-contain"
-              />
-            )}
-          </div>
+        {/* Floating Header - SugarCRM Style - No sticky, transparent */}
+        <div className="px-4 pt-4">
+          <header className="h-14 bg-white/40 dark:bg-gray-900/30 backdrop-blur-2xl rounded-2xl flex items-center px-6">
+            {/* Left: Company Logo - Only show when data is loaded */}
+            <div className="flex items-center shrink-0 mr-8 h-10">
+              {!isLoadingCompany && (
+                <img 
+                  src={companyData?.company?.logo || defaultLogo} 
+                  alt="Logo" 
+                  className="h-9 max-w-[140px] object-contain"
+                />
+              )}
+            </div>
 
-          {/* Center: Navigation Pills - More eye-catching */}
-          <nav className="flex-1 flex items-center justify-center gap-2">
-            {navigationItems.map((item) => (
-              <Link key={item.url} href={item.url}>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className={cn(
-                    "text-sm font-semibold transition-all duration-300 px-5 py-2 h-9",
-                    location === item.url 
-                      ? "bg-gray-900 text-white rounded-full hover:bg-gray-800 shadow-lg shadow-gray-900/25 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 dark:shadow-white/25" 
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/80 rounded-full dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/80"
-                  )}
-                  data-testid={`nav-${item.title.toLowerCase()}`}
-                >
-                  {item.title}
-                </Button>
-              </Link>
-            ))}
-          </nav>
+            {/* Center: Navigation Pills */}
+            <nav className="flex-1 flex items-center justify-center gap-1">
+              {navigationItems.map((item) => (
+                <Link key={item.url} href={item.url}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className={cn(
+                      "text-sm font-medium transition-all duration-200 px-4 py-1.5 h-8",
+                      location === item.url 
+                        ? "bg-gray-900 text-white rounded-full hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100" 
+                        : "text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-full dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/60"
+                    )}
+                    data-testid={`nav-${item.title.toLowerCase()}`}
+                  >
+                    {item.title}
+                  </Button>
+                </Link>
+              ))}
+            </nav>
 
-          {/* Right: Action Icons + User Profile - SugarCRM circular style */}
-          <div className="flex items-center gap-3 shrink-0">
-              {/* Search Icon - Circular */}
-              <button 
-                data-testid="button-search"
-                className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200"
-              >
-                <Search className="h-4 w-4" />
+            {/* Right: Action Icons - SugarCRM circular style */}
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Search Icon */}
+              <button data-testid="button-search" className={circularButtonClass}>
+                <Search className="h-[18px] w-[18px]" />
               </button>
 
-              {/* Messages Icon - Circular */}
-              <button 
-                data-testid="button-messages"
-                className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200 relative"
-              >
-                <Mail className="h-4 w-4" />
+              {/* Messages Icon */}
+              <button data-testid="button-messages" className={circularButtonClass}>
+                <Mail className="h-[18px] w-[18px]" />
               </button>
 
-              {/* Notifications Button - Circular */}
+              {/* Notifications Button */}
               <button 
                 onClick={() => setNotificationsOpen(true)}
                 data-testid="button-notifications" 
-                className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200 relative"
+                className={cn(circularButtonClass, "relative")}
               >
-                <Bell className="h-4 w-4" />
+                <Bell className="h-[18px] w-[18px]" />
                 {unreadCount > 0 && (
-                  <div className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800">
+                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-[9px] font-bold">{unreadCount > 9 ? '!' : unreadCount}</span>
                   </div>
                 )}
               </button>
 
-              {/* User Profile with Dropdown - Circular */}
+              {/* User Profile with Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
-                    className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center hover:shadow-md transition-all duration-200 p-0 overflow-hidden" 
+                    className={cn(circularButtonClass, "p-0 overflow-hidden")}
                     data-testid="button-user-menu"
                   >
                     <Avatar className="h-9 w-9">
@@ -633,7 +630,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </DropdownMenuContent>
               </DropdownMenu>
           </div>
-        </header>
+          </header>
+        </div>
         
         {/* Main content area with sidebar */}
         <div className="flex flex-1 overflow-hidden">

@@ -77,6 +77,8 @@ export function AppSidebar() {
     console.log(`Utility action: ${action}`);
   };
 
+  const circularButtonClass = "h-10 w-10 rounded-full bg-white/90 dark:bg-gray-800/70 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-all duration-200";
+
   return (
     <TooltipProvider delayDuration={0}>
       <Sidebar className="w-16 min-w-16 max-w-16 border-0 bg-transparent">
@@ -93,9 +95,9 @@ export function AppSidebar() {
                           <button
                             onClick={() => handleUtilityAction(item.action)}
                             data-testid={`utility-${item.action}`}
-                            className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200"
+                            className={circularButtonClass}
                           >
-                            <Icon className="h-4 w-4" />
+                            <Icon className="h-[18px] w-[18px]" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="right" className="font-medium">
@@ -117,10 +119,10 @@ export function AppSidebar() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleLogout}
-                    className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-red-500 hover:shadow-md transition-all duration-200"
+                    className="h-10 w-10 rounded-full bg-white/90 dark:bg-gray-800/70 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex items-center justify-center text-gray-500 hover:text-red-500 transition-all duration-200"
                     data-testid="button-logout"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-[18px] w-[18px]" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="font-medium">
