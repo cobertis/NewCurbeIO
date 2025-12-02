@@ -737,16 +737,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Content Area - Row 2, Column 2 */}
         <div className="flex flex-col min-w-0 pr-4 pt-2 overflow-hidden">
           {/* Page Title Bar - SugarCRM Style */}
-          <div className="h-12 bg-transparent flex items-center px-2">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => window.history.back()}
-              className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50"
-              data-testid="button-back"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
+          <div className="h-12 bg-transparent flex items-center px-4">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white" data-testid="page-title">
               {pageTitle}
             </h1>
