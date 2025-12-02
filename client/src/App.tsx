@@ -180,9 +180,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
 
   // Fetch company data for all users with a companyId
-  const { data: companyData } = useQuery<{ company: any }>({
+  const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: any }>({
     ...getCompanyQueryOptions(user?.companyId || undefined),
   });
+  
+  const displayLogo = companyData?.company?.logo || (!isLoadingCompany ? defaultLogo : null);
 
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
   const userName = user?.firstName && user?.lastName 
@@ -462,12 +464,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Full-width Header - SugarCRM Style */}
         <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl flex items-center px-6 sticky top-0 z-20 shadow-sm shadow-gray-200/50 dark:shadow-gray-900/50">
           {/* Left: Company Logo - Bigger */}
-          <div className="flex items-center shrink-0 mr-8">
-            <img 
-              src={companyData?.company?.logo || defaultLogo} 
-              alt={companyData?.company?.logo ? "Company Logo" : "Curbe"} 
-              className="h-10 max-w-[160px] object-contain"
-            />
+          <div className="flex items-center shrink-0 mr-8 h-10">
+            {displayLogo && (
+              <img 
+                src={displayLogo} 
+                alt="Logo" 
+                className="h-10 max-w-[160px] object-contain"
+              />
+            )}
           </div>
 
           {/* Center: Navigation Pills - More eye-catching */}
@@ -491,78 +495,52 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          {/* Right: Action Icons + User Profile */}
-          <div className="flex items-center gap-1.5 shrink-0">
-              {/* WebPhone Button */}
-              <Button 
-                size="icon"
-                onClick={() => useWebPhoneStore.getState().toggleDialpad()}
-                data-testid="button-webphone"
-                className={cn(
-                  "h-8 w-8 rounded-lg bg-green-500 hover:bg-green-600 active:bg-green-700 transition-colors",
-                  useWebPhoneStore.getState().currentCall?.status === 'ringing' && 
-                  useWebPhoneStore.getState().currentCall?.direction === 'inbound' && 
-                  "animate-pulse-phone"
-                )}
-              >
-                <Phone className="h-4 w-4 text-white" />
-              </Button>
-              
-              {/* Search Icon */}
-              <Button 
-                variant="ghost" 
-                size="icon"
+          {/* Right: Action Icons + User Profile - SugarCRM circular style */}
+          <div className="flex items-center gap-3 shrink-0">
+              {/* Search Icon - Circular */}
+              <button 
                 data-testid="button-search"
-                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200"
               >
                 <Search className="h-4 w-4" />
-              </Button>
+              </button>
 
-              {/* Theme Toggle */}
-              <ThemeToggle />
-
-              {/* Messages Icon */}
-              <Button 
-                variant="ghost" 
-                size="icon"
+              {/* Messages Icon - Circular */}
+              <button 
                 data-testid="button-messages"
-                className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200 relative"
               >
-                <MessageSquare className="h-4 w-4" />
-              </Button>
+                <Mail className="h-4 w-4" />
+              </button>
 
-              {/* Notifications Button */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              {/* Notifications Button - Circular */}
+              <button 
                 onClick={() => setNotificationsOpen(true)}
                 data-testid="button-notifications" 
-                className="h-8 w-8 rounded-lg relative text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200 relative"
               >
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
-                  <div className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 bg-red-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-[8px] font-bold">!</span>
+                  <div className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center border-2 border-white dark:border-gray-800">
+                    <span className="text-white text-[9px] font-bold">{unreadCount > 9 ? '!' : unreadCount}</span>
                   </div>
                 )}
-              </Button>
+              </button>
 
-              {/* User Profile with Dropdown */}
+              {/* User Profile with Dropdown - Circular */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="h-8 w-8 rounded-lg p-0 ml-1" 
+                  <button 
+                    className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center hover:shadow-md transition-all duration-200 p-0 overflow-hidden" 
                     data-testid="button-user-menu"
                   >
-                    <Avatar className="h-7 w-7">
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={user?.avatar || undefined} alt={userName} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
-                  </Button>
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-0 shadow-xl rounded-xl">
                   {/* User Info Header */}

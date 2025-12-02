@@ -80,23 +80,23 @@ export function AppSidebar() {
   return (
     <TooltipProvider delayDuration={0}>
       <Sidebar className="w-16 min-w-16 max-w-16 border-0 bg-transparent">
-        <SidebarContent className="py-4">
+        <SidebarContent className="py-6">
           <SidebarGroup>
             <SidebarGroupContent>
-              <SidebarMenu className="space-y-1 flex flex-col items-center">
+              <SidebarMenu className="space-y-3 flex flex-col items-center">
                 {utilityItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <SidebarMenuItem key={item.title}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <SidebarMenuButton
+                          <button
                             onClick={() => handleUtilityAction(item.action)}
                             data-testid={`utility-${item.action}`}
-                            className="h-10 w-10 p-0 rounded-lg transition-all duration-200 flex items-center justify-center mx-auto text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800"
+                            className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:shadow-md transition-all duration-200"
                           >
-                            <Icon className="h-5 w-5" />
-                          </SidebarMenuButton>
+                            <Icon className="h-4 w-4" />
+                          </button>
                         </TooltipTrigger>
                         <TooltipContent side="right" className="font-medium">
                           {item.title}
@@ -110,18 +110,18 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="p-2">
+        <SidebarFooter className="p-2 pb-6">
           <SidebarMenu className="flex flex-col items-center">
             <SidebarMenuItem>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <SidebarMenuButton
+                  <button
                     onClick={handleLogout}
-                    className="h-10 w-10 p-0 rounded-lg text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 flex items-center justify-center mx-auto"
+                    className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center justify-center text-gray-500 hover:text-red-500 hover:shadow-md transition-all duration-200"
                     data-testid="button-logout"
                   >
-                    <LogOut className="h-5 w-5" />
-                  </SidebarMenuButton>
+                    <LogOut className="h-4 w-4" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="font-medium">
                   Sign Out
