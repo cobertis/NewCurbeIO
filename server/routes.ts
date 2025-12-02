@@ -6077,6 +6077,53 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
     res.json({ company });
   });
+
+  // Update company by ID (admin or superadmin)
+  app.patch("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = req.params.id;
+
+    // Users can only update their own company unless they are superadmin
+    if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
+    }
+
+    if (currentUser.role !== "superadmin" && currentUser.companyId !== companyId) {
+      return res.status(403).json({ message: "Forbidden - Cannot update other companies" });
+    }
+
+    try {
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Allow updating company fields including logo
+      const { name, logo, phone, address, city, state, zipCode, country, representativeName, representativePhone, representativeEmail, npn, timezone } = req.body;
+      
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (logo !== undefined) updateData.logo = logo;
+      if (phone !== undefined) updateData.phone = phone;
+      if (address !== undefined) updateData.address = address;
+      if (city !== undefined) updateData.city = city;
+      if (state !== undefined) updateData.state = state;
+      if (zipCode !== undefined) updateData.zipCode = zipCode;
+      if (country !== undefined) updateData.country = country;
+      if (representativeName !== undefined) updateData.representativeName = representativeName;
+      if (representativePhone !== undefined) updateData.representativePhone = representativePhone;
+      if (representativeEmail !== undefined) updateData.representativeEmail = representativeEmail;
+      if (npn !== undefined) updateData.npn = npn;
+      if (timezone !== undefined) updateData.timezone = timezone;
+
+      const updatedCompany = await storage.updateCompany(companyId, updateData);
+      res.json({ company: updatedCompany });
+    } catch (error: any) {
+      console.error("[Company Update] Error:", error);
+      res.status(400).json({ message: error.message || "Failed to update company" });
+    }
+  });
+
   // Toggle company active status (enable/disable)
   app.patch("/api/companies/:id/toggle-status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
