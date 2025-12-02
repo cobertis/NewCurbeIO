@@ -101,21 +101,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const currentCall = useWebPhoneStore(state => state.currentCall);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Session query - highest priority, needed for WebPhone
   const { data: userData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
-  });
-
-  const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
-    queryKey: ["/api/notifications"],
-    // Real-time updates handled exclusively by WebSocket - no polling needed
+    staleTime: 0, // Always fresh
+    refetchOnMount: true,
   });
 
   const user = userData?.user;
   
-  // Initialize WebPhone when user has SIP credentials
+  // PRIORITY 1: Initialize WebPhone FIRST when user has SIP credentials
   useEffect(() => {
     if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
-      // Initialize WebPhone with user's SIP credentials
+      console.log('[WebPhone] Priority initialization starting...');
       const sipServer = user.sipServer || 'wss://pbx.curbe.io:8089/ws';
       webPhone.initialize(user.sipExtension, user.sipPassword, sipServer).catch(error => {
         console.error('[WebPhone] Failed to initialize:', error);
@@ -127,10 +125,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         });
       });
     } else if (!user?.sipEnabled && useWebPhoneStore.getState().isConnected) {
-      // Disconnect if SIP is disabled
       webPhone.disconnect();
     }
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
+
+  const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
+    queryKey: ["/api/notifications"],
+  });
 
   // Fetch company data for all users with a companyId
   const { data: companyData, isLoading: isLoadingCompany, isFetched: isCompanyFetched } = useQuery<{ company: any }>({
