@@ -475,10 +475,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex flex-col h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        {/* Full-Width Header - SugarCRM Style */}
-        <div className="px-4 pt-4">
-          <header className="h-14 bg-white/40 dark:bg-gray-900/30 backdrop-blur-2xl rounded-2xl flex items-center px-6">
+      {/* CSS Grid Layout: Row 1 = Header (spans both cols), Row 2 = Sidebar + Content */}
+      <div className="grid grid-rows-[auto,1fr] grid-cols-[4rem,1fr] h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        {/* Header - Spans both columns (full width) */}
+        <div className="col-span-2 p-4 pb-2">
+          <header className="h-14 bg-white/40 dark:bg-gray-900/30 backdrop-blur-2xl rounded-2xl flex items-center px-6 shadow-sm">
             {/* Left: Company Logo - Always links to dashboard */}
             <div className="flex items-center shrink-0 mr-8 h-10">
               {displayLogo && (
@@ -648,35 +649,32 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </header>
         </div>
         
-        {/* Main content area with sidebar - starts BELOW header */}
-        <div className="flex flex-1 overflow-hidden mt-2">
-          {/* Utility Sidebar - Left column below header */}
-          <div className="w-16 shrink-0 pl-4">
-            <AppSidebar />
+        {/* Sidebar - Row 2, Column 1 */}
+        <div className="pl-4 pt-2 overflow-hidden">
+          <AppSidebar />
+        </div>
+        
+        {/* Content Area - Row 2, Column 2 */}
+        <div className="flex flex-col min-w-0 pr-4 pt-2 overflow-hidden">
+          {/* Page Title Bar - SugarCRM Style */}
+          <div className="h-12 bg-transparent flex items-center px-2">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => window.history.back()}
+              className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50"
+              data-testid="button-back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white" data-testid="page-title">
+              {pageTitle}
+            </h1>
           </div>
-          
-          {/* Content Area */}
-          <div className="flex flex-col flex-1 min-w-0 pr-4">
-            {/* Page Title Bar - SugarCRM Style - Floating */}
-            <div className="h-14 bg-transparent flex items-center px-4 sm:px-6">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => window.history.back()}
-                className="h-8 w-8 mr-3 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-white/50 dark:hover:bg-gray-700/50"
-                data-testid="button-back"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white" data-testid="page-title">
-                {pageTitle}
-              </h1>
-            </div>
 
-            <main className="flex-1 overflow-auto">
-              {children}
-            </main>
-          </div>
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
         </div>
       </div>
 
