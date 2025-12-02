@@ -6004,6 +6004,59 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
     }
+
+  // Dashboard recent policies endpoint
+  app.get("/api/dashboard-recent-policies", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const companyId = currentUser.companyId;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+
+    try {
+      // Get recent policies for the company (last 10 modified)
+      const allPolicies = await storage.getPoliciesByCompany(companyId);
+      
+      // Sort by most recently updated/created
+      const recentPolicies = allPolicies
+        .sort((a, b) => {
+          const dateA = a.updatedAt || a.createdAt || '';
+          const dateB = b.updatedAt || b.createdAt || '';
+          return dateB.localeCompare(dateA);
+        })
+        .slice(0, 10)
+        .map(policy => {
+          // Get agent name
+          let agentName = 'Unassigned';
+          if (policy.agentName) {
+            agentName = policy.agentName;
+          }
+          
+          // Format dates
+          const startDate = policy.effectiveDate 
+            ? new Date(policy.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+            : 'N/A';
+          const endDate = policy.expirationDate 
+            ? new Date(policy.expirationDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+            : 'N/A';
+
+          return {
+            id: policy.id,
+            policyNumber: policy.policyNumber || `POL-${policy.id.slice(0, 8).toUpperCase()}`,
+            status: policy.status || 'Pending',
+            startDate,
+            endDate,
+            agentName
+          };
+        });
+
+      res.json({ policies: recentPolicies });
+    } catch (error: any) {
+      console.error("Error fetching recent policies:", error);
+      res.status(500).json({ message: "Failed to fetch recent policies" });
+    }
+  });
   });
 
 
