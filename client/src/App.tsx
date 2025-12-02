@@ -476,8 +476,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex flex-col h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        {/* Floating Header - SugarCRM Style - No sticky, transparent */}
-        <div className="px-4 pt-4">
+        {/* Floating Header - SugarCRM Style - offset for sidebar */}
+        <div className="pl-20 pr-4 pt-4">
           <header className="h-14 bg-white/40 dark:bg-gray-900/30 backdrop-blur-2xl rounded-2xl flex items-center px-6">
             {/* Left: Company Logo - Only show when displayLogo is ready */}
             <div className="flex items-center shrink-0 mr-8 h-10">
