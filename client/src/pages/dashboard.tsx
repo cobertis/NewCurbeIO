@@ -1,14 +1,14 @@
-import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, TrendingUp, Award, MapPin, BarChart3 } from "lucide-react";
+import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, BarChart3, PieChart, MapPin } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useCallback, useState } from "react";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, PieChart, Pie, Cell } from "recharts";
+import { LineChart, Line, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import { scaleLinear } from "d3-scale";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { cn } from "@/lib/utils";
 
 interface DashboardStats {
   totalUsers: number;
@@ -43,6 +43,8 @@ interface AgentLeaderboard {
   agents: Array<{ name: string; avatar: string | null; policies: number; applicants: number }>;
 }
 
+const CHART_COLORS = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#6366f1"];
+
 const STATE_ABBR_TO_NAME: Record<string, string> = {
   "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
   "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "FL": "Florida", "GA": "Georgia",
@@ -55,16 +57,6 @@ const STATE_ABBR_TO_NAME: Record<string, string> = {
   "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
   "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
   "DC": "District of Columbia", "PR": "Puerto Rico"
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  "Active": "#10b981",
-  "Pending": "#f59e0b",
-  "Submitted": "#3b82f6",
-  "Cancelled": "#ef4444",
-  "Expired": "#6b7280",
-  "Renewed": "#8b5cf6",
-  "Draft": "#64748b",
 };
 
 export default function Dashboard() {
@@ -108,19 +100,10 @@ export default function Dashboard() {
 
   const isLoading = isLoadingStats || isLoadingAnalytics || isLoadingMonthly || isLoadingAgents || isLoadingCarriers;
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
   const pendingTasks = statsData?.pendingTasks || 0;
   const birthdaysThisWeek = statsData?.birthdaysThisWeek || 0;
   const failedLoginAttempts = statsData?.failedLoginAttempts || 0;
   const newLeads = statsData?.newLeads || 0;
-  const policyStatusData = analyticsData?.byStatus || [];
-  const totalPolicies = analyticsData?.totalPolicies || 0;
-  const topAgents = (agentsData?.agents || []).slice(0, 5);
-  const topCarriers = (carriersData?.carriers || []).slice(0, 6);
-  const productTypes = analyticsData?.byProductType?.slice(0, 6) || [];
 
   const today = new Date();
   const startOfWeek = new Date(today);
@@ -128,375 +111,493 @@ export default function Dashboard() {
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-  const statesData = analyticsData?.byState || [];
-  const maxCount = Math.max(...statesData.map(s => s.count), 1);
-  const totalCustomers = statesData.reduce((sum, s) => sum + s.count, 0);
-  const colorScale = scaleLinear<string>().domain([0, maxCount]).range(["#e0e7ff", "#3b82f6"]);
-  const stateCountMap = new Map(statesData.map(s => {
-    const fullName = STATE_ABBR_TO_NAME[s.state.toUpperCase()] || s.state;
-    return [fullName.toUpperCase(), s.count];
-  }));
+  const quickStats = [
+    {
+      count: pendingTasks,
+      title: "Today's reminders",
+      subtitle: format(today, 'EEEE, MMMM dd, yyyy'),
+      icon: Bell,
+      iconBg: "bg-purple-100 dark:bg-purple-900",
+      iconColor: "text-purple-600 dark:text-purple-400",
+      link: "/tasks",
+    },
+    {
+      count: birthdaysThisWeek,
+      title: "Birthdays this week",
+      subtitle: `${format(startOfWeek, 'MMM dd')} - ${format(endOfWeek, 'MMM dd')}`,
+      icon: Cake,
+      iconBg: "bg-blue-100 dark:bg-blue-900",
+      iconColor: "text-blue-600 dark:text-blue-400",
+      link: "/calendar?initialView=listWeek",
+    },
+    {
+      count: failedLoginAttempts,
+      title: "Failed login",
+      subtitle: "Last 14 days",
+      icon: AlertTriangle,
+      iconBg: "bg-orange-100 dark:bg-orange-900",
+      iconColor: "text-orange-600 dark:text-orange-400",
+      link: "/settings/sessions",
+    },
+    {
+      count: newLeads,
+      title: "New leads",
+      subtitle: "Click here for more",
+      icon: UserPlus,
+      iconBg: "bg-cyan-100 dark:bg-cyan-900",
+      iconColor: "text-cyan-600 dark:text-cyan-400",
+      link: "/leads",
+    },
+  ];
 
-  const totalPoliciesYTD = monthlyData?.data?.reduce((sum, item) => sum + item.policies, 0) || 0;
-  const totalCustomersYTD = monthlyData?.data?.reduce((sum, item) => sum + item.customers, 0) || 0;
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] p-6">
-      <div className="max-w-[1600px] mx-auto space-y-5">
-        
-        {/* Quick Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard 
-            icon={Bell} 
-            value={pendingTasks} 
-            label="Reminders Today"
-            sublabel={format(today, 'MMM dd, yyyy')}
-            onClick={() => setLocation('/tasks')}
-          />
-          <StatCard 
-            icon={Cake} 
-            value={birthdaysThisWeek} 
-            label="Birthdays This Week"
-            sublabel={`${format(startOfWeek, 'MMM dd')} - ${format(endOfWeek, 'MMM dd')}`}
-            onClick={() => setLocation('/calendar?initialView=listWeek')}
-          />
-          <StatCard 
-            icon={AlertTriangle} 
-            value={failedLoginAttempts} 
-            label="Failed Logins"
-            sublabel="Last 14 days"
-            onClick={() => setLocation('/settings/sessions')}
-          />
-          <StatCard 
-            icon={UserPlus} 
-            value={newLeads} 
-            label="New Leads"
-            sublabel="Recent"
-            onClick={() => setLocation('/leads')}
-          />
-        </div>
+    <div className="flex flex-col gap-6 p-6 min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {quickStats.map((stat, index) => (
+          <Card 
+            key={index} 
+            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1"
+            onClick={() => setLocation(stat.link)}
+            data-testid={`card-quick-stat-${index}`}
+          >
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className={`w-11 h-11 rounded-lg ${stat.iconBg} flex items-center justify-center flex-shrink-0`}>
+                    <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.count}</h3>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">{stat.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.subtitle}</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-1" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-12 gap-5">
-          
-          {/* Left Column */}
-          <div className="col-span-12 lg:col-span-8 space-y-5">
-            
-            {/* Performance Chart */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-blue-600" />
+      {/* Monthly Chart & US Map */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Chart */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Monthly Performance Overview
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Total Policies and Total Customers (applicants only) by policy start date</p>
+          </CardHeader>
+          <CardContent>
+            {monthlyData?.data && monthlyData.data.length > 0 ? (
+              <div className="space-y-6">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Policies</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.policies, 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">
+                        {Math.round((monthlyData.data.reduce((sum, item) => sum + item.policies, 0) / 12) * 10) / 10} avg/month
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-base font-semibold text-gray-800">Monthly Performance</h2>
-                    <p className="text-xs text-gray-400">Policies and customers by start date</p>
+                  
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Customers</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.customers, 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">
+                        {Math.round((monthlyData.data.reduce((sum, item) => sum + item.customers, 0) / 12) * 10) / 10} avg/month
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 p-4 text-white shadow-lg">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+                    <div className="relative">
+                      <div className="text-xs font-semibold uppercase tracking-wider opacity-90">Avg per Policy</div>
+                      <div className="text-3xl font-bold mt-1">
+                        {monthlyData.data.reduce((sum, item) => sum + item.policies, 0) > 0 
+                          ? (monthlyData.data.reduce((sum, item) => sum + item.customers, 0) / monthlyData.data.reduce((sum, item) => sum + item.policies, 0)).toFixed(1)
+                          : 0}
+                      </div>
+                      <div className="text-xs mt-2 opacity-75">Customers per Policy</div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-5 text-xs text-gray-500">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" />Policies</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-300" />Customers</span>
-                </div>
-              </div>
-              
-              {/* Summary Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="bg-blue-50 rounded-xl p-3">
-                  <p className="text-xs text-blue-600 font-medium">Total Policies</p>
-                  <p className="text-xl font-semibold text-gray-800">{totalPoliciesYTD.toLocaleString()}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-600 font-medium">Total Customers</p>
-                  <p className="text-xl font-semibold text-gray-800">{totalCustomersYTD.toLocaleString()}</p>
-                </div>
-                <div className="bg-emerald-50 rounded-xl p-3">
-                  <p className="text-xs text-emerald-600 font-medium">Avg per Policy</p>
-                  <p className="text-xl font-semibold text-gray-800">
-                    {totalPoliciesYTD > 0 ? (totalCustomersYTD / totalPoliciesYTD).toFixed(1) : '0'}
-                  </p>
-                </div>
-              </div>
-              
-              {monthlyData?.data && monthlyData.data.length > 0 ? (
-                <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={monthlyData.data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+
+                {/* Line Chart */}
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={monthlyData.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="policyGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
+                      <linearGradient id="colorPolicies" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip 
-                      contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                      labelStyle={{ color: '#374151', fontWeight: 500 }}
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis 
+                      dataKey="month" 
+                      stroke="#9ca3af"
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#e5e7eb' }}
                     />
-                    <Area type="monotone" dataKey="customers" stroke="#d1d5db" strokeWidth={2} fill="transparent" />
-                    <Area type="monotone" dataKey="policies" stroke="#3b82f6" strokeWidth={2} fill="url(#policyGrad)" />
-                  </AreaChart>
+                    <YAxis 
+                      stroke="#9ca3af"
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                    />
+                    <Legend wrapperStyle={{ paddingTop: 20 }} iconType="circle" />
+                    <Line 
+                      type="monotone" 
+                      dataKey="policies" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6', r: 4 }}
+                      name="Total Policies"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="customers" 
+                      stroke="#06b6d4" 
+                      strokeWidth={2}
+                      dot={{ fill: '#06b6d4', r: 4 }}
+                      name="Total Customers"
+                    />
+                  </LineChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-[240px] flex items-center justify-center text-gray-400">No data available</div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
+            )}
+          </CardContent>
+        </Card>
 
-            {/* Policy Status Distribution */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-purple-600" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-gray-800">Policy Status</h2>
-                  <p className="text-xs text-gray-400">Distribution by status ({totalPolicies} total)</p>
-                </div>
-              </div>
+        {/* US Map */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Interactive US Heat Map - Customer Distribution
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Hover over states to see detailed statistics</p>
+          </CardHeader>
+          <CardContent className="p-0">
+            {(() => {
+              const statesData = analyticsData?.byState || [];
+              const maxCount = Math.max(...statesData.map(s => s.count), 1);
+              const totalCustomers = statesData.reduce((sum, s) => sum + s.count, 0);
               
-              <div className="flex items-center gap-8">
-                {/* Donut Chart */}
-                <div className="w-[180px] h-[180px] flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={policyStatusData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        dataKey="count"
-                        paddingAngle={2}
-                      >
-                        {policyStatusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status] || '#64748b'} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                {/* Status Legend */}
-                <div className="flex-1 grid grid-cols-2 gap-3">
-                  {policyStatusData.map((status, idx) => {
-                    const pct = totalPolicies > 0 ? ((status.count / totalPolicies) * 100).toFixed(1) : '0';
-                    return (
-                      <div 
-                        key={idx} 
-                        onClick={() => setLocation(`/policies?status=${status.status}`)}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                      >
-                        <div 
-                          className="w-3 h-3 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: STATUS_COLORS[status.status] || '#64748b' }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-700 truncate">{status.status}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-gray-800">{status.count}</p>
-                          <p className="text-xs text-gray-400">{pct}%</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+              const colorScale = scaleLinear<string>()
+                .domain([0, maxCount * 0.5, maxCount])
+                .range(["#dbeafe", "#60a5fa", "#1e40af"]);
+              
+              const stateCountMap = new Map(
+                statesData.map(s => {
+                  const fullName = STATE_ABBR_TO_NAME[s.state.toUpperCase()] || s.state;
+                  return [fullName.toUpperCase(), s.count];
+                })
+              );
 
-            {/* US Map */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
-                  <MapPin className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-gray-800">Customer Distribution</h2>
-                  <p className="text-xs text-gray-400">Geographic distribution by state</p>
-                </div>
-              </div>
-              
-              <div 
-                className="relative"
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                }}
-              >
-                <ComposableMap
-                  projection="geoAlbersUsa"
-                  projectionConfig={{ scale: 900 }}
-                  className="w-full h-[280px]"
+              return (
+                <div 
+                  className="relative"
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                  }}
                 >
-                  <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
-                    {({ geographies }) => geographies.map((geo) => {
-                      const stateName = geo.properties.name.toUpperCase();
-                      const count = stateCountMap.get(stateName) || 0;
-                      return (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          fill={count > 0 ? colorScale(count) : "#f1f5f9"}
-                          stroke="#fff"
-                          strokeWidth={0.5}
-                          onMouseEnter={() => setHoveredState({ name: geo.properties.name, count, percentage: totalCustomers > 0 ? (count / totalCustomers) * 100 : 0 })}
-                          onMouseLeave={() => setHoveredState(null)}
-                          style={{
-                            default: { outline: 'none' },
-                            hover: { fill: count > 0 ? "#2563eb" : "#e2e8f0", outline: 'none', cursor: 'pointer' },
-                            pressed: { outline: 'none' },
-                          }}
-                        />
-                      );
-                    })}
-                  </Geographies>
-                </ComposableMap>
-                
-                {hoveredState && (
-                  <div 
-                    className="absolute pointer-events-none z-50"
-                    style={{ left: mousePosition.x + 10, top: mousePosition.y - 40 }}
+                  <ComposableMap
+                    projection="geoAlbersUsa"
+                    projectionConfig={{ scale: 1100 }}
+                    className="w-full h-[480px]"
                   >
-                    <div className="bg-white border border-gray-200 px-3 py-2 rounded-lg shadow-lg">
-                      <p className="text-gray-800 text-sm font-medium">{hoveredState.name}</p>
-                      <p className="text-gray-500 text-xs">{hoveredState.count} customers ({hoveredState.percentage.toFixed(1)}%)</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                    <Geographies geography="https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json">
+                      {({ geographies }) => (
+                        <>
+                          {geographies.map((geo) => {
+                            const stateName = geo.properties.name.toUpperCase();
+                            const count = stateCountMap.get(stateName) || 0;
+                            const displayName = geo.properties.name;
+                            const percentage = totalCustomers > 0 ? (count / totalCustomers * 100).toFixed(1) : 0;
+                            
+                            return (
+                              <Geography
+                                key={geo.rsmKey}
+                                geography={geo}
+                                fill={count > 0 ? colorScale(count) : "#f3f4f6"}
+                                stroke="#fff"
+                                strokeWidth={0.5}
+                                onMouseEnter={() => {
+                                  setHoveredState({ name: displayName, count: count, percentage: Number(percentage) });
+                                }}
+                                onMouseLeave={() => {
+                                  setHoveredState(null);
+                                }}
+                                style={{
+                                  default: { outline: 'none' },
+                                  hover: { fill: count > 0 ? "#1e40af" : "#e5e7eb", outline: 'none', cursor: 'pointer' },
+                                  pressed: { outline: 'none' },
+                                }}
+                              />
+                            );
+                          })}
+                        </>
+                      )}
+                    </Geographies>
+                  </ComposableMap>
 
-          {/* Right Column */}
-          <div className="col-span-12 lg:col-span-4 space-y-5">
-            
-            {/* Top Agents */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-                  <Award className="w-4 h-4 text-amber-600" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-gray-800">Top Agents</h2>
-                  <p className="text-xs text-gray-400">By policies</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                {topAgents.map((agent, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                    <div className="text-xs font-bold text-gray-400 w-4">{idx + 1}</div>
-                    {agent.avatar ? (
-                      <img src={agent.avatar} alt={agent.name} className="w-9 h-9 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 text-sm font-medium">
-                        {agent.name.charAt(0)}
+                  {hoveredState && (
+                    <div 
+                      className="absolute pointer-events-none z-50"
+                      style={{ left: mousePosition.x + 15, top: mousePosition.y - 60 }}
+                    >
+                      <div className="bg-gray-900 text-white px-4 py-3 rounded-lg shadow-xl min-w-[200px]">
+                        <div className="font-bold text-base mb-2">{hoveredState.name}</div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-300">Customers:</span>
+                            <span className="font-bold text-cyan-400">{hoveredState.count}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-300">Percentage:</span>
+                            <span className="font-bold text-green-400">{hoveredState.percentage}%</span>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{agent.name}</p>
-                      <p className="text-xs text-gray-400">{agent.applicants} applicants</p>
                     </div>
-                    <div className="text-lg font-semibold text-gray-800">{agent.policies}</div>
+                  )}
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Agents & Product Type */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Agents Leaderboard */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Agents leaderboard (Top 5)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Top performing agents by policies and applicants</p>
+          </CardHeader>
+          <CardContent>
+            {(agentsData?.agents || []).length > 0 ? (
+              <div className="space-y-3">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-6 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Agent</div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-center">Policies</div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider text-center">Applicants</div>
+                </div>
+
+                {/* Table Rows */}
+                {(agentsData?.agents || []).slice(0, 5).map((agent, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg px-2 transition-colors">
+                    <div className="col-span-6 flex items-center gap-2">
+                      {agent.avatar ? (
+                        <img src={agent.avatar} alt={agent.name} className="w-8 h-8 rounded-full object-cover shadow-md border-2 border-white dark:border-gray-700" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                          {agent.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{agent.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{idx === 0 ? '1st place' : idx === 1 ? '2nd place' : idx === 2 ? '3rd place' : `${idx + 1}th place`}</p>
+                      </div>
+                    </div>
+                    <div className="col-span-3 text-center">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{agent.policies}</span>
+                    </div>
+                    <div className="col-span-3 text-center">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{agent.applicants}</span>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Top Carriers */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Users className="w-4 h-4 text-indigo-600" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-gray-800">Top Carriers</h2>
-                  <p className="text-xs text-gray-400">By policies</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                {topCarriers.map((carrier, idx) => {
-                  const maxPolicies = Math.max(...topCarriers.map(c => c.policies), 1);
-                  const barWidth = (carrier.policies / maxPolicies) * 100;
-                  return (
-                    <div key={idx}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm text-gray-700 truncate max-w-[160px]">{carrier.carrier}</span>
-                        <span className="text-sm font-semibold text-gray-800">{carrier.policies}</span>
-                      </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-indigo-500 rounded-full"
-                          style={{ width: `${barWidth}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Product Types */}
-            {productTypes.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm p-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4 text-pink-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-semibold text-gray-800">Product Types</h2>
-                    <p className="text-xs text-gray-400">Distribution</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  {productTypes.map((product, idx) => {
-                    const total = productTypes.reduce((sum, p) => sum + p.count, 0) || 1;
-                    const pct = ((product.count / total) * 100).toFixed(0);
-                    return (
-                      <div key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                        <div className="w-2 h-2 rounded-full bg-pink-400" style={{ opacity: 1 - idx * 0.12 }} />
-                        <span className="text-sm text-gray-700 flex-1 truncate">{product.type}</span>
-                        <span className="text-sm font-medium text-gray-800">{product.count}</span>
-                        <span className="text-xs text-gray-400 w-10 text-right">{pct}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No agents data available</p>
               </div>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+          </CardContent>
+        </Card>
 
-function StatCard({ icon: Icon, value, label, sublabel, onClick }: {
-  icon: any;
-  value: number;
-  label: string;
-  sublabel: string;
-  onClick?: () => void;
-}) {
-  return (
-    <div 
-      onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow flex items-center gap-4"
-    >
-      <div className="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-5 h-5 text-gray-500" />
+        {/* Product Type Donut */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <PieChart className="h-4 w-4" />
+              Policies by Product Type (Top 10)
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Distribution of policies grouped by product category</p>
+          </CardHeader>
+          <CardContent>
+            {analyticsData?.byProductType && analyticsData.byProductType.length > 0 ? (
+              <div className="flex items-center justify-center gap-6">
+                <ResponsiveContainer width="60%" height={280}>
+                  <RechartsPie data={analyticsData.byProductType.slice(0, 10)}>
+                    <Pie 
+                      data={analyticsData.byProductType.slice(0, 10)} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={65} 
+                      outerRadius={110} 
+                      dataKey="count"
+                      paddingAngle={3}
+                      label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
+                      {analyticsData.byProductType.slice(0, 10).map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="#fff" strokeWidth={2} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8 }} />
+                  </RechartsPie>
+                </ResponsiveContainer>
+                
+                <div className="flex-1 space-y-2">
+                  {analyticsData.byProductType.slice(0, 5).map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{item.type}</p>
+                      </div>
+                      <div className="text-xs font-bold text-gray-900 dark:text-white">{item.count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-400">No product data</div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-2xl font-semibold text-gray-800">{value}</p>
-        <p className="text-sm text-gray-600 truncate">{label}</p>
-        <p className="text-xs text-gray-400 truncate">{sublabel}</p>
+
+      {/* Carriers Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Policies per Carrier */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Policies per carrier (Top 10)</CardTitle>
+            <p className="text-xs text-gray-500 mt-1">This is how your policies are segmented by insurance company</p>
+          </CardHeader>
+          <CardContent>
+            {(carriersData?.carriers || []).length > 0 ? (
+              <div className="space-y-1">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-5 text-xs font-semibold text-gray-500 dark:text-gray-400">Insurance company</div>
+                  <div className="col-span-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">Policies</div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">Percentage</div>
+                </div>
+
+                {/* Table Rows */}
+                {(() => {
+                  const totalPolicies = carriersData?.carriers.reduce((sum, c) => sum + c.policies, 0) || 1;
+                  return (carriersData?.carriers || []).slice(0, 10).map((carrier, idx) => {
+                    const percentage = ((carrier.policies / totalPolicies) * 100).toFixed(2);
+                    return (
+                      <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
+                        <div className="col-span-5 flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{idx + 1}</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate ml-2" title={carrier.carrier}>{carrier.carrier}</p>
+                        </div>
+                        <div className="col-span-4 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{carrier.policies}</span>
+                        </div>
+                        <div className="col-span-3 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{percentage}%</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Applicants per Carrier */}
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Applicants per carrier (Top 10)</CardTitle>
+            <p className="text-xs text-gray-500 mt-1">This is how your applicants are segmented by insurance company</p>
+          </CardHeader>
+          <CardContent>
+            {(carriersData?.carriers || []).length > 0 ? (
+              <div className="space-y-1">
+                {/* Table Header */}
+                <div className="grid grid-cols-12 gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-5 text-xs font-semibold text-gray-500 dark:text-gray-400">Insurance company</div>
+                  <div className="col-span-4 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">Applicants</div>
+                  <div className="col-span-3 text-xs font-semibold text-gray-500 dark:text-gray-400 text-right">Percentage</div>
+                </div>
+
+                {/* Table Rows */}
+                {(() => {
+                  const sortedByApplicants = [...(carriersData?.carriers || [])].sort((a, b) => b.applicants - a.applicants);
+                  const totalApplicants = sortedByApplicants.reduce((sum, c) => sum + c.applicants, 0) || 1;
+                  return sortedByApplicants.slice(0, 10).map((carrier, idx) => {
+                    const percentage = ((carrier.applicants / totalApplicants) * 100).toFixed(2);
+                    return (
+                      <div key={idx} className="grid grid-cols-12 gap-3 items-center py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2 transition-colors">
+                        <div className="col-span-5 flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{idx + 1}</span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate ml-2" title={carrier.carrier}>{carrier.carrier}</p>
+                        </div>
+                        <div className="col-span-4 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{carrier.applicants}</span>
+                        </div>
+                        <div className="col-span-3 text-right">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{percentage}%</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500 dark:text-gray-400">No carrier data available</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-      <ChevronRight className="w-4 h-4 text-gray-300" />
     </div>
   );
 }
