@@ -469,6 +469,41 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons - SugarCRM circular style */}
             <div className="flex items-center gap-3 shrink-0">
+              {/* WebPhone Button - FIRST, prominent styling */}
+              {user?.sipEnabled && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={toggleDialpad}
+                      data-testid="button-phone"
+                      className={cn(
+                        "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative",
+                        currentCall 
+                          ? "bg-green-500 hover:bg-green-600 text-white ring-2 ring-green-300 ring-offset-1" 
+                          : connectionStatus === 'connected'
+                            ? "bg-blue-500 hover:bg-blue-600 text-white"
+                            : "bg-gray-400 hover:bg-gray-500 text-white"
+                      )}
+                    >
+                      <Phone className="h-[18px] w-[18px]" />
+                      {/* Connection status indicator */}
+                      <span className={cn(
+                        "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
+                        connectionStatus === 'connected' ? "bg-green-300" : 
+                        connectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
+                        "bg-red-400"
+                      )} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {currentCall ? "In Call" : 
+                     connectionStatus === 'connected' ? "Phone Ready" : 
+                     connectionStatus === 'connecting' ? "Connecting..." : 
+                     "Phone Offline"}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
               {/* Search Icon */}
               <button data-testid="button-search" className={circularButtonClass}>
                 <Search className="h-[18px] w-[18px]" />
@@ -783,34 +818,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-
-      {/* WebPhone Floating Button - Always visible */}
-      {user?.sipEnabled && (
-        <button
-          onClick={toggleDialpad}
-          data-testid="floating-phone-button"
-          className={cn(
-            "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95",
-            currentCall 
-              ? "bg-green-500 hover:bg-green-600 animate-pulse" 
-              : connectionStatus === 'connected'
-                ? "bg-blue-500 hover:bg-blue-600"
-                : "bg-gray-400 hover:bg-gray-500"
-          )}
-        >
-          <Phone className={cn(
-            "h-6 w-6 text-white",
-            currentCall && "animate-bounce"
-          )} />
-          {/* Connection status indicator */}
-          <span className={cn(
-            "absolute top-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
-            connectionStatus === 'connected' ? "bg-green-400" : 
-            connectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
-            "bg-red-400"
-          )} />
-        </button>
-      )}
 
       {/* WebPhone Floating Window */}
       <WebPhoneFloatingWindow />
