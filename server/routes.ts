@@ -11360,13 +11360,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/chat/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
-    }
-    
     try {
-      // Superadmins can optionally filter by companyId via query param
-      const companyId = req.query.companyId as string | undefined;
+      // Users see their own company's conversations; superadmins can filter by companyId
+      let companyId: string | undefined;
+      if (currentUser.role === "superadmin") {
+        companyId = req.query.companyId as string | undefined;
+      } else {
+        companyId = currentUser.companyId || undefined;
+      }
       const conversations = await storage.getChatConversations(companyId);
       
       // Prevent caching to avoid 304 responses after DELETE operations
@@ -11386,12 +11387,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/chat/unread-count", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     
-    if (currentUser.role !== "superadmin") {
-      return res.status(403).json({ message: "Forbidden - Superadmin only" });
-    }
-    
     try {
-      const companyId = req.query.companyId as string | undefined;
+      // Users see their own company's unread count; superadmins can filter by companyId
+      let companyId: string | undefined;
+      if (currentUser.role === "superadmin") {
+        companyId = req.query.companyId as string | undefined;
+      } else {
+        companyId = currentUser.companyId || undefined;
+      }
       const conversations = await storage.getChatConversations(companyId);
       
       // Count conversations (unique users) with unread messages

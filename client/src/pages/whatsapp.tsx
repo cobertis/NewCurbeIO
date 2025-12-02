@@ -90,6 +90,7 @@ interface ContactProfile {
 }
 
 interface WhatsAppMessage {
+  mediaUrl?: string;
   id: string;
   body: string;
   from: string;
