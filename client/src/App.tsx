@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Switch, Route, useLocation, Link } from "wouter";
 import { queryClient, getCompanyQueryOptions } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -180,11 +180,24 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
 
   // Fetch company data for all users with a companyId
-  const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: any }>({
+  const { data: companyData, isLoading: isLoadingCompany, isFetched: isCompanyFetched } = useQuery<{ company: any }>({
     ...getCompanyQueryOptions(user?.companyId || undefined),
   });
   
-  const displayLogo = companyData?.company?.logo || (!isLoadingCompany ? defaultLogo : null);
+  // Compute logo with NO flash: null until we definitively know what to show
+  const displayLogo = useMemo(() => {
+    // Case 1: User not loaded yet - show nothing
+    if (!user) return null;
+    
+    // Case 2: User has no company - show default
+    if (!user.companyId) return defaultLogo;
+    
+    // Case 3: Company query still loading or not fetched - show nothing (prevents flash)
+    if (isLoadingCompany || !isCompanyFetched) return null;
+    
+    // Case 4: Company data loaded - show company logo or default if none
+    return companyData?.company?.logo || defaultLogo;
+  }, [user, user?.companyId, isLoadingCompany, isCompanyFetched, companyData?.company?.logo]);
 
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
   const userName = user?.firstName && user?.lastName 
@@ -466,11 +479,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Floating Header - SugarCRM Style - No sticky, transparent */}
         <div className="px-4 pt-4">
           <header className="h-14 bg-white/40 dark:bg-gray-900/30 backdrop-blur-2xl rounded-2xl flex items-center px-6">
-            {/* Left: Company Logo - Only show when data is loaded */}
+            {/* Left: Company Logo - Only show when displayLogo is ready */}
             <div className="flex items-center shrink-0 mr-8 h-10">
-              {!isLoadingCompany && (
+              {displayLogo && (
                 <img 
-                  src={companyData?.company?.logo || defaultLogo} 
+                  src={displayLogo} 
                   alt="Logo" 
                   className="h-9 max-w-[140px] object-contain"
                 />
