@@ -269,7 +269,7 @@ export default function VerifyOTP() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
           {/* Back to Login */}
           <button
-            onClick={() => setLocation("/")}
+            onClick={() => setLocation("/login")}
             className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 mb-6 transition-colors"
             data-testid="button-back-to-login"
           >

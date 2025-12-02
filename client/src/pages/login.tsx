@@ -39,7 +39,7 @@ export default function Login() {
 
         if (response.ok) {
           // User is already authenticated, redirect to dashboard
-          setLocation("/");
+          setLocation("/dashboard");
         }
       } catch (error) {
         // User is not authenticated, stay on login page
@@ -70,7 +70,7 @@ export default function Login() {
             title: "Welcome back!",
             description: "Logged in from trusted device",
           });
-          setLocation("/");
+          setLocation("/dashboard");
         } else {
           // Redirect to OTP verification page with email, phone, and 2FA flags
           const phoneParam = data.user.phone ? `&phone=${encodeURIComponent(data.user.phone)}` : '';
