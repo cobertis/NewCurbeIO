@@ -3331,7 +3331,7 @@ export default function WhatsAppPage() {
 
   if (showQRPage) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
+      <div className="h-full flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
         <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
           <div className="text-center space-y-6">
             <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
@@ -3404,7 +3404,7 @@ export default function WhatsAppPage() {
   const isConnecting = hasSavedSession && !isAuthenticated;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-[var(--whatsapp-bg-primary)]">
+    <div className="h-full flex flex-col bg-[var(--whatsapp-bg-primary)]">
       <ResizablePanelGroup 
         direction="horizontal" 
         className="flex-1"
