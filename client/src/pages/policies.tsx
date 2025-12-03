@@ -7837,141 +7837,46 @@ export default function PoliciesPage() {
             })()}
             
             {/* Two Column Layout: Member Card + Insurance Plans */}
-            <div className="mb-6 -mx-6 -mt-6 p-6">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="mb-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                 
-                {/* LEFT: Member Card */}
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-muted/50 translate-y-1 blur-sm" />
-                  <div className="relative rounded-2xl bg-card border border-border overflow-hidden shadow-lg h-full flex flex-col">
-                    
-                    {/* Card Header Band */}
-                    <div className="bg-foreground px-5 py-3 flex items-center justify-between">
+                {/* LEFT: Member Card - Premium Design */}
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+                  {/* Subtle accent line */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/60 via-primary/30 to-transparent" />
+                  
+                  {/* Card Content */}
+                  <div className="pl-5 pr-4 py-4">
+                    {/* Top Row: Type Badge + Year + Actions */}
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center">
-                          <User className="h-4 w-4 text-background" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-medium text-background/60 uppercase tracking-widest">Member Card</p>
-                          <p className="text-background font-semibold text-sm">
-                            {(() => {
-                              const typeMap: Record<string, string> = {
-                                'aca': 'Health Insurance',
-                                'medicare': 'Medicare',
-                                'medicaid': 'Medicaid',
-                                'supplemental': 'Supplemental',
-                                'life': 'Life Insurance',
-                                'dental': 'Dental',
-                                'vision': 'Vision',
-                                'private': 'Private',
-                                'annuities': 'Annuities',
-                                'final_expense': 'Final Expense',
-                                'travel': 'Travel'
-                              };
-                              return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
-                            })()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-medium text-background/60 uppercase tracking-widest">Year</p>
-                        <p className="text-background font-bold text-xl font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</p>
-                      </div>
-                    </div>
-
-                    {/* Card Body */}
-                    <div className="p-4 flex-1 bg-card">
-                      {/* Member Name Row */}
-                      <div className="flex items-start justify-between mb-3 pb-3 border-b border-border">
-                        <div>
-                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-0.5">Member</p>
-                          <h1 className="text-lg font-bold text-foreground tracking-tight">
-                            {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                          </h1>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-0.5">Internal Code</p>
-                          <p className="text-xs font-bold text-foreground font-mono">{viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
-                        </div>
-                      </div>
-
-                      {/* Info Grid - Compact */}
-                      <div className="grid grid-cols-4 gap-3 mb-3 pb-3 border-b border-border">
-                        <div>
-                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">DOB</p>
-                          <p className="text-xs font-semibold text-foreground">
-                            {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yy") : '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Sex</p>
-                          <p className="text-xs font-semibold text-foreground">
-                            {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() : '—'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">SSN</p>
-                          <div className="flex items-center gap-1">
-                            <p className="text-xs font-semibold text-foreground font-mono" data-testid="text-ssn-display">
-                              {displaySSN(viewingQuote.clientSsn, ssnVisible)}
-                            </p>
-                            {viewingQuote.clientSsn && (
-                              <button
-                                type="button"
-                                onClick={() => setSsnVisible(!ssnVisible)}
-                                className="p-0.5 rounded hover:bg-muted transition-colors"
-                                data-testid="button-toggle-ssn"
-                              >
-                                {ssnVisible ? (
-                                  <EyeOff className="h-3 w-3 text-muted-foreground" />
-                                ) : (
-                                  <Eye className="h-3 w-3 text-muted-foreground" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Effective</p>
-                          <p className="text-xs font-semibold text-foreground">
-                            {formatDateForDisplay(policyInfo.effectiveDate, "MM/dd/yy")}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Contact & Address - Compact */}
-                      <div className="space-y-1.5 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground">{viewingQuote.clientPhone || '—'}</span>
-                          <span className="text-muted-foreground/50">|</span>
-                          <Mail className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-foreground truncate">{viewingQuote.clientEmail || '—'}</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <span className="text-muted-foreground">
-                            {viewingQuote.physical_street}, {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card Footer */}
-                    <div className="bg-muted/50 px-4 py-2.5 flex items-center justify-between border-t border-border mt-auto">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Plan
-                        </Button>
+                        <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2.5 py-0.5 bg-muted/80">
+                          {(() => {
+                            const typeMap: Record<string, string> = {
+                              'aca': 'Health',
+                              'medicare': 'Medicare',
+                              'medicaid': 'Medicaid',
+                              'supplemental': 'Supplemental',
+                              'life': 'Life',
+                              'dental': 'Dental',
+                              'vision': 'Vision',
+                              'private': 'Private',
+                              'annuities': 'Annuities',
+                              'final_expense': 'Final Expense',
+                              'travel': 'Travel'
+                            };
+                            return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
+                          })()}
+                        </Badge>
+                        <span className="text-lg font-semibold text-foreground font-mono tracking-tight">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</span>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" data-testid="button-options">
-                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" data-testid="button-options">
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuContent align="end" className="w-44">
                           <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
                             <Lock className="h-3.5 w-3.5 mr-2" />
                             {viewingQuote.isBlocked ? 'Unblock' : 'Block'}
@@ -8000,165 +7905,251 @@ export default function PoliciesPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+
+                    {/* Member Info Hero */}
+                    <div className="flex items-start gap-4 mb-4 pb-4 border-b border-border/60">
+                      <Avatar className="h-14 w-14 ring-2 ring-border/50 shadow-sm">
+                        <AvatarFallback className="bg-muted text-foreground font-semibold text-base">
+                          {viewingQuote.clientFirstName?.[0]}{viewingQuote.clientLastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-xl font-semibold text-foreground tracking-tight leading-tight mb-1">
+                          {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
+                        </h2>
+                        <p className="text-xs text-muted-foreground font-mono">ID: {viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Key Details Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 mb-4 pb-4 border-b border-border/60">
+                      <div>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Date of Birth</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy") : '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Sex</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {viewingQuote.clientGender ? (viewingQuote.clientGender === 'male' ? 'Male' : 'Female') : '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">SSN</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-foreground font-mono" data-testid="text-ssn-display">
+                            {displaySSN(viewingQuote.clientSsn, ssnVisible)}
+                          </p>
+                          {viewingQuote.clientSsn && (
+                            <button
+                              type="button"
+                              onClick={() => setSsnVisible(!ssnVisible)}
+                              className="p-1 rounded-md hover:bg-muted transition-colors"
+                              data-testid="button-toggle-ssn"
+                            >
+                              {ssnVisible ? (
+                                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Effective</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Contact Information */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className="flex items-center gap-2 text-foreground">
+                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>{viewingQuote.clientPhone || '—'}</span>
+                        </div>
+                        <span className="text-border">|</span>
+                        <div className="flex items-center gap-2 text-foreground truncate">
+                          <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{viewingQuote.clientEmail || '—'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                        <span className="leading-snug">
+                          {viewingQuote.physical_street}, {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Footer */}
+                  <div className="px-5 py-3 bg-muted/30 border-t border-border/60 flex items-center justify-end">
+                    <Button variant="ghost" size="sm" className="h-8 text-xs font-medium" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Add Plan
+                    </Button>
                   </div>
                 </div>
 
-                {/* RIGHT: Insurance Plans Card */}
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-muted/50 translate-y-1 blur-sm" />
-                  <div className="relative rounded-2xl bg-card border border-border overflow-hidden shadow-lg h-full flex flex-col">
-                    
-                    {/* Header */}
-                    <div className="bg-foreground px-5 py-3 flex items-center justify-between">
+                {/* RIGHT: Insurance Plans Card - Premium Design */}
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col">
+                  {/* Subtle accent line */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-muted-foreground/40 via-muted-foreground/20 to-transparent" />
+                  
+                  {/* Header */}
+                  <div className="pl-5 pr-4 py-4 border-b border-border/60">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center">
-                          <Shield className="h-4 w-4 text-background" />
+                        <div className="h-10 w-10 rounded-lg bg-muted/80 flex items-center justify-center">
+                          <Shield className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-medium text-background/60 uppercase tracking-widest">Coverage</p>
-                          <p className="text-background font-semibold text-sm">Insurance Plans</p>
+                          <h3 className="text-base font-semibold text-foreground">Insurance Plans</h3>
+                          <p className="text-xs text-muted-foreground">{(quoteDetail?.plans || []).length} plan{(quoteDetail?.plans || []).length !== 1 ? 's' : ''} enrolled</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {viewingQuote.productType === 'aca' && (() => {
-                          const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                          const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                          if (!isStateBased) {
-                            return (
-                              <Button 
-                                size="sm"
-                                variant="secondary"
-                                className="h-7 text-xs bg-background/10 hover:bg-background/20 text-background border-0"
-                                data-testid="button-search-plans"
-                                onClick={() => {
-                                  const missingFields = validateMarketplaceData();
-                                  if (missingFields.length > 0) {
-                                    toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
-                                  } else {
-                                    setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
-                                  }
-                                }}
-                              >
-                                <Search className="h-3 w-3 mr-1" />
-                                Search
-                              </Button>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Plans Body */}
-                    <div className="p-4 flex-1 overflow-y-auto bg-card">
-                      {(() => {
-                        const plans = quoteDetail?.plans || [];
-                        
-                        if (plans.length === 0) {
+                      {viewingQuote.productType === 'aca' && (() => {
+                        const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                        const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                        if (!isStateBased) {
                           return (
-                            <div className="flex flex-col items-center justify-center h-full py-8 text-center">
-                              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                                <Shield className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                              <p className="text-sm font-medium text-foreground mb-1">No Plans Added</p>
-                              <p className="text-xs text-muted-foreground mb-4">Search or add a plan manually</p>
-                              <div className="flex items-center gap-2">
-                                {viewingQuote.productType === 'aca' && (() => {
-                                  const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                                  const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                                  if (isStateBased) {
-                                    return (
-                                      <Button variant="outline" size="sm" className="h-7 text-xs" data-testid="button-state-marketplace-info-empty"
-                                        onClick={() => {
-                                          const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
-                                          toast({ title: "State-Based Marketplace", description: `This policy uses ${marketplaceName}. Add plans manually.`, duration: 5000 });
-                                        }}
-                                      >
-                                        <Info className="h-3 w-3 mr-1" />
-                                        {policyState}
-                                      </Button>
-                                    );
-                                  }
-                                  return (
-                                    <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)} data-testid="button-search-plans-empty">
-                                      <Search className="h-3 w-3 mr-1" />
-                                      Search
-                                    </Button>
-                                  );
-                                })()}
-                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually-empty">
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Add
-                                </Button>
-                              </div>
-                            </div>
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs font-medium"
+                              data-testid="button-search-plans"
+                              onClick={() => {
+                                const missingFields = validateMarketplaceData();
+                                if (missingFields.length > 0) {
+                                  toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
+                                } else {
+                                  setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                                }
+                              }}
+                            >
+                              <Search className="h-3.5 w-3.5 mr-1.5" />
+                              Search Plans
+                            </Button>
                           );
                         }
-                        
-                        // Show plans in compact format
-                        return (
-                          <div className="space-y-3">
-                            {plans.map((policyPlan: any, index: number) => {
-                              const plan = typeof policyPlan.planData === 'string' ? JSON.parse(policyPlan.planData) : policyPlan.planData;
-                              if (!plan) return null;
-                              
-                              const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
-                              const mainDeductible = individualDeductible || plan.deductibles?.[0];
-                              const individualMoop = plan.moops?.find((m: any) => !m.family);
-                              const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
-                              
-                              const formatCurrency = (value: any) => {
-                                if (value === null || value === undefined) return 'N/A';
-                                const num = typeof value === 'string' ? parseFloat(value) : value;
-                                if (isNaN(num)) return 'N/A';
-                                if (num <= 0) return '$0';
-                                return `$${num.toFixed(0)}`;
-                              };
-                              
-                              const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
-                              
-                              return (
-                                <div key={policyPlan.id || index} className="p-3 rounded-lg border border-border bg-background/50">
-                                  <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-semibold text-foreground truncate">{plan.name || plan.issuer?.name || 'Insurance Plan'}</p>
-                                      <p className="text-[10px] text-muted-foreground font-mono">{plan.id || 'N/A'}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 ml-2">
-                                      <Badge variant="outline" className="text-[10px] h-5">{plan.metal_level || 'N/A'}</Badge>
-                                      <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-3 gap-2 text-center">
-                                    <div className="p-1.5 rounded bg-muted">
-                                      <p className="text-[9px] text-muted-foreground uppercase">Premium</p>
-                                      <p className="text-sm font-bold text-foreground">{formatCurrency(premium)}<span className="text-[9px] font-normal text-muted-foreground">/mo</span></p>
-                                    </div>
-                                    <div className="p-1.5 rounded bg-muted">
-                                      <p className="text-[9px] text-muted-foreground uppercase">Deductible</p>
-                                      <p className="text-sm font-bold text-foreground">{formatCurrency(mainDeductible?.amount)}</p>
-                                    </div>
-                                    <div className="p-1.5 rounded bg-muted">
-                                      <p className="text-[9px] text-muted-foreground uppercase">Max OOP</p>
-                                      <p className="text-sm font-bold text-foreground">{formatCurrency(outOfPocketMax)}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
+                        return null;
                       })()}
                     </div>
+                  </div>
 
-                    {/* Footer */}
-                    <div className="bg-muted/50 px-4 py-2.5 flex items-center justify-between border-t border-border mt-auto">
-                      <span className="text-[10px] text-muted-foreground">{(quoteDetail?.plans || []).length} plan(s)</span>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)}>
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Plan
-                      </Button>
-                    </div>
+                  {/* Plans Body */}
+                  <div className="pl-5 pr-4 py-4 flex-1 overflow-y-auto">
+                    {(() => {
+                      const plans = quoteDetail?.plans || [];
+                      
+                      if (plans.length === 0) {
+                        return (
+                          <div className="flex flex-col items-center justify-center h-full py-6 text-center">
+                            <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-4">
+                              <Shield className="h-7 w-7 text-muted-foreground/60" />
+                            </div>
+                            <p className="text-sm font-medium text-foreground mb-1">No Plans Added</p>
+                            <p className="text-xs text-muted-foreground mb-5 max-w-[200px]">Search the marketplace or add a plan manually</p>
+                            <div className="flex items-center gap-2">
+                              {viewingQuote.productType === 'aca' && (() => {
+                                const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                                const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                                if (isStateBased) {
+                                  return (
+                                    <Button variant="outline" size="sm" className="h-8 text-xs" data-testid="button-state-marketplace-info-empty"
+                                      onClick={() => {
+                                        const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
+                                        toast({ title: "State-Based Marketplace", description: `This policy uses ${marketplaceName}. Add plans manually.`, duration: 5000 });
+                                      }}
+                                    >
+                                      <Info className="h-3.5 w-3.5 mr-1" />
+                                      {policyState}
+                                    </Button>
+                                  );
+                                }
+                                return (
+                                  <Button variant="default" size="sm" className="h-8 text-xs" onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)} data-testid="button-search-plans-empty">
+                                    <Search className="h-3.5 w-3.5 mr-1" />
+                                    Search
+                                  </Button>
+                                );
+                              })()}
+                              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually-empty">
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                Add Plan
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Show plans in modern format
+                      return (
+                        <div className="space-y-3">
+                          {plans.map((policyPlan: any, index: number) => {
+                            const plan = typeof policyPlan.planData === 'string' ? JSON.parse(policyPlan.planData) : policyPlan.planData;
+                            if (!plan) return null;
+                            
+                            const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
+                            const mainDeductible = individualDeductible || plan.deductibles?.[0];
+                            const individualMoop = plan.moops?.find((m: any) => !m.family);
+                            const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
+                            
+                            const formatCurrency = (value: any) => {
+                              if (value === null || value === undefined) return 'N/A';
+                              const num = typeof value === 'string' ? parseFloat(value) : value;
+                              if (isNaN(num)) return 'N/A';
+                              if (num <= 0) return '$0';
+                              return `$${num.toFixed(0)}`;
+                            };
+                            
+                            const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
+                            
+                            return (
+                              <div key={policyPlan.id || index} className="p-4 rounded-lg border border-border/70 bg-background/60 hover:border-border transition-colors">
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground leading-tight mb-1">{plan.name || plan.issuer?.name || 'Insurance Plan'}</p>
+                                    <p className="text-[11px] text-muted-foreground font-mono">{plan.id || 'N/A'}</p>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <Badge variant="secondary" className="text-[10px] h-5 font-medium">{plan.metal_level || 'N/A'}</Badge>
+                                    <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                  <div className="text-center p-2.5 rounded-md bg-muted/50">
+                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Premium</p>
+                                    <p className="text-base font-semibold text-foreground">{formatCurrency(premium)}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></p>
+                                  </div>
+                                  <div className="text-center p-2.5 rounded-md bg-muted/50">
+                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Deductible</p>
+                                    <p className="text-base font-semibold text-foreground">{formatCurrency(mainDeductible?.amount)}</p>
+                                  </div>
+                                  <div className="text-center p-2.5 rounded-md bg-muted/50">
+                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Max OOP</p>
+                                    <p className="text-base font-semibold text-foreground">{formatCurrency(outOfPocketMax)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-5 py-3 bg-muted/30 border-t border-border/60 flex items-center justify-end mt-auto">
+                    <Button variant="ghost" size="sm" className="h-8 text-xs font-medium" onClick={() => setManualPlanDialogOpen(true)}>
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Add Plan
+                    </Button>
                   </div>
                 </div>
               </div>
