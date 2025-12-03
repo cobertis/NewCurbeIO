@@ -657,11 +657,42 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         
         {/* Sidebar - Row 2, Column 1 - Simple icon column below header */}
         <div className="pl-4 flex flex-col items-center py-4 space-y-3">
-          {/* Back Button - Disabled on Dashboard */}
+          {/* Back Button - Smart navigation */}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => location !== "/dashboard" && window.history.back()}
+                onClick={() => {
+                  if (location === "/dashboard") return;
+                  
+                  // Smart back navigation - go to parent route or use history
+                  const pathParts = location.split('/').filter(Boolean);
+                  
+                  // If we're on a detail page (e.g., /policies/123), go to list
+                  if (pathParts.length >= 2) {
+                    // Check for specific patterns
+                    if (pathParts[0] === 'policies' && pathParts.length >= 2) {
+                      // /policies/123 or /policies/new -> /policies
+                      setLocation('/policies');
+                      return;
+                    }
+                    if (pathParts[0] === 'settings' && pathParts.length >= 2) {
+                      // /settings/notifications -> /settings
+                      setLocation('/settings');
+                      return;
+                    }
+                    // Generic: go to parent path
+                    const parentPath = '/' + pathParts.slice(0, -1).join('/');
+                    setLocation(parentPath);
+                    return;
+                  }
+                  
+                  // For top-level pages, try history or go to dashboard
+                  if (window.history.length > 1) {
+                    window.history.back();
+                  } else {
+                    setLocation('/dashboard');
+                  }
+                }}
                 data-testid="sidebar-button-back"
                 className={cn(
                   circularButtonClass,
