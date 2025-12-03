@@ -423,7 +423,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     : [
         { title: "Dashboard", url: "/dashboard" },
         { title: "Calendar", url: "/calendar" },
-        { title: "Policies", url: "/policies" },
+        { title: "Customers", url: "/policies" },
         { title: "Leads", url: "/leads" },
         { title: "Tasks", url: "/tasks" },
       ];
