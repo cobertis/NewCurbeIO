@@ -7849,15 +7849,14 @@ export default function PoliciesPage() {
                   <div className="pl-5 pr-4 py-4">
                     {/* Top Row: Carrier/Product + Year + Actions */}
                     <div className="flex items-center justify-between mb-4">
+                      <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 bg-muted/80">
+                        {product?.name || viewingQuote.productType || 'Policy'}
+                      </Badge>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 bg-muted/80">
-                          {product?.name || viewingQuote.productType || 'Policy'}
-                        </Badge>
                         <Badge className="text-sm font-bold font-mono px-3 py-1 bg-primary text-primary-foreground shadow-sm">
                           {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
                         </Badge>
-                      </div>
-                      <DropdownMenu>
+                        <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" data-testid="button-options">
                             <MoreHorizontal className="h-4 w-4" />
@@ -7890,7 +7889,8 @@ export default function PoliciesPage() {
                             Archive
                           </DropdownMenuItem>
                         </DropdownMenuContent>
-                      </DropdownMenu>
+                        </DropdownMenu>
+                      </div>
                     </div>
 
                     {/* Member Info with Gender Avatar */}
