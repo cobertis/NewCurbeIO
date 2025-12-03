@@ -7838,10 +7838,10 @@ export default function PoliciesPage() {
             
             {/* Two Column Layout: Member Card + Insurance Plans */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 2xl:grid-cols-3 gap-5">
                 
                 {/* LEFT: Member Card - Premium Design (narrower) */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden xl:col-span-1">
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-1">
                   {/* Subtle accent line */}
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/60 via-primary/30 to-transparent" />
                   
@@ -7893,22 +7893,22 @@ export default function PoliciesPage() {
                       </div>
                     </div>
 
-                    {/* Member Info with Gender Avatar */}
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5">
+                    {/* Member Info with Gender Avatar - Always side by side */}
+                    <div className="flex items-start gap-3 sm:gap-5">
                       {/* Gender-based Avatar Silhouette */}
-                      <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-gradient-to-b from-muted to-muted/60 flex items-center justify-center flex-shrink-0 ring-2 ring-border/30 shadow-inner">
+                      <div className="h-14 w-14 sm:h-24 sm:w-24 rounded-full bg-gradient-to-b from-muted to-muted/60 flex items-center justify-center flex-shrink-0 ring-2 ring-border/30 shadow-inner">
                         {viewingQuote.clientGender === 'male' ? (
-                          <svg viewBox="0 0 24 24" className="h-12 w-12 sm:h-14 sm:w-14 text-muted-foreground/70" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-14 sm:w-14 text-muted-foreground/70" fill="currentColor">
                             <circle cx="12" cy="7" r="4" />
                             <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
                           </svg>
                         ) : viewingQuote.clientGender === 'female' ? (
-                          <svg viewBox="0 0 24 24" className="h-12 w-12 sm:h-14 sm:w-14 text-muted-foreground/70" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-14 sm:w-14 text-muted-foreground/70" fill="currentColor">
                             <circle cx="12" cy="6" r="3.5" />
                             <path d="M12 12c-3.5 0-6.5 1.8-6.5 4v0.5c0 0.3 0.2 0.5 0.5 0.5h1l1 3h8l1-3h1c0.3 0 0.5-0.2 0.5-0.5V16c0-2.2-3-4-6.5-4z" />
                           </svg>
                         ) : (
-                          <svg viewBox="0 0 24 24" className="h-12 w-12 sm:h-14 sm:w-14 text-muted-foreground/50" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-14 sm:w-14 text-muted-foreground/50" fill="currentColor">
                             <circle cx="12" cy="7" r="4" />
                             <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
                           </svg>
@@ -7916,52 +7916,55 @@ export default function PoliciesPage() {
                       </div>
                       
                       {/* Member Details */}
-                      <div className="flex-1 min-w-0 space-y-2 sm:space-y-3 text-center sm:text-left w-full">
+                      <div className="flex-1 min-w-0 space-y-1 sm:space-y-3">
                         {/* Full Name */}
-                        <h2 className="text-lg sm:text-xl font-semibold text-foreground leading-tight">
+                        <h2 className="text-base sm:text-xl font-semibold text-foreground leading-tight">
                           {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
                         </h2>
                         
-                        {/* Row 1: DOB + Sex */}
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-6 text-base sm:text-lg">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className="text-muted-foreground text-sm sm:text-base">DOB:</span>
-                            <span className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</span>
+                        {/* Compact info grid for mobile, expanded for desktop */}
+                        <div className="space-y-0.5 sm:space-y-2">
+                          {/* Row 1: DOB + Sex */}
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-6 text-xs sm:text-lg">
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              <span className="text-muted-foreground">DOB:</span>
+                              <span className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              <span className="text-muted-foreground">Sex:</span>
+                              <span className="font-medium">{viewingQuote.clientGender === 'male' ? 'M' : viewingQuote.clientGender === 'female' ? 'F' : '—'}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className="text-muted-foreground text-sm sm:text-base">Sex:</span>
-                            <span className="font-medium">{viewingQuote.clientGender === 'male' ? 'M' : viewingQuote.clientGender === 'female' ? 'F' : '—'}</span>
-                          </div>
-                        </div>
-                        
-                        {/* Row 2: SSN + Phone */}
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-6 text-base sm:text-lg">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className="text-muted-foreground text-sm sm:text-base">SSN:</span>
-                            <span className="font-medium font-mono" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</span>
+                          
+                          {/* Row 2: SSN */}
+                          <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-lg">
+                            <span className="text-muted-foreground">SSN:</span>
+                            <span className="font-medium font-mono whitespace-nowrap" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</span>
                             {viewingQuote.clientSsn && (
                               <button
                                 type="button"
                                 onClick={() => setSsnVisible(!ssnVisible)}
-                                className="p-1 rounded hover:bg-muted transition-colors"
+                                className="p-0.5 sm:p-1 rounded hover:bg-muted transition-colors"
                                 data-testid="button-toggle-ssn"
                               >
-                                {ssnVisible ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />}
+                                {ssnVisible ? <EyeOff className="h-3 w-3 sm:h-5 sm:w-5 text-muted-foreground" /> : <Eye className="h-3 w-3 sm:h-5 sm:w-5 text-muted-foreground" />}
                               </button>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                          
+                          {/* Row 3: Phone */}
+                          <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-lg">
+                            <Phone className="h-3 w-3 sm:h-5 sm:w-5 text-muted-foreground" />
                             <span className="font-medium">{viewingQuote.clientPhone || '—'}</span>
                           </div>
-                        </div>
-                        
-                        {/* Row 3: Address */}
-                        <div className="flex items-start justify-center sm:justify-start gap-1.5 sm:gap-2 text-sm sm:text-base text-muted-foreground">
-                          <MapPin className="h-4 w-4 sm:h-5 sm:w-5 mt-0.5 flex-shrink-0" />
-                          <span className="leading-snug text-left">
-                            {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ')}
-                          </span>
+                          
+                          {/* Row 4: Address */}
+                          <div className="flex items-start gap-1 sm:gap-2 text-xs sm:text-base text-muted-foreground">
+                            <MapPin className="h-3 w-3 sm:h-5 sm:w-5 mt-0.5 flex-shrink-0" />
+                            <span className="leading-snug">
+                              {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ')}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -7977,7 +7980,7 @@ export default function PoliciesPage() {
                 </div>
 
                 {/* RIGHT: Insurance Plans Card - Premium Design (wider) */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col xl:col-span-2">
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col 2xl:col-span-2">
                   {/* Subtle accent line */}
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-muted-foreground/40 via-muted-foreground/20 to-transparent" />
                   
