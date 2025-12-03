@@ -17019,6 +17019,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("[POLICY] Failed to create contacts from policy:", error);
       }
       
+      // Create policy_member for the PRIMARY CLIENT (applicant)
+      // This is required so income data can be associated with them
+      try {
+        const clientMember = await storage.createPolicyMember({
+          policyId: policy.id,
+          companyId: currentUser.companyId!,
+          role: 'client',
+          firstName: policy.clientFirstName,
+          middleName: policy.clientMiddleName || null,
+          lastName: policy.clientLastName,
+          secondLastName: policy.clientSecondLastName || null,
+          dateOfBirth: policy.clientDateOfBirth,
+          ssn: policy.clientSsn || null,
+          gender: policy.clientGender || null,
+          phone: policy.clientPhone || null,
+          email: policy.clientEmail || null,
+          isApplicant: policy.clientIsApplicant !== undefined ? policy.clientIsApplicant : true,
+          isPrimaryDependent: false,
+          tobaccoUser: policy.clientTobaccoUser || false,
+          pregnant: policy.clientPregnant || false,
+        });
+        
+        console.log(`[POLICY CREATION] Created client member with ID ${clientMember.id} for policy ${policy.id}`);
+        
+        // Create income data for the client if provided
+        if (req.body.clientAnnualIncome || req.body.clientIncomeSource || req.body.clientIncomeFrequency) {
+          await storage.createOrUpdatePolicyMemberIncome({
+            memberId: clientMember.id,
+            companyId: currentUser.companyId!,
+            annualIncome: req.body.clientAnnualIncome || null,
+            incomeFrequency: req.body.clientIncomeFrequency || 'annually',
+            incomeSource: req.body.clientIncomeSource || null,
+            employerName: req.body.clientEmployerName || null,
+            totalAnnualIncome: req.body.clientAnnualIncome || null,
+            selfEmployed: req.body.clientIncomeSource === 'self-employment',
+          });
+          console.log(`[POLICY CREATION] Created income data for client member ${clientMember.id}`);
+        }
+      } catch (clientMemberError) {
+        console.error(`Error creating client member:`, clientMemberError);
+      }
+      
       // CRITICAL FIX: Create policy_members for spouses and dependents
       // Extract family members from request body (they come as arrays)
       const spouses = req.body.spouses || [];
@@ -17049,13 +17091,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
           
           // Create income data if provided
-          if (spouse.income || spouse.incomeFrequency) {
+          if (spouse.annualIncome || spouse.incomeSource || spouse.incomeFrequency) {
             await storage.createOrUpdatePolicyMemberIncome({
               memberId: policyMember.id,
               companyId: currentUser.companyId!,
-              annualIncome: spouse.income || null,
+              annualIncome: spouse.annualIncome || null,
+              incomeSource: spouse.incomeSource || null,
+              employerName: spouse.employerName || null,
               incomeFrequency: spouse.incomeFrequency || 'monthly',
-              totalAnnualIncome: spouse.income || null,
+              totalAnnualIncome: spouse.annualIncome || null,
               selfEmployed: spouse.selfEmployed || false,
             });
           }
@@ -17103,13 +17147,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
           
           // Create income data if provided
-          if (dependent.income || dependent.incomeFrequency) {
+          if (dependent.annualIncome || dependent.incomeSource || dependent.incomeFrequency) {
             await storage.createOrUpdatePolicyMemberIncome({
               memberId: policyMember.id,
               companyId: currentUser.companyId!,
-              annualIncome: dependent.income || null,
+              annualIncome: dependent.annualIncome || null,
+              incomeSource: dependent.incomeSource || null,
+              employerName: dependent.employerName || null,
               incomeFrequency: dependent.incomeFrequency || 'monthly',
-              totalAnnualIncome: dependent.income || null,
+              totalAnnualIncome: dependent.annualIncome || null,
               selfEmployed: dependent.selfEmployed || false,
             });
           }
