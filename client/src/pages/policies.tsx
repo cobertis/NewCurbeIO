@@ -7838,10 +7838,10 @@ export default function PoliciesPage() {
             
             {/* Two Column Layout: Member Card + Insurance Plans */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                 
-                {/* LEFT: Member Card - Premium Design */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+                {/* LEFT: Member Card - Premium Design (narrower) */}
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden xl:col-span-1">
                   {/* Subtle accent line */}
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/60 via-primary/30 to-transparent" />
                   
@@ -7922,7 +7922,7 @@ export default function PoliciesPage() {
                     </div>
 
                     {/* Key Details Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3 mb-4 pb-4 border-b border-border/60">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-4 pb-4 border-b border-border/60">
                       <div>
                         <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Date of Birth</p>
                         <p className="text-sm font-medium text-foreground">
@@ -7996,8 +7996,8 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: Insurance Plans Card - Premium Design */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col">
+                {/* RIGHT: Insurance Plans Card - Premium Design (wider) */}
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col xl:col-span-2">
                   {/* Subtle accent line */}
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-muted-foreground/40 via-muted-foreground/20 to-transparent" />
                   
