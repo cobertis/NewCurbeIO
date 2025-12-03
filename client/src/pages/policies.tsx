@@ -7894,21 +7894,21 @@ export default function PoliciesPage() {
                     </div>
 
                     {/* Member Info with Gender Avatar */}
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-5">
                       {/* Gender-based Avatar Silhouette */}
-                      <div className="h-20 w-20 rounded-full bg-gradient-to-b from-muted to-muted/60 flex items-center justify-center flex-shrink-0 ring-2 ring-border/30 shadow-inner">
+                      <div className="h-24 w-24 rounded-full bg-gradient-to-b from-muted to-muted/60 flex items-center justify-center flex-shrink-0 ring-2 ring-border/30 shadow-inner">
                         {viewingQuote.clientGender === 'male' ? (
-                          <svg viewBox="0 0 24 24" className="h-12 w-12 text-muted-foreground/70" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-14 w-14 text-muted-foreground/70" fill="currentColor">
                             <circle cx="12" cy="7" r="4" />
                             <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
                           </svg>
                         ) : viewingQuote.clientGender === 'female' ? (
-                          <svg viewBox="0 0 24 24" className="h-12 w-12 text-muted-foreground/70" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-14 w-14 text-muted-foreground/70" fill="currentColor">
                             <circle cx="12" cy="6" r="3.5" />
                             <path d="M12 12c-3.5 0-6.5 1.8-6.5 4v0.5c0 0.3 0.2 0.5 0.5 0.5h1l1 3h8l1-3h1c0.3 0 0.5-0.2 0.5-0.5V16c0-2.2-3-4-6.5-4z" />
                           </svg>
                         ) : (
-                          <svg viewBox="0 0 24 24" className="h-12 w-12 text-muted-foreground/50" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-14 w-14 text-muted-foreground/50" fill="currentColor">
                             <circle cx="12" cy="7" r="4" />
                             <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
                           </svg>
@@ -7916,28 +7916,28 @@ export default function PoliciesPage() {
                       </div>
                       
                       {/* Member Details */}
-                      <div className="flex-1 min-w-0 space-y-2.5">
+                      <div className="flex-1 min-w-0 space-y-3">
                         {/* Full Name */}
-                        <h2 className="text-lg font-semibold text-foreground leading-tight">
+                        <h2 className="text-xl font-semibold text-foreground leading-tight">
                           {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
                         </h2>
                         
                         {/* Row 1: DOB + Sex */}
-                        <div className="flex items-center gap-5 text-base">
+                        <div className="flex items-center gap-6 text-lg">
                           <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm">DOB:</span>
+                            <span className="text-muted-foreground">DOB:</span>
                             <span className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm">Sex:</span>
+                            <span className="text-muted-foreground">Sex:</span>
                             <span className="font-medium">{viewingQuote.clientGender === 'male' ? 'M' : viewingQuote.clientGender === 'female' ? 'F' : '—'}</span>
                           </div>
                         </div>
                         
                         {/* Row 2: SSN + Phone */}
-                        <div className="flex items-center gap-5 text-base">
+                        <div className="flex items-center gap-6 text-lg">
                           <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-sm">SSN:</span>
+                            <span className="text-muted-foreground">SSN:</span>
                             <span className="font-medium font-mono" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</span>
                             {viewingQuote.clientSsn && (
                               <button
@@ -7946,19 +7946,19 @@ export default function PoliciesPage() {
                                 className="p-1 rounded hover:bg-muted transition-colors"
                                 data-testid="button-toggle-ssn"
                               >
-                                {ssnVisible ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                                {ssnVisible ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
                               </button>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <Phone className="h-5 w-5 text-muted-foreground" />
                             <span className="font-medium">{viewingQuote.clientPhone || '—'}</span>
                           </div>
                         </div>
                         
                         {/* Row 3: Address */}
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div className="flex items-start gap-2 text-base text-muted-foreground">
+                          <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
                           <span className="leading-snug">
                             {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ')}
                           </span>
