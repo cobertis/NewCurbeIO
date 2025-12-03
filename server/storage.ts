@@ -67,6 +67,7 @@ import {
   type InsertSmsChatNote,
   type WhatsappChatNote,
   type InsertWhatsappChatNote,
+  type WhatsappDeletedChat,
   type QuoteNote,
   type InsertQuoteNote,
   type SubscriptionDiscount,
@@ -241,6 +242,7 @@ import {
   outgoingSmsMessages,
   smsChatNotes,
   whatsappChatNotes,
+  whatsappDeletedChats,
   quoteNotes,
   subscriptionDiscounts,
   financialSupportTickets,
@@ -566,6 +568,9 @@ export interface IStorage {
   getWhatsappChatNotes(chatId: string, companyId: string): Promise<WhatsappChatNote[]>;
   updateWhatsappChatNote(id: string, body: string, companyId: string): Promise<WhatsappChatNote | undefined>;
   deleteWhatsappChatNote(id: string, companyId: string): Promise<void>;
+  
+  // WhatsApp Deleted Chats
+  getWhatsappDeletedChatIds(companyId: string): Promise<string[]>;
   
   // Quote Notes
   createQuoteNote(note: InsertQuoteNote): Promise<QuoteNote>;
@@ -3071,6 +3076,15 @@ export class DbStorage implements IStorage {
       .orderBy(desc(whatsappChatNotes.createdAt))
       .limit(1);
     return note || null;
+  }
+  
+  // ==================== WHATSAPP DELETED CHATS ====================
+  
+  async getWhatsappDeletedChatIds(companyId: string): Promise<string[]> {
+    const deletedChats = await db.select({ chatId: whatsappDeletedChats.chatId })
+      .from(whatsappDeletedChats)
+      .where(eq(whatsappDeletedChats.companyId, companyId));
+    return deletedChats.map(c => c.chatId);
   }
   
   // ==================== QUOTE NOTES ====================

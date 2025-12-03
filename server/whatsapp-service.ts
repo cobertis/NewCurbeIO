@@ -1456,6 +1456,10 @@ class WhatsAppService extends EventEmitter {
       // Filter out only system chats that cannot be permanently deleted
       const SYSTEM_CHAT_IDS = ['0@c.us', 'status@broadcast'];
       
+      // Get list of deleted chat IDs from database
+      const deletedChatIds = await storage.getWhatsappDeletedChatIds(companyId);
+      console.log(`[WhatsApp] Filtering out ${deletedChatIds.length} deleted chats for company ${companyId}`);
+      
       return chats.filter((chat: any) => {
         const chatId = chat.id?._serialized || chat.id;
         
@@ -1466,6 +1470,11 @@ class WhatsAppService extends EventEmitter {
         
         // Exclude chats with user ID "0" (WhatsApp service notifications)
         if (chat.id?.user === '0' || chat.id?.user === 0) {
+          return false;
+        }
+        
+        // Exclude deleted chats
+        if (deletedChatIds.includes(chatId)) {
           return false;
         }
         
