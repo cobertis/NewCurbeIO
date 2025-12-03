@@ -243,6 +243,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/policies"] });
       queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+      // Invalidate all consents queries (for consent_signed notifications)
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey;
+        return Array.isArray(key) && key.length >= 3 && key[0] === '/api/policies' && key[2] === 'consents';
+      }});
       // Play sound when new notification arrives
       playNotificationSound();
     } else if (message.type === 'subscription_update') {

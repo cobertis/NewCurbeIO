@@ -612,10 +612,10 @@ class NotificationService {
     if (assignedUserId) {
       notifications.push({
         userId: assignedUserId,
-        type: "info",
+        type: "consent_signed",
         title: "Consent Signed",
-        message: `${clientName} signed the consent document on ${signedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-        link: `/quotes/${quoteId}`,
+        message: `${clientName} signed the consent document on ${signedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}:${quoteId}`,
+        link: `/policies/${quoteId}`,
         isRead: false,
       });
     }
