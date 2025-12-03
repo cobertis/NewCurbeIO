@@ -7885,7 +7885,7 @@ export default function PoliciesPage() {
                           </h1>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">ID</p>
+                          <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Internal Code</p>
                           <p className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">{viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
                         </div>
                       </div>
@@ -9683,7 +9683,6 @@ export default function PoliciesPage() {
           </div>
         </div>
         </div>
-
         {/* Edit Sheets */}
         <EditMemberSheet
               open={!!editingMember}
@@ -9702,2829 +9701,2570 @@ export default function PoliciesPage() {
                 setEditingMember({ type, index });
               }}
             />
-
-            <EditAddressesSheet
-              open={!!editingAddresses}
-              onOpenChange={(open: boolean) => !open && setEditingAddresses(null)}
-              quote={viewingQuote}
-              addressType={editingAddresses}
-              onSave={(data: Partial<Quote>) => {
-                updateQuoteMutation.mutate({
-                  quoteId: viewingQuote.id,
-                  data
-                });
-              }}
-              isPending={updateQuoteMutation.isPending}
-            />
-
-            <EditPaymentSheet
-              open={editingPayment}
-              onOpenChange={setEditingPayment}
-              quote={viewingQuote}
-              onSave={(data: Partial<Quote>) => {
-                updateQuoteMutation.mutate({
-                  quoteId: viewingQuote.id,
-                  data
-                }, {
-                  onSuccess: () => setEditingPayment(false)
-                });
-              }}
-              isPending={updateQuoteMutation.isPending}
-            />
-
-            <EditNotesSheet
-              open={editingNotes}
-              onOpenChange={setEditingNotes}
-              quote={viewingQuote}
-              onSave={(data: Partial<Quote>) => {
-                updateQuoteMutation.mutate({
-                  quoteId: viewingQuote.id,
-                  data
-                }, {
-                  onSuccess: () => setEditingNotes(false)
-                });
-              }}
-              isPending={updateQuoteMutation.isPending}
-            />
-
-            <EditDoctorSheet
-              open={editingDoctor}
-              onOpenChange={setEditingDoctor}
-              quote={viewingQuote}
-              onSave={(data: Partial<Quote>) => {
-                updateQuoteMutation.mutate({
-                  quoteId: viewingQuote.id,
-                  data
-                }, {
-                  onSuccess: () => setEditingDoctor(false)
-                });
-              }}
-              isPending={updateQuoteMutation.isPending}
-            />
-
-            <EditMedicinesSheet
-              open={editingMedicines}
-              onOpenChange={setEditingMedicines}
-              quote={viewingQuote}
-              onSave={(data: Partial<Quote>) => {
-                updateQuoteMutation.mutate({
-                  quoteId: viewingQuote.id,
-                  data
-                }, {
-                  onSuccess: () => setEditingMedicines(false)
-                });
-              }}
-              isPending={updateQuoteMutation.isPending}
-            />
-
-            <AddPaymentMethodSheet
-              open={paymentMethodsSheet.open}
-              onOpenChange={(open) => setPaymentMethodsSheet({open})}
-              quote={viewingQuote}
-              paymentMethodId={paymentMethodsSheet.paymentMethodId}
-            />
-
-            {/* Delete Member Confirmation Dialog */}
-            <AlertDialog open={!!deletingMember} onOpenChange={(open) => !open && setDeletingMember(null)}>
-              <AlertDialogContent data-testid="dialog-delete-member">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Family Member?</AlertDialogTitle>
-                  <AlertDialogDescription asChild>
-                    <div>
-                      {deletingMember && (
-                        <>
-                          <p>
-                            Are you sure you want to remove <strong>{deletingMember.name}</strong> ({deletingMember.role}) from this policy?
-                          </p>
-                          <p className="mt-4">This will delete:</p>
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li>All personal information</li>
-                            <li>Employment and income data</li>
-                            <li>Immigration records</li>
-                            <li>All uploaded documents</li>
-                          </ul>
-                          <p className="mt-4">
-                            <strong className="text-destructive">This action cannot be undone.</strong>
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-delete-member">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (deletingMember) {
-                        deleteMemberMutation.mutate(deletingMember.id);
-                      }
-                    }}
-                    disabled={deleteMemberMutation.isPending}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    data-testid="button-confirm-delete-member"
-                  >
-                    {deleteMemberMutation.isPending ? 'Deleting...' : 'Delete Member'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Delete Plan Confirmation Dialog */}
-            <AlertDialog open={!!deletingPlan} onOpenChange={(open) => !open && setDeletingPlan(null)}>
-              <AlertDialogContent data-testid="dialog-delete-plan">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove Plan?</AlertDialogTitle>
-                  <AlertDialogDescription asChild>
-                    <div>
-                      {deletingPlan && (
-                        <>
-                          <p>
-                            Are you sure you want to remove <strong>{deletingPlan.name}</strong> from this policy?
-                          </p>
-                          <p className="mt-4">
-                            This will remove the plan details and pricing information. You can add a new plan later if needed.
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-delete-plan">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      if (deletingPlan) {
-                        try {
-                          await apiRequest("DELETE", `/api/policies/${viewingQuote.id}/plans/${deletingPlan.id}`);
-                          queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                          setDeletingPlan(null);
-                          toast({
-                            title: "Success",
-                            description: "Plan has been removed.",
-                            duration: 3000,
-                          });
-                        } catch (error: any) {
-                          toast({
-                            title: "Error",
-                            description: error.message || "Failed to remove plan.",
-                            variant: "destructive",
-                            duration: 3000,
-                          });
-                        }
-                      }
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    data-testid="button-confirm-delete-plan"
-                  >
-                    Remove Plan
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Delete Address Confirmation Dialog */}
-            <AlertDialog open={!!deletingAddress} onOpenChange={(open) => !open && setDeletingAddress(null)}>
-              <AlertDialogContent data-testid="dialog-delete-address">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete {deletingAddress === 'mailing' ? 'Mailing' : 'Billing'} Address?</AlertDialogTitle>
-                  <AlertDialogDescription asChild>
-                    <div>
+        <EditAddressesSheet
+          open={!!editingAddresses}
+          onOpenChange={(open: boolean) => !open && setEditingAddresses(null)}
+          quote={viewingQuote}
+          addressType={editingAddresses}
+          onSave={(data: Partial<Quote>) => {
+            updateQuoteMutation.mutate({
+              quoteId: viewingQuote.id,
+              data
+            });
+          }}
+          isPending={updateQuoteMutation.isPending}
+        />
+        <EditPaymentSheet
+          open={editingPayment}
+          onOpenChange={setEditingPayment}
+          quote={viewingQuote}
+          onSave={(data: Partial<Quote>) => {
+            updateQuoteMutation.mutate({
+              quoteId: viewingQuote.id,
+              data
+            }, {
+              onSuccess: () => setEditingPayment(false)
+            });
+          }}
+          isPending={updateQuoteMutation.isPending}
+        />
+        <EditNotesSheet
+          open={editingNotes}
+          onOpenChange={setEditingNotes}
+          quote={viewingQuote}
+          onSave={(data: Partial<Quote>) => {
+            updateQuoteMutation.mutate({
+              quoteId: viewingQuote.id,
+              data
+            }, {
+              onSuccess: () => setEditingNotes(false)
+            });
+          }}
+          isPending={updateQuoteMutation.isPending}
+        />
+        <EditDoctorSheet
+          open={editingDoctor}
+          onOpenChange={setEditingDoctor}
+          quote={viewingQuote}
+          onSave={(data: Partial<Quote>) => {
+            updateQuoteMutation.mutate({
+              quoteId: viewingQuote.id,
+              data
+            }, {
+              onSuccess: () => setEditingDoctor(false)
+            });
+          }}
+          isPending={updateQuoteMutation.isPending}
+        />
+        <EditMedicinesSheet
+          open={editingMedicines}
+          onOpenChange={setEditingMedicines}
+          quote={viewingQuote}
+          onSave={(data: Partial<Quote>) => {
+            updateQuoteMutation.mutate({
+              quoteId: viewingQuote.id,
+              data
+            }, {
+              onSuccess: () => setEditingMedicines(false)
+            });
+          }}
+          isPending={updateQuoteMutation.isPending}
+        />
+        <AddPaymentMethodSheet
+          open={paymentMethodsSheet.open}
+          onOpenChange={(open) => setPaymentMethodsSheet({open})}
+          quote={viewingQuote}
+          paymentMethodId={paymentMethodsSheet.paymentMethodId}
+        />
+        {/* Delete Member Confirmation Dialog */}
+        <AlertDialog open={!!deletingMember} onOpenChange={(open) => !open && setDeletingMember(null)}>
+          <AlertDialogContent data-testid="dialog-delete-member">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Family Member?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  {deletingMember && (
+                    <>
                       <p>
-                        Are you sure you want to remove the {deletingAddress === 'mailing' ? 'mailing' : 'billing'} address from this policy?
+                        Are you sure you want to remove <strong>{deletingMember.name}</strong> ({deletingMember.role}) from this policy?
+                      </p>
+                      <p className="mt-4">This will delete:</p>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>All personal information</li>
+                        <li>Employment and income data</li>
+                        <li>Immigration records</li>
+                        <li>All uploaded documents</li>
+                      </ul>
+                      <p className="mt-4">
+                        <strong className="text-destructive">This action cannot be undone.</strong>
+                      </p>
+                    </>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-member">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (deletingMember) {
+                    deleteMemberMutation.mutate(deletingMember.id);
+                  }
+                }}
+                disabled={deleteMemberMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete-member"
+              >
+                {deleteMemberMutation.isPending ? 'Deleting...' : 'Delete Member'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Delete Plan Confirmation Dialog */}
+        <AlertDialog open={!!deletingPlan} onOpenChange={(open) => !open && setDeletingPlan(null)}>
+          <AlertDialogContent data-testid="dialog-delete-plan">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Plan?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  {deletingPlan && (
+                    <>
+                      <p>
+                        Are you sure you want to remove <strong>{deletingPlan.name}</strong> from this policy?
                       </p>
                       <p className="mt-4">
-                        This will clear all address fields. You can add a new address later if needed.
+                        This will remove the plan details and pricing information. You can add a new plan later if needed.
                       </p>
-                    </div>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-delete-address">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (deletingAddress) {
-                        const prefix = deletingAddress === 'mailing' ? 'mailing_' : 'billing_';
-                        updateQuoteMutation.mutate({
-                          quoteId: viewingQuote.id,
-                          data: {
-                            [`${prefix}street`]: null,
-                            [`${prefix}address_line_2`]: null,
-                            [`${prefix}city`]: null,
-                            [`${prefix}state`]: null,
-                            [`${prefix}postal_code`]: null,
-                            [`${prefix}county`]: null,
-                          }
-                        }, {
-                          onSuccess: () => {
-                            setDeletingAddress(null);
-                            toast({
-                              title: "Address deleted",
-                              description: `${deletingAddress === 'mailing' ? 'Mailing' : 'Billing'} address has been removed.`
-                            });
-                          }
+                    </>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-plan">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (deletingPlan) {
+                    try {
+                      await apiRequest("DELETE", `/api/policies/${viewingQuote.id}/plans/${deletingPlan.id}`);
+                      queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                      setDeletingPlan(null);
+                      toast({
+                        title: "Success",
+                        description: "Plan has been removed.",
+                        duration: 3000,
+                      });
+                    } catch (error: any) {
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to remove plan.",
+                        variant: "destructive",
+                        duration: 3000,
+                      });
+                    }
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete-plan"
+              >
+                Remove Plan
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Delete Address Confirmation Dialog */}
+        <AlertDialog open={!!deletingAddress} onOpenChange={(open) => !open && setDeletingAddress(null)}>
+          <AlertDialogContent data-testid="dialog-delete-address">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {deletingAddress === 'mailing' ? 'Mailing' : 'Billing'} Address?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  <p>
+                    Are you sure you want to remove the {deletingAddress === 'mailing' ? 'mailing' : 'billing'} address from this policy?
+                  </p>
+                  <p className="mt-4">
+                    This will clear all address fields. You can add a new address later if needed.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-address">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (deletingAddress) {
+                    const prefix = deletingAddress === 'mailing' ? 'mailing_' : 'billing_';
+                    updateQuoteMutation.mutate({
+                      quoteId: viewingQuote.id,
+                      data: {
+                        [`${prefix}street`]: null,
+                        [`${prefix}address_line_2`]: null,
+                        [`${prefix}city`]: null,
+                        [`${prefix}state`]: null,
+                        [`${prefix}postal_code`]: null,
+                        [`${prefix}county`]: null,
+                      }
+                    }, {
+                      onSuccess: () => {
+                        setDeletingAddress(null);
+                        toast({
+                          title: "Address deleted",
+                          description: `${deletingAddress === 'mailing' ? 'Mailing' : 'Billing'} address has been removed.`
                         });
                       }
-                    }}
-                    disabled={updateQuoteMutation.isPending}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    data-testid="button-confirm-delete-address"
-                  >
-                    {updateQuoteMutation.isPending ? 'Deleting...' : 'Delete Address'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    });
+                  }
+                }}
+                disabled={updateQuoteMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete-address"
+              >
+                {updateQuoteMutation.isPending ? 'Deleting...' : 'Delete Address'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Notes Sheet - Professional Corporate Design */}
+        {console.log('[NOTES SHEET] Rendering in viewingQuote return, open state:', notesSheetOpen)}
+        <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
+          <SheetContent className="w-full sm:max-w-3xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
+            {/* Header */}
+            <div className="px-6 py-4 border-b">
+              <SheetTitle className="text-lg font-medium">Notes & Comments</SheetTitle>
+              <SheetDescription className="mt-1 text-sm">
+                Internal notes for policy {viewingQuote?.id} - {quoteNotesCount} total
+              </SheetDescription>
+            </div>
 
-            {/* Notes Sheet - Professional Corporate Design */}
-            {console.log('[NOTES SHEET] Rendering in viewingQuote return, open state:', notesSheetOpen)}
-            <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
-              <SheetContent className="w-full sm:max-w-3xl p-0 flex flex-col h-full z-[100]" side="left" data-testid="sheet-notes">
-                {/* Header */}
-                <div className="px-6 py-4 border-b">
-                  <SheetTitle className="text-lg font-medium">Notes & Comments</SheetTitle>
-                  <SheetDescription className="mt-1 text-sm">
-                    Internal notes for policy {viewingQuote?.id} - {quoteNotesCount} total
-                  </SheetDescription>
+            {/* Main Content */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {/* Search Toolbar */}
+              <div className="px-6 py-3 border-b bg-muted/5">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search notes..."
+                    value={searchNotes}
+                    onChange={(e) => setSearchNotes(e.target.value)}
+                    className="pl-9 h-9"
+                    data-testid="input-search-notes"
+                  />
                 </div>
+              </div>
 
-                {/* Main Content */}
-                <div className="flex-1 overflow-hidden flex flex-col">
-                  {/* Search Toolbar */}
-                  <div className="px-6 py-3 border-b bg-muted/5">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search notes..."
-                        value={searchNotes}
-                        onChange={(e) => setSearchNotes(e.target.value)}
-                        className="pl-9 h-9"
-                        data-testid="input-search-notes"
-                      />
-                    </div>
+              {/* Notes List - Scrollable */}
+              <div ref={notesListRef} className="flex-1 overflow-y-auto px-6 py-4">
+                {isLoadingNotes ? (
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
-
-                  {/* Notes List - Scrollable */}
-                  <div ref={notesListRef} className="flex-1 overflow-y-auto px-6 py-4">
-                    {isLoadingNotes ? (
-                      <div className="flex items-center justify-center py-20">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : filteredNotes.length === 0 ? (
-                      <div className="text-center py-16 text-muted-foreground">
-                        <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm font-medium mb-1">
-                          {searchNotes || filterCategory !== 'all' ? 'No notes match your filters' : 'No notes yet'}
-                        </p>
-                        <p className="text-xs">
-                          {searchNotes || filterCategory !== 'all' ? 'Try adjusting your search or filters' : 'Create your first note to get started'}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {filteredNotes.map((note: any) => (
-                          <div
-                            key={note.id}
-                            className={`group relative border rounded-lg p-4 bg-card hover:border-muted-foreground/20 transition-colors ${
-                              note.isImportant ? 'border-l-4 border-l-red-600' : ''
-                            }`}
-                            data-testid={`note-${note.id}`}
-                          >
-                            {/* Note Header */}
-                            <div className="flex items-start justify-between gap-3 mb-2.5">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-7 w-7">
-                                  {note.creatorAvatar && (
-                                    <AvatarImage src={note.creatorAvatar} alt={note.creatorName || 'User'} />
-                                  )}
-                                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                    {(note.creatorName || 'Unknown User')
-                                      .split(' ')
-                                      .map((n: string) => n[0])
-                                      .join('')
-                                      .toUpperCase()
-                                      .slice(0, 2)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                                    <span className="font-medium text-foreground">{note.creatorName || 'Unknown User'}</span>
-                                    <span className="text-muted-foreground/60">•</span>
-                                    <span className="text-muted-foreground/60">
-                                      {format(new Date(note.createdAt), 'MMM dd, yyyy • h:mm a')}
-                                    </span>
-                                  </div>
-                                <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                                  {note.isPinned && (
-                                    <span className="inline-flex items-center gap-1 border border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded px-1.5 py-0.5">
-                                      <Bell className="h-3 w-3" />
-                                      Pinned
-                                    </span>
-                                  )}
-                                  {note.isImportant && (
-                                    <span className="inline-flex items-center gap-1 border border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400 rounded px-1.5 py-0.5">
-                                      <AlertCircle className="h-3 w-3" />
-                                      Important
-                                    </span>
-                                  )}
-                                  {note.isResolved && (
-                                    <span className="inline-flex items-center gap-1 border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400 rounded px-1.5 py-0.5">
-                                      <Check className="h-3 w-3" />
-                                      Resolved
-                                    </span>
-                                  )}
-                                  <span className="border rounded px-1.5 py-0.5 capitalize text-muted-foreground">
-                                    {note.category?.replace('_', ' ') || 'general'}
-                                  </span>
-                                </div>
-                                </div>
-                              </div>
-
-                              {/* Delete Button - Only show if current user is the creator or superadmin */}
-                              {userData?.user && (note.createdBy === userData.user.id || userData.user.role === 'superadmin') && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => {
-                                    setNoteToDelete(note.id);
-                                    setShowDeleteDialog(true);
-                                  }}
-                                  data-testid={`button-delete-note-${note.id}`}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                ) : filteredNotes.length === 0 ? (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p className="text-sm font-medium mb-1">
+                      {searchNotes || filterCategory !== 'all' ? 'No notes match your filters' : 'No notes yet'}
+                    </p>
+                    <p className="text-xs">
+                      {searchNotes || filterCategory !== 'all' ? 'Try adjusting your search or filters' : 'Create your first note to get started'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {filteredNotes.map((note: any) => (
+                      <div
+                        key={note.id}
+                        className={`group relative border rounded-lg p-4 bg-card hover:border-muted-foreground/20 transition-colors ${
+                          note.isImportant ? 'border-l-4 border-l-red-600' : ''
+                        }`}
+                        data-testid={`note-${note.id}`}
+                      >
+                        {/* Note Header */}
+                        <div className="flex items-start justify-between gap-3 mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-7 w-7">
+                              {note.creatorAvatar && (
+                                <AvatarImage src={note.creatorAvatar} alt={note.creatorName || 'User'} />
                               )}
-                            </div>
-
-                            {/* Note Content */}
-                            <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                              note.isResolved ? 'line-through text-muted-foreground/60' : ''
-                            }`}>
-                              {note.note}
-                            </p>
-                            
-                            {/* Image Attachments */}
-                            {note.attachments && note.attachments.length > 0 && (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {note.attachments.map((img: string, idx: number) => (
-                                  <div
-                                    key={idx}
-                                    className="relative group/img"
-                                    data-testid={`image-attachment-${idx}`}
-                                  >
-                                    <img
-                                      src={img}
-                                      alt={`Attachment ${idx + 1}`}
-                                      className="h-20 w-20 object-cover rounded border"
-                                    />
-                                    {/* Eye button overlay */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setViewingImages(note.attachments);
-                                        setCurrentImageIndex(idx);
-                                        setImageViewerOpen(true);
-                                      }}
-                                      className="absolute inset-0 bg-black/60 rounded flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
-                                      data-testid={`button-view-image-${idx}`}
-                                    >
-                                      <Eye className="h-6 w-6 text-white" />
-                                    </button>
-                                  </div>
-                                ))}
+                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                {(note.creatorName || 'Unknown User')
+                                  .split(' ')
+                                  .map((n: string) => n[0])
+                                  .join('')
+                                  .toUpperCase()
+                                  .slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                                <span className="font-medium text-foreground">{note.creatorName || 'Unknown User'}</span>
+                                <span className="text-muted-foreground/60">•</span>
+                                <span className="text-muted-foreground/60">
+                                  {format(new Date(note.createdAt), 'MMM dd, yyyy • h:mm a')}
+                                </span>
                               </div>
-                            )}
+                            <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                              {note.isPinned && (
+                                <span className="inline-flex items-center gap-1 border border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded px-1.5 py-0.5">
+                                  <Bell className="h-3 w-3" />
+                                  Pinned
+                                </span>
+                              )}
+                              {note.isImportant && (
+                                <span className="inline-flex items-center gap-1 border border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400 rounded px-1.5 py-0.5">
+                                  <AlertCircle className="h-3 w-3" />
+                                  Important
+                                </span>
+                              )}
+                              {note.isResolved && (
+                                <span className="inline-flex items-center gap-1 border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400 rounded px-1.5 py-0.5">
+                                  <Check className="h-3 w-3" />
+                                  Resolved
+                                </span>
+                              )}
+                              <span className="border rounded px-1.5 py-0.5 capitalize text-muted-foreground">
+                                {note.category?.replace('_', ' ') || 'general'}
+                              </span>
+                            </div>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Create/Edit Note Form - Fixed at bottom */}
-                  <div className="border-t bg-muted/5 px-6 py-4">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                          New note
-                        </label>
-                        <Textarea
-                          placeholder="Type your note here..."
-                          value={newNoteText}
-                          onChange={(e) => setNewNoteText(e.target.value)}
-                          onPaste={async (e) => {
-                            const items = e.clipboardData?.items;
-                            if (!items) return;
-                            
-                            for (const item of Array.from(items)) {
-                              if (item.type.indexOf('image') !== -1) {
-                                e.preventDefault();
-                                const file = item.getAsFile();
-                                if (!file) continue;
-                                
-                                if (file.size > 5 * 1024 * 1024) {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "File too large",
-                                    description: "Image must be less than 5MB",
-                                  });
-                                  continue;
-                                }
-                                
-                                setUploadingImages(true);
-                                try {
-                                  const formData = new FormData();
-                                  formData.append('image', file);
-                                  
-                                  const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
-                                    method: 'POST',
-                                    body: formData,
-                                  });
-                                  
-                                  if (!response.ok) throw new Error('Upload failed');
-                                  
-                                  const data = await response.json();
-                                  setNoteAttachments(prev => [...prev, data.url]);
-                                  
-                                  toast({
-                                    title: "Image attached",
-                                    description: "Image uploaded successfully",
-                                  });
-                                } catch (error) {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "Upload failed",
-                                    description: "Failed to upload image",
-                                  });
-                                } finally {
-                                  setUploadingImages(false);
-                                }
-                              }
-                            }
-                          }}
-                          onDrop={async (e) => {
-                            e.preventDefault();
-                            const files = e.dataTransfer?.files;
-                            if (!files || files.length === 0) return;
-                            
-                            setUploadingImages(true);
-                            try {
-                              for (const file of Array.from(files)) {
-                                if (!file.type.startsWith('image/')) {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "Invalid file type",
-                                    description: "Please drop only image files",
-                                  });
-                                  continue;
-                                }
-                                
-                                if (file.size > 5 * 1024 * 1024) {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "File too large",
-                                    description: `${file.name} is larger than 5MB`,
-                                  });
-                                  continue;
-                                }
-                                
-                                const formData = new FormData();
-                                formData.append('image', file);
-                                
-                                const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
-                                  method: 'POST',
-                                  body: formData,
-                                });
-                                
-                                if (!response.ok) throw new Error('Upload failed');
-                                
-                                const data = await response.json();
-                                setNoteAttachments(prev => [...prev, data.url]);
-                              }
-                              
-                              toast({
-                                title: "Images attached",
-                                description: `${files.length} image(s) uploaded successfully`,
-                              });
-                            } catch (error) {
-                              toast({
-                                variant: "destructive",
-                                title: "Upload failed",
-                                description: "Failed to upload one or more images",
-                              });
-                            } finally {
-                              setUploadingImages(false);
-                            }
-                          }}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                          }}
-                          className="min-h-[80px] resize-none text-sm"
-                          data-testid="textarea-note"
-                        />
+                          {/* Delete Button - Only show if current user is the creator or superadmin */}
+                          {userData?.user && (note.createdBy === userData.user.id || userData.user.role === 'superadmin') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => {
+                                setNoteToDelete(note.id);
+                                setShowDeleteDialog(true);
+                              }}
+                              data-testid={`button-delete-note-${note.id}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Note Content */}
+                        <p className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                          note.isResolved ? 'line-through text-muted-foreground/60' : ''
+                        }`}>
+                          {note.note}
+                        </p>
                         
-                        {/* Image Attachments Preview */}
-                        {noteAttachments.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {noteAttachments.map((img, idx) => (
+                        {/* Image Attachments */}
+                        {note.attachments && note.attachments.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {note.attachments.map((img: string, idx: number) => (
                               <div
                                 key={idx}
-                                className="relative group/preview"
-                                data-testid={`preview-image-${idx}`}
+                                className="relative group/img"
+                                data-testid={`image-attachment-${idx}`}
                               >
                                 <img
                                   src={img}
-                                  alt={`Preview ${idx + 1}`}
-                                  className="h-16 w-16 object-cover rounded border"
+                                  alt={`Attachment ${idx + 1}`}
+                                  className="h-20 w-20 object-cover rounded border"
                                 />
                                 {/* Eye button overlay */}
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setViewingImages(noteAttachments);
+                                    setViewingImages(note.attachments);
                                     setCurrentImageIndex(idx);
                                     setImageViewerOpen(true);
                                   }}
-                                  className="absolute inset-0 bg-black/60 rounded flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity z-10"
-                                  data-testid={`button-view-preview-${idx}`}
+                                  className="absolute inset-0 bg-black/60 rounded flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                  data-testid={`button-view-image-${idx}`}
                                 >
-                                  <Eye className="h-5 w-5 text-white" />
-                                </button>
-                                {/* Delete button */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setNoteAttachments(prev => prev.filter((_, i) => i !== idx));
-                                  }}
-                                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity z-20"
-                                  data-testid={`button-remove-image-${idx}`}
-                                >
-                                  <X className="h-3 w-3" />
+                                  <Eye className="h-6 w-6 text-white" />
                                 </button>
                               </div>
                             ))}
                           </div>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Create/Edit Note Form - Fixed at bottom */}
+              <div className="border-t bg-muted/5 px-6 py-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                      New note
+                    </label>
+                    <Textarea
+                      placeholder="Type your note here..."
+                      value={newNoteText}
+                      onChange={(e) => setNewNoteText(e.target.value)}
+                      onPaste={async (e) => {
+                        const items = e.clipboardData?.items;
+                        if (!items) return;
                         
-                        {/* File Input (Hidden) */}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                          multiple
-                          className="hidden"
-                          onChange={async (e) => {
-                            const files = e.target.files;
-                            if (!files || files.length === 0) return;
+                        for (const item of Array.from(items)) {
+                          if (item.type.indexOf('image') !== -1) {
+                            e.preventDefault();
+                            const file = item.getAsFile();
+                            if (!file) continue;
+                            
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast({
+                                variant: "destructive",
+                                title: "File too large",
+                                description: "Image must be less than 5MB",
+                              });
+                              continue;
+                            }
                             
                             setUploadingImages(true);
                             try {
-                              for (const file of Array.from(files)) {
-                                if (file.size > 5 * 1024 * 1024) {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "File too large",
-                                    description: `${file.name} is larger than 5MB`,
-                                  });
-                                  continue;
-                                }
-                                
-                                const formData = new FormData();
-                                formData.append('image', file);
-                                
-                                const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
-                                  method: 'POST',
-                                  body: formData,
-                                });
-                                
-                                if (!response.ok) throw new Error('Upload failed');
-                                
-                                const data = await response.json();
-                                setNoteAttachments(prev => [...prev, data.url]);
-                              }
+                              const formData = new FormData();
+                              formData.append('image', file);
+                              
+                              const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
+                                method: 'POST',
+                                body: formData,
+                              });
+                              
+                              if (!response.ok) throw new Error('Upload failed');
+                              
+                              const data = await response.json();
+                              setNoteAttachments(prev => [...prev, data.url]);
                               
                               toast({
-                                title: "Images attached",
-                                description: `${files.length} image(s) uploaded successfully`,
+                                title: "Image attached",
+                                description: "Image uploaded successfully",
                               });
                             } catch (error) {
                               toast({
                                 variant: "destructive",
                                 title: "Upload failed",
-                                description: "Failed to upload one or more images",
+                                description: "Failed to upload image",
                               });
                             } finally {
                               setUploadingImages(false);
-                              if (fileInputRef.current) {
-                                fileInputRef.current.value = '';
-                              }
                             }
-                          }}
-                          data-testid="input-file"
-                        />
+                          }
+                        }
+                      }}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        const files = e.dataTransfer?.files;
+                        if (!files || files.length === 0) return;
                         
-                        {/* Attachment Button and Important Checkbox */}
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={uploadingImages}
-                              className="h-8"
-                              data-testid="button-attach-image"
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              {uploadingImages ? 'Uploading...' : 'Attach Image'}
-                            </Button>
-                            <span className="text-xs text-muted-foreground">
-                              or paste/drag images directly (max 5MB each)
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id="important-note"
-                              checked={isImportant}
-                              onCheckedChange={(checked) => setIsImportant(!!checked)}
-                              data-testid="checkbox-important"
-                            />
-                            <label
-                              htmlFor="important-note"
-                              className="text-xs font-medium cursor-pointer select-none"
-                            >
-                              Mark as Important
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => createNoteMutation.mutate()}
-                          disabled={!newNoteText.trim() || createNoteMutation.isPending}
-                          className="w-full h-9"
-                          variant="secondary"
-                          data-testid="button-send-note"
-                        >
-                          {createNoteMutation.isPending ? 'Creating...' : 'Create Note'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            {/* Delete Note Confirmation Dialog */}
-            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <AlertDialogContent className="z-[9999]" data-testid="dialog-delete-note">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Note?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this note? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setNoteToDelete(null)} data-testid="button-cancel-delete-note">
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      if (!noteToDelete || !viewingQuote?.id) return;
-                      try {
-                        await apiRequest('DELETE', `/api/policies/${viewingQuote.id}/notes/${noteToDelete}`);
-                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'notes'] });
-                        setShowDeleteDialog(false);
-                        setNoteToDelete(null);
-                        toast({
-                          title: "Note deleted",
-                          description: "The note has been removed successfully.",
-                        });
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to delete note",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    data-testid="button-confirm-delete-note"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Image Viewer Dialog - Fullscreen */}
-            <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen} modal={false}>
-              <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none z-[100] [&>button[type='button']:first-of-type]:hidden">
-                <DialogTitle className="sr-only">Image Viewer</DialogTitle>
-                <DialogDescription className="sr-only">Viewing attached image in fullscreen</DialogDescription>
-                <button
-                  onClick={() => setImageViewerOpen(false)}
-                  className="absolute top-4 right-4 z-[60] rounded-full bg-white/10 hover:bg-white/20 p-2 transition-colors"
-                  data-testid="button-close-viewer"
-                >
-                  <X className="h-6 w-6 text-white" />
-                </button>
-                
-                {viewingImages.length > 0 && (
-                  <>
-                    <div className="flex items-center justify-center h-full p-8">
-                      <img
-                        src={viewingImages[currentImageIndex]}
-                        alt={`Image ${currentImageIndex + 1}`}
-                        className="max-w-full max-h-full object-contain"
-                        data-testid="image-fullscreen"
-                      />
-                    </div>
+                        setUploadingImages(true);
+                        try {
+                          for (const file of Array.from(files)) {
+                            if (!file.type.startsWith('image/')) {
+                              toast({
+                                variant: "destructive",
+                                title: "Invalid file type",
+                                description: "Please drop only image files",
+                              });
+                              continue;
+                            }
+                            
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast({
+                                variant: "destructive",
+                                title: "File too large",
+                                description: `${file.name} is larger than 5MB`,
+                              });
+                              continue;
+                            }
+                            
+                            const formData = new FormData();
+                            formData.append('image', file);
+                            
+                            const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
+                              method: 'POST',
+                              body: formData,
+                            });
+                            
+                            if (!response.ok) throw new Error('Upload failed');
+                            
+                            const data = await response.json();
+                            setNoteAttachments(prev => [...prev, data.url]);
+                          }
+                          
+                          toast({
+                            title: "Images attached",
+                            description: `${files.length} image(s) uploaded successfully`,
+                          });
+                        } catch (error) {
+                          toast({
+                            variant: "destructive",
+                            title: "Upload failed",
+                            description: "Failed to upload one or more images",
+                          });
+                        } finally {
+                          setUploadingImages(false);
+                        }
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                      }}
+                      className="min-h-[80px] resize-none text-sm"
+                      data-testid="textarea-note"
+                    />
                     
-                    {viewingImages.length > 1 && (
-                      <>
-                        <button
-                          onClick={() => setCurrentImageIndex(prev => (prev - 1 + viewingImages.length) % viewingImages.length)}
-                          className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 p-3 transition-colors"
-                          data-testid="button-prev-image"
-                        >
-                          <ChevronLeftIcon className="h-8 w-8 text-white" />
-                        </button>
-                        <button
-                          onClick={() => setCurrentImageIndex(prev => (prev + 1) % viewingImages.length)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 p-3 transition-colors"
-                          data-testid="button-next-image"
-                        >
-                          <ChevronRightIcon className="h-8 w-8 text-white" />
-                        </button>
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 rounded-full px-4 py-2 text-white text-sm">
-                          {currentImageIndex + 1} / {viewingImages.length}
-                        </div>
-                      </>
+                    {/* Image Attachments Preview */}
+                    {noteAttachments.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {noteAttachments.map((img, idx) => (
+                          <div
+                            key={idx}
+                            className="relative group/preview"
+                            data-testid={`preview-image-${idx}`}
+                          >
+                            <img
+                              src={img}
+                              alt={`Preview ${idx + 1}`}
+                              className="h-16 w-16 object-cover rounded border"
+                            />
+                            {/* Eye button overlay */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewingImages(noteAttachments);
+                                setCurrentImageIndex(idx);
+                                setImageViewerOpen(true);
+                              }}
+                              className="absolute inset-0 bg-black/60 rounded flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity z-10"
+                              data-testid={`button-view-preview-${idx}`}
+                            >
+                              <Eye className="h-5 w-5 text-white" />
+                            </button>
+                            {/* Delete button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNoteAttachments(prev => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity z-20"
+                              data-testid={`button-remove-image-${idx}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  </>
-                )}
-              </DialogContent>
-            </Dialog>
-
-            {/* Documents Sheet */}
-            <Sheet open={documentsSheetOpen} onOpenChange={setDocumentsSheetOpen}>
-              <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right">
-                <SheetHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <SheetTitle>Documents</SheetTitle>
-                      <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-documents-count">
-                        {quoteDocumentsCount}
-                      </Badge>
-                    </div>
-                  </div>
-                  <SheetDescription>
-                    Manage documents for this policy
-                  </SheetDescription>
-                </SheetHeader>
-
-                <div className="space-y-4 py-6">
-                  {/* Upload Section */}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setUploadDialogOpen(true)}
-                      className="flex-shrink-0"
-                      data-testid="button-upload-document"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Document
-                    </Button>
-                  </div>
-
-                  {/* Search and Category Filter */}
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Search documents..."
-                        value={searchDocuments}
-                        onChange={(e) => setSearchDocuments(e.target.value)}
-                        data-testid="input-search-documents"
-                      />
-                    </div>
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-[180px]" data-testid="select-category">
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="passport">Passport</SelectItem>
-                        <SelectItem value="drivers_license">Driver's License</SelectItem>
-                        <SelectItem value="state_id">State ID</SelectItem>
-                        <SelectItem value="birth_certificate">Birth Certificate</SelectItem>
-                        <SelectItem value="parole">Parole</SelectItem>
-                        <SelectItem value="permanent_residence">Permanent Residence</SelectItem>
-                        <SelectItem value="work_permit">Work Permit</SelectItem>
-                        <SelectItem value="i94">I-94</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Documents Table */}
-                  {isLoadingDocuments ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : filteredDocuments.length === 0 ? (
-                    <div className="text-center py-12 border rounded-lg">
-                      <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No documents found</h3>
-                      <p className="text-muted-foreground mb-4">
-                        {searchDocuments || selectedCategory !== 'all' 
-                          ? 'Try adjusting your search or filters' 
-                          : 'Upload your first document to get started'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Document Type</TableHead>
-                            <TableHead>Belongs To</TableHead>
-                            <TableHead>Size</TableHead>
-                            <TableHead>Uploaded By</TableHead>
-                            <TableHead className="w-[100px]">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredDocuments.map((doc: any) => {
-                            const getCategoryLabel = (category: string) => {
-                              switch (category) {
-                                case 'passport': return 'Passport';
-                                case 'drivers_license': return "Driver's License";
-                                case 'state_id': return 'State ID';
-                                case 'birth_certificate': return 'Birth Certificate';
-                                case 'parole': return 'Parole';
-                                case 'permanent_residence': return 'Permanent Residence';
-                                case 'work_permit': return 'Work Permit';
-                                case 'i94': return 'I-94';
-                                case 'other': return 'Other';
-                                default: return category;
-                              }
-                            };
-
-                            return (
-                              <TableRow key={doc.id} className="hover:bg-muted/50">
-                                <TableCell>
-                                  <button
-                                    onClick={() => setPreviewDocument(doc)}
-                                    className="text-sm font-medium hover:underline text-left"
-                                    data-testid={`button-preview-${doc.id}`}
-                                  >
-                                    {getCategoryLabel(doc.category)}
-                                  </button>
-                                  <div className="text-xs text-muted-foreground mt-0.5">{doc.fileName}</div>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {doc.belongsToMember ? (
-                                    <>
-                                      {doc.belongsToMember.firstName} {doc.belongsToMember.lastName}
-                                      <span className="text-xs ml-1">({doc.belongsToMember.role})</span>
-                                    </>
-                                  ) : (
-                                    '-'
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {formatFileSize(doc.fileSize || 0)}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {doc.uploadedBy?.firstName || 'Unknown'} {doc.uploadedBy?.lastName || ''}
-                                  <div className="text-xs text-muted-foreground/70">
-                                    {format(new Date(doc.createdAt), "MMM dd, yyyy • h:mm a")}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setPreviewDocument(doc)}
-                                      data-testid={`button-preview-${doc.id}`}
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setDocumentToDelete(doc.id)}
-                                      data-testid={`button-delete-${doc.id}`}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            {/* Upload Document Dialog */}
-            <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-              <DialogContent className="sm:max-w-[500px]" data-testid="dialog-upload-document">
-                <DialogTitle>Upload Document</DialogTitle>
-                <DialogDescription>
-                  Upload a document for this policy. Accepted formats: PDF, Images, Word, Excel, PowerPoint (max 10MB)
-                </DialogDescription>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const file = formData.get('file') as File;
-                  const category = formData.get('category') as string;
-
-                  if (!file) {
-                    toast({
-                      title: "Error",
-                      description: "Please select a file to upload",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-
-                  if (!category) {
-                    toast({
-                      title: "Error",
-                      description: "Please select a category",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-
-                  // Validate file size (10MB max)
-                  if (file.size > 10 * 1024 * 1024) {
-                    toast({
-                      title: "Error",
-                      description: "File size must be less than 10MB",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-
-                  // Validate file type
-                  const allowedTypes = [
-                    'application/pdf',
-                    'image/jpeg',
-                    'image/jpg',
-                    'image/png',
-                    'image/gif',
-                    'image/webp',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                  ];
-
-                  if (!allowedTypes.includes(file.type)) {
-                    toast({
-                      title: "Error",
-                      description: "Invalid file type. Please upload a PDF, image, or Office document.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-
-                  setUploadingDocument(true);
-                  uploadDocumentMutation.mutate(formData, {
-                    onSettled: () => setUploadingDocument(false),
-                  });
-                }} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">File *</label>
-                    <Input
+                    
+                    {/* File Input (Hidden) */}
+                    <input
+                      ref={fileInputRef}
                       type="file"
-                      name="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.docx,.xlsx,.pptx"
-                      required
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (!files || files.length === 0) return;
+                        
+                        setUploadingImages(true);
+                        try {
+                          for (const file of Array.from(files)) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast({
+                                variant: "destructive",
+                                title: "File too large",
+                                description: `${file.name} is larger than 5MB`,
+                              });
+                              continue;
+                            }
+                            
+                            const formData = new FormData();
+                            formData.append('image', file);
+                            
+                            const response = await fetch(`/api/policies/${viewingQuote?.id}/notes/upload`, {
+                              method: 'POST',
+                              body: formData,
+                            });
+                            
+                            if (!response.ok) throw new Error('Upload failed');
+                            
+                            const data = await response.json();
+                            setNoteAttachments(prev => [...prev, data.url]);
+                          }
+                          
+                          toast({
+                            title: "Images attached",
+                            description: `${files.length} image(s) uploaded successfully`,
+                          });
+                        } catch (error) {
+                          toast({
+                            variant: "destructive",
+                            title: "Upload failed",
+                            description: "Failed to upload one or more images",
+                          });
+                        } finally {
+                          setUploadingImages(false);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }
+                      }}
                       data-testid="input-file"
                     />
+                    
+                    {/* Attachment Button and Important Checkbox */}
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingImages}
+                          className="h-8"
+                          data-testid="button-attach-image"
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          {uploadingImages ? 'Uploading...' : 'Attach Image'}
+                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                          or paste/drag images directly (max 5MB each)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="important-note"
+                          checked={isImportant}
+                          onCheckedChange={(checked) => setIsImportant(!!checked)}
+                          data-testid="checkbox-important"
+                        />
+                        <label
+                          htmlFor="important-note"
+                          className="text-xs font-medium cursor-pointer select-none"
+                        >
+                          Mark as Important
+                        </label>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Category *</label>
-                    <Select name="category" required>
-                      <SelectTrigger data-testid="select-upload-category">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="passport">Passport</SelectItem>
-                        <SelectItem value="drivers_license">Driver's License</SelectItem>
-                        <SelectItem value="state_id">State ID</SelectItem>
-                        <SelectItem value="birth_certificate">Birth Certificate</SelectItem>
-                        <SelectItem value="parole">Parole</SelectItem>
-                        <SelectItem value="permanent_residence">Permanent Residence</SelectItem>
-                        <SelectItem value="work_permit">Work Permit</SelectItem>
-                        <SelectItem value="i94">I-94</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Belongs To (optional)</label>
-                    <Select name="belongsTo">
-                      <SelectTrigger data-testid="select-belongs-to">
-                        <SelectValue placeholder="Select family member" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {(quoteDetail?.members || []).map((item: any) => {
-                          const member = item.member || item;
-                          return (
-                            <SelectItem key={member.id} value={member.id}>
-                              {member.firstName} {member.lastName} ({member.role})
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Description (optional)</label>
-                    <Textarea
-                      name="description"
-                      placeholder="Add a description..."
-                      rows={3}
-                      data-testid="textarea-description"
-                    />
-                  </div>
-
-                  <div className="flex gap-2 justify-end pt-4">
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
                     <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setUploadDialogOpen(false)}
-                      disabled={uploadingDocument}
-                      data-testid="button-cancel-upload"
+                      onClick={() => createNoteMutation.mutate()}
+                      disabled={!newNoteText.trim() || createNoteMutation.isPending}
+                      className="w-full h-9"
+                      variant="secondary"
+                      data-testid="button-send-note"
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={uploadingDocument}
-                      data-testid="button-confirm-upload"
-                    >
-                      {uploadingDocument ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        'Upload'
-                      )}
+                      {createNoteMutation.isPending ? 'Creating...' : 'Create Note'}
                     </Button>
                   </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            {/* Delete Document Confirmation */}
-            <AlertDialog open={!!documentToDelete} onOpenChange={(open) => !open && setDocumentToDelete(null)}>
-              <AlertDialogContent className="z-[9999]">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Document</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this document? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-delete-document">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (documentToDelete) {
-                        deleteDocumentMutation.mutate(documentToDelete);
-                      }
-                    }}
-                    className="bg-destructive hover:bg-destructive/90"
-                    data-testid="button-confirm-delete-document"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Preview Document Dialog */}
-            <Dialog open={!!previewDocument} onOpenChange={(open) => !open && setPreviewDocument(null)}>
-              <DialogContent className="max-w-4xl w-full h-[90vh]" data-testid="dialog-preview-document">
-                <DialogTitle>{previewDocument?.fileName}</DialogTitle>
-                <DialogDescription>
-                  Document preview
-                </DialogDescription>
-                <div className="flex-1 overflow-auto">
-                  {previewDocument && (() => {
-                    const fileExt = previewDocument.fileName?.split('.').pop()?.toLowerCase();
-                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '');
-                    const isPdf = fileExt === 'pdf';
-
-                    if (isImage) {
-                      return (
-                        <img
-                          src={`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`}
-                          alt={previewDocument.fileName}
-                          className="max-w-full h-auto"
-                          data-testid="preview-image"
-                        />
-                      );
-                    } else if (isPdf) {
-                      return (
-                        <iframe
-                          src={`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`}
-                          className="w-full h-full border-0"
-                          data-testid="preview-pdf"
-                        />
-                      );
-                    } else {
-                      return (
-                        <div className="text-center py-12">
-                          <File className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground mb-4">
-                            Preview not available for this file type
-                          </p>
-                          <Button
-                            onClick={() => window.open(`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`, '_blank')}
-                            data-testid="button-download-preview"
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download File
-                          </Button>
-                        </div>
-                      );
-                    }
-                  })()}
                 </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Reminders Sheet - Professional Corporate Design */}
-            <Sheet open={remindersSheetOpen} onOpenChange={setRemindersSheetOpen}>
-              <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-reminders">
-                <SheetHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <SheetTitle>Reminders</SheetTitle>
-                      <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-reminders-sheet-count">
-                        {quoteReminders.length}
-                      </Badge>
-                    </div>
-                    <Button
-                      onClick={() => {
-                        setSelectedReminder(null);
-                        setReminderFormOpen(true);
-                      }}
-                      size="sm"
-                      data-testid="button-create-reminder"
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+        {/* Delete Note Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent className="z-[9999]" data-testid="dialog-delete-note">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Note?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this note? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setNoteToDelete(null)} data-testid="button-cancel-delete-note">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (!noteToDelete || !viewingQuote?.id) return;
+                  try {
+                    await apiRequest('DELETE', `/api/policies/${viewingQuote.id}/notes/${noteToDelete}`);
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'notes'] });
+                    setShowDeleteDialog(false);
+                    setNoteToDelete(null);
+                    toast({
+                      title: "Note deleted",
+                      description: "The note has been removed successfully.",
+                    });
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to delete note",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-delete-note"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Image Viewer Dialog - Fullscreen */}
+        <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen} modal={false}>
+          <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none z-[100] [&>button[type='button']:first-of-type]:hidden">
+            <DialogTitle className="sr-only">Image Viewer</DialogTitle>
+            <DialogDescription className="sr-only">Viewing attached image in fullscreen</DialogDescription>
+            <button
+              onClick={() => setImageViewerOpen(false)}
+              className="absolute top-4 right-4 z-[60] rounded-full bg-white/10 hover:bg-white/20 p-2 transition-colors"
+              data-testid="button-close-viewer"
+            >
+              <X className="h-6 w-6 text-white" />
+            </button>
+            
+            {viewingImages.length > 0 && (
+              <>
+                <div className="flex items-center justify-center h-full p-8">
+                  <img
+                    src={viewingImages[currentImageIndex]}
+                    alt={`Image ${currentImageIndex + 1}`}
+                    className="max-w-full max-h-full object-contain"
+                    data-testid="image-fullscreen"
+                  />
+                </div>
+                
+                {viewingImages.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setCurrentImageIndex(prev => (prev - 1 + viewingImages.length) % viewingImages.length)}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 p-3 transition-colors"
+                      data-testid="button-prev-image"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Reminder
-                    </Button>
-                  </div>
-                  <SheetDescription>
-                    Manage reminders for this policy
-                  </SheetDescription>
-                </SheetHeader>
+                      <ChevronLeftIcon className="h-8 w-8 text-white" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentImageIndex(prev => (prev + 1) % viewingImages.length)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 hover:bg-white/20 p-3 transition-colors"
+                      data-testid="button-next-image"
+                    >
+                      <ChevronRightIcon className="h-8 w-8 text-white" />
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 rounded-full px-4 py-2 text-white text-sm">
+                      {currentImageIndex + 1} / {viewingImages.length}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+        {/* Documents Sheet */}
+        <Sheet open={documentsSheetOpen} onOpenChange={setDocumentsSheetOpen}>
+          <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right">
+            <SheetHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SheetTitle>Documents</SheetTitle>
+                  <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-documents-count">
+                    {quoteDocumentsCount}
+                  </Badge>
+                </div>
+              </div>
+              <SheetDescription>
+                Manage documents for this policy
+              </SheetDescription>
+            </SheetHeader>
 
-                <div className="space-y-4 py-6">
-                  {/* Filters Section */}
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Search reminders..."
-                        value={searchReminders}
-                        onChange={(e) => setSearchReminders(e.target.value)}
-                        data-testid="input-search-reminders"
-                        className="h-9"
-                      />
-                    </div>
-                    <Select value={filterReminderStatus} onValueChange={setFilterReminderStatus}>
-                      <SelectTrigger className="w-full sm:w-[150px] h-9" data-testid="select-status">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="snoozed">Snoozed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterReminderPriority} onValueChange={setFilterReminderPriority}>
-                      <SelectTrigger className="w-full sm:w-[150px] h-9" data-testid="select-priority">
-                        <SelectValue placeholder="Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Priority</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="urgent">Urgent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <div className="space-y-4 py-6">
+              {/* Upload Section */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setUploadDialogOpen(true)}
+                  className="flex-shrink-0"
+                  data-testid="button-upload-document"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Document
+                </Button>
+              </div>
 
-                  {/* Reminders Table */}
-                  {isLoadingReminders ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-                      <p className="text-sm text-muted-foreground">Loading reminders...</p>
-                    </div>
-                  ) : quoteReminders.length === 0 ? (
-                    <div className="text-center py-12 border rounded-lg">
-                      <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No reminders found</h3>
-                      <p className="text-muted-foreground mb-4">
-                        {searchReminders || filterReminderStatus !== 'all' || filterReminderPriority !== 'all'
-                          ? 'Try adjusting your filters or search'
-                          : 'Create your first reminder to get started'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Title</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Due Date</TableHead>
-                            <TableHead>Created By</TableHead>
-                            <TableHead className="w-[80px]">Actions</TableHead>
+              {/* Search and Category Filter */}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search documents..."
+                    value={searchDocuments}
+                    onChange={(e) => setSearchDocuments(e.target.value)}
+                    data-testid="input-search-documents"
+                  />
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-[180px]" data-testid="select-category">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="passport">Passport</SelectItem>
+                    <SelectItem value="drivers_license">Driver's License</SelectItem>
+                    <SelectItem value="state_id">State ID</SelectItem>
+                    <SelectItem value="birth_certificate">Birth Certificate</SelectItem>
+                    <SelectItem value="parole">Parole</SelectItem>
+                    <SelectItem value="permanent_residence">Permanent Residence</SelectItem>
+                    <SelectItem value="work_permit">Work Permit</SelectItem>
+                    <SelectItem value="i94">I-94</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Documents Table */}
+              {isLoadingDocuments ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredDocuments.length === 0 ? (
+                <div className="text-center py-12 border rounded-lg">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No documents found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchDocuments || selectedCategory !== 'all' 
+                      ? 'Try adjusting your search or filters' 
+                      : 'Upload your first document to get started'}
+                  </p>
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Document Type</TableHead>
+                        <TableHead>Belongs To</TableHead>
+                        <TableHead>Size</TableHead>
+                        <TableHead>Uploaded By</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDocuments.map((doc: any) => {
+                        const getCategoryLabel = (category: string) => {
+                          switch (category) {
+                            case 'passport': return 'Passport';
+                            case 'drivers_license': return "Driver's License";
+                            case 'state_id': return 'State ID';
+                            case 'birth_certificate': return 'Birth Certificate';
+                            case 'parole': return 'Parole';
+                            case 'permanent_residence': return 'Permanent Residence';
+                            case 'work_permit': return 'Work Permit';
+                            case 'i94': return 'I-94';
+                            case 'other': return 'Other';
+                            default: return category;
+                          }
+                        };
+
+                        return (
+                          <TableRow key={doc.id} className="hover:bg-muted/50">
+                            <TableCell>
+                              <button
+                                onClick={() => setPreviewDocument(doc)}
+                                className="text-sm font-medium hover:underline text-left"
+                                data-testid={`button-preview-${doc.id}`}
+                              >
+                                {getCategoryLabel(doc.category)}
+                              </button>
+                              <div className="text-xs text-muted-foreground mt-0.5">{doc.fileName}</div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {doc.belongsToMember ? (
+                                <>
+                                  {doc.belongsToMember.firstName} {doc.belongsToMember.lastName}
+                                  <span className="text-xs ml-1">({doc.belongsToMember.role})</span>
+                                </>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatFileSize(doc.fileSize || 0)}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {doc.uploadedBy?.firstName || 'Unknown'} {doc.uploadedBy?.lastName || ''}
+                              <div className="text-xs text-muted-foreground/70">
+                                {format(new Date(doc.createdAt), "MMM dd, yyyy • h:mm a")}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setPreviewDocument(doc)}
+                                  data-testid={`button-preview-${doc.id}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDocumentToDelete(doc.id)}
+                                  data-testid={`button-delete-${doc.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {quoteReminders.map((reminder: QuoteReminder) => {
-                            const getPriorityBadgeClasses = (priority: string) => {
-                              switch (priority) {
-                                case 'urgent':
-                                  return 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400';
-                                case 'high':
-                                  return 'border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400';
-                                case 'medium':
-                                  return 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400';
-                                case 'low':
-                                default:
-                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
-                              }
-                            };
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+        {/* Upload Document Dialog */}
+        <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]" data-testid="dialog-upload-document">
+            <DialogTitle>Upload Document</DialogTitle>
+            <DialogDescription>
+              Upload a document for this policy. Accepted formats: PDF, Images, Word, Excel, PowerPoint (max 10MB)
+            </DialogDescription>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const file = formData.get('file') as File;
+              const category = formData.get('category') as string;
 
-                            const getStatusBadgeClasses = (status: string) => {
-                              switch (status) {
-                                case 'completed':
-                                  return 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400';
-                                case 'snoozed':
-                                  return 'border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
-                                case 'pending':
-                                default:
-                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
-                              }
-                            };
+              if (!file) {
+                toast({
+                  title: "Error",
+                  description: "Please select a file to upload",
+                  variant: "destructive",
+                });
+                return;
+              }
 
-                            const getTypeLabel = (type: string) => {
-                              const labels: Record<string, string> = {
-                                follow_up: 'Follow Up',
-                                document_request: 'Document Request',
-                                payment_due: 'Payment Due',
-                                policy_renewal: 'Policy Renewal',
-                                call_client: 'Call Client',
-                                send_email: 'Send Email',
-                                review_application: 'Review Application',
-                                other: 'Other',
-                              };
-                              return labels[type] || type;
-                            };
+              if (!category) {
+                toast({
+                  title: "Error",
+                  description: "Please select a category",
+                  variant: "destructive",
+                });
+                return;
+              }
 
-                            return (
-                              <TableRow key={reminder.id} className="hover:bg-muted/50">
-                                <TableCell>
-                                  <button
+              // Validate file size (10MB max)
+              if (file.size > 10 * 1024 * 1024) {
+                toast({
+                  title: "Error",
+                  description: "File size must be less than 10MB",
+                  variant: "destructive",
+                });
+                return;
+              }
+
+              // Validate file type
+              const allowedTypes = [
+                'application/pdf',
+                'image/jpeg',
+                'image/jpg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+              ];
+
+              if (!allowedTypes.includes(file.type)) {
+                toast({
+                  title: "Error",
+                  description: "Invalid file type. Please upload a PDF, image, or Office document.",
+                  variant: "destructive",
+                });
+                return;
+              }
+
+              setUploadingDocument(true);
+              uploadDocumentMutation.mutate(formData, {
+                onSettled: () => setUploadingDocument(false),
+              });
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">File *</label>
+                <Input
+                  type="file"
+                  name="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.docx,.xlsx,.pptx"
+                  required
+                  data-testid="input-file"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Category *</label>
+                <Select name="category" required>
+                  <SelectTrigger data-testid="select-upload-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="passport">Passport</SelectItem>
+                    <SelectItem value="drivers_license">Driver's License</SelectItem>
+                    <SelectItem value="state_id">State ID</SelectItem>
+                    <SelectItem value="birth_certificate">Birth Certificate</SelectItem>
+                    <SelectItem value="parole">Parole</SelectItem>
+                    <SelectItem value="permanent_residence">Permanent Residence</SelectItem>
+                    <SelectItem value="work_permit">Work Permit</SelectItem>
+                    <SelectItem value="i94">I-94</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Belongs To (optional)</label>
+                <Select name="belongsTo">
+                  <SelectTrigger data-testid="select-belongs-to">
+                    <SelectValue placeholder="Select family member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {(quoteDetail?.members || []).map((item: any) => {
+                      const member = item.member || item;
+                      return (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.firstName} {member.lastName} ({member.role})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description (optional)</label>
+                <Textarea
+                  name="description"
+                  placeholder="Add a description..."
+                  rows={3}
+                  data-testid="textarea-description"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setUploadDialogOpen(false)}
+                  disabled={uploadingDocument}
+                  data-testid="button-cancel-upload"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={uploadingDocument}
+                  data-testid="button-confirm-upload"
+                >
+                  {uploadingDocument ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    'Upload'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        {/* Delete Document Confirmation */}
+        <AlertDialog open={!!documentToDelete} onOpenChange={(open) => !open && setDocumentToDelete(null)}>
+          <AlertDialogContent className="z-[9999]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Document</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this document? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-document">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (documentToDelete) {
+                    deleteDocumentMutation.mutate(documentToDelete);
+                  }
+                }}
+                className="bg-destructive hover:bg-destructive/90"
+                data-testid="button-confirm-delete-document"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Preview Document Dialog */}
+        <Dialog open={!!previewDocument} onOpenChange={(open) => !open && setPreviewDocument(null)}>
+          <DialogContent className="max-w-4xl w-full h-[90vh]" data-testid="dialog-preview-document">
+            <DialogTitle>{previewDocument?.fileName}</DialogTitle>
+            <DialogDescription>
+              Document preview
+            </DialogDescription>
+            <div className="flex-1 overflow-auto">
+              {previewDocument && (() => {
+                const fileExt = previewDocument.fileName?.split('.').pop()?.toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '');
+                const isPdf = fileExt === 'pdf';
+
+                if (isImage) {
+                  return (
+                    <img
+                      src={`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`}
+                      alt={previewDocument.fileName}
+                      className="max-w-full h-auto"
+                      data-testid="preview-image"
+                    />
+                  );
+                } else if (isPdf) {
+                  return (
+                    <iframe
+                      src={`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`}
+                      className="w-full h-full border-0"
+                      data-testid="preview-pdf"
+                    />
+                  );
+                } else {
+                  return (
+                    <div className="text-center py-12">
+                      <File className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground mb-4">
+                        Preview not available for this file type
+                      </p>
+                      <Button
+                        onClick={() => window.open(`/api/policies/${viewingQuote.id}/documents/${previewDocument.id}/download`, '_blank')}
+                        data-testid="button-download-preview"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download File
+                      </Button>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+        {/* Reminders Sheet - Professional Corporate Design */}
+        <Sheet open={remindersSheetOpen} onOpenChange={setRemindersSheetOpen}>
+          <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-reminders">
+            <SheetHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SheetTitle>Reminders</SheetTitle>
+                  <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-reminders-sheet-count">
+                    {quoteReminders.length}
+                  </Badge>
+                </div>
+                <Button
+                  onClick={() => {
+                    setSelectedReminder(null);
+                    setReminderFormOpen(true);
+                  }}
+                  size="sm"
+                  data-testid="button-create-reminder"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Reminder
+                </Button>
+              </div>
+              <SheetDescription>
+                Manage reminders for this policy
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="space-y-4 py-6">
+              {/* Filters Section */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Search reminders..."
+                    value={searchReminders}
+                    onChange={(e) => setSearchReminders(e.target.value)}
+                    data-testid="input-search-reminders"
+                    className="h-9"
+                  />
+                </div>
+                <Select value={filterReminderStatus} onValueChange={setFilterReminderStatus}>
+                  <SelectTrigger className="w-full sm:w-[150px] h-9" data-testid="select-status">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="snoozed">Snoozed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterReminderPriority} onValueChange={setFilterReminderPriority}>
+                  <SelectTrigger className="w-full sm:w-[150px] h-9" data-testid="select-priority">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priority</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Reminders Table */}
+              {isLoadingReminders ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground">Loading reminders...</p>
+                </div>
+              ) : quoteReminders.length === 0 ? (
+                <div className="text-center py-12 border rounded-lg">
+                  <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No reminders found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {searchReminders || filterReminderStatus !== 'all' || filterReminderPriority !== 'all'
+                      ? 'Try adjusting your filters or search'
+                      : 'Create your first reminder to get started'}
+                  </p>
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Created By</TableHead>
+                        <TableHead className="w-[80px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quoteReminders.map((reminder: QuoteReminder) => {
+                        const getPriorityBadgeClasses = (priority: string) => {
+                          switch (priority) {
+                            case 'urgent':
+                              return 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400';
+                            case 'high':
+                              return 'border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400';
+                            case 'medium':
+                              return 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400';
+                            case 'low':
+                            default:
+                              return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
+                          }
+                        };
+
+                        const getStatusBadgeClasses = (status: string) => {
+                          switch (status) {
+                            case 'completed':
+                              return 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400';
+                            case 'snoozed':
+                              return 'border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+                            case 'pending':
+                            default:
+                              return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
+                          }
+                        };
+
+                        const getTypeLabel = (type: string) => {
+                          const labels: Record<string, string> = {
+                            follow_up: 'Follow Up',
+                            document_request: 'Document Request',
+                            payment_due: 'Payment Due',
+                            policy_renewal: 'Policy Renewal',
+                            call_client: 'Call Client',
+                            send_email: 'Send Email',
+                            review_application: 'Review Application',
+                            other: 'Other',
+                          };
+                          return labels[type] || type;
+                        };
+
+                        return (
+                          <TableRow key={reminder.id} className="hover:bg-muted/50">
+                            <TableCell>
+                              <button
+                                onClick={() => {
+                                  setSelectedReminder(reminder);
+                                  setReminderFormOpen(true);
+                                }}
+                                className="text-sm font-semibold hover:underline text-left"
+                                data-testid={`button-view-reminder-${reminder.id}`}
+                              >
+                                {reminder.title}
+                              </button>
+                              {reminder.description && (
+                                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                  {reminder.description}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {getTypeLabel(reminder.reminderType)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={`text-xs h-5 px-2 border ${getPriorityBadgeClasses(reminder.priority)}`}>
+                                {reminder.priority.charAt(0).toUpperCase() + reminder.priority.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={`text-xs h-5 px-2 border ${getStatusBadgeClasses(reminder.status)}`}>
+                                {reminder.status.charAt(0).toUpperCase() + reminder.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {format(new Date(reminder.dueDate), "MMM dd, yyyy")}
+                              {reminder.dueTime && (
+                                <div className="text-xs">{reminder.dueTime}</div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {(reminder as any).creator?.firstName ? (
+                                <>{(reminder as any).creator.firstName} {(reminder as any).creator.lastName}</>
+                              ) : (
+                                'Unknown'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    data-testid={`button-actions-${reminder.id}`}
+                                  >
+                                    Actions
+                                    <ChevronDown className="h-3 w-3 ml-1" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {reminder.status === 'pending' && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => completeReminderMutation.mutate(reminder.id)}
+                                        disabled={completeReminderMutation.isPending}
+                                        data-testid={`menu-complete-${reminder.id}`}
+                                      >
+                                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                                        Mark Complete
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSnoozeReminderId(reminder.id);
+                                          setSnoozeDialogOpen(true);
+                                        }}
+                                        data-testid={`menu-snooze-${reminder.id}`}
+                                      >
+                                        <Clock className="h-4 w-4 mr-2" />
+                                        Snooze
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  <DropdownMenuItem
                                     onClick={() => {
                                       setSelectedReminder(reminder);
                                       setReminderFormOpen(true);
                                     }}
-                                    className="text-sm font-semibold hover:underline text-left"
-                                    data-testid={`button-view-reminder-${reminder.id}`}
+                                    data-testid={`menu-edit-${reminder.id}`}
                                   >
-                                    {reminder.title}
-                                  </button>
-                                  {reminder.description && (
-                                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                      {reminder.description}
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {getTypeLabel(reminder.reminderType)}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="secondary" className={`text-xs h-5 px-2 border ${getPriorityBadgeClasses(reminder.priority)}`}>
-                                    {reminder.priority.charAt(0).toUpperCase() + reminder.priority.slice(1)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="secondary" className={`text-xs h-5 px-2 border ${getStatusBadgeClasses(reminder.status)}`}>
-                                    {reminder.status.charAt(0).toUpperCase() + reminder.status.slice(1)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {format(new Date(reminder.dueDate), "MMM dd, yyyy")}
-                                  {reminder.dueTime && (
-                                    <div className="text-xs">{reminder.dueTime}</div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {(reminder as any).creator?.firstName ? (
-                                    <>{(reminder as any).creator.firstName} {(reminder as any).creator.lastName}</>
-                                  ) : (
-                                    'Unknown'
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 px-2 text-xs"
-                                        data-testid={`button-actions-${reminder.id}`}
-                                      >
-                                        Actions
-                                        <ChevronDown className="h-3 w-3 ml-1" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      {reminder.status === 'pending' && (
-                                        <>
-                                          <DropdownMenuItem
-                                            onClick={() => completeReminderMutation.mutate(reminder.id)}
-                                            disabled={completeReminderMutation.isPending}
-                                            data-testid={`menu-complete-${reminder.id}`}
-                                          >
-                                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                                            Mark Complete
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            onClick={() => {
-                                              setSnoozeReminderId(reminder.id);
-                                              setSnoozeDialogOpen(true);
-                                            }}
-                                            data-testid={`menu-snooze-${reminder.id}`}
-                                          >
-                                            <Clock className="h-4 w-4 mr-2" />
-                                            Snooze
-                                          </DropdownMenuItem>
-                                        </>
-                                      )}
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setSelectedReminder(reminder);
-                                          setReminderFormOpen(true);
-                                        }}
-                                        data-testid={`menu-edit-${reminder.id}`}
-                                      >
-                                        <Pencil className="h-4 w-4 mr-2" />
-                                        Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => setReminderToDelete(reminder.id)}
-                                        className="text-destructive focus:text-destructive"
-                                        data-testid={`menu-delete-${reminder.id}`}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => setReminderToDelete(reminder.id)}
+                                    className="text-destructive focus:text-destructive"
+                                    data-testid={`menu-delete-${reminder.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+        {/* Consents Sheet */}
+        <Sheet open={consentsSheetOpen} onOpenChange={(open) => {
+          setConsentsSheetOpen(open);
+          if (!open) {
+            setShowConsentForm(false);
+            setViewingConsent(null);
+          }
+        }}>
+          <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-consents">
+            <SheetHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {(showConsentForm || viewingConsent) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowConsentForm(false);
+                        setViewingConsent(null);
+                      }}
+                      className="mr-2"
+                      data-testid="button-back-to-list"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back
+                    </Button>
+                  )}
+                  <SheetTitle>
+                    {viewingConsent ? 'View Consent Document' : showConsentForm ? 'Send Consent Form' : 'Signature Forms'}
+                  </SheetTitle>
+                  {!showConsentForm && !viewingConsent && (
+                    <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-consents-count">
+                      {consents.length}
+                    </Badge>
                   )}
                 </div>
-              </SheetContent>
-            </Sheet>
+                {/* Action Buttons for Viewing Consent */}
+                {viewingConsent && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const iframe = document.getElementById('consent-preview-iframe') as HTMLIFrameElement;
+                      if (iframe?.contentWindow) {
+                        iframe.contentWindow.print();
+                      }
+                    }}
+                    className="mr-8"
+                    data-testid="button-print-consent"
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print / Save as PDF
+                  </Button>
+                )}
+              </div>
+              <SheetDescription>
+                {viewingConsent ? 'Preview of the signed consent document' : showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this policy'}
+              </SheetDescription>
+            </SheetHeader>
 
-            {/* Consents Sheet */}
-            <Sheet open={consentsSheetOpen} onOpenChange={(open) => {
-              setConsentsSheetOpen(open);
-              if (!open) {
-                setShowConsentForm(false);
-                setViewingConsent(null);
-              }
-            }}>
-              <SheetContent className="w-full sm:max-w-4xl overflow-y-auto" side="right" data-testid="sheet-consents">
-                <SheetHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {(showConsentForm || viewingConsent) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setShowConsentForm(false);
-                            setViewingConsent(null);
-                          }}
-                          className="mr-2"
-                          data-testid="button-back-to-list"
-                        >
-                          <ArrowLeft className="h-4 w-4 mr-2" />
-                          Back
-                        </Button>
-                      )}
-                      <SheetTitle>
-                        {viewingConsent ? 'View Consent Document' : showConsentForm ? 'Send Consent Form' : 'Signature Forms'}
-                      </SheetTitle>
-                      {!showConsentForm && !viewingConsent && (
-                        <Badge variant="secondary" className="text-xs h-5 px-2" data-testid="badge-consents-count">
-                          {consents.length}
-                        </Badge>
-                      )}
-                    </div>
-                    {/* Action Buttons for Viewing Consent */}
-                    {viewingConsent && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const iframe = document.getElementById('consent-preview-iframe') as HTMLIFrameElement;
-                          if (iframe?.contentWindow) {
-                            iframe.contentWindow.print();
+            <div className="space-y-4 py-6">
+              {viewingConsent ? (
+                /* Consent Preview View */
+                (<div className="space-y-4">
+                  {/* Preview Iframe */}
+                  <iframe
+                    id="consent-preview-iframe"
+                    src={`/consent/${viewingConsent.token}`}
+                    className="w-full h-[calc(100vh-200px)] border rounded-lg"
+                    title="Consent Document Preview"
+                  />
+                </div>)
+              ) : !showConsentForm ? (
+                <>
+                  {/* Create Button */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => setShowConsentForm(true)}
+                      className="flex-shrink-0"
+                      data-testid="button-create-consent"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Send Consent Form
+                    </Button>
+                  </div>
+
+              {/* Consents List */}
+              {isLoadingConsents ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground">Loading consent documents...</p>
+                </div>
+              ) : consents.length === 0 ? (
+                <div className="text-center py-12 border rounded-lg">
+                  <FileSignature className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No consent documents found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Create your first consent document to get started
+                  </p>
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>Status</TableHead>
+                        <TableHead>Delivery Method</TableHead>
+                        <TableHead>Sent To</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Signed</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {consents.map((consent: any) => {
+                        const getStatusBadgeClasses = (status: string) => {
+                          switch (status) {
+                            case 'signed':
+                              return 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400';
+                            case 'viewed':
+                              return 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400';
+                            case 'sent':
+                              return 'border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+                            case 'draft':
+                              return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
+                            case 'void':
+                              return 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400';
+                            default:
+                              return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
                           }
-                        }}
-                        className="mr-8"
-                        data-testid="button-print-consent"
-                      >
-                        <Printer className="h-4 w-4 mr-2" />
-                        Print / Save as PDF
-                      </Button>
+                        };
+
+                        const getDeliveryMethodLabel = (method: string | null) => {
+                          if (!method) return '-';
+                          switch (method) {
+                            case 'email': return 'Email';
+                            case 'sms': return 'SMS';
+                            case 'link': return 'Link';
+                            default: return method;
+                          }
+                        };
+
+                        return (
+                          <TableRow key={consent.id} className="hover:bg-muted/50">
+                            <TableCell>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs h-5 px-2 ${getStatusBadgeClasses(consent.status)}`}
+                              >
+                                {consent.status.charAt(0).toUpperCase() + consent.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {getDeliveryMethodLabel(consent.deliveryChannel)}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {consent.deliveryTarget || '-'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {consent.createdAt ? formatDateForDisplay(new Date(consent.createdAt).toISOString().split('T')[0], "MMM dd, yyyy") : '-'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {consent.signedAt ? format(new Date(consent.signedAt), "MMM dd, yyyy h:mm a") : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setViewingConsent(consent)}
+                                  data-testid={`button-view-consent-${consent.id}`}
+                                  title="View consent form"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" data-testid={`menu-consent-${consent.id}`}>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {consent.deliveryChannel === 'link' && consent.status !== 'signed' && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        const url = `${window.location.origin}/consent/${consent.token}`;
+                                        navigator.clipboard.writeText(url);
+                                        toast({
+                                          title: "Link copied",
+                                          description: "Consent form link copied to clipboard",
+                                        });
+                                      }}
+                                      data-testid={`menu-copy-link-${consent.id}`}
+                                    >
+                                      <Copy className="h-4 w-4 mr-2" />
+                                      Copy Link
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      window.open(`/consent/${consent.token}`, '_blank');
+                                    }}
+                                    data-testid={`menu-view-${consent.id}`}
+                                  >
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    View Form
+                                  </DropdownMenuItem>
+                                  {consent.status === 'signed' && (
+                                    <DropdownMenuItem
+                                      data-testid={`menu-download-${consent.id}`}
+                                    >
+                                      <Download className="h-4 w-4 mr-2" />
+                                      Download Signed
+                                    </DropdownMenuItem>
+                                  )}
+                                  {consent.status !== 'signed' && consent.deliveryChannel && consent.deliveryChannel !== 'link' && (
+                                    <DropdownMenuItem
+                                      onClick={() => resendConsentMutation.mutate(consent.id)}
+                                      disabled={resendConsentMutation.isPending}
+                                      data-testid={`menu-resend-${consent.id}`}
+                                    >
+                                      <Send className="h-4 w-4 mr-2" />
+                                      Resend
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => deleteConsentMutation.mutate(consent.id)}
+                                    disabled={deleteConsentMutation.isPending}
+                                    className="text-destructive focus:text-destructive"
+                                    data-testid={`menu-delete-${consent.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+              </>
+              ) : (
+                /* Consent Form View */
+                (<SendConsentModalContent 
+                  quoteId={viewingQuote?.id || ''} 
+                  clientEmail={viewingQuote?.clientEmail || ''}
+                  clientPhone={viewingQuote?.clientPhone || ''}
+                  onClose={() => {
+                    setShowConsentForm(false);
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote?.id, 'consents'] });
+                  }}
+                />)
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+        {/* Create/Edit Reminder Dialog */}
+        <Dialog open={reminderFormOpen} onOpenChange={setReminderFormOpen}>
+          <DialogContent className="sm:max-w-[600px]" data-testid="dialog-reminder-form">
+            <DialogTitle>{selectedReminder ? 'Edit Reminder' : 'Create Reminder'}</DialogTitle>
+            <DialogDescription>
+              {selectedReminder ? 'Update the reminder details' : 'Create a new reminder for this policy'}
+            </DialogDescription>
+            <ReminderForm
+              reminder={selectedReminder}
+              onSubmit={(data) => {
+                if (selectedReminder) {
+                  updateReminderMutation.mutate({
+                    reminderId: selectedReminder.id,
+                    data,
+                  });
+                } else {
+                  createReminderMutation.mutate(data);
+                }
+              }}
+              onCancel={() => {
+                setReminderFormOpen(false);
+                setSelectedReminder(null);
+              }}
+              isPending={createReminderMutation.isPending || updateReminderMutation.isPending}
+            />
+          </DialogContent>
+        </Dialog>
+        {/* Snooze Reminder Dialog */}
+        <AlertDialog open={snoozeDialogOpen} onOpenChange={setSnoozeDialogOpen}>
+          <AlertDialogContent data-testid="dialog-snooze-reminder">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Snooze Reminder</AlertDialogTitle>
+              <AlertDialogDescription>
+                Select how long you want to snooze this reminder
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4">
+              <Select value={snoozeDuration} onValueChange={setSnoozeDuration}>
+                <SelectTrigger data-testid="select-snooze-duration">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15min">15 minutes</SelectItem>
+                  <SelectItem value="30min">30 minutes</SelectItem>
+                  <SelectItem value="1hour">1 hour</SelectItem>
+                  <SelectItem value="2hours">2 hours</SelectItem>
+                  <SelectItem value="1day">1 day</SelectItem>
+                  <SelectItem value="2days">2 days</SelectItem>
+                  <SelectItem value="1week">1 week</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-snooze">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (snoozeReminderId) {
+                    snoozeReminderMutation.mutate({
+                      reminderId: snoozeReminderId,
+                      duration: snoozeDuration,
+                    });
+                  }
+                }}
+                disabled={snoozeReminderMutation.isPending}
+                data-testid="button-confirm-snooze"
+              >
+                {snoozeReminderMutation.isPending ? 'Snoozing...' : 'Snooze'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Delete Reminder Confirmation */}
+        <AlertDialog open={!!reminderToDelete} onOpenChange={(open) => !open && setReminderToDelete(null)}>
+          <AlertDialogContent data-testid="dialog-delete-reminder">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Reminder</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this reminder? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-reminder">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (reminderToDelete) {
+                    deleteReminderMutation.mutate(reminderToDelete);
+                  }
+                }}
+                className="bg-destructive hover:bg-destructive/90"
+                data-testid="button-confirm-delete-reminder"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Manual Plan Dialog */}
+        <Dialog open={manualPlanDialogOpen} onOpenChange={setManualPlanDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-manual-plan">
+            <DialogHeader>
+              <DialogTitle>Manual Plan Entry</DialogTitle>
+              <DialogDescription>
+                Enter all plan details manually. Required fields are marked with *
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* 1. Basic Information */}
+              <div>
+                <h3 className="text-sm font-semibold text-primary mb-3">Basic Information</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="productType" className="text-sm">Product type <span className="text-red-500">*</span></Label>
+                    <Select
+                      value={manualPlanData.productType}
+                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, productType: value })}
+                    >
+                      <SelectTrigger id="productType" className="mt-1" data-testid="select-product-type">
+                        <SelectValue placeholder="Select product type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="aca">Health Insurance (ACA)</SelectItem>
+                        <SelectItem value="annuities">Annuities</SelectItem>
+                        <SelectItem value="dental">Dental</SelectItem>
+                        <SelectItem value="final_expense">Final Expense</SelectItem>
+                        <SelectItem value="life">Life Insurance</SelectItem>
+                        <SelectItem value="medicaid">Medicaid</SelectItem>
+                        <SelectItem value="medicare">Medicare</SelectItem>
+                        <SelectItem value="private">Private</SelectItem>
+                        <SelectItem value="supplemental">Supplemental</SelectItem>
+                        <SelectItem value="travel">Travel</SelectItem>
+                        <SelectItem value="vision">Vision</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="carrier"
+                      value={manualPlanData.carrier}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, carrier: e.target.value })}
+                      placeholder="e.g., Ambetter Health, Blue Cross Blue Shield, etc."
+                      className="mt-1"
+                      list="carrier-suggestions"
+                      disabled={!manualPlanData.productType}
+                      data-testid="input-carrier"
+                    />
+                    <datalist id="carrier-suggestions">
+                      {manualPlanData.productType && getCarriersByProductType(manualPlanData.productType).map((carrier) => (
+                        <option key={carrier} value={carrier} />
+                      ))}
+                    </datalist>
+                    {manualPlanData.productType && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Suggested: {getCarriersByProductType(manualPlanData.productType).slice(0, 3).join(', ')}
+                      </p>
                     )}
                   </div>
-                  <SheetDescription>
-                    {viewingConsent ? 'Preview of the signed consent document' : showConsentForm ? 'Review and send consent document to client' : 'Manage consent documents for this policy'}
-                  </SheetDescription>
-                </SheetHeader>
+                </div>
 
-                <div className="space-y-4 py-6">
-                  {viewingConsent ? (
-                    /* Consent Preview View */
-                    <div className="space-y-4">
-                      {/* Preview Iframe */}
-                      <iframe
-                        id="consent-preview-iframe"
-                        src={`/consent/${viewingConsent.token}`}
-                        className="w-full h-[calc(100vh-200px)] border rounded-lg"
-                        title="Consent Document Preview"
-                      />
-                    </div>
-                  ) : !showConsentForm ? (
-                    <>
-                      {/* Create Button */}
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => setShowConsentForm(true)}
-                          className="flex-shrink-0"
-                          data-testid="button-create-consent"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Send Consent Form
-                        </Button>
-                      </div>
-
-                  {/* Consents List */}
-                  {isLoadingConsents ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-                      <p className="text-sm text-muted-foreground">Loading consent documents...</p>
-                    </div>
-                  ) : consents.length === 0 ? (
-                    <div className="text-center py-12 border rounded-lg">
-                      <FileSignature className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No consent documents found</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Create your first consent document to get started
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Status</TableHead>
-                            <TableHead>Delivery Method</TableHead>
-                            <TableHead>Sent To</TableHead>
-                            <TableHead>Created</TableHead>
-                            <TableHead>Signed</TableHead>
-                            <TableHead className="w-[100px]">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {consents.map((consent: any) => {
-                            const getStatusBadgeClasses = (status: string) => {
-                              switch (status) {
-                                case 'signed':
-                                  return 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400';
-                                case 'viewed':
-                                  return 'border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400';
-                                case 'sent':
-                                  return 'border-yellow-500/50 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
-                                case 'draft':
-                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
-                                case 'void':
-                                  return 'border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400';
-                                default:
-                                  return 'border-gray-500/50 bg-gray-500/10 text-gray-700 dark:text-gray-400';
-                              }
-                            };
-
-                            const getDeliveryMethodLabel = (method: string | null) => {
-                              if (!method) return '-';
-                              switch (method) {
-                                case 'email': return 'Email';
-                                case 'sms': return 'SMS';
-                                case 'link': return 'Link';
-                                default: return method;
-                              }
-                            };
-
-                            return (
-                              <TableRow key={consent.id} className="hover:bg-muted/50">
-                                <TableCell>
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs h-5 px-2 ${getStatusBadgeClasses(consent.status)}`}
-                                  >
-                                    {consent.status.charAt(0).toUpperCase() + consent.status.slice(1)}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-sm">
-                                  {getDeliveryMethodLabel(consent.deliveryChannel)}
-                                </TableCell>
-                                <TableCell className="text-sm">
-                                  {consent.deliveryTarget || '-'}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {consent.createdAt ? formatDateForDisplay(new Date(consent.createdAt).toISOString().split('T')[0], "MMM dd, yyyy") : '-'}
-                                </TableCell>
-                                <TableCell className="text-sm text-muted-foreground">
-                                  {consent.signedAt ? format(new Date(consent.signedAt), "MMM dd, yyyy h:mm a") : '-'}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => setViewingConsent(consent)}
-                                      data-testid={`button-view-consent-${consent.id}`}
-                                      title="View consent form"
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" data-testid={`menu-consent-${consent.id}`}>
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      {consent.deliveryChannel === 'link' && consent.status !== 'signed' && (
-                                        <DropdownMenuItem
-                                          onClick={() => {
-                                            const url = `${window.location.origin}/consent/${consent.token}`;
-                                            navigator.clipboard.writeText(url);
-                                            toast({
-                                              title: "Link copied",
-                                              description: "Consent form link copied to clipboard",
-                                            });
-                                          }}
-                                          data-testid={`menu-copy-link-${consent.id}`}
-                                        >
-                                          <Copy className="h-4 w-4 mr-2" />
-                                          Copy Link
-                                        </DropdownMenuItem>
-                                      )}
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          window.open(`/consent/${consent.token}`, '_blank');
-                                        }}
-                                        data-testid={`menu-view-${consent.id}`}
-                                      >
-                                        <ExternalLink className="h-4 w-4 mr-2" />
-                                        View Form
-                                      </DropdownMenuItem>
-                                      {consent.status === 'signed' && (
-                                        <DropdownMenuItem
-                                          data-testid={`menu-download-${consent.id}`}
-                                        >
-                                          <Download className="h-4 w-4 mr-2" />
-                                          Download Signed
-                                        </DropdownMenuItem>
-                                      )}
-                                      {consent.status !== 'signed' && consent.deliveryChannel && consent.deliveryChannel !== 'link' && (
-                                        <DropdownMenuItem
-                                          onClick={() => resendConsentMutation.mutate(consent.id)}
-                                          disabled={resendConsentMutation.isPending}
-                                          data-testid={`menu-resend-${consent.id}`}
-                                        >
-                                          <Send className="h-4 w-4 mr-2" />
-                                          Resend
-                                        </DropdownMenuItem>
-                                      )}
-                                      <DropdownMenuItem
-                                        onClick={() => deleteConsentMutation.mutate(consent.id)}
-                                        disabled={deleteConsentMutation.isPending}
-                                        className="text-destructive focus:text-destructive"
-                                        data-testid={`menu-delete-${consent.id}`}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                  </>
-                  ) : (
-                    /* Consent Form View */
-                    <SendConsentModalContent 
-                      quoteId={viewingQuote?.id || ''} 
-                      clientEmail={viewingQuote?.clientEmail || ''}
-                      clientPhone={viewingQuote?.clientPhone || ''}
-                      onClose={() => {
-                        setShowConsentForm(false);
-                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote?.id, 'consents'] });
-                      }}
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="planName" className="text-sm">Plan name</Label>
+                    <Input
+                      id="planName"
+                      value={manualPlanData.planName}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, planName: e.target.value })}
+                      placeholder="e.g., Silver Plan A"
+                      className="mt-1"
+                      data-testid="input-plan-name"
                     />
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
+                  </div>
 
-            {/* Create/Edit Reminder Dialog */}
-            <Dialog open={reminderFormOpen} onOpenChange={setReminderFormOpen}>
-              <DialogContent className="sm:max-w-[600px]" data-testid="dialog-reminder-form">
-                <DialogTitle>{selectedReminder ? 'Edit Reminder' : 'Create Reminder'}</DialogTitle>
-                <DialogDescription>
-                  {selectedReminder ? 'Update the reminder details' : 'Create a new reminder for this policy'}
-                </DialogDescription>
-                <ReminderForm
-                  reminder={selectedReminder}
-                  onSubmit={(data) => {
-                    if (selectedReminder) {
-                      updateReminderMutation.mutate({
-                        reminderId: selectedReminder.id,
-                        data,
-                      });
-                    } else {
-                      createReminderMutation.mutate(data);
-                    }
-                  }}
-                  onCancel={() => {
-                    setReminderFormOpen(false);
-                    setSelectedReminder(null);
-                  }}
-                  isPending={createReminderMutation.isPending || updateReminderMutation.isPending}
-                />
-              </DialogContent>
-            </Dialog>
-
-            {/* Snooze Reminder Dialog */}
-            <AlertDialog open={snoozeDialogOpen} onOpenChange={setSnoozeDialogOpen}>
-              <AlertDialogContent data-testid="dialog-snooze-reminder">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Snooze Reminder</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Select how long you want to snooze this reminder
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-4">
-                  <Select value={snoozeDuration} onValueChange={setSnoozeDuration}>
-                    <SelectTrigger data-testid="select-snooze-duration">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15min">15 minutes</SelectItem>
-                      <SelectItem value="30min">30 minutes</SelectItem>
-                      <SelectItem value="1hour">1 hour</SelectItem>
-                      <SelectItem value="2hours">2 hours</SelectItem>
-                      <SelectItem value="1day">1 day</SelectItem>
-                      <SelectItem value="2days">2 days</SelectItem>
-                      <SelectItem value="1week">1 week</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-snooze">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (snoozeReminderId) {
-                        snoozeReminderMutation.mutate({
-                          reminderId: snoozeReminderId,
-                          duration: snoozeDuration,
-                        });
-                      }
-                    }}
-                    disabled={snoozeReminderMutation.isPending}
-                    data-testid="button-confirm-snooze"
-                  >
-                    {snoozeReminderMutation.isPending ? 'Snoozing...' : 'Snooze'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Delete Reminder Confirmation */}
-            <AlertDialog open={!!reminderToDelete} onOpenChange={(open) => !open && setReminderToDelete(null)}>
-              <AlertDialogContent data-testid="dialog-delete-reminder">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Reminder</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this reminder? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-delete-reminder">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (reminderToDelete) {
-                        deleteReminderMutation.mutate(reminderToDelete);
-                      }
-                    }}
-                    className="bg-destructive hover:bg-destructive/90"
-                    data-testid="button-confirm-delete-reminder"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-      {/* Manual Plan Dialog */}
-      <Dialog open={manualPlanDialogOpen} onOpenChange={setManualPlanDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-manual-plan">
-          <DialogHeader>
-            <DialogTitle>Manual Plan Entry</DialogTitle>
-            <DialogDescription>
-              Enter all plan details manually. Required fields are marked with *
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* 1. Basic Information */}
-            <div>
-              <h3 className="text-sm font-semibold text-primary mb-3">Basic Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="productType" className="text-sm">Product type <span className="text-red-500">*</span></Label>
-                  <Select
-                    value={manualPlanData.productType}
-                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, productType: value })}
-                  >
-                    <SelectTrigger id="productType" className="mt-1" data-testid="select-product-type">
-                      <SelectValue placeholder="Select product type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aca">Health Insurance (ACA)</SelectItem>
-                      <SelectItem value="annuities">Annuities</SelectItem>
-                      <SelectItem value="dental">Dental</SelectItem>
-                      <SelectItem value="final_expense">Final Expense</SelectItem>
-                      <SelectItem value="life">Life Insurance</SelectItem>
-                      <SelectItem value="medicaid">Medicaid</SelectItem>
-                      <SelectItem value="medicare">Medicare</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                      <SelectItem value="supplemental">Supplemental</SelectItem>
-                      <SelectItem value="travel">Travel</SelectItem>
-                      <SelectItem value="vision">Vision</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Label htmlFor="cmsPlanId" className="text-sm">Plan ID / CMS Plan ID</Label>
+                    <Input
+                      id="cmsPlanId"
+                      value={manualPlanData.cmsPlanId}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, cmsPlanId: e.target.value })}
+                      placeholder="Enter plan ID"
+                      className="mt-1"
+                      data-testid="input-cms-plan-id"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
+                <div className="mt-4">
+                  <Label htmlFor="carrierIssuerId" className="text-sm">Carrier Issuer ID</Label>
                   <Input
-                    id="carrier"
-                    value={manualPlanData.carrier}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, carrier: e.target.value })}
-                    placeholder="e.g., Ambetter Health, Blue Cross Blue Shield, etc."
+                    id="carrierIssuerId"
+                    value={manualPlanData.carrierIssuerId}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, carrierIssuerId: e.target.value })}
+                    placeholder="e.g., 12345"
                     className="mt-1"
-                    list="carrier-suggestions"
-                    disabled={!manualPlanData.productType}
-                    data-testid="input-carrier"
+                    data-testid="input-carrier-issuer-id"
                   />
-                  <datalist id="carrier-suggestions">
-                    {manualPlanData.productType && getCarriersByProductType(manualPlanData.productType).map((carrier) => (
-                      <option key={carrier} value={carrier} />
-                    ))}
-                  </datalist>
-                  {manualPlanData.productType && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Suggested: {getCarriersByProductType(manualPlanData.productType).slice(0, 3).join(', ')}
-                    </p>
-                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="metal" className="text-sm">Metal level</Label>
+                    <Select
+                      value={manualPlanData.metal}
+                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, metal: value })}
+                    >
+                      <SelectTrigger id="metal" className="mt-1" data-testid="select-metal">
+                        <SelectValue placeholder="Select metal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bronze">Bronze</SelectItem>
+                        <SelectItem value="silver">Silver</SelectItem>
+                        <SelectItem value="gold">Gold</SelectItem>
+                        <SelectItem value="platinum">Platinum</SelectItem>
+                        <SelectItem value="catastrophic">Catastrophic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="networkType" className="text-sm">Network Type</Label>
+                    <Select
+                      value={manualPlanData.networkType}
+                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, networkType: value })}
+                    >
+                      <SelectTrigger id="networkType" className="mt-1" data-testid="select-network-type">
+                        <SelectValue placeholder="Select network" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EPO">EPO</SelectItem>
+                        <SelectItem value="PPO">PPO</SelectItem>
+                        <SelectItem value="HMO">HMO</SelectItem>
+                        <SelectItem value="POS">POS</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="rating" className="text-sm">Rating (0-5)</Label>
+                    <Input
+                      id="rating"
+                      type="number"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={manualPlanData.rating}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, rating: e.target.value })}
+                      placeholder="e.g., 4.5"
+                      className="mt-1"
+                      data-testid="input-rating"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="planName" className="text-sm">Plan name</Label>
-                  <Input
-                    id="planName"
-                    value={manualPlanData.planName}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, planName: e.target.value })}
-                    placeholder="e.g., Silver Plan A"
-                    className="mt-1"
-                    data-testid="input-plan-name"
-                  />
+              {/* 2. Cost Details */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-primary mb-3">Cost Details</h3>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="planWas" className="text-sm">Plan was</Label>
+                    <Input
+                      id="planWas"
+                      type="number"
+                      step="0.01"
+                      value={manualPlanData.planWas}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, planWas: e.target.value })}
+                      placeholder="e.g., 1481.93"
+                      className="mt-1"
+                      data-testid="input-plan-was"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="premium" className="text-sm">Premium (monthly payment)</Label>
+                    <Input
+                      id="premium"
+                      type="number"
+                      step="0.01"
+                      value={manualPlanData.premium}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, premium: e.target.value })}
+                      placeholder="e.g., 450.00"
+                      className="mt-1"
+                      data-testid="input-premium"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="taxCredit" className="text-sm">Tax Credit / Subsidy (APTC)</Label>
+                    <Input
+                      id="taxCredit"
+                      type="number"
+                      step="0.01"
+                      value={manualPlanData.taxCredit}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, taxCredit: e.target.value })}
+                      placeholder="e.g., 150.00"
+                      className="mt-1"
+                      data-testid="input-tax-credit"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="cmsPlanId" className="text-sm">Plan ID / CMS Plan ID</Label>
-                  <Input
-                    id="cmsPlanId"
-                    value={manualPlanData.cmsPlanId}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, cmsPlanId: e.target.value })}
-                    placeholder="Enter plan ID"
-                    className="mt-1"
-                    data-testid="input-cms-plan-id"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="deductible" className="text-sm">Deductible (Individual)</Label>
+                    <Input
+                      id="deductible"
+                      type="number"
+                      step="0.01"
+                      value={manualPlanData.deductible}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, deductible: e.target.value })}
+                      placeholder="e.g., 2000.00"
+                      className="mt-1"
+                      data-testid="input-deductible"
+                    />
+                  </div>
 
-              <div className="mt-4">
-                <Label htmlFor="carrierIssuerId" className="text-sm">Carrier Issuer ID</Label>
-                <Input
-                  id="carrierIssuerId"
-                  value={manualPlanData.carrierIssuerId}
-                  onChange={(e) => setManualPlanData({ ...manualPlanData, carrierIssuerId: e.target.value })}
-                  placeholder="e.g., 12345"
-                  className="mt-1"
-                  data-testid="input-carrier-issuer-id"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="metal" className="text-sm">Metal level</Label>
-                  <Select
-                    value={manualPlanData.metal}
-                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, metal: value })}
-                  >
-                    <SelectTrigger id="metal" className="mt-1" data-testid="select-metal">
-                      <SelectValue placeholder="Select metal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bronze">Bronze</SelectItem>
-                      <SelectItem value="silver">Silver</SelectItem>
-                      <SelectItem value="gold">Gold</SelectItem>
-                      <SelectItem value="platinum">Platinum</SelectItem>
-                      <SelectItem value="catastrophic">Catastrophic</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Label htmlFor="deductibleFamily" className="text-sm">Deductible (Family)</Label>
+                    <Input
+                      id="deductibleFamily"
+                      type="number"
+                      step="0.01"
+                      value={manualPlanData.deductibleFamily}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, deductibleFamily: e.target.value })}
+                      placeholder="e.g., 4000.00"
+                      className="mt-1"
+                      data-testid="input-deductible-family"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="networkType" className="text-sm">Network Type</Label>
-                  <Select
-                    value={manualPlanData.networkType}
-                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, networkType: value })}
-                  >
-                    <SelectTrigger id="networkType" className="mt-1" data-testid="select-network-type">
-                      <SelectValue placeholder="Select network" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EPO">EPO</SelectItem>
-                      <SelectItem value="PPO">PPO</SelectItem>
-                      <SelectItem value="HMO">HMO</SelectItem>
-                      <SelectItem value="POS">POS</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="outOfPocketMax" className="text-sm">Out-of-pocket max (Individual)</Label>
+                    <Input
+                      id="outOfPocketMax"
+                      type="number"
+                      step="0.01"
+                      value={manualPlanData.outOfPocketMax}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, outOfPocketMax: e.target.value })}
+                      placeholder="e.g., 8000.00"
+                      className="mt-1"
+                      data-testid="input-out-of-pocket-max"
+                    />
+                  </div>
 
-                <div>
-                  <Label htmlFor="rating" className="text-sm">Rating (0-5)</Label>
-                  <Input
-                    id="rating"
-                    type="number"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    value={manualPlanData.rating}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, rating: e.target.value })}
-                    placeholder="e.g., 4.5"
-                    className="mt-1"
-                    data-testid="input-rating"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Cost Details */}
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-primary mb-3">Cost Details</h3>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="planWas" className="text-sm">Plan was</Label>
-                  <Input
-                    id="planWas"
-                    type="number"
-                    step="0.01"
-                    value={manualPlanData.planWas}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, planWas: e.target.value })}
-                    placeholder="e.g., 1481.93"
-                    className="mt-1"
-                    data-testid="input-plan-was"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="premium" className="text-sm">Premium (monthly payment)</Label>
-                  <Input
-                    id="premium"
-                    type="number"
-                    step="0.01"
-                    value={manualPlanData.premium}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, premium: e.target.value })}
-                    placeholder="e.g., 450.00"
-                    className="mt-1"
-                    data-testid="input-premium"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="taxCredit" className="text-sm">Tax Credit / Subsidy (APTC)</Label>
-                  <Input
-                    id="taxCredit"
-                    type="number"
-                    step="0.01"
-                    value={manualPlanData.taxCredit}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, taxCredit: e.target.value })}
-                    placeholder="e.g., 150.00"
-                    className="mt-1"
-                    data-testid="input-tax-credit"
-                  />
+                  <div>
+                    <Label htmlFor="outOfPocketMaxFamily" className="text-sm">Out-of-pocket max (Family)</Label>
+                    <Input
+                      id="outOfPocketMaxFamily"
+                      type="number"
+                      step="0.01"
+                      value={manualPlanData.outOfPocketMaxFamily}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, outOfPocketMaxFamily: e.target.value })}
+                      placeholder="e.g., 16000.00"
+                      className="mt-1"
+                      data-testid="input-out-of-pocket-max-family"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="deductible" className="text-sm">Deductible (Individual)</Label>
-                  <Input
-                    id="deductible"
-                    type="number"
-                    step="0.01"
-                    value={manualPlanData.deductible}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, deductible: e.target.value })}
-                    placeholder="e.g., 2000.00"
-                    className="mt-1"
-                    data-testid="input-deductible"
-                  />
+              {/* 3. Benefits & Copays */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-primary mb-3">Benefits & Copays</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="primaryCare" className="text-sm">Primary Doctor visits</Label>
+                    <Input
+                      id="primaryCare"
+                      value={manualPlanData.primaryCare}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, primaryCare: e.target.value })}
+                      placeholder='e.g., "$10" or "20%"'
+                      className="mt-1"
+                      data-testid="input-primary-care"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="specialist" className="text-sm">Specialist visits</Label>
+                    <Input
+                      id="specialist"
+                      value={manualPlanData.specialist}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialist: e.target.value })}
+                      placeholder='e.g., "$50" or "30%"'
+                      className="mt-1"
+                      data-testid="input-specialist"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="deductibleFamily" className="text-sm">Deductible (Family)</Label>
-                  <Input
-                    id="deductibleFamily"
-                    type="number"
-                    step="0.01"
-                    value={manualPlanData.deductibleFamily}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, deductibleFamily: e.target.value })}
-                    placeholder="e.g., 4000.00"
-                    className="mt-1"
-                    data-testid="input-deductible-family"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="urgentCare" className="text-sm">Urgent care</Label>
+                    <Input
+                      id="urgentCare"
+                      value={manualPlanData.urgentCare}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, urgentCare: e.target.value })}
+                      placeholder='e.g., "$75"'
+                      className="mt-1"
+                      data-testid="input-urgent-care"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="outOfPocketMax" className="text-sm">Out-of-pocket max (Individual)</Label>
-                  <Input
-                    id="outOfPocketMax"
-                    type="number"
-                    step="0.01"
-                    value={manualPlanData.outOfPocketMax}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, outOfPocketMax: e.target.value })}
-                    placeholder="e.g., 8000.00"
-                    className="mt-1"
-                    data-testid="input-out-of-pocket-max"
-                  />
+                  <div>
+                    <Label htmlFor="emergency" className="text-sm">Emergencies</Label>
+                    <Input
+                      id="emergency"
+                      value={manualPlanData.emergency}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, emergency: e.target.value })}
+                      placeholder='e.g., "$500"'
+                      className="mt-1"
+                      data-testid="input-emergency"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="outOfPocketMaxFamily" className="text-sm">Out-of-pocket max (Family)</Label>
-                  <Input
-                    id="outOfPocketMaxFamily"
-                    type="number"
-                    step="0.01"
-                    value={manualPlanData.outOfPocketMaxFamily}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, outOfPocketMaxFamily: e.target.value })}
-                    placeholder="e.g., 16000.00"
-                    className="mt-1"
-                    data-testid="input-out-of-pocket-max-family"
-                  />
-                </div>
-              </div>
-            </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="mentalHealth" className="text-sm">Mental health</Label>
+                    <Input
+                      id="mentalHealth"
+                      value={manualPlanData.mentalHealth}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, mentalHealth: e.target.value })}
+                      placeholder='e.g., "$30"'
+                      className="mt-1"
+                      data-testid="input-mental-health"
+                    />
+                  </div>
 
-            {/* 3. Benefits & Copays */}
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-primary mb-3">Benefits & Copays</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="primaryCare" className="text-sm">Primary Doctor visits</Label>
-                  <Input
-                    id="primaryCare"
-                    value={manualPlanData.primaryCare}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, primaryCare: e.target.value })}
-                    placeholder='e.g., "$10" or "20%"'
-                    className="mt-1"
-                    data-testid="input-primary-care"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="specialist" className="text-sm">Specialist visits</Label>
-                  <Input
-                    id="specialist"
-                    value={manualPlanData.specialist}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, specialist: e.target.value })}
-                    placeholder='e.g., "$50" or "30%"'
-                    className="mt-1"
-                    data-testid="input-specialist"
-                  />
+                  <div>
+                    <Label htmlFor="genericDrugs" className="text-sm">Generic drugs</Label>
+                    <Input
+                      id="genericDrugs"
+                      value={manualPlanData.genericDrugs}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, genericDrugs: e.target.value })}
+                      placeholder='e.g., "$10"'
+                      className="mt-1"
+                      data-testid="input-generic-drugs"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="urgentCare" className="text-sm">Urgent care</Label>
-                  <Input
-                    id="urgentCare"
-                    value={manualPlanData.urgentCare}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, urgentCare: e.target.value })}
-                    placeholder='e.g., "$75"'
-                    className="mt-1"
-                    data-testid="input-urgent-care"
-                  />
+              {/* 4. Extended Benefits & Services */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-primary mb-3">Extended Benefits & Services</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="preferredBrandDrugs" className="text-sm">Preferred brand drugs</Label>
+                    <Input
+                      id="preferredBrandDrugs"
+                      value={manualPlanData.preferredBrandDrugs}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, preferredBrandDrugs: e.target.value })}
+                      placeholder='e.g., "$40" or "25%"'
+                      className="mt-1"
+                      data-testid="input-preferred-brand-drugs"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="nonPreferredBrandDrugs" className="text-sm">Non-preferred brand drugs</Label>
+                    <Input
+                      id="nonPreferredBrandDrugs"
+                      value={manualPlanData.nonPreferredBrandDrugs}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, nonPreferredBrandDrugs: e.target.value })}
+                      placeholder='e.g., "$80" or "50%"'
+                      className="mt-1"
+                      data-testid="input-non-preferred-brand-drugs"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="emergency" className="text-sm">Emergencies</Label>
-                  <Input
-                    id="emergency"
-                    value={manualPlanData.emergency}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, emergency: e.target.value })}
-                    placeholder='e.g., "$500"'
-                    className="mt-1"
-                    data-testid="input-emergency"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="specialtyDrugs" className="text-sm">Specialty drugs</Label>
+                    <Input
+                      id="specialtyDrugs"
+                      value={manualPlanData.specialtyDrugs}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialtyDrugs: e.target.value })}
+                      placeholder='e.g., "$150" or "30%"'
+                      className="mt-1"
+                      data-testid="input-specialty-drugs"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="mentalHealth" className="text-sm">Mental health</Label>
-                  <Input
-                    id="mentalHealth"
-                    value={manualPlanData.mentalHealth}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, mentalHealth: e.target.value })}
-                    placeholder='e.g., "$30"'
-                    className="mt-1"
-                    data-testid="input-mental-health"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="genericDrugs" className="text-sm">Generic drugs</Label>
-                  <Input
-                    id="genericDrugs"
-                    value={manualPlanData.genericDrugs}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, genericDrugs: e.target.value })}
-                    placeholder='e.g., "$10"'
-                    className="mt-1"
-                    data-testid="input-generic-drugs"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 4. Extended Benefits & Services */}
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-primary mb-3">Extended Benefits & Services</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="preferredBrandDrugs" className="text-sm">Preferred brand drugs</Label>
-                  <Input
-                    id="preferredBrandDrugs"
-                    value={manualPlanData.preferredBrandDrugs}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, preferredBrandDrugs: e.target.value })}
-                    placeholder='e.g., "$40" or "25%"'
-                    className="mt-1"
-                    data-testid="input-preferred-brand-drugs"
-                  />
+                  <div>
+                    <Label htmlFor="preventiveCare" className="text-sm">Preventive care</Label>
+                    <Input
+                      id="preventiveCare"
+                      value={manualPlanData.preventiveCare}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, preventiveCare: e.target.value })}
+                      placeholder='e.g., "No Charge"'
+                      className="mt-1"
+                      data-testid="input-preventive-care"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="nonPreferredBrandDrugs" className="text-sm">Non-preferred brand drugs</Label>
-                  <Input
-                    id="nonPreferredBrandDrugs"
-                    value={manualPlanData.nonPreferredBrandDrugs}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, nonPreferredBrandDrugs: e.target.value })}
-                    placeholder='e.g., "$80" or "50%"'
-                    className="mt-1"
-                    data-testid="input-non-preferred-brand-drugs"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="inpatientFacility" className="text-sm">Inpatient facility</Label>
+                    <Input
+                      id="inpatientFacility"
+                      value={manualPlanData.inpatientFacility}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientFacility: e.target.value })}
+                      placeholder='e.g., "$1,500" or "30%"'
+                      className="mt-1"
+                      data-testid="input-inpatient-facility"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="specialtyDrugs" className="text-sm">Specialty drugs</Label>
-                  <Input
-                    id="specialtyDrugs"
-                    value={manualPlanData.specialtyDrugs}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, specialtyDrugs: e.target.value })}
-                    placeholder='e.g., "$150" or "30%"'
-                    className="mt-1"
-                    data-testid="input-specialty-drugs"
-                  />
+                  <div>
+                    <Label htmlFor="inpatientPhysician" className="text-sm">Inpatient physician</Label>
+                    <Input
+                      id="inpatientPhysician"
+                      value={manualPlanData.inpatientPhysician}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientPhysician: e.target.value })}
+                      placeholder='e.g., "No Charge"'
+                      className="mt-1"
+                      data-testid="input-inpatient-physician"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="preventiveCare" className="text-sm">Preventive care</Label>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="outpatientFacility" className="text-sm">Outpatient facility</Label>
+                    <Input
+                      id="outpatientFacility"
+                      value={manualPlanData.outpatientFacility}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientFacility: e.target.value })}
+                      placeholder='e.g., "$250"'
+                      className="mt-1"
+                      data-testid="input-outpatient-facility"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="outpatientPhysician" className="text-sm">Outpatient physician</Label>
+                    <Input
+                      id="outpatientPhysician"
+                      value={manualPlanData.outpatientPhysician}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientPhysician: e.target.value })}
+                      placeholder='e.g., "No Charge"'
+                      className="mt-1"
+                      data-testid="input-outpatient-physician"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="imaging" className="text-sm">Imaging (CT/PET/MRI)</Label>
+                    <Input
+                      id="imaging"
+                      value={manualPlanData.imaging}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, imaging: e.target.value })}
+                      placeholder='e.g., "$200" or "20%"'
+                      className="mt-1"
+                      data-testid="input-imaging"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="xrays" className="text-sm">X-rays and diagnostic imaging</Label>
+                    <Input
+                      id="xrays"
+                      value={manualPlanData.xrays}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, xrays: e.target.value })}
+                      placeholder='e.g., "$50"'
+                      className="mt-1"
+                      data-testid="input-xrays"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="labWork" className="text-sm">Laboratory services</Label>
+                    <Input
+                      id="labWork"
+                      value={manualPlanData.labWork}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, labWork: e.target.value })}
+                      placeholder='e.g., "$35"'
+                      className="mt-1"
+                      data-testid="input-lab-work"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="rehabilitation" className="text-sm">Rehabilitation services</Label>
+                    <Input
+                      id="rehabilitation"
+                      value={manualPlanData.rehabilitation}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, rehabilitation: e.target.value })}
+                      placeholder='e.g., "$45"'
+                      className="mt-1"
+                      data-testid="input-rehabilitation"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="habilitationServices" className="text-sm">Habilitation services</Label>
+                    <Input
+                      id="habilitationServices"
+                      value={manualPlanData.habilitationServices}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, habilitationServices: e.target.value })}
+                      placeholder='e.g., "$45"'
+                      className="mt-1"
+                      data-testid="input-habilitation-services"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="skilledNursing" className="text-sm">Skilled nursing facility</Label>
+                    <Input
+                      id="skilledNursing"
+                      value={manualPlanData.skilledNursing}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, skilledNursing: e.target.value })}
+                      placeholder='e.g., "$200/day"'
+                      className="mt-1"
+                      data-testid="input-skilled-nursing"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="durableMedicalEquipment" className="text-sm">Durable medical equipment</Label>
+                    <Input
+                      id="durableMedicalEquipment"
+                      value={manualPlanData.durableMedicalEquipment}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, durableMedicalEquipment: e.target.value })}
+                      placeholder='e.g., "20%"'
+                      className="mt-1"
+                      data-testid="input-durable-medical-equipment"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="hospiceCare" className="text-sm">Hospice care</Label>
+                    <Input
+                      id="hospiceCare"
+                      value={manualPlanData.hospiceCare}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, hospiceCare: e.target.value })}
+                      placeholder='e.g., "No Charge"'
+                      className="mt-1"
+                      data-testid="input-hospice-care"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Label htmlFor="emergencyTransport" className="text-sm">Emergency medical transportation</Label>
                   <Input
-                    id="preventiveCare"
-                    value={manualPlanData.preventiveCare}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, preventiveCare: e.target.value })}
-                    placeholder='e.g., "No Charge"'
+                    id="emergencyTransport"
+                    value={manualPlanData.emergencyTransport}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, emergencyTransport: e.target.value })}
+                    placeholder='e.g., "$300"'
                     className="mt-1"
-                    data-testid="input-preventive-care"
+                    data-testid="input-emergency-transport"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="inpatientFacility" className="text-sm">Inpatient facility</Label>
-                  <Input
-                    id="inpatientFacility"
-                    value={manualPlanData.inpatientFacility}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientFacility: e.target.value })}
-                    placeholder='e.g., "$1,500" or "30%"'
-                    className="mt-1"
-                    data-testid="input-inpatient-facility"
-                  />
+              {/* 5. Plan Features */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-primary mb-3">Plan Features</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="dentalChild"
+                      checked={manualPlanData.dentalChild}
+                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, dentalChild: !!checked })}
+                      data-testid="checkbox-dental-child"
+                    />
+                    <Label htmlFor="dentalChild" className="text-sm font-normal cursor-pointer">
+                      Dental coverage (child)
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="dentalAdult"
+                      checked={manualPlanData.dentalAdult}
+                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, dentalAdult: !!checked })}
+                      data-testid="checkbox-dental-adult"
+                    />
+                    <Label htmlFor="dentalAdult" className="text-sm font-normal cursor-pointer">
+                      Dental coverage (adult)
+                    </Label>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="inpatientPhysician" className="text-sm">Inpatient physician</Label>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="hsaEligible"
+                      checked={manualPlanData.hsaEligible}
+                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, hsaEligible: !!checked })}
+                      data-testid="checkbox-hsa-eligible"
+                    />
+                    <Label htmlFor="hsaEligible" className="text-sm font-normal cursor-pointer">
+                      HSA eligible
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="simpleChoice"
+                      checked={manualPlanData.simpleChoice}
+                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, simpleChoice: !!checked })}
+                      data-testid="checkbox-simple-choice"
+                    />
+                    <Label htmlFor="simpleChoice" className="text-sm font-normal cursor-pointer">
+                      Simple Choice plan
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="specialistReferralRequired"
+                      checked={manualPlanData.specialistReferralRequired}
+                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, specialistReferralRequired: !!checked })}
+                      data-testid="checkbox-specialist-referral-required"
+                    />
+                    <Label htmlFor="specialistReferralRequired" className="text-sm font-normal cursor-pointer">
+                      Specialist referral required
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="hasNationalNetwork"
+                      checked={manualPlanData.hasNationalNetwork}
+                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, hasNationalNetwork: !!checked })}
+                      data-testid="checkbox-has-national-network"
+                    />
+                    <Label htmlFor="hasNationalNetwork" className="text-sm font-normal cursor-pointer">
+                      Has national network
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Label htmlFor="diseaseManagementPrograms" className="text-sm">Disease management programs</Label>
                   <Input
-                    id="inpatientPhysician"
-                    value={manualPlanData.inpatientPhysician}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientPhysician: e.target.value })}
-                    placeholder='e.g., "No Charge"'
+                    id="diseaseManagementPrograms"
+                    value={manualPlanData.diseaseManagementPrograms}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, diseaseManagementPrograms: e.target.value })}
+                    placeholder='e.g., "Diabetes, Asthma, Heart Disease"'
                     className="mt-1"
-                    data-testid="input-inpatient-physician"
+                    data-testid="input-disease-management-programs"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="outpatientFacility" className="text-sm">Outpatient facility</Label>
-                  <Input
-                    id="outpatientFacility"
-                    value={manualPlanData.outpatientFacility}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientFacility: e.target.value })}
-                    placeholder='e.g., "$250"'
-                    className="mt-1"
-                    data-testid="input-outpatient-facility"
-                  />
+              {/* 6. Enrollment Information */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-primary mb-3">Enrollment Information</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="saleType" className="text-sm">Type of sale</Label>
+                    <Select
+                      value={manualPlanData.saleType}
+                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, saleType: value })}
+                    >
+                      <SelectTrigger id="saleType" className="mt-1" data-testid="select-sale-type-manual">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">New sale</SelectItem>
+                        <SelectItem value="renewal">Renewal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="ffmMarketplace" className="text-sm">FFM used in marketplace</Label>
+                    <Input
+                      id="ffmMarketplace"
+                      value={manualPlanData.ffmMarketplace}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, ffmMarketplace: e.target.value })}
+                      placeholder="Enter FFM"
+                      className="mt-1"
+                      data-testid="input-ffm-marketplace-manual"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="outpatientPhysician" className="text-sm">Outpatient physician</Label>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="npnMarketplace" className="text-sm">NPN used in marketplace</Label>
+                    <Input
+                      id="npnMarketplace"
+                      value={manualPlanData.npnMarketplace}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, npnMarketplace: e.target.value })}
+                      placeholder="e.g., 17925766"
+                      className="mt-1"
+                      data-testid="input-npn-marketplace-manual"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="marketplaceId" className="text-sm">Marketplace ID</Label>
+                    <Input
+                      id="marketplaceId"
+                      value={manualPlanData.marketplaceId}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, marketplaceId: e.target.value })}
+                      placeholder="Enter marketplace ID"
+                      className="mt-1"
+                      data-testid="input-marketplace-id-manual"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <Label htmlFor="memberId" className="text-sm">Member ID</Label>
                   <Input
-                    id="outpatientPhysician"
-                    value={manualPlanData.outpatientPhysician}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientPhysician: e.target.value })}
-                    placeholder='e.g., "No Charge"'
+                    id="memberId"
+                    value={manualPlanData.memberId}
+                    onChange={(e) => setManualPlanData({ ...manualPlanData, memberId: e.target.value })}
+                    placeholder="e.g., 441414053"
                     className="mt-1"
-                    data-testid="input-outpatient-physician"
+                    data-testid="input-member-id-manual"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="imaging" className="text-sm">Imaging (CT/PET/MRI)</Label>
-                  <Input
-                    id="imaging"
-                    value={manualPlanData.imaging}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, imaging: e.target.value })}
-                    placeholder='e.g., "$200" or "20%"'
-                    className="mt-1"
-                    data-testid="input-imaging"
-                  />
+              {/* 6. Policy Information */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold text-primary mb-3">Policy Information</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="effectiveDate" className="text-sm">Effective date <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="effectiveDate"
+                      type="date"
+                      value={manualPlanData.effectiveDate}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, effectiveDate: e.target.value })}
+                      className="mt-1"
+                      data-testid="input-effective-date-manual"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cancellationDate" className="text-sm">Cancellation date</Label>
+                    <Input
+                      id="cancellationDate"
+                      type="date"
+                      value={manualPlanData.cancellationDate}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, cancellationDate: e.target.value })}
+                      className="mt-1"
+                      data-testid="input-cancellation-date-manual"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="xrays" className="text-sm">X-rays and diagnostic imaging</Label>
-                  <Input
-                    id="xrays"
-                    value={manualPlanData.xrays}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, xrays: e.target.value })}
-                    placeholder='e.g., "$50"'
-                    className="mt-1"
-                    data-testid="input-xrays"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label htmlFor="specialEnrollmentDate" className="text-sm">Special enrollment period date</Label>
+                    <Input
+                      id="specialEnrollmentDate"
+                      type="date"
+                      value={manualPlanData.specialEnrollmentDate}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentDate: e.target.value })}
+                      className="mt-1"
+                      data-testid="input-special-enrollment-date-manual"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="labWork" className="text-sm">Laboratory services</Label>
-                  <Input
-                    id="labWork"
-                    value={manualPlanData.labWork}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, labWork: e.target.value })}
-                    placeholder='e.g., "$35"'
-                    className="mt-1"
-                    data-testid="input-lab-work"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="rehabilitation" className="text-sm">Rehabilitation services</Label>
-                  <Input
-                    id="rehabilitation"
-                    value={manualPlanData.rehabilitation}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, rehabilitation: e.target.value })}
-                    placeholder='e.g., "$45"'
-                    className="mt-1"
-                    data-testid="input-rehabilitation"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="habilitationServices" className="text-sm">Habilitation services</Label>
-                  <Input
-                    id="habilitationServices"
-                    value={manualPlanData.habilitationServices}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, habilitationServices: e.target.value })}
-                    placeholder='e.g., "$45"'
-                    className="mt-1"
-                    data-testid="input-habilitation-services"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="skilledNursing" className="text-sm">Skilled nursing facility</Label>
-                  <Input
-                    id="skilledNursing"
-                    value={manualPlanData.skilledNursing}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, skilledNursing: e.target.value })}
-                    placeholder='e.g., "$200/day"'
-                    className="mt-1"
-                    data-testid="input-skilled-nursing"
-                  />
+                  <div>
+                    <Label htmlFor="specialEnrollmentReason" className="text-sm">Special enrollment reason</Label>
+                    <Input
+                      id="specialEnrollmentReason"
+                      value={manualPlanData.specialEnrollmentReason}
+                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentReason: e.target.value })}
+                      placeholder="Enter reason"
+                      className="mt-1"
+                      data-testid="input-special-enrollment-reason-manual"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="durableMedicalEquipment" className="text-sm">Durable medical equipment</Label>
-                  <Input
-                    id="durableMedicalEquipment"
-                    value={manualPlanData.durableMedicalEquipment}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, durableMedicalEquipment: e.target.value })}
-                    placeholder='e.g., "20%"'
-                    className="mt-1"
-                    data-testid="input-durable-medical-equipment"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="hospiceCare" className="text-sm">Hospice care</Label>
-                  <Input
-                    id="hospiceCare"
-                    value={manualPlanData.hospiceCare}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, hospiceCare: e.target.value })}
-                    placeholder='e.g., "No Charge"'
-                    className="mt-1"
-                    data-testid="input-hospice-care"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <Label htmlFor="emergencyTransport" className="text-sm">Emergency medical transportation</Label>
-                <Input
-                  id="emergencyTransport"
-                  value={manualPlanData.emergencyTransport}
-                  onChange={(e) => setManualPlanData({ ...manualPlanData, emergencyTransport: e.target.value })}
-                  placeholder='e.g., "$300"'
-                  className="mt-1"
-                  data-testid="input-emergency-transport"
-                />
-              </div>
-            </div>
-
-            {/* 5. Plan Features */}
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-primary mb-3">Plan Features</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="dentalChild"
-                    checked={manualPlanData.dentalChild}
-                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, dentalChild: !!checked })}
-                    data-testid="checkbox-dental-child"
-                  />
-                  <Label htmlFor="dentalChild" className="text-sm font-normal cursor-pointer">
-                    Dental coverage (child)
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="dentalAdult"
-                    checked={manualPlanData.dentalAdult}
-                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, dentalAdult: !!checked })}
-                    data-testid="checkbox-dental-adult"
-                  />
-                  <Label htmlFor="dentalAdult" className="text-sm font-normal cursor-pointer">
-                    Dental coverage (adult)
-                  </Label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="hsaEligible"
-                    checked={manualPlanData.hsaEligible}
-                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, hsaEligible: !!checked })}
-                    data-testid="checkbox-hsa-eligible"
-                  />
-                  <Label htmlFor="hsaEligible" className="text-sm font-normal cursor-pointer">
-                    HSA eligible
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="simpleChoice"
-                    checked={manualPlanData.simpleChoice}
-                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, simpleChoice: !!checked })}
-                    data-testid="checkbox-simple-choice"
-                  />
-                  <Label htmlFor="simpleChoice" className="text-sm font-normal cursor-pointer">
-                    Simple Choice plan
-                  </Label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="specialistReferralRequired"
-                    checked={manualPlanData.specialistReferralRequired}
-                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, specialistReferralRequired: !!checked })}
-                    data-testid="checkbox-specialist-referral-required"
-                  />
-                  <Label htmlFor="specialistReferralRequired" className="text-sm font-normal cursor-pointer">
-                    Specialist referral required
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="hasNationalNetwork"
-                    checked={manualPlanData.hasNationalNetwork}
-                    onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, hasNationalNetwork: !!checked })}
-                    data-testid="checkbox-has-national-network"
-                  />
-                  <Label htmlFor="hasNationalNetwork" className="text-sm font-normal cursor-pointer">
-                    Has national network
-                  </Label>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <Label htmlFor="diseaseManagementPrograms" className="text-sm">Disease management programs</Label>
-                <Input
-                  id="diseaseManagementPrograms"
-                  value={manualPlanData.diseaseManagementPrograms}
-                  onChange={(e) => setManualPlanData({ ...manualPlanData, diseaseManagementPrograms: e.target.value })}
-                  placeholder='e.g., "Diabetes, Asthma, Heart Disease"'
-                  className="mt-1"
-                  data-testid="input-disease-management-programs"
-                />
-              </div>
-            </div>
-
-            {/* 6. Enrollment Information */}
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-primary mb-3">Enrollment Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="saleType" className="text-sm">Type of sale</Label>
-                  <Select
-                    value={manualPlanData.saleType}
-                    onValueChange={(value) => setManualPlanData({ ...manualPlanData, saleType: value })}
-                  >
-                    <SelectTrigger id="saleType" className="mt-1" data-testid="select-sale-type-manual">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New sale</SelectItem>
-                      <SelectItem value="renewal">Renewal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="ffmMarketplace" className="text-sm">FFM used in marketplace</Label>
-                  <Input
-                    id="ffmMarketplace"
-                    value={manualPlanData.ffmMarketplace}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, ffmMarketplace: e.target.value })}
-                    placeholder="Enter FFM"
-                    className="mt-1"
-                    data-testid="input-ffm-marketplace-manual"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="npnMarketplace" className="text-sm">NPN used in marketplace</Label>
-                  <Input
-                    id="npnMarketplace"
-                    value={manualPlanData.npnMarketplace}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, npnMarketplace: e.target.value })}
-                    placeholder="e.g., 17925766"
-                    className="mt-1"
-                    data-testid="input-npn-marketplace-manual"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="marketplaceId" className="text-sm">Marketplace ID</Label>
-                  <Input
-                    id="marketplaceId"
-                    value={manualPlanData.marketplaceId}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, marketplaceId: e.target.value })}
-                    placeholder="Enter marketplace ID"
-                    className="mt-1"
-                    data-testid="input-marketplace-id-manual"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <Label htmlFor="memberId" className="text-sm">Member ID</Label>
-                <Input
-                  id="memberId"
-                  value={manualPlanData.memberId}
-                  onChange={(e) => setManualPlanData({ ...manualPlanData, memberId: e.target.value })}
-                  placeholder="e.g., 441414053"
-                  className="mt-1"
-                  data-testid="input-member-id-manual"
-                />
-              </div>
-            </div>
-
-            {/* 6. Policy Information */}
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-primary mb-3">Policy Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="effectiveDate" className="text-sm">Effective date <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="effectiveDate"
-                    type="date"
-                    value={manualPlanData.effectiveDate}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, effectiveDate: e.target.value })}
-                    className="mt-1"
-                    data-testid="input-effective-date-manual"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="cancellationDate" className="text-sm">Cancellation date</Label>
-                  <Input
-                    id="cancellationDate"
-                    type="date"
-                    value={manualPlanData.cancellationDate}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, cancellationDate: e.target.value })}
-                    className="mt-1"
-                    data-testid="input-cancellation-date-manual"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Label htmlFor="specialEnrollmentDate" className="text-sm">Special enrollment period date</Label>
-                  <Input
-                    id="specialEnrollmentDate"
-                    type="date"
-                    value={manualPlanData.specialEnrollmentDate}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentDate: e.target.value })}
-                    className="mt-1"
-                    data-testid="input-special-enrollment-date-manual"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="specialEnrollmentReason" className="text-sm">Special enrollment reason</Label>
-                  <Input
-                    id="specialEnrollmentReason"
-                    value={manualPlanData.specialEnrollmentReason}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentReason: e.target.value })}
-                    placeholder="Enter reason"
-                    className="mt-1"
-                    data-testid="input-special-enrollment-reason-manual"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEditingPlanId(null);
-                  setManualPlanDialogOpen(false);
-                  setManualPlanData({
-                    productType: '',
-                    carrier: '',
-                    carrierIssuerId: '',
-                    planName: '',
-                    cmsPlanId: '',
-                    metal: '',
-                    networkType: '',
-                    rating: '',
-                    premium: '',
-                    taxCredit: '',
-                    deductible: '',
-                    deductibleFamily: '',
-                    outOfPocketMax: '',
-                    outOfPocketMaxFamily: '',
-                    primaryCare: '',
-                    specialist: '',
-                    urgentCare: '',
-                    emergency: '',
-                    mentalHealth: '',
-                    genericDrugs: '',
-                    preferredBrandDrugs: '',
-                    nonPreferredBrandDrugs: '',
-                    specialtyDrugs: '',
-                    inpatientFacility: '',
-                    inpatientPhysician: '',
-                    outpatientFacility: '',
-                    outpatientPhysician: '',
-                    imaging: '',
-                    labWork: '',
-                    xrays: '',
-                    preventiveCare: '',
-                    rehabilitation: '',
-                    habilitationServices: '',
-                    skilledNursing: '',
-                    durableMedicalEquipment: '',
-                    hospiceCare: '',
-                    emergencyTransport: '',
-                    dentalChild: false,
-                    dentalAdult: false,
-                    hsaEligible: false,
-                    simpleChoice: false,
-                    specialistReferralRequired: false,
-                    hasNationalNetwork: false,
-                    diseaseManagementPrograms: '',
-                    effectiveDate: '',
-                    cancellationDate: '',
-                    specialEnrollmentDate: '',
-                    specialEnrollmentReason: '',
-                    saleType: '',
-                    ffmMarketplace: '',
-                    npnMarketplace: '',
-                    marketplaceId: '',
-                    memberId: '',
-                    policyTotalCost: '',
-                  });
-                }}
-                className="flex-1"
-                data-testid="button-close-manual-plan"
-              >
-                Close
-              </Button>
-              <Button
-                onClick={async () => {
-                  console.log('[EDIT PLAN] editingPlanId:', editingPlanId);
-                  console.log('[EDIT PLAN] manualPlanData:', manualPlanData);
-                  
-                  if (!manualPlanData.productType || !manualPlanData.carrier || !manualPlanData.effectiveDate) {
-                    toast({
-                      title: "Validation Error",
-                      description: "Please fill in all required fields (Product type, Carrier, and Effective date).",
-                      variant: "destructive",
-                      duration: 3000,
-                    });
-                    return;
-                  }
-
-                  try {
-                    // Build deductibles array
-                    const deductibles = [];
-                    if (manualPlanData.deductible) {
-                      deductibles.push({
-                        amount: parseFloat(manualPlanData.deductible),
-                        type: 'Individual Medical',
-                        individual_cost: true,
-                        family_cost: false
-                      });
-                    }
-                    if (manualPlanData.deductibleFamily) {
-                      deductibles.push({
-                        amount: parseFloat(manualPlanData.deductibleFamily),
-                        type: 'Family Medical',
-                        individual_cost: false,
-                        family_cost: true
-                      });
-                    }
-
-                    // Build MOOPs array
-                    const moops = [];
-                    if (manualPlanData.outOfPocketMax) {
-                      moops.push({
-                        amount: parseFloat(manualPlanData.outOfPocketMax),
-                        type: 'Individual Medical',
-                        individual_cost: true,
-                        family_cost: false
-                      });
-                    }
-                    if (manualPlanData.outOfPocketMaxFamily) {
-                      moops.push({
-                        amount: parseFloat(manualPlanData.outOfPocketMaxFamily),
-                        type: 'Family Medical',
-                        individual_cost: false,
-                        family_cost: true
-                      });
-                    }
-
-                    const planObject = {
-                      id: manualPlanData.cmsPlanId || 'MANUAL-' + Date.now(),
-                      name: manualPlanData.planName || `${manualPlanData.carrier} Plan`,
-                      issuer: { 
-                        name: manualPlanData.carrier,
-                        id: manualPlanData.carrierIssuerId || ''
-                      },
-                      metal_level: manualPlanData.metal,
-                      type: manualPlanData.productType,
-                      network_type: manualPlanData.networkType,
-                      premium: manualPlanData.planWas ? parseFloat(manualPlanData.planWas) : (manualPlanData.premium ? parseFloat(manualPlanData.premium) : 0),
-                      premium_w_credit: manualPlanData.premium ? parseFloat(manualPlanData.premium) : null,
-                      household_aptc: manualPlanData.taxCredit ? parseFloat(manualPlanData.taxCredit) : null,
-                      deductibles: deductibles,
-                      moops: moops,
-                      out_of_pocket_limit: manualPlanData.outOfPocketMax ? parseFloat(manualPlanData.outOfPocketMax) : null,
-                      copay_primary: parseCostShareValue(manualPlanData.primaryCare),
-                      copay_specialist: parseCostShareValue(manualPlanData.specialist),
-                      copay_urgent_care: parseCostShareValue(manualPlanData.urgentCare),
-                      copay_emergency: parseCostShareValue(manualPlanData.emergency),
-                      copay_mental_health: parseCostShareValue(manualPlanData.mentalHealth),
-                      copay_generic_drugs: parseCostShareValue(manualPlanData.genericDrugs),
-                      copay_preferred_brand_drugs: parseCostShareValue(manualPlanData.preferredBrandDrugs),
-                      copay_non_preferred_brand_drugs: parseCostShareValue(manualPlanData.nonPreferredBrandDrugs),
-                      copay_specialty_drugs: parseCostShareValue(manualPlanData.specialtyDrugs),
-                      copay_inpatient_facility: parseCostShareValue(manualPlanData.inpatientFacility),
-                      copay_inpatient_physician: parseCostShareValue(manualPlanData.inpatientPhysician),
-                      copay_outpatient_facility: parseCostShareValue(manualPlanData.outpatientFacility),
-                      copay_outpatient_physician: parseCostShareValue(manualPlanData.outpatientPhysician),
-                      copay_imaging: parseCostShareValue(manualPlanData.imaging),
-                      copay_lab_work: parseCostShareValue(manualPlanData.labWork),
-                      copay_xrays: parseCostShareValue(manualPlanData.xrays),
-                      copay_preventive_care: parseCostShareValue(manualPlanData.preventiveCare),
-                      copay_rehabilitation: parseCostShareValue(manualPlanData.rehabilitation),
-                      copay_habilitation_services: parseCostShareValue(manualPlanData.habilitationServices),
-                      copay_skilled_nursing: parseCostShareValue(manualPlanData.skilledNursing),
-                      copay_durable_medical_equipment: parseCostShareValue(manualPlanData.durableMedicalEquipment),
-                      copay_hospice_care: parseCostShareValue(manualPlanData.hospiceCare),
-                      copay_emergency_transport: parseCostShareValue(manualPlanData.emergencyTransport),
-                      has_dental_child_coverage: manualPlanData.dentalChild,
-                      has_dental_adult_coverage: manualPlanData.dentalAdult,
-                      hsa_eligible: manualPlanData.hsaEligible,
-                      simple_choice: manualPlanData.simpleChoice,
-                      specialist_referral_required: manualPlanData.specialistReferralRequired,
-                      has_national_network: manualPlanData.hasNationalNetwork,
-                      disease_mgmt_programs: manualPlanData.diseaseManagementPrograms 
-                        ? manualPlanData.diseaseManagementPrograms.split(',').map(p => p.trim()).filter(Boolean)
-                        : [],
-                      quality_rating: manualPlanData.rating ? {
-                        available: true,
-                        global_rating: parseFloat(manualPlanData.rating)
-                      } : null,
-                      manual: true
-                    };
-
-                    // Check if we're editing an existing plan or creating a new one
-                    if (editingPlanId) {
-                      // CRITICAL FIX: When editing, merge with original planData to preserve benefits/deductibles/moops
-                      console.log('[EDIT PLAN] Updating plan:', editingPlanId);
-                      
-                      // Get original plan data
-                      const originalPlan = quoteDetail?.plans?.find((p: any) => p.id === editingPlanId);
-                      const originalPlanData = originalPlan?.planData 
-                        ? (typeof originalPlan.planData === 'string' ? JSON.parse(originalPlan.planData) : originalPlan.planData)
-                        : {};
-                      
-                      // Merge: Keep original benefits/deductibles/moops, update only edited fields
-                      const mergedPlanData = {
-                        ...originalPlanData,  // Keep all original data (benefits, deductibles, moops, etc.)
-                        ...planObject,        // Overwrite only the fields from the form
-                        // Preserve complex arrays that might not be in the form
-                        benefits: originalPlanData.benefits || planObject.benefits,
-                        deductibles: planObject.deductibles || originalPlanData.deductibles,
-                        moops: planObject.moops || originalPlanData.moops,
-                        // CRITICAL FIX: Explicitly preserve the NEW issuer data (carrier name) from the form
-                        issuer: {
-                          ...originalPlanData.issuer,  // Keep original issuer data first (e.g., existing ID)
-                          ...planObject.issuer,        // Overwrite with new values from form (carrier name)
-                        },
-                      };
-                      
-                      await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
-                        planData: mergedPlanData,
-                        source: 'manual'
-                      });
-                    } else {
-                      // Add new plan
-                      console.log('[EDIT PLAN] Creating new plan');
-                      await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
-                        planData: planObject,
-                        source: 'manual'
-                      });
-                    }
-                    
-                    // Update policy metadata separately if needed
-                    if (manualPlanData.memberId || manualPlanData.npnMarketplace || manualPlanData.saleType || 
-                        manualPlanData.effectiveDate || manualPlanData.marketplaceId || manualPlanData.ffmMarketplace ||
-                        manualPlanData.specialEnrollmentReason || manualPlanData.cancellationDate || manualPlanData.specialEnrollmentDate) {
-                      await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
-                        memberId: manualPlanData.memberId || null,
-                        npnMarketplace: manualPlanData.npnMarketplace || null,
-                        saleType: manualPlanData.saleType || null,
-                        effectiveDate: formatDateForBackend(manualPlanData.effectiveDate),
-                        marketplaceId: manualPlanData.marketplaceId || null,
-                        ffmMarketplace: manualPlanData.ffmMarketplace || null,
-                        specialEnrollmentReason: manualPlanData.specialEnrollmentReason || null,
-                        cancellationDate: formatDateForBackend(manualPlanData.cancellationDate),
-                        specialEnrollmentDate: formatDateForBackend(manualPlanData.specialEnrollmentDate),
-                      });
-                    }
-                    
-                    // Invalidate all policy-related queries to refresh the UI
-                    queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                    queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
-                    
-                    toast({
-                      title: "Success",
-                      description: editingPlanId ? "Plan has been updated successfully." : "Plan has been saved successfully.",
-                      duration: 3000,
-                    });
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
                     setEditingPlanId(null);
                     setManualPlanDialogOpen(false);
                     setManualPlanData({
@@ -12583,261 +12323,494 @@ export default function PoliciesPage() {
                       memberId: '',
                       policyTotalCost: '',
                     });
+                  }}
+                  className="flex-1"
+                  data-testid="button-close-manual-plan"
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={async () => {
+                    console.log('[EDIT PLAN] editingPlanId:', editingPlanId);
+                    console.log('[EDIT PLAN] manualPlanData:', manualPlanData);
+                    
+                    if (!manualPlanData.productType || !manualPlanData.carrier || !manualPlanData.effectiveDate) {
+                      toast({
+                        title: "Validation Error",
+                        description: "Please fill in all required fields (Product type, Carrier, and Effective date).",
+                        variant: "destructive",
+                        duration: 3000,
+                      });
+                      return;
+                    }
+
+                    try {
+                      // Build deductibles array
+                      const deductibles = [];
+                      if (manualPlanData.deductible) {
+                        deductibles.push({
+                          amount: parseFloat(manualPlanData.deductible),
+                          type: 'Individual Medical',
+                          individual_cost: true,
+                          family_cost: false
+                        });
+                      }
+                      if (manualPlanData.deductibleFamily) {
+                        deductibles.push({
+                          amount: parseFloat(manualPlanData.deductibleFamily),
+                          type: 'Family Medical',
+                          individual_cost: false,
+                          family_cost: true
+                        });
+                      }
+
+                      // Build MOOPs array
+                      const moops = [];
+                      if (manualPlanData.outOfPocketMax) {
+                        moops.push({
+                          amount: parseFloat(manualPlanData.outOfPocketMax),
+                          type: 'Individual Medical',
+                          individual_cost: true,
+                          family_cost: false
+                        });
+                      }
+                      if (manualPlanData.outOfPocketMaxFamily) {
+                        moops.push({
+                          amount: parseFloat(manualPlanData.outOfPocketMaxFamily),
+                          type: 'Family Medical',
+                          individual_cost: false,
+                          family_cost: true
+                        });
+                      }
+
+                      const planObject = {
+                        id: manualPlanData.cmsPlanId || 'MANUAL-' + Date.now(),
+                        name: manualPlanData.planName || `${manualPlanData.carrier} Plan`,
+                        issuer: { 
+                          name: manualPlanData.carrier,
+                          id: manualPlanData.carrierIssuerId || ''
+                        },
+                        metal_level: manualPlanData.metal,
+                        type: manualPlanData.productType,
+                        network_type: manualPlanData.networkType,
+                        premium: manualPlanData.planWas ? parseFloat(manualPlanData.planWas) : (manualPlanData.premium ? parseFloat(manualPlanData.premium) : 0),
+                        premium_w_credit: manualPlanData.premium ? parseFloat(manualPlanData.premium) : null,
+                        household_aptc: manualPlanData.taxCredit ? parseFloat(manualPlanData.taxCredit) : null,
+                        deductibles: deductibles,
+                        moops: moops,
+                        out_of_pocket_limit: manualPlanData.outOfPocketMax ? parseFloat(manualPlanData.outOfPocketMax) : null,
+                        copay_primary: parseCostShareValue(manualPlanData.primaryCare),
+                        copay_specialist: parseCostShareValue(manualPlanData.specialist),
+                        copay_urgent_care: parseCostShareValue(manualPlanData.urgentCare),
+                        copay_emergency: parseCostShareValue(manualPlanData.emergency),
+                        copay_mental_health: parseCostShareValue(manualPlanData.mentalHealth),
+                        copay_generic_drugs: parseCostShareValue(manualPlanData.genericDrugs),
+                        copay_preferred_brand_drugs: parseCostShareValue(manualPlanData.preferredBrandDrugs),
+                        copay_non_preferred_brand_drugs: parseCostShareValue(manualPlanData.nonPreferredBrandDrugs),
+                        copay_specialty_drugs: parseCostShareValue(manualPlanData.specialtyDrugs),
+                        copay_inpatient_facility: parseCostShareValue(manualPlanData.inpatientFacility),
+                        copay_inpatient_physician: parseCostShareValue(manualPlanData.inpatientPhysician),
+                        copay_outpatient_facility: parseCostShareValue(manualPlanData.outpatientFacility),
+                        copay_outpatient_physician: parseCostShareValue(manualPlanData.outpatientPhysician),
+                        copay_imaging: parseCostShareValue(manualPlanData.imaging),
+                        copay_lab_work: parseCostShareValue(manualPlanData.labWork),
+                        copay_xrays: parseCostShareValue(manualPlanData.xrays),
+                        copay_preventive_care: parseCostShareValue(manualPlanData.preventiveCare),
+                        copay_rehabilitation: parseCostShareValue(manualPlanData.rehabilitation),
+                        copay_habilitation_services: parseCostShareValue(manualPlanData.habilitationServices),
+                        copay_skilled_nursing: parseCostShareValue(manualPlanData.skilledNursing),
+                        copay_durable_medical_equipment: parseCostShareValue(manualPlanData.durableMedicalEquipment),
+                        copay_hospice_care: parseCostShareValue(manualPlanData.hospiceCare),
+                        copay_emergency_transport: parseCostShareValue(manualPlanData.emergencyTransport),
+                        has_dental_child_coverage: manualPlanData.dentalChild,
+                        has_dental_adult_coverage: manualPlanData.dentalAdult,
+                        hsa_eligible: manualPlanData.hsaEligible,
+                        simple_choice: manualPlanData.simpleChoice,
+                        specialist_referral_required: manualPlanData.specialistReferralRequired,
+                        has_national_network: manualPlanData.hasNationalNetwork,
+                        disease_mgmt_programs: manualPlanData.diseaseManagementPrograms 
+                          ? manualPlanData.diseaseManagementPrograms.split(',').map(p => p.trim()).filter(Boolean)
+                          : [],
+                        quality_rating: manualPlanData.rating ? {
+                          available: true,
+                          global_rating: parseFloat(manualPlanData.rating)
+                        } : null,
+                        manual: true
+                      };
+
+                      // Check if we're editing an existing plan or creating a new one
+                      if (editingPlanId) {
+                        // CRITICAL FIX: When editing, merge with original planData to preserve benefits/deductibles/moops
+                        console.log('[EDIT PLAN] Updating plan:', editingPlanId);
+                        
+                        // Get original plan data
+                        const originalPlan = quoteDetail?.plans?.find((p: any) => p.id === editingPlanId);
+                        const originalPlanData = originalPlan?.planData 
+                          ? (typeof originalPlan.planData === 'string' ? JSON.parse(originalPlan.planData) : originalPlan.planData)
+                          : {};
+                        
+                        // Merge: Keep original benefits/deductibles/moops, update only edited fields
+                        const mergedPlanData = {
+                          ...originalPlanData,  // Keep all original data (benefits, deductibles, moops, etc.)
+                          ...planObject,        // Overwrite only the fields from the form
+                          // Preserve complex arrays that might not be in the form
+                          benefits: originalPlanData.benefits || planObject.benefits,
+                          deductibles: planObject.deductibles || originalPlanData.deductibles,
+                          moops: planObject.moops || originalPlanData.moops,
+                          // CRITICAL FIX: Explicitly preserve the NEW issuer data (carrier name) from the form
+                          issuer: {
+                            ...originalPlanData.issuer,  // Keep original issuer data first (e.g., existing ID)
+                            ...planObject.issuer,        // Overwrite with new values from form (carrier name)
+                          },
+                        };
+                        
+                        await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
+                          planData: mergedPlanData,
+                          source: 'manual'
+                        });
+                      } else {
+                        // Add new plan
+                        console.log('[EDIT PLAN] Creating new plan');
+                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
+                          planData: planObject,
+                          source: 'manual'
+                        });
+                      }
+                      
+                      // Update policy metadata separately if needed
+                      if (manualPlanData.memberId || manualPlanData.npnMarketplace || manualPlanData.saleType || 
+                          manualPlanData.effectiveDate || manualPlanData.marketplaceId || manualPlanData.ffmMarketplace ||
+                          manualPlanData.specialEnrollmentReason || manualPlanData.cancellationDate || manualPlanData.specialEnrollmentDate) {
+                        await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
+                          memberId: manualPlanData.memberId || null,
+                          npnMarketplace: manualPlanData.npnMarketplace || null,
+                          saleType: manualPlanData.saleType || null,
+                          effectiveDate: formatDateForBackend(manualPlanData.effectiveDate),
+                          marketplaceId: manualPlanData.marketplaceId || null,
+                          ffmMarketplace: manualPlanData.ffmMarketplace || null,
+                          specialEnrollmentReason: manualPlanData.specialEnrollmentReason || null,
+                          cancellationDate: formatDateForBackend(manualPlanData.cancellationDate),
+                          specialEnrollmentDate: formatDateForBackend(manualPlanData.specialEnrollmentDate),
+                        });
+                      }
+                      
+                      // Invalidate all policy-related queries to refresh the UI
+                      queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                      queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
+                      
+                      toast({
+                        title: "Success",
+                        description: editingPlanId ? "Plan has been updated successfully." : "Plan has been saved successfully.",
+                        duration: 3000,
+                      });
+                      setEditingPlanId(null);
+                      setManualPlanDialogOpen(false);
+                      setManualPlanData({
+                        productType: '',
+                        carrier: '',
+                        carrierIssuerId: '',
+                        planName: '',
+                        cmsPlanId: '',
+                        metal: '',
+                        networkType: '',
+                        rating: '',
+                        premium: '',
+                        taxCredit: '',
+                        deductible: '',
+                        deductibleFamily: '',
+                        outOfPocketMax: '',
+                        outOfPocketMaxFamily: '',
+                        primaryCare: '',
+                        specialist: '',
+                        urgentCare: '',
+                        emergency: '',
+                        mentalHealth: '',
+                        genericDrugs: '',
+                        preferredBrandDrugs: '',
+                        nonPreferredBrandDrugs: '',
+                        specialtyDrugs: '',
+                        inpatientFacility: '',
+                        inpatientPhysician: '',
+                        outpatientFacility: '',
+                        outpatientPhysician: '',
+                        imaging: '',
+                        labWork: '',
+                        xrays: '',
+                        preventiveCare: '',
+                        rehabilitation: '',
+                        habilitationServices: '',
+                        skilledNursing: '',
+                        durableMedicalEquipment: '',
+                        hospiceCare: '',
+                        emergencyTransport: '',
+                        dentalChild: false,
+                        dentalAdult: false,
+                        hsaEligible: false,
+                        simpleChoice: false,
+                        specialistReferralRequired: false,
+                        hasNationalNetwork: false,
+                        diseaseManagementPrograms: '',
+                        effectiveDate: '',
+                        cancellationDate: '',
+                        specialEnrollmentDate: '',
+                        specialEnrollmentReason: '',
+                        saleType: '',
+                        ffmMarketplace: '',
+                        npnMarketplace: '',
+                        marketplaceId: '',
+                        memberId: '',
+                        policyTotalCost: '',
+                      });
+                    } catch (error: any) {
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to add manual plan.",
+                        variant: "destructive",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="flex-1"
+                  data-testid="button-submit-manual-plan"
+                >
+                  Submit
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        {/* Cancel Policy Confirmation Dialog */}
+        <AlertDialog open={cancelPolicyDialogOpen} onOpenChange={setCancelPolicyDialogOpen}>
+          <AlertDialogContent data-testid="dialog-cancel-policy">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Policy?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to cancel this policy? This action can be undone by changing the status later.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-cancel-policy">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  try {
+                    await apiRequest("POST", `/api/policies/${viewingQuote.id}/status`, { status: "canceled" });
+                    
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                    
+                    toast({
+                      title: "Policy Canceled",
+                      description: "The policy status has been changed to canceled.",
+                      duration: 3000,
+                    });
+                    
+                    setCancelPolicyDialogOpen(false);
                   } catch (error: any) {
                     toast({
                       title: "Error",
-                      description: error.message || "Failed to add manual plan.",
+                      description: error.message || "Failed to cancel policy",
                       variant: "destructive",
                       duration: 3000,
                     });
                   }
                 }}
-                className="flex-1"
-                data-testid="button-submit-manual-plan"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-cancel-policy"
               >
-                Submit
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-            {/* Cancel Policy Confirmation Dialog */}
-            <AlertDialog open={cancelPolicyDialogOpen} onOpenChange={setCancelPolicyDialogOpen}>
-              <AlertDialogContent data-testid="dialog-cancel-policy">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Policy?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to cancel this policy? This action can be undone by changing the status later.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-cancel-policy">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      try {
-                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/status`, { status: "canceled" });
-                        
-                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                        
-                        toast({
-                          title: "Policy Canceled",
-                          description: "The policy status has been changed to canceled.",
-                          duration: 3000,
-                        });
-                        
-                        setCancelPolicyDialogOpen(false);
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to cancel policy",
-                          variant: "destructive",
-                          duration: 3000,
-                        });
+                Cancel Policy
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Archive Policy Confirmation Dialog */}
+        <AlertDialog open={archivePolicyDialogOpen} onOpenChange={setArchivePolicyDialogOpen}>
+          <AlertDialogContent data-testid="dialog-archive-policy">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Archive Policy?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to archive this policy? You can unarchive it later if needed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-archive-policy">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  try {
+                    await apiRequest("POST", `/api/policies/${viewingQuote.id}/archive`, { isArchived: true });
+                    
+                    // Invalidate all policies queries (including parameterized ones)
+                    queryClient.invalidateQueries({ 
+                      predicate: (query) => {
+                        const key = query.queryKey;
+                        return Array.isArray(key) && key[0] === '/api/policies';
                       }
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    data-testid="button-confirm-cancel-policy"
-                  >
-                    Cancel Policy
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Archive Policy Confirmation Dialog */}
-            <AlertDialog open={archivePolicyDialogOpen} onOpenChange={setArchivePolicyDialogOpen}>
-              <AlertDialogContent data-testid="dialog-archive-policy">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Archive Policy?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to archive this policy? You can unarchive it later if needed.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-archive-policy">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      try {
-                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/archive`, { isArchived: true });
-                        
-                        // Invalidate all policies queries (including parameterized ones)
-                        queryClient.invalidateQueries({ 
-                          predicate: (query) => {
-                            const key = query.queryKey;
-                            return Array.isArray(key) && key[0] === '/api/policies';
-                          }
-                        });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies/oep-stats"] });
-                        
-                        toast({
-                          title: "Policy Archived",
-                          description: "The policy has been archived successfully.",
-                          duration: 3000,
-                        });
-                        
-                        setArchivePolicyDialogOpen(false);
-                        
-                        // Navigate back to policies list if we're viewing the archived policy
-                        setLocation('/policies');
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to archive policy",
-                          variant: "destructive",
-                          duration: 3000,
-                        });
-                      }
-                    }}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    data-testid="button-confirm-archive-policy"
-                  >
-                    Archive Policy
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Duplicate Policy Confirmation Dialog */}
-            <AlertDialog open={duplicatePolicyDialogOpen} onOpenChange={setDuplicatePolicyDialogOpen}>
-              <AlertDialogContent data-testid="dialog-duplicate-policy">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Duplicate Policy?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will create a new policy with all the information from the current policy, including client details, family members, and selected plan. You will be redirected to the new policy.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-duplicate-policy">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      try {
-                        const data = await apiRequest("POST", `/api/policies/${viewingQuote.id}/duplicate`, {});
-                        
-                        toast({
-                          title: "Policy Duplicated",
-                          description: data.message || `New policy created with ID: ${data.policy.id}`,
-                          duration: 3000,
-                        });
-                        
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                        
-                        setDuplicatePolicyDialogOpen(false);
-                        
-                        // Wait a moment for the database to fully commit before navigating
-                        setTimeout(() => {
-                          setLocation(`/policies/${data.policy.id}`);
-                        }, 300);
-                      } catch (error: any) {
-                        toast({
-                          title: "Duplication Failed",
-                          description: error.message || "Failed to duplicate policy",
-                          variant: "destructive",
-                          duration: 3000,
-                        });
-                      }
-                    }}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    data-testid="button-confirm-duplicate-policy"
-                  >
-                    Duplicate Policy
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Block Policy Confirmation Dialog */}
-            <AlertDialog open={blockPolicyDialogOpen} onOpenChange={setBlockPolicyDialogOpen}>
-              <AlertDialogContent data-testid="dialog-block-policy">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Do you really want to block this policy?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Clicking 'Yes, block it!' will prevent agents to update this policy.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-block-policy">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      try {
-                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/block`, {});
-                        
-                        toast({
-                          title: "Policy Blocked",
-                          description: "The policy has been blocked successfully. Agents cannot update this policy.",
-                          duration: 3000,
-                        });
-                        
-                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
-                        queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                        
-                        setBlockPolicyDialogOpen(false);
-                      } catch (error: any) {
-                        toast({
-                          title: "Block Failed",
-                          description: error.message || "Failed to block policy",
-                          variant: "destructive",
-                          duration: 3000,
-                        });
-                      }
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    data-testid="button-confirm-block-policy"
-                  >
-                    <Lock className="h-4 w-4 mr-2" />
-                    Yes, block it!
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Remove Plan Confirmation Dialog */}
-            <AlertDialog open={removePlanDialogOpen} onOpenChange={setRemovePlanDialogOpen}>
-              <AlertDialogContent data-testid="dialog-remove-plan">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove selected plan?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove the currently selected plan from this policy. You can add a new plan afterwards.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-remove-plan">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      try {
-                        await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
-                          selectedPlan: null
-                        });
-                        queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                        toast({
-                          title: "Plan Removed",
-                          description: "The selected plan has been removed from this policy.",
-                          duration: 3000,
-                        });
-                        setRemovePlanDialogOpen(false);
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to remove plan.",
-                          variant: "destructive",
-                          duration: 3000,
-                        });
-                      }
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    data-testid="button-confirm-remove-plan"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Remove Plan
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies/oep-stats"] });
+                    
+                    toast({
+                      title: "Policy Archived",
+                      description: "The policy has been archived successfully.",
+                      duration: 3000,
+                    });
+                    
+                    setArchivePolicyDialogOpen(false);
+                    
+                    // Navigate back to policies list if we're viewing the archived policy
+                    setLocation('/policies');
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to archive policy",
+                      variant: "destructive",
+                      duration: 3000,
+                    });
+                  }
+                }}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                data-testid="button-confirm-archive-policy"
+              >
+                Archive Policy
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Duplicate Policy Confirmation Dialog */}
+        <AlertDialog open={duplicatePolicyDialogOpen} onOpenChange={setDuplicatePolicyDialogOpen}>
+          <AlertDialogContent data-testid="dialog-duplicate-policy">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Duplicate Policy?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will create a new policy with all the information from the current policy, including client details, family members, and selected plan. You will be redirected to the new policy.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-duplicate-policy">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  try {
+                    const data = await apiRequest("POST", `/api/policies/${viewingQuote.id}/duplicate`, {});
+                    
+                    toast({
+                      title: "Policy Duplicated",
+                      description: data.message || `New policy created with ID: ${data.policy.id}`,
+                      duration: 3000,
+                    });
+                    
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                    
+                    setDuplicatePolicyDialogOpen(false);
+                    
+                    // Wait a moment for the database to fully commit before navigating
+                    setTimeout(() => {
+                      setLocation(`/policies/${data.policy.id}`);
+                    }, 300);
+                  } catch (error: any) {
+                    toast({
+                      title: "Duplication Failed",
+                      description: error.message || "Failed to duplicate policy",
+                      variant: "destructive",
+                      duration: 3000,
+                    });
+                  }
+                }}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                data-testid="button-confirm-duplicate-policy"
+              >
+                Duplicate Policy
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Block Policy Confirmation Dialog */}
+        <AlertDialog open={blockPolicyDialogOpen} onOpenChange={setBlockPolicyDialogOpen}>
+          <AlertDialogContent data-testid="dialog-block-policy">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Do you really want to block this policy?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Clicking 'Yes, block it!' will prevent agents to update this policy.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-block-policy">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  try {
+                    await apiRequest("POST", `/api/policies/${viewingQuote.id}/block`, {});
+                    
+                    toast({
+                      title: "Policy Blocked",
+                      description: "The policy has been blocked successfully. Agents cannot update this policy.",
+                      duration: 3000,
+                    });
+                    
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+                    queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
+                    
+                    setBlockPolicyDialogOpen(false);
+                  } catch (error: any) {
+                    toast({
+                      title: "Block Failed",
+                      description: error.message || "Failed to block policy",
+                      variant: "destructive",
+                      duration: 3000,
+                    });
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-block-policy"
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Yes, block it!
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        {/* Remove Plan Confirmation Dialog */}
+        <AlertDialog open={removePlanDialogOpen} onOpenChange={setRemovePlanDialogOpen}>
+          <AlertDialogContent data-testid="dialog-remove-plan">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove selected plan?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove the currently selected plan from this policy. You can add a new plan afterwards.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-remove-plan">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  try {
+                    await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
+                      selectedPlan: null
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                    toast({
+                      title: "Plan Removed",
+                      description: "The selected plan has been removed from this policy.",
+                      duration: 3000,
+                    });
+                    setRemovePlanDialogOpen(false);
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to remove plan.",
+                      variant: "destructive",
+                      duration: 3000,
+                    });
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-remove-plan"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Remove Plan
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -15546,7 +15519,6 @@ export default function PoliciesPage() {
           </CardContent>
         </Card>
       )}
-
       {/* Edit Member Sheet - Only render when viewingQuote exists */}
       {viewingQuote && (
         <EditMemberSheet
@@ -15570,7 +15542,6 @@ export default function PoliciesPage() {
           }}
         />
       )}
-
       {/* Notes Sheet - Modern Design */}
       {console.log('[NOTES SHEET] Rendering, open state:', notesSheetOpen)}
       <Sheet open={notesSheetOpen} onOpenChange={setNotesSheetOpen}>
@@ -15710,7 +15681,6 @@ export default function PoliciesPage() {
           </div>
         </SheetContent>
       </Sheet>
-
       {/* Delete Note Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
         console.log('[ALERT DIALOG] onOpenChange called with:', open);
@@ -15749,7 +15719,6 @@ export default function PoliciesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Delete Quote Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent data-testid="dialog-delete-quote">
@@ -15795,7 +15764,6 @@ export default function PoliciesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Image Viewer Modal */}
       <Dialog modal={false} open={imageViewerOpen} onOpenChange={setImageViewerOpen}>
         <DialogContent className="max-w-5xl w-full p-0 bg-black/95 border-0" data-testid="dialog-image-viewer">
@@ -15846,8 +15814,6 @@ export default function PoliciesPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-
       {/* Send Consent Modal */}
       <Dialog open={consentModalOpen} onOpenChange={setConsentModalOpen}>
         <DialogContent className="max-w-lg" data-testid="dialog-send-consent">
@@ -15866,7 +15832,6 @@ export default function PoliciesPage() {
           />
         </DialogContent>
       </Dialog>
-
       {/* OEP 2026 Renewal Comparison Modal */}
       {renewalData && (
         <PolicyRenewalComparison
@@ -15881,7 +15846,6 @@ export default function PoliciesPage() {
           }}
         />
       )}
-
       {/* Bulk Actions Toolbar */}
       {selectedPolicyIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
@@ -15950,7 +15914,6 @@ export default function PoliciesPage() {
           </Card>
         </div>
       )}
-
       {/* Create Folder Dialog */}
       <Dialog open={createFolderDialogOpen} onOpenChange={setCreateFolderDialogOpen}>
         <DialogContent data-testid="dialog-create-folder">
@@ -16000,7 +15963,6 @@ export default function PoliciesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Rename Folder Dialog */}
       <Dialog open={renameFolderDialogOpen} onOpenChange={setRenameFolderDialogOpen}>
         <DialogContent data-testid="dialog-rename-folder">
@@ -16037,7 +15999,6 @@ export default function PoliciesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Delete Folder Dialog */}
       <AlertDialog open={deleteFolderDialogOpen} onOpenChange={setDeleteFolderDialogOpen}>
         <AlertDialogContent data-testid="dialog-delete-folder">
@@ -16663,23 +16624,19 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
               </div>
             ) : (
               /* Consent Text - English Version */
-              <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+              (<div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
                 <p>
                   I, <strong className="text-gray-900 dark:text-gray-100">{clientName}</strong>, on this day <strong className="text-gray-900 dark:text-gray-100">{new Date().toLocaleDateString()}</strong>, give my permission to
                 </p>
-
                 <p className="text-center font-semibold text-gray-900 dark:text-gray-100">
                   {user ? `${user.firstName} ${user.lastName}` : 'Agent Name'} NPN: {user?.nationalProducerNumber || 'N/A'}
                 </p>
-
                 <p>
                   Agent(s) of <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> who will be the licensed responsible agent for this client and act as an agent or health insurance broker for me and my entire household, if applicable, for purposes of enrollment in a Qualified Health Plan offered on the Federally-facilitated Marketplace.
                 </p>
-
                 <p>
                   By giving my consent to this agreement, I authorize the Agent mentioned above to view and use confidential information provided by me in writing, electronically, or by phone only for the purposes of one or more of the following:
                 </p>
-
                 <ul className="list-disc pl-6 space-y-2">
                   <li>Search for an existing Marketplace application;</li>
                   <li>Complete an eligibility and enrollment application for a Marketplace Qualified Health Plan or other government insurance affordability programs, such as Medicaid and CHIP; or</li>
@@ -16687,24 +16644,20 @@ function SendConsentModalContent({ quoteId, clientEmail, clientPhone, onClose }:
                   <li>Provide ongoing account maintenance and enrollment assistance, as needed; or</li>
                   <li>Respond to Marketplace inquiries about my Marketplace application.</li>
                 </ul>
-
                 <p>
                   I confirm that the information I provide to enter into my Marketplace enrollment and eligibility application will be true to the best of my knowledge and belief.
                 </p>
-
                 <p>
                   I understand that I do not have to share additional personal information about myself or my health with my Agent beyond what is required in the application for eligibility and enrollment purposes.
                 </p>
-
                 <p>
                   I understand that my consent remains in effect until I revoke it, and I can revoke or modify my consent at any time by communicating it to <strong className="text-gray-900 dark:text-gray-100">{company?.name || 'Company Name'}</strong> or any of its agents.
                 </p>
-
                 <div className="mt-6 pt-4">
                   <p className="font-medium text-gray-900 dark:text-gray-100">{clientName}</p>
                   <p className="text-gray-600 dark:text-gray-400">{quote?.clientPhone || ''}</p>
                 </div>
-              </div>
+              </div>)
             )}
 
             {/* Signature Line (Preview) */}
