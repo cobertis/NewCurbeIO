@@ -7831,46 +7831,16 @@ export default function PoliciesPage() {
               );
             })()}
             
-            {/* Modern Policy Header */}
-            <div className="mb-6">
-              {/* Top Bar with Actions */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  {product?.icon && (
-                    <div className="p-2.5 bg-muted rounded-lg">
-                      <product.icon className="h-6 w-6 text-foreground" />
-                    </div>
-                  )}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-xl font-semibold">
-                        {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                      </h1>
-                      <div className="px-2 py-0.5 border-2 border-foreground rounded text-sm font-bold font-mono">
-                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {(() => {
-                        const typeMap: Record<string, string> = {
-                          'aca': 'Health Insurance (ACA)',
-                          'medicare': 'Medicare',
-                          'medicaid': 'Medicaid',
-                          'supplemental': 'Supplemental',
-                          'life': 'Life Insurance',
-                          'dental': 'Dental Insurance',
-                          'vision': 'Vision Insurance',
-                          'private': 'Private Insurance',
-                          'annuities': 'Annuities',
-                          'final_expense': 'Final Expense',
-                          'travel': 'Travel Insurance'
-                        };
-                        return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
-                      })()} • Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
+            {/* Premium Hero Header */}
+            <div className="relative mb-8 -mx-6 -mt-6 px-6 pt-6 pb-8 bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/20 border-b">
+              {/* Decorative Elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/5 to-transparent rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-500/5 to-transparent rounded-full blur-2xl" />
+              
+              {/* Main Header Content */}
+              <div className="relative">
+                {/* Top Actions Bar */}
+                <div className="flex items-center justify-end gap-2 mb-6">
                   {viewingQuote.productType === 'aca' && (() => {
                     const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
                     const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
@@ -7878,16 +7848,13 @@ export default function PoliciesPage() {
                       return (
                         <Button 
                           variant="default" 
-                          size="sm" 
+                          size="sm"
+                          className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25"
                           data-testid="button-search-plans"
                           onClick={() => {
                             const missingFields = validateMarketplaceData();
                             if (missingFields.length > 0) {
-                              toast({
-                                title: "Missing Required Data",
-                                description: `Cannot search: ${missingFields.join(', ')}`,
-                                variant: "destructive",
-                              });
+                              toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
                             } else {
                               setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
                             }
@@ -7900,17 +7867,17 @@ export default function PoliciesPage() {
                     }
                     return null;
                   })()}
-                  <Button variant="outline" size="sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
+                  <Button variant="outline" size="sm" className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
                     <Plus className="h-4 w-4 mr-1.5" />
                     Add Plan
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-options">
+                      <Button variant="outline" size="icon" className="h-8 w-8 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm" data-testid="button-options">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
                         <Lock className="h-4 w-4 mr-2" />
                         {viewingQuote.isBlocked ? 'Unblock' : 'Block'} Policy
@@ -7939,100 +7906,135 @@ export default function PoliciesPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>
 
-              {/* Client Information Grid - Inline Editable */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Contact & Personal Info Card */}
-                <Card className="shadow-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Personal Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-3">
-                    <div className="space-y-0.5">
-                      <label className="text-xs text-muted-foreground">Phone</label>
-                      <div className="flex items-center gap-1.5 group">
-                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-sm font-medium">{viewingQuote.clientPhone || 'N/A'}</span>
+                {/* Client Name & Year Badge */}
+                <div className="flex items-start gap-4 mb-6">
+                  {product?.icon && (
+                    <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl border border-primary/10 shadow-lg shadow-primary/5">
+                      <product.icon className="h-10 w-10 text-primary" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                      </h1>
+                      <div className="px-3 py-1 bg-foreground text-background rounded-lg text-lg font-bold font-mono shadow-lg">
+                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
                       </div>
                     </div>
-                    <div className="space-y-0.5">
-                      <label className="text-xs text-muted-foreground">Email</label>
-                      <div className="flex items-center gap-1.5 group">
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-sm font-medium truncate">{viewingQuote.clientEmail || 'N/A'}</span>
-                      </div>
-                    </div>
-                    <div className="space-y-0.5">
-                      <label className="text-xs text-muted-foreground">Date of Birth</label>
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                          {viewingQuote.clientDateOfBirth ? (
-                            <>
-                              {formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy")}
-                              <span className="text-muted-foreground ml-1">({calculateAge(viewingQuote.clientDateOfBirth)} yrs)</span>
-                            </>
-                          ) : 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-0.5">
-                      <label className="text-xs text-muted-foreground">Gender</label>
-                      <div className="flex items-center gap-1.5">
-                        <User className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                          {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-0.5 col-span-2">
-                      <label className="text-xs text-muted-foreground">SSN</label>
-                      <div className="flex items-center gap-1.5">
-                        <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-sm font-medium font-mono">{viewingQuote.clientSsn || 'N/A'}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <p className="text-base text-muted-foreground mt-1">
+                      {(() => {
+                        const typeMap: Record<string, string> = {
+                          'aca': 'Health Insurance (ACA)',
+                          'medicare': 'Medicare',
+                          'medicaid': 'Medicaid',
+                          'supplemental': 'Supplemental',
+                          'life': 'Life Insurance',
+                          'dental': 'Dental Insurance',
+                          'vision': 'Vision Insurance',
+                          'private': 'Private Insurance',
+                          'annuities': 'Annuities',
+                          'final_expense': 'Final Expense',
+                          'travel': 'Travel Insurance'
+                        };
+                        return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
+                      })()} • Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
+                    </p>
+                  </div>
+                </div>
 
-                {/* Address Card */}
-                <Card className="shadow-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Address
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="space-y-0.5">
-                      <label className="text-xs text-muted-foreground">Physical Address</label>
-                      <p className="text-sm font-medium">
-                        {viewingQuote.physical_street}
-                        {viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                        {viewingQuote.physical_county && ` • ${viewingQuote.physical_county} County`}
-                      </p>
-                    </div>
-                    {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
-                      <div className="space-y-0.5 pt-2 border-t">
-                        <label className="text-xs text-muted-foreground">Mailing Address</label>
-                        <p className="text-sm font-medium">
-                          {viewingQuote.mailing_street}
-                          {viewingQuote.mailing_address_line_2 && `, ${viewingQuote.mailing_address_line_2}`}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
-                        </p>
+                {/* Client Info Cards - Glass Morphism Style */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Personal Information Card */}
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-xl border border-white/50 dark:border-slate-700/50 shadow-xl shadow-black/5 p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-2 bg-blue-500/10 rounded-lg">
+                          <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h3 className="font-semibold text-sm">Personal Information</h3>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Phone</p>
+                          <p className="text-sm font-semibold flex items-center gap-2">
+                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                            {viewingQuote.clientPhone || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Email</p>
+                          <p className="text-sm font-semibold flex items-center gap-2 truncate">
+                            <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="truncate">{viewingQuote.clientEmail || 'N/A'}</span>
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Date of Birth</p>
+                          <p className="text-sm font-semibold flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                            {viewingQuote.clientDateOfBirth ? (
+                              <>{formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy")} <span className="text-muted-foreground font-normal">({calculateAge(viewingQuote.clientDateOfBirth)} yrs)</span></>
+                            ) : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Gender</p>
+                          <p className="text-sm font-semibold">
+                            {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="space-y-1 col-span-2">
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">SSN</p>
+                          <p className="text-sm font-semibold font-mono flex items-center gap-2">
+                            <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
+                            {viewingQuote.clientSsn || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address Card */}
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-xl border border-white/50 dark:border-slate-700/50 shadow-xl shadow-black/5 p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg">
+                          <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <h3 className="font-semibold text-sm">Address</h3>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Physical Address</p>
+                          <p className="text-sm font-semibold">
+                            {viewingQuote.physical_street}
+                            {viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                            {viewingQuote.physical_county && ` • ${viewingQuote.physical_county} County`}
+                          </p>
+                        </div>
+                        {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
+                          <div className="space-y-1 pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
+                            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Mailing Address</p>
+                            <p className="text-sm font-semibold">
+                              {viewingQuote.mailing_street}
+                              {viewingQuote.mailing_address_line_2 && `, ${viewingQuote.mailing_address_line_2}`}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
