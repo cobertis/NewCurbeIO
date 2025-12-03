@@ -7853,7 +7853,9 @@ export default function PoliciesPage() {
                         <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 bg-muted/80">
                           {product?.name || viewingQuote.productType || 'Policy'}
                         </Badge>
-                        <span className="text-sm font-semibold text-foreground font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</span>
+                        <Badge className="text-sm font-bold font-mono px-3 py-1 bg-primary text-primary-foreground shadow-sm">
+                          {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+                        </Badge>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
