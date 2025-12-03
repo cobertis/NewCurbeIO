@@ -2241,6 +2241,7 @@ export const policies = pgTable("policies", {
   status: text("status").notNull().default("new"),
   documentsStatus: text("documents_status").notNull().default("pending"), // pending, processing, declined, completed
   paymentStatus: text("payment_status").notNull().default("pending"), // pending, auto_pay, failed, paid, not_applicable
+  consentStatus: text("consent_status").notNull().default("not_sent"), // not_sent, sent, signed, failed
   
   // Additional Information
   notes: text("notes"),

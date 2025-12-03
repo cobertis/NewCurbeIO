@@ -17230,6 +17230,51 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.companyId) { dashboardCache.invalidateCompany(currentUser.companyId); }
 
 
+      // AUTOMATIC CONSENT: Create and send consent document via SMS
+      try {
+        // Create consent document
+        const consent = await storage.createPolicyConsentDocument(policy.id, currentUser.companyId!, currentUser.id);
+        console.log(`[POLICY CREATION] Created consent document ${consent.id} for policy ${policy.id}`);
+        
+        // Send consent via SMS if client has phone number
+        if (policy.clientPhone) {
+          const baseUrl = process.env.APP_URL || 'http://localhost:5000';
+          const consentUrl = `${baseUrl}/consent/${consent.token}`;
+          
+          // Get company name for the message
+          const company = await storage.getCompany(currentUser.companyId!);
+          const companyName = company?.name || 'Your Insurance Agent';
+          const clientName = policy.clientFirstName || '';
+          
+          // Determine language based on client preference
+          const isSpanish = policy.clientPreferredLanguage === 'spanish' || policy.clientPreferredLanguage === 'es';
+          
+          const smsMessage = isSpanish
+            ? `Hola ${clientName}, ${companyName} le ha enviado un formulario de consentimiento para su inscripción de seguro de salud. Por favor revise y firme: ${consentUrl}`
+            : `Hi ${clientName}, ${companyName} has sent you a consent form for your health insurance enrollment. Please review and sign: ${consentUrl}`;
+          
+          try {
+            await twilioService.sendSMS(policy.clientPhone, smsMessage, currentUser.companyId);
+            
+            // Update consent status to sent
+            await db.update(policies).set({ consentStatus: 'sent' }).where(eq(policies.id, policy.id));
+            
+            // Create consent event
+            await storage.createPolicyConsentEvent(consent.id, 'sent', { channel: 'sms', target: policy.clientPhone }, currentUser.id);
+            await storage.createPolicyConsentEvent(consent.id, 'delivered', { channel: 'sms', target: policy.clientPhone }, currentUser.id);
+            
+            console.log(`[POLICY CREATION] Consent SMS sent to ${policy.clientPhone} for policy ${policy.id}`);
+          } catch (smsError: any) {
+            console.error(`[POLICY CREATION] Failed to send consent SMS:`, smsError);
+            await db.update(policies).set({ consentStatus: 'failed' }).where(eq(policies.id, policy.id));
+            await storage.createPolicyConsentEvent(consent.id, 'failed', { channel: 'sms', target: policy.clientPhone, error: smsError.message }, currentUser.id);
+          }
+        }
+      } catch (consentError: any) {
+        console.error(`[POLICY CREATION] Failed to create consent document:`, consentError);
+        // Don't fail the policy creation if consent fails
+      }
+
       res.status(201).json({ policy });
     } catch (error: any) {
       console.error("Error creating policy:", error);

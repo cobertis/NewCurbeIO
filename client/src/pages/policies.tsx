@@ -7592,6 +7592,29 @@ export default function PoliciesPage() {
                       }}
                     />
                   </div>
+
+                  {/* Consent Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Consent status:</span>
+                    <Badge 
+                      variant={
+                        viewingQuote.consentStatus === 'signed' ? 'default' :
+                        viewingQuote.consentStatus === 'sent' ? 'secondary' :
+                        viewingQuote.consentStatus === 'failed' ? 'destructive' :
+                        'outline'
+                      }
+                      className={
+                        viewingQuote.consentStatus === 'signed' ? 'bg-green-600 hover:bg-green-700' :
+                        viewingQuote.consentStatus === 'sent' ? 'bg-blue-600 hover:bg-blue-700 text-white' :
+                        ''
+                      }
+                    >
+                      {viewingQuote.consentStatus === 'signed' ? 'Signed' :
+                       viewingQuote.consentStatus === 'sent' ? 'Sent' :
+                       viewingQuote.consentStatus === 'failed' ? 'Failed' :
+                       'Not Sent'}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="pb-3 border-b">
