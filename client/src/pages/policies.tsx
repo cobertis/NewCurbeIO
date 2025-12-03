@@ -8904,9 +8904,25 @@ export default function PoliciesPage() {
                           </div>
                           <div>
                             <span className="text-muted-foreground">SSN:</span>
-                            <p className="font-mono font-medium">
-                              {viewingQuote.clientSsn || 'N/A'}
-                            </p>
+                            <div className="flex items-center gap-1">
+                              <p className="font-mono font-medium">
+                                {viewingQuote.clientSsn ? displaySSN(viewingQuote.clientSsn, ssnVisible) : 'N/A'}
+                              </p>
+                              {viewingQuote.clientSsn && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSsnVisible(!ssnVisible)}
+                                  className="p-0.5 rounded hover:bg-muted transition-colors"
+                                  data-testid="button-toggle-ssn-primary"
+                                >
+                                  {ssnVisible ? (
+                                    <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                  ) : (
+                                    <Eye className="h-3 w-3 text-muted-foreground" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Immigration:</span>
@@ -8997,9 +9013,25 @@ export default function PoliciesPage() {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">SSN:</span>
-                                <p className="font-mono font-medium">
-                                  {spouse.ssn || 'N/A'}
-                                </p>
+                                <div className="flex items-center gap-1">
+                                  <p className="font-mono font-medium">
+                                    {spouse.ssn ? displaySSN(spouse.ssn, ssnVisible) : 'N/A'}
+                                  </p>
+                                  {spouse.ssn && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSsnVisible(!ssnVisible)}
+                                      className="p-0.5 rounded hover:bg-muted transition-colors"
+                                      data-testid={`button-toggle-ssn-spouse-${index}`}
+                                    >
+                                      {ssnVisible ? (
+                                        <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                      ) : (
+                                        <Eye className="h-3 w-3 text-muted-foreground" />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Immigration:</span>
@@ -9106,9 +9138,25 @@ export default function PoliciesPage() {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">SSN:</span>
-                                <p className="font-mono font-medium">
-                                  {dependent.ssn || 'N/A'}
-                                </p>
+                                <div className="flex items-center gap-1">
+                                  <p className="font-mono font-medium">
+                                    {dependent.ssn ? displaySSN(dependent.ssn, ssnVisible) : 'N/A'}
+                                  </p>
+                                  {dependent.ssn && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSsnVisible(!ssnVisible)}
+                                      className="p-0.5 rounded hover:bg-muted transition-colors"
+                                      data-testid={`button-toggle-ssn-dependent-${index}`}
+                                    >
+                                      {ssnVisible ? (
+                                        <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                      ) : (
+                                        <Eye className="h-3 w-3 text-muted-foreground" />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Immigration:</span>
