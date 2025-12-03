@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, MoreVertical, Send, Printer, Save, Lock, Folder as FolderIcon } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, EyeOff, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, MoreVertical, Send, Printer, Save, Lock, Folder as FolderIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
 import { useForm, useFieldArray, useController } from "react-hook-form";
@@ -4378,6 +4378,9 @@ export default function PoliciesPage() {
   const [remindersSheetOpen, setRemindersSheetOpen] = useState(false);
   const [selectedReminder, setSelectedReminder] = useState<QuoteReminder | null>(null);
   const [reminderFormOpen, setReminderFormOpen] = useState(false);
+  
+  // SSN visibility toggle state (for member card)
+  const [ssnVisible, setSsnVisible] = useState(false);
   const [filterReminderStatus, setFilterReminderStatus] = useState<string>('all');
   const [filterReminderPriority, setFilterReminderPriority] = useState<string>('all');
   const [searchReminders, setSearchReminders] = useState("");
@@ -7837,18 +7840,18 @@ export default function PoliciesPage() {
                 
                 {/* LEFT: Member Card */}
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 translate-y-1 blur-sm opacity-50" />
-                  <div className="relative rounded-2xl bg-gradient-to-br from-slate-50 via-white to-stone-50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-slate-200/80 dark:border-slate-700 overflow-hidden shadow-xl h-full flex flex-col">
+                  <div className="absolute inset-0 rounded-2xl bg-muted/50 translate-y-1 blur-sm" />
+                  <div className="relative rounded-2xl bg-card border border-border overflow-hidden shadow-lg h-full flex flex-col">
                     
                     {/* Card Header Band */}
-                    <div className="bg-slate-800 dark:bg-slate-900 px-5 py-3 flex items-center justify-between">
+                    <div className="bg-foreground px-5 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-                          <User className="h-4 w-4 text-white" />
+                        <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-background" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Member Card</p>
-                          <p className="text-white font-semibold text-sm">
+                          <p className="text-[10px] font-medium text-background/60 uppercase tracking-widest">Member Card</p>
+                          <p className="text-background font-semibold text-sm">
                             {(() => {
                               const typeMap: Record<string, string> = {
                                 'aca': 'Health Insurance',
@@ -7869,50 +7872,66 @@ export default function PoliciesPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Year</p>
-                        <p className="text-white font-bold text-xl font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</p>
+                        <p className="text-[10px] font-medium text-background/60 uppercase tracking-widest">Year</p>
+                        <p className="text-background font-bold text-xl font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</p>
                       </div>
                     </div>
 
                     {/* Card Body */}
-                    <div className="p-4 flex-1">
+                    <div className="p-4 flex-1 bg-card">
                       {/* Member Name Row */}
-                      <div className="flex items-start justify-between mb-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-start justify-between mb-3 pb-3 border-b border-border">
                         <div>
-                          <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Member</p>
-                          <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-0.5">Member</p>
+                          <h1 className="text-lg font-bold text-foreground tracking-tight">
                             {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                           </h1>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Internal Code</p>
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">{viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
+                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest mb-0.5">Internal Code</p>
+                          <p className="text-xs font-bold text-foreground font-mono">{viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
                         </div>
                       </div>
 
                       {/* Info Grid - Compact */}
-                      <div className="grid grid-cols-4 gap-3 mb-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                      <div className="grid grid-cols-4 gap-3 mb-3 pb-3 border-b border-border">
                         <div>
-                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">DOB</p>
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">DOB</p>
+                          <p className="text-xs font-semibold text-foreground">
                             {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yy") : '—'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">Sex</p>
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Sex</p>
+                          <p className="text-xs font-semibold text-foreground">
                             {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() : '—'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">SSN</p>
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 font-mono">
-                            {viewingQuote.clientSsn ? `***${viewingQuote.clientSsn.slice(-4)}` : '—'}
-                          </p>
+                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">SSN</p>
+                          <div className="flex items-center gap-1">
+                            <p className="text-xs font-semibold text-foreground font-mono" data-testid="text-ssn-display">
+                              {displaySSN(viewingQuote.clientSsn, ssnVisible)}
+                            </p>
+                            {viewingQuote.clientSsn && (
+                              <button
+                                type="button"
+                                onClick={() => setSsnVisible(!ssnVisible)}
+                                className="p-0.5 rounded hover:bg-muted transition-colors"
+                                data-testid="button-toggle-ssn"
+                              >
+                                {ssnVisible ? (
+                                  <EyeOff className="h-3 w-3 text-muted-foreground" />
+                                ) : (
+                                  <Eye className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div>
-                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">Effective</p>
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                          <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Effective</p>
+                          <p className="text-xs font-semibold text-foreground">
                             {formatDateForDisplay(policyInfo.effectiveDate, "MM/dd/yy")}
                           </p>
                         </div>
@@ -7921,15 +7940,15 @@ export default function PoliciesPage() {
                       {/* Contact & Address - Compact */}
                       <div className="space-y-1.5 text-xs">
                         <div className="flex items-center gap-2">
-                          <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                          <span className="text-slate-700 dark:text-slate-300">{viewingQuote.clientPhone || '—'}</span>
-                          <span className="text-slate-300 dark:text-slate-600">|</span>
-                          <Mail className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                          <span className="text-slate-700 dark:text-slate-300 truncate">{viewingQuote.clientEmail || '—'}</span>
+                          <Phone className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-foreground">{viewingQuote.clientPhone || '—'}</span>
+                          <span className="text-muted-foreground/50">|</span>
+                          <Mail className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-foreground truncate">{viewingQuote.clientEmail || '—'}</span>
                         </div>
                         <div className="flex items-start gap-2">
-                          <MapPin className="h-3 w-3 text-slate-400 mt-0.5 flex-shrink-0" />
-                          <span className="text-slate-600 dark:text-slate-400">
+                          <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">
                             {viewingQuote.physical_street}, {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
                           </span>
                         </div>
@@ -7937,7 +7956,7 @@ export default function PoliciesPage() {
                     </div>
 
                     {/* Card Footer */}
-                    <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-2.5 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 mt-auto">
+                    <div className="bg-muted/50 px-4 py-2.5 flex items-center justify-between border-t border-border mt-auto">
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
                           <Plus className="h-3 w-3 mr-1" />
@@ -7984,18 +8003,18 @@ export default function PoliciesPage() {
 
                 {/* RIGHT: Insurance Plans Card */}
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 translate-y-1 blur-sm opacity-50" />
-                  <div className="relative rounded-2xl bg-gradient-to-br from-slate-50 via-white to-stone-50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-slate-200/80 dark:border-slate-700 overflow-hidden shadow-xl h-full flex flex-col">
+                  <div className="absolute inset-0 rounded-2xl bg-muted/50 translate-y-1 blur-sm" />
+                  <div className="relative rounded-2xl bg-card border border-border overflow-hidden shadow-lg h-full flex flex-col">
                     
                     {/* Header */}
-                    <div className="bg-slate-800 dark:bg-slate-900 px-5 py-3 flex items-center justify-between">
+                    <div className="bg-foreground px-5 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-                          <Shield className="h-4 w-4 text-white" />
+                        <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center">
+                          <Shield className="h-4 w-4 text-background" />
                         </div>
                         <div>
-                          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Coverage</p>
-                          <p className="text-white font-semibold text-sm">Insurance Plans</p>
+                          <p className="text-[10px] font-medium text-background/60 uppercase tracking-widest">Coverage</p>
+                          <p className="text-background font-semibold text-sm">Insurance Plans</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -8007,7 +8026,7 @@ export default function PoliciesPage() {
                               <Button 
                                 size="sm"
                                 variant="secondary"
-                                className="h-7 text-xs bg-white/10 hover:bg-white/20 text-white border-0"
+                                className="h-7 text-xs bg-background/10 hover:bg-background/20 text-background border-0"
                                 data-testid="button-search-plans"
                                 onClick={() => {
                                   const missingFields = validateMarketplaceData();
@@ -8029,18 +8048,18 @@ export default function PoliciesPage() {
                     </div>
 
                     {/* Plans Body */}
-                    <div className="p-4 flex-1 overflow-y-auto">
+                    <div className="p-4 flex-1 overflow-y-auto bg-card">
                       {(() => {
                         const plans = quoteDetail?.plans || [];
                         
                         if (plans.length === 0) {
                           return (
                             <div className="flex flex-col items-center justify-center h-full py-8 text-center">
-                              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-3">
-                                <Shield className="h-6 w-6 text-slate-400" />
+                              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                                <Shield className="h-6 w-6 text-muted-foreground" />
                               </div>
-                              <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">No Plans Added</p>
-                              <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">Search or add a plan manually</p>
+                              <p className="text-sm font-medium text-foreground mb-1">No Plans Added</p>
+                              <p className="text-xs text-muted-foreground mb-4">Search or add a plan manually</p>
                               <div className="flex items-center gap-2">
                                 {viewingQuote.productType === 'aca' && (() => {
                                   const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
@@ -8097,11 +8116,11 @@ export default function PoliciesPage() {
                               const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
                               
                               return (
-                                <div key={policyPlan.id || index} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50">
+                                <div key={policyPlan.id || index} className="p-3 rounded-lg border border-border bg-background/50">
                                   <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{plan.name || plan.issuer?.name || 'Insurance Plan'}</p>
-                                      <p className="text-[10px] text-slate-400 font-mono">{plan.id || 'N/A'}</p>
+                                      <p className="text-xs font-semibold text-foreground truncate">{plan.name || plan.issuer?.name || 'Insurance Plan'}</p>
+                                      <p className="text-[10px] text-muted-foreground font-mono">{plan.id || 'N/A'}</p>
                                     </div>
                                     <div className="flex items-center gap-1.5 ml-2">
                                       <Badge variant="outline" className="text-[10px] h-5">{plan.metal_level || 'N/A'}</Badge>
@@ -8109,17 +8128,17 @@ export default function PoliciesPage() {
                                     </div>
                                   </div>
                                   <div className="grid grid-cols-3 gap-2 text-center">
-                                    <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700/50">
-                                      <p className="text-[9px] text-slate-400 uppercase">Premium</p>
-                                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(premium)}<span className="text-[9px] font-normal text-slate-400">/mo</span></p>
+                                    <div className="p-1.5 rounded bg-muted">
+                                      <p className="text-[9px] text-muted-foreground uppercase">Premium</p>
+                                      <p className="text-sm font-bold text-foreground">{formatCurrency(premium)}<span className="text-[9px] font-normal text-muted-foreground">/mo</span></p>
                                     </div>
-                                    <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700/50">
-                                      <p className="text-[9px] text-slate-400 uppercase">Deductible</p>
-                                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(mainDeductible?.amount)}</p>
+                                    <div className="p-1.5 rounded bg-muted">
+                                      <p className="text-[9px] text-muted-foreground uppercase">Deductible</p>
+                                      <p className="text-sm font-bold text-foreground">{formatCurrency(mainDeductible?.amount)}</p>
                                     </div>
-                                    <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700/50">
-                                      <p className="text-[9px] text-slate-400 uppercase">Max OOP</p>
-                                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(outOfPocketMax)}</p>
+                                    <div className="p-1.5 rounded bg-muted">
+                                      <p className="text-[9px] text-muted-foreground uppercase">Max OOP</p>
+                                      <p className="text-sm font-bold text-foreground">{formatCurrency(outOfPocketMax)}</p>
                                     </div>
                                   </div>
                                 </div>
@@ -8131,8 +8150,8 @@ export default function PoliciesPage() {
                     </div>
 
                     {/* Footer */}
-                    <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-2.5 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 mt-auto">
-                      <span className="text-[10px] text-slate-400">{(quoteDetail?.plans || []).length} plan(s)</span>
+                    <div className="bg-muted/50 px-4 py-2.5 flex items-center justify-between border-t border-border mt-auto">
+                      <span className="text-[10px] text-muted-foreground">{(quoteDetail?.plans || []).length} plan(s)</span>
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)}>
                         <Plus className="h-3 w-3 mr-1" />
                         Add Plan
