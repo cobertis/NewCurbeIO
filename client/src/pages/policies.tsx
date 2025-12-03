@@ -7831,45 +7831,38 @@ export default function PoliciesPage() {
               );
             })()}
             
-            {/* Ultra-Modern Bento Hero */}
-            <div className="relative mb-8 -mx-6 -mt-6">
-              {/* Animated Mesh Gradient Background */}
-              <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-violet-400/20 via-fuchsia-300/15 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-                <div className="absolute top-1/2 -left-32 w-80 h-80 bg-gradient-to-tr from-cyan-400/15 via-blue-300/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
-                <div className="absolute -bottom-16 right-1/3 w-64 h-64 bg-gradient-to-tl from-emerald-400/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '12s', animationDelay: '4s' }} />
-              </div>
+            {/* Executive Dossier Header - Monochrome Corporate Design */}
+            <div className="relative mb-6 -mx-6 -mt-6 border-b border-border/40">
+              {/* Clean Background with subtle depth */}
+              <div className="absolute inset-0 bg-gradient-to-b from-muted/30 to-transparent" />
               
-              {/* Main Content */}
-              <div className="relative px-6 pt-6 pb-8">
-                {/* Top Row: Year Badge + Actions */}
-                <div className="flex items-center justify-between mb-8">
-                  {/* Giant Year Display */}
+              <div className="relative px-6 py-6">
+                {/* Top Bar: Policy Type + Year + Actions */}
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-2xl blur-lg opacity-40" />
-                      <div className="relative px-6 py-3 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-slate-100 rounded-2xl">
-                        <span className="text-4xl font-black tracking-tighter text-white dark:text-slate-900 font-mono">
-                          {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
-                        </span>
-                      </div>
+                    {/* Year Block - Monochrome */}
+                    <div className="px-4 py-2 bg-foreground text-background rounded-md">
+                      <span className="text-2xl font-bold font-mono tracking-tight">
+                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+                      </span>
                     </div>
-                    <div className="hidden sm:block">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Policy Year</p>
+                    <div className="h-8 w-px bg-border" />
+                    <div>
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em]">Policy Type</p>
                       <p className="text-sm font-semibold text-foreground">
                         {(() => {
                           const typeMap: Record<string, string> = {
-                            'aca': 'Health Insurance',
+                            'aca': 'Health Insurance (ACA)',
                             'medicare': 'Medicare',
                             'medicaid': 'Medicaid',
                             'supplemental': 'Supplemental',
                             'life': 'Life Insurance',
-                            'dental': 'Dental',
-                            'vision': 'Vision',
-                            'private': 'Private',
+                            'dental': 'Dental Insurance',
+                            'vision': 'Vision Insurance',
+                            'private': 'Private Insurance',
                             'annuities': 'Annuities',
                             'final_expense': 'Final Expense',
-                            'travel': 'Travel'
+                            'travel': 'Travel Insurance'
                           };
                           return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
                         })()}
@@ -7877,7 +7870,7 @@ export default function PoliciesPage() {
                     </div>
                   </div>
                   
-                  {/* Action Buttons */}
+                  {/* Action Buttons - Minimal */}
                   <div className="flex items-center gap-2">
                     {viewingQuote.productType === 'aca' && (() => {
                       const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
@@ -7886,7 +7879,7 @@ export default function PoliciesPage() {
                         return (
                           <Button 
                             size="sm"
-                            className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white border-0 shadow-lg shadow-violet-500/25"
+                            className="bg-foreground hover:bg-foreground/90 text-background"
                             data-testid="button-search-plans"
                             onClick={() => {
                               const missingFields = validateMarketplaceData();
@@ -7904,13 +7897,13 @@ export default function PoliciesPage() {
                       }
                       return null;
                     })()}
-                    <Button variant="outline" size="sm" className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border-white/40 dark:border-slate-700/40" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
+                    <Button variant="outline" size="sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
                       <Plus className="h-4 w-4 mr-1.5" />
                       Add Plan
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border-white/40 dark:border-slate-700/40" data-testid="button-options">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-options">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -7945,127 +7938,114 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
-                {/* Client Name - Massive Typography */}
-                <div className="mb-8">
-                  <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-foreground leading-none mb-2">
-                    {viewingQuote.clientFirstName}
-                    {viewingQuote.clientMiddleName && <span className="text-muted-foreground/50"> {viewingQuote.clientMiddleName.charAt(0)}.</span>}
-                    <span className="block sm:inline"> {viewingQuote.clientLastName}</span>
-                    {viewingQuote.clientSecondLastName && <span className="text-muted-foreground/60"> {viewingQuote.clientSecondLastName}</span>}
+                {/* Client Name - Large Clean Typography */}
+                <div className="mb-6">
+                  <h1 className="text-4xl font-bold tracking-tight text-foreground leading-tight">
+                    {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
                   </h1>
-                  <p className="text-lg text-muted-foreground font-medium">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMMM d, yyyy")}
                   </p>
                 </div>
 
-                {/* Bento Grid - Modern Card Layout */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  {/* Phone - Tall Card */}
-                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-blue-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-3 shadow-lg shadow-blue-500/30">
-                        <Phone className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Phone</p>
-                      <p className="text-sm font-bold text-foreground">{viewingQuote.clientPhone || 'Not provided'}</p>
+                {/* Data Grid - Clean Monochrome Layout */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-px bg-border/50 rounded-lg overflow-hidden">
+                  {/* Phone */}
+                  <div className="bg-background p-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Phone</span>
                     </div>
+                    <p className="text-sm font-semibold text-foreground">{viewingQuote.clientPhone || '—'}</p>
                   </div>
 
                   {/* Email */}
-                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-violet-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center mb-3 shadow-lg shadow-violet-500/30">
-                        <Mail className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Email</p>
-                      <p className="text-sm font-bold text-foreground truncate">{viewingQuote.clientEmail || 'Not provided'}</p>
+                  <div className="bg-background p-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Email</span>
                     </div>
+                    <p className="text-sm font-semibold text-foreground truncate">{viewingQuote.clientEmail || '—'}</p>
                   </div>
 
                   {/* Date of Birth */}
-                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-amber-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
-                        <Calendar className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Born</p>
-                      <p className="text-sm font-bold text-foreground">
-                        {viewingQuote.clientDateOfBirth ? (
-                          <>{formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM d, yyyy")}</>
-                        ) : 'N/A'}
-                      </p>
-                      {viewingQuote.clientDateOfBirth && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{calculateAge(viewingQuote.clientDateOfBirth)} years old</p>
-                      )}
+                  <div className="bg-background p-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Born</span>
                     </div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM d, yyyy") : '—'}
+                    </p>
+                    {viewingQuote.clientDateOfBirth && (
+                      <p className="text-xs text-muted-foreground">{calculateAge(viewingQuote.clientDateOfBirth)} yrs</p>
+                    )}
                   </div>
 
-                  {/* Gender & SSN Combined */}
-                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-emerald-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/30">
-                        <IdCard className="h-5 w-5 text-white" />
-                      </div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Identity</p>
-                      <p className="text-sm font-bold text-foreground">
-                        {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
-                      </p>
-                      <p className="text-xs font-mono text-muted-foreground mt-0.5">{viewingQuote.clientSsn || '---'}</p>
+                  {/* Gender */}
+                  <div className="bg-background p-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Gender</span>
                     </div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : '—'}
+                    </p>
                   </div>
 
-                  {/* Address - Wide Card spanning 2 columns */}
-                  <div className="col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-rose-500/15 to-transparent rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative flex gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-500/30">
-                        <MapPin className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Physical Address</p>
-                        <p className="text-sm font-bold text-foreground">
-                          {viewingQuote.physical_street}
-                          {viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
+                  {/* SSN */}
+                  <div className="bg-background p-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">SSN</span>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground font-mono">{viewingQuote.clientSsn || '—'}</p>
+                  </div>
+
+                  {/* Location */}
+                  <div className="bg-background p-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Location</span>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">{viewingQuote.physical_city}, {viewingQuote.physical_state}</p>
+                    {viewingQuote.physical_county && (
+                      <p className="text-xs text-muted-foreground">{viewingQuote.physical_county} County</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Address Section - Below Grid */}
+                <div className="mt-4 p-4 rounded-lg border border-border/50 bg-muted/20">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Physical Address */}
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Physical Address</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {viewingQuote.physical_street}
+                        {viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                      </p>
+                    </div>
+                    
+                    {/* Mailing Address - if different */}
+                    {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Mailing Address</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {viewingQuote.mailing_street}
+                          {viewingQuote.mailing_address_line_2 && `, ${viewingQuote.mailing_address_line_2}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                          {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
                         </p>
-                        {viewingQuote.physical_county && (
-                          <p className="text-xs text-muted-foreground/70 mt-0.5">{viewingQuote.physical_county} County</p>
-                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
-
-                  {/* Mailing Address - if different */}
-                  {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
-                    <div className="col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/60 dark:to-slate-800/30 backdrop-blur-2xl border border-white/40 dark:border-slate-700/40 p-4 hover:shadow-xl transition-all duration-500">
-                      <div className="relative flex gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-slate-500/20">
-                          <Mail className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Mailing Address</p>
-                          <p className="text-sm font-bold text-foreground">
-                            {viewingQuote.mailing_street}
-                            {viewingQuote.mailing_address_line_2 && `, ${viewingQuote.mailing_address_line_2}`}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
-              
-              {/* Subtle Bottom Border */}
-              <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
             </div>
 
             <div className="space-y-6">
