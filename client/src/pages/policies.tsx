@@ -7847,26 +7847,11 @@ export default function PoliciesPage() {
                   
                   {/* Card Content */}
                   <div className="pl-5 pr-4 py-4">
-                    {/* Top Row: Type Badge + Year + Actions */}
+                    {/* Top Row: Carrier/Product + Year + Actions */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 bg-muted/80">
-                          {(() => {
-                            const typeMap: Record<string, string> = {
-                              'aca': 'Health',
-                              'medicare': 'Medicare',
-                              'medicaid': 'Medicaid',
-                              'supplemental': 'Supplemental',
-                              'life': 'Life',
-                              'dental': 'Dental',
-                              'vision': 'Vision',
-                              'private': 'Private',
-                              'annuities': 'Annuities',
-                              'final_expense': 'Final Expense',
-                              'travel': 'Travel'
-                            };
-                            return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
-                          })()}
+                          {product?.name || viewingQuote.productType || 'Policy'}
                         </Badge>
                         <span className="text-sm font-semibold text-foreground font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</span>
                       </div>
