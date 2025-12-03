@@ -509,6 +509,7 @@ const familyMemberSchema = z.object({
   position: z.string().default(''),
   annualIncome: z.string().default(''),
   incomeFrequency: z.string().default('annually'), // weekly, biweekly, monthly, annually
+  incomeSource: z.string().default(''), // employment, self-employment, social-security, pension, unemployment, alimony, investment, rental, other
   selfEmployed: z.boolean().default(false),
   // Immigration fields
   immigrationStatus: z.string().default(''),
@@ -565,7 +566,15 @@ const step3Schema = z.object({
   dependents: z.array(dependentSchema).default([]),
 });
 
-const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema);
+const step4Schema = z.object({
+  // Primary applicant income
+  clientAnnualIncome: z.string().default(''),
+  clientIncomeFrequency: z.string().default('annually'),
+  clientIncomeSource: z.string().default(''),
+  clientEmployerName: z.string().default(''),
+});
+
+const completeQuoteSchema = step1Schema.merge(step2Schema).merge(step3Schema).merge(step4Schema);
 
 // Edit Addresses Sheet Component - Extracted outside to prevent recreation on each render
 interface EditAddressesSheetProps {
@@ -5550,6 +5559,11 @@ export default function PoliciesPage() {
       physical_postalCode: "",
       physical_county: "",
       physical_country: "United States",
+      // Step 4: Income fields
+      clientAnnualIncome: "",
+      clientIncomeFrequency: "annually",
+      clientIncomeSource: "",
+      clientEmployerName: "",
     },
   });
 
@@ -6144,11 +6158,13 @@ export default function PoliciesPage() {
       ]);
     } else if (currentStep === 3) {
       isValid = true; // Family members are optional
+    } else if (currentStep === 4) {
+      isValid = true; // Income fields are optional but collected
     }
 
-    if (isValid && currentStep < 3) {
+    if (isValid && currentStep < 4) {
       setCurrentStep(currentStep + 1);
-    } else if (isValid && currentStep === 3) {
+    } else if (isValid && currentStep === 4) {
       form.handleSubmit((data) => createQuoteMutation.mutate(data))();
     }
   };
@@ -6189,7 +6205,8 @@ export default function PoliciesPage() {
       position: "",
       annualIncome: "",
       selfEmployed: false,
-      incomeFrequency: "monthly",
+      incomeFrequency: "annually",
+      incomeSource: "",
       immigrationStatus: "",
       naturalizationNumber: "",
       uscisNumber: "",
@@ -6223,7 +6240,8 @@ export default function PoliciesPage() {
       position: "",
       annualIncome: "",
       selfEmployed: false,
-      incomeFrequency: "monthly",
+      incomeFrequency: "annually",
+      incomeSource: "",
       immigrationStatus: "",
       naturalizationNumber: "",
       uscisNumber: "",
@@ -6447,6 +6465,7 @@ export default function PoliciesPage() {
     { number: 1, title: "Policy Information", icon: FileText },
     { number: 2, title: "Personal Information & Address", icon: User },
     { number: 3, title: "Family Members", icon: Users },
+    { number: 4, title: "Household Income", icon: DollarSign },
   ];
 
   // Edit Payment Sheet Component
@@ -15092,6 +15111,405 @@ export default function PoliciesPage() {
                     ))}
                   </div>
                 )}
+
+                {/* Step 4: Household Income */}
+                {currentStep === 4 && (
+                  <div className="space-y-6 px-8">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <DollarSign className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold">Household Income</h3>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground">
+                        Please provide income information for each household member. This helps determine eligibility for subsidies and tax credits.
+                      </p>
+
+                      {/* Primary Applicant Income */}
+                      <Card className="border-l-4 border-l-primary">
+                        <CardHeader className="pb-4">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <User className="h-5 w-5" />
+                            {form.watch("clientFirstName") || "Primary Applicant"} {form.watch("clientLastName") || ""}
+                            <Badge variant="secondary" className="ml-2">Primary</Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="clientIncomeSource"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Income Source</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid="select-client-income-source">
+                                        <SelectValue placeholder="Select income source" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="employment">Employment (W-2)</SelectItem>
+                                      <SelectItem value="self-employment">Self-Employment</SelectItem>
+                                      <SelectItem value="social-security">Social Security</SelectItem>
+                                      <SelectItem value="pension">Pension/Retirement</SelectItem>
+                                      <SelectItem value="unemployment">Unemployment Benefits</SelectItem>
+                                      <SelectItem value="alimony">Alimony/Child Support</SelectItem>
+                                      <SelectItem value="investment">Investment Income</SelectItem>
+                                      <SelectItem value="rental">Rental Income</SelectItem>
+                                      <SelectItem value="disability">Disability Benefits</SelectItem>
+                                      <SelectItem value="no-income">No Income</SelectItem>
+                                      <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="clientIncomeFrequency"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Pay Frequency</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value || "annually"}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid="select-client-income-frequency">
+                                        <SelectValue placeholder="Select frequency" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="weekly">Weekly</SelectItem>
+                                      <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                                      <SelectItem value="monthly">Monthly</SelectItem>
+                                      <SelectItem value="annually">Annually</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="clientAnnualIncome"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    {form.watch("clientIncomeFrequency") === "weekly" ? "Weekly" : 
+                                     form.watch("clientIncomeFrequency") === "biweekly" ? "Bi-Weekly" :
+                                     form.watch("clientIncomeFrequency") === "monthly" ? "Monthly" : "Annual"} Income
+                                  </FormLabel>
+                                  <FormControl>
+                                    <div className="relative">
+                                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                      <Input 
+                                        {...field}
+                                        type="text"
+                                        placeholder="0.00"
+                                        className="pl-9"
+                                        data-testid="input-client-income"
+                                        onChange={(e) => {
+                                          const value = e.target.value.replace(/[^0-9.]/g, '');
+                                          field.onChange(value);
+                                        }}
+                                      />
+                                    </div>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          {(form.watch("clientIncomeSource") === "employment" || form.watch("clientIncomeSource") === "self-employment") && (
+                            <FormField
+                              control={form.control}
+                              name="clientEmployerName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>{form.watch("clientIncomeSource") === "self-employment" ? "Business Name" : "Employer Name"}</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field}
+                                      placeholder={form.watch("clientIncomeSource") === "self-employment" ? "Enter business name" : "Enter employer name"}
+                                      data-testid="input-client-employer"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* Spouse Income Cards */}
+                      {spouseFields.map((spouse, index) => (
+                        <Card key={spouse.id} className="border-l-4 border-l-blue-500">
+                          <CardHeader className="pb-4">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Users className="h-5 w-5" />
+                              {form.watch(`spouses.${index}.firstName`) || `Spouse ${index + 1}`} {form.watch(`spouses.${index}.lastName`) || ""}
+                              <Badge variant="outline" className="ml-2">Spouse</Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <FormField
+                                control={form.control}
+                                name={`spouses.${index}.incomeSource` as any}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Income Source</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                                      <FormControl>
+                                        <SelectTrigger data-testid={`select-spouse-income-source-${index}`}>
+                                          <SelectValue placeholder="Select income source" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="employment">Employment (W-2)</SelectItem>
+                                        <SelectItem value="self-employment">Self-Employment</SelectItem>
+                                        <SelectItem value="social-security">Social Security</SelectItem>
+                                        <SelectItem value="pension">Pension/Retirement</SelectItem>
+                                        <SelectItem value="unemployment">Unemployment Benefits</SelectItem>
+                                        <SelectItem value="alimony">Alimony/Child Support</SelectItem>
+                                        <SelectItem value="investment">Investment Income</SelectItem>
+                                        <SelectItem value="rental">Rental Income</SelectItem>
+                                        <SelectItem value="disability">Disability Benefits</SelectItem>
+                                        <SelectItem value="no-income">No Income</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name={`spouses.${index}.incomeFrequency` as any}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Pay Frequency</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value || "annually"}>
+                                      <FormControl>
+                                        <SelectTrigger data-testid={`select-spouse-income-frequency-${index}`}>
+                                          <SelectValue placeholder="Select frequency" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="weekly">Weekly</SelectItem>
+                                        <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                                        <SelectItem value="monthly">Monthly</SelectItem>
+                                        <SelectItem value="annually">Annually</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name={`spouses.${index}.annualIncome` as any}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>
+                                      {form.watch(`spouses.${index}.incomeFrequency`) === "weekly" ? "Weekly" : 
+                                       form.watch(`spouses.${index}.incomeFrequency`) === "biweekly" ? "Bi-Weekly" :
+                                       form.watch(`spouses.${index}.incomeFrequency`) === "monthly" ? "Monthly" : "Annual"} Income
+                                    </FormLabel>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input 
+                                          {...field}
+                                          type="text"
+                                          placeholder="0.00"
+                                          className="pl-9"
+                                          data-testid={`input-spouse-income-${index}`}
+                                          onChange={(e) => {
+                                            const value = e.target.value.replace(/[^0-9.]/g, '');
+                                            field.onChange(value);
+                                          }}
+                                        />
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {(form.watch(`spouses.${index}.incomeSource`) === "employment" || form.watch(`spouses.${index}.incomeSource`) === "self-employment") && (
+                              <FormField
+                                control={form.control}
+                                name={`spouses.${index}.employerName` as any}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>{form.watch(`spouses.${index}.incomeSource`) === "self-employment" ? "Business Name" : "Employer Name"}</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        {...field}
+                                        placeholder={form.watch(`spouses.${index}.incomeSource`) === "self-employment" ? "Enter business name" : "Enter employer name"}
+                                        data-testid={`input-spouse-employer-${index}`}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+
+                      {/* Dependent Income Cards (for dependents 18+) */}
+                      {dependentFields.map((dependent, index) => {
+                        const dob = form.watch(`dependents.${index}.dateOfBirth`);
+                        const age = dob ? Math.floor((new Date().getTime() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0;
+                        
+                        // Only show income fields for dependents 18 or older
+                        if (age < 18) return null;
+                        
+                        return (
+                          <Card key={dependent.id} className="border-l-4 border-l-green-500">
+                            <CardHeader className="pb-4">
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <User className="h-5 w-5" />
+                                {form.watch(`dependents.${index}.firstName`) || `Dependent ${index + 1}`} {form.watch(`dependents.${index}.lastName`) || ""}
+                                <Badge variant="outline" className="ml-2">Dependent (18+)</Badge>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField
+                                  control={form.control}
+                                  name={`dependents.${index}.incomeSource` as any}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Income Source</FormLabel>
+                                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                                        <FormControl>
+                                          <SelectTrigger data-testid={`select-dependent-income-source-${index}`}>
+                                            <SelectValue placeholder="Select income source" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="employment">Employment (W-2)</SelectItem>
+                                          <SelectItem value="self-employment">Self-Employment</SelectItem>
+                                          <SelectItem value="social-security">Social Security</SelectItem>
+                                          <SelectItem value="pension">Pension/Retirement</SelectItem>
+                                          <SelectItem value="unemployment">Unemployment Benefits</SelectItem>
+                                          <SelectItem value="alimony">Alimony/Child Support</SelectItem>
+                                          <SelectItem value="investment">Investment Income</SelectItem>
+                                          <SelectItem value="rental">Rental Income</SelectItem>
+                                          <SelectItem value="disability">Disability Benefits</SelectItem>
+                                          <SelectItem value="no-income">No Income</SelectItem>
+                                          <SelectItem value="other">Other</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name={`dependents.${index}.incomeFrequency` as any}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Pay Frequency</FormLabel>
+                                      <Select onValueChange={field.onChange} value={field.value || "annually"}>
+                                        <FormControl>
+                                          <SelectTrigger data-testid={`select-dependent-income-frequency-${index}`}>
+                                            <SelectValue placeholder="Select frequency" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="weekly">Weekly</SelectItem>
+                                          <SelectItem value="biweekly">Bi-Weekly</SelectItem>
+                                          <SelectItem value="monthly">Monthly</SelectItem>
+                                          <SelectItem value="annually">Annually</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name={`dependents.${index}.annualIncome` as any}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        {form.watch(`dependents.${index}.incomeFrequency`) === "weekly" ? "Weekly" : 
+                                         form.watch(`dependents.${index}.incomeFrequency`) === "biweekly" ? "Bi-Weekly" :
+                                         form.watch(`dependents.${index}.incomeFrequency`) === "monthly" ? "Monthly" : "Annual"} Income
+                                      </FormLabel>
+                                      <FormControl>
+                                        <div className="relative">
+                                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                          <Input 
+                                            {...field}
+                                            type="text"
+                                            placeholder="0.00"
+                                            className="pl-9"
+                                            data-testid={`input-dependent-income-${index}`}
+                                            onChange={(e) => {
+                                              const value = e.target.value.replace(/[^0-9.]/g, '');
+                                              field.onChange(value);
+                                            }}
+                                          />
+                                        </div>
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              {(form.watch(`dependents.${index}.incomeSource`) === "employment" || form.watch(`dependents.${index}.incomeSource`) === "self-employment") && (
+                                <FormField
+                                  control={form.control}
+                                  name={`dependents.${index}.employerName` as any}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>{form.watch(`dependents.${index}.incomeSource`) === "self-employment" ? "Business Name" : "Employer Name"}</FormLabel>
+                                      <FormControl>
+                                        <Input 
+                                          {...field}
+                                          placeholder={form.watch(`dependents.${index}.incomeSource`) === "self-employment" ? "Enter business name" : "Enter employer name"}
+                                          data-testid={`input-dependent-employer-${index}`}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+
+                      {/* No family members message */}
+                      {spouseFields.length === 0 && dependentFields.filter((_, index) => {
+                        const dob = form.watch(`dependents.${index}.dateOfBirth`);
+                        const age = dob ? Math.floor((new Date().getTime() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0;
+                        return age >= 18;
+                      }).length === 0 && (
+                        <p className="text-sm text-muted-foreground italic">
+                          No additional household members with income to report. Only dependents 18 years or older are required to provide income information.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 </div>
 
                 {/* Form Navigation */}
@@ -15107,7 +15525,7 @@ export default function PoliciesPage() {
                     Back
                   </Button>
                   
-                  {currentStep < 3 ? (
+                  {currentStep < 4 ? (
                     <Button
                       type="button"
                       onClick={handleNext}
