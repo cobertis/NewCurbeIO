@@ -7849,8 +7849,8 @@ export default function PoliciesPage() {
                   <div className="pl-5 pr-4 py-4">
                     {/* Top Row: Type Badge + Year + Actions */}
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2.5 py-0.5 bg-muted/80">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 bg-muted/80">
                           {(() => {
                             const typeMap: Record<string, string> = {
                               'aca': 'Health',
@@ -7868,11 +7868,11 @@ export default function PoliciesPage() {
                             return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
                           })()}
                         </Badge>
-                        <span className="text-lg font-semibold text-foreground font-mono tracking-tight">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</span>
+                        <span className="text-sm font-semibold text-foreground font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</span>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" data-testid="button-options">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" data-testid="button-options">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -7906,83 +7906,76 @@ export default function PoliciesPage() {
                       </DropdownMenu>
                     </div>
 
-                    {/* Member Info Hero */}
-                    <div className="flex items-start gap-4 mb-4 pb-4 border-b border-border/60">
-                      <Avatar className="h-14 w-14 ring-2 ring-border/50 shadow-sm">
-                        <AvatarFallback className="bg-muted text-foreground font-semibold text-base">
-                          {viewingQuote.clientFirstName?.[0]}{viewingQuote.clientLastName?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-xl font-semibold text-foreground tracking-tight leading-tight mb-1">
+                    {/* Member Info with Gender Avatar */}
+                    <div className="flex items-start gap-4">
+                      {/* Gender-based Avatar Silhouette */}
+                      <div className="h-16 w-16 rounded-full bg-gradient-to-b from-muted to-muted/60 flex items-center justify-center flex-shrink-0 ring-2 ring-border/30 shadow-inner">
+                        {viewingQuote.clientGender === 'male' ? (
+                          <svg viewBox="0 0 24 24" className="h-10 w-10 text-muted-foreground/70" fill="currentColor">
+                            <circle cx="12" cy="7" r="4" />
+                            <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
+                          </svg>
+                        ) : viewingQuote.clientGender === 'female' ? (
+                          <svg viewBox="0 0 24 24" className="h-10 w-10 text-muted-foreground/70" fill="currentColor">
+                            <circle cx="12" cy="6" r="3.5" />
+                            <path d="M12 12c-3.5 0-6.5 1.8-6.5 4v0.5c0 0.3 0.2 0.5 0.5 0.5h1l1 3h8l1-3h1c0.3 0 0.5-0.2 0.5-0.5V16c0-2.2-3-4-6.5-4z" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" className="h-10 w-10 text-muted-foreground/50" fill="currentColor">
+                            <circle cx="12" cy="7" r="4" />
+                            <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
+                          </svg>
+                        )}
+                      </div>
+                      
+                      {/* Member Details */}
+                      <div className="flex-1 min-w-0 space-y-2">
+                        {/* Full Name */}
+                        <h2 className="text-base font-semibold text-foreground leading-tight">
                           {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
                         </h2>
-                        <p className="text-xs text-muted-foreground font-mono">ID: {viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
-                      </div>
-                    </div>
-
-                    {/* Key Details Grid */}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-3 mb-4 pb-4 border-b border-border/60">
-                      <div>
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Date of Birth</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy") : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Sex</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {viewingQuote.clientGender ? (viewingQuote.clientGender === 'male' ? 'Male' : 'Female') : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">SSN</p>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium text-foreground font-mono" data-testid="text-ssn-display">
-                            {displaySSN(viewingQuote.clientSsn, ssnVisible)}
-                          </p>
-                          {viewingQuote.clientSsn && (
-                            <button
-                              type="button"
-                              onClick={() => setSsnVisible(!ssnVisible)}
-                              className="p-1 rounded-md hover:bg-muted transition-colors"
-                              data-testid="button-toggle-ssn"
-                            >
-                              {ssnVisible ? (
-                                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                              ) : (
-                                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                              )}
-                            </button>
-                          )}
+                        
+                        {/* Row 1: DOB + Sex */}
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground text-xs">DOB:</span>
+                            <span className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground text-xs">Sex:</span>
+                            <span className="font-medium">{viewingQuote.clientGender === 'male' ? 'M' : viewingQuote.clientGender === 'female' ? 'F' : '—'}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">Effective</p>
-                        <p className="text-sm font-medium text-foreground">
-                          {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Contact Information */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="flex items-center gap-2 text-foreground">
-                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>{viewingQuote.clientPhone || '—'}</span>
+                        
+                        {/* Row 2: SSN + Phone */}
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground text-xs">SSN:</span>
+                            <span className="font-medium font-mono" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</span>
+                            {viewingQuote.clientSsn && (
+                              <button
+                                type="button"
+                                onClick={() => setSsnVisible(!ssnVisible)}
+                                className="p-0.5 rounded hover:bg-muted transition-colors"
+                                data-testid="button-toggle-ssn"
+                              >
+                                {ssnVisible ? <EyeOff className="h-3 w-3 text-muted-foreground" /> : <Eye className="h-3 w-3 text-muted-foreground" />}
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            <span className="font-medium">{viewingQuote.clientPhone || '—'}</span>
+                          </div>
                         </div>
-                        <span className="text-border">|</span>
-                        <div className="flex items-center gap-2 text-foreground truncate">
-                          <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{viewingQuote.clientEmail || '—'}</span>
+                        
+                        {/* Row 3: Address */}
+                        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span className="leading-tight">
+                            {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ')}
+                          </span>
                         </div>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                        <span className="leading-snug">
-                          {viewingQuote.physical_street}, {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                        </span>
                       </div>
                     </div>
                   </div>
