@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, Send, Printer, Save, Lock, Folder as FolderIcon } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, MoreVertical, Send, Printer, Save, Lock, Folder as FolderIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
 import { useForm, useFieldArray, useController } from "react-hook-form";
@@ -7831,261 +7831,210 @@ export default function PoliciesPage() {
               );
             })()}
             
-            {/* Enhanced Header with Card Background */}
-            <Card className="mb-6 bg-muted/20">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      {product?.icon && (
-                        <div className="p-3 bg-primary/10 rounded-lg">
-                          <product.icon className="h-8 w-8 text-primary" />
-                        </div>
-                      )}
-                      <div>
-                        <h1 className="text-2xl font-bold mb-1">
-                          {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                          {' - '}
-                          {(() => {
-                            const typeMap: Record<string, string> = {
-                              'aca': 'Health Insurance (ACA)',
-                              'medicare': 'Medicare',
-                              'medicaid': 'Medicaid',
-                              'supplemental': 'Supplemental',
-                              'life': 'Life Insurance',
-                              'dental': 'Dental Insurance',
-                              'vision': 'Vision Insurance',
-                              'private': 'Private Insurance',
-                              'annuities': 'Annuities',
-                              'final_expense': 'Final Expense',
-                              'travel': 'Travel Insurance'
-                            };
-                            return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
-                          })()}
-                        </h1>
-                        
-                        {/* Quick Summary */}
-                        <div className="mt-3 space-y-2 text-sm">
-                          <div className="flex items-center gap-4 flex-wrap">
-                            <span className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              {viewingQuote.clientPhone || 'N/A'}
-                            </span>
-                            <span className="text-muted-foreground">|</span>
-                            <span className="flex items-center gap-2">
-                              <Mail className="h-4 w-4" />
-                              {viewingQuote.clientEmail || 'N/A'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 flex-wrap">
-                            <span className="flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
-                            </span>
-                            <span className="text-muted-foreground">|</span>
-                            <span className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4" />
-                              {viewingQuote.clientDateOfBirth ? (
-                                <>
-                                  {formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy")}
-                                  <span className="text-foreground/60">
-                                    ({calculateAge(viewingQuote.clientDateOfBirth) || 0} years)
-                                  </span>
-                                </>
-                              ) : 'N/A'}
-                            </span>
-                            <span className="text-muted-foreground">|</span>
-                            <span className="flex items-center gap-2 font-mono">
-                              <IdCard className="h-4 w-4" />
-                              {viewingQuote.clientSsn || 'N/A'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            {viewingQuote.physical_street}, {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                          </div>
-                        </div>
+            {/* Modern Policy Header */}
+            <div className="mb-6">
+              {/* Top Bar with Actions */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {product?.icon && (
+                    <div className="p-2.5 bg-muted rounded-lg">
+                      <product.icon className="h-6 w-6 text-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-xl font-semibold">
+                        {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                      </h1>
+                      <div className="px-2 py-0.5 border-2 border-foreground rounded text-sm font-bold font-mono">
+                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
                       </div>
                     </div>
+                    <p className="text-sm text-muted-foreground">
+                      {(() => {
+                        const typeMap: Record<string, string> = {
+                          'aca': 'Health Insurance (ACA)',
+                          'medicare': 'Medicare',
+                          'medicaid': 'Medicaid',
+                          'supplemental': 'Supplemental',
+                          'life': 'Life Insurance',
+                          'dental': 'Dental Insurance',
+                          'vision': 'Vision Insurance',
+                          'private': 'Private Insurance',
+                          'annuities': 'Annuities',
+                          'final_expense': 'Final Expense',
+                          'travel': 'Travel Insurance'
+                        };
+                        return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
+                      })()} • Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
+                    </p>
                   </div>
-                  <div className="flex flex-col items-end gap-3">
-                    {/* Quote Info */}
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">{product?.name || viewingQuote.productType}</span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
-                      </span>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      {viewingQuote.productType === 'aca' && (() => {
-                        // Normalize state to uppercase for consistent lookup
-                        const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                        const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                        
-                        // Show info message for state-based exchanges
-                        if (isStateBased) {
-                          const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
-                          return (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              data-testid="button-state-marketplace-info"
-                              onClick={() => {
-                                toast({
-                                  title: "State-Based Marketplace",
-                                  description: (
-                                    <div>
-                                      <p className="mb-2">
-                                        This policy is from <strong>{marketplaceName}</strong>, which uses a state-based exchange.
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        Please search for plans on the state's portal and add them manually using the "Add Plan Manually" button.
-                                      </p>
-                                    </div>
-                                  ),
-                                  duration: 5000,
-                                });
-                              }}
-                            >
-                              <Info className="h-4 w-4 mr-2" />
-                              State Marketplace ({policyState})
-                            </Button>
-                          );
-                        }
-                        
-                        // Federal marketplace - show search button
-                        return (
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            data-testid="button-search-plans"
-                            onClick={() => {
-                              const missingFields = validateMarketplaceData();
-                              if (missingFields.length > 0) {
-                                toast({
-                                  title: "Missing Required Data",
-                                  description: (
-                                    <div>
-                                      <p className="mb-2">Cannot search for plans because the following required data is missing:</p>
-                                      <ul className="list-disc pl-4 space-y-1">
-                                        {missingFields.map((field, index) => (
-                                          <li key={index}>{field}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  ),
-                                  variant: "destructive",
-                                });
-                              } else {
-                                setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
-                              }
-                            }}
-                          >
-                            Search plans
-                          </Button>
-                        );
-                      })()}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        data-testid="button-add-plan-manually"
-                        onClick={() => setManualPlanDialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Plan Manually
+                </div>
+                <div className="flex items-center gap-2">
+                  {viewingQuote.productType === 'aca' && (() => {
+                    const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                    const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                    if (!isStateBased) {
+                      return (
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          data-testid="button-search-plans"
+                          onClick={() => {
+                            const missingFields = validateMarketplaceData();
+                            if (missingFields.length > 0) {
+                              toast({
+                                title: "Missing Required Data",
+                                description: `Cannot search: ${missingFields.join(', ')}`,
+                                variant: "destructive",
+                              });
+                            } else {
+                              setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                            }
+                          }}
+                        >
+                          <Search className="h-4 w-4 mr-1.5" />
+                          Search Plans
+                        </Button>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <Button variant="outline" size="sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Add Plan
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-options">
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" data-testid="button-options">
-                            Options
-                            <ChevronDown className="h-4 w-4 ml-1" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            onClick={() => setBlockPolicyDialogOpen(true)}
-                          >
-                            <Lock className="h-4 w-4 mr-2" />
-                            {viewingQuote.isBlocked ? 'Unblock Policy' : 'Block Policy'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setRemindersSheetOpen(true);
-                            setSelectedReminder(null);
-                            setReminderFormOpen(true);
-                          }}>
-                            <Bell className="h-4 w-4 mr-2" />
-                            New Reminder
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            window.open(`/policies/${viewingQuote.id}/print`, '_blank');
-                          }}>
-                            <FileText className="h-4 w-4 mr-2" />
-                            Print Policy
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)}>
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel Policy
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
-                            <Archive className="h-4 w-4 mr-2" />
-                            Archive Policy
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            disabled={!viewingQuote.isArchived}
-                            onClick={async () => {
-                              if (!viewingQuote.isArchived) return;
-                              try {
-                                await apiRequest(`/api/policies/${viewingQuote.id}/archive`, {
-                                  method: "POST",
-                                  body: JSON.stringify({ isArchived: false }),
-                                });
-                                
-                                // Refresh policy details
-                                queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                                queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
-                                queryClient.invalidateQueries({ queryKey: ["/api/policies/stats"] });
-                                
-                                toast({
-                                  title: "Policy Unarchived",
-                                  description: "The policy has been unarchived successfully.",
-                                  duration: 3000,
-                                });
-                              } catch (error: any) {
-                                toast({
-                                  title: "Error",
-                                  description: error.message || "Failed to unarchive policy",
-                                  variant: "destructive",
-                                  duration: 3000,
-                                });
-                              }
-                            }}>
-                            <Archive className="h-4 w-4 mr-2" />
-                            Unarchive Policy
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
+                        <Lock className="h-4 w-4 mr-2" />
+                        {viewingQuote.isBlocked ? 'Unblock' : 'Block'} Policy
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setRemindersSheetOpen(true); setSelectedReminder(null); setReminderFormOpen(true); }}>
+                        <Bell className="h-4 w-4 mr-2" />
+                        New Reminder
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.open(`/policies/${viewingQuote.id}/print`, '_blank')}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Print Policy
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)} className="text-destructive">
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel Policy
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive Policy
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
 
-                    {/* Policy Year - IRS Style */}
-                    <div className="mt-2 flex items-center justify-end">
-                      <div className="inline-flex items-center justify-center border-2 border-foreground px-4 py-1.5 bg-background rounded-sm">
-                        <span className="text-2xl font-bold tracking-wide" style={{ fontFamily: 'monospace' }}>
-                          {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+              {/* Client Information Grid - Inline Editable */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Contact & Personal Info Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Personal Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-3">
+                    <div className="space-y-0.5">
+                      <label className="text-xs text-muted-foreground">Phone</label>
+                      <div className="flex items-center gap-1.5 group">
+                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm font-medium">{viewingQuote.clientPhone || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <label className="text-xs text-muted-foreground">Email</label>
+                      <div className="flex items-center gap-1.5 group">
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm font-medium truncate">{viewingQuote.clientEmail || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <label className="text-xs text-muted-foreground">Date of Birth</label>
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {viewingQuote.clientDateOfBirth ? (
+                            <>
+                              {formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy")}
+                              <span className="text-muted-foreground ml-1">({calculateAge(viewingQuote.clientDateOfBirth)} yrs)</span>
+                            </>
+                          ) : 'N/A'}
                         </span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    <div className="space-y-0.5">
+                      <label className="text-xs text-muted-foreground">Gender</label>
+                      <div className="flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm font-medium">
+                          {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5 col-span-2">
+                      <label className="text-xs text-muted-foreground">SSN</label>
+                      <div className="flex items-center gap-1.5">
+                        <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-sm font-medium font-mono">{viewingQuote.clientSsn || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Address Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Address
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-0.5">
+                      <label className="text-xs text-muted-foreground">Physical Address</label>
+                      <p className="text-sm font-medium">
+                        {viewingQuote.physical_street}
+                        {viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                        {viewingQuote.physical_county && ` • ${viewingQuote.physical_county} County`}
+                      </p>
+                    </div>
+                    {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
+                      <div className="space-y-0.5 pt-2 border-t">
+                        <label className="text-xs text-muted-foreground">Mailing Address</label>
+                        <p className="text-sm font-medium">
+                          {viewingQuote.mailing_street}
+                          {viewingQuote.mailing_address_line_2 && `, ${viewingQuote.mailing_address_line_2}`}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
 
             <div className="space-y-6">
 
