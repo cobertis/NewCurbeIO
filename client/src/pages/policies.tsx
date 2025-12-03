@@ -7831,73 +7831,160 @@ export default function PoliciesPage() {
               );
             })()}
             
-            {/* Premium Slate Header - Refined Modern Design */}
-            <div className="relative mb-6 -mx-6 -mt-6">
-              {/* Layered Background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-stone-50/80 via-white to-slate-50/50 dark:from-slate-900/80 dark:via-slate-900 dark:to-slate-800/50" />
-              
-              <div className="relative px-6 pt-5 pb-6">
-                {/* Top Row: Year + Type + Actions */}
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl font-semibold text-slate-800 dark:text-slate-100 font-mono tabular-nums">
-                      {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
-                    </span>
-                    <span className="text-slate-300 dark:text-slate-600">|</span>
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {(() => {
-                        const typeMap: Record<string, string> = {
-                          'aca': 'Health Insurance',
-                          'medicare': 'Medicare',
-                          'medicaid': 'Medicaid',
-                          'supplemental': 'Supplemental',
-                          'life': 'Life',
-                          'dental': 'Dental',
-                          'vision': 'Vision',
-                          'private': 'Private',
-                          'annuities': 'Annuities',
-                          'final_expense': 'Final Expense',
-                          'travel': 'Travel'
-                        };
-                        return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
-                      })()}
-                    </span>
-                  </div>
+            {/* Insurance Card Style Header */}
+            <div className="mb-6 -mx-6 -mt-6 p-6">
+              {/* Insurance Card Container */}
+              <div className="relative max-w-4xl mx-auto">
+                {/* Card Shadow Layer */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 translate-y-1 blur-sm opacity-50" />
+                
+                {/* Main Card */}
+                <div className="relative rounded-2xl bg-gradient-to-br from-slate-50 via-white to-stone-50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-slate-200/80 dark:border-slate-700 overflow-hidden shadow-xl">
                   
-                  <div className="flex items-center gap-1.5">
-                    {viewingQuote.productType === 'aca' && (() => {
-                      const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                      const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                      if (!isStateBased) {
-                        return (
-                          <Button 
-                            size="sm"
-                            variant="default"
-                            data-testid="button-search-plans"
-                            onClick={() => {
-                              const missingFields = validateMarketplaceData();
-                              if (missingFields.length > 0) {
-                                toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
-                              } else {
-                                setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
-                              }
-                            }}
-                          >
-                            <Search className="h-3.5 w-3.5 mr-1.5" />
-                            Search Plans
-                          </Button>
-                        );
-                      }
-                      return null;
-                    })()}
-                    <Button variant="ghost" size="sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Add Plan
-                    </Button>
+                  {/* Card Header Band */}
+                  <div className="bg-slate-800 dark:bg-slate-900 px-5 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                        <Shield className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+                          {(() => {
+                            const typeMap: Record<string, string> = {
+                              'aca': 'Health Insurance',
+                              'medicare': 'Medicare',
+                              'medicaid': 'Medicaid',
+                              'supplemental': 'Supplemental',
+                              'life': 'Life Insurance',
+                              'dental': 'Dental',
+                              'vision': 'Vision',
+                              'private': 'Private',
+                              'annuities': 'Annuities',
+                              'final_expense': 'Final Expense',
+                              'travel': 'Travel'
+                            };
+                            return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
+                          })()}
+                        </p>
+                        <p className="text-white font-semibold text-sm">{viewingQuote.carrier || 'Policy Card'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Policy Year</p>
+                      <p className="text-white font-bold text-xl font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</p>
+                    </div>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="p-5">
+                    {/* Member Name Row */}
+                    <div className="flex items-start justify-between mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Member Name</p>
+                        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                          {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                        </h1>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Member ID</p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 font-mono">{viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Info Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Date of Birth</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Gender</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() : '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">SSN</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono">
+                          {viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : '—'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Effective Date</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {formatDateForDisplay(policyInfo.effectiveDate, "MM/dd/yyyy")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Contact & Address Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 text-slate-400" />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{viewingQuote.clientPhone || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5 text-slate-400" />
+                          <span className="text-sm text-slate-700 dark:text-slate-300 truncate">{viewingQuote.clientEmail || '—'}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm text-slate-700 dark:text-slate-300">
+                              {viewingQuote.physical_street}{viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
+                            </p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Footer */}
+                  <div className="bg-slate-100 dark:bg-slate-800/80 px-5 py-3 flex items-center justify-between border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-4">
+                      {viewingQuote.productType === 'aca' && (() => {
+                        const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                        const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                        if (!isStateBased) {
+                          return (
+                            <Button 
+                              size="sm"
+                              variant="default"
+                              data-testid="button-search-plans"
+                              onClick={() => {
+                                const missingFields = validateMarketplaceData();
+                                if (missingFields.length > 0) {
+                                  toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
+                                } else {
+                                  setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                                }
+                              }}
+                            >
+                              <Search className="h-3.5 w-3.5 mr-1.5" />
+                              Search Plans
+                            </Button>
+                          );
+                        }
+                        return null;
+                      })()}
+                      <Button variant="outline" size="sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Add Plan
+                      </Button>
+                    </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-options">
-                          <MoreVertical className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" data-testid="button-options">
+                          <MoreVertical className="h-4 w-4 mr-1" />
+                          Options
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
@@ -7930,104 +8017,7 @@ export default function PoliciesPage() {
                     </DropdownMenu>
                   </div>
                 </div>
-
-                {/* Client Name Block */}
-                <div className="mb-5">
-                  <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">
-                    {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                  </h1>
-                  <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMMM d, yyyy")}
-                  </p>
-                </div>
-
-                {/* Info Cards Row */}
-                <div className="flex flex-wrap gap-3">
-                  {/* Contact Card */}
-                  <div className="flex-1 min-w-[200px] p-3.5 rounded-lg bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
-                    <div className="flex items-center gap-3 mb-2.5">
-                      <div className="w-8 h-8 rounded-md bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                        <Phone className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Phone</p>
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{viewingQuote.clientPhone || '—'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-md bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                        <Mail className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Email</p>
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{viewingQuote.clientEmail || '—'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Personal Card */}
-                  <div className="flex-1 min-w-[200px] p-3.5 rounded-lg bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Born</p>
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                          {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM d, yyyy") : '—'}
-                        </p>
-                        {viewingQuote.clientDateOfBirth && (
-                          <p className="text-xs text-slate-400">{calculateAge(viewingQuote.clientDateOfBirth)} years</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">Gender</p>
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                          {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : '—'}
-                        </p>
-                      </div>
-                      <div className="col-span-2">
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">SSN</p>
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100 font-mono">{viewingQuote.clientSsn || '—'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Address Card */}
-                  <div className="flex-1 min-w-[280px] p-3.5 rounded-lg bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-md bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
-                        <MapPin className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Address</p>
-                        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                          {viewingQuote.physical_street}{viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
-                        </p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                        </p>
-                        {viewingQuote.physical_county && (
-                          <p className="text-xs text-slate-400 mt-0.5">{viewingQuote.physical_county} County</p>
-                        )}
-                      </div>
-                    </div>
-                    {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
-                      <div className="flex items-start gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
-                        <div className="w-8 h-8 rounded-md bg-slate-50 dark:bg-slate-700/50 flex items-center justify-center flex-shrink-0">
-                          <Mail className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Mailing</p>
-                          <p className="text-sm text-slate-700 dark:text-slate-200">
-                            {viewingQuote.mailing_street}, {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
-              
-              {/* Subtle bottom line */}
-              <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
             </div>
 
             <div className="space-y-6">
