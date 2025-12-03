@@ -637,7 +637,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
         
         {/* Sidebar - Row 2, Column 1 - Simple icon column below header */}
-        <div className="pl-4 flex flex-col items-center py-4 space-y-2">
+        <div className="pl-4 flex flex-col items-center py-4 space-y-3">
           {/* Back Button - Disabled on Dashboard */}
           <Tooltip>
             <TooltipTrigger asChild>
