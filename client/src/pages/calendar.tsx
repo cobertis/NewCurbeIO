@@ -235,9 +235,9 @@ export default function Calendar() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-full bg-background">
+    <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-background overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b">
+      <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-semibold">Calendar</h1>
           <div className="flex items-center gap-2">
@@ -311,7 +311,7 @@ export default function Calendar() {
       </div>
 
       {/* Calendar Views */}
-      <div className="flex-1 flex flex-col p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col p-4 overflow-hidden">
         {viewMode === 'month' ? (
           <>
             {/* Days of week header */}
@@ -327,7 +327,7 @@ export default function Calendar() {
             </div>
 
             {/* Calendar days grid */}
-            <div className="flex-1 grid grid-cols-7 gap-px bg-border overflow-hidden">
+            <div className="flex-1 grid grid-cols-7 auto-rows-fr gap-px bg-border">
               {calendarDays.map((day, index) => {
             const isCurrentMonth = isSameMonth(day, currentDate);
             const isTodayDate = isToday(day);
@@ -337,7 +337,7 @@ export default function Calendar() {
               <div
                 key={index}
                 className={`
-                  bg-background p-2 overflow-y-auto
+                  bg-background p-1 overflow-y-auto min-h-0
                   ${!isCurrentMonth ? "bg-muted/30" : ""}
                   ${isTodayDate ? "bg-primary/5" : ""}
                 `}

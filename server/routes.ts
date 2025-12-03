@@ -15360,12 +15360,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== CALENDAR EVENTS ====================
   
+  // Calendar events cache - 60 second TTL
+  const calendarEventsCache = new Map<string, { data: any; timestamp: number }>();
+  const CALENDAR_CACHE_TTL = 60 * 1000; // 60 seconds
+  
   // GET /api/calendar/events - Get all calendar events (birthdays + reminders) for the company from BOTH quotes AND policies
   app.get("/api/calendar/events", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const companyId = currentUser.role === "superadmin" && req.query.companyId 
       ? String(req.query.companyId) 
       : currentUser.companyId!;
+
+    // Check cache first
+    const cacheKey = `calendar-events-${companyId}-${currentUser.id}`;
+    const cached = calendarEventsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CALENDAR_CACHE_TTL) {
+      console.log(`[Calendar] Cache HIT for ${cacheKey}`);
+      return res.json(cached.data);
+    }
+    console.log(`[Calendar] Cache MISS for ${cacheKey}`);
 
     try {
       const events: any[] = [];
@@ -15754,7 +15767,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Continue without holidays - don't break the entire calendar
       }
 
-      res.json({ events });
+      // Cache the result before returning
+      const response = { events };
+      calendarEventsCache.set(cacheKey, { data: response, timestamp: Date.now() });
+      res.json(response);
     } catch (error: any) {
       console.error("Error fetching calendar events:", error);
       res.status(500).json({ message: "Failed to fetch calendar events" });
