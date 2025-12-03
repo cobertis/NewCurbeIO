@@ -7831,211 +7831,241 @@ export default function PoliciesPage() {
               );
             })()}
             
-            {/* Premium Hero Header */}
-            <div className="relative mb-8 -mx-6 -mt-6 px-6 pt-6 pb-8 bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/20 border-b">
-              {/* Decorative Elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/5 to-transparent rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-500/5 to-transparent rounded-full blur-2xl" />
+            {/* Ultra-Modern Bento Hero */}
+            <div className="relative mb-8 -mx-6 -mt-6">
+              {/* Animated Mesh Gradient Background */}
+              <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-violet-400/20 via-fuchsia-300/15 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+                <div className="absolute top-1/2 -left-32 w-80 h-80 bg-gradient-to-tr from-cyan-400/15 via-blue-300/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }} />
+                <div className="absolute -bottom-16 right-1/3 w-64 h-64 bg-gradient-to-tl from-emerald-400/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '12s', animationDelay: '4s' }} />
+              </div>
               
-              {/* Main Header Content */}
-              <div className="relative">
-                {/* Top Actions Bar */}
-                <div className="flex items-center justify-end gap-2 mb-6">
-                  {viewingQuote.productType === 'aca' && (() => {
-                    const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                    const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                    if (!isStateBased) {
-                      return (
-                        <Button 
-                          variant="default" 
-                          size="sm"
-                          className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25"
-                          data-testid="button-search-plans"
-                          onClick={() => {
-                            const missingFields = validateMarketplaceData();
-                            if (missingFields.length > 0) {
-                              toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
-                            } else {
-                              setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
-                            }
-                          }}
-                        >
-                          <Search className="h-4 w-4 mr-1.5" />
-                          Search Plans
+              {/* Main Content */}
+              <div className="relative px-6 pt-6 pb-8">
+                {/* Top Row: Year Badge + Actions */}
+                <div className="flex items-center justify-between mb-8">
+                  {/* Giant Year Display */}
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-2xl blur-lg opacity-40" />
+                      <div className="relative px-6 py-3 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-slate-100 rounded-2xl">
+                        <span className="text-4xl font-black tracking-tighter text-white dark:text-slate-900 font-mono">
+                          {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Policy Year</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {(() => {
+                          const typeMap: Record<string, string> = {
+                            'aca': 'Health Insurance',
+                            'medicare': 'Medicare',
+                            'medicaid': 'Medicaid',
+                            'supplemental': 'Supplemental',
+                            'life': 'Life Insurance',
+                            'dental': 'Dental',
+                            'vision': 'Vision',
+                            'private': 'Private',
+                            'annuities': 'Annuities',
+                            'final_expense': 'Final Expense',
+                            'travel': 'Travel'
+                          };
+                          return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2">
+                    {viewingQuote.productType === 'aca' && (() => {
+                      const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                      const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                      if (!isStateBased) {
+                        return (
+                          <Button 
+                            size="sm"
+                            className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white border-0 shadow-lg shadow-violet-500/25"
+                            data-testid="button-search-plans"
+                            onClick={() => {
+                              const missingFields = validateMarketplaceData();
+                              if (missingFields.length > 0) {
+                                toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
+                              } else {
+                                setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                              }
+                            }}
+                          >
+                            <Search className="h-4 w-4 mr-1.5" />
+                            Search Plans
+                          </Button>
+                        );
+                      }
+                      return null;
+                    })()}
+                    <Button variant="outline" size="sm" className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border-white/40 dark:border-slate-700/40" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
+                      <Plus className="h-4 w-4 mr-1.5" />
+                      Add Plan
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-8 w-8 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border-white/40 dark:border-slate-700/40" data-testid="button-options">
+                          <MoreVertical className="h-4 w-4" />
                         </Button>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <Button variant="outline" size="sm" className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
-                    <Plus className="h-4 w-4 mr-1.5" />
-                    Add Plan
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm" data-testid="button-options">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
-                        <Lock className="h-4 w-4 mr-2" />
-                        {viewingQuote.isBlocked ? 'Unblock' : 'Block'} Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setRemindersSheetOpen(true); setSelectedReminder(null); setReminderFormOpen(true); }}>
-                        <Bell className="h-4 w-4 mr-2" />
-                        New Reminder
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.open(`/policies/${viewingQuote.id}/print`, '_blank')}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Print Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)} className="text-destructive">
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel Policy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
-                        <Archive className="h-4 w-4 mr-2" />
-                        Archive Policy
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                {/* Client Name & Year Badge */}
-                <div className="flex items-start gap-4 mb-6">
-                  {product?.icon && (
-                    <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl border border-primary/10 shadow-lg shadow-primary/5">
-                      <product.icon className="h-10 w-10 text-primary" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                        {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                      </h1>
-                      <div className="px-3 py-1 bg-foreground text-background rounded-lg text-lg font-bold font-mono shadow-lg">
-                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
-                      </div>
-                    </div>
-                    <p className="text-base text-muted-foreground mt-1">
-                      {(() => {
-                        const typeMap: Record<string, string> = {
-                          'aca': 'Health Insurance (ACA)',
-                          'medicare': 'Medicare',
-                          'medicaid': 'Medicaid',
-                          'supplemental': 'Supplemental',
-                          'life': 'Life Insurance',
-                          'dental': 'Dental Insurance',
-                          'vision': 'Vision Insurance',
-                          'private': 'Private Insurance',
-                          'annuities': 'Annuities',
-                          'final_expense': 'Final Expense',
-                          'travel': 'Travel Insurance'
-                        };
-                        return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
-                      })()} • Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMM dd, yyyy")}
-                    </p>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
+                          <Lock className="h-4 w-4 mr-2" />
+                          {viewingQuote.isBlocked ? 'Unblock' : 'Block'} Policy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setRemindersSheetOpen(true); setSelectedReminder(null); setReminderFormOpen(true); }}>
+                          <Bell className="h-4 w-4 mr-2" />
+                          New Reminder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.open(`/policies/${viewingQuote.id}/print`, '_blank')}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Print Policy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)} className="text-destructive">
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel Policy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive Policy
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
-                {/* Client Info Cards - Glass Morphism Style */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Personal Information Card */}
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-xl border border-white/50 dark:border-slate-700/50 shadow-xl shadow-black/5 p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="p-2 bg-blue-500/10 rounded-lg">
-                          <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <h3 className="font-semibold text-sm">Personal Information</h3>
+                {/* Client Name - Massive Typography */}
+                <div className="mb-8">
+                  <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-foreground leading-none mb-2">
+                    {viewingQuote.clientFirstName}
+                    {viewingQuote.clientMiddleName && <span className="text-muted-foreground/50"> {viewingQuote.clientMiddleName.charAt(0)}.</span>}
+                    <span className="block sm:inline"> {viewingQuote.clientLastName}</span>
+                    {viewingQuote.clientSecondLastName && <span className="text-muted-foreground/60"> {viewingQuote.clientSecondLastName}</span>}
+                  </h1>
+                  <p className="text-lg text-muted-foreground font-medium">
+                    Effective {formatDateForDisplay(policyInfo.effectiveDate, "MMMM d, yyyy")}
+                  </p>
+                </div>
+
+                {/* Bento Grid - Modern Card Layout */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Phone - Tall Card */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-blue-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-3 shadow-lg shadow-blue-500/30">
+                        <Phone className="h-5 w-5 text-white" />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Phone</p>
-                          <p className="text-sm font-semibold flex items-center gap-2">
-                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                            {viewingQuote.clientPhone || 'N/A'}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Email</p>
-                          <p className="text-sm font-semibold flex items-center gap-2 truncate">
-                            <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate">{viewingQuote.clientEmail || 'N/A'}</span>
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Date of Birth</p>
-                          <p className="text-sm font-semibold flex items-center gap-2">
-                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                            {viewingQuote.clientDateOfBirth ? (
-                              <>{formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM dd, yyyy")} <span className="text-muted-foreground font-normal">({calculateAge(viewingQuote.clientDateOfBirth)} yrs)</span></>
-                            ) : 'N/A'}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Gender</p>
-                          <p className="text-sm font-semibold">
-                            {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
-                          </p>
-                        </div>
-                        <div className="space-y-1 col-span-2">
-                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">SSN</p>
-                          <p className="text-sm font-semibold font-mono flex items-center gap-2">
-                            <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
-                            {viewingQuote.clientSsn || 'N/A'}
-                          </p>
-                        </div>
-                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Phone</p>
+                      <p className="text-sm font-bold text-foreground">{viewingQuote.clientPhone || 'Not provided'}</p>
                     </div>
                   </div>
 
-                  {/* Address Card */}
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-xl border border-white/50 dark:border-slate-700/50 shadow-xl shadow-black/5 p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="p-2 bg-emerald-500/10 rounded-lg">
-                          <MapPin className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <h3 className="font-semibold text-sm">Address</h3>
+                  {/* Email */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-violet-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center mb-3 shadow-lg shadow-violet-500/30">
+                        <Mail className="h-5 w-5 text-white" />
                       </div>
-                      <div className="space-y-4">
-                        <div className="space-y-1">
-                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Physical Address</p>
-                          <p className="text-sm font-semibold">
-                            {viewingQuote.physical_street}
-                            {viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                            {viewingQuote.physical_county && ` • ${viewingQuote.physical_county} County`}
-                          </p>
-                        </div>
-                        {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
-                          <div className="space-y-1 pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
-                            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Mailing Address</p>
-                            <p className="text-sm font-semibold">
-                              {viewingQuote.mailing_street}
-                              {viewingQuote.mailing_address_line_2 && `, ${viewingQuote.mailing_address_line_2}`}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
-                            </p>
-                          </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Email</p>
+                      <p className="text-sm font-bold text-foreground truncate">{viewingQuote.clientEmail || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-amber-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
+                        <Calendar className="h-5 w-5 text-white" />
+                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Born</p>
+                      <p className="text-sm font-bold text-foreground">
+                        {viewingQuote.clientDateOfBirth ? (
+                          <>{formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMM d, yyyy")}</>
+                        ) : 'N/A'}
+                      </p>
+                      {viewingQuote.clientDateOfBirth && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{calculateAge(viewingQuote.clientDateOfBirth)} years old</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Gender & SSN Combined */}
+                  <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-emerald-500/20 to-transparent rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mb-3 shadow-lg shadow-emerald-500/30">
+                        <IdCard className="h-5 w-5 text-white" />
+                      </div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Identity</p>
+                      <p className="text-sm font-bold text-foreground">
+                        {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() + viewingQuote.clientGender.slice(1) : 'N/A'}
+                      </p>
+                      <p className="text-xs font-mono text-muted-foreground mt-0.5">{viewingQuote.clientSsn || '---'}</p>
+                    </div>
+                  </div>
+
+                  {/* Address - Wide Card spanning 2 columns */}
+                  <div className="col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/80 to-white/40 dark:from-slate-800/80 dark:to-slate-800/40 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 p-4 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-500 hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-rose-500/15 to-transparent rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative flex gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-500/30">
+                        <MapPin className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Physical Address</p>
+                        <p className="text-sm font-bold text-foreground">
+                          {viewingQuote.physical_street}
+                          {viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                        </p>
+                        {viewingQuote.physical_county && (
+                          <p className="text-xs text-muted-foreground/70 mt-0.5">{viewingQuote.physical_county} County</p>
                         )}
                       </div>
                     </div>
                   </div>
+
+                  {/* Mailing Address - if different */}
+                  {(viewingQuote.mailing_street && viewingQuote.mailing_street !== viewingQuote.physical_street) && (
+                    <div className="col-span-2 group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/60 to-white/30 dark:from-slate-800/60 dark:to-slate-800/30 backdrop-blur-2xl border border-white/40 dark:border-slate-700/40 p-4 hover:shadow-xl transition-all duration-500">
+                      <div className="relative flex gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-slate-500/20">
+                          <Mail className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Mailing Address</p>
+                          <p className="text-sm font-bold text-foreground">
+                            {viewingQuote.mailing_street}
+                            {viewingQuote.mailing_address_line_2 && `, ${viewingQuote.mailing_address_line_2}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {viewingQuote.mailing_city}, {viewingQuote.mailing_state} {viewingQuote.mailing_postal_code}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+              
+              {/* Subtle Bottom Border */}
+              <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
             </div>
 
             <div className="space-y-6">
