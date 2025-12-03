@@ -711,20 +711,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Separator */}
           <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
-          {/* New Policy Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setLocation("/policies/new")}
-                data-testid="sidebar-button-new-policy"
-                className={cn(circularButtonClass, "bg-primary hover:bg-primary/90 text-white hover:text-white")}
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">New Policy</TooltipContent>
-          </Tooltip>
-
           {/* Communications Icons */}
           <Tooltip>
             <TooltipTrigger asChild>
