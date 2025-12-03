@@ -7849,7 +7849,7 @@ export default function PoliciesPage() {
                   <div className="pl-5 pr-4 py-4">
                     {/* Top Row: Carrier/Product + Year + Actions */}
                     <div className="flex items-center justify-between mb-4">
-                      <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 bg-muted/80">
+                      <Badge variant="secondary" className="text-sm font-medium uppercase tracking-wider px-3 py-1 bg-muted/80">
                         {product?.name || viewingQuote.productType || 'Policy'}
                       </Badge>
                       <div className="flex items-center gap-2">
