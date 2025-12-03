@@ -7927,6 +7927,18 @@ export default function PoliciesPage() {
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground">DOB:</span>
                             <span className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</span>
+                            {viewingQuote.clientDateOfBirth && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-sm">
+                                    {formatDateForDisplay(viewingQuote.clientDateOfBirth, "MMMM d, yyyy")}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-muted-foreground">Sex:</span>
