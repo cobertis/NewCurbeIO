@@ -1,3 +1,18 @@
-2025/12/03-19:05:15.481 5264 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/12/03-19:05:15.482 5264 Recovering log #1551
-2025/12/03-19:05:15.482 5264 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001551.log 
+2025/12/03-19:07:15.569 5987 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/03-19:07:15.624 5987 Recovering log #1562
+2025/12/03-19:07:15.624 5987 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001562.log 
+2025/12/03-19:07:18.691 5988 Compacting 1@1 + 2@2 files
+2025/12/03-19:07:19.119 5988 Generated table #1567@1: 85615 keys, 2233909 bytes
+2025/12/03-19:07:19.219 5988 Level-0 table #1570: started
+2025/12/03-19:07:19.379 5988 Level-0 table #1570: 20470 bytes OK
+2025/12/03-19:07:19.537 5988 Delete type=0 #1562
+2025/12/03-19:07:19.692 5988 Generated table #1568@1: 58598 keys, 2316117 bytes
+2025/12/03-19:07:19.693 5988 Compacted 1@1 + 2@2 files => 4550026 bytes
+2025/12/03-19:07:19.711 5988 compacted to: files[ 1 0 3 0 0 0 0 ]
+2025/12/03-19:07:19.711 5988 Manual compaction at level-0 from ' O\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' P\x01\x00\x00\x00' @ 0 : 0; will stop at ' O\x01\x00\x00\x05' @ 1516614 : 1
+2025/12/03-19:07:19.711 5988 Compacting 1@0 + 0@1 files
+2025/12/03-19:07:19.737 5988 Generated table #1571@0: 434 keys, 8964 bytes
+2025/12/03-19:07:19.737 5988 Compacted 1@0 + 0@1 files => 8964 bytes
+2025/12/03-19:07:19.746 5988 compacted to: files[ 0 1 3 0 0 0 0 ]
+2025/12/03-19:07:19.746 5988 Delete type=2 #1570
+2025/12/03-19:07:19.747 5987 Manual compaction at level-0 from ' O\x01\x00\x00\x05' @ 1516614 : 1 .. ' P\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
