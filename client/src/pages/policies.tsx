@@ -7483,8 +7483,87 @@ export default function PoliciesPage() {
     return (
       <div className="h-full overflow-hidden">
         <div className="flex flex-col lg:flex-row h-full">
-          {/* Sidebar Summary */}
-          <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r bg-background p-6 overflow-y-auto flex-shrink-0">
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto order-2 lg:order-1">
+            <div className="p-6">
+            {/* Block Warning Banner */}
+            {viewingQuote.isBlocked && (
+              <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  An authorized person from your Agency blocked updates on this policy.
+                </p>
+              </div>
+            )}
+
+            {/* Renewal Alert Banner */}
+            {(() => {
+              const now = new Date();
+              const currentMonth = now.getMonth();
+              const currentDay = now.getDate();
+              const currentYear = now.getFullYear();
+              
+              const isInRenewalPeriod = 
+                (currentMonth >= 9) ||
+                (currentMonth === 0) ||
+                (currentMonth === 1 && currentDay === 1);
+              
+              if (!isInRenewalPeriod) return null;
+              
+              const renewalEligibleYear = currentMonth >= 9 ? currentYear : currentYear - 1;
+              const renewalTargetYear = renewalEligibleYear + 1;
+              
+              const effectiveYear = viewingQuote.effectiveDate ? parseInt(viewingQuote.effectiveDate.split('-')[0]) : null;
+              const isACA = viewingQuote.productType === 'Health Insurance ACA' || viewingQuote.productType?.toLowerCase() === 'aca';
+              const isMedicare = viewingQuote.productType?.startsWith('Medicare') || viewingQuote.productType?.toLowerCase() === 'medicare';
+              
+              const isRenewalPolicy = !!viewingQuote.renewedFromPolicyId;
+              const isFuturePolicy = effectiveYear && effectiveYear > renewalEligibleYear;
+              
+              const needsRenewal = (isACA || isMedicare) && 
+                                   !isRenewalPolicy &&
+                                   !isFuturePolicy &&
+                                   effectiveYear === renewalEligibleYear &&
+                                   viewingQuote.renewalStatus !== 'completed' &&
+                                   viewingQuote.status !== 'cancelled' &&
+                                   !viewingQuote.isArchived;
+              
+              if (!needsRenewal) return null;
+
+              return (
+                <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg" data-testid="alert-renewal-required">
+                  <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                      Renewal Required for {renewalTargetYear}
+                    </p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      This policy is active in {renewalEligibleYear} and will need to be renewed for {renewalTargetYear}. Please initiate the renewal process before the end of the Open Enrollment Period.
+                    </p>
+                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => renewalMutation.mutate(viewingQuote.id)}
+                    disabled={renewingPolicyId === viewingQuote.id}
+                    className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+                    data-testid="button-renew-detail"
+                  >
+                    {renewingPolicyId === viewingQuote.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Renewing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Renew for {renewalTargetYear}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              );
+            })()}
           <div className="space-y-6">
             {/* Summary Card */}
             <div className="space-y-4">
