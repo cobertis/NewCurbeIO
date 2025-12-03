@@ -284,15 +284,17 @@ const normalizeSSN = (ssn: string | null | undefined): string => {
 // Only allows viewing complete SSN (9 digits), incomplete SSN always shows masked
 const displaySSN = (ssn: string | null | undefined, isVisible: boolean): string => {
   if (!ssn) return '';
-  const digits = normalizeSSN(ssn);
   
-  // Only show full SSN if it's complete (9 digits) AND visibility is enabled
-  if (isVisible && digits.length === 9) {
-    return formatSSN(digits);
+  // Get raw digits first (without any formatting)
+  const rawDigits = ssn.replace(/\D/g, '').slice(0, 9);
+  
+  // Only show full SSN if it's complete (9 raw digits) AND visibility is enabled
+  if (isVisible && rawDigits.length === 9) {
+    return formatSSN(rawDigits);
   } else {
     // Always show masked format for incomplete or hidden SSN
-    if (digits.length >= 4) {
-      return `XXX-XX-${digits.slice(-4)}`;
+    if (rawDigits.length >= 4) {
+      return `XXX-XX-${rawDigits.slice(-4)}`;
     }
     return 'XXX-XX-XXXX';
   }
