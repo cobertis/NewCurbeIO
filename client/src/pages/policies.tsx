@@ -7831,190 +7831,313 @@ export default function PoliciesPage() {
               );
             })()}
             
-            {/* Insurance Card Style Header */}
+            {/* Two Column Layout: Member Card + Insurance Plans */}
             <div className="mb-6 -mx-6 -mt-6 p-6">
-              {/* Insurance Card Container */}
-              <div className="relative max-w-4xl mx-auto">
-                {/* Card Shadow Layer */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 translate-y-1 blur-sm opacity-50" />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 
-                {/* Main Card */}
-                <div className="relative rounded-2xl bg-gradient-to-br from-slate-50 via-white to-stone-50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-slate-200/80 dark:border-slate-700 overflow-hidden shadow-xl">
-                  
-                  {/* Card Header Band */}
-                  <div className="bg-slate-800 dark:bg-slate-900 px-5 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                        <Shield className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
-                          {(() => {
-                            const typeMap: Record<string, string> = {
-                              'aca': 'Health Insurance',
-                              'medicare': 'Medicare',
-                              'medicaid': 'Medicaid',
-                              'supplemental': 'Supplemental',
-                              'life': 'Life Insurance',
-                              'dental': 'Dental',
-                              'vision': 'Vision',
-                              'private': 'Private',
-                              'annuities': 'Annuities',
-                              'final_expense': 'Final Expense',
-                              'travel': 'Travel'
-                            };
-                            return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
-                          })()}
-                        </p>
-                        <p className="text-white font-semibold text-sm">{viewingQuote.carrier || 'Policy Card'}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Policy Year</p>
-                      <p className="text-white font-bold text-xl font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</p>
-                    </div>
-                  </div>
-
-                  {/* Card Body */}
-                  <div className="p-5">
-                    {/* Member Name Row */}
-                    <div className="flex items-start justify-between mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Member Name</p>
-                        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                          {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
-                        </h1>
+                {/* LEFT: Member Card */}
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 translate-y-1 blur-sm opacity-50" />
+                  <div className="relative rounded-2xl bg-gradient-to-br from-slate-50 via-white to-stone-50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-slate-200/80 dark:border-slate-700 overflow-hidden shadow-xl h-full flex flex-col">
+                    
+                    {/* Card Header Band */}
+                    <div className="bg-slate-800 dark:bg-slate-900 px-5 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Member Card</p>
+                          <p className="text-white font-semibold text-sm">
+                            {(() => {
+                              const typeMap: Record<string, string> = {
+                                'aca': 'Health Insurance',
+                                'medicare': 'Medicare',
+                                'medicaid': 'Medicaid',
+                                'supplemental': 'Supplemental',
+                                'life': 'Life Insurance',
+                                'dental': 'Dental',
+                                'vision': 'Vision',
+                                'private': 'Private',
+                                'annuities': 'Annuities',
+                                'final_expense': 'Final Expense',
+                                'travel': 'Travel'
+                              };
+                              return typeMap[viewingQuote.productType?.toLowerCase()] || viewingQuote.productType;
+                            })()}
+                          </p>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Member ID</p>
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 font-mono">{viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Year</p>
+                        <p className="text-white font-bold text-xl font-mono">{policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}</p>
                       </div>
                     </div>
 
-                    {/* Info Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Date of Birth</p>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}
-                        </p>
+                    {/* Card Body */}
+                    <div className="p-4 flex-1">
+                      {/* Member Name Row */}
+                      <div className="flex items-start justify-between mb-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                          <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Member</p>
+                          <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                            {viewingQuote.clientFirstName} {viewingQuote.clientMiddleName} {viewingQuote.clientLastName} {viewingQuote.clientSecondLastName}
+                          </h1>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">ID</p>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono">{viewingQuote.id?.slice(0, 8).toUpperCase() || '—'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Gender</p>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">SSN</p>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-mono">
-                          {viewingQuote.clientSsn ? `***-**-${viewingQuote.clientSsn.slice(-4)}` : '—'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Effective Date</p>
-                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                          {formatDateForDisplay(policyInfo.effectiveDate, "MM/dd/yyyy")}
-                        </p>
-                      </div>
-                    </div>
 
-                    {/* Contact & Address Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">{viewingQuote.clientPhone || '—'}</span>
+                      {/* Info Grid - Compact */}
+                      <div className="grid grid-cols-4 gap-3 mb-3 pb-3 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">DOB</p>
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yy") : '—'}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300 truncate">{viewingQuote.clientEmail || '—'}</span>
+                        <div>
+                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">Sex</p>
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            {viewingQuote.clientGender ? viewingQuote.clientGender.charAt(0).toUpperCase() : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">SSN</p>
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 font-mono">
+                            {viewingQuote.clientSsn ? `***${viewingQuote.clientSsn.slice(-4)}` : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-0.5">Effective</p>
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            {formatDateForDisplay(policyInfo.effectiveDate, "MM/dd/yy")}
+                          </p>
                         </div>
                       </div>
-                      <div>
+
+                      {/* Contact & Address - Compact */}
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                          <span className="text-slate-700 dark:text-slate-300">{viewingQuote.clientPhone || '—'}</span>
+                          <span className="text-slate-300 dark:text-slate-600">|</span>
+                          <Mail className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                          <span className="text-slate-700 dark:text-slate-300 truncate">{viewingQuote.clientEmail || '—'}</span>
+                        </div>
                         <div className="flex items-start gap-2">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm text-slate-700 dark:text-slate-300">
-                              {viewingQuote.physical_street}{viewingQuote.physical_address_line_2 && `, ${viewingQuote.physical_address_line_2}`}
-                            </p>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                              {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
-                            </p>
-                          </div>
+                          <MapPin className="h-3 w-3 text-slate-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-slate-600 dark:text-slate-400">
+                            {viewingQuote.physical_street}, {viewingQuote.physical_city}, {viewingQuote.physical_state} {viewingQuote.physical_postal_code}
+                          </span>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Card Footer */}
+                    <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-2.5 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 mt-auto">
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Plan
+                        </Button>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" data-testid="button-options">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
+                            <Lock className="h-3.5 w-3.5 mr-2" />
+                            {viewingQuote.isBlocked ? 'Unblock' : 'Block'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { setRemindersSheetOpen(true); setSelectedReminder(null); setReminderFormOpen(true); }}>
+                            <Bell className="h-3.5 w-3.5 mr-2" />
+                            Reminder
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.open(`/policies/${viewingQuote.id}/print`, '_blank')}>
+                            <FileText className="h-3.5 w-3.5 mr-2" />
+                            Print
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
+                            <Copy className="h-3.5 w-3.5 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)} className="text-destructive">
+                            <X className="h-3.5 w-3.5 mr-2" />
+                            Cancel
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
+                            <Archive className="h-3.5 w-3.5 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
+                </div>
 
-                  {/* Card Footer */}
-                  <div className="bg-slate-100 dark:bg-slate-800/80 px-5 py-3 flex items-center justify-between border-t border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-4">
-                      {viewingQuote.productType === 'aca' && (() => {
-                        const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                        const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                        if (!isStateBased) {
+                {/* RIGHT: Insurance Plans Card */}
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 translate-y-1 blur-sm opacity-50" />
+                  <div className="relative rounded-2xl bg-gradient-to-br from-slate-50 via-white to-stone-50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-slate-200/80 dark:border-slate-700 overflow-hidden shadow-xl h-full flex flex-col">
+                    
+                    {/* Header */}
+                    <div className="bg-slate-800 dark:bg-slate-900 px-5 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
+                          <Shield className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Coverage</p>
+                          <p className="text-white font-semibold text-sm">Insurance Plans</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {viewingQuote.productType === 'aca' && (() => {
+                          const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                          const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                          if (!isStateBased) {
+                            return (
+                              <Button 
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 text-xs bg-white/10 hover:bg-white/20 text-white border-0"
+                                data-testid="button-search-plans"
+                                onClick={() => {
+                                  const missingFields = validateMarketplaceData();
+                                  if (missingFields.length > 0) {
+                                    toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
+                                  } else {
+                                    setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                                  }
+                                }}
+                              >
+                                <Search className="h-3 w-3 mr-1" />
+                                Search
+                              </Button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Plans Body */}
+                    <div className="p-4 flex-1 overflow-y-auto">
+                      {(() => {
+                        const plans = quoteDetail?.plans || [];
+                        
+                        if (plans.length === 0) {
                           return (
-                            <Button 
-                              size="sm"
-                              variant="default"
-                              data-testid="button-search-plans"
-                              onClick={() => {
-                                const missingFields = validateMarketplaceData();
-                                if (missingFields.length > 0) {
-                                  toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
-                                } else {
-                                  setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
-                                }
-                              }}
-                            >
-                              <Search className="h-3.5 w-3.5 mr-1.5" />
-                              Search Plans
-                            </Button>
+                            <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+                              <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-3">
+                                <Shield className="h-6 w-6 text-slate-400" />
+                              </div>
+                              <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">No Plans Added</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">Search or add a plan manually</p>
+                              <div className="flex items-center gap-2">
+                                {viewingQuote.productType === 'aca' && (() => {
+                                  const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                                  const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                                  if (isStateBased) {
+                                    return (
+                                      <Button variant="outline" size="sm" className="h-7 text-xs" data-testid="button-state-marketplace-info-empty"
+                                        onClick={() => {
+                                          const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
+                                          toast({ title: "State-Based Marketplace", description: `This policy uses ${marketplaceName}. Add plans manually.`, duration: 5000 });
+                                        }}
+                                      >
+                                        <Info className="h-3 w-3 mr-1" />
+                                        {policyState}
+                                      </Button>
+                                    );
+                                  }
+                                  return (
+                                    <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)} data-testid="button-search-plans-empty">
+                                      <Search className="h-3 w-3 mr-1" />
+                                      Search
+                                    </Button>
+                                  );
+                                })()}
+                                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually-empty">
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
+                            </div>
                           );
                         }
-                        return null;
+                        
+                        // Show plans in compact format
+                        return (
+                          <div className="space-y-3">
+                            {plans.map((policyPlan: any, index: number) => {
+                              const plan = typeof policyPlan.planData === 'string' ? JSON.parse(policyPlan.planData) : policyPlan.planData;
+                              if (!plan) return null;
+                              
+                              const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
+                              const mainDeductible = individualDeductible || plan.deductibles?.[0];
+                              const individualMoop = plan.moops?.find((m: any) => !m.family);
+                              const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
+                              
+                              const formatCurrency = (value: any) => {
+                                if (value === null || value === undefined) return 'N/A';
+                                const num = typeof value === 'string' ? parseFloat(value) : value;
+                                if (isNaN(num)) return 'N/A';
+                                if (num <= 0) return '$0';
+                                return `$${num.toFixed(0)}`;
+                              };
+                              
+                              const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
+                              
+                              return (
+                                <div key={policyPlan.id || index} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">{plan.name || plan.issuer?.name || 'Insurance Plan'}</p>
+                                      <p className="text-[10px] text-slate-400 font-mono">{plan.id || 'N/A'}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                      <Badge variant="outline" className="text-[10px] h-5">{plan.metal_level || 'N/A'}</Badge>
+                                      <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2 text-center">
+                                    <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700/50">
+                                      <p className="text-[9px] text-slate-400 uppercase">Premium</p>
+                                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(premium)}<span className="text-[9px] font-normal text-slate-400">/mo</span></p>
+                                    </div>
+                                    <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700/50">
+                                      <p className="text-[9px] text-slate-400 uppercase">Deductible</p>
+                                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(mainDeductible?.amount)}</p>
+                                    </div>
+                                    <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700/50">
+                                      <p className="text-[9px] text-slate-400 uppercase">Max OOP</p>
+                                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{formatCurrency(outOfPocketMax)}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
                       })()}
-                      <Button variant="outline" size="sm" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually">
-                        <Plus className="h-3.5 w-3.5 mr-1" />
+                    </div>
+
+                    {/* Footer */}
+                    <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-2.5 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 mt-auto">
+                      <span className="text-[10px] text-slate-400">{(quoteDetail?.plans || []).length} plan(s)</span>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setManualPlanDialogOpen(true)}>
+                        <Plus className="h-3 w-3 mr-1" />
                         Add Plan
                       </Button>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" data-testid="button-options">
-                          <MoreVertical className="h-4 w-4 mr-1" />
-                          Options
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
-                          <Lock className="h-3.5 w-3.5 mr-2" />
-                          {viewingQuote.isBlocked ? 'Unblock' : 'Block'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { setRemindersSheetOpen(true); setSelectedReminder(null); setReminderFormOpen(true); }}>
-                          <Bell className="h-3.5 w-3.5 mr-2" />
-                          Reminder
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.open(`/policies/${viewingQuote.id}/print`, '_blank')}>
-                          <FileText className="h-3.5 w-3.5 mr-2" />
-                          Print
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
-                          <Copy className="h-3.5 w-3.5 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)} className="text-destructive">
-                          <X className="h-3.5 w-3.5 mr-2" />
-                          Cancel
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
-                          <Archive className="h-3.5 w-3.5 mr-2" />
-                          Archive
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 </div>
               </div>
@@ -8022,97 +8145,13 @@ export default function PoliciesPage() {
 
             <div className="space-y-6">
 
-              {/* Policy Plans - Support multiple plans */}
+              {/* Policy Plans - Full Details Section (only show if plans exist) */}
               {(() => {
                 const plans = quoteDetail?.plans || [];
                 
-                // If no plans, show empty state
+                // Don't show this section if no plans - already shown in card above
                 if (plans.length === 0) {
-                  return (
-                    <Card className="overflow-hidden">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Shield className="h-5 w-5 text-primary" />
-                          Insurance Plans
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-12">
-                        <div className="text-center space-y-4">
-                          <div className="flex justify-center">
-                            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-                              <Shield className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-lg font-medium mb-1">No Plans Added</p>
-                            <p className="text-sm text-muted-foreground mb-4">
-                              Search the marketplace or add a plan manually
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-center gap-3">
-                            {viewingQuote.productType === 'aca' && (() => {
-                              // Normalize state to uppercase for consistent lookup
-                              const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                              const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                              
-                              // Show info message for state-based exchanges
-                              if (isStateBased) {
-                                const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
-                                return (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    data-testid="button-state-marketplace-info-empty"
-                                    onClick={() => {
-                                      toast({
-                                        title: "State-Based Marketplace",
-                                        description: (
-                                          <div>
-                                            <p className="mb-2">
-                                              This policy is from <strong>{marketplaceName}</strong>, which uses a state-based exchange.
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                              Please search for plans on the state's portal and add them manually using the "Add Plan Manually" button.
-                                            </p>
-                                          </div>
-                                        ),
-                                        duration: 5000,
-                                      });
-                                    }}
-                                  >
-                                    <Info className="h-4 w-4 mr-2" />
-                                    State Marketplace ({policyState})
-                                  </Button>
-                                );
-                              }
-                              
-                              // Federal marketplace - show search button
-                              return (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
-                                  data-testid="button-search-plans-empty"
-                                >
-                                  <Search className="h-4 w-4 mr-2" />
-                                  Search Plans
-                                </Button>
-                              );
-                            })()}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setManualPlanDialogOpen(true)}
-                              data-testid="button-add-plan-manually-empty"
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add Plan Manually
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
+                  return null;
                 }
                 
                 // Display all plans
