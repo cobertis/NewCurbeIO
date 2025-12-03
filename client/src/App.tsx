@@ -473,7 +473,21 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Right: Action Icons - SugarCRM circular style */}
             <div className="flex items-center gap-3 shrink-0">
-              {/* WebPhone Button - FIRST, prominent styling */}
+              {/* New Policy Button - Quick access */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setLocation("/policies/new")}
+                    data-testid="header-button-new-policy"
+                    className="w-9 h-9 rounded-full flex items-center justify-center bg-primary hover:bg-primary/90 text-white transition-all duration-200"
+                  >
+                    <Plus className="h-[18px] w-[18px]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>New Policy</TooltipContent>
+              </Tooltip>
+
+              {/* WebPhone Button */}
               {user?.sipEnabled && (
                 <Tooltip>
                   <TooltipTrigger asChild>
