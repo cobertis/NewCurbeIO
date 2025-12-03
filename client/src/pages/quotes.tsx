@@ -4490,10 +4490,10 @@ export default function QuotesPage() {
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
   
   // Determine if we're in the wizard view based on URL
-  const showWizard = location === "/policies/new";
+  const showWizard = location === "/customers/new";
   
   // Extract policyId from URL using wouter's useRoute
-  const [, params] = useRoute('/policies/:id');
+  const [, params] = useRoute('/customers/:id');
   const policyId = params?.id && params.id !== 'new' ? params.id : null;
   
   // Reset all editing states when navigating between policies
@@ -5900,7 +5900,7 @@ export default function QuotesPage() {
         duration: 3000,
       });
       // Close the sheet by navigating back to policies list
-      setLocation("/policies");
+      setLocation("/customers");
     },
     onError: (error: any) => {
       toast({
@@ -12668,7 +12668,7 @@ export default function QuotesPage() {
                         setArchivePolicyDialogOpen(false);
                         
                         // Navigate back to policies list if we're viewing the archived policy
-                        setLocation('/policies');
+                        setLocation('/customers');
                       } catch (error: any) {
                         toast({
                           title: "Error",
@@ -13166,7 +13166,7 @@ export default function QuotesPage() {
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No policies yet</h3>
                 <p className="text-muted-foreground mb-4">Create your first policy to get started</p>
-                <Button onClick={() => setLocation("/policies/new")} data-testid="button-create-first-quote">
+                <Button onClick={() => setLocation("/customers/new")} data-testid="button-create-first-quote">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Policy
                 </Button>
@@ -13939,7 +13939,7 @@ export default function QuotesPage() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setLocation("/policies");
+                  setLocation("/customers");
                   setCurrentStep(1);
                   form.reset();
                   setSelectedProduct("");

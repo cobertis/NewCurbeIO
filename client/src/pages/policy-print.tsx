@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
 export default function PolicyPrintPage() {
-  const [, params] = useRoute("/policies/:id/print");
+  const [, params] = useRoute("/customers/:id/print");
   const policyId = params?.id;
 
   const { data, isLoading } = useQuery<any>({

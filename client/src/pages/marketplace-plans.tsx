@@ -94,11 +94,11 @@ export default function MarketplacePlansPage() {
   const [location, setLocation] = useLocation();
   
   // Detect if we're in quotes or policies context
-  const isPolicy = location.startsWith('/policies/');
+  const isPolicy = location.startsWith('/customers/');
   const basePath = isPolicy ? 'policies' : 'quotes';
   
   const [, quotesParams] = useRoute("/quotes/:id/marketplace-plans");
-  const [, policiesParams] = useRoute("/policies/:id/marketplace-plans");
+  const [, policiesParams] = useRoute("/customers/:id/marketplace-plans");
   
   const { toast } = useToast();
   const quoteId = quotesParams?.id || policiesParams?.id;

@@ -423,7 +423,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     : [
         { title: "Dashboard", url: "/dashboard" },
         { title: "Calendar", url: "/calendar" },
-        { title: "Customers", url: "/policies" },
+        { title: "Customers", url: "/customers" },
         { title: "Leads", url: "/leads" },
         { title: "Tasks", url: "/tasks" },
       ];
@@ -477,7 +477,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => setLocation("/policies/new")}
+                    onClick={() => setLocation("/customers/new")}
                     data-testid="header-button-new-policy"
                     className="w-9 h-9 rounded-full flex items-center justify-center bg-primary hover:bg-primary/90 text-white transition-all duration-200"
                   >
@@ -667,12 +667,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   // Smart back navigation - go to parent route or use history
                   const pathParts = location.split('/').filter(Boolean);
                   
-                  // If we're on a detail page (e.g., /policies/123), go to list
+                  // If we're on a detail page (e.g., /customers/123), go to list
                   if (pathParts.length >= 2) {
                     // Check for specific patterns
-                    if (pathParts[0] === 'policies' && pathParts.length >= 2) {
-                      // /policies/123 or /policies/new -> /policies
-                      setLocation('/policies');
+                    if (pathParts[0] === 'customers' && pathParts.length >= 2) {
+                      // /customers/123 or /customers/new -> /customers
+                      setLocation('/customers');
                       return;
                     }
                     if (pathParts[0] === 'settings' && pathParts.length >= 2) {
@@ -1327,33 +1327,33 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/policies/new">
+      <Route path="/customers/new">
         <ProtectedRoute>
           <DashboardLayout>
             <Policies />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/policies/:id/marketplace-plans">
+      <Route path="/customers/:id/marketplace-plans">
         <ProtectedRoute>
           <DashboardLayout>
             <MarketplacePlans />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/policies/:id/print">
+      <Route path="/customers/:id/print">
         <ProtectedRoute>
           <PolicyPrintPage />
         </ProtectedRoute>
       </Route>
-      <Route path="/policies/:id">
+      <Route path="/customers/:id">
         <ProtectedRoute>
           <DashboardLayout>
             <Policies />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/policies">
+      <Route path="/customers">
         <ProtectedRoute>
           <DashboardLayout>
             <Policies />

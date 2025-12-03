@@ -4267,7 +4267,7 @@ export default function PoliciesPage() {
   const navigateToPolicy = (policyId: string) => {
     setSearchInput("");
     setFilters(prev => ({ ...prev, searchTerm: "" }));
-    setLocation(`/policies/${policyId}`);
+    setLocation(`/customers/${policyId}`);
   };
   
   // Edit states
@@ -4504,10 +4504,10 @@ export default function PoliciesPage() {
   const initialEffectiveDate = useMemo(() => format(getFirstDayOfNextMonth(), "yyyy-MM-dd"), []);
   
   // Determine if we're in the wizard view based on URL
-  const showWizard = location === "/policies/new";
+  const showWizard = location === "/customers/new";
   
   // Extract policyId from URL using wouter's useRoute
-  const [, params] = useRoute('/policies/:id');
+  const [, params] = useRoute('/customers/:id');
   const policyId = params?.id && params.id !== 'new' ? params.id : null;
   
   // Reset all editing states when navigating between policies
@@ -4719,7 +4719,7 @@ export default function PoliciesPage() {
         
         // Small delay to ensure queries invalidate before navigation
         setTimeout(() => {
-          setLocation(`/policies/${data.renewedPolicy.id}`);
+          setLocation(`/customers/${data.renewedPolicy.id}`);
         }, 500);
       }
     },
@@ -4738,7 +4738,7 @@ export default function PoliciesPage() {
     console.log('[handleViewQuote] Navigating to policy:', quote?.id);
     if (quote?.id) {
       // Navigate to the policy detail page
-      setLocation(`/policies/${quote.id}`);
+      setLocation(`/customers/${quote.id}`);
       console.log('[handleViewQuote] Navigation called to:', `/policies/${quote.id}`);
     } else {
       console.error('[handleViewQuote] No quote ID provided');
@@ -5919,7 +5919,7 @@ export default function PoliciesPage() {
         duration: 3000,
       });
       // Close the sheet by navigating back to policies list
-      setLocation("/policies");
+      setLocation("/customers");
     },
     onError: (error: any) => {
       toast({
@@ -7871,7 +7871,7 @@ export default function PoliciesPage() {
                             <Bell className="h-3.5 w-3.5 mr-2" />
                             Reminder
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.open(`/policies/${viewingQuote.id}/print`, '_blank')}>
+                          <DropdownMenuItem onClick={() => window.open(`/customers/${viewingQuote.id}/print`, '_blank')}>
                             <FileText className="h-3.5 w-3.5 mr-2" />
                             Print
                           </DropdownMenuItem>
@@ -8011,7 +8011,7 @@ export default function PoliciesPage() {
                                 if (missingFields.length > 0) {
                                   toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
                                 } else {
-                                  setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                                  setLocation(`/customers/${viewingQuote.id}/marketplace-plans`);
                                 }
                               }}
                             >
@@ -8056,7 +8056,7 @@ export default function PoliciesPage() {
                                   );
                                 }
                                 return (
-                                  <Button variant="default" size="sm" className="h-8 text-xs" onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)} data-testid="button-search-plans-empty">
+                                  <Button variant="default" size="sm" className="h-8 text-xs" onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)} data-testid="button-search-plans-empty">
                                     <Search className="h-3.5 w-3.5 mr-1" />
                                     Search
                                   </Button>
@@ -8763,7 +8763,7 @@ export default function PoliciesPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
+                            onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)}
                             data-testid="button-change-plan"
                           >
                             <RefreshCw className="h-4 w-4 mr-2" />
@@ -9497,7 +9497,7 @@ export default function PoliciesPage() {
                             <TableRow 
                               key={policy.id} 
                               className="cursor-pointer hover:bg-accent/5"
-                              onClick={() => setLocation(`/policies/${policy.id}`)}
+                              onClick={() => setLocation(`/customers/${policy.id}`)}
                               data-testid={`row-other-policy-${policy.id}`}
                             >
                               <TableCell className="text-center">
@@ -9535,7 +9535,7 @@ export default function PoliciesPage() {
                                     <div className="cursor-pointer">
                                       <div 
                                         className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                        onClick={() => setLocation(`/policies/${policy.id}`)}
+                                        onClick={() => setLocation(`/customers/${policy.id}`)}
                                       >
                                         {policy.clientFirstName} {policy.clientMiddleName} {policy.clientLastName} {policy.clientSecondLastName}
                                       </div>
@@ -12701,7 +12701,7 @@ export default function PoliciesPage() {
                     setArchivePolicyDialogOpen(false);
                     
                     // Navigate back to policies list if we're viewing the archived policy
-                    setLocation('/policies');
+                    setLocation('/customers');
                   } catch (error: any) {
                     toast({
                       title: "Error",
@@ -12748,7 +12748,7 @@ export default function PoliciesPage() {
                     
                     // Wait a moment for the database to fully commit before navigating
                     setTimeout(() => {
-                      setLocation(`/policies/${data.policy.id}`);
+                      setLocation(`/customers/${data.policy.id}`);
                     }, 300);
                   } catch (error: any) {
                     toast({
@@ -13196,7 +13196,7 @@ export default function PoliciesPage() {
                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No policies yet</h3>
                 <p className="text-muted-foreground mb-4">Create your first policy to get started</p>
-                <Button onClick={() => setLocation("/policies/new")} data-testid="button-create-first-quote">
+                <Button onClick={() => setLocation("/customers/new")} data-testid="button-create-first-quote">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Policy
                 </Button>
@@ -13969,7 +13969,7 @@ export default function PoliciesPage() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setLocation("/policies");
+                  setLocation("/customers");
                   setCurrentStep(1);
                   form.reset();
                   setSelectedProduct("");
@@ -15885,7 +15885,7 @@ export default function PoliciesPage() {
           plan2025={renewalData.plan2025}
           plans2026={renewalData.plans2026 || []}
           onRenewalComplete={(renewedPolicyId) => {
-            setLocation(`/policies/${renewedPolicyId}`);
+            setLocation(`/customers/${renewedPolicyId}`);
           }}
         />
       )}
