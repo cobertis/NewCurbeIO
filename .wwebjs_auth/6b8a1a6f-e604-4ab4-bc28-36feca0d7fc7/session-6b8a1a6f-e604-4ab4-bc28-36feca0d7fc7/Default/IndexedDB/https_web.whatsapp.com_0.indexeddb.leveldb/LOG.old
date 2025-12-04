@@ -1,0 +1,27 @@
+2025/12/04-16:05:32.464 5e71 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/04-16:05:32.470 5e71 Recovering log #1745
+2025/12/04-16:05:32.470 5e71 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001745.log 
+2025/12/04-16:05:33.390 5e72 Compacting 1@1 + 3@2 files
+2025/12/04-16:05:33.472 5e72 Generated table #1748@1: 86179 keys, 2236722 bytes
+2025/12/04-16:05:33.539 5e72 Generated table #1749@1: 67282 keys, 2338848 bytes
+2025/12/04-16:05:33.596 5e72 Generated table #1750@1: 56463 keys, 1796093 bytes
+2025/12/04-16:05:33.596 5e72 Compacted 1@1 + 3@2 files => 6371663 bytes
+2025/12/04-16:05:33.602 5e72 compacted to: files[ 0 0 3 0 0 0 0 ]
+2025/12/04-16:05:33.603 5e72 Delete type=2 #1742
+2025/12/04-16:05:33.603 5e72 Delete type=2 #1743
+2025/12/04-16:05:33.603 5e72 Delete type=2 #1744
+2025/12/04-16:05:33.603 5e72 Delete type=2 #1746
+2025/12/04-16:05:34.087 5e73 Level-0 table #1752: started
+2025/12/04-16:05:34.091 5e73 Level-0 table #1752: 17542 bytes OK
+2025/12/04-16:05:34.095 5e73 Delete type=0 #1745
+2025/12/04-16:05:34.095 5e71 Manual compaction at level-0 from ' m\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' n\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/04-16:05:36.115 5e72 Compacting 1@1 + 3@2 files
+2025/12/04-16:05:36.216 5e72 Generated table #1753@1: 86174 keys, 2236708 bytes
+2025/12/04-16:05:36.312 5e72 Generated table #1754@1: 67375 keys, 2341630 bytes
+2025/12/04-16:05:36.367 5e72 Generated table #1755@1: 56463 keys, 1796093 bytes
+2025/12/04-16:05:36.367 5e72 Compacted 1@1 + 3@2 files => 6374431 bytes
+2025/12/04-16:05:36.372 5e72 compacted to: files[ 0 0 3 0 0 0 0 ]
+2025/12/04-16:05:36.372 5e72 Delete type=2 #1748
+2025/12/04-16:05:36.372 5e72 Delete type=2 #1749
+2025/12/04-16:05:36.372 5e72 Delete type=2 #1750
+2025/12/04-16:05:36.372 5e72 Delete type=2 #1752

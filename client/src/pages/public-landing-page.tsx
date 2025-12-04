@@ -510,9 +510,24 @@ export default function PublicLandingPage() {
             ))}
         </div>
 
+        {/* SMS Disclaimer */}
+        <div
+          className="mt-10 px-4 py-4 max-w-2xl mx-auto border-t border-gray-200/30"
+          data-testid="sms-disclaimer"
+        >
+          <p
+            className="text-[10px] leading-relaxed text-center opacity-60"
+            style={{ color: theme.textColor }}
+          >
+            By providing your phone number, you agree to receive recurring automated promotional and personalized marketing text messages (e.g., cart reminders) from {landingPage.profileName || 'us'} at the cell number used when signing up. Consent is not a condition of any purchase. Reply HELP for help and STOP to cancel. Msg frequency varies. Msg & data rates may apply. View our{' '}
+            <a href="#" className="underline hover:opacity-80">Privacy Policy</a> and{' '}
+            <a href="#" className="underline hover:opacity-80">Terms of Service</a>.
+          </p>
+        </div>
+
         {/* Footer */}
         <div
-          className="text-center mt-12 opacity-50 max-w-2xl mx-auto"
+          className="text-center mt-6 opacity-50 max-w-2xl mx-auto"
           style={{ color: theme.textColor }}
           data-testid="footer"
         >
