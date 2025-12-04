@@ -1,0 +1,322 @@
+root@ubuntu:~# 
+root@ubuntu:~# sudo apt update
+sudo apt install chromium-browser
+Hit:1 https://deb.nodesource.com/node_20.x nodistro InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu jammy InRelease                                           
+Get:3 http://security.ubuntu.com/ubuntu jammy-security InRelease [129 kB]                        
+Get:4 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]        
+Get:5 http://apt.postgresql.org/pub/repos/apt jammy-pgdg InRelease [107 kB]               
+Err:5 http://apt.postgresql.org/pub/repos/apt jammy-pgdg InRelease                        
+  The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 7FCC7D46ACCC4CF8
+Get:6 http://archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
+Get:7 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [3109 kB]
+Get:8 http://archive.ubuntu.com/ubuntu jammy-updates/main Translation-en [478 kB]
+Get:9 http://archive.ubuntu.com/ubuntu jammy-updates/main amd64 c-n-f Metadata [19.0 kB]
+Get:10 http://archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages [4939 kB]
+Get:11 http://archive.ubuntu.com/ubuntu jammy-updates/restricted Translation-en [921 kB]
+Get:12 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1244 kB]
+Get:13 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 c-n-f Metadata [30.0 kB]
+Fetched 11.1 MB in 3s (4275 kB/s)                                 
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+5 packages can be upgraded. Run 'apt list --upgradable' to see them.
+W: An error occurred during the signature verification. The repository is not updated and the previous index files will be used. GPG error: http://apt.postgresql.org/pub/repos/apt jammy-pgdg InRelease: The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 7FCC7D46ACCC4CF8
+W: Failed to fetch http://apt.postgresql.org/pub/repos/apt/dists/jammy-pgdg/InRelease  The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 7FCC7D46ACCC4CF8
+W: Some index files failed to download. They have been ignored, or old ones used instead.
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following NEW packages will be installed:
+  chromium-browser
+0 upgraded, 1 newly installed, 0 to remove and 5 not upgraded.
+Need to get 49.2 kB of archives.
+After this operation, 165 kB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu jammy-updates/universe amd64 chromium-browser amd64 1:85.0.4183.83-0ubuntu2.22.04.1 [49.2 kB]
+Fetched 49.2 kB in 0s (336 kB/s)            
+Preconfiguring packages ...
+Selecting previously unselected package chromium-browser.
+(Reading database ... 109903 files and directories currently installed.)
+Preparing to unpack .../chromium-browser_1%3a85.0.4183.83-0ubuntu2.22.04.1_amd64.deb ...
+=> Installing the chromium snap
+==> Checking connectivity with the snap store
+==> Installing the chromium snap
+chromium 142.0.7444.175 from Canonical✓ installed
+=> Snap installation complete
+Unpacking chromium-browser (1:85.0.4183.83-0ubuntu2.22.04.1) ...
+Setting up chromium-browser (1:85.0.4183.83-0ubuntu2.22.04.1) ...
+update-alternatives: using /usr/bin/chromium-browser to provide /usr/bin/x-www-browser (x-www-browser) in auto mode
+update-alternatives: using /usr/bin/chromium-browser to provide /usr/bin/gnome-www-browser (gnome-www-browser) in auto mode
+Scanning processes...                                                                                                                                         
+Scanning candidates...                                                                                                                                        
+Scanning linux images...                                                                                                                                      
+
+Restarting services...
+Service restarts being deferred:
+ systemctl restart networkd-dispatcher.service
+ systemctl restart unattended-upgrades.service
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+root@ubuntu:~# bash /usr/local/bin/update-curbe-admin.sh
+--------------------------------------------
+🚀 Iniciando actualización de Curbe Admin...
+--------------------------------------------
+📥 Ejecutando git pull...
+From github.com:cobertis/NewCurbeIO
+ * branch              main       -> FETCH_HEAD
+Already up to date.
+📦 Instalando dependencias...
+
+up to date, audited 768 packages in 3s
+
+98 packages are looking for funding
+  run `npm fund` for details
+
+13 vulnerabilities (2 low, 11 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+🏗️ Compilando la aplicación...
+⚙️ Instalando vite y esbuild...
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+
+added 94 packages, and audited 862 packages in 4s
+
+110 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (2 low, 5 moderate, 11 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+vite v5.4.21 building for production...
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 4187 modules transformed.
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/client/src/hooks/use-toast.ts is dynamically imported by /var/www/curbe/client/src/services/webphone.ts, /var/www/curbe/client/src/services/webphone.ts but also statically imported by /var/www/curbe/client/src/App.tsx, /var/www/curbe/client/src/components/PolicyRenewalComparison.tsx, /var/www/curbe/client/src/components/appointment-booking-inline.tsx, /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/components/campaigns/campaign-form-dialog.tsx, /var/www/curbe/client/src/components/chat/number-provision-modal.tsx, /var/www/curbe/client/src/components/chat/phone-settings-modal.tsx, /var/www/curbe/client/src/components/company-billing-tab.tsx, /var/www/curbe/client/src/components/email-templates-manager.tsx, /var/www/curbe/client/src/components/manage-payment-methods-dialog.tsx, /var/www/curbe/client/src/components/new-event-dialog.tsx, /var/www/curbe/client/src/components/public-block-renderer.tsx, /var/www/curbe/client/src/components/ui/toaster.tsx, /var/www/curbe/client/src/components/upload-avatar-dialog.tsx, /var/www/curbe/client/src/lib/status-editor.ts, /var/www/curbe/client/src/pages/activate-account.tsx, /var/www/curbe/client/src/pages/appointment-settings.tsx, /var/www/curbe/client/src/pages/billing.tsx, /var/www/curbe/client/src/pages/birthday-images.tsx, /var/www/curbe/client/src/pages/blacklist.tsx, /var/www/curbe/client/src/pages/campaigns.tsx, /var/www/curbe/client/src/pages/companies.tsx, /var/www/curbe/client/src/pages/company-detail.tsx, /var/www/curbe/client/src/pages/contacts.tsx, /var/www/curbe/client/src/pages/features.tsx, /var/www/curbe/client/src/pages/forgot-password.tsx, /var/www/curbe/client/src/pages/imessage-campaign-detail.tsx, /var/www/curbe/client/src/pages/imessage-campaigns.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/incoming-sms.tsx, /var/www/curbe/client/src/pages/landing-page.tsx, /var/www/curbe/client/src/pages/leads.tsx, /var/www/curbe/client/src/pages/login.tsx, /var/www/curbe/client/src/pages/marketplace-plans.tsx, /var/www/curbe/client/src/pages/plan-selection.tsx, /var/www/curbe/client/src/pages/plans.tsx, /var/www/curbe/client/src/pages/policies.tsx, /var/www/curbe/client/src/pages/public-consent.tsx, /var/www/curbe/client/src/pages/public-landing-page.tsx, /var/www/curbe/client/src/pages/quotes.tsx, /var/www/curbe/client/src/pages/register.tsx, /var/www/curbe/client/src/pages/reset-password.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/sms-mms.tsx, /var/www/curbe/client/src/pages/system-alerts.tsx, /var/www/curbe/client/src/pages/tasks.tsx, /var/www/curbe/client/src/pages/tickets.tsx, /var/www/curbe/client/src/pages/user-detail.tsx, /var/www/curbe/client/src/pages/users.tsx, /var/www/curbe/client/src/pages/verify-otp.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/react/dist/module.js is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/data/sets/15/native.json is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+../dist/public/index.html                                                 2.10 kB │ gzip:     0.82 kB
+../dist/public/assets/logo no fondo_1760457183587-BR-LiXG_.png           45.10 kB
+../dist/public/assets/Generic_user_avatar_icon_55b842ef-BGsZDgwn.png    456.74 kB
+../dist/public/assets/index-CPHFDdKd.css                                188.77 kB │ gzip:    27.96 kB
+../dist/public/assets/index-CBrbYu_W.js                               4,520.50 kB │ gzip: 1,099.46 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 18.07s
+▲ [WARNING] Duplicate member "markConversationAsRead" in class body [duplicate-class-member]
+
+    server/storage.ts:10687:8:
+      10687 │   async markConversationAsRead(conversationId: string): Promise<void> {
+            ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+  The original member "markConversationAsRead" is here:
+
+    server/storage.ts:2866:8:
+      2866 │   async markConversationAsRead(phoneNumber: string, companyId?: string): Promise<void> {
+           ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+1 warning
+
+  dist/index.js  1.8mb ⚠️
+
+⚡ Done in 99ms
+🚀 Reiniciando proceso PM2 (curbe-admin)...
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ fork    │ 894504   │ 0s     │ 55   │ online    │ 0%       │ 14.0mb   │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+📜 Últimos 30 logs:
+[TAILING] Tailing last 30 lines for [curbe-admin] process (change the value with --lines option)
+/var/www/curbe/logs/pm2-err.log last 30 lines:
+0|curbe-ad | 2025-12-04T16:25:40: [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | 2025-12-04T16:25:40: [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2025-12-04T16:25:52: [WhatsApp] Attempt 1/3 failed for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-ad | 2025-12-04T16:25:52: 
+0|curbe-ad | 2025-12-04T16:25:52: 
+0|curbe-ad | 2025-12-04T16:25:52: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-ad | 2025-12-04T16:25:52: 
+0|curbe-ad | 2025-12-04T16:25:55: [WhatsApp] Attempt 2/3 failed for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-ad | 2025-12-04T16:25:55: 
+0|curbe-ad | 2025-12-04T16:25:55: 
+0|curbe-ad | 2025-12-04T16:25:55: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-ad | 2025-12-04T16:25:55: 
+0|curbe-ad | 2025-12-04T16:26:00: [WhatsApp] Attempt 3/3 failed for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-ad | 2025-12-04T16:26:00: 
+0|curbe-ad | 2025-12-04T16:26:00: 
+0|curbe-ad | 2025-12-04T16:26:00: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-ad | 2025-12-04T16:26:00: 
+0|curbe-ad | 2025-12-04T16:26:00: [WhatsApp] Error initializing: Error: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-ad | 2025-12-04T16:26:00: 
+0|curbe-ad | 2025-12-04T16:26:00: 
+0|curbe-ad | 2025-12-04T16:26:00: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-ad | 2025-12-04T16:26:00: 
+0|curbe-ad | 2025-12-04T16:26:00:     at onClose (/var/www/curbe/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserRunner.js:299:20)
+0|curbe-ad | 2025-12-04T16:26:00:     at ChildProcess.<anonymous> (/var/www/curbe/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserRunner.js:293:24)
+0|curbe-ad | 2025-12-04T16:26:00:     at ChildProcess.emit (node:events:524:28)
+0|curbe-ad | 2025-12-04T16:26:00:     at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+0|curbe-ad | 2025-12-04T16:26:00:     at onErrorNT (node:internal/child_process:483:16)
+0|curbe-ad | 2025-12-04T16:26:00:     at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+0|curbe-ad | 2025-12-04T16:27:54: [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | 2025-12-04T16:27:54: [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+
+/var/www/curbe/logs/pm2-out.log last 30 lines:
+0|curbe-ad | 2025-12-04T16:40:16: [WebSocket] Client disconnected
+0|curbe-ad | 2025-12-04T16:40:17: [WebSocket] Client disconnected
+0|curbe-ad | 2025-12-04T16:40:18: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-ad | 2025-12-04T16:40:18: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-ad | 2025-12-04T16:40:19: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-ad | 2025-12-04T16:40:19: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-ad | 2025-12-04T16:40:37: [WebSocket] Rejecting upgrade without valid session
+0|curbe-ad | 2025-12-04T16:40:37: [WebSocket] Rejecting upgrade without valid session
+0|curbe-ad | 2025-12-04T16:40:56: [WhatsApp] Health check: No active sessions
+0|curbe-ad | 2025-12-04T16:41:06: [WebSocket] Client disconnected
+0|curbe-ad | 2025-12-04T16:41:07: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-ad | 2025-12-04T16:41:07: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-ad | 2025-12-04T16:41:08: [WebSocket] Rejecting upgrade without valid session
+0|curbe-ad | 2025-12-04T16:41:08: [WebSocket] Rejecting upgrade without valid session
+0|curbe-ad | 2025-12-04T16:41:12: [WebSocket] Client disconnected
+0|curbe-ad | 2025-12-04T16:41:13: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-ad | 2025-12-04T16:41:13: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-ad | 2025-12-04T16:41:18: [WebSocket] Client disconnected
+0|curbe-ad | 2025-12-04T16:41:19: [WebSocket] Client disconnected
+0|curbe-ad | 2025-12-04T16:41:20: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-ad | 2025-12-04T16:41:20: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-ad | 2025-12-04T16:41:21: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-ad | 2025-12-04T16:41:21: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-ad | 2025-12-04T16:41:39: 4:41:39 PM [express] GET /api/session 304 in 9ms :: {"user":{"id":"d994cb38-776f-40ea-80d1-2a355e128…
+0|curbe-ad | 2025-12-04T16:41:39: 4:41:39 PM [express] GET /api/companies/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7 304 in 7ms :: {"company…
+0|curbe-ad | 2025-12-04T16:41:39: 4:41:39 PM [express] GET /api/notifications 304 in 19ms :: {"notifications":[{"id":"2656fe12-b7ff-49…
+0|curbe-ad | 2025-12-04T16:41:39: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-ad | 2025-12-04T16:41:39: 4:41:39 PM [express] GET /api/whatsapp/status 304 in 18ms :: {"success":true,"status":{"isReady":fal…
+0|curbe-ad | 2025-12-04T16:41:39: [WebSocket] Rejecting upgrade without valid session
+0|curbe-ad | 2025-12-04T16:41:39: [WebSocket] Rejecting upgrade without valid session
+
+0|curbe-admin  | 2025-12-04T16:41:41: 
+0|curbe-admin  | 2025-12-04T16:41:41: > rest-express@1.0.0 start
+0|curbe-admin  | 2025-12-04T16:41:41: > NODE_ENV=production node dist/index.js
+0|curbe-admin  | 2025-12-04T16:41:41: 
+0|curbe-admin  | 2025-12-04T16:41:42: [2025-12-04 16:41:42] DEBUG Creating transport: nodemailer (7.0.9; +https://nodemailer.com/; SMTP/7.0.9[client:7.0.9])
+0|curbe-admin  | 2025-12-04T16:41:42: Email service initialized successfully
+0|curbe-admin  | 2025-12-04T16:41:42: Twilio service initialized successfully
+0|curbe-admin  | 2025-12-04T16:41:42: ==========================================
+0|curbe-admin  | 2025-12-04T16:41:42: 🔑 STRIPE INITIALIZED: TEST MODE
+0|curbe-admin  | 2025-12-04T16:41:42: 🔑 Key prefix: sk_test_51Rg...
+0|curbe-admin  | 2025-12-04T16:41:42: ==========================================
+0|curbe-admin  | 2025-12-04T16:41:42: [WhatsApp] Multi-tenant WhatsApp service initialized
+0|curbe-admin  | 2025-12-04T16:41:42: 4:41:42 PM [express] serving on port 5000
+0|curbe-admin  | 2025-12-04T16:41:42: [Campaign Studio] Running data backfill...
+0|curbe-admin  | 2025-12-04T16:41:42: [REMINDER SCHEDULER] Starting scheduler...
+0|curbe-admin  | 2025-12-04T16:41:42: [REMINDER SCHEDULER] Scheduler started successfully
+0|curbe-admin  | 2025-12-04T16:41:42: [BIRTHDAY SCHEDULER] Starting scheduler...
+0|curbe-admin  | 2025-12-04T16:41:42: [BIRTHDAY SCHEDULER] Scheduler started successfully (runs hourly at :00)
+0|curbe-admin  | 2025-12-04T16:41:42: [CAMPAIGN PROCESSOR] Starting processor...
+0|curbe-admin  | 2025-12-04T16:41:42: [CAMPAIGN PROCESSOR] Processor started (runs every 10 seconds)
+0|curbe-admin  | 2025-12-04T16:41:42: [ContactRegistry] Checking if auto-backfill is needed...
+0|curbe-admin  | 2025-12-04T16:41:42: [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-admin  | 2025-12-04T16:41:42: [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-admin  | 2025-12-04T16:41:42: [Campaign Studio] Fixed 0 system templates
+0|curbe-admin  | 2025-12-04T16:41:42: [Campaign Studio] Fixed 0 system categories
+0|curbe-admin  | 2025-12-04T16:41:42: [Campaign Studio] Fixed 0 system placeholders
+0|curbe-admin  | 2025-12-04T16:41:42: [Campaign Studio] System data already exists, skipping seed
+0|curbe-admin  | 2025-12-04T16:41:42: [ContactRegistry] Skipping auto-backfill for company 9872cf84-5a8a-4616-aa9c-2cd7e43fbacd (The UPS Store) - 0 contacts, 0 policies (ratio 0.0:1)
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-admin  | 2025-12-04T16:41:42: [ContactRegistry] Skipping auto-backfill for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 (Cobertis Insurance) - 66 contacts, 83 policies (ratio 1.3:1)
+0|curbe-admin  | 2025-12-04T16:41:42: [ContactRegistry] Skipping auto-backfill for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7 (DLS Insurance Group) - 2 contacts, 2 policies (ratio 1.0:1)
+0|curbe-admin  | 2025-12-04T16:41:42: [ContactRegistry] Auto-backfill check complete
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T16:41:42: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-admin  | 2025-12-04T16:41:44: [WhatsApp] Connection health check started (every 60s, multi-session mode)
+0|curbe-admin  | 2025-12-04T16:41:44: [WhatsApp] Found 2 saved session(s) - will connect on-demand when user visits WhatsApp
+0|curbe-admin  | 2025-12-04T16:41:44: [WhatsApp] Multi-session mode active: Each company can have its own concurrent session
+0|curbe-admin  | 2025-12-04T16:41:46: [WebSocket] Client disconnected
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:41:46: 4:41:46 PM [express] GET /api/whatsapp/status 304 in 29ms :: {"success":true,"status":{"isReady":fal…
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Cleared logged out status for company: 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Manual initialization requested for company: 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Creating new client for company: 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T16:41:46: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T16:41:46: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Cleaned up stale lock: .wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/SingletonLock
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Cleaned up stale lock: .wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/SingletonSocket
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Cleaned up stale lock: .wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/SingletonCookie
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Cleaned up stale lock: .wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Local State
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Initialization attempt 1/3 for company: 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Attempt 1/3 failed for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-admin  | 2025-12-04T16:41:46: 
+0|curbe-admin  | 2025-12-04T16:41:46: 
+0|curbe-admin  | 2025-12-04T16:41:46: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T16:41:46: 
+0|curbe-admin  | 2025-12-04T16:41:46: [WhatsApp] Waiting 2s before retry...
+0|curbe-admin  | 2025-12-04T16:41:47: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:41:47: 4:41:47 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T16:41:49: [WhatsApp] Initialization attempt 2/3 for company: 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T16:41:49: [WhatsApp] Attempt 2/3 failed for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-admin  | 2025-12-04T16:41:49: 
+0|curbe-admin  | 2025-12-04T16:41:49: 
+0|curbe-admin  | 2025-12-04T16:41:49: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T16:41:49: 
+0|curbe-admin  | 2025-12-04T16:41:49: [WhatsApp] Waiting 4s before retry...
+0|curbe-admin  | 2025-12-04T16:41:49: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:41:49: 4:41:49 PM [express] GET /api/whatsapp/status 304 in 5ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T16:41:50: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:41:50: 4:41:50 PM [express] GET /api/whatsapp/status 304 in 8ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T16:41:52: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:41:52: 4:41:52 PM [express] GET /api/whatsapp/status 304 in 5ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T16:41:53: [WhatsApp] Initialization attempt 3/3 for company: 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T16:41:53: [WhatsApp] Attempt 3/3 failed for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-admin  | 2025-12-04T16:41:53: 
+0|curbe-admin  | 2025-12-04T16:41:53: 
+0|curbe-admin  | 2025-12-04T16:41:53: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T16:41:53: 
+0|curbe-admin  | 2025-12-04T16:41:53: [WhatsApp] Error initializing: Error: Failed to launch the browser process! spawn /nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium ENOENT
+0|curbe-admin  | 2025-12-04T16:41:53: 
+0|curbe-admin  | 2025-12-04T16:41:53: 
+0|curbe-admin  | 2025-12-04T16:41:53: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T16:41:53: 
+0|curbe-admin  | 2025-12-04T16:41:53:     at onClose (/var/www/curbe/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserRunner.js:299:20)
+0|curbe-admin  | 2025-12-04T16:41:53:     at ChildProcess.<anonymous> (/var/www/curbe/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserRunner.js:293:24)
+0|curbe-admin  | 2025-12-04T16:41:53:     at ChildProcess.emit (node:events:524:28)
+0|curbe-admin  | 2025-12-04T16:41:53:     at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+0|curbe-admin  | 2025-12-04T16:41:53:     at onErrorNT (node:internal/child_process:483:16)
+0|curbe-admin  | 2025-12-04T16:41:53:     at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+0|curbe-admin  | 2025-12-04T16:41:53: 4:41:53 PM [express] POST /api/whatsapp/init 500 in 7613ms :: {"success":false,"error":"Failed to in…
+0|curbe-admin  | 2025-12-04T16:41:56: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:41:56: 4:41:56 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T16:41:59: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:41:59: 4:41:59 PM [express] GET /api/whatsapp/status 304 in 7ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T16:42:03: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T16:42:03: 4:42:03 PM [express] GET /api/whatsapp/status 304 in 9ms :: {"success":true,"status":{"isReady":fals…
