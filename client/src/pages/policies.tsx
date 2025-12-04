@@ -8064,7 +8064,7 @@ export default function PoliciesPage() {
                         </div>
                       </div>
                       {/* Address - structured layout */}
-                      <div className="flex items-start gap-2.5">
+                      <div className="flex items-start gap-2.5 pt-2 mt-2 border-t border-border/30">
                         <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                         </div>
