@@ -7958,7 +7958,7 @@ export default function PoliciesPage() {
                   
                   {/* Contact Info Footer with Separator */}
                   <div className="px-5 py-3 border-t border-border/60 bg-muted/20">
-                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
+                    <div className="space-y-1.5 text-xs sm:text-sm">
                       {/* Phone */}
                       <div className="flex items-center gap-1.5">
                         <Phone className="h-3.5 w-3.5 text-muted-foreground" />
