@@ -1752,10 +1752,34 @@ export default function WhatsAppPage() {
     mutationFn: async () => {
       return await apiRequest('POST', '/api/whatsapp/logout', {});
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Clear all WhatsApp-related caches
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/status'] });
       queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
       setSelectedChatId(null);
+      
+      toast({
+        title: "Session closed",
+        description: "WhatsApp session has been disconnected. Scan the QR code to reconnect.",
+      });
+      
+      // Wait a moment then trigger init to generate new QR code
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Automatically start a new session to show QR code
+      try {
+        await apiRequest('POST', '/api/whatsapp/init', {});
+        queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/status'] });
+      } catch (error) {
+        console.log('[WhatsApp] Init after logout failed, user can retry manually');
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Logout failed",
+        description: error.message || "Failed to disconnect WhatsApp session",
+        variant: "destructive",
+      });
     },
   });
 

@@ -3782,71 +3782,135 @@ class WhatsAppService extends EventEmitter {
 
   /**
    * Logout and destroy session for a specific company
+   * This completely removes the session and forces a new QR code on next connect
    */
   async logout(companyId: string): Promise<void> {
     const companyClient = this.clients.get(companyId);
     
     try {
-      console.log(`[WhatsApp] Logging out and destroying session for company: ${companyId}`);
+      console.log(`[WhatsApp] === LOGOUT START for company: ${companyId} ===`);
       
-      // FIRST: Mark as intentionally logged out to prevent auto-reconnect
+      // STEP 1: Mark as intentionally logged out to prevent auto-reconnect
       this.loggedOutCompanies.add(companyId);
+      console.log(`[WhatsApp] Step 1: Marked as logged out`);
       
-      // Cancel any pending reconnection timers
+      // STEP 2: Cancel any pending reconnection timers
       const existingTimer = this.reconnectTimers.get(companyId);
       if (existingTimer) {
         clearTimeout(existingTimer);
         this.reconnectTimers.delete(companyId);
       }
       this.reconnectAttempts.delete(companyId);
+      console.log(`[WhatsApp] Step 2: Cleared reconnection timers`);
       
-      // Try to logout and destroy client if it exists
+      // STEP 3: Try to logout and destroy client if it exists
       if (companyClient) {
+        console.log(`[WhatsApp] Step 3: Destroying existing client...`);
+        
+        // First, try the WhatsApp logout (invalidates session on WhatsApp servers)
         try {
-          await companyClient.client.logout();
-        } catch (logoutError) {
-          console.log(`[WhatsApp] Client logout error (continuing with cleanup): ${logoutError}`);
-        }
-        try {
-          await companyClient.client.destroy();
-        } catch (destroyError) {
-          console.log(`[WhatsApp] Client destroy error (continuing with cleanup): ${destroyError}`);
+          await Promise.race([
+            companyClient.client.logout(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Logout timeout')), 10000))
+          ]);
+          console.log(`[WhatsApp] WhatsApp logout successful`);
+        } catch (logoutError: any) {
+          console.log(`[WhatsApp] Client logout error (continuing): ${logoutError.message}`);
         }
         
-        // Remove from clients map
+        // Wait for logout to propagate
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Then destroy the puppeteer instance
+        try {
+          await Promise.race([
+            companyClient.client.destroy(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Destroy timeout')), 10000))
+          ]);
+          console.log(`[WhatsApp] Client destroyed successfully`);
+        } catch (destroyError: any) {
+          console.log(`[WhatsApp] Client destroy error (continuing): ${destroyError.message}`);
+        }
+        
+        // Remove from clients map immediately
         this.clients.delete(companyId);
+        console.log(`[WhatsApp] Removed from clients map`);
+      } else {
+        console.log(`[WhatsApp] Step 3: No active client found`);
       }
       
-      // CRITICAL: Delete the session directory to ensure hasSavedSession returns false
-      // Use retry logic because Chromium may still have file locks
+      // STEP 4: Kill any orphaned Chrome processes for this session
+      console.log(`[WhatsApp] Step 4: Killing orphaned Chrome processes...`);
+      try {
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+        
+        // Kill chromium processes more aggressively
+        await execAsync('pkill -9 -f "chromium.*--disable-setuid-sandbox" 2>/dev/null || true');
+      } catch {
+        // Ignore errors
+      }
+      
+      // STEP 5: Wait for Chrome to fully exit
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`[WhatsApp] Step 5: Waited for Chrome to exit`);
+      
+      // STEP 6: Delete the session directory with aggressive retries
       const projectRoot = process.cwd();
       const sessionPath = path.join(projectRoot, '.wwebjs_auth', companyId);
       
-      // Wait a moment for browser to fully close
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`[WhatsApp] Step 6: Deleting session directory: ${sessionPath}`);
       
-      // Try to delete with retries
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let attempt = 1; attempt <= 5; attempt++) {
         try {
           if (fs.existsSync(sessionPath)) {
-            console.log(`[WhatsApp] Deleting session directory (attempt ${attempt}): ${sessionPath}`);
-            fs.rmSync(sessionPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-            console.log(`[WhatsApp] Session directory deleted successfully`);
+            // First try to remove any lock files
+            const sessionInnerPath = path.join(sessionPath, `session-${companyId}`);
+            const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'Local State'];
+            for (const lockFile of lockFiles) {
+              const lockPath = path.join(sessionInnerPath, lockFile);
+              try {
+                fs.rmSync(lockPath, { force: true });
+              } catch { /* ignore */ }
+            }
+            
+            // Now remove the entire directory
+            fs.rmSync(sessionPath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+            console.log(`[WhatsApp] Session directory deleted successfully (attempt ${attempt})`);
+          } else {
+            console.log(`[WhatsApp] Session directory already gone`);
           }
           break;
         } catch (deleteError: any) {
-          console.log(`[WhatsApp] Delete attempt ${attempt} failed: ${deleteError.message}`);
-          if (attempt < 3) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log(`[WhatsApp] Delete attempt ${attempt}/5 failed: ${deleteError.message}`);
+          if (attempt < 5) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
           }
+        }
+      }
+      
+      // STEP 7: Verify deletion
+      if (fs.existsSync(sessionPath)) {
+        console.log(`[WhatsApp] WARNING: Session directory still exists after deletion attempts`);
+        // Try one more aggressive approach with shell command
+        try {
+          const { exec } = await import('child_process');
+          const { promisify } = await import('util');
+          const execAsync = promisify(exec);
+          await execAsync(`rm -rf "${sessionPath}"`);
+          console.log(`[WhatsApp] Fallback shell delete executed`);
+        } catch (shellError: any) {
+          console.log(`[WhatsApp] Shell delete failed: ${shellError.message}`);
         }
       }
       
       this.emit('logout', { companyId });
-      console.log(`[WhatsApp] Logged out for company: ${companyId}`);
-    } catch (error) {
-      console.error(`[WhatsApp] Failed to logout for company ${companyId}:`, error);
-      // Don't throw - we've already cleaned up what we could
+      console.log(`[WhatsApp] === LOGOUT COMPLETE for company: ${companyId} ===`);
+      console.log(`[WhatsApp] Session exists after logout: ${fs.existsSync(sessionPath)}`);
+    } catch (error: any) {
+      console.error(`[WhatsApp] LOGOUT ERROR for company ${companyId}: ${error.message}`);
+      // Don't throw - emit the logout event anyway so frontend knows
       this.emit('logout', { companyId });
     }
   }
