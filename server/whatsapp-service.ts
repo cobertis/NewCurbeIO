@@ -490,19 +490,21 @@ class WhatsAppService extends EventEmitter {
     }
 
     // List of common Chromium/Chrome paths to check
+    // PRIORITY: Google Chrome first (supports multiple instances), then Chromium
+    // AVOID: Snap Chromium has SingletonLock issues that block multi-tenant sessions
     const possiblePaths = [
-      // Ubuntu/Debian
+      // Google Chrome (PREFERRED - supports multiple instances)
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/google-chrome',
+      '/opt/google/chrome/google-chrome',
+      '/opt/google/chrome/chrome',
+      // Ubuntu/Debian Chromium (apt-based, not snap)
       '/usr/bin/chromium-browser',
       '/usr/bin/chromium',
-      '/usr/bin/google-chrome',
-      '/usr/bin/google-chrome-stable',
-      // Snap installation
-      '/snap/bin/chromium',
       // Nix store paths (Replit)
       '/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium',
-      // Generic fallbacks
-      '/opt/google/chrome/chrome',
-      '/opt/google/chrome/google-chrome',
+      // Snap Chromium (LAST RESORT - has SingletonLock multi-instance issues)
+      '/snap/bin/chromium',
     ];
 
     for (const chromePath of possiblePaths) {
