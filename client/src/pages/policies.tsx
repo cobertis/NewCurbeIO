@@ -7947,10 +7947,10 @@ export default function PoliciesPage() {
                                     navigator.clipboard.writeText(formatDateForDisplay(viewingQuote.clientDateOfBirth!, "MM/dd/yyyy"));
                                     toast({ title: "Copied", duration: 2000 });
                                   }}
-                                  className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
+                                  className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
                                   data-testid="button-copy-dob"
                                 >
-                                  <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                  <Copy className="h-3 w-3 text-muted-foreground" />
                                 </button>
                               )}
                             </div>
@@ -7968,22 +7968,24 @@ export default function PoliciesPage() {
                                   <button
                                     type="button"
                                     onClick={() => setSsnVisible(!ssnVisible)}
-                                    className="p-0.5 rounded hover:bg-muted transition-colors"
+                                    className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
                                     data-testid="button-toggle-ssn"
                                   >
                                     {ssnVisible ? <EyeOff className="h-3 w-3 text-muted-foreground" /> : <Eye className="h-3 w-3 text-muted-foreground" />}
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(viewingQuote.clientSsn!);
-                                      toast({ title: "Copied", duration: 2000 });
-                                    }}
-                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
-                                    data-testid="button-copy-ssn"
-                                  >
-                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
-                                  </button>
+                                  {ssnVisible && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(viewingQuote.clientSsn!);
+                                        toast({ title: "Copied", duration: 2000 });
+                                      }}
+                                      className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
+                                      data-testid="button-copy-ssn"
+                                    >
+                                      <Copy className="h-3 w-3 text-muted-foreground" />
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -8011,10 +8013,10 @@ export default function PoliciesPage() {
                                 navigator.clipboard.writeText(viewingQuote.clientPhone!);
                                 toast({ title: "Copied", duration: 2000 });
                               }}
-                              className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                              className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
                               data-testid="button-copy-phone"
                             >
-                              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                              <Copy className="h-3 w-3 text-muted-foreground" />
                             </button>
                           )}
                         </div>
@@ -8031,10 +8033,10 @@ export default function PoliciesPage() {
                                 navigator.clipboard.writeText(viewingQuote.clientEmail!);
                                 toast({ title: "Copied", duration: 2000 });
                               }}
-                              className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                              className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
                               data-testid="button-copy-email"
                             >
-                              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                              <Copy className="h-3 w-3 text-muted-foreground" />
                             </button>
                           )}
                         </div>
@@ -8058,10 +8060,10 @@ export default function PoliciesPage() {
                                       navigator.clipboard.writeText(viewingQuote.physical_street!);
                                       toast({ title: "Copied", duration: 2000 });
                                     }}
-                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
                                     data-testid="button-copy-street"
                                   >
-                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <Copy className="h-3 w-3 text-muted-foreground" />
                                   </button>
                                 )}
                               </div>
@@ -8069,18 +8071,18 @@ export default function PoliciesPage() {
                             <div>
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Apt</span>
                               <div className="flex items-center gap-1">
-                                <p className="text-sm font-medium">{viewingQuote.physical_apt || '—'}</p>
-                                {viewingQuote.physical_apt && (
+                                <p className="text-sm font-medium">{viewingQuote.physical_address_line_2 || '—'}</p>
+                                {viewingQuote.physical_address_line_2 && (
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      navigator.clipboard.writeText(viewingQuote.physical_apt!);
+                                      navigator.clipboard.writeText(viewingQuote.physical_address_line_2!);
                                       toast({ title: "Copied", duration: 2000 });
                                     }}
-                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
                                     data-testid="button-copy-apt"
                                   >
-                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <Copy className="h-3 w-3 text-muted-foreground" />
                                   </button>
                                 )}
                               </div>
@@ -8099,10 +8101,10 @@ export default function PoliciesPage() {
                                       navigator.clipboard.writeText(viewingQuote.physical_city!);
                                       toast({ title: "Copied", duration: 2000 });
                                     }}
-                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
                                     data-testid="button-copy-city"
                                   >
-                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <Copy className="h-3 w-3 text-muted-foreground" />
                                   </button>
                                 )}
                               </div>
@@ -8118,10 +8120,10 @@ export default function PoliciesPage() {
                                       navigator.clipboard.writeText(viewingQuote.physical_state!);
                                       toast({ title: "Copied", duration: 2000 });
                                     }}
-                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
                                     data-testid="button-copy-state"
                                   >
-                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <Copy className="h-3 w-3 text-muted-foreground" />
                                   </button>
                                 )}
                               </div>
@@ -8137,10 +8139,10 @@ export default function PoliciesPage() {
                                       navigator.clipboard.writeText(viewingQuote.physical_postal_code!);
                                       toast({ title: "Copied", duration: 2000 });
                                     }}
-                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
                                     data-testid="button-copy-zip"
                                   >
-                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                    <Copy className="h-3 w-3 text-muted-foreground" />
                                   </button>
                                 )}
                               </div>
