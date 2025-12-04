@@ -7845,13 +7845,27 @@ export default function PoliciesPage() {
                   {/* Header with Product Type */}
                   <div className="px-5 py-3 bg-muted/30 border-b border-border/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {product?.name || viewingQuote.productType || 'Policy'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">|</span>
-                      <span className="text-sm font-semibold text-foreground">
-                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
-                      </span>
+                      {(() => {
+                        const productType = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType || p.name === viewingQuote.productType);
+                        const IconComponent = productType?.icon;
+                        return IconComponent ? (
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                            <IconComponent className="h-4 w-4 text-primary" />
+                          </div>
+                        ) : (
+                          <div className="h-8 w-8 rounded-lg bg-muted border border-border/40 flex items-center justify-center flex-shrink-0">
+                            <Shield className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        );
+                      })()}
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          {product?.name || viewingQuote.productType || 'Policy'}
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+                        </span>
+                      </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
