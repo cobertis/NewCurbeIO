@@ -7938,7 +7938,22 @@ export default function PoliciesPage() {
                         <div className="grid grid-cols-3 gap-x-4 text-sm">
                           <div>
                             <span className="text-muted-foreground text-xs">Date of Birth</span>
-                            <p className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</p>
+                            <div className="flex items-center gap-1">
+                              <p className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</p>
+                              {viewingQuote.clientDateOfBirth && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(formatDateForDisplay(viewingQuote.clientDateOfBirth!, "MM/dd/yyyy"));
+                                    toast({ title: "Copied", duration: 2000 });
+                                  }}
+                                  className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
+                                  data-testid="button-copy-dob"
+                                >
+                                  <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <div>
                             <span className="text-muted-foreground text-xs">Sex</span>
@@ -7949,14 +7964,27 @@ export default function PoliciesPage() {
                             <div className="flex items-center gap-1">
                               <p className="font-medium font-mono" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</p>
                               {viewingQuote.clientSsn && (
-                                <button
-                                  type="button"
-                                  onClick={() => setSsnVisible(!ssnVisible)}
-                                  className="p-0.5 rounded hover:bg-muted transition-colors"
-                                  data-testid="button-toggle-ssn"
-                                >
-                                  {ssnVisible ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSsnVisible(!ssnVisible)}
+                                    className="p-0.5 rounded hover:bg-muted transition-colors"
+                                    data-testid="button-toggle-ssn"
+                                  >
+                                    {ssnVisible ? <EyeOff className="h-3 w-3 text-muted-foreground" /> : <Eye className="h-3 w-3 text-muted-foreground" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(viewingQuote.clientSsn!);
+                                      toast({ title: "Copied", duration: 2000 });
+                                    }}
+                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
+                                    data-testid="button-copy-ssn"
+                                  >
+                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                  </button>
+                                </>
                               )}
                             </div>
                           </div>
@@ -7976,6 +8004,19 @@ export default function PoliciesPage() {
                             <Phone className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <span className="font-medium truncate">{viewingQuote.clientPhone || '—'}</span>
+                          {viewingQuote.clientPhone && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(viewingQuote.clientPhone!);
+                                toast({ title: "Copied", duration: 2000 });
+                              }}
+                              className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                              data-testid="button-copy-phone"
+                            >
+                              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                            </button>
+                          )}
                         </div>
                         {/* Email */}
                         <div className="flex items-center gap-2.5">
@@ -7983,6 +8024,19 @@ export default function PoliciesPage() {
                             <Mail className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <span className="font-medium truncate">{viewingQuote.clientEmail || '—'}</span>
+                          {viewingQuote.clientEmail && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(viewingQuote.clientEmail!);
+                                toast({ title: "Copied", duration: 2000 });
+                              }}
+                              className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                              data-testid="button-copy-email"
+                            >
+                              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                            </button>
+                          )}
                         </div>
                       </div>
                       {/* Address - structured layout */}
@@ -7995,26 +8049,101 @@ export default function PoliciesPage() {
                           <div className="grid grid-cols-3 gap-x-4">
                             <div className="col-span-2">
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Address</span>
-                              <p className="text-sm font-medium">{viewingQuote.physical_street || '—'}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm font-medium">{viewingQuote.physical_street || '—'}</p>
+                                {viewingQuote.physical_street && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(viewingQuote.physical_street!);
+                                      toast({ title: "Copied", duration: 2000 });
+                                    }}
+                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    data-testid="button-copy-street"
+                                  >
+                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div>
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Apt</span>
-                              <p className="text-sm font-medium">{viewingQuote.physical_apt || '—'}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm font-medium">{viewingQuote.physical_apt || '—'}</p>
+                                {viewingQuote.physical_apt && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(viewingQuote.physical_apt!);
+                                      toast({ title: "Copied", duration: 2000 });
+                                    }}
+                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    data-testid="button-copy-apt"
+                                  >
+                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                           {/* Row 2: City + State + Zip Code */}
                           <div className="grid grid-cols-3 gap-x-4">
                             <div>
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">City</span>
-                              <p className="text-sm font-medium">{viewingQuote.physical_city || '—'}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm font-medium">{viewingQuote.physical_city || '—'}</p>
+                                {viewingQuote.physical_city && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(viewingQuote.physical_city!);
+                                      toast({ title: "Copied", duration: 2000 });
+                                    }}
+                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    data-testid="button-copy-city"
+                                  >
+                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div>
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">State</span>
-                              <p className="text-sm font-medium">{viewingQuote.physical_state || '—'}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm font-medium">{viewingQuote.physical_state || '—'}</p>
+                                {viewingQuote.physical_state && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(viewingQuote.physical_state!);
+                                      toast({ title: "Copied", duration: 2000 });
+                                    }}
+                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    data-testid="button-copy-state"
+                                  >
+                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div>
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Zip Code</span>
-                              <p className="text-sm font-medium">{viewingQuote.physical_postal_code || '—'}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm font-medium">{viewingQuote.physical_postal_code || '—'}</p>
+                                {viewingQuote.physical_postal_code && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(viewingQuote.physical_postal_code!);
+                                      toast({ title: "Copied", duration: 2000 });
+                                    }}
+                                    className="p-0.5 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors flex-shrink-0"
+                                    data-testid="button-copy-zip"
+                                  >
+                                    <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
