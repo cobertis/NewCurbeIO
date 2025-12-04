@@ -95,6 +95,8 @@ export default function PublicLandingPage() {
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showAppointmentInline, setShowAppointmentInline] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -528,9 +530,9 @@ export default function PublicLandingPage() {
             className="text-[10px] leading-relaxed text-center opacity-60"
             style={{ color: theme.textColor }}
           >
-            By providing your phone number, you agree to receive recurring automated promotional and personalized marketing text messages (e.g., cart reminders) from {landingPage.profileName || 'us'} at the cell number used when signing up. Consent is not a condition of any purchase. Reply HELP for help and STOP to cancel. Msg frequency varies. Msg & data rates may apply. View our{' '}
-            <a href="#" className="underline hover:opacity-80">Privacy Policy</a> and{' '}
-            <a href="#" className="underline hover:opacity-80">Terms of Service</a>.
+            By providing your phone number, you agree to receive recurring automated promotional and personalized marketing text messages (e.g., policy updates, renewal reminders) from {companyData?.name || landingPage.profileName || 'us'} at the cell number used when signing up. Consent is not a condition of any purchase. Reply HELP for help and STOP to cancel. Msg frequency varies. Msg & data rates may apply. View our{' '}
+            <button onClick={() => setShowPrivacyPolicy(true)} className="underline hover:opacity-80">Privacy Policy</button> and{' '}
+            <button onClick={() => setShowTermsOfService(true)} className="underline hover:opacity-80">Terms of Service</button>.
           </p>
         </div>
 
@@ -543,6 +545,84 @@ export default function PublicLandingPage() {
           <p className="text-sm">Created with Curbe Landing Pages</p>
         </div>
       </div>
+
+      {/* Privacy Policy Modal */}
+      <Dialog open={showPrivacyPolicy} onOpenChange={setShowPrivacyPolicy}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Privacy Policy</DialogTitle>
+            <DialogDescription>
+              Last updated: {new Date().toLocaleDateString()}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm text-gray-600">
+            <p>
+              <strong>{companyData?.name || landingPage.profileName || 'We'}</strong> ("we," "us," or "our") respects your privacy and is committed to protecting your personal information.
+            </p>
+            <h3 className="font-semibold text-gray-900">Information We Collect</h3>
+            <p>
+              We collect information you provide directly, including your name, phone number, email address, and any other information you choose to provide when you contact us or request information about insurance products and services.
+            </p>
+            <h3 className="font-semibold text-gray-900">How We Use Your Information</h3>
+            <p>
+              We use your information to: respond to your inquiries; provide insurance quotes and policy information; send you promotional messages about our services (with your consent); and comply with legal obligations.
+            </p>
+            <h3 className="font-semibold text-gray-900">SMS/Text Messages</h3>
+            <p>
+              By providing your phone number, you consent to receive automated text messages regarding policy updates, renewal reminders, and promotional offers. Message frequency varies. Message and data rates may apply. Reply STOP to opt-out at any time, or HELP for assistance.
+            </p>
+            <h3 className="font-semibold text-gray-900">Data Protection</h3>
+            <p>
+              We implement appropriate security measures to protect your personal information. We do not sell your personal information to third parties.
+            </p>
+            <h3 className="font-semibold text-gray-900">Contact Us</h3>
+            <p>
+              For questions about this privacy policy, please contact us at {landingPage.profileEmail || landingPage.profilePhone || 'our office'}.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Terms of Service Modal */}
+      <Dialog open={showTermsOfService} onOpenChange={setShowTermsOfService}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Terms of Service</DialogTitle>
+            <DialogDescription>
+              Last updated: {new Date().toLocaleDateString()}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm text-gray-600">
+            <p>
+              By using the services provided by <strong>{companyData?.name || landingPage.profileName || 'us'}</strong>, you agree to the following terms and conditions.
+            </p>
+            <h3 className="font-semibold text-gray-900">Services</h3>
+            <p>
+              We provide insurance information, quotes, and related services. All insurance products are subject to underwriting approval and the terms of the applicable insurance policy.
+            </p>
+            <h3 className="font-semibold text-gray-900">SMS/Text Message Terms</h3>
+            <p>
+              By providing your phone number and opting in to receive text messages, you agree to receive recurring automated promotional and informational text messages. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to cancel or HELP for help.
+            </p>
+            <h3 className="font-semibold text-gray-900">Accuracy of Information</h3>
+            <p>
+              You agree to provide accurate and complete information when requesting insurance quotes or services. Inaccurate information may result in incorrect quotes or policy issues.
+            </p>
+            <h3 className="font-semibold text-gray-900">Disclaimer</h3>
+            <p>
+              Insurance quotes provided are estimates only and are subject to change based on underwriting review. Final premiums, terms, and conditions are determined by the insurance carrier.
+            </p>
+            <h3 className="font-semibold text-gray-900">Limitation of Liability</h3>
+            <p>
+              We are not liable for any damages arising from your use of our services or reliance on information provided. Insurance coverage is subject to the terms of your policy.
+            </p>
+            <h3 className="font-semibold text-gray-900">Contact</h3>
+            <p>
+              For questions about these terms, please contact us at {landingPage.profileEmail || landingPage.profilePhone || 'our office'}.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
