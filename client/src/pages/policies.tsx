@@ -7971,14 +7971,33 @@ export default function PoliciesPage() {
                           <span className="font-medium truncate">{viewingQuote.clientEmail || '—'}</span>
                         </div>
                       </div>
-                      {/* Address - full width row */}
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                      {/* Address - structured layout */}
+                      <div className="flex items-start gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                         </div>
-                        <span className="text-muted-foreground text-sm">
-                          {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ') || '—'}
-                        </span>
+                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+                          <div className="col-span-2">
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Address</span>
+                            <p className="text-sm font-medium">{viewingQuote.physical_street || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Apt</span>
+                            <p className="text-sm font-medium">{viewingQuote.physical_apt || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">City</span>
+                            <p className="text-sm font-medium">{viewingQuote.physical_city || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">State</span>
+                            <p className="text-sm font-medium">{viewingQuote.physical_state || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Zip Code</span>
+                            <p className="text-sm font-medium">{viewingQuote.physical_postal_code || '—'}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
