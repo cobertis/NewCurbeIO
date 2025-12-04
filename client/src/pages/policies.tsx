@@ -7494,32 +7494,6 @@ export default function PoliciesPage() {
                   <h2 className="text-lg font-semibold">Policy {viewingQuote.id}</h2>
                   <p className="text-xs text-muted-foreground">Internal Code</p>
                 </div>
-                {viewingQuote.productType === 'aca' && (() => {
-                  const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                  const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                  if (!isStateBased) {
-                    return (
-                      <Button 
-                        size="sm"
-                        variant="default"
-                        className="h-9 text-sm font-medium shadow-sm"
-                        data-testid="button-search-plans-sidebar"
-                        onClick={() => {
-                          const missingFields = validateMarketplaceData();
-                          if (missingFields.length > 0) {
-                            toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
-                          } else {
-                            setLocation(`/customers/${viewingQuote.id}/marketplace-plans`);
-                          }
-                        }}
-                      >
-                        <Search className="h-4 w-4 mr-1.5" />
-                        Search Plans
-                      </Button>
-                    );
-                  }
-                  return null;
-                })()}
               </div>
               
               <div className="space-y-3">
