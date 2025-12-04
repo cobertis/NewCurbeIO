@@ -492,27 +492,29 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
-   * Kill any orphaned Chrome processes to free resources before starting a new one
+   * REMOVED: Global Chrome kill that was destroying other tenants' sessions
+   * 
+   * CRITICAL FIX: The previous implementation used `pkill -9 -f "chromium.*--disable-setuid-sandbox"`
+   * which killed ALL Chromium processes across ALL companies. This caused:
+   * - When Company B initialized, it killed Company A's Chromium
+   * - Company A's session would crash with "Target closed" errors
+   * - Stale SingletonLock files would remain, causing "File exists" errors
+   * 
+   * LocalAuth already isolates sessions per company via clientId and dataPath.
+   * We now only clean up lock files for the specific company being initialized.
+   * 
+   * For true multi-tenant production scale, consider:
+   * - Running each company's WhatsApp client in isolated worker processes
+   * - Using RemoteAuth with MongoDB for cluster-wide session sharing
    */
-  private async killOrphanedChromeProcesses(): Promise<void> {
-    try {
-      const { exec } = await import('child_process');
-      const { promisify } = await import('util');
-      const execAsync = promisify(exec);
-      
-      // Find and kill orphaned chromium processes (older than 2 minutes or zombies)
-      try {
-        await execAsync('pkill -9 -f "chromium.*--disable-setuid-sandbox" 2>/dev/null || true');
-        console.log(`[WhatsApp] Cleaned up orphaned Chrome processes`);
-      } catch {
-        // Ignore errors - no processes to kill
-      }
-      
-      // Brief pause to let OS release resources
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (error) {
-      console.log(`[WhatsApp] Note: Could not check for orphaned processes`);
-    }
+  private async cleanupCompanyResources(companyId: string): Promise<void> {
+    console.log(`[WhatsApp] Cleaning up resources for company: ${companyId}`);
+    
+    // Only clean lock files for THIS company - don't touch other companies' processes
+    this.cleanupStaleLocks(companyId);
+    
+    // Brief pause to ensure OS releases file locks
+    await new Promise(resolve => setTimeout(resolve, 200));
   }
 
   /**
@@ -521,15 +523,11 @@ class WhatsAppService extends EventEmitter {
   async createClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
     console.log(`[WhatsApp] Creating new client for company: ${companyId}`);
 
-    // Clean up orphaned Chrome processes first
-    await this.killOrphanedChromeProcesses();
+    // Clean up only THIS company's resources - never touch other tenants' processes
+    await this.cleanupCompanyResources(companyId);
 
-    // Clean up any stale lock files from previous crashes
-    this.cleanupStaleLocks(companyId);
-
-    // Create company-specific auth directory and user data directory
+    // Create company-specific auth directory (LocalAuth manages Chrome profile internally)
     const authPath = path.join('.wwebjs_auth', companyId);
-    const userDataDir = path.join(process.cwd(), '.wwebjs_auth', companyId, 'chrome-profile');
 
     // Puppeteer configuration optimized for stability (NOT memory)
     // REMOVED: --single-process (causes crashes)
@@ -577,7 +575,8 @@ class WhatsAppService extends EventEmitter {
             executablePath: this.getChromiumPath(),
             headless: true,
             args: chromiumFlags,
-            userDataDir: userDataDir, // CRITICAL: Separate Chrome profile per company to prevent SingletonLock conflicts
+            // NOTE: Do NOT use userDataDir with LocalAuth - it conflicts with LocalAuth's internal session management
+            // LocalAuth handles session isolation through clientId and dataPath parameters
             defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
             timeout: 60000, // 60 second timeout for browser launch
             protocolTimeout: 60000, // 60 second timeout for CDP protocol
@@ -627,9 +626,8 @@ class WhatsAppService extends EventEmitter {
           console.log(`[WhatsApp] Waiting ${waitTime/1000}s before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
 
-          // Kill orphaned processes before retry
-          await this.killOrphanedChromeProcesses();
-          this.cleanupStaleLocks(companyId);
+          // Clean up only THIS company's resources before retry - never kill other tenants' processes
+          await this.cleanupCompanyResources(companyId);
         }
       }
     }
