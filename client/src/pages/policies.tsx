@@ -7920,8 +7920,8 @@ export default function PoliciesPage() {
                           {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
                         </h2>
                         
-                        {/* Info Grid */}
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                        {/* Info Grid - All on same line */}
+                        <div className="grid grid-cols-3 gap-x-4 text-sm">
                           <div>
                             <span className="text-muted-foreground text-xs">Date of Birth</span>
                             <p className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</p>
@@ -7930,18 +7930,18 @@ export default function PoliciesPage() {
                             <span className="text-muted-foreground text-xs">Sex</span>
                             <p className="font-medium">{viewingQuote.clientGender === 'male' ? 'Male' : viewingQuote.clientGender === 'female' ? 'Female' : '—'}</p>
                           </div>
-                          <div className="col-span-2 mt-1">
+                          <div>
                             <span className="text-muted-foreground text-xs">SSN</span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                               <p className="font-medium font-mono" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</p>
                               {viewingQuote.clientSsn && (
                                 <button
                                   type="button"
                                   onClick={() => setSsnVisible(!ssnVisible)}
-                                  className="p-1 rounded hover:bg-muted transition-colors"
+                                  className="p-0.5 rounded hover:bg-muted transition-colors"
                                   data-testid="button-toggle-ssn"
                                 >
-                                  {ssnVisible ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                                  {ssnVisible ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
                                 </button>
                               )}
                             </div>
