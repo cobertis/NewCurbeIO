@@ -8347,9 +8347,8 @@ export default function PoliciesPage() {
                                   <p className="text-sm font-medium text-primary">{plan.name}</p>
                                 </div>
 
-                                {/* Two Column Layout: Plan Details + Policy Info */}
-                                <div className="p-4 grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4">
-                                  {/* LEFT: Plan Cost Details */}
+                                {/* Plan Cost Details */}
+                                <div className="p-4">
                                   <div className="space-y-4">
                                     {/* Cost Summary */}
                                     <div className="grid grid-cols-3 gap-4">
@@ -8402,92 +8401,6 @@ export default function PoliciesPage() {
                                       <div>
                                         <p className="text-xs font-medium mb-0.5">Generic Drugs</p>
                                         <p className="text-xs text-muted-foreground">{genericDrugsCost || 'No Charge'}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* RIGHT: Policy Information */}
-                                  <div className="xl:border-l xl:pl-4 space-y-2">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <p className="text-xs font-semibold text-foreground">Policy Information</p>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 text-[10px] px-2"
-                                        onClick={async () => {
-                                          try {
-                                            await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
-                                              memberId: policyInfo.memberId || null,
-                                              npnMarketplace: policyInfo.npnMarketplace || null,
-                                              saleType: policyInfo.saleType || null,
-                                              effectiveDate: policyInfo.effectiveDate || null,
-                                              marketplaceId: policyInfo.marketplaceId || null,
-                                              ffmMarketplace: policyInfo.ffmMarketplace || null,
-                                              specialEnrollmentReason: policyInfo.specialEnrollmentReason || null,
-                                              cancellationDate: policyInfo.cancellationDate || null,
-                                              specialEnrollmentDate: policyInfo.specialEnrollmentDate || null,
-                                            });
-                                            queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                                            toast({ title: "Saved", description: "Policy information has been saved.", duration: 3000 });
-                                          } catch (error: any) {
-                                            toast({ title: "Error", description: error.message || "Failed to save.", variant: "destructive", duration: 3000 });
-                                          }
-                                        }}
-                                        data-testid="button-save-policy-info-inline"
-                                      >
-                                        <Save className="h-3 w-3 mr-1" />
-                                        Save
-                                      </Button>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Member ID</label>
-                                        <Input value={policyInfo.memberId} onChange={(e) => setPolicyInfo({ ...policyInfo, memberId: e.target.value })} className="h-7 text-xs" data-testid="input-member-id-inline" />
-                                      </div>
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">NPN</label>
-                                        <Input value={policyInfo.npnMarketplace} onChange={(e) => setPolicyInfo({ ...policyInfo, npnMarketplace: e.target.value })} className="h-7 text-xs" data-testid="input-npn-inline" />
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Sale Type</label>
-                                        <Select value={policyInfo.saleType} onValueChange={(v) => setPolicyInfo({ ...policyInfo, saleType: v })}>
-                                          <SelectTrigger className="h-7 text-xs" data-testid="select-sale-type-inline"><SelectValue placeholder="Select" /></SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="new">New Sale</SelectItem>
-                                            <SelectItem value="renewal">Renewal</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Effective Date</label>
-                                        <Input type="date" value={policyInfo.effectiveDate} onChange={(e) => setPolicyInfo({ ...policyInfo, effectiveDate: e.target.value })} className="h-7 text-xs" data-testid="input-effective-date-inline" />
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Marketplace ID</label>
-                                        <Input value={policyInfo.marketplaceId} onChange={(e) => setPolicyInfo({ ...policyInfo, marketplaceId: e.target.value })} className="h-7 text-xs" data-testid="input-marketplace-id-inline" />
-                                      </div>
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">FFM</label>
-                                        <Input value={policyInfo.ffmMarketplace} onChange={(e) => setPolicyInfo({ ...policyInfo, ffmMarketplace: e.target.value })} className="h-7 text-xs" data-testid="input-ffm-inline" />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] text-muted-foreground block mb-0.5">Special Enrollment Reason</label>
-                                      <Input value={policyInfo.specialEnrollmentReason} onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentReason: e.target.value })} className="h-7 text-xs" data-testid="input-ser-inline" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Cancellation</label>
-                                        <Input type="date" value={policyInfo.cancellationDate} onChange={(e) => setPolicyInfo({ ...policyInfo, cancellationDate: e.target.value })} className="h-7 text-xs" data-testid="input-cancel-inline" />
-                                      </div>
-                                      <div>
-                                        <label className="text-[10px] text-muted-foreground block mb-0.5">SE Date</label>
-                                        <Input type="date" value={policyInfo.specialEnrollmentDate} onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentDate: e.target.value })} className="h-7 text-xs" data-testid="input-se-date-inline" />
                                       </div>
                                     </div>
                                   </div>
