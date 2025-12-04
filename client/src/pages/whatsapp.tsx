@@ -3548,80 +3548,28 @@ export default function WhatsAppPage() {
   }
 
   // =====================================================
-  // RENDER: RECONNECTING STATE (has saved session, auto-connecting)
+  // RENDER: MAIN CHAT VIEW (authenticated OR has saved session)
+  // When has saved session, show chats with reconnecting banner instead of blocking page
   // =====================================================
 
-  if (showReconnecting) {
-    return (
-      <div className="h-full flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
-        <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
-          <div className="text-center space-y-6">
-            <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
-              <RefreshCw className="h-10 w-10 text-white animate-spin" />
-            </div>
-            
-            <h2 className="text-xl font-semibold text-[var(--whatsapp-text-primary)]">
-              Reconnecting...
-            </h2>
-            <p className="text-[var(--whatsapp-text-secondary)]">
-              Restoring your WhatsApp session
-            </p>
-            <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
-              This may take a few seconds
-            </p>
-            
-            {/* Reset Session button for corrupted sessions */}
-            <div className="pt-4 border-t border-[var(--whatsapp-border)] mt-4">
-              <p className="text-xs text-[var(--whatsapp-text-tertiary)] mb-2">
-                Session not loading? It may be corrupted.
-              </p>
-              <Button
-                onClick={() => logoutMutation.mutate()}
-                variant="outline"
-                size="sm"
-                className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                disabled={logoutMutation.isPending}
-                data-testid="button-reset-session"
-              >
-                {logoutMutation.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Resetting...</>
-                ) : (
-                  <><RefreshCcw className="h-4 w-4 mr-2" /> Reset Session</>
-                )}
-              </Button>
-            </div>
-            
-            {initError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 mt-4">
-                {initError}
-                <Button
-                  onClick={() => {
-                    autoInitAttempts.current = 0;
-                    lastAutoInitTime.current = 0;
-                    initWhatsAppMutation.mutate();
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 w-full"
-                  data-testid="button-retry-connection"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Retry
-                </Button>
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
-    );
+  // Show main view if authenticated OR if we have a saved session (reconnect in background)
+  const showMainView = isAuthenticated || hasSavedSession;
+  const isReconnecting = hasSavedSession && !isAuthenticated;
+
+  if (!showMainView) {
+    // This shouldn't happen normally, but fallback to connect page
+    return null;
   }
-
-  // =====================================================
-  // RENDER: MAIN CHAT VIEW (authenticated)
-  // =====================================================
 
   return (
     <div className="h-full flex flex-col bg-[var(--whatsapp-bg-primary)]">
+      {/* Subtle reconnecting banner - only shows when reconnecting in background */}
+      {isReconnecting && (
+        <div className="bg-amber-500/90 text-white text-center py-1 px-4 text-sm flex items-center justify-center gap-2">
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          <span>Reconnecting...</span>
+        </div>
+      )}
       <ResizablePanelGroup 
         direction="horizontal" 
         className="flex-1"
