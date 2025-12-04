@@ -2156,6 +2156,14 @@ export default function LandingPageBuilder() {
                                 </svg>
                               </div>
                             )}
+                            {companyData?.company?.name && (
+                              <p
+                                className="text-xs font-medium text-gray-500 uppercase tracking-wide"
+                                style={{ margin: 0, padding: 0, border: "none", marginBottom: "2px" }}
+                              >
+                                {companyData.company.name}
+                              </p>
+                            )}
                             {selectedPage.landingPage.profileBio && (
                               <p
                                 className="text-sm leading-relaxed text-gray-600"

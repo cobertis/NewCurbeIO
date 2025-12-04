@@ -22385,7 +22385,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ 
         landingPage, 
         blocks,
-        company: company ? { logo: company.logo } : null
+        company: company ? { logo: company.logo, name: company.name } : null
       });
     } catch (error: any) {
       console.error("Error fetching public landing page:", error);
