@@ -106,7 +106,7 @@ import { fetchMarketplacePlans, buildCMSPayloadFromPolicy } from "./cms-marketpl
 import { generateShortId } from "./id-generator";
 import { getAvailableSlots, isSlotAvailable, isDuplicateAppointment } from "./services/appointment-availability";
 import { bulkVSClient } from "./bulkvs";
-import { whatsappService } from "./whatsapp-service";
+import { whatsappBaileysService as whatsappService } from "./whatsapp-baileys-service";
 import { formatForStorage, formatForDisplay, formatE164 } from "@shared/phone";
 import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
