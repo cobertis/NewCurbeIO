@@ -5467,8 +5467,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-
-
+  // Get company agents for dropdowns (policies, quotes, etc.)
+  app.get("/api/company/agents", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      
+      if (!currentUser.companyId) {
+        return res.json({ agents: [] });
+      }
+      
+      const users = await storage.getUsersByCompany(currentUser.companyId);
+      
+      // Return agents with the fields needed for dropdowns
+      const agents = users.map(user => ({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        avatar: user.avatar,
+        role: user.role,
+      }));
+      
+      res.json({ agents });
+    } catch (error) {
+      console.error("Error fetching company agents:", error);
+      res.status(500).json({ message: "Failed to fetch company agents" });
+    }
+  });
 
   app.get("/api/stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
