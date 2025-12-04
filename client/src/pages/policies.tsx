@@ -8174,9 +8174,19 @@ export default function PoliciesPage() {
                   <div className="px-5 py-3 bg-muted/30 border-b border-border/40">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-background border border-border/40 flex items-center justify-center">
-                          <Shield className="h-4.5 w-4.5 text-muted-foreground" />
-                        </div>
+                        {(() => {
+                          const productType = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType || p.name === viewingQuote.productType);
+                          const IconComponent = productType?.icon;
+                          return IconComponent ? (
+                            <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                              <IconComponent className="h-4.5 w-4.5 text-primary" />
+                            </div>
+                          ) : (
+                            <div className="h-9 w-9 rounded-lg bg-background border border-border/40 flex items-center justify-center">
+                              <Shield className="h-4.5 w-4.5 text-muted-foreground" />
+                            </div>
+                          );
+                        })()}
                         <div>
                           <h3 className="text-sm font-semibold text-foreground">Insurance Plans</h3>
                           <p className="text-xs text-muted-foreground">{(quoteDetail?.plans || []).length} plan{(quoteDetail?.plans || []).length !== 1 ? 's' : ''} enrolled</p>
