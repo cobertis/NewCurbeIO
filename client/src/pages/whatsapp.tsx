@@ -471,7 +471,7 @@ const MessageItem = memo(function MessageItem({
                 <FileIconLucide className="h-8 w-8 text-[var(--whatsapp-green-primary)]" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">Document</p>
-                  <p className="text-xs text-[var(--whatsapp-text-tertiary)]">Click to download</p>
+                  <p className="text-xs text-[var(--whatsapp-text-tertiary)] mb-4">Click to download</p>
                 </div>
               </a>
             )}
@@ -3480,6 +3480,27 @@ export default function WhatsAppPage() {
             <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
               This may take a few seconds
             </p>
+            
+            {/* Reset Session button for corrupted sessions */}
+            <div className="pt-4 border-t border-[var(--whatsapp-border)] mt-4">
+              <p className="text-xs text-[var(--whatsapp-text-tertiary)] mb-2">
+                Session not loading? It may be corrupted.
+              </p>
+              <Button
+                onClick={() => logoutMutation.mutate()}
+                variant="outline"
+                size="sm"
+                className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                disabled={logoutMutation.isPending}
+                data-testid="button-reset-session"
+              >
+                {logoutMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Resetting...</>
+                ) : (
+                  <><RefreshCcw className="h-4 w-4 mr-2" /> Reset Session</>
+                )}
+              </Button>
+            </div>
             
             {initError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 mt-4">
