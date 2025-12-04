@@ -96,6 +96,7 @@ export default function MarketplacePlansPage() {
   // Detect if we're in quotes or policies context
   const isPolicy = location.startsWith('/customers/');
   const basePath = isPolicy ? 'customers' : 'quotes';
+  const apiBasePath = isPolicy ? 'policies' : 'quotes';
   
   const [, quotesParams] = useRoute("/quotes/:id/marketplace-plans");
   const [, policiesParams] = useRoute("/customers/:id/marketplace-plans");
@@ -126,13 +127,13 @@ export default function MarketplacePlansPage() {
 
   // Fetch quote/policy details
   const { data: quoteData, isLoading: isLoadingQuote } = useQuery({
-    queryKey: [`/api/${basePath}/${quoteId}/detail`],
+    queryKey: [`/api/${apiBasePath}/${quoteId}/detail`],
     enabled: !!quoteId,
   });
 
   // CRITICAL FIX: Load REAL family members from quote_members/policy_members table
   const { data: membersDetailsData } = useQuery<{ members: any[] }>({
-    queryKey: [`/api/${basePath}/${quoteId}/members`],
+    queryKey: [`/api/${apiBasePath}/${quoteId}/members`],
     enabled: !!quoteId,
   });
 
@@ -179,8 +180,8 @@ export default function MarketplacePlansPage() {
         duration: 3000,
       });
       // Invalidate data to refresh
-      queryClient.invalidateQueries({ queryKey: [`/api/${basePath}`, quoteId, 'detail'] });
-      queryClient.invalidateQueries({ queryKey: [`/api/${basePath}/${quoteId}/detail`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/${apiBasePath}`, quoteId, 'detail'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/${apiBasePath}/${quoteId}/detail`] });
       // Navigate back to detail page
       setLocation(`/${basePath}/${quoteId}`);
     },
@@ -200,7 +201,7 @@ export default function MarketplacePlansPage() {
 
   // Fetch marketplace plans with useQuery (with pagination)
   const { data: marketplacePlans, isLoading: isLoadingPlans } = useQuery({
-    queryKey: ['/api/', basePath, quoteId, 'marketplace-plans', {
+    queryKey: ['/api/', apiBasePath, quoteId, 'marketplace-plans', {
       page: currentPage,
       metalLevels: Array.from(selectedMetals),
       issuers: Array.from(selectedCarriers),
@@ -240,7 +241,7 @@ export default function MarketplacePlansPage() {
       }
 
       const response = await fetch(
-        `/api/${basePath}/${quoteId}/marketplace-plans?${params}`,
+        `/api/${apiBasePath}/${quoteId}/marketplace-plans?${params}`,
         {
           method: 'GET',
           headers: {
