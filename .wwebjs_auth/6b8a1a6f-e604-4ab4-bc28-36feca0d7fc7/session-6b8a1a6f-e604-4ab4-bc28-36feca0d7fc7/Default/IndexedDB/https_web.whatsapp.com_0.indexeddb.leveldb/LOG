@@ -1,7 +1,0 @@
-2025/12/04-02:35:37.244 12c3 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/12/04-02:35:37.244 12c3 Recovering log #1581
-2025/12/04-02:35:37.248 12c3 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001581.log 
-2025/12/04-02:35:38.544 12cc Level-0 table #1588: started
-2025/12/04-02:35:38.558 12cc Level-0 table #1588: 175337 bytes OK
-2025/12/04-02:35:38.790 12cc Delete type=0 #1581
-2025/12/04-02:35:38.790 12c3 Manual compaction at level-0 from ' R\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' S\x01\x00\x00\x00' @ 0 : 0; will stop at (end)

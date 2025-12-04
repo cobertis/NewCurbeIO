@@ -7867,10 +7867,10 @@ export default function PoliciesPage() {
             
             {/* Two Column Layout: Member Card + Insurance Plans */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5 items-stretch" style={{ minHeight: '400px' }}>
+              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5" style={{ height: '400px' }}>
                 
-                {/* LEFT: Member Card - Elegant Design - Fixed minimum height */}
-                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5 flex flex-col" style={{ minHeight: '400px' }}>
+                {/* LEFT: Member Card - Elegant Design - FIXED height */}
+                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5 flex flex-col" style={{ height: '400px' }}>
                   {/* Header with Product Type */}
                   <div className="px-5 py-3 bg-muted/30 border-b border-border/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -8197,8 +8197,8 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: Insurance Plans Card - Elegant Design - Fixed minimum height */}
-                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col 2xl:col-span-7" style={{ minHeight: '400px' }}>
+                {/* RIGHT: Insurance Plans Card - Elegant Design - FIXED height */}
+                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col 2xl:col-span-7" style={{ height: '400px' }}>
                   {/* Header */}
                   <div className="px-5 py-3 bg-muted/30 border-b border-border/40">
                     <div className="flex items-center justify-between">
