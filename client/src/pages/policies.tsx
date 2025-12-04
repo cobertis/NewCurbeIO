@@ -7956,7 +7956,12 @@ export default function PoliciesPage() {
                           <div>
                             <span className="text-muted-foreground text-xs">Date of Birth</span>
                             <div className="flex items-center gap-1">
-                              <p className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</p>
+                              <p className="font-medium">
+                                {viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}
+                                {viewingQuote.clientDateOfBirth && (
+                                  <span className="text-muted-foreground ml-1">({calculateAge(viewingQuote.clientDateOfBirth)} yrs)</span>
+                                )}
+                              </p>
                               {viewingQuote.clientDateOfBirth && (
                                 <button
                                   type="button"
