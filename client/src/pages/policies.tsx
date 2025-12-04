@@ -8125,14 +8125,6 @@ export default function PoliciesPage() {
                       );
                     })()}
                   </div>
-
-                  {/* Footer */}
-                  <div className="px-5 py-3 bg-muted/30 border-t border-border/60 flex items-center justify-end mt-auto">
-                    <Button variant="ghost" size="sm" className="h-8 text-xs font-medium" onClick={() => setManualPlanDialogOpen(true)}>
-                      <Plus className="h-3.5 w-3.5 mr-1.5" />
-                      Add Plan
-                    </Button>
-                  </div>
                 </div>
               </div>
             </div>
