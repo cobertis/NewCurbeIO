@@ -7840,75 +7840,73 @@ export default function PoliciesPage() {
             <div className="mb-6">
               <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5">
                 
-                {/* LEFT: Member Card - Premium Design (5/12 width = ~42%, 25% wider than before) */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5">
-                  {/* Subtle accent line */}
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/60 via-primary/30 to-transparent" />
-                  
-                  {/* Card Content */}
-                  <div className="pl-5 pr-4 py-4">
-                    {/* Top Row: Carrier/Product + Year + Actions */}
-                    <div className="flex items-center justify-between mb-4">
-                      <Badge variant="secondary" className="text-sm font-medium uppercase tracking-wider px-3 py-1 bg-muted/80">
+                {/* LEFT: Member Card - Elegant Design */}
+                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5">
+                  {/* Header with Product Type */}
+                  <div className="px-5 py-3 bg-muted/30 border-b border-border/40 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         {product?.name || viewingQuote.productType || 'Policy'}
-                      </Badge>
-                      <div className="flex items-center gap-2">
-                        <Badge className="text-sm font-bold font-mono px-3 py-1 bg-primary text-primary-foreground shadow-sm">
-                          {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
-                        </Badge>
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" data-testid="button-options">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
-                            <Lock className="h-3.5 w-3.5 mr-2" />
-                            {viewingQuote.isBlocked ? 'Unblock' : 'Block'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => { setRemindersSheetOpen(true); setSelectedReminder(null); setReminderFormOpen(true); }}>
-                            <Bell className="h-3.5 w-3.5 mr-2" />
-                            Reminder
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.open(`/customers/${viewingQuote.id}/print`, '_blank')}>
-                            <FileText className="h-3.5 w-3.5 mr-2" />
-                            Print
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
-                            <Copy className="h-3.5 w-3.5 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)} className="text-destructive">
-                            <X className="h-3.5 w-3.5 mr-2" />
-                            Cancel
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
-                            <Archive className="h-3.5 w-3.5 mr-2" />
-                            Archive
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      </span>
+                      <span className="text-xs text-muted-foreground">|</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
+                      </span>
                     </div>
-
-                    {/* Member Info with Gender Avatar - Always side by side */}
-                    <div className="flex items-start gap-3 sm:gap-5">
-                      {/* Gender-based Avatar Silhouette */}
-                      <div className="h-14 w-14 sm:h-24 sm:w-24 rounded-full bg-gradient-to-b from-muted to-muted/60 flex items-center justify-center flex-shrink-0 ring-2 ring-border/30 shadow-inner">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted/50" data-testid="button-options">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => setBlockPolicyDialogOpen(true)}>
+                          <Lock className="h-3.5 w-3.5 mr-2" />
+                          {viewingQuote.isBlocked ? 'Unblock' : 'Block'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setRemindersSheetOpen(true); setSelectedReminder(null); setReminderFormOpen(true); }}>
+                          <Bell className="h-3.5 w-3.5 mr-2" />
+                          Reminder
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.open(`/customers/${viewingQuote.id}/print`, '_blank')}>
+                          <FileText className="h-3.5 w-3.5 mr-2" />
+                          Print
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setDuplicatePolicyDialogOpen(true)}>
+                          <Copy className="h-3.5 w-3.5 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setCancelPolicyDialogOpen(true)} className="text-destructive">
+                          <X className="h-3.5 w-3.5 mr-2" />
+                          Cancel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setArchivePolicyDialogOpen(true)}>
+                          <Archive className="h-3.5 w-3.5 mr-2" />
+                          Archive
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  {/* Main Content */}
+                  <div className="p-5">
+                    {/* Member Info with Avatar */}
+                    <div className="flex items-start gap-4">
+                      {/* Avatar */}
+                      <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0 border border-border/30">
                         {viewingQuote.clientGender === 'male' ? (
-                          <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-14 sm:w-14 text-muted-foreground/70" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-9 w-9 sm:h-11 sm:w-11 text-muted-foreground/60" fill="currentColor">
                             <circle cx="12" cy="7" r="4" />
                             <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
                           </svg>
                         ) : viewingQuote.clientGender === 'female' ? (
-                          <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-14 sm:w-14 text-muted-foreground/70" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-9 w-9 sm:h-11 sm:w-11 text-muted-foreground/60" fill="currentColor">
                             <circle cx="12" cy="6" r="3.5" />
                             <path d="M12 12c-3.5 0-6.5 1.8-6.5 4v0.5c0 0.3 0.2 0.5 0.5 0.5h1l1 3h8l1-3h1c0.3 0 0.5-0.2 0.5-0.5V16c0-2.2-3-4-6.5-4z" />
                           </svg>
                         ) : (
-                          <svg viewBox="0 0 24 24" className="h-8 w-8 sm:h-14 sm:w-14 text-muted-foreground/50" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-9 w-9 sm:h-11 sm:w-11 text-muted-foreground/40" fill="currentColor">
                             <circle cx="12" cy="7" r="4" />
                             <path d="M12 14c-4 0-7 2-7 4.5V20h14v-1.5c0-2.5-3-4.5-7-4.5z" />
                           </svg>
@@ -7916,63 +7914,66 @@ export default function PoliciesPage() {
                       </div>
                       
                       {/* Member Details */}
-                      <div className="flex-1 min-w-0 space-y-1 sm:space-y-3">
-                        {/* Full Name */}
-                        <h2 className="text-base sm:text-xl font-semibold text-foreground leading-tight">
+                      <div className="flex-1 min-w-0">
+                        {/* Name */}
+                        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 leading-tight">
                           {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
                         </h2>
                         
-                        {/* Compact info grid for mobile, expanded for desktop */}
-                        <div className="space-y-0.5 sm:space-y-2">
-                          {/* Row 1: DOB + Sex */}
-                          <div className="flex flex-wrap items-center gap-2 sm:gap-6 text-xs sm:text-lg">
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <span className="text-muted-foreground">DOB:</span>
-                              <span className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</span>
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <span className="text-muted-foreground">Sex:</span>
-                              <span className="font-medium">{viewingQuote.clientGender === 'male' ? 'M' : viewingQuote.clientGender === 'female' ? 'F' : '—'}</span>
-                            </div>
+                        {/* Info Grid */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          <div>
+                            <span className="text-muted-foreground text-xs">Date of Birth</span>
+                            <p className="font-medium">{viewingQuote.clientDateOfBirth ? formatDateForDisplay(viewingQuote.clientDateOfBirth, "MM/dd/yyyy") : '—'}</p>
                           </div>
-                          
-                          {/* Row 2: SSN */}
-                          <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-lg">
-                            <span className="text-muted-foreground">SSN:</span>
-                            <span className="font-medium font-mono whitespace-nowrap" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</span>
-                            {viewingQuote.clientSsn && (
-                              <button
-                                type="button"
-                                onClick={() => setSsnVisible(!ssnVisible)}
-                                className="p-0.5 sm:p-1 rounded hover:bg-muted transition-colors"
-                                data-testid="button-toggle-ssn"
-                              >
-                                {ssnVisible ? <EyeOff className="h-3 w-3 sm:h-5 sm:w-5 text-muted-foreground" /> : <Eye className="h-3 w-3 sm:h-5 sm:w-5 text-muted-foreground" />}
-                              </button>
-                            )}
+                          <div>
+                            <span className="text-muted-foreground text-xs">Sex</span>
+                            <p className="font-medium">{viewingQuote.clientGender === 'male' ? 'Male' : viewingQuote.clientGender === 'female' ? 'Female' : '—'}</p>
+                          </div>
+                          <div className="col-span-2 mt-1">
+                            <span className="text-muted-foreground text-xs">SSN</span>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium font-mono" data-testid="text-ssn-display">{displaySSN(viewingQuote.clientSsn, ssnVisible)}</p>
+                              {viewingQuote.clientSsn && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSsnVisible(!ssnVisible)}
+                                  className="p-1 rounded hover:bg-muted transition-colors"
+                                  data-testid="button-toggle-ssn"
+                                >
+                                  {ssnVisible ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                   
-                  {/* Contact Info Footer with Separator */}
-                  <div className="px-5 py-2 border-t border-border/60 bg-muted/20">
-                    <div className="space-y-0.5 text-sm sm:text-base">
+                  {/* Contact Info Section */}
+                  <div className="px-5 py-3 bg-muted/20 border-t border-border/30">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                       {/* Phone */}
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{viewingQuote.clientPhone || '—'}</span>
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <span className="font-medium truncate">{viewingQuote.clientPhone || '—'}</span>
                       </div>
                       {/* Email */}
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{viewingQuote.clientEmail || '—'}</span>
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <span className="font-medium truncate">{viewingQuote.clientEmail || '—'}</span>
                       </div>
                       {/* Address */}
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-muted-foreground">
+                      <div className="flex items-center gap-2.5 sm:col-span-1">
+                        <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <span className="text-muted-foreground text-xs leading-tight">
                           {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ') || '—'}
                         </span>
                       </div>
@@ -7980,20 +7981,17 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: Insurance Plans Card - Premium Design (7/12 width = ~58%) */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col 2xl:col-span-7">
-                  {/* Subtle accent line */}
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-muted-foreground/40 via-muted-foreground/20 to-transparent" />
-                  
+                {/* RIGHT: Insurance Plans Card - Elegant Design */}
+                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col 2xl:col-span-7">
                   {/* Header */}
-                  <div className="pl-5 pr-4 py-4 border-b border-border/60">
+                  <div className="px-5 py-3 bg-muted/30 border-b border-border/40">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-muted/80 flex items-center justify-center">
-                          <Shield className="h-5 w-5 text-muted-foreground" />
+                        <div className="h-9 w-9 rounded-lg bg-background border border-border/40 flex items-center justify-center">
+                          <Shield className="h-4.5 w-4.5 text-muted-foreground" />
                         </div>
                         <div>
-                          <h3 className="text-base font-semibold text-foreground">Insurance Plans</h3>
+                          <h3 className="text-sm font-semibold text-foreground">Insurance Plans</h3>
                           <p className="text-xs text-muted-foreground">{(quoteDetail?.plans || []).length} plan{(quoteDetail?.plans || []).length !== 1 ? 's' : ''} enrolled</p>
                         </div>
                       </div>
