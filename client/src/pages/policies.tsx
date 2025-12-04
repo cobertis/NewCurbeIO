@@ -7489,9 +7489,37 @@ export default function PoliciesPage() {
           <div className="space-y-6">
             {/* Summary Card */}
             <div className="space-y-4">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold">Policy {viewingQuote.id}</h2>
-                <p className="text-xs text-muted-foreground">Internal Code</p>
+              <div className="mb-4 flex items-start justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Policy {viewingQuote.id}</h2>
+                  <p className="text-xs text-muted-foreground">Internal Code</p>
+                </div>
+                {viewingQuote.productType === 'aca' && (() => {
+                  const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
+                  const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
+                  if (!isStateBased) {
+                    return (
+                      <Button 
+                        size="sm"
+                        variant="default"
+                        className="h-9 text-sm font-medium shadow-sm"
+                        data-testid="button-search-plans-sidebar"
+                        onClick={() => {
+                          const missingFields = validateMarketplaceData();
+                          if (missingFields.length > 0) {
+                            toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
+                          } else {
+                            setLocation(`/customers/${viewingQuote.id}/marketplace-plans`);
+                          }
+                        }}
+                      >
+                        <Search className="h-4 w-4 mr-1.5" />
+                        Search Plans
+                      </Button>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
               
               <div className="space-y-3">
@@ -7841,8 +7869,8 @@ export default function PoliciesPage() {
             <div className="mb-6">
               <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5 min-h-[320px]">
                 
-                {/* LEFT: Member Card - Elegant Design */}
-                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5">
+                {/* LEFT: Member Card - Elegant Design - FIXED HEIGHT */}
+                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5 h-[320px]">
                   {/* Header with Product Type */}
                   <div className="px-5 py-3 bg-muted/30 border-b border-border/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -8193,32 +8221,6 @@ export default function PoliciesPage() {
                           <p className="text-xs text-muted-foreground">{(quoteDetail?.plans || []).length} plan{(quoteDetail?.plans || []).length !== 1 ? 's' : ''} enrolled</p>
                         </div>
                       </div>
-                      {viewingQuote.productType === 'aca' && (() => {
-                        const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                        const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                        if (!isStateBased) {
-                          return (
-                            <Button 
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs font-medium"
-                              data-testid="button-search-plans"
-                              onClick={() => {
-                                const missingFields = validateMarketplaceData();
-                                if (missingFields.length > 0) {
-                                  toast({ title: "Missing Required Data", description: `Cannot search: ${missingFields.join(', ')}`, variant: "destructive" });
-                                } else {
-                                  setLocation(`/customers/${viewingQuote.id}/marketplace-plans`);
-                                }
-                              }}
-                            >
-                              <Search className="h-3.5 w-3.5 mr-1.5" />
-                              Search Plans
-                            </Button>
-                          );
-                        }
-                        return null;
-                      })()}
                     </div>
                   </div>
 
