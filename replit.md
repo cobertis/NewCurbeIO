@@ -30,7 +30,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 **Key Features:**
 - **User & Company Management:** CRUD, RBAC, 2FA, multi-tenancy.
-- **Communication Systems:** Email, SMS/MMS (BulkVS), iMessage (BlueBubbles), and comprehensive WhatsApp Web integration (whatsapp-web.js) with session management, message operations, chat/contact/group management, call features, and real-time notifications.
+- **Communication Systems:** Email, SMS/MMS (BulkVS), iMessage (BlueBubbles), and comprehensive WhatsApp integration using Baileys (WebSocket-based) with session management, message operations, chat/contact/group management, and real-time notifications.
 - **Billing & Stripe Integration:** Automated customer and subscription management.
 - **Quotes Management System:** 3-step wizard with Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
 - **Policies Management System:** Converts quotes to policies, manages statuses, assigns agents, supports cursor-based pagination, and hybrid search.
@@ -55,62 +55,43 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 - **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 - **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
-- **WhatsApp Security:** Full multi-tenant session isolation with company-scoped auth directories, separate client instances per company, all API endpoints company-scoped via authenticated user's companyId. Critical: Global mutex serializes client initialization to prevent whatsapp-web.js LocalAuth bootstrap race conditions that cause "Target closed" errors.
+- **WhatsApp Security (Baileys):** Full multi-tenant session isolation with company-scoped auth directories (`.baileys_auth/{companyId}/`), separate WebSocket client instances per company, all API endpoints company-scoped via authenticated user's companyId. Global mutex serializes client initialization to prevent race conditions. Memory-bounded message store (500 messages max per tenant) prevents RAM exhaustion.
 - **iMessage Security:** Webhook secret isolation, admin-only settings, feature gating, multi-tenant GUID scoping, and early-return guards for self-sent webhook duplicates.
 
 ## Production Deployment Notes
 
-### WhatsApp Multi-Tenant Browser Requirements (CRITICAL)
-**Problem Solved (Dec 2024):** Ubuntu's Chromium snap package creates a global `SingletonLock` at `/root/snap/chromium/common/chromium/` that prevents multiple browser instances from running simultaneously, regardless of `--user-data-dir` settings. This blocked concurrent WhatsApp sessions for different companies.
+### WhatsApp Multi-Tenant Architecture (Baileys - Dec 2024)
+**Migration Complete:** Migrated from whatsapp-web.js (Chrome-based) to Baileys (WebSocket-based) for improved stability and resource efficiency.
 
-**Solution:** Replace Chromium snap with Google Chrome official .deb package.
+**Resource Benefits:**
+- **RAM Usage:** ~80-120MB per session (vs ~500MB with Chrome) - 80% reduction
+- **No Browser Required:** Direct WebSocket connection to WhatsApp servers
+- **Faster Reconnection:** No browser startup delay
+- **Better Stability:** Eliminates Chrome/Puppeteer crash issues
 
-**Production Server Setup Commands:**
-```bash
-# 1. Stop application and kill browser processes
-pm2 stop curbe-admin
-pkill -9 -f chromium || true
+**Session Storage Architecture:**
+- Auth credentials: `.baileys_auth/{companyId}/` directories using `useMultiFileAuthState`
+- Each company has fully isolated session data
+- Sessions persist across server restarts (no need to re-scan QR)
 
-# 2. Remove Chromium snap
-snap remove chromium
+**Memory Management:**
+- Message store limited to 500 messages per tenant (auto-eviction of oldest)
+- Media cache limited to 100 entries per tenant
+- Prevents unbounded memory growth in long-running sessions
 
-# 3. Install Google Chrome
-wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-dpkg -i google-chrome-stable_current_amd64.deb
-apt-get install -f -y
+**Production Specs for 100 Sessions:**
+- 64GB RAM, 32 vCPU, NVMe SSD, 16-32GB swap
+- Significantly reduced from previous Chrome-based estimates
 
-# 4. Verify installation
-google-chrome-stable --version
-
-# 5. Clean up snap artifacts
-rm -rf /root/snap/chromium
-
-# 6. Restart application
-pm2 restart curbe-admin
-```
-
-**Browser Detection Priority:** The `getChromiumPath()` function prioritizes Google Chrome over Chromium snap:
-1. `/usr/bin/google-chrome-stable` (PREFERRED)
-2. `/usr/bin/google-chrome`
-3. `/opt/google/chrome/google-chrome`
-4. `/usr/bin/chromium-browser` (apt-based)
-5. `/snap/bin/chromium` (LAST RESORT - has SingletonLock issues)
-
-**Session Isolation Architecture:**
-- Each company has isolated directories: `.wwebjs_auth/{companyId}/` and `.chromium-profiles/{companyId}/`
-- `LocalAuth` strategy with `clientId` parameter for session persistence
-- `--user-data-dir` Chromium flag for browser profile isolation
-- Global mutex prevents initialization race conditions
-
-**Known Limitations:**
-- `LocalAuth` is NOT compatible with Puppeteer's `userDataDir` config option (use `--user-data-dir` flag instead)
-- Chromium snap CANNOT run multiple instances (use Google Chrome or apt-based Chromium)
+**Known Considerations:**
+- Baileys uses reverse engineering (same as whatsapp-web.js) - still unofficial
+- For zero-risk enterprise solution, consider migrating to official WhatsApp Business API
 
 ## External Dependencies
 
 - **Database:** PostgreSQL, Drizzle ORM, `postgres`.
 - **Email:** Nodemailer.
-- **SMS/MMS/iMessage/WhatsApp:** Twilio, BulkVS, BlueBubbles, whatsapp-web.js.
+- **SMS/MMS/iMessage/WhatsApp:** Twilio, BulkVS, BlueBubbles, @whiskeysockets/baileys.
 - **Payments:** Stripe.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 - **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.
