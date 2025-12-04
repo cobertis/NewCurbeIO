@@ -26381,16 +26381,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const companyId = user.companyId;
       
-      // CRITICAL: Check if there's already an active QR code - don't restart anything
+      // Check if there's an active QR code and whether it has expired
+      // QR codes expire after ~20 seconds, so force regeneration if older than 15 seconds
+      const QR_EXPIRY_MS = 15000; // 15 seconds
       const existingStatus = whatsappService.getSessionStatus(companyId);
+      
       if (existingStatus?.status === 'qr_received' && existingStatus?.qrCode) {
-        console.log(`[WhatsApp] QR already active for company ${companyId}, returning existing status`);
-        return res.json({ 
-          success: true, 
-          status: existingStatus, 
-          hasSavedSession: whatsappService.hasSavedSession(companyId),
-          message: 'QR code already available' 
-        });
+        const qrAge = existingStatus.qrReceivedAt ? Date.now() - existingStatus.qrReceivedAt : Infinity;
+        
+        if (qrAge < QR_EXPIRY_MS) {
+          // QR is still fresh, return it
+          console.log(`[WhatsApp] QR still valid (${Math.round(qrAge/1000)}s old) for company ${companyId}, returning existing`);
+          return res.json({ 
+            success: true, 
+            status: existingStatus, 
+            hasSavedSession: whatsappService.hasSavedSession(companyId),
+            message: 'QR code already available' 
+          });
+        } else {
+          // QR has expired - destroy old client and force regeneration
+          console.log(`[WhatsApp] QR expired (${Math.round(qrAge/1000)}s old) for company ${companyId}, forcing regeneration`);
+          await whatsappService.destroyClient(companyId);
+        }
       }
       
       // Also skip if already ready/authenticated

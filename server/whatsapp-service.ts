@@ -16,6 +16,7 @@ interface WhatsAppSessionStatus {
   isReady: boolean;
   isAuthenticated: boolean;
   qrCode: string | null;
+  qrReceivedAt: number | null;
   status: 'disconnected' | 'qr_received' | 'authenticated' | 'ready';
 }
 
@@ -652,6 +653,7 @@ class WhatsAppService extends EventEmitter {
           isReady: false,
           isAuthenticated: false,
           qrCode: null,
+          qrReceivedAt: null,
           status: 'disconnected',
         };
 
@@ -893,9 +895,12 @@ class WhatsAppService extends EventEmitter {
       try {
         const qrDataUrl = await qrcode.toDataURL(qr);
         status.qrCode = qrDataUrl;
+        status.qrReceivedAt = Date.now();
         status.status = 'qr_received';
         status.isAuthenticated = false;
         status.isReady = false;
+        
+        console.log(`[WhatsApp] QR Code stored with timestamp for company: ${companyId}`);
         
         // Also log to terminal for debugging
         qrcodeTerminal.generate(qr, { small: true });
@@ -913,6 +918,7 @@ class WhatsAppService extends EventEmitter {
       status.isAuthenticated = true;
       status.status = 'authenticated';
       status.qrCode = null;
+      status.qrReceivedAt = null;
       
       // Write authenticated marker for reliable session detection
       this.writeAuthenticatedMarker(companyId);
@@ -943,6 +949,7 @@ class WhatsAppService extends EventEmitter {
       status.isAuthenticated = true;
       status.status = 'ready';
       status.qrCode = null;
+      status.qrReceivedAt = null;
       this.emit('ready', { companyId });
       
       // Hydrate reactions from database for this company
@@ -1314,6 +1321,7 @@ class WhatsAppService extends EventEmitter {
       status.isAuthenticated = false;
       status.status = 'disconnected';
       status.qrCode = null;
+      status.qrReceivedAt = null;
       this.emit('disconnected', { companyId, reason });
       
       // Schedule automatic reconnection
@@ -1361,6 +1369,7 @@ class WhatsAppService extends EventEmitter {
         isReady: false,
         isAuthenticated: false,
         qrCode: null,
+        qrReceivedAt: null,
         status: 'disconnected',
       };
     }
