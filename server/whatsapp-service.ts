@@ -650,6 +650,8 @@ class WhatsAppService extends EventEmitter {
         console.log(`[WhatsApp] Initialization attempt ${attempt}/${MAX_RETRIES} for company: ${companyId}`);
 
         // Create client with company-specific LocalAuth strategy
+        // CRITICAL: Use userDataDir in puppeteer config (NOT just as --user-data-dir flag)
+        // This tells Puppeteer to manage the profile directory, bypassing snap's global SingletonLock
         const client = new Client({
           authStrategy: new LocalAuth({
             dataPath: authPath,
@@ -659,8 +661,7 @@ class WhatsAppService extends EventEmitter {
             executablePath: this.getChromiumPath(),
             headless: true,
             args: chromiumFlags,
-            // NOTE: Do NOT use userDataDir with LocalAuth - it conflicts with LocalAuth's internal session management
-            // LocalAuth handles session isolation through clientId and dataPath parameters
+            userDataDir: chromiumUserDataDir, // CRITICAL: Puppeteer-managed profile per company
             defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
             timeout: 60000, // 60 second timeout for browser launch
             protocolTimeout: 60000, // 60 second timeout for CDP protocol

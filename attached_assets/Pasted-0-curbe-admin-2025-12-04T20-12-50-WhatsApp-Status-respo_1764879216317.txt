@@ -1,0 +1,469 @@
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] GET /api/whatsapp/status 200 in 20ms :: {"success":true,"status":{"isReady":tru…
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] GET /api/session 304 in 22ms :: {"user":{"id":"d994cb38-776f-40ea-80d1-2a355e12…
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] Already connected for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] POST /api/whatsapp/init 200 in 8ms :: {"success":true,"status":{"isReady":true,…
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] GET /api/notifications 304 in 28ms :: {"notifications":[{"id":"d8afff98-ef1e-4d…
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] GET /api/notifications 304 in 6ms :: {"notifications":[{"id":"d8afff98-ef1e-4d3…
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] GET /api/companies/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7 304 in 13ms :: {"compan…
+0|curbe-admin  | 2025-12-04T20:12:50: 8:12:50 PM [express] GET /api/whatsapp/chats 200 in 42ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] getProfilePicture: contactId="259076806209693@lid" -> normalized="259076806209693@lid" (attempt 1)
+0|curbe-admin  | 2025-12-04T20:12:50: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] getProfilePicture: Contact method failed for 259076806209693@lid: Evaluation failed: TypeError: window.Store.ContactMethods.getIsMyContact is not a function
+0|curbe-admin  | 2025-12-04T20:12:50:     at window.WWebJS.getContactModel (pptr://__puppeteer_evaluation_script__:632:55)
+0|curbe-admin  | 2025-12-04T20:12:50:     at window.WWebJS.getContact (pptr://__puppeteer_evaluation_script__:654:30)
+0|curbe-admin  | 2025-12-04T20:12:50: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-admin  | 2025-12-04T20:12:50: [WhatsApp] getProfilePicture: No URL for 259076806209693@lid, retrying in 500ms...
+0|curbe-admin  | 2025-12-04T20:12:51: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T20:12:51: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-admin  | 2025-12-04T20:12:51: [WhatsApp] getProfilePicture: contactId="259076806209693@lid" -> normalized="259076806209693@lid" (attempt 2)
+0|curbe-admin  | 2025-12-04T20:12:51: [WhatsApp] getProfilePicture: Contact method failed for 259076806209693@lid: Evaluation failed: TypeError: window.Store.ContactMethods.getIsMyContact is not a function
+0|curbe-admin  | 2025-12-04T20:12:51:     at window.WWebJS.getContactModel (pptr://__puppeteer_evaluation_script__:632:55)
+0|curbe-admin  | 2025-12-04T20:12:51:     at window.WWebJS.getContact (pptr://__puppeteer_evaluation_script__:654:30)
+0|curbe-admin  | 2025-12-04T20:12:51: [WhatsApp] getProfilePicture: No URL for 259076806209693@lid, retrying in 500ms...
+0|curbe-admin  | 2025-12-04T20:12:52: [WhatsApp] getProfilePicture: contactId="259076806209693@lid" -> normalized="259076806209693@lid" (attempt 3)
+0|curbe-admin  | 2025-12-04T20:12:52: [WhatsApp] getProfilePicture: Contact method failed for 259076806209693@lid: Evaluation failed: TypeError: window.Store.ContactMethods.getIsMyContact is not a function
+0|curbe-admin  | 2025-12-04T20:12:52:     at window.WWebJS.getContactModel (pptr://__puppeteer_evaluation_script__:632:55)
+0|curbe-admin  | 2025-12-04T20:12:52:     at window.WWebJS.getContact (pptr://__puppeteer_evaluation_script__:654:30)
+0|curbe-admin  | 2025-12-04T20:12:52: [WhatsApp] getProfilePicture: No profile picture for 259076806209693@lid after 3 attempts
+0|curbe-admin  | 2025-12-04T20:12:52: [WhatsApp Avatar] No URL from WhatsApp for 259076806209693@lid, keeping existing file if any
+0|curbe-admin  | 2025-12-04T20:12:52: 8:12:52 PM [express] GET /api/whatsapp/contacts/259076806209693%40lid/avatar 204 in 1516ms
+0|curbe-admin  | 2025-12-04T20:12:53: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:12:53: 8:12:53 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:12:53: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:12:53: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:12:53: 8:12:53 PM [express] GET /api/whatsapp/chats 304 in 18ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:12:55: [WebSocket] Client disconnected
+0|curbe-admin  | 2025-12-04T20:12:55: [WhatsApp Calls] Chat 17866302522@c.us has 9 calls: [
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'f3e7d554-4da2-44f6-84fe-086789e6d14e',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-12-03T18:37:51.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'd285d7e7-3ce0-45a0-9e9f-e64a549581db',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-12-03T18:36:44.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'b606c123-1c35-4120-bff0-8dbd828c13e7',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T02:26:31.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'd3688370-09d4-41fb-b6b0-dee2aea11829',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T01:29:40.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'ac6b62ea-48b0-433e-bf95-29501fa46f8d',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T01:23:33.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'a42698f7-4098-45e5-b284-64eeaba45184',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T01:08:19.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: '23045fb3-2bb0-47cf-a588-81949c6e3626',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T00:58:08.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'a23cb23f-a288-462d-8e43-547e3a70b500',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-27T22:46:27.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'b2f8e7d8-3492-48e8-a6e5-4ee0a93f69ef',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-27T22:46:12.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   }
+0|curbe-admin  | 2025-12-04T20:12:55: ]
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/calls 304 in 12ms :: {"success":true…
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/notes 304 in 16ms :: {"success":true…
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/chats/17866302522@c.us/messages 200 in 101ms :: {"success":tr…
+0|curbe-admin  | 2025-12-04T20:12:55: [WhatsApp] Contact info retrieved for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 17866302522@c.us
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/contacts/17866302522%40c.us/info 304 in 121ms :: {"success":t…
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/notifications 304 in 8ms :: {"notifications":[{"id":"d8afff98-ef1e-4d3…
+0|curbe-admin  | 2025-12-04T20:12:55: [WhatsApp] Sent seen for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7 to chat 17866302522@c.us
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] POST /api/whatsapp/chats/17866302522%40c.us/read 200 in 21ms :: {"success":true…
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/presence 304 in 4ms :: {"success":tr…
+0|curbe-admin  | 2025-12-04T20:12:55: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T20:12:55: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-admin  | 2025-12-04T20:12:55: [WhatsApp Calls] Chat 17866302522@c.us has 9 calls: [
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'f3e7d554-4da2-44f6-84fe-086789e6d14e',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-12-03T18:37:51.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'd285d7e7-3ce0-45a0-9e9f-e64a549581db',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-12-03T18:36:44.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'b606c123-1c35-4120-bff0-8dbd828c13e7',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T02:26:31.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'd3688370-09d4-41fb-b6b0-dee2aea11829',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T01:29:40.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'ac6b62ea-48b0-433e-bf95-29501fa46f8d',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T01:23:33.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'a42698f7-4098-45e5-b284-64eeaba45184',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T01:08:19.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: '23045fb3-2bb0-47cf-a588-81949c6e3626',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-28T00:58:08.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'a23cb23f-a288-462d-8e43-547e3a70b500',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-27T22:46:27.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   },
+0|curbe-admin  | 2025-12-04T20:12:55:   {
+0|curbe-admin  | 2025-12-04T20:12:55:     id: 'b2f8e7d8-3492-48e8-a6e5-4ee0a93f69ef',
+0|curbe-admin  | 2025-12-04T20:12:55:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:12:55:     timestamp: 2025-11-27T22:46:12.000Z
+0|curbe-admin  | 2025-12-04T20:12:55:   }
+0|curbe-admin  | 2025-12-04T20:12:55: ]
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/notes 304 in 10ms :: {"success":true…
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/calls 304 in 9ms :: {"success":true,…
+0|curbe-admin  | 2025-12-04T20:12:55: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:12:55: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:12:55: 8:12:55 PM [express] GET /api/whatsapp/chats 304 in 19ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:12:56: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T20:12:56: [WebSocket] Authenticated: userId=d994cb38-776f-40ea-80d1-2a355e12819f, companyId=6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7, role=admin
+0|curbe-admin  | 2025-12-04T20:12:56: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:12:56: 8:12:56 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:12:58: 8:12:58 PM [express] GET /api/whatsapp/chats/17866302522@c.us/messages 304 in 29ms :: {"success":tru…
+0|curbe-admin  | 2025-12-04T20:12:58: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:12:58: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:12:58: 8:12:58 PM [express] GET /api/whatsapp/chats 304 in 17ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:12:59: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:12:59: 8:12:59 PM [express] GET /api/whatsapp/status 304 in 8ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:13:00: 8:13:00 PM [express] GET /api/notifications 304 in 7ms :: {"notifications":[{"id":"d8afff98-ef1e-4d3…
+0|curbe-admin  | 2025-12-04T20:13:00: 8:13:00 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/presence 304 in 7ms :: {"success":tr…
+0|curbe-admin  | 2025-12-04T20:13:00: [WhatsApp Calls] Chat 17866302522@c.us has 9 calls: [
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'f3e7d554-4da2-44f6-84fe-086789e6d14e',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-12-03T18:37:51.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'd285d7e7-3ce0-45a0-9e9f-e64a549581db',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-12-03T18:36:44.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'b606c123-1c35-4120-bff0-8dbd828c13e7',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-11-28T02:26:31.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'd3688370-09d4-41fb-b6b0-dee2aea11829',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-11-28T01:29:40.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'ac6b62ea-48b0-433e-bf95-29501fa46f8d',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-11-28T01:23:33.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'a42698f7-4098-45e5-b284-64eeaba45184',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-11-28T01:08:19.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: '23045fb3-2bb0-47cf-a588-81949c6e3626',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-11-28T00:58:08.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'a23cb23f-a288-462d-8e43-547e3a70b500',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-11-27T22:46:27.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   },
+0|curbe-admin  | 2025-12-04T20:13:00:   {
+0|curbe-admin  | 2025-12-04T20:13:00:     id: 'b2f8e7d8-3492-48e8-a6e5-4ee0a93f69ef',
+0|curbe-admin  | 2025-12-04T20:13:00:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:00:     timestamp: 2025-11-27T22:46:12.000Z
+0|curbe-admin  | 2025-12-04T20:13:00:   }
+0|curbe-admin  | 2025-12-04T20:13:00: ]
+0|curbe-admin  | 2025-12-04T20:13:00: 8:13:00 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/calls 304 in 6ms :: {"success":true,…
+0|curbe-admin  | 2025-12-04T20:13:01: 8:13:01 PM [express] GET /api/whatsapp/chats/17866302522@c.us/messages 304 in 25ms :: {"success":tru…
+0|curbe-admin  | 2025-12-04T20:13:01: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:13:01: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:13:01: 8:13:01 PM [express] GET /api/whatsapp/chats 304 in 16ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:13:02: 8:13:02 PM [express] GET /api/session 304 in 16ms :: {"user":{"id":"5fa52b5d-bab3-4d77-b30b-4e9f9832…
+0|curbe-admin  | 2025-12-04T20:13:02: 8:13:02 PM [express] GET /api/notifications 304 in 7ms :: {"notifications":[{"id":"f9791cc8-06b4-40e…
+0|curbe-admin  | 2025-12-04T20:13:02: 8:13:02 PM [express] GET /api/companies/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 304 in 8ms :: {"company…
+0|curbe-admin  | 2025-12-04T20:13:02: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:02: 8:13:02 PM [express] GET /api/whatsapp/status 304 in 8ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T20:13:03: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:13:03: 8:13:03 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:13:04: 8:13:04 PM [express] GET /api/whatsapp/chats/17866302522@c.us/messages 304 in 24ms :: {"success":tru…
+0|curbe-admin  | 2025-12-04T20:13:04: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:13:04: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:13:04: 8:13:04 PM [express] GET /api/whatsapp/chats 304 in 19ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/session 304 in 18ms :: {"user":{"id":"5fa52b5d-bab3-4d77-b30b-4e9f9832…
+0|curbe-admin  | 2025-12-04T20:13:05: [BILLING] Subscription query for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 Result: {
+0|curbe-admin  | 2025-12-04T20:13:05:   id: '4a138836-cc88-455e-be1f-ac82cd2a4a6f',
+0|curbe-admin  | 2025-12-04T20:13:05:   companyId: 'b5325600-9bf9-4eae-b34a-87d6ab2f5fb2',
+0|curbe-admin  | 2025-12-04T20:13:05:   planId: '76a608c5-9ca9-4603-afd3-313bf434bc54',
+0|curbe-admin  | 2025-12-04T20:13:05:   status: 'active',
+0|curbe-admin  | 2025-12-04T20:13:05:   billingCycle: 'monthly',
+0|curbe-admin  | 2025-12-04T20:13:05:   trialStart: 2025-10-30T19:17:17.000Z,
+0|curbe-admin  | 2025-12-04T20:13:05:   trialEnd: 2025-11-13T19:17:17.000Z,
+0|curbe-admin  | 2025-12-04T20:13:05:   currentPeriodStart: 2025-10-30T19:17:18.246Z,
+0|curbe-admin  | 2025-12-04T20:13:05:   currentPeriodEnd: 2025-11-29T19:17:18.246Z,
+0|curbe-admin  | 2025-12-04T20:13:05:   stripeCustomerId: 'cus_TGYFr69muMH69R',
+0|curbe-admin  | 2025-12-04T20:13:05:   stripeSubscriptionId: 'sub_1SO1LVQ3NUDhn1pZzN2pUkVZ',
+0|curbe-admin  | 2025-12-04T20:13:05:   stripeLatestInvoiceId: 'in_1SO1LVQ3NUDhn1pZWnqxWGn8',
+0|curbe-admin  | 2025-12-04T20:13:05:   createdAt: 2025-10-19T18:16:29.776Z,
+0|curbe-admin  | 2025-12-04T20:13:05:   updatedAt: 2025-10-19T18:16:30.294Z,
+0|curbe-admin  | 2025-12-04T20:13:05:   cancelledAt: null,
+0|curbe-admin  | 2025-12-04T20:13:05:   cancelAtPeriodEnd: false
+0|curbe-admin  | 2025-12-04T20:13:05: }
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/notifications 304 in 4ms :: {"notifications":[{"id":"d8afff98-ef1e-4d3…
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/presence 304 in 6ms :: {"success":tr…
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/billing/subscription 200 in 316ms :: {"subscription":{"id":"4a138836-c…
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/notifications 304 in 21ms :: {"notifications":[{"id":"f9791cc8-06b4-40…
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/whatsapp/status 304 in 24ms :: {"success":true,"status":{"isReady":fal…
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp] Cleared logged out status for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp] Manual initialization requested for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp] Creating new client for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp] Cleaning up resources for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/session 304 in 42ms :: {"user":{"id":"5fa52b5d-bab3-4d77-b30b-4e9f9832…
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp Calls] Chat 17866302522@c.us has 9 calls: [
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'f3e7d554-4da2-44f6-84fe-086789e6d14e',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-12-03T18:37:51.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'd285d7e7-3ce0-45a0-9e9f-e64a549581db',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-12-03T18:36:44.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'b606c123-1c35-4120-bff0-8dbd828c13e7',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-11-28T02:26:31.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'd3688370-09d4-41fb-b6b0-dee2aea11829',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-11-28T01:29:40.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'ac6b62ea-48b0-433e-bf95-29501fa46f8d',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-11-28T01:23:33.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'a42698f7-4098-45e5-b284-64eeaba45184',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-11-28T01:08:19.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: '23045fb3-2bb0-47cf-a588-81949c6e3626',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-11-28T00:58:08.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'a23cb23f-a288-462d-8e43-547e3a70b500',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-11-27T22:46:27.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   },
+0|curbe-admin  | 2025-12-04T20:13:05:   {
+0|curbe-admin  | 2025-12-04T20:13:05:     id: 'b2f8e7d8-3492-48e8-a6e5-4ee0a93f69ef',
+0|curbe-admin  | 2025-12-04T20:13:05:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:05:     timestamp: 2025-11-27T22:46:12.000Z
+0|curbe-admin  | 2025-12-04T20:13:05:   }
+0|curbe-admin  | 2025-12-04T20:13:05: ]
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/calls 304 in 5ms :: {"success":true,…
+0|curbe-admin  | 2025-12-04T20:13:05: 8:13:05 PM [express] GET /api/companies/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 304 in 8ms :: {"company…
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp] Initialization attempt 1/3 for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:05: [WhatsApp] Found Chromium at: /usr/bin/chromium-browser
+0|curbe-admin  | 2025-12-04T20:13:05: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T20:13:05: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-admin  | 2025-12-04T20:13:06: [WhatsApp] Attempt 1/3 failed for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2: Failed to launch the browser process!
+0|curbe-admin  | 2025-12-04T20:13:06: /usr/bin/chromium-browser: 12: xdg-settings: not found
+0|curbe-admin  | 2025-12-04T20:13:06: [986278:986278:1204/201306.201464:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /root/snap/chromium/common/chromium/SingletonLock: File exists (17)
+0|curbe-admin  | 2025-12-04T20:13:06: [986278:986278:1204/201306.201807:ERROR:chrome/app/chrome_main_delegate.cc:514] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.
+0|curbe-admin  | 2025-12-04T20:13:06: 
+0|curbe-admin  | 2025-12-04T20:13:06: 
+0|curbe-admin  | 2025-12-04T20:13:06: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T20:13:06: 
+0|curbe-admin  | 2025-12-04T20:13:06: [WhatsApp] Waiting 2s before retry...
+0|curbe-admin  | 2025-12-04T20:13:06: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:13:06: 8:13:06 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:13:06: [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | 2025-12-04T20:13:06: [WebSocket] Authenticated: userId=5fa52b5d-bab3-4d77-b30b-4e9f9832a9ad, companyId=b5325600-9bf9-4eae-b34a-87d6ab2f5fb2, role=admin
+0|curbe-admin  | 2025-12-04T20:13:06: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:06: 8:13:06 PM [express] GET /api/whatsapp/status 304 in 10ms :: {"success":true,"status":{"isReady":fal…
+0|curbe-admin  | 2025-12-04T20:13:07: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:07: 8:13:07 PM [express] GET /api/whatsapp/status 304 in 9ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T20:13:07: 8:13:07 PM [express] GET /api/whatsapp/chats/17866302522@c.us/messages 304 in 24ms :: {"success":tru…
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:13:08: 8:13:08 PM [express] GET /api/whatsapp/chats 304 in 18ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] Cleaning up resources for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] Initialization attempt 2/3 for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] Found Chromium at: /usr/bin/chromium-browser
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] Attempt 2/3 failed for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2: Failed to launch the browser process!
+0|curbe-admin  | 2025-12-04T20:13:08: /usr/bin/chromium-browser: 12: xdg-settings: not found
+0|curbe-admin  | 2025-12-04T20:13:08: [986378:986378:1204/201308.763723:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /root/snap/chromium/common/chromium/SingletonLock: File exists (17)
+0|curbe-admin  | 2025-12-04T20:13:08: [986378:986378:1204/201308.764115:ERROR:chrome/app/chrome_main_delegate.cc:514] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.
+0|curbe-admin  | 2025-12-04T20:13:08: 
+0|curbe-admin  | 2025-12-04T20:13:08: 
+0|curbe-admin  | 2025-12-04T20:13:08: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T20:13:08: 
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] Waiting 4s before retry...
+0|curbe-admin  | 2025-12-04T20:13:08: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:09: 8:13:09 PM [express] GET /api/whatsapp/status 304 in 9ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T20:13:09: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:13:09: 8:13:09 PM [express] GET /api/whatsapp/status 304 in 4ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:13:10: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:10: 8:13:10 PM [express] GET /api/whatsapp/status 304 in 8ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T20:13:10: 8:13:10 PM [express] GET /api/notifications 304 in 5ms :: {"notifications":[{"id":"d8afff98-ef1e-4d3…
+0|curbe-admin  | 2025-12-04T20:13:10: 8:13:10 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/presence 304 in 5ms :: {"success":tr…
+0|curbe-admin  | 2025-12-04T20:13:10: [WhatsApp Calls] Chat 17866302522@c.us has 9 calls: [
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'f3e7d554-4da2-44f6-84fe-086789e6d14e',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-12-03T18:37:51.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'd285d7e7-3ce0-45a0-9e9f-e64a549581db',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-12-03T18:36:44.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'b606c123-1c35-4120-bff0-8dbd828c13e7',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-11-28T02:26:31.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'd3688370-09d4-41fb-b6b0-dee2aea11829',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-11-28T01:29:40.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'ac6b62ea-48b0-433e-bf95-29501fa46f8d',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-11-28T01:23:33.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'a42698f7-4098-45e5-b284-64eeaba45184',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-11-28T01:08:19.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: '23045fb3-2bb0-47cf-a588-81949c6e3626',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-11-28T00:58:08.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'a23cb23f-a288-462d-8e43-547e3a70b500',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-11-27T22:46:27.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   },
+0|curbe-admin  | 2025-12-04T20:13:10:   {
+0|curbe-admin  | 2025-12-04T20:13:10:     id: 'b2f8e7d8-3492-48e8-a6e5-4ee0a93f69ef',
+0|curbe-admin  | 2025-12-04T20:13:10:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:10:     timestamp: 2025-11-27T22:46:12.000Z
+0|curbe-admin  | 2025-12-04T20:13:10:   }
+0|curbe-admin  | 2025-12-04T20:13:10: ]
+0|curbe-admin  | 2025-12-04T20:13:10: 8:13:10 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/calls 304 in 6ms :: {"success":true,…
+0|curbe-admin  | 2025-12-04T20:13:11: 8:13:11 PM [express] GET /api/whatsapp/chats/17866302522@c.us/messages 304 in 23ms :: {"success":tru…
+0|curbe-admin  | 2025-12-04T20:13:11: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:13:11: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:13:11: 8:13:11 PM [express] GET /api/whatsapp/chats 304 in 17ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:13:11: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:11: 8:13:11 PM [express] GET /api/whatsapp/status 304 in 8ms :: {"success":true,"status":{"isReady":fals…
+0|curbe-admin  | 2025-12-04T20:13:12: [WhatsApp] Status response: { status: 'disconnected', isReady: false, hasSavedSession: false }
+0|curbe-admin  | 2025-12-04T20:13:12: 8:13:12 PM [express] GET /api/whatsapp/status 304 in 11ms :: {"success":true,"status":{"isReady":fal…
+0|curbe-admin  | 2025-12-04T20:13:12: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:13:12: 8:13:12 PM [express] GET /api/whatsapp/status 304 in 5ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:13:12: [WhatsApp] Cleaning up resources for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:12: [WhatsApp] Initialization attempt 3/3 for company: b5325600-9bf9-4eae-b34a-87d6ab2f5fb2
+0|curbe-admin  | 2025-12-04T20:13:12: [WhatsApp] Found Chromium at: /usr/bin/chromium-browser
+0|curbe-admin  | 2025-12-04T20:13:13: [WhatsApp] Attempt 3/3 failed for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2: Failed to launch the browser process!
+0|curbe-admin  | 2025-12-04T20:13:13: /usr/bin/chromium-browser: 12: xdg-settings: not found
+0|curbe-admin  | 2025-12-04T20:13:13: [986481:986481:1204/201313.336232:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /root/snap/chromium/common/chromium/SingletonLock: File exists (17)
+0|curbe-admin  | 2025-12-04T20:13:13: [986481:986481:1204/201313.336776:ERROR:chrome/app/chrome_main_delegate.cc:514] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.
+0|curbe-admin  | 2025-12-04T20:13:13: 
+0|curbe-admin  | 2025-12-04T20:13:13: 
+0|curbe-admin  | 2025-12-04T20:13:13: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T20:13:13: 
+0|curbe-admin  | 2025-12-04T20:13:13: [WhatsApp] Error initializing: Error: Failed to launch the browser process!
+0|curbe-admin  | 2025-12-04T20:13:13: /usr/bin/chromium-browser: 12: xdg-settings: not found
+0|curbe-admin  | 2025-12-04T20:13:13: [986481:986481:1204/201313.336232:ERROR:chrome/browser/process_singleton_posix.cc:340] Failed to create /root/snap/chromium/common/chromium/SingletonLock: File exists (17)
+0|curbe-admin  | 2025-12-04T20:13:13: [986481:986481:1204/201313.336776:ERROR:chrome/app/chrome_main_delegate.cc:514] Failed to create a ProcessSingleton for your profile directory. This means that running multiple instances would start multiple browser processes rather than opening a new window in the existing process. Aborting now to avoid profile corruption.
+0|curbe-admin  | 2025-12-04T20:13:13: 
+0|curbe-admin  | 2025-12-04T20:13:13: 
+0|curbe-admin  | 2025-12-04T20:13:13: TROUBLESHOOTING: https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md
+0|curbe-admin  | 2025-12-04T20:13:13: 
+0|curbe-admin  | 2025-12-04T20:13:13:     at onClose (/var/www/curbe/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserRunner.js:299:20)
+0|curbe-admin  | 2025-12-04T20:13:13:     at ChildProcess.<anonymous> (/var/www/curbe/node_modules/puppeteer-core/lib/cjs/puppeteer/node/BrowserRunner.js:290:24)
+0|curbe-admin  | 2025-12-04T20:13:13:     at ChildProcess.emit (node:events:536:35)
+0|curbe-admin  | 2025-12-04T20:13:13:     at ChildProcess._handle.onexit (node:internal/child_process:293:12)
+0|curbe-admin  | 2025-12-04T20:13:13: 8:13:13 PM [express] POST /api/whatsapp/init 500 in 7711ms :: {"success":false,"error":"Failed to in…
+0|curbe-admin  | 2025-12-04T20:13:13: [WebSocket] Rejecting upgrade without valid session
+0|curbe-admin  | 2025-12-04T20:13:13: [WebSocket] Rejecting upgrade without valid session
+0|curbe-admin  | 2025-12-04T20:13:14: 8:13:14 PM [express] GET /api/whatsapp/chats/17866302522@c.us/messages 304 in 22ms :: {"success":tru…
+0|curbe-admin  | 2025-12-04T20:13:14: [WhatsApp] getChats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7: 4 total chats from WhatsApp
+0|curbe-admin  | 2025-12-04T20:13:14: [WhatsApp] Filtering out 2 deleted chats for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | 2025-12-04T20:13:14: 8:13:14 PM [express] GET /api/whatsapp/chats 304 in 17ms :: {"success":true,"chats":[{"id":"17866302…
+0|curbe-admin  | 2025-12-04T20:13:15: 8:13:15 PM [express] GET /api/notifications 304 in 7ms :: {"notifications":[{"id":"d8afff98-ef1e-4d3…
+0|curbe-admin  | 2025-12-04T20:13:15: 8:13:15 PM [express] GET /api/whatsapp/chats/17866302522%40c.us/presence 304 in 8ms :: {"success":tr…
+0|curbe-admin  | 2025-12-04T20:13:15: [WhatsApp] Status response: { status: 'ready', isReady: true, hasSavedSession: true }
+0|curbe-admin  | 2025-12-04T20:13:15: 8:13:15 PM [express] GET /api/whatsapp/status 304 in 6ms :: {"success":true,"status":{"isReady":true…
+0|curbe-admin  | 2025-12-04T20:13:15: [WhatsApp Calls] Chat 17866302522@c.us has 9 calls: [
+0|curbe-admin  | 2025-12-04T20:13:15:   {
+0|curbe-admin  | 2025-12-04T20:13:15:     id: 'f3e7d554-4da2-44f6-84fe-086789e6d14e',
+0|curbe-admin  | 2025-12-04T20:13:15:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:15:     timestamp: 2025-12-03T18:37:51.000Z
+0|curbe-admin  | 2025-12-04T20:13:15:   },
+0|curbe-admin  | 2025-12-04T20:13:15:   {
+0|curbe-admin  | 2025-12-04T20:13:15:     id: 'd285d7e7-3ce0-45a0-9e9f-e64a549581db',
+0|curbe-admin  | 2025-12-04T20:13:15:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:15:     timestamp: 2025-12-03T18:36:44.000Z
+0|curbe-admin  | 2025-12-04T20:13:15:   },
+0|curbe-admin  | 2025-12-04T20:13:15:   {
+0|curbe-admin  | 2025-12-04T20:13:15:     id: 'b606c123-1c35-4120-bff0-8dbd828c13e7',
+0|curbe-admin  | 2025-12-04T20:13:15:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:15:     timestamp: 2025-11-28T02:26:31.000Z
+0|curbe-admin  | 2025-12-04T20:13:15:   },
+0|curbe-admin  | 2025-12-04T20:13:15:   {
+0|curbe-admin  | 2025-12-04T20:13:15:     id: 'd3688370-09d4-41fb-b6b0-dee2aea11829',
+0|curbe-admin  | 2025-12-04T20:13:15:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:15:     timestamp: 2025-11-28T01:29:40.000Z
+0|curbe-admin  | 2025-12-04T20:13:15:   },
+0|curbe-admin  | 2025-12-04T20:13:15:   {
+0|curbe-admin  | 2025-12-04T20:13:15:     id: 'ac6b62ea-48b0-433e-bf95-29501fa46f8d',
+0|curbe-admin  | 2025-12-04T20:13:15:     status: 'ringing',
+0|curbe-admin  | 2025-12-04T20:13:15:     timestamp: 2025-11-28T01:23:33.000Z
+0|curbe-admin  | 2025-12-04T20:13:15:   },
+0|curbe-admin  | 2025-12-04T20:13:15:   {
+0|curbe-admin  | 2025-
