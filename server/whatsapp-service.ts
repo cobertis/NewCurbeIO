@@ -663,7 +663,9 @@ class WhatsAppService extends EventEmitter {
             executablePath: this.getChromiumPath(),
             headless: true,
             args: chromiumFlags,
-            userDataDir: chromiumUserDataDir, // CRITICAL: Puppeteer-managed profile per company
+            // NOTE: Do NOT use userDataDir here - LocalAuth is not compatible with it
+            // Profile isolation is handled via --user-data-dir flag in chromiumFlags
+            // Google Chrome (not snap) supports multiple instances with different --user-data-dir
             defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
             timeout: 60000, // 60 second timeout for browser launch
             protocolTimeout: 60000, // 60 second timeout for CDP protocol
