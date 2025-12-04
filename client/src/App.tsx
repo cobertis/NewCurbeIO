@@ -133,6 +133,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/notifications"],
   });
 
+  // Query WhatsApp chats to calculate total unread messages for sidebar badge
+  const { data: whatsappChatsData } = useQuery<{ success: boolean; chats: Array<{ id: string; unreadCount: number }> }>({
+    queryKey: ["/api/whatsapp/chats"],
+    enabled: !!user?.companyId && user?.role !== 'superadmin', // Only fetch for company users
+    refetchInterval: 10000, // Refresh every 10 seconds for badge updates
+    staleTime: 5000,
+  });
+
+  // Calculate total WhatsApp unread messages
+  const whatsappUnreadCount = useMemo(() => {
+    if (!whatsappChatsData?.chats) return 0;
+    return whatsappChatsData.chats.reduce((total, chat) => total + (chat.unreadCount || 0), 0);
+  }, [whatsappChatsData?.chats]);
+
   // Fetch company data for all users with a companyId
   const { data: companyData, isLoading: isLoadingCompany, isFetched: isCompanyFetched } = useQuery<{ company: any }>({
     ...getCompanyQueryOptions(user?.companyId || undefined),
@@ -235,6 +249,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       // Also invalidate unread count for sidebar badge
       queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
       // Play sound when new SMS arrives
+      playNotificationSound();
+    } else if (message.type === 'whatsapp_message') {
+      // When a new WhatsApp message arrives, invalidate chats to update the sidebar badge
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
+      // Play sound for new WhatsApp messages
       playNotificationSound();
     } else if (message.type === 'notification_update') {
       // When a broadcast notification is sent, update notifications in real-time
@@ -717,9 +736,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setLocation("/whatsapp")}
                 data-testid="sidebar-button-whatsapp"
-                className={circularButtonClass}
+                className={cn(circularButtonClass, "relative")}
               >
                 <SiWhatsapp className="h-[18px] w-[18px] text-green-600" />
+                {whatsappUnreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+                    <span className="text-white text-[9px] font-bold">{whatsappUnreadCount > 9 ? '!' : whatsappUnreadCount}</span>
+                  </span>
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">WhatsApp</TooltipContent>
