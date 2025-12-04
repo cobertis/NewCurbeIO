@@ -4873,31 +4873,8 @@ export default function PoliciesPage() {
     viewingQuote?.specialEnrollmentDate
   ]);
 
-  // Auto-assign current user as agent when viewing/editing a policy
-  useEffect(() => {
-    const currentUserId = userData?.user?.id;
-    const currentAgentId = quoteDetail?.policy?.agent?.id || viewingQuote?.userId;
-    
-    // Only auto-assign if:
-    // 1. We have a policy selected
-    // 2. We have a current user
-    // 3. The current user is NOT already the agent
-    if (selectedPolicyId && currentUserId && currentAgentId !== currentUserId) {
-      // Silently update the agent to current user
-      fetch(`/api/policies/${selectedPolicyId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ agentId: currentUserId }),
-      }).then(() => {
-        // Silently refresh the data
-        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
-        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
-      }).catch(() => {
-        // Silently fail - don't show error to user
-      });
-    }
-  }, [selectedPolicyId, userData?.user?.id, quoteDetail?.policy?.agent?.id]);
+  // Note: Agent assignment only happens when user makes an actual edit to the policy
+  // (handled in the PATCH mutation), not just by viewing it
 
   // Debounce effect for family member search
   useEffect(() => {

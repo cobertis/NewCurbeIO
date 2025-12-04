@@ -17870,6 +17870,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "You don't have permission to edit this policy" });
       }
       
+      // AUTO-ASSIGN AGENT ON EDIT: If user is editing the policy and not already the agent, assign them
+      // This only happens on actual edits, not when just viewing the policy
+      if (!req.body.agentId && existingPolicy.agentId !== currentUser.id) {
+        req.body.agentId = currentUser.id;
+        console.log(`[AUTO-ASSIGN] Policy ${id}: Auto-assigning editor ${currentUser.id} as agent`);
+      }
+      
       // 2. NO date conversions - keep dates as yyyy-MM-dd strings
       // Apply same address field mapping as in create policy
       const payload = {
