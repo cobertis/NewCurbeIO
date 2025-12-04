@@ -366,6 +366,48 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Get the path to Chromium/Chrome executable
+   * Checks multiple locations to support different environments (Replit, Ubuntu, etc.)
+   */
+  private getChromiumPath(): string {
+    // Check environment variable first
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      return process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+
+    // List of common Chromium/Chrome paths to check
+    const possiblePaths = [
+      // Ubuntu/Debian
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      // Snap installation
+      '/snap/bin/chromium',
+      // Nix store paths (Replit)
+      '/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium',
+      // Generic fallbacks
+      '/opt/google/chrome/chrome',
+      '/opt/google/chrome/google-chrome',
+    ];
+
+    for (const chromePath of possiblePaths) {
+      try {
+        if (fs.existsSync(chromePath)) {
+          console.log(`[WhatsApp] Found Chromium at: ${chromePath}`);
+          return chromePath;
+        }
+      } catch {
+        // Continue checking other paths
+      }
+    }
+
+    // Last resort: let puppeteer try to find it
+    console.log(`[WhatsApp] No Chromium found in standard paths, using puppeteer default`);
+    return '/usr/bin/chromium-browser';
+  }
+
+  /**
    * Clean up stale Chromium lock files that can block new sessions
    * LocalAuth uses structure: .wwebjs_auth/{companyId}/session-{companyId}/SingletonLock (symlinks)
    * Also cleans Local State which stores process lock info
@@ -475,7 +517,7 @@ class WhatsAppService extends EventEmitter {
             clientId: companyId,
           }),
           puppeteer: {
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/qa9cnw4v5xkxyip6mb9kxqfq1z4x2dx1-chromium-138.0.7204.100/bin/chromium',
+            executablePath: this.getChromiumPath(),
             headless: true,
             args: chromiumFlags,
             defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
