@@ -50,6 +50,15 @@ class WhatsAppService extends EventEmitter {
   // Directory for persistent avatar storage
   private readonly AVATARS_DIR = path.join(process.cwd(), 'server', 'avatars');
   
+  // CRITICAL: Mutex for serializing client initialization across companies
+  // whatsapp-web.js LocalAuth uses a shared Default profile during bootstrap
+  // Concurrent initializations cause "Target closed" errors as they compete for locks
+  private initializationLock: Map<string, Promise<CompanyWhatsAppClient>> = new Map();
+  private globalInitLock: Promise<void> | null = null;
+  
+  // Track which clients are currently being initialized (for crash recovery)
+  private recoveringClients: Set<string> = new Set();
+  
   /**
    * Try to fetch and save avatar for a contact in background
    * Called when receiving messages to ensure we have the latest avatar
@@ -391,6 +400,10 @@ class WhatsAppService extends EventEmitter {
   /**
    * Get or create WhatsApp client for a specific company
    * TRUE MULTI-SESSION: Each company can have its own active session concurrently
+   * 
+   * CRITICAL FIX: Uses mutex to serialize client initialization
+   * whatsapp-web.js LocalAuth uses a shared "Default" profile during bootstrap
+   * Without serialization, concurrent initializations cause "Target closed" errors
    */
   async getClientForCompany(companyId: string): Promise<CompanyWhatsAppClient> {
     // Return existing client if already initialized and ready for this company
@@ -410,8 +423,59 @@ class WhatsAppService extends EventEmitter {
       }
     }
 
-    // Create new client for this company
-    return await this.createClientForCompany(companyId);
+    // Check if this company is already being initialized (per-company mutex)
+    if (this.initializationLock.has(companyId)) {
+      console.log(`[WhatsApp] Waiting for existing initialization of company: ${companyId}`);
+      return this.initializationLock.get(companyId)!;
+    }
+
+    // CRITICAL: Wait for global initialization lock if another company is initializing
+    // This prevents whatsapp-web.js LocalAuth from having concurrent bootstraps that share Default profile
+    if (this.globalInitLock) {
+      console.log(`[WhatsApp] Waiting for global init lock before initializing company: ${companyId}`);
+      await this.globalInitLock;
+    }
+
+    // Create the initialization promise with global serialization
+    const initPromise = this.serializedCreateClient(companyId);
+    this.initializationLock.set(companyId, initPromise);
+
+    try {
+      const result = await initPromise;
+      return result;
+    } finally {
+      this.initializationLock.delete(companyId);
+    }
+  }
+
+  /**
+   * Serialized client creation - ensures only one client initializes at a time globally
+   * This is CRITICAL because whatsapp-web.js LocalAuth uses a shared Default profile during bootstrap
+   */
+  private async serializedCreateClient(companyId: string): Promise<CompanyWhatsAppClient> {
+    // Create resolver BEFORE the promise to ensure it's always defined
+    let resolveLock: (() => void) | undefined;
+    
+    // Create a global lock promise that other callers will wait on
+    // CRITICAL: resolver must be captured synchronously before any async operations
+    const lockPromise = new Promise<void>((resolve) => {
+      resolveLock = resolve;
+    });
+    this.globalInitLock = lockPromise;
+
+    console.log(`[WhatsApp] 🔒 Acquired global init lock for company: ${companyId}`);
+    
+    try {
+      return await this.createClientForCompany(companyId);
+    } finally {
+      // ALWAYS release global lock - even on error
+      // Clear the lock first, then resolve to allow next caller
+      this.globalInitLock = null;
+      if (resolveLock) {
+        resolveLock();
+      }
+      console.log(`[WhatsApp] 🔓 Released global init lock for company: ${companyId}`);
+    }
   }
 
   /**
@@ -670,6 +734,7 @@ class WhatsAppService extends EventEmitter {
   /**
    * Restart WhatsApp client for a company (destroy and recreate)
    * CRITICAL: Does NOT restart if there's an active QR code being displayed
+   * Uses global mutex to prevent interference with other tenant initializations
    */
   async restartClientForCompany(companyId: string, force: boolean = false): Promise<CompanyWhatsAppClient> {
     // First, check if there's an active QR code - don't restart in that case
@@ -684,7 +749,7 @@ class WhatsAppService extends EventEmitter {
     
     console.log(`[WhatsApp] Restarting client for company: ${companyId}`);
     
-    // Destroy existing client
+    // Destroy existing client BEFORE acquiring lock (destruction doesn't need serialization)
     if (existingClient) {
       try {
         await existingClient.client.destroy();
@@ -701,12 +766,10 @@ class WhatsAppService extends EventEmitter {
     // Wait a moment before recreating
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Create new client
-    return await this.createClientForCompany(companyId);
+    // CRITICAL: Use serialized client creation via getClientForCompany to respect global mutex
+    // This prevents concurrent restarts from interfering with other tenant initializations
+    return await this.getClientForCompany(companyId);
   }
-
-  // Track which companies are currently recovering to prevent multiple restarts
-  private recoveringClients: Set<string> = new Set();
 
   /**
    * Setup Puppeteer browser/page crash detection listeners

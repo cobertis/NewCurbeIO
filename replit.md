@@ -55,7 +55,7 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 - **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 - **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
-- **WhatsApp Security:** Full multi-tenant session isolation with company-scoped auth directories, separate client instances per company, all API endpoints company-scoped via authenticated user's companyId.
+- **WhatsApp Security:** Full multi-tenant session isolation with company-scoped auth directories, separate client instances per company, all API endpoints company-scoped via authenticated user's companyId. Critical: Global mutex serializes client initialization to prevent whatsapp-web.js LocalAuth bootstrap race conditions that cause "Target closed" errors.
 - **iMessage Security:** Webhook secret isolation, admin-only settings, feature gating, multi-tenant GUID scoping, and early-return guards for self-sent webhook duplicates.
 
 ## External Dependencies
