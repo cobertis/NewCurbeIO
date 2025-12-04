@@ -1,28 +1,3 @@
-2025/12/03-19:08:39.761 133 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/12/03-19:08:39.762 133 Recovering log #1569
-2025/12/03-19:08:39.762 133 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001569.log 
-2025/12/03-19:08:39.763 133 Delete type=2 #1560
-2025/12/03-19:08:39.765 133 Delete type=2 #1561
-2025/12/03-19:08:39.765 133 Delete type=2 #1565
-2025/12/03-19:08:40.809 13b Compacting 1@1 + 2@2 files
-2025/12/03-19:08:40.908 13b Generated table #1573@1: 85719 keys, 2234368 bytes
-2025/12/03-19:08:41.030 13b Generated table #1574@1: 58592 keys, 2315769 bytes
-2025/12/03-19:08:41.030 13b Compacted 1@1 + 2@2 files => 4550137 bytes
-2025/12/03-19:08:41.043 13b compacted to: files[ 0 0 3 0 0 0 0 ]
-2025/12/03-19:08:41.043 13b Delete type=2 #1567
-2025/12/03-19:08:41.043 13b Delete type=2 #1568
-2025/12/03-19:08:41.043 13b Delete type=2 #1571
-2025/12/03-19:08:41.750 13f Level-0 table #1576: started
-2025/12/03-19:08:41.762 13f Level-0 table #1576: 17372 bytes OK
-2025/12/03-19:08:41.780 13f Delete type=0 #1569
-2025/12/03-19:08:41.781 133 Manual compaction at level-0 from ' P\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' Q\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
-2025/12/03-19:08:44.165 134 Compacting 1@1 + 3@2 files
-2025/12/03-19:08:44.317 134 Generated table #1577@1: 85714 keys, 2234426 bytes
-2025/12/03-19:08:44.457 134 Generated table #1578@1: 58685 keys, 2318016 bytes
-2025/12/03-19:08:44.588 134 Generated table #1579@1: 49019 keys, 1409200 bytes
-2025/12/03-19:08:44.588 134 Compacted 1@1 + 3@2 files => 5961642 bytes
-2025/12/03-19:08:44.599 134 compacted to: files[ 0 0 3 0 0 0 0 ]
-2025/12/03-19:08:44.599 134 Delete type=2 #1564
-2025/12/03-19:08:44.600 134 Delete type=2 #1573
-2025/12/03-19:08:44.600 134 Delete type=2 #1574
-2025/12/03-19:08:44.600 134 Delete type=2 #1576
+2025/12/04-02:34:03.221 e7c Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/04-02:34:03.222 e7c Recovering log #1575
+2025/12/04-02:34:03.254 e7c Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001575.log 

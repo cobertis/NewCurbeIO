@@ -4873,6 +4873,32 @@ export default function PoliciesPage() {
     viewingQuote?.specialEnrollmentDate
   ]);
 
+  // Auto-assign current user as agent when viewing/editing a policy
+  useEffect(() => {
+    const currentUserId = userData?.user?.id;
+    const currentAgentId = quoteDetail?.policy?.agent?.id || viewingQuote?.userId;
+    
+    // Only auto-assign if:
+    // 1. We have a policy selected
+    // 2. We have a current user
+    // 3. The current user is NOT already the agent
+    if (selectedPolicyId && currentUserId && currentAgentId !== currentUserId) {
+      // Silently update the agent to current user
+      fetch(`/api/policies/${selectedPolicyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ agentId: currentUserId }),
+      }).then(() => {
+        // Silently refresh the data
+        queryClient.invalidateQueries({ queryKey: ['/api/policies', selectedPolicyId, 'detail'] });
+        queryClient.invalidateQueries({ queryKey: ["/api/policies"], exact: false });
+      }).catch(() => {
+        // Silently fail - don't show error to user
+      });
+    }
+  }, [selectedPolicyId, userData?.user?.id, quoteDetail?.policy?.agent?.id]);
+
   // Debounce effect for family member search
   useEffect(() => {
     if (!filters.searchFamilyMembers) {
@@ -5918,8 +5944,6 @@ export default function PoliciesPage() {
         description: "The agent has been successfully changed.",
         duration: 3000,
       });
-      // Close the sheet by navigating back to policies list
-      setLocation("/customers");
     },
     onError: (error: any) => {
       toast({
@@ -7838,7 +7862,7 @@ export default function PoliciesPage() {
             
             {/* Two Column Layout: Member Card + Insurance Plans */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5">
+              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5 min-h-[320px]">
                 
                 {/* LEFT: Member Card - Elegant Design */}
                 <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5">
