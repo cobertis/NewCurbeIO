@@ -7867,10 +7867,10 @@ export default function PoliciesPage() {
             
             {/* Two Column Layout: Member Card + Insurance Plans */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5 min-h-[320px]">
+              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5 items-stretch">
                 
-                {/* LEFT: Member Card - Elegant Design - FIXED HEIGHT */}
-                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5 h-[320px]">
+                {/* LEFT: Member Card - Elegant Design - Matches Insurance Plans height */}
+                <div className="rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5 flex flex-col">
                   {/* Header with Product Type */}
                   <div className="px-5 py-3 bg-muted/30 border-b border-border/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
