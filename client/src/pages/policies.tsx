@@ -7838,10 +7838,10 @@ export default function PoliciesPage() {
             
             {/* Two Column Layout: Member Card + Insurance Plans */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 2xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5">
                 
-                {/* LEFT: Member Card - Premium Design (narrower) */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-1">
+                {/* LEFT: Member Card - Premium Design (5/12 width = ~42%, 25% wider than before) */}
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden 2xl:col-span-5">
                   {/* Subtle accent line */}
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/60 via-primary/30 to-transparent" />
                   
@@ -7979,8 +7979,8 @@ export default function PoliciesPage() {
                   </div>
                 </div>
 
-                {/* RIGHT: Insurance Plans Card - Premium Design (wider) */}
-                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col 2xl:col-span-2">
+                {/* RIGHT: Insurance Plans Card - Premium Design (7/12 width = ~58%) */}
+                <div className="group relative rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col 2xl:col-span-7">
                   {/* Subtle accent line */}
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-muted-foreground/40 via-muted-foreground/20 to-transparent" />
                   
