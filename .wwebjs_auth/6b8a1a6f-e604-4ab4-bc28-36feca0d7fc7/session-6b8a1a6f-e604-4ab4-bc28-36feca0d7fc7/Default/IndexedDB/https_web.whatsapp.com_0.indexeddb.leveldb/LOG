@@ -1,7 +1,19 @@
-2025/12/04-17:05:47.054 9e04 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/12/04-17:05:47.055 9e04 Recovering log #1926
-2025/12/04-17:05:47.060 9e04 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001926.log 
-2025/12/04-17:05:48.686 9e0d Level-0 table #1933: started
-2025/12/04-17:05:48.703 9e0d Level-0 table #1933: 164748 bytes OK
-2025/12/04-17:05:48.716 9e0d Delete type=0 #1926
-2025/12/04-17:05:48.717 9e04 Manual compaction at level-0 from ' \x8b\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' \x8c\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/04-17:15:42.146 b259 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/04-17:15:42.147 b259 Recovering log #1986
+2025/12/04-17:15:42.150 b259 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001986.log 
+2025/12/04-17:15:43.537 b25a Level-0 table #1994: started
+2025/12/04-17:15:43.548 b25a Level-0 table #1994: 126249 bytes OK
+2025/12/04-17:15:43.552 b25a Delete type=0 #1986
+2025/12/04-17:15:43.553 b259 Manual compaction at level-0 from ' \x95\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' \x96\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/04-17:15:45.686 b25a Compacting 1@1 + 4@2 files
+2025/12/04-17:15:45.789 b25a Generated table #1995@1: 84658 keys, 2233715 bytes
+2025/12/04-17:15:45.877 b25a Generated table #1996@1: 77920 keys, 2352927 bytes
+2025/12/04-17:15:45.957 b25a Generated table #1997@1: 63528 keys, 2211067 bytes
+2025/12/04-17:15:45.965 b25a Generated table #1998@1: 693 keys, 17009 bytes
+2025/12/04-17:15:45.965 b25a Compacted 1@1 + 4@2 files => 6814718 bytes
+2025/12/04-17:15:45.973 b25a compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/12/04-17:15:45.974 b25a Delete type=2 #1988
+2025/12/04-17:15:45.974 b25a Delete type=2 #1989
+2025/12/04-17:15:45.975 b25a Delete type=2 #1990
+2025/12/04-17:15:45.975 b25a Delete type=2 #1991
+2025/12/04-17:15:45.975 b25a Delete type=2 #1994

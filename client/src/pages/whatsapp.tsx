@@ -1147,13 +1147,16 @@ export default function WhatsAppPage() {
   const status = statusData?.status;
   const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
+  const hasQRCode = !!status?.qrCode;
   
   // OPTIMIZED LOGIC: 
-  // - During loading: if we have saved session, assume connected (show main UI faster)
+  // - If there's a QR code available, ALWAYS show the QR page (even if hasSavedSession is true)
+  // - During loading: if we have saved session without QR, assume connected (show main UI faster)
   // - After loading: use actual authentication status
-  // - Only show QR page when: not loading AND not authenticated AND no saved session
+  // - Only show QR page when: not loading AND not authenticated AND (has QR code OR no saved session)
   // This prevents the "Connecting..." flash when reloading with an active session
-  const showQRPage = !statusLoading && !isAuthenticated && !hasSavedSession;
+  // AND correctly shows the QR when one is available after logout
+  const showQRPage = !statusLoading && !isAuthenticated && (hasQRCode || !hasSavedSession);
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({

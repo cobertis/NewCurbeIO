@@ -1,3 +1,18 @@
-2025/12/04-17:05:39.231 9b8d Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2025/12/04-17:05:39.232 9b8d Recovering log #1926
-2025/12/04-17:05:39.237 9b8d Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001926.log 
+2025/12/04-17:15:22.520 b14f Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/12/04-17:15:22.521 b14f Recovering log #1980
+2025/12/04-17:15:22.524 b14f Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001980.log 
+2025/12/04-17:15:23.605 b14f Level-0 table #1987: started
+2025/12/04-17:15:23.620 b14f Level-0 table #1987: 123542 bytes OK
+2025/12/04-17:15:23.632 b14f Delete type=0 #1980
+2025/12/04-17:15:23.641 b158 Manual compaction at level-0 from ' \x94\x01\x00\x00\x00' @ 72057594037927935 : 1 .. ' \x95\x01\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/12/04-17:15:25.988 b151 Compacting 1@1 + 3@2 files
+2025/12/04-17:15:26.270 b151 Generated table #1988@1: 84765 keys, 2235120 bytes
+2025/12/04-17:15:26.353 b151 Generated table #1989@1: 77802 keys, 2353124 bytes
+2025/12/04-17:15:26.426 b151 Generated table #1990@1: 63654 keys, 2211545 bytes
+2025/12/04-17:15:26.428 b151 Generated table #1991@1: 19 keys, 1185 bytes
+2025/12/04-17:15:26.428 b151 Compacted 1@1 + 3@2 files => 6800974 bytes
+2025/12/04-17:15:26.438 b151 compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/12/04-17:15:26.438 b151 Delete type=2 #1982
+2025/12/04-17:15:26.438 b151 Delete type=2 #1983
+2025/12/04-17:15:26.439 b151 Delete type=2 #1984
+2025/12/04-17:15:26.439 b151 Delete type=2 #1987
