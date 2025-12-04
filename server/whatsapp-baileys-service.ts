@@ -53,11 +53,52 @@ class WhatsAppBaileysService extends EventEmitter {
   private readonly AUTH_DIR = '.baileys_auth';
   private initializationLock: Map<string, Promise<CompanyBaileysClient>> = new Map();
   private globalInitLock: Promise<void> | null = null;
+  private readonly MESSAGE_STORE_MAX_SIZE = 500;
+  private readonly MEDIA_CACHE_MAX_SIZE = 100;
 
   constructor() {
     super();
     if (!fs.existsSync(this.AUTH_DIR)) {
       fs.mkdirSync(this.AUTH_DIR, { recursive: true });
+    }
+  }
+
+  private pruneMessageStore(companyId: string): void {
+    const client = this.clients.get(companyId);
+    if (!client || client.messageStore.size <= this.MESSAGE_STORE_MAX_SIZE) {
+      return;
+    }
+    
+    const messages = Array.from(client.messageStore.entries())
+      .map(([id, msg]) => ({
+        id,
+        timestamp: Number(msg.messageTimestamp) || 0
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
+    
+    const toRemove = messages.slice(0, messages.length - this.MESSAGE_STORE_MAX_SIZE);
+    for (const { id } of toRemove) {
+      client.messageStore.delete(id);
+    }
+    
+    if (toRemove.length > 0) {
+      console.log(`[Baileys] Pruned ${toRemove.length} old messages from store for company: ${companyId}`);
+    }
+  }
+
+  private pruneMediaCache(): void {
+    if (this.sentMediaCache.size <= this.MEDIA_CACHE_MAX_SIZE) {
+      return;
+    }
+    
+    const keys = Array.from(this.sentMediaCache.keys());
+    const toRemove = keys.slice(0, keys.length - this.MEDIA_CACHE_MAX_SIZE);
+    for (const key of toRemove) {
+      this.sentMediaCache.delete(key);
+    }
+    
+    if (toRemove.length > 0) {
+      console.log(`[Baileys] Pruned ${toRemove.length} old entries from media cache`);
     }
   }
 
@@ -361,6 +402,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
         const messageId = msg.key.id || '';
         companyClient.messageStore.set(messageId, msg);
+        this.pruneMessageStore(companyId);
 
         if (msg.key.fromMe) continue;
         if (type !== 'notify') continue;
@@ -762,6 +804,7 @@ class WhatsAppBaileysService extends EventEmitter {
           message: { conversation: message },
           messageTimestamp: Math.floor(Date.now() / 1000),
         } as WAMessage);
+        this.pruneMessageStore(companyId);
       }
 
       return {
@@ -834,6 +877,7 @@ class WhatsAppBaileysService extends EventEmitter {
           mimetype: options.mimetype,
           data: mediaBuffer.toString('base64'),
         });
+        this.pruneMediaCache();
       }
 
       return {
