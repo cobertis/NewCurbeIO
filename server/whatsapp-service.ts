@@ -652,15 +652,10 @@ class WhatsAppService extends EventEmitter {
       try {
         console.log(`[WhatsApp] Initialization attempt ${attempt}/${MAX_RETRIES} for company: ${companyId}`);
 
-        // Create Chrome profile directory for this company (aligned with LocalAuth)
-        const profileDir = path.join(process.cwd(), authPath, 'chrome-profile');
-        if (!fs.existsSync(profileDir)) {
-          fs.mkdirSync(profileDir, { recursive: true });
-        }
-        
         // Create client with company-specific LocalAuth strategy
-        // CRITICAL: userDataDir must be set in puppeteer config AND align with LocalAuth's dataPath
-        // This ensures Chromium persists its profile and LocalAuth can access session data
+        // IMPORTANT: LocalAuth is NOT compatible with puppeteer.userDataDir
+        // LocalAuth manages its own session storage at: dataPath/session-{clientId}/
+        // Do NOT specify userDataDir - let LocalAuth handle session persistence
         const client = new Client({
           authStrategy: new LocalAuth({
             dataPath: authPath,
@@ -670,7 +665,7 @@ class WhatsAppService extends EventEmitter {
             executablePath: this.getChromiumPath(),
             headless: true,
             args: chromiumFlags,
-            userDataDir: profileDir, // CRITICAL: Align with LocalAuth - enables session persistence
+            // NOTE: userDataDir is NOT specified - LocalAuth manages session directories
             defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
             timeout: 60000, // 60 second timeout for browser launch
             protocolTimeout: 60000, // 60 second timeout for CDP protocol
