@@ -4739,7 +4739,7 @@ export default function PoliciesPage() {
     if (quote?.id) {
       // Navigate to the policy detail page
       setLocation(`/customers/${quote.id}`);
-      console.log('[handleViewQuote] Navigation called to:', `/policies/${quote.id}`);
+      console.log('[handleViewQuote] Navigation called to:', `/customers/${quote.id}`);
     } else {
       console.error('[handleViewQuote] No quote ID provided');
       toast({

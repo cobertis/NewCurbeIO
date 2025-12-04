@@ -4256,7 +4256,7 @@ export default function QuotesPage() {
   const navigateToPolicy = (policyId: string) => {
     setSearchInput("");
     setFilters(prev => ({ ...prev, searchTerm: "" }));
-    setLocation(`/policies/${policyId}`);
+    setLocation(`/customers/${policyId}`);
   };
   
   // Edit states
@@ -4705,7 +4705,7 @@ export default function QuotesPage() {
         
         // Small delay to ensure queries invalidate before navigation
         setTimeout(() => {
-          setLocation(`/policies/${data.renewedPolicy.id}`);
+          setLocation(`/customers/${data.renewedPolicy.id}`);
         }, 500);
       }
     },
@@ -4724,8 +4724,8 @@ export default function QuotesPage() {
     console.log('[handleViewQuote] Navigating to policy:', quote?.id);
     if (quote?.id) {
       // Navigate to the policy detail page
-      setLocation(`/policies/${quote.id}`);
-      console.log('[handleViewQuote] Navigation called to:', `/policies/${quote.id}`);
+      setLocation(`/customers/${quote.id}`);
+      console.log('[handleViewQuote] Navigation called to:', `/customers/${quote.id}`);
     } else {
       console.error('[handleViewQuote] No quote ID provided');
       toast({
@@ -7939,7 +7939,7 @@ export default function QuotesPage() {
                                   variant: "destructive",
                                 });
                               } else {
-                                setLocation(`/policies/${viewingQuote.id}/marketplace-plans`);
+                                setLocation(`/customers/${viewingQuote.id}/marketplace-plans`);
                               }
                             }}
                           >
@@ -7979,7 +7979,7 @@ export default function QuotesPage() {
                             New Reminder
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
-                            window.open(`/policies/${viewingQuote.id}/print`, '_blank');
+                            window.open(`/customers/${viewingQuote.id}/print`, '_blank');
                           }}>
                             <FileText className="h-4 w-4 mr-2" />
                             Print Policy
@@ -8116,7 +8116,7 @@ export default function QuotesPage() {
                                 <Button
                                   variant="default"
                                   size="sm"
-                                  onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
+                                  onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)}
                                   data-testid="button-search-plans-empty"
                                 >
                                   <Search className="h-4 w-4 mr-2" />
@@ -8754,7 +8754,7 @@ export default function QuotesPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setLocation(`/policies/${viewingQuote.id}/marketplace-plans`)}
+                            onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)}
                             data-testid="button-change-plan"
                           >
                             <RefreshCw className="h-4 w-4 mr-2" />
@@ -9440,7 +9440,7 @@ export default function QuotesPage() {
                             <TableRow 
                               key={policy.id} 
                               className="cursor-pointer hover:bg-accent/5"
-                              onClick={() => setLocation(`/policies/${policy.id}`)}
+                              onClick={() => setLocation(`/customers/${policy.id}`)}
                               data-testid={`row-other-policy-${policy.id}`}
                             >
                               <TableCell className="text-center">
@@ -9478,7 +9478,7 @@ export default function QuotesPage() {
                                     <div className="cursor-pointer">
                                       <div 
                                         className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                                        onClick={() => setLocation(`/policies/${policy.id}`)}
+                                        onClick={() => setLocation(`/customers/${policy.id}`)}
                                       >
                                         {policy.clientFirstName} {policy.clientMiddleName} {policy.clientLastName} {policy.clientSecondLastName}
                                       </div>
@@ -12716,7 +12716,7 @@ export default function QuotesPage() {
                         
                         // Wait a moment for the database to fully commit before navigating
                         setTimeout(() => {
-                          setLocation(`/policies/${data.policy.id}`);
+                          setLocation(`/customers/${data.policy.id}`);
                         }, 300);
                       } catch (error: any) {
                         toast({
@@ -15464,7 +15464,7 @@ export default function QuotesPage() {
           plan2025={renewalData.plan2025}
           plans2026={renewalData.plans2026 || []}
           onRenewalComplete={(renewedPolicyId) => {
-            setLocation(`/policies/${renewedPolicyId}`);
+            setLocation(`/customers/${renewedPolicyId}`);
           }}
         />
       )}

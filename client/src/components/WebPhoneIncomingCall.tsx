@@ -66,7 +66,7 @@ export function WebPhoneIncomingCall() {
         if (callerInfo.type === 'quote') {
           setLocation(`/quotes/${callerInfo.id}`);
         } else if (callerInfo.type === 'policy') {
-          setLocation(`/policies/${callerInfo.id}`);
+          setLocation(`/customers/${callerInfo.id}`);
         }
         
         // Show toast notification

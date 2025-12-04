@@ -365,7 +365,7 @@ export default function Calendar() {
                           title={`${event.title} - ${event.role}\nClick to view ${event.policyId ? 'policy' : 'quote'}`}
                           onClick={() => {
                             if (event.policyId) {
-                              setLocation(`/policies/${event.policyId}`);
+                              setLocation(`/customers/${event.policyId}`);
                             } else if (event.quoteId) {
                               setLocation(`/quotes/${event.quoteId}`);
                             }
@@ -520,7 +520,7 @@ export default function Calendar() {
                                 className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                                 onClick={() => {
                                   if (event.policyId) {
-                                    setLocation(`/policies/${event.policyId}`);
+                                    setLocation(`/customers/${event.policyId}`);
                                   } else if (event.quoteId) {
                                     setLocation(`/quotes/${event.quoteId}`);
                                   }
@@ -788,7 +788,7 @@ export default function Calendar() {
                     variant="default"
                     onClick={() => {
                       if (selectedReminder.policyId) {
-                        setLocation(`/policies/${selectedReminder.policyId}`);
+                        setLocation(`/customers/${selectedReminder.policyId}`);
                       } else if (selectedReminder.quoteId) {
                         setLocation(`/quotes/${selectedReminder.quoteId}`);
                       }
