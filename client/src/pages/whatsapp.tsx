@@ -1136,13 +1136,7 @@ export default function WhatsAppPage() {
 
   const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
-    refetchInterval: (query) => {
-      // Fast polling during initialization, slow when ready
-      if (isInitializing) return 1000;
-      const currentStatus = query.state.data?.status?.status;
-      if (currentStatus === 'ready' || currentStatus === 'authenticated') return 10000;
-      return 2000;
-    },
+    refetchInterval: isInitializing ? 1000 : 3000, // Fixed interval to avoid errors
     retry: 3,
     retryDelay: 500,
     staleTime: 0, // Always fetch fresh data
