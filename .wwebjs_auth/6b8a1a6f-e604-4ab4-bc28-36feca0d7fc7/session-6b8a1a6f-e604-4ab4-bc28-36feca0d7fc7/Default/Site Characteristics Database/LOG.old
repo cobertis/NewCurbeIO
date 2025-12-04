@@ -1,4 +1,0 @@
-2025/12/04-22:39:14.539 167a2 Table #4: 2 entries OK
-2025/12/04-22:39:14.540 167a2 Table #7: 1 entries OK
-2025/12/04-22:39:14.541 167a2 Archiving /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Site Characteristics Database/MANIFEST-000001: OK
-2025/12/04-22:39:14.544 167a2 **** Repaired leveldb /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Site Characteristics Database; recovered 2 files; 353 bytes. Some data may have been lost. ****

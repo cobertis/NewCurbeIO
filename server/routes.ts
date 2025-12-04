@@ -28101,7 +28101,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Create chatId in WhatsApp format: number@c.us
-      // According to whatsapp-web.js docs, just send to number@c.us directly
+      
       const chatId = cleanNumber + '@c.us';
       
       console.log(`[WhatsApp] Sending message to new chat: ${chatId}`);
