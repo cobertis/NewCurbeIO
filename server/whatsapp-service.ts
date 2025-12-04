@@ -529,12 +529,22 @@ class WhatsAppService extends EventEmitter {
   private cleanupStaleLocks(companyId: string): void {
     const sessionPath = path.join('.wwebjs_auth', companyId, `session-${companyId}`);
     const chromeProfilePath = path.join('.wwebjs_auth', companyId, 'chrome-profile');
+    const chromiumProfilePath = path.join(process.cwd(), '.chromium-profiles', companyId);
+    
+    // CRITICAL: Also clean Chromium snap's global lock directory (Ubuntu-specific)
+    // The snap package creates locks here BEFORE reading --user-data-dir
+    const snapGlobalPath = '/root/snap/chromium/common/chromium';
     
     // Singleton files are symlinks at the session root level, not in Default
     const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'Local State'];
     
-    // Clean both session directory and separate chrome profile directory
-    const pathsToClean = [sessionPath, chromeProfilePath];
+    // Clean all directories where lock files might exist
+    const pathsToClean = [
+      sessionPath, 
+      chromeProfilePath, 
+      chromiumProfilePath,
+      snapGlobalPath  // CRITICAL: Clean snap's global directory to allow multiple instances
+    ];
     
     for (const basePath of pathsToClean) {
       for (const lockFile of lockFiles) {
