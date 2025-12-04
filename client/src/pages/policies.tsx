@@ -7915,10 +7915,24 @@ export default function PoliciesPage() {
                       
                       {/* Member Details */}
                       <div className="flex-1 min-w-0">
-                        {/* Name */}
-                        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2 leading-tight">
-                          {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
-                        </h2>
+                        {/* Name with copy button */}
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <h2 className="text-lg sm:text-xl font-semibold text-foreground leading-tight">
+                            {[viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ')}
+                          </h2>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fullName = [viewingQuote.clientFirstName, viewingQuote.clientMiddleName, viewingQuote.clientLastName, viewingQuote.clientSecondLastName].filter(Boolean).join(' ');
+                              navigator.clipboard.writeText(fullName);
+                              toast({ title: "Copied", description: "Name copied to clipboard", duration: 2000 });
+                            }}
+                            className="p-1 rounded-md border border-border/50 bg-background hover:bg-muted transition-colors"
+                            data-testid="button-copy-name"
+                          >
+                            <Copy className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        </div>
                         
                         {/* Info Grid - All on same line */}
                         <div className="grid grid-cols-3 gap-x-4 text-sm">
