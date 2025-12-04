@@ -58,6 +58,54 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **WhatsApp Security:** Full multi-tenant session isolation with company-scoped auth directories, separate client instances per company, all API endpoints company-scoped via authenticated user's companyId. Critical: Global mutex serializes client initialization to prevent whatsapp-web.js LocalAuth bootstrap race conditions that cause "Target closed" errors.
 - **iMessage Security:** Webhook secret isolation, admin-only settings, feature gating, multi-tenant GUID scoping, and early-return guards for self-sent webhook duplicates.
 
+## Production Deployment Notes
+
+### WhatsApp Multi-Tenant Browser Requirements (CRITICAL)
+**Problem Solved (Dec 2024):** Ubuntu's Chromium snap package creates a global `SingletonLock` at `/root/snap/chromium/common/chromium/` that prevents multiple browser instances from running simultaneously, regardless of `--user-data-dir` settings. This blocked concurrent WhatsApp sessions for different companies.
+
+**Solution:** Replace Chromium snap with Google Chrome official .deb package.
+
+**Production Server Setup Commands:**
+```bash
+# 1. Stop application and kill browser processes
+pm2 stop curbe-admin
+pkill -9 -f chromium || true
+
+# 2. Remove Chromium snap
+snap remove chromium
+
+# 3. Install Google Chrome
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+dpkg -i google-chrome-stable_current_amd64.deb
+apt-get install -f -y
+
+# 4. Verify installation
+google-chrome-stable --version
+
+# 5. Clean up snap artifacts
+rm -rf /root/snap/chromium
+
+# 6. Restart application
+pm2 restart curbe-admin
+```
+
+**Browser Detection Priority:** The `getChromiumPath()` function prioritizes Google Chrome over Chromium snap:
+1. `/usr/bin/google-chrome-stable` (PREFERRED)
+2. `/usr/bin/google-chrome`
+3. `/opt/google/chrome/google-chrome`
+4. `/usr/bin/chromium-browser` (apt-based)
+5. `/snap/bin/chromium` (LAST RESORT - has SingletonLock issues)
+
+**Session Isolation Architecture:**
+- Each company has isolated directories: `.wwebjs_auth/{companyId}/` and `.chromium-profiles/{companyId}/`
+- `LocalAuth` strategy with `clientId` parameter for session persistence
+- `--user-data-dir` Chromium flag for browser profile isolation
+- Global mutex prevents initialization race conditions
+
+**Known Limitations:**
+- `LocalAuth` is NOT compatible with Puppeteer's `userDataDir` config option (use `--user-data-dir` flag instead)
+- Chromium snap CANNOT run multiple instances (use Google Chrome or apt-based Chromium)
+
 ## External Dependencies
 
 - **Database:** PostgreSQL, Drizzle ORM, `postgres`.
