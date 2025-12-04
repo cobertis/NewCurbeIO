@@ -1136,7 +1136,7 @@ export default function WhatsAppPage() {
 
   const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
-    refetchInterval: isInitializing ? 1500 : 3000, // Poll faster for responsive UX
+    refetchInterval: isInitializing ? 1000 : (statusData?.status?.status === 'ready' ? 10000 : 2000), // Fast during init, slow when ready
     retry: 3,
     retryDelay: 500,
     staleTime: 0, // Always fetch fresh data
@@ -1149,14 +1149,16 @@ export default function WhatsAppPage() {
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   const hasQRCode = !!status?.qrCode;
   
-  // OPTIMIZED LOGIC: 
-  // - If there's a QR code available, ALWAYS show the QR page (even if hasSavedSession is true)
-  // - During loading: if we have saved session without QR, assume connected (show main UI faster)
-  // - After loading: use actual authentication status
-  // - Only show QR page when: not loading AND not authenticated AND (has QR code OR no saved session)
-  // This prevents the "Connecting..." flash when reloading with an active session
-  // AND correctly shows the QR when one is available after logout
-  const showQRPage = !statusLoading && !isAuthenticated && (hasQRCode || !hasSavedSession);
+  // SIMPLIFIED DETERMINISTIC LOGIC:
+  // 1. Loading → Show loading spinner (no assumptions)
+  // 2. Has QR code → Show QR page
+  // 3. Authenticated/Ready → Show chats
+  // 4. Not authenticated, no QR, no saved session → Show connect button
+  // 5. Not authenticated, no QR, has saved session → Show reconnecting (will auto-init)
+  const showLoadingState = statusLoading;
+  const showQRPage = !statusLoading && hasQRCode;
+  const showConnectPage = !statusLoading && !isAuthenticated && !hasQRCode && !hasSavedSession;
+  const showReconnecting = !statusLoading && !isAuthenticated && !hasQRCode && hasSavedSession;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -3354,7 +3356,22 @@ export default function WhatsAppPage() {
   });
 
   // =====================================================
-  // RENDER: QR CODE VIEW (when not authenticated)
+  // RENDER: LOADING STATE (while fetching initial status)
+  // =====================================================
+
+  if (showLoadingState) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
+        <div className="text-center space-y-4">
+          <RefreshCw className="h-12 w-12 text-[var(--whatsapp-green-primary)] animate-spin mx-auto" />
+          <p className="text-[var(--whatsapp-text-secondary)]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // RENDER: QR CODE VIEW (QR code available - scan it)
   // =====================================================
 
   if (showQRPage) {
@@ -3366,56 +3383,73 @@ export default function WhatsAppPage() {
               <MessageSquare className="h-10 w-10 text-white" />
             </div>
             
-            {status?.qrCode ? (
-              <div className="space-y-4">
-                <p className="text-[var(--whatsapp-text-secondary)]">
-                  Scan the QR code with your WhatsApp mobile app
-                </p>
-                <div className="flex justify-center bg-white p-6 rounded-lg">
-                  <img 
-                    src={status.qrCode} 
-                    alt="QR Code" 
-                    className="w-64 h-64"
-                    data-testid="img-qr-code"
-                  />
-                </div>
-                <div className="text-sm text-[var(--whatsapp-text-secondary)] space-y-1 text-left max-w-sm mx-auto">
-                  <p>1. Open WhatsApp on your phone</p>
-                  <p>2. Tap Menu or Settings and select Linked Devices</p>
-                  <p>3. Tap on Link a Device</p>
-                  <p>4. Point your phone at this screen to scan the code</p>
-                </div>
+            <div className="space-y-4">
+              <p className="text-[var(--whatsapp-text-secondary)]">
+                Scan the QR code with your WhatsApp mobile app
+              </p>
+              <div className="flex justify-center bg-white p-6 rounded-lg">
+                <img 
+                  src={status?.qrCode} 
+                  alt="QR Code" 
+                  className="w-64 h-64"
+                  data-testid="img-qr-code"
+                />
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex justify-center">
-                  <RefreshCw className="h-12 w-12 text-[var(--whatsapp-green-primary)] animate-spin" />
-                </div>
-                <p className="text-[var(--whatsapp-text-secondary)]">
-                  Connecting to WhatsApp...
-                </p>
-                <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
-                  Please wait for the QR code to appear.
-                </p>
-                {initError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 mt-4">
-                    {initError}
-                    <Button
-                      onClick={() => {
-                        autoInitAttempts.current = 0;
-                        lastAutoInitTime.current = 0;
-                        initWhatsAppMutation.mutate();
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 w-full"
-                      data-testid="button-retry-connection"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry
-                    </Button>
-                  </div>
-                )}
+              <div className="text-sm text-[var(--whatsapp-text-secondary)] space-y-1 text-left max-w-sm mx-auto">
+                <p>1. Open WhatsApp on your phone</p>
+                <p>2. Tap Menu or Settings and select Linked Devices</p>
+                <p>3. Tap on Link a Device</p>
+                <p>4. Point your phone at this screen to scan the code</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // RENDER: CONNECT PAGE (no session, show connect button)
+  // =====================================================
+
+  if (showConnectPage) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
+        <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
+              <MessageSquare className="h-10 w-10 text-white" />
+            </div>
+            
+            <h2 className="text-xl font-semibold text-[var(--whatsapp-text-primary)]">
+              Connect WhatsApp
+            </h2>
+            <p className="text-[var(--whatsapp-text-secondary)]">
+              Link your WhatsApp account to start messaging
+            </p>
+            
+            <Button
+              onClick={() => initWhatsAppMutation.mutate()}
+              disabled={initWhatsAppMutation.isPending || isInitializing}
+              className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
+              data-testid="button-connect-whatsapp"
+            >
+              {initWhatsAppMutation.isPending || isInitializing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Connect WhatsApp
+                </>
+              )}
+            </Button>
+            
+            {initError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+                {initError}
               </div>
             )}
           </div>
@@ -3425,11 +3459,56 @@ export default function WhatsAppPage() {
   }
 
   // =====================================================
-  // RENDER: MAIN CHAT VIEW
+  // RENDER: RECONNECTING STATE (has saved session, auto-connecting)
   // =====================================================
 
-  // Connection state - used for subtle indicator, not blocking UI
-  const isConnecting = hasSavedSession && !isAuthenticated;
+  if (showReconnecting) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
+        <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
+              <RefreshCw className="h-10 w-10 text-white animate-spin" />
+            </div>
+            
+            <h2 className="text-xl font-semibold text-[var(--whatsapp-text-primary)]">
+              Reconnecting...
+            </h2>
+            <p className="text-[var(--whatsapp-text-secondary)]">
+              Restoring your WhatsApp session
+            </p>
+            <p className="text-xs text-[var(--whatsapp-text-tertiary)]">
+              This may take a few seconds
+            </p>
+            
+            {initError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 mt-4">
+                {initError}
+                <Button
+                  onClick={() => {
+                    autoInitAttempts.current = 0;
+                    lastAutoInitTime.current = 0;
+                    initWhatsAppMutation.mutate();
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 w-full"
+                  data-testid="button-retry-connection"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // RENDER: MAIN CHAT VIEW (authenticated)
+  // =====================================================
 
   return (
     <div className="h-full flex flex-col bg-[var(--whatsapp-bg-primary)]">

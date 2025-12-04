@@ -175,7 +175,69 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Write authenticated session marker when client successfully authenticates
+   */
+  private writeAuthenticatedMarker(companyId: string): void {
+    const projectRoot = process.cwd();
+    const authPath = path.join(projectRoot, '.wwebjs_auth', companyId);
+    const markerPath = path.join(authPath, 'session.authenticated.json');
+    
+    try {
+      if (!fs.existsSync(authPath)) {
+        fs.mkdirSync(authPath, { recursive: true });
+      }
+      
+      const markerData = {
+        authenticated: true,
+        authenticatedAt: new Date().toISOString(),
+        companyId
+      };
+      
+      fs.writeFileSync(markerPath, JSON.stringify(markerData, null, 2));
+      console.log(`[WhatsApp] ✅ Wrote authenticated marker for company: ${companyId}`);
+    } catch (error) {
+      console.error(`[WhatsApp] Failed to write authenticated marker for ${companyId}:`, error);
+    }
+  }
+  
+  /**
+   * Remove authenticated session marker when client disconnects or logs out
+   */
+  private removeAuthenticatedMarker(companyId: string): void {
+    const projectRoot = process.cwd();
+    const markerPath = path.join(projectRoot, '.wwebjs_auth', companyId, 'session.authenticated.json');
+    
+    try {
+      if (fs.existsSync(markerPath)) {
+        fs.unlinkSync(markerPath);
+        console.log(`[WhatsApp] 🗑️ Removed authenticated marker for company: ${companyId}`);
+      }
+    } catch (error) {
+      console.error(`[WhatsApp] Failed to remove authenticated marker for ${companyId}:`, error);
+    }
+  }
+  
+  /**
+   * Check if authenticated marker exists (indicates truly authenticated session, not just Chrome init)
+   */
+  hasAuthenticatedSession(companyId: string): boolean {
+    if (this.loggedOutCompanies.has(companyId)) {
+      return false;
+    }
+    
+    const projectRoot = process.cwd();
+    const markerPath = path.join(projectRoot, '.wwebjs_auth', companyId, 'session.authenticated.json');
+    
+    try {
+      return fs.existsSync(markerPath);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Check if a company has a saved WhatsApp session (without initializing)
+   * Now checks for authenticated marker, not just directory existence
    * Returns false if the company was intentionally logged out (to prevent auto-reconnect)
    */
   hasSavedSession(companyId: string): boolean {
@@ -184,21 +246,8 @@ class WhatsAppService extends EventEmitter {
       return false;
     }
     
-    // Use absolute path from project root to avoid working directory issues
-    const projectRoot = process.cwd();
-    const authPath = path.join(projectRoot, '.wwebjs_auth', companyId);
-    try {
-      const exists = fs.existsSync(authPath);
-      // Also check if the directory has actual session content (not just empty)
-      if (exists) {
-        const contents = fs.readdirSync(authPath);
-        return contents.length > 0;
-      }
-      return false;
-    } catch (error) {
-      console.error(`[WhatsApp] hasSavedSession error for ${companyId}:`, error);
-      return false;
-    }
+    // Check for authenticated marker - this is the reliable indicator
+    return this.hasAuthenticatedSession(companyId);
   }
   
   /**
@@ -788,6 +837,10 @@ class WhatsAppService extends EventEmitter {
       status.isAuthenticated = true;
       status.status = 'authenticated';
       status.qrCode = null;
+      
+      // Write authenticated marker for reliable session detection
+      this.writeAuthenticatedMarker(companyId);
+      
       this.emit('authenticated', { companyId });
     });
 
@@ -796,6 +849,10 @@ class WhatsAppService extends EventEmitter {
       console.error(`[WhatsApp] Authentication failure for company ${companyId}:`, msg);
       status.isAuthenticated = false;
       status.status = 'disconnected';
+      
+      // Remove authenticated marker - session is no longer valid
+      this.removeAuthenticatedMarker(companyId);
+      
       this.emit('auth_failure', { companyId, message: msg });
       
       // Schedule automatic reconnection
@@ -3789,6 +3846,10 @@ class WhatsAppService extends EventEmitter {
     
     try {
       console.log(`[WhatsApp] === LOGOUT START for company: ${companyId} ===`);
+      
+      // STEP 0: Remove authenticated marker IMMEDIATELY
+      this.removeAuthenticatedMarker(companyId);
+      console.log(`[WhatsApp] Step 0: Removed authenticated marker`);
       
       // STEP 1: Mark as intentionally logged out to prevent auto-reconnect
       this.loggedOutCompanies.add(companyId);

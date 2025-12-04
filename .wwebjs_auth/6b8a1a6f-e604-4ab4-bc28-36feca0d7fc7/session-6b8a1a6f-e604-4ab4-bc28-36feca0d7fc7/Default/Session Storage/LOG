@@ -1,3 +1,2 @@
-2025/12/04-17:18:55.315 bde5 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Session Storage/MANIFEST-000001
-2025/12/04-17:18:55.317 bde5 Recovering log #4
-2025/12/04-17:18:55.318 bde5 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Session Storage/000004.log 
+2025/12/04-17:26:59.550 c534 Creating DB /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Session Storage since it was missing.
+2025/12/04-17:26:59.570 c534 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Session Storage/MANIFEST-000001

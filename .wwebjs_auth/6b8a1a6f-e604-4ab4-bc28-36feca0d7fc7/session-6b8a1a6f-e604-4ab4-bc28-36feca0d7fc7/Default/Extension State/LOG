@@ -1,3 +1,2 @@
-2025/12/04-17:18:54.927 bdd0 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Extension State/MANIFEST-000001
-2025/12/04-17:18:54.928 bdd0 Recovering log #3
-2025/12/04-17:18:54.928 bdd0 Reusing old log /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Extension State/000003.log 
+2025/12/04-17:26:59.278 c515 Creating DB /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Extension State since it was missing.
+2025/12/04-17:26:59.297 c515 Reusing MANIFEST /home/runner/workspace/.wwebjs_auth/6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/session-6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7/Default/Extension State/MANIFEST-000001
