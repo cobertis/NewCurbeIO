@@ -26349,7 +26349,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/whatsapp/status - Get session status (NO auto-initialization)
+  // GET /api/whatsapp/status - Get session status (WITH auto-reconnection for saved sessions)
   app.get("/api/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -26362,7 +26362,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Check if there is a saved session
       const hasSavedSession = whatsappService.hasSavedSession(companyId);
       
-      // Get status WITHOUT initializing - just check current state
+      // Get current status
+      const currentStatus = whatsappService.getSessionStatus(companyId);
+      
+      // AUTO-RECONNECT: If we have a saved session but not connected, automatically trigger reconnection
+      // This ensures seamless reconnection when user opens WhatsApp page
+      const isConnected = currentStatus.status === 'authenticated' || currentStatus.status === 'ready';
+      const isConnecting = currentStatus.status === 'connecting' || currentStatus.status === 'initializing';
+      
+      if (hasSavedSession && !isConnected && !isConnecting) {
+        console.log('[WhatsApp] Auto-reconnecting saved session for company:', companyId);
+        // Trigger async reconnection - don't await to avoid blocking the status response
+        whatsappService.initializeSession(companyId).catch((err) => {
+          console.error('[WhatsApp] Auto-reconnect failed:', err);
+        });
+      }
+      
+      // Return current status - frontend will poll for updates
       const status = whatsappService.getSessionStatus(companyId);
       console.log('[WhatsApp] Status response:', { status: status.status, isReady: status.isReady, hasSavedSession });
       return res.json({ success: true, status, hasSavedSession });
@@ -26490,8 +26506,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const companyId = user.companyId;
+      
+      // AUTO-RECONNECT: If not ready but has saved session, trigger reconnection
+      const hasSavedSession = whatsappService.hasSavedSession(companyId);
+      const currentStatus = whatsappService.getSessionStatus(companyId);
+      const isConnecting = currentStatus.status === 'connecting' || currentStatus.status === 'initializing';
+      
       if (!whatsappService.isReady(companyId)) {
-        return res.status(400).json({ success: false, error: 'WhatsApp is not connected' });
+        // If we have a saved session and not currently connecting, trigger reconnection
+        if (hasSavedSession && !isConnecting) {
+          console.log('[WhatsApp] Auto-reconnecting from chats endpoint for company:', companyId);
+          whatsappService.getClientForCompany(companyId).catch((err: any) => {
+            console.error('[WhatsApp] Auto-reconnect from chats failed:', err);
+          });
+        }
+        return res.status(400).json({ 
+          success: false, 
+          error: 'WhatsApp is not connected', 
+          reconnecting: hasSavedSession,
+          hasSavedSession 
+        });
       }
 
       const chats = await whatsappService.getChats(companyId);

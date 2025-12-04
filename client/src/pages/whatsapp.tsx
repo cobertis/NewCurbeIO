@@ -1224,43 +1224,6 @@ export default function WhatsAppPage() {
     previousHadQRRef.current = currentHasQR;
   }, [status?.qrCode, isAuthenticated, qrWasScanned, hasSavedSession]);
 
-  // Auto-initialize WhatsApp when not authenticated
-  // This automatically starts connection and shows QR code without user clicking a button
-  const autoInitAttempts = useRef(0);
-  const lastAutoInitTime = useRef(0);
-  const MAX_AUTO_INIT_ATTEMPTS = 5;
-  const AUTO_INIT_COOLDOWN = 10000; // 10 seconds between attempts
-  
-  useEffect(() => {
-    const now = Date.now();
-    const timeSinceLastAttempt = now - lastAutoInitTime.current;
-    
-    // Auto-init conditions:
-    // - Not currently authenticated
-    // - Not currently initializing
-    // - Haven't exceeded max attempts
-    // - Cooldown period has passed
-    // - No QR code already available
-    const shouldAutoInit = !isAuthenticated && 
-      !isInitializing && 
-      !initWhatsAppMutation.isPending &&
-      !status?.qrCode &&
-      autoInitAttempts.current < MAX_AUTO_INIT_ATTEMPTS &&
-      timeSinceLastAttempt > AUTO_INIT_COOLDOWN;
-    
-    if (shouldAutoInit) {
-      autoInitAttempts.current += 1;
-      lastAutoInitTime.current = now;
-      console.log(`[WhatsApp] Auto-initializing connection (attempt ${autoInitAttempts.current}/${MAX_AUTO_INIT_ATTEMPTS})...`);
-      initWhatsAppMutation.mutate();
-    }
-    
-    // Reset attempts when we become authenticated
-    if (isAuthenticated) {
-      autoInitAttempts.current = 0;
-    }
-  }, [isAuthenticated, isInitializing, initWhatsAppMutation.isPending, status?.qrCode]);
-
   // Handle URL query parameter to open specific chat from notifications
   // Using wouter's useSearch() which tracks query string changes
   const searchString = useSearch();
