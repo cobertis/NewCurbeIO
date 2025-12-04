@@ -7957,21 +7957,21 @@ export default function PoliciesPage() {
                   </div>
                   
                   {/* Contact Info Footer with Separator */}
-                  <div className="px-5 py-3 border-t border-border/60 bg-muted/20">
-                    <div className="space-y-1.5 text-xs sm:text-sm">
+                  <div className="px-5 py-2 border-t border-border/60 bg-muted/20">
+                    <div className="space-y-0.5 text-sm sm:text-base">
                       {/* Phone */}
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{viewingQuote.clientPhone || '—'}</span>
                       </div>
                       {/* Email */}
-                      <div className="flex items-center gap-1.5">
-                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{viewingQuote.clientEmail || '—'}</span>
                       </div>
                       {/* Address */}
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <span className="text-muted-foreground">
                           {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ') || '—'}
                         </span>
