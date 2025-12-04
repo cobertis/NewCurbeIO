@@ -26373,7 +26373,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (hasSavedSession && !isConnected && !isConnecting) {
         console.log('[WhatsApp] Auto-reconnecting saved session for company:', companyId);
         // Trigger async reconnection - don't await to avoid blocking the status response
-        whatsappService.initializeSession(companyId).catch((err) => {
+        whatsappService.getClientForCompany(companyId).catch((err) => {
           console.error('[WhatsApp] Auto-reconnect failed:', err);
         });
       }

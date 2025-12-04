@@ -1159,11 +1159,14 @@ export default function WhatsAppPage() {
   // 2. Has QR code → Show QR page
   // 3. Authenticated/Ready → Show chats
   // 4. Not authenticated, no QR, no saved session → Show connect button
-  // 5. Not authenticated, no QR, has saved session → Show reconnecting (will auto-init)
-  const showLoadingState = statusLoading;
-  const showQRPage = !statusLoading && hasQRCode;
-  const showConnectPage = !statusLoading && !isAuthenticated && !hasQRCode && !hasSavedSession;
-  const showReconnecting = !statusLoading && !isAuthenticated && !hasQRCode && hasSavedSession;
+  // 5. Not authenticated, no QR, has saved session → Show main chat view with reconnecting banner
+  // NOTE: We also check hasSavedSessionFromChats from the chats endpoint error for redundancy
+  const hasAnySavedSession = hasSavedSession || hasSavedSessionFromChats;
+  const showLoadingState = statusLoading && !hasAnySavedSession;
+  const showQRPage = !statusLoading && hasQRCode && !qrWasScanned;
+  const showConnectPage = !statusLoading && !isAuthenticated && !hasQRCode && !hasAnySavedSession && !chatsLoading;
+  // When we have a saved session, show the main chat view with a subtle banner instead of a blocking page
+  const showReconnectingBanner = !isAuthenticated && hasAnySavedSession && !hasQRCode;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -1256,13 +1259,26 @@ export default function WhatsAppPage() {
     setMentionFilter('');
   }, [selectedChatId]);
 
-  const { data: chatsData, isLoading: chatsLoading } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
+  // Query chats - always enabled to detect saved session from error response
+  const { data: chatsData, isLoading: chatsLoading, error: chatsError } = useQuery<{ success: boolean; chats: WhatsAppChat[] }>({
     queryKey: ['/api/whatsapp/chats'],
-    enabled: isAuthenticated,
-    refetchInterval: 3000, // Faster refresh for real-time feel
-    staleTime: 1000, // Consider data fresh for 1 second
+    refetchInterval: isAuthenticated ? 3000 : 5000, // Poll faster when connected
+    staleTime: 1000,
+    retry: false, // Don't retry on error - we handle reconnection
   });
 
+  // Extract hasSavedSession from error response if available
+  const chatsErrorData = chatsError ? (() => {
+    try {
+      const match = chatsError.message.match(/\{.*\}/);
+      return match ? JSON.parse(match[0]) : null;
+    } catch { return null; }
+  })() : null;
+  
+  // Combine hasSavedSession from status query and chats error
+  const hasSavedSessionFromChats = chatsErrorData?.hasSavedSession ?? false;
+  const isReconnecting = chatsErrorData?.reconnecting ?? false;
+  
   const chats = chatsData?.chats || [];
 
   // Get current user session for role check and user info
@@ -3516,8 +3532,9 @@ export default function WhatsAppPage() {
   // =====================================================
 
   // Show main view if authenticated OR if we have a saved session (reconnect in background)
-  const showMainView = isAuthenticated || hasSavedSession;
-  const isReconnecting = hasSavedSession && !isAuthenticated;
+  const showMainView = isAuthenticated || hasAnySavedSession;
+  // Use the isReconnecting from chats error OR derive it from saved session state
+  const showReconnectingIndicator = isReconnecting || (hasAnySavedSession && !isAuthenticated);
 
   if (!showMainView) {
     // This shouldn't happen normally, but fallback to connect page
@@ -3527,7 +3544,7 @@ export default function WhatsAppPage() {
   return (
     <div className="h-full flex flex-col bg-[var(--whatsapp-bg-primary)]">
       {/* Subtle reconnecting banner - only shows when reconnecting in background */}
-      {isReconnecting && (
+      {showReconnectingIndicator && (
         <div className="bg-amber-500/90 text-white text-center py-1 px-4 text-sm flex items-center justify-center gap-2">
           <RefreshCw className="h-3 w-3 animate-spin" />
           <span>Reconnecting...</span>
