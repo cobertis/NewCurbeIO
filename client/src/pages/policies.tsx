@@ -7951,21 +7951,30 @@ export default function PoliciesPage() {
                               </button>
                             )}
                           </div>
-                          
-                          {/* Row 3: Phone */}
-                          <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-lg">
-                            <Phone className="h-3 w-3 sm:h-5 sm:w-5 text-muted-foreground" />
-                            <span className="font-medium">{viewingQuote.clientPhone || '—'}</span>
-                          </div>
-                          
-                          {/* Row 4: Address */}
-                          <div className="flex items-start gap-1 sm:gap-2 text-xs sm:text-base text-muted-foreground">
-                            <MapPin className="h-3 w-3 sm:h-5 sm:w-5 mt-0.5 flex-shrink-0" />
-                            <span className="leading-snug">
-                              {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ')}
-                            </span>
-                          </div>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Contact Info Footer with Separator */}
+                  <div className="px-5 py-3 border-t border-border/60 bg-muted/20">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
+                      {/* Phone */}
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium">{viewingQuote.clientPhone || '—'}</span>
+                      </div>
+                      {/* Email */}
+                      <div className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium">{viewingQuote.clientEmail || '—'}</span>
+                      </div>
+                      {/* Address */}
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                        <span className="text-muted-foreground">
+                          {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ') || '—'}
+                        </span>
                       </div>
                     </div>
                   </div>
