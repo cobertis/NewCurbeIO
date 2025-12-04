@@ -597,6 +597,14 @@ class WhatsAppService extends EventEmitter {
     // Puppeteer configuration optimized for stability (NOT memory)
     // REMOVED: --single-process (causes crashes)
     // PRIORITY: Reliability over memory savings
+    // CRITICAL: Each company gets its own Chromium user-data-dir to prevent SingletonLock conflicts
+    const chromiumUserDataDir = path.join(process.cwd(), '.chromium-profiles', companyId);
+    
+    // Ensure the directory exists
+    if (!fs.existsSync(chromiumUserDataDir)) {
+      fs.mkdirSync(chromiumUserDataDir, { recursive: true });
+    }
+    
     const chromiumFlags = [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -620,6 +628,7 @@ class WhatsAppService extends EventEmitter {
       '--mute-audio',
       '--no-default-browser-check',
       '--autoplay-policy=no-user-gesture-required',
+      `--user-data-dir=${chromiumUserDataDir}`,  // CRITICAL: Separate Chromium profile per company
     ];
 
     // Retry logic for initialization - critical for production reliability
