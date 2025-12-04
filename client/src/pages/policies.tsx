@@ -7953,27 +7953,30 @@ export default function PoliciesPage() {
                   
                   {/* Contact Info Section */}
                   <div className="px-5 py-3 bg-muted/20 border-t border-border/30">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                      {/* Phone */}
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div className="space-y-2 text-sm">
+                      {/* Phone + Email row */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Phone */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <span className="font-medium truncate">{viewingQuote.clientPhone || '—'}</span>
                         </div>
-                        <span className="font-medium truncate">{viewingQuote.clientPhone || '—'}</span>
-                      </div>
-                      {/* Email */}
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
+                        {/* Email */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <span className="font-medium truncate">{viewingQuote.clientEmail || '—'}</span>
                         </div>
-                        <span className="font-medium truncate">{viewingQuote.clientEmail || '—'}</span>
                       </div>
-                      {/* Address */}
-                      <div className="flex items-center gap-2.5 sm:col-span-1">
+                      {/* Address - full width row */}
+                      <div className="flex items-center gap-2.5">
                         <div className="h-8 w-8 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                         </div>
-                        <span className="text-muted-foreground text-xs leading-tight">
+                        <span className="text-muted-foreground text-sm">
                           {[viewingQuote.physical_street, viewingQuote.physical_city, viewingQuote.physical_state, viewingQuote.physical_postal_code].filter(Boolean).join(', ') || '—'}
                         </span>
                       </div>
