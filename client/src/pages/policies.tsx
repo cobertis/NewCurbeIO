@@ -20,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, EyeOff, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, MoreVertical, Send, Printer, Save, Lock, Folder as FolderIcon } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, Calendar, User, Users, MapPin, FileText, Check, Search, Info, Trash2, Heart, Building2, Shield, Smile, DollarSign, PiggyBank, Plane, Cross, Filter, RefreshCw, ChevronDown, ArrowLeft, ArrowRight, Mail, CreditCard, Phone, Hash, IdCard, Home, Bell, Copy, X, Archive, ChevronsUpDown, Pencil, Loader2, AlertCircle, StickyNote, FileSignature, Briefcase, ListTodo, ScrollText, Eye, EyeOff, Image, File, Download, Upload, CheckCircle2, Clock, ExternalLink, MoreHorizontal, MoreVertical, Send, Printer, Save, Lock, Edit, Folder as FolderIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getCompanyQueryOptions } from "@/lib/queryClient";
 import { useForm, useFieldArray, useController } from "react-hook-form";
@@ -8267,15 +8267,16 @@ export default function PoliciesPage() {
                         );
                       }
                       
-                      // Show plans in modern format
+                      // Show full plan details inline
                       return (
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {plans.map((policyPlan: any, index: number) => {
                             const plan = typeof policyPlan.planData === 'string' ? JSON.parse(policyPlan.planData) : policyPlan.planData;
                             if (!plan) return null;
                             
                             const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
-                            const mainDeductible = individualDeductible || plan.deductibles?.[0];
+                            const familyDeductible = plan.deductibles?.find((d: any) => d.family);
+                            const mainDeductible = individualDeductible || familyDeductible || plan.deductibles?.[0];
                             const individualMoop = plan.moops?.find((m: any) => !m.family);
                             const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
                             
@@ -8283,36 +8284,231 @@ export default function PoliciesPage() {
                               if (value === null || value === undefined) return 'N/A';
                               const num = typeof value === 'string' ? parseFloat(value) : value;
                               if (isNaN(num)) return 'N/A';
-                              if (num <= 0) return '$0';
-                              return `$${num.toFixed(0)}`;
+                              if (num < 0) return '$0';
+                              if (num === 0) return '$0';
+                              return num % 1 === 0 ? `${num.toFixed(0)}` : `${num.toFixed(2)}`;
                             };
+                            
+                            const getBenefitCost = (benefitName: string) => {
+                              const benefit = plan.benefits?.find((b: any) => 
+                                b.name?.toLowerCase().includes(benefitName.toLowerCase())
+                              );
+                              if (benefit) {
+                                const costSharing = benefit.cost_sharings?.[0];
+                                const costShareValue = extractCostShareFromCMS(costSharing);
+                                return costShareValue ? formatCostShareValueShort(costShareValue) : null;
+                              }
+                              return null;
+                            };
+
+                            const formatManualCost = (value: any) => {
+                              if (!value) return null;
+                              const rawValue = getCostShareRawValue(value);
+                              const costShareValue = parseCostShareValue(rawValue);
+                              return costShareValue ? formatCostShareValueShort(costShareValue) : null;
+                            };
+
+                            const primaryCareCost = getBenefitCost('Primary Care') || formatManualCost(plan.copay_primary);
+                            const specialistCost = getBenefitCost('Specialist') || formatManualCost(plan.copay_specialist);
+                            const urgentCareCost = getBenefitCost('Urgent Care') || formatManualCost(plan.copay_urgent_care);
+                            const emergencyCost = getBenefitCost('Emergency') || formatManualCost(plan.copay_emergency);
+                            const genericDrugsCost = getBenefitCost('Generic Drugs');
+                            const mentalHealthCost = getBenefitCost('Mental');
                             
                             const premium = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
                             
                             return (
-                              <div key={policyPlan.id || index} className="p-4 rounded-lg border border-border/70 bg-background/60 hover:border-border transition-colors">
-                                <div className="flex items-start justify-between gap-3 mb-3">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground leading-tight mb-1">{plan.name || plan.issuer?.name || 'Insurance Plan'}</p>
-                                    <p className="text-[11px] text-muted-foreground font-mono">{plan.id || 'N/A'}</p>
+                              <div key={policyPlan.id || index} className="rounded-lg border border-border/60 bg-background/40 overflow-hidden">
+                                {/* Plan Header */}
+                                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/20">
+                                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className="h-10 w-10 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                                      <Shield className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-semibold text-foreground truncate">{plan.issuer?.name || 'Insurance Provider'}</p>
+                                      <p className="text-[11px] text-muted-foreground font-mono">Plan ID: {plan.id || 'N/A'}</p>
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-1.5 flex-shrink-0">
                                     <Badge variant="secondary" className="text-[10px] h-5 font-medium">{plan.metal_level || 'N/A'}</Badge>
                                     <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
+                                    {plan.quality_rating?.available && plan.quality_rating.global_rating > 0 && (
+                                      <Badge variant="outline" className="text-[10px] h-5">Rating: {plan.quality_rating.global_rating}/5</Badge>
+                                    )}
+                                    {plan.hsa_eligible && (
+                                      <Badge variant="outline" className="text-[10px] h-5 bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700">HSA</Badge>
+                                    )}
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                  <div className="text-center p-2.5 rounded-md bg-muted/50">
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Premium</p>
-                                    <p className="text-base font-semibold text-foreground">{formatCurrency(premium)}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></p>
+
+                                {/* Plan Name */}
+                                <div className="px-4 pt-3">
+                                  <p className="text-sm font-medium text-primary">{plan.name}</p>
+                                </div>
+
+                                {/* Two Column Layout: Plan Details + Policy Info */}
+                                <div className="p-4 grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4">
+                                  {/* LEFT: Plan Cost Details */}
+                                  <div className="space-y-4">
+                                    {/* Cost Summary */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                      <div>
+                                        <p className="text-xs text-muted-foreground mb-1">Premium</p>
+                                        {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit ? (
+                                          <>
+                                            <p className="text-2xl font-bold">{formatCurrency(plan.premium_w_credit)}</p>
+                                            <p className="text-xs text-muted-foreground line-through">Was {formatCurrency(plan.premium)}</p>
+                                            <p className="text-xs font-medium text-green-600 dark:text-green-400">Save: {formatCurrency(Math.abs(plan.premium - plan.premium_w_credit))}</p>
+                                          </>
+                                        ) : (
+                                          <p className="text-2xl font-bold">{formatCurrency(premium)}</p>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-muted-foreground mb-1">Deductible</p>
+                                        <p className="text-2xl font-bold">{mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}</p>
+                                        <p className="text-xs text-muted-foreground">Individual total</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-muted-foreground mb-1">Out-of-pocket max</p>
+                                        <p className="text-2xl font-bold">{outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}</p>
+                                        <p className="text-xs text-muted-foreground">Individual total</p>
+                                      </div>
+                                    </div>
+
+                                    {/* Benefits Grid */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                      <div>
+                                        <p className="text-xs font-medium mb-0.5">Primary Doctor</p>
+                                        <p className="text-xs text-muted-foreground">{primaryCareCost || 'No Charge'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium mb-0.5">Specialist</p>
+                                        <p className="text-xs text-muted-foreground">{specialistCost || 'No Charge'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium mb-0.5">Urgent Care</p>
+                                        <p className="text-xs text-muted-foreground">{urgentCareCost || 'No Charge'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium mb-0.5">Emergency</p>
+                                        <p className="text-xs text-muted-foreground">{emergencyCost || '40% Coinsurance'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium mb-0.5">Mental Health</p>
+                                        <p className="text-xs text-muted-foreground">{mentalHealthCost || 'No Charge'}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-medium mb-0.5">Generic Drugs</p>
+                                        <p className="text-xs text-muted-foreground">{genericDrugsCost || 'No Charge'}</p>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-center p-2.5 rounded-md bg-muted/50">
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Deductible</p>
-                                    <p className="text-base font-semibold text-foreground">{formatCurrency(mainDeductible?.amount)}</p>
+
+                                  {/* RIGHT: Policy Information */}
+                                  <div className="xl:border-l xl:pl-4 space-y-2">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-xs font-semibold text-foreground">Policy Information</p>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 text-[10px] px-2"
+                                        onClick={async () => {
+                                          try {
+                                            await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
+                                              memberId: policyInfo.memberId || null,
+                                              npnMarketplace: policyInfo.npnMarketplace || null,
+                                              saleType: policyInfo.saleType || null,
+                                              effectiveDate: policyInfo.effectiveDate || null,
+                                              marketplaceId: policyInfo.marketplaceId || null,
+                                              ffmMarketplace: policyInfo.ffmMarketplace || null,
+                                              specialEnrollmentReason: policyInfo.specialEnrollmentReason || null,
+                                              cancellationDate: policyInfo.cancellationDate || null,
+                                              specialEnrollmentDate: policyInfo.specialEnrollmentDate || null,
+                                            });
+                                            queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
+                                            toast({ title: "Saved", description: "Policy information has been saved.", duration: 3000 });
+                                          } catch (error: any) {
+                                            toast({ title: "Error", description: error.message || "Failed to save.", variant: "destructive", duration: 3000 });
+                                          }
+                                        }}
+                                        data-testid="button-save-policy-info-inline"
+                                      >
+                                        <Save className="h-3 w-3 mr-1" />
+                                        Save
+                                      </Button>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Member ID</label>
+                                        <Input value={policyInfo.memberId} onChange={(e) => setPolicyInfo({ ...policyInfo, memberId: e.target.value })} className="h-7 text-xs" data-testid="input-member-id-inline" />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">NPN</label>
+                                        <Input value={policyInfo.npnMarketplace} onChange={(e) => setPolicyInfo({ ...policyInfo, npnMarketplace: e.target.value })} className="h-7 text-xs" data-testid="input-npn-inline" />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Sale Type</label>
+                                        <Select value={policyInfo.saleType} onValueChange={(v) => setPolicyInfo({ ...policyInfo, saleType: v })}>
+                                          <SelectTrigger className="h-7 text-xs" data-testid="select-sale-type-inline"><SelectValue placeholder="Select" /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="new">New Sale</SelectItem>
+                                            <SelectItem value="renewal">Renewal</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Effective Date</label>
+                                        <Input type="date" value={policyInfo.effectiveDate} onChange={(e) => setPolicyInfo({ ...policyInfo, effectiveDate: e.target.value })} className="h-7 text-xs" data-testid="input-effective-date-inline" />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Marketplace ID</label>
+                                        <Input value={policyInfo.marketplaceId} onChange={(e) => setPolicyInfo({ ...policyInfo, marketplaceId: e.target.value })} className="h-7 text-xs" data-testid="input-marketplace-id-inline" />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">FFM</label>
+                                        <Input value={policyInfo.ffmMarketplace} onChange={(e) => setPolicyInfo({ ...policyInfo, ffmMarketplace: e.target.value })} className="h-7 text-xs" data-testid="input-ffm-inline" />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-muted-foreground block mb-0.5">Special Enrollment Reason</label>
+                                      <Input value={policyInfo.specialEnrollmentReason} onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentReason: e.target.value })} className="h-7 text-xs" data-testid="input-ser-inline" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">Cancellation</label>
+                                        <Input type="date" value={policyInfo.cancellationDate} onChange={(e) => setPolicyInfo({ ...policyInfo, cancellationDate: e.target.value })} className="h-7 text-xs" data-testid="input-cancel-inline" />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] text-muted-foreground block mb-0.5">SE Date</label>
+                                        <Input type="date" value={policyInfo.specialEnrollmentDate} onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentDate: e.target.value })} className="h-7 text-xs" data-testid="input-se-date-inline" />
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="text-center p-2.5 rounded-md bg-muted/50">
-                                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Max OOP</p>
-                                    <p className="text-base font-semibold text-foreground">{formatCurrency(outOfPocketMax)}</p>
+                                </div>
+
+                                {/* Footer Actions */}
+                                <div className="px-4 py-2 border-t border-border/40 flex items-center justify-between bg-muted/10">
+                                  <div className="flex items-center gap-2">
+                                    {policyPlan.isPrimary && <Badge variant="default" className="text-[10px] h-5">Primary Plan</Badge>}
+                                    <span className="text-[10px] text-muted-foreground">{policyPlan.source === 'marketplace' ? 'Marketplace Plan' : 'Manual Entry'}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingPlanId(policyPlan.id); setManualPlanDialogOpen(true); }} data-testid={`button-edit-plan-${policyPlan.id}`}>
+                                      <Edit className="h-3 w-3 mr-1" /> Edit
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)} data-testid={`button-change-plan-${policyPlan.id}`}>
+                                      <RefreshCw className="h-3 w-3 mr-1" /> Change Plan
+                                    </Button>
+                                    <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setDeletingPlan({ id: policyPlan.id, name: policyPlan.planName || 'this plan' })} data-testid={`button-remove-plan-${policyPlan.id}`}>
+                                      <X className="h-3 w-3 mr-1" /> Remove
+                                    </Button>
                                   </div>
                                 </div>
                               </div>
@@ -8327,657 +8523,6 @@ export default function PoliciesPage() {
             </div>
 
             <div className="space-y-6">
-
-              {/* Policy Plans - Full Details Section (only show if plans exist) */}
-              {(() => {
-                const plans = quoteDetail?.plans || [];
-                
-                // Don't show this section if no plans - already shown in card above
-                if (plans.length === 0) {
-                  return null;
-                }
-                
-                // Display all plans
-                return (
-                  <>
-                    {plans.map((policyPlan: any, index: number) => {
-                      // Parse planData if it's a string (JSON)
-                      const plan = typeof policyPlan.planData === 'string' 
-                        ? JSON.parse(policyPlan.planData) 
-                        : policyPlan.planData;
-                      if (!plan) return null;
-                
-                // Plan exists, show full details
-                
-                // Extract deductible info (same logic as marketplace)
-                const individualDeductible = plan.deductibles?.find((d: any) => !d.family);
-                const familyDeductible = plan.deductibles?.find((d: any) => d.family);
-                const mainDeductible = individualDeductible || familyDeductible || plan.deductibles?.[0];
-                
-                // Extract MOOP (out-of-pocket max)
-                const individualMoop = plan.moops?.find((m: any) => !m.family);
-                const outOfPocketMax = individualMoop?.amount || plan.out_of_pocket_limit;
-                
-                // Extract benefits with cost sharing info
-                const getBenefitCost = (benefitName: string) => {
-                  // For CMS plans: extract from benefits array
-                  const benefit = plan.benefits?.find((b: any) => 
-                    b.name?.toLowerCase().includes(benefitName.toLowerCase())
-                  );
-                  if (benefit) {
-                    const costSharing = benefit.cost_sharings?.[0];
-                    const costShareValue = extractCostShareFromCMS(costSharing);
-                    return costShareValue ? formatCostShareValueShort(costShareValue) : null;
-                  }
-                  return null;
-                };
-
-                const formatCurrency = (value: any) => {
-                  if (value === null || value === undefined) return 'N/A';
-                  const num = typeof value === 'string' ? parseFloat(value) : value;
-                  if (isNaN(num)) return 'N/A';
-                  // Round to $0 if negative, otherwise show real price
-                  if (num < 0) return '$0';
-                  if (num === 0) return '$0';
-                  // Show with cents only if there are cents, otherwise show without decimals
-                  return num % 1 === 0 ? `$${num.toFixed(0)}` : `$${num.toFixed(2)}`;
-                };
-
-                // Helper to format manual plan cost fields
-                const formatManualCost = (value: any) => {
-                  if (!value) return null;
-                  const rawValue = getCostShareRawValue(value);
-                  const costShareValue = parseCostShareValue(rawValue);
-                  return costShareValue ? formatCostShareValueShort(costShareValue) : null;
-                };
-
-                const primaryCareCost = getBenefitCost('Primary Care') || formatManualCost(plan.copay_primary);
-                const specialistCost = getBenefitCost('Specialist') || formatManualCost(plan.copay_specialist);
-                const urgentCareCost = getBenefitCost('Urgent Care') || formatManualCost(plan.copay_urgent_care);
-                const emergencyCost = getBenefitCost('Emergency') || formatManualCost(plan.copay_emergency);
-                const genericDrugsCost = getBenefitCost('Generic Drugs');
-                const mentalHealthCost = getBenefitCost('Mental');
-
-                return (
-                  <Card className="overflow-hidden hover-elevate">
-                    {/* Header with Logo */}
-                    <div className="flex items-start justify-between gap-4 p-4 border-b bg-muted/20">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="h-12 w-12 rounded-lg bg-background border flex items-center justify-center flex-shrink-0">
-                          <Shield className="h-7 w-7 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-base mb-0.5">{plan.issuer?.name || 'Insurance Provider'}</h3>
-                          <p className="text-xs text-muted-foreground mb-2">Plan ID: {plan.id || 'N/A'}</p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {capitalize(plan.metal_level) || 'N/A'}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {plan.type || 'N/A'}
-                            </Badge>
-                            {plan.quality_rating?.available ? (
-                              <span className="text-xs">
-                                Rating: {plan.quality_rating.global_rating > 0 
-                                  ? `${plan.quality_rating.global_rating}/5` 
-                                  : 'New/Ineligible'}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Rating: N/A</span>
-                            )}
-                            {plan.has_dental_child_coverage && (
-                              <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-950 border-purple-300 dark:border-purple-700">
-                                Dental Child
-                              </Badge>
-                            )}
-                            {plan.has_dental_adult_coverage && (
-                              <Badge variant="outline" className="text-xs bg-indigo-50 dark:bg-indigo-950 border-indigo-300 dark:border-indigo-700">
-                                Dental Adult
-                              </Badge>
-                            )}
-                            {plan.hsa_eligible && (
-                              <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700">
-                                HSA
-                              </Badge>
-                            )}
-                            {plan.simple_choice && (
-                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700">
-                                Simple Choice
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Main Content Grid - Split into 2 columns */}
-                    <div className="p-6">
-                      {/* Plan Name */}
-                      <h4 className="text-base font-medium mb-4 text-primary">{plan.name}</h4>
-                      
-                      {/* Two Column Layout */}
-                      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
-                        {/* LEFT COLUMN: Plan Information */}
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr_1fr] gap-6">
-                            {/* Left: Prima mensual */}
-                            <div>
-                              <p className="text-sm font-semibold mb-2">Premium</p>
-                              {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit ? (
-                                <>
-                                  <p className="text-4xl font-bold mb-1">
-                                    {formatCurrency(plan.premium_w_credit)}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground line-through mb-0.5">
-                                    Was {formatCurrency(plan.premium)}
-                                  </p>
-                                  <p className="text-xs font-semibold text-green-600 dark:text-green-400">
-                                    You save: {formatCurrency(Math.abs(plan.premium - plan.premium_w_credit))}
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="text-4xl font-bold mb-1">
-                                  {formatCurrency(plan.premium)}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Center: Deductible */}
-                            <div>
-                              <p className="text-sm font-semibold mb-2">Deductible</p>
-                              <p className="text-4xl font-bold mb-1">
-                                {mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}
-                              </p>
-                              {mainDeductible && (
-                                <>
-                                  <p className="text-xs text-muted-foreground">
-                                    Individual total ({formatCurrency(mainDeductible.amount)} per person)
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Health & drug combined
-                                  </p>
-                                </>
-                              )}
-                            </div>
-
-                            {/* Right: Out-of-pocket max */}
-                            <div>
-                              <p className="text-sm font-semibold mb-2">Out-of-pocket max</p>
-                              <p className="text-4xl font-bold mb-1">
-                                {outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">Individual total</p>
-                              <p className="text-xs text-muted-foreground">
-                                Maximum for Medical and Drug EHB Benefits
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Benefits Grid - 2x3 */}
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <div>
-                              <p className="text-sm font-medium mb-1">Primary Doctor visits</p>
-                              <p className="text-sm text-muted-foreground">
-                                {primaryCareCost || 'No Charge After Deductible'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium mb-1">Specialist Visits</p>
-                              <p className="text-sm text-muted-foreground">
-                                {specialistCost || 'No Charge After Deductible'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium mb-1">Urgent care</p>
-                              <p className="text-sm text-muted-foreground">
-                                {urgentCareCost || 'No Charge After Deductible'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium mb-1">Emergencies</p>
-                              <p className="text-sm text-muted-foreground">
-                                {emergencyCost || '40% Coinsurance after deductible'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium mb-1">Mental health</p>
-                              <p className="text-sm text-muted-foreground">
-                                {mentalHealthCost || 'No Charge After Deductible'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium mb-1">Generic drugs</p>
-                              <p className="text-sm text-muted-foreground">
-                                {genericDrugsCost || 'No Charge After Deductible'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* RIGHT COLUMN: Policy Metadata */}
-                        <div className="border-l pl-6 space-y-3">
-                          <div className="flex items-center justify-between mb-3">
-                            <h5 className="text-sm font-semibold text-foreground">Policy Information</h5>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              onClick={async () => {
-                                try {
-                                  await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
-                                    memberId: policyInfo.memberId || null,
-                                    npnMarketplace: policyInfo.npnMarketplace || null,
-                                    saleType: policyInfo.saleType || null,
-                                    effectiveDate: policyInfo.effectiveDate || null,
-                                    marketplaceId: policyInfo.marketplaceId || null,
-                                    ffmMarketplace: policyInfo.ffmMarketplace || null,
-                                    specialEnrollmentReason: policyInfo.specialEnrollmentReason || null,
-                                    cancellationDate: policyInfo.cancellationDate || null,
-                                    specialEnrollmentDate: policyInfo.specialEnrollmentDate || null,
-                                  });
-                                  queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                                  toast({
-                                    title: "Saved",
-                                    description: "Policy information has been saved.",
-                                    duration: 3000,
-                                  });
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Error",
-                                    description: error.message || "Failed to save policy information.",
-                                    variant: "destructive",
-                                    duration: 3000,
-                                  });
-                                }
-                              }}
-                              data-testid="button-save-policy-info"
-                            >
-                              <Save className="h-3 w-3 mr-1" />
-                              Save
-                            </Button>
-                          </div>
-                          
-                          {/* Row 1: Member ID + NPN */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">Member ID</label>
-                              <Input
-                                value={policyInfo.memberId}
-                                onChange={(e) => setPolicyInfo({ ...policyInfo, memberId: e.target.value })}
-                                className="h-8 text-sm"
-                                data-testid="input-member-id"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">NPN marketplace</label>
-                              <Input
-                                value={policyInfo.npnMarketplace}
-                                onChange={(e) => setPolicyInfo({ ...policyInfo, npnMarketplace: e.target.value })}
-                                className="h-8 text-sm"
-                                data-testid="input-npn-marketplace"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Row 2: Sale Type + Effective Date */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">New sale / Renewal</label>
-                              <Select
-                                value={policyInfo.saleType}
-                                onValueChange={(value) => setPolicyInfo({ ...policyInfo, saleType: value })}
-                              >
-                                <SelectTrigger className="h-8 text-sm" data-testid="select-sale-type">
-                                  <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="new">New Sale</SelectItem>
-                                  <SelectItem value="renewal">Renewal</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">Effective date</label>
-                              <Input
-                                type="date"
-                                value={policyInfo.effectiveDate}
-                                onChange={(e) => setPolicyInfo({ ...policyInfo, effectiveDate: e.target.value })}
-                                className="h-8 text-sm"
-                                data-testid="input-effective-date"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Row 3: Marketplace ID + FFM */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">Marketplace ID</label>
-                              <Input
-                                value={policyInfo.marketplaceId}
-                                onChange={(e) => setPolicyInfo({ ...policyInfo, marketplaceId: e.target.value })}
-                                className="h-8 text-sm"
-                                data-testid="input-marketplace-id"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">FFM marketplace</label>
-                              <Input
-                                value={policyInfo.ffmMarketplace}
-                                onChange={(e) => setPolicyInfo({ ...policyInfo, ffmMarketplace: e.target.value })}
-                                className="h-8 text-sm"
-                                data-testid="input-ffm-marketplace"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Row 4: Special Enrollment Reason (full width) */}
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Special enrollment reason</label>
-                            <Input
-                              value={policyInfo.specialEnrollmentReason}
-                              onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentReason: e.target.value })}
-                              className="h-8 text-sm"
-                              data-testid="input-special-enrollment-reason"
-                            />
-                          </div>
-
-                          {/* Row 5: Cancellation Date + Special Enrollment Date */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">Cancellation date</label>
-                              <Input
-                                type="date"
-                                value={policyInfo.cancellationDate}
-                                onChange={(e) => setPolicyInfo({ ...policyInfo, cancellationDate: e.target.value })}
-                                className="h-8 text-sm"
-                                data-testid="input-cancellation-date"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-xs text-muted-foreground block mb-1">Special enrollment date</label>
-                              <Input
-                                type="date"
-                                value={policyInfo.specialEnrollmentDate}
-                                onChange={(e) => setPolicyInfo({ ...policyInfo, specialEnrollmentDate: e.target.value })}
-                                className="h-8 text-sm"
-                                data-testid="input-special-enrollment-date"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer with Actions */}
-                    <div className="px-6 pb-4 pt-2 border-t flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        {policyPlan.isPrimary && (
-                          <Badge variant="default" className="text-xs">
-                            Primary Plan
-                          </Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground">
-                          {policyPlan.source === 'marketplace' ? 'Marketplace Plan' : 'Manual Entry'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {!policyPlan.isPrimary && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans/${policyPlan.id}/set-primary`, {});
-                                queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                                toast({
-                                  title: "Success",
-                                  description: "Primary plan has been updated.",
-                                  duration: 3000,
-                                });
-                              } catch (error: any) {
-                                toast({
-                                  title: "Error",
-                                  description: error.message || "Failed to set primary plan.",
-                                  variant: "destructive",
-                                  duration: 3000,
-                                });
-                              }
-                            }}
-                            data-testid={`button-set-primary-${policyPlan.id}`}
-                          >
-                            Set as Primary
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingPlanId(policyPlan.id);
-                            
-                            // Branch based on plan source to handle different data structures
-                            if (policyPlan.source === 'marketplace') {
-                              // MARKETPLACE PLAN: Map from CMS API structure
-                              const plan = policyPlan.planData as any;
-                              
-                              // Validate CMS data structure
-                              if (!plan || typeof plan !== 'object' || !plan.issuer) {
-                                // Invalid marketplace data - reset form and open empty dialog
-                                setManualPlanData(emptyManualPlanData);
-                                setManualPlanDialogOpen(true);
-                                return;
-                              }
-                            
-                            // Extract benefit costs from the benefits array
-                            const getBenefitCost = (name: string) => {
-                              const benefit = plan.benefits?.find((b: any) => 
-                                b.name?.toLowerCase().includes(name.toLowerCase())
-                              );
-                              if (!benefit) return '';
-                              const costSharing = benefit.cost_sharings?.[0];
-                              const costShareValue = extractCostShareFromCMS(costSharing);
-                              return costShareValue ? formatCostShareValueShort(costShareValue) : '';
-                            };
-
-                            // Extract deductibles
-                            const individualDeductible = plan.deductibles?.find((d: any) => 
-                              d.type === 'Medical Individual Standard' || d.type === 'Individual Medical' || d.individual_cost
-                            );
-                            const familyDeductible = plan.deductibles?.find((d: any) => 
-                              d.type === 'Medical Family Standard' || d.type === 'Family Medical' || d.family_cost
-                            );
-
-                            // Extract out-of-pocket maximums
-                            const individualMoop = plan.moops?.find((m: any) => 
-                              m.family_cost === 'Family Per Person' || (!m.family && m.amount)
-                            );
-                            const familyMoop = plan.moops?.find((m: any) => 
-                              m.family_cost === 'Family' || (m.family && m.amount)
-                            );
-
-                            // Map data from CMS API format (snake_case) to form fields
-                            // Network type is stored in plan.network_type (HMO, PPO, EPO, POS)
-                            const networkType = plan.network_type || plan.type || '';
-                            
-                            // Premium after tax credit (what user pays)
-                            const premiumAfterCredit = plan.premium_w_credit ?? plan.premium ?? 0;
-                            
-                            // Tax credit (APTC) = Original premium - Premium with credit
-                            const taxCredit = plan.premium !== undefined && plan.premium_w_credit !== undefined
-                              ? plan.premium - plan.premium_w_credit
-                              : 0;
-                            
-                            const mappedData = {
-                              productType: policyInfo.productType || '',
-                              carrier: plan.issuer?.name || '',
-                              carrierIssuerId: plan.issuer?.id || '',
-                              planName: plan.name || '',
-                              cmsPlanId: plan.id || '',
-                              metal: plan.metal_level?.toLowerCase() || '',
-                              networkType: networkType.toUpperCase(),
-                              rating: plan.quality_rating?.global_rating?.toString() || '',
-                              planWas: plan.premium?.toString() || '',
-                              premium: premiumAfterCredit.toString(),
-                              taxCredit: taxCredit.toString(),
-                              deductible: individualDeductible?.amount?.toString() || '',
-                              deductibleFamily: familyDeductible?.amount?.toString() || '',
-                              outOfPocketMax: individualMoop?.amount?.toString() || '',
-                              outOfPocketMaxFamily: familyMoop?.amount?.toString() || '',
-                              primaryCare: getBenefitCost('Primary Care'),
-                              specialist: getBenefitCost('Specialist'),
-                              urgentCare: getBenefitCost('Urgent Care'),
-                              emergency: getBenefitCost('Emergency'),
-                              mentalHealth: getBenefitCost('Mental'),
-                              genericDrugs: getBenefitCost('Generic Drugs'),
-                              preferredBrandDrugs: getBenefitCost('Preferred Brand Drugs'),
-                              nonPreferredBrandDrugs: getBenefitCost('Non-Preferred Brand Drugs'),
-                              specialtyDrugs: getBenefitCost('Specialty Drugs'),
-                              inpatientFacility: getBenefitCost('Inpatient Facility'),
-                              inpatientPhysician: getBenefitCost('Inpatient Physician'),
-                              outpatientFacility: getBenefitCost('Outpatient Facility'),
-                              outpatientPhysician: getBenefitCost('Outpatient Physician'),
-                              imaging: getBenefitCost('Imaging'),
-                              labWork: getBenefitCost('Lab'),
-                              xrays: getBenefitCost('X-Ray'),
-                              preventiveCare: getBenefitCost('Preventive'),
-                              rehabilitation: getBenefitCost('Rehabilitation'),
-                              habilitationServices: getBenefitCost('Habilitation'),
-                              skilledNursing: getBenefitCost('Skilled Nursing'),
-                              durableMedicalEquipment: getBenefitCost('Durable Medical Equipment'),
-                              hospiceCare: getBenefitCost('Hospice'),
-                              emergencyTransport: getBenefitCost('Emergency Transport'),
-                              dentalChild: plan.has_dental_child_coverage || false,
-                              dentalAdult: plan.has_dental_adult_coverage || false,
-                              hsaEligible: plan.hsa_eligible || false,
-                              simpleChoice: plan.simple_choice || false,
-                              specialistReferralRequired: plan.specialist_referral_required || false,
-                              hasNationalNetwork: plan.has_national_network || false,
-                              diseaseManagementPrograms: plan.disease_mgmt_programs?.join(', ') || '',
-                              effectiveDate: policyInfo.effectiveDate || '',
-                              cancellationDate: policyInfo.cancellationDate || '',
-                              specialEnrollmentDate: policyInfo.specialEnrollmentDate || '',
-                              specialEnrollmentReason: policyInfo.specialEnrollmentReason || '',
-                              saleType: policyInfo.saleType || '',
-                              ffmMarketplace: policyInfo.ffmMarketplace || '',
-                              npnMarketplace: policyInfo.npnMarketplace || '',
-                              marketplaceId: policyInfo.marketplaceId || '',
-                              memberId: policyInfo.memberId || '',
-                              policyTotalCost: '',
-                            };
-                            
-                            
-                              setManualPlanData(mappedData);
-                              
-                              // Open dialog after React state update (next event loop)
-                              setTimeout(() => {
-                                console.log('[OPENING DIALOG] State updated, opening dialog');
-                                setManualPlanDialogOpen(true);
-                              }, 50);
-                            } else {
-                              // MANUAL PLAN: Map from direct fields
-                              const plan = policyPlan.planData as any;
-                              
-                              const mappedData = {
-                                productType: policyInfo.productType || '',
-                                carrier: plan?.issuer?.name || plan?.carrier || '',
-                                carrierIssuerId: plan?.issuer?.id || plan?.carrier_issuer_id || '',
-                                planName: plan?.name || '',
-                                cmsPlanId: plan?.id || '',
-                                metal: plan?.metal_level || '',
-                                networkType: plan?.network_type || plan?.type || '',
-                                rating: plan?.quality_rating?.global_rating?.toString() || '',
-                                planWas: plan?.premium_was?.toString() || '',
-                                premium: plan?.premium?.toString() || '',
-                                taxCredit: plan?.tax_credit?.toString() || '',
-                                deductible: plan?.deductible?.toString() || '',
-                                deductibleFamily: plan?.deductible_family?.toString() || '',
-                                outOfPocketMax: plan?.out_of_pocket_max?.toString() || '',
-                                outOfPocketMaxFamily: plan?.out_of_pocket_max_family?.toString() || '',
-                                primaryCare: getCostShareRawValue(plan?.copay_primary || plan?.copay_primary_care),
-                                specialist: getCostShareRawValue(plan?.copay_specialist),
-                                urgentCare: getCostShareRawValue(plan?.copay_urgent_care),
-                                emergency: getCostShareRawValue(plan?.copay_emergency),
-                                mentalHealth: getCostShareRawValue(plan?.copay_mental_health),
-                                genericDrugs: getCostShareRawValue(plan?.copay_generic_drugs),
-                                preferredBrandDrugs: getCostShareRawValue(plan?.copay_preferred_brand_drugs),
-                                nonPreferredBrandDrugs: getCostShareRawValue(plan?.copay_non_preferred_brand_drugs),
-                                specialtyDrugs: getCostShareRawValue(plan?.copay_specialty_drugs),
-                                inpatientFacility: getCostShareRawValue(plan?.copay_inpatient_facility),
-                                inpatientPhysician: getCostShareRawValue(plan?.copay_inpatient_physician),
-                                outpatientFacility: getCostShareRawValue(plan?.copay_outpatient_facility),
-                                outpatientPhysician: getCostShareRawValue(plan?.copay_outpatient_physician),
-                                imaging: getCostShareRawValue(plan?.copay_imaging),
-                                labWork: getCostShareRawValue(plan?.copay_lab_work),
-                                xrays: getCostShareRawValue(plan?.copay_xrays),
-                                preventiveCare: getCostShareRawValue(plan?.copay_preventive_care),
-                                rehabilitation: getCostShareRawValue(plan?.copay_rehabilitation),
-                                habilitationServices: getCostShareRawValue(plan?.copay_habilitation_services),
-                                skilledNursing: getCostShareRawValue(plan?.copay_skilled_nursing),
-                                durableMedicalEquipment: getCostShareRawValue(plan?.copay_durable_medical_equipment),
-                                hospiceCare: getCostShareRawValue(plan?.copay_hospice_care),
-                                emergencyTransport: getCostShareRawValue(plan?.copay_emergency_transport),
-                                dentalChild: plan?.has_dental_child_coverage || false,
-                                dentalAdult: plan?.has_dental_adult_coverage || false,
-                                hsaEligible: plan?.hsa_eligible || false,
-                                simpleChoice: plan?.simple_choice || false,
-                                specialistReferralRequired: plan?.specialist_referral_required || false,
-                                hasNationalNetwork: plan?.has_national_network || false,
-                                diseaseManagementPrograms: Array.isArray(plan?.disease_mgmt_programs) ? plan.disease_mgmt_programs.join(', ') : '',
-                                effectiveDate: policyInfo.effectiveDate || '',
-                                cancellationDate: policyInfo.cancellationDate || '',
-                                specialEnrollmentDate: policyInfo.specialEnrollmentDate || '',
-                                specialEnrollmentReason: policyInfo.specialEnrollmentReason || '',
-                                saleType: policyInfo.saleType || '',
-                                ffmMarketplace: policyInfo.ffmMarketplace || '',
-                                npnMarketplace: policyInfo.npnMarketplace || '',
-                                marketplaceId: policyInfo.marketplaceId || '',
-                                memberId: policyInfo.memberId || '',
-                                policyTotalCost: '',
-                              };
-                              
-                              setManualPlanData(mappedData);
-                              setManualPlanDialogOpen(true);
-                            }
-                          }}
-                          data-testid="button-edit-plan"
-                        >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        {policyPlan.source === 'marketplace' && viewingQuote.productType === 'aca' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)}
-                            data-testid="button-change-plan"
-                          >
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Change Plan
-                          </Button>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => setDeletingPlan({ 
-                            id: policyPlan.id, 
-                            name: policyPlan.planName || 'this plan' 
-                          })}
-                          data-testid={`button-remove-plan-${policyPlan.id}`}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                    );
-                  })}
-                  </>
-                );
-              })()}
 
               {/* Family Members Section - Horizontal Layout */}
               <Card className="bg-accent/5">
