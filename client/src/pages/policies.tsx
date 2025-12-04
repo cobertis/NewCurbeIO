@@ -7863,9 +7863,9 @@ export default function PoliciesPage() {
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                           {product?.name || viewingQuote.productType || 'Policy'}
                         </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
-                        </span>
+                      </div>
+                      <div className="ml-2 px-3 py-1 rounded-lg bg-primary text-primary-foreground font-bold text-lg shadow-sm">
+                        {policyInfo.effectiveDate?.split('-')[0] || new Date().getFullYear()}
                       </div>
                     </div>
                     <DropdownMenu>
