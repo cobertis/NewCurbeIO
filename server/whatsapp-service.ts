@@ -463,22 +463,29 @@ class WhatsAppService extends EventEmitter {
    */
   private cleanupStaleLocks(companyId: string): void {
     const sessionPath = path.join('.wwebjs_auth', companyId, `session-${companyId}`);
+    const chromeProfilePath = path.join('.wwebjs_auth', companyId, 'chrome-profile');
+    
     // Singleton files are symlinks at the session root level, not in Default
     const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie', 'Local State'];
     
-    for (const lockFile of lockFiles) {
-      const lockPath = path.join(sessionPath, lockFile);
-      try {
-        // Use lstatSync to detect symlinks (existsSync follows symlinks and may return false for broken ones)
-        const stats = fs.lstatSync(lockPath);
-        if (stats.isSymbolicLink() || stats.isFile()) {
-          fs.unlinkSync(lockPath);
-          console.log(`[WhatsApp] Cleaned up stale lock: ${lockPath}`);
-        }
-      } catch (error: any) {
-        // ENOENT means file doesn't exist - that's fine
-        if (error.code !== 'ENOENT') {
-          console.error(`[WhatsApp] Error cleaning lock ${lockPath}:`, error.message);
+    // Clean both session directory and separate chrome profile directory
+    const pathsToClean = [sessionPath, chromeProfilePath];
+    
+    for (const basePath of pathsToClean) {
+      for (const lockFile of lockFiles) {
+        const lockPath = path.join(basePath, lockFile);
+        try {
+          // Use lstatSync to detect symlinks (existsSync follows symlinks and may return false for broken ones)
+          const stats = fs.lstatSync(lockPath);
+          if (stats.isSymbolicLink() || stats.isFile()) {
+            fs.unlinkSync(lockPath);
+            console.log(`[WhatsApp] Cleaned up stale lock: ${lockPath}`);
+          }
+        } catch (error: any) {
+          // ENOENT means file doesn't exist - that's fine
+          if (error.code !== 'ENOENT') {
+            console.error(`[WhatsApp] Error cleaning lock ${lockPath}:`, error.message);
+          }
         }
       }
     }
@@ -520,8 +527,9 @@ class WhatsAppService extends EventEmitter {
     // Clean up any stale lock files from previous crashes
     this.cleanupStaleLocks(companyId);
 
-    // Create company-specific auth directory
+    // Create company-specific auth directory and user data directory
     const authPath = path.join('.wwebjs_auth', companyId);
+    const userDataDir = path.join(process.cwd(), '.wwebjs_auth', companyId, 'chrome-profile');
 
     // Puppeteer configuration optimized for stability (NOT memory)
     // REMOVED: --single-process (causes crashes)
@@ -569,6 +577,7 @@ class WhatsAppService extends EventEmitter {
             executablePath: this.getChromiumPath(),
             headless: true,
             args: chromiumFlags,
+            userDataDir: userDataDir, // CRITICAL: Separate Chrome profile per company to prevent SingletonLock conflicts
             defaultViewport: { width: 800, height: 600, deviceScaleFactor: 1 },
             timeout: 60000, // 60 second timeout for browser launch
             protocolTimeout: 60000, // 60 second timeout for CDP protocol
@@ -634,12 +643,18 @@ class WhatsAppService extends EventEmitter {
   private cleanupLockFiles(companyId: string): void {
     const authPath = path.join(process.cwd(), '.wwebjs_auth', companyId);
     const sessionPath = path.join(authPath, `session-${companyId}`);
+    const chromeProfilePath = path.join(authPath, 'chrome-profile'); // New separate Chrome profile per company
     
     // Files that can cause "File exists" errors on restart
     const lockFiles = [
+      // LocalAuth session directory locks
       path.join(sessionPath, 'SingletonLock'),
       path.join(sessionPath, 'SingletonSocket'),
       path.join(sessionPath, 'SingletonCookie'),
+      // Separate Chrome profile directory locks (CRITICAL for multi-tenant isolation)
+      path.join(chromeProfilePath, 'SingletonLock'),
+      path.join(chromeProfilePath, 'SingletonSocket'),
+      path.join(chromeProfilePath, 'SingletonCookie'),
     ];
     
     for (const lockFile of lockFiles) {
