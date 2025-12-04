@@ -26401,7 +26401,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } else {
           // QR has expired - destroy old client and force regeneration
           console.log(`[WhatsApp] QR expired (${Math.round(qrAge/1000)}s old) for company ${companyId}, forcing regeneration`);
-          await whatsappService.destroyClient(companyId);
+          await whatsappService.destroy(companyId);
         }
       }
       
