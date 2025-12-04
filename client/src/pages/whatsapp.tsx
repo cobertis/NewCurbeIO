@@ -1133,6 +1133,11 @@ export default function WhatsAppPage() {
   // State for manual WhatsApp initialization
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  
+  // QR scan success animation states
+  const [qrWasScanned, setQrWasScanned] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const previousHadQRRef = useRef(false);
 
   const { data: statusData, isLoading: statusLoading } = useQuery<{ success: boolean; status: WhatsAppStatus; hasSavedSession?: boolean }>({
     queryKey: ['/api/whatsapp/status'],
@@ -1189,6 +1194,35 @@ export default function WhatsAppPage() {
       setIsInitializing(false);
     }
   }, [status?.qrCode, isAuthenticated]);
+
+  // Detect when QR code was scanned (had QR, now don't have QR but not yet authenticated)
+  useEffect(() => {
+    const currentHasQR = !!status?.qrCode;
+    
+    // QR was scanned: previously had QR, now don't have QR
+    if (previousHadQRRef.current && !currentHasQR && !isAuthenticated) {
+      setQrWasScanned(true);
+    }
+    
+    // Show success animation when authenticated after QR was scanned
+    if (qrWasScanned && isAuthenticated) {
+      setShowSuccessAnimation(true);
+      // Auto-hide success animation after 2 seconds
+      const timer = setTimeout(() => {
+        setShowSuccessAnimation(false);
+        setQrWasScanned(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+    
+    // Reset states when disconnected
+    if (!isAuthenticated && !currentHasQR && !hasSavedSession) {
+      setQrWasScanned(false);
+      setShowSuccessAnimation(false);
+    }
+    
+    previousHadQRRef.current = currentHasQR;
+  }, [status?.qrCode, isAuthenticated, qrWasScanned, hasSavedSession]);
 
   // Auto-initialize WhatsApp when not authenticated
   // This automatically starts connection and shows QR code without user clicking a button
@@ -3366,6 +3400,61 @@ export default function WhatsAppPage() {
           <RefreshCw className="h-12 w-12 text-[var(--whatsapp-green-primary)] animate-spin mx-auto" />
           <p className="text-[var(--whatsapp-text-secondary)]">Loading...</p>
         </div>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // RENDER: SUCCESS ANIMATION (QR scanned, connected!)
+  // =====================================================
+
+  if (showSuccessAnimation) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
+        <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
+          <div className="text-center space-y-6">
+            <div className="w-24 h-24 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto animate-[scale-in_0.3s_ease-out]">
+              <Check className="h-14 w-14 text-white animate-[fade-in_0.2s_ease-out_0.2s_both]" strokeWidth={3} />
+            </div>
+            
+            <h2 className="text-xl font-semibold text-[var(--whatsapp-text-primary)] animate-[fade-in_0.3s_ease-out_0.3s_both]">
+              Connected!
+            </h2>
+            <p className="text-[var(--whatsapp-text-secondary)] animate-[fade-in_0.3s_ease-out_0.4s_both]">
+              WhatsApp linked successfully
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // =====================================================
+  // RENDER: QR SCANNED - CONNECTING (QR was scanned, authenticating)
+  // =====================================================
+
+  if (qrWasScanned && !isAuthenticated) {
+    return (
+      <div className="h-full flex items-center justify-center bg-[var(--whatsapp-bg-primary)]">
+        <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
+          <div className="text-center space-y-6">
+            <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
+              <RefreshCw className="h-10 w-10 text-white animate-spin" />
+            </div>
+            
+            <h2 className="text-xl font-semibold text-[var(--whatsapp-text-primary)]">
+              Connecting...
+            </h2>
+            <p className="text-[var(--whatsapp-text-secondary)]">
+              QR code scanned, establishing connection
+            </p>
+            <div className="flex justify-center gap-1">
+              <div className="w-2 h-2 bg-[var(--whatsapp-green-primary)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-[var(--whatsapp-green-primary)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-[var(--whatsapp-green-primary)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
