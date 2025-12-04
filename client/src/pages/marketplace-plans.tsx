@@ -95,7 +95,7 @@ export default function MarketplacePlansPage() {
   
   // Detect if we're in quotes or policies context
   const isPolicy = location.startsWith('/customers/');
-  const basePath = isPolicy ? 'policies' : 'quotes';
+  const basePath = isPolicy ? 'customers' : 'quotes';
   
   const [, quotesParams] = useRoute("/quotes/:id/marketplace-plans");
   const [, policiesParams] = useRoute("/customers/:id/marketplace-plans");

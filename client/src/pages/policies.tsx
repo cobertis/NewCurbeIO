@@ -7849,12 +7849,12 @@ export default function PoliciesPage() {
                         const productType = PRODUCT_TYPES.find(p => p.id === viewingQuote.productType || p.name === viewingQuote.productType);
                         const IconComponent = productType?.icon;
                         return IconComponent ? (
-                          <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                            <IconComponent className="h-4 w-4 text-primary" />
+                          <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                            <IconComponent className="h-4.5 w-4.5 text-primary" />
                           </div>
                         ) : (
-                          <div className="h-8 w-8 rounded-lg bg-muted border border-border/40 flex items-center justify-center flex-shrink-0">
-                            <Shield className="h-4 w-4 text-muted-foreground" />
+                          <div className="h-9 w-9 rounded-lg bg-muted border border-border/40 flex items-center justify-center flex-shrink-0">
+                            <Shield className="h-4.5 w-4.5 text-muted-foreground" />
                           </div>
                         );
                       })()}
@@ -8322,8 +8322,8 @@ export default function PoliciesPage() {
                                 {/* Plan Header */}
                                 <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/20">
                                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className="h-10 w-10 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
-                                      <Shield className="h-5 w-5 text-primary" />
+                                    <div className="h-9 w-9 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
+                                      <Shield className="h-4.5 w-4.5 text-primary" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="text-sm font-semibold text-foreground truncate">{plan.issuer?.name || 'Insurance Provider'}</p>
