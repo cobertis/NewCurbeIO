@@ -1343,7 +1343,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             
             // Don't create a message for reactions - just return success
             break;
-
+          }
           
           // Regular message processing (not a reaction)
           // Find or create conversation
@@ -1357,7 +1357,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (!chatGuid) {
             console.error('[BlueBubbles Webhook] No chat GUID found in payload');
             return res.status(400).json({ message: 'Invalid payload: missing chat GUID' });
-
+          }
           
           let conversation = await storage.getImessageConversationByChatGuid(company.id, chatGuid);
           if (!conversation) {
@@ -1374,7 +1374,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               isGroup: participants.length > 1,
               isImessage: true,
             });
-
+          }
           
           // Check if message already exists (to avoid duplicates when webhook is called for our own sent messages)
           const messageGuid = messageData.guid || messageData.message_guid || `msg_${Date.now()}`;
@@ -1492,13 +1492,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (messageData.isFromMe) {
               shouldBroadcastAsNew = false;
               console.log(`[BlueBubbles Webhook] Message is from us (isFromMe=true) - skipping new message broadcast`);
-  
+            }
           } else {
             // CRITICAL: Check if message is from us BEFORE creating to prevent duplicate broadcasts
             if (messageData.isFromMe) {
               shouldBroadcastAsNew = false;
               console.log(`[BlueBubbles Webhook] New message is from us (isFromMe=true) - will not broadcast as incoming`);
-  
+            }
             
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
@@ -1669,8 +1669,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 previewText = '🎵 Audio';
               } else {
                 previewText = '📎 Attachment';
-    
-  
+              }
+            }
             
             // CRITICAL: Only broadcast as new message if it's truly incoming (not our echo)
             // When isFromMe=true: NO conversation updates, NO notifications, NO broadcasts
@@ -1823,7 +1823,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         fileFilter: (req, file, cb) => {
           if (!ALLOWED_IMESSAGE_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('Invalid file type for iMessage'));
-
+          }
           cb(null, true);
         },
       });
@@ -1834,11 +1834,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (err instanceof multer.MulterError) {
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 100MB limit'));
-    
+              }
               return reject(new Error(`Upload error: ${err.message}`));
-  
+            }
             return reject(err);
-
+          }
           resolve();
         });
       });
@@ -1873,7 +1873,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await fsPromises.unlink(filePath);
           } catch (unlinkErr) {
             console.warn('[iMessage Audio] Could not delete failed upload');
-
+          }
           return res.status(500).json({ message: `Audio conversion failed: ${conversionError.message}` });
         }
       } else {
@@ -1901,7 +1901,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               uti: audioMetadata.uti,
               codec: audioMetadata.codec,
               sampleRate: audioMetadata.sampleRate,
-  
+            }
           })
         },
         // Version marker to confirm updated code is running
@@ -2829,7 +2829,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         fileFilter: (req, file, cb) => {
           if (!ALLOWED_IMESSAGE_MIME_TYPES.includes(file.mimetype)) {
             return cb(new Error('Invalid file type. Allowed: images, videos, and audio files.'));
-
+          }
           cb(null, true);
         },
       });
@@ -2840,11 +2840,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (err instanceof multer.MulterError) {
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 100MB limit'));
-    
+              }
               return reject(new Error(`Upload error: ${err.message}`));
-  
+            }
             return reject(err);
-
+          }
           resolve();
         });
       });
@@ -14673,11 +14673,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (err instanceof multer.MulterError) {
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 5MB limit'));
-    
+              }
               return reject(new Error(`Upload error: ${err.message}`));
-  
+            }
             return reject(err);
-
+          }
           resolve();
         });
       });
@@ -14810,11 +14810,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (err instanceof multer.MulterError) {
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 10MB limit'));
-    
+              }
               return reject(new Error(`Upload error: ${err.message}`));
-  
+            }
             return reject(err);
-
+          }
           resolve();
         });
       });
@@ -20795,11 +20795,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (err instanceof multer.MulterError) {
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 5MB limit'));
-    
+              }
               return reject(new Error(`Upload error: ${err.message}`));
-  
+            }
             return reject(err);
-
+          }
           resolve();
         });
       });
@@ -20899,11 +20899,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (err instanceof multer.MulterError) {
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 10MB limit'));
-    
+              }
               return reject(new Error(`Upload error: ${err.message}`));
-  
+            }
             return reject(err);
-
+          }
           resolve();
         });
       });
@@ -23641,7 +23641,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({ message: 'File size exceeds 5MB limit' });
-
+          }
           return res.status(400).json({ message: `Upload error: ${err.message}` });
         }
         return res.status(400).json({ message: err.message || 'File upload failed' });
@@ -25804,11 +25804,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (err instanceof multer.MulterError) {
               if (err.code === 'LIMIT_FILE_SIZE') {
                 return reject(new Error('File size exceeds 5MB limit'));
-    
+              }
               return reject(new Error(`Upload error: ${err.message}`));
-  
+            }
             return reject(err);
-
+          }
           resolve();
         });
       });
