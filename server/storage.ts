@@ -65,6 +65,9 @@ import {
   type InsertOutgoingSmsMessage,
   type SmsChatNote,
   type InsertSmsChatNote,
+  type WhatsappChatNote,
+  type InsertWhatsappChatNote,
+  type WhatsappDeletedChat,
   type QuoteNote,
   type InsertQuoteNote,
   type SubscriptionDiscount,
@@ -200,6 +203,8 @@ import {
   type InsertCampaignSchedule,
   type CampaignFollowup,
   type InsertCampaignFollowup,
+  type WhatsappCall,
+  type InsertWhatsappCall
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -236,6 +241,8 @@ import {
   incomingSmsMessages,
   outgoingSmsMessages,
   smsChatNotes,
+  whatsappChatNotes,
+  whatsappDeletedChats,
   quoteNotes,
   subscriptionDiscounts,
   financialSupportTickets,
@@ -298,6 +305,7 @@ import {
   campaignVariants,
   campaignSchedules,
   campaignFollowups,
+  whatsappCalls
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull, isNotNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -556,8 +564,13 @@ export interface IStorage {
   deleteChatNote(id: string, companyId?: string): Promise<void>;
   
   // WhatsApp Chat Notes
+  createWhatsappChatNote(note: InsertWhatsappChatNote): Promise<WhatsappChatNote>;
+  getWhatsappChatNotes(chatId: string, companyId: string): Promise<WhatsappChatNote[]>;
+  updateWhatsappChatNote(id: string, body: string, companyId: string): Promise<WhatsappChatNote | undefined>;
+  deleteWhatsappChatNote(id: string, companyId: string): Promise<void>;
   
   // WhatsApp Deleted Chats
+  getWhatsappDeletedChatIds(companyId: string): Promise<string[]>;
   
   // Quote Notes
   createQuoteNote(note: InsertQuoteNote): Promise<QuoteNote>;
@@ -1232,8 +1245,15 @@ export interface IStorage {
   deleteCampaignPlaceholder(id: string, companyId: string): Promise<void>;
   
   // WhatsApp Calls
+  createWhatsappCall(call: InsertWhatsappCall): Promise<WhatsappCall>;
+  getWhatsappCallsByCompany(companyId: string, limit?: number): Promise<WhatsappCall[]>;
+  getWhatsappCallsByChat(companyId: string, chatId: string): Promise<WhatsappCall[]>;
+  getLatestCallByChat(companyId: string, chatId: string): Promise<WhatsappCall | null>;
+  updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null>;
+  getWhatsappCallByCallId(companyId: string, callId: string): Promise<WhatsappCall | null>;
   
   // WhatsApp Chat Notes
+  getLatestNoteByChat(companyId: string, chatId: string): Promise<WhatsappChatNote | null>;
 }
 
 export class DbStorage implements IStorage {
@@ -3009,6 +3029,62 @@ export class DbStorage implements IStorage {
     
     await db.delete(smsChatNotes)
       .where(and(...conditions));
+  }
+  
+  // ==================== WHATSAPP CHAT NOTES ====================
+  
+  async createWhatsappChatNote(note: InsertWhatsappChatNote): Promise<WhatsappChatNote> {
+    const result = await db.insert(whatsappChatNotes).values(note).returning();
+    return result[0];
+  }
+
+  async getWhatsappChatNotes(chatId: string, companyId: string): Promise<WhatsappChatNote[]> {
+    return db.select().from(whatsappChatNotes)
+      .where(and(
+        eq(whatsappChatNotes.chatId, chatId),
+        eq(whatsappChatNotes.companyId, companyId)
+      ))
+      .orderBy(whatsappChatNotes.createdAt);
+  }
+
+  async updateWhatsappChatNote(id: string, body: string, companyId: string): Promise<WhatsappChatNote | undefined> {
+    const result = await db.update(whatsappChatNotes)
+      .set({ body, updatedAt: new Date() })
+      .where(and(
+        eq(whatsappChatNotes.id, id),
+        eq(whatsappChatNotes.companyId, companyId)
+      ))
+      .returning();
+    return result[0];
+  }
+
+  async deleteWhatsappChatNote(id: string, companyId: string): Promise<void> {
+    await db.delete(whatsappChatNotes)
+      .where(and(
+        eq(whatsappChatNotes.id, id),
+        eq(whatsappChatNotes.companyId, companyId)
+      ));
+  }
+  
+  async getLatestNoteByChat(companyId: string, chatId: string): Promise<WhatsappChatNote | null> {
+    const [note] = await db.select()
+      .from(whatsappChatNotes)
+      .where(and(
+        eq(whatsappChatNotes.companyId, companyId),
+        eq(whatsappChatNotes.chatId, chatId)
+      ))
+      .orderBy(desc(whatsappChatNotes.createdAt))
+      .limit(1);
+    return note || null;
+  }
+  
+  // ==================== WHATSAPP DELETED CHATS ====================
+  
+  async getWhatsappDeletedChatIds(companyId: string): Promise<string[]> {
+    const deletedChats = await db.select({ chatId: whatsappDeletedChats.chatId })
+      .from(whatsappDeletedChats)
+      .where(eq(whatsappDeletedChats.companyId, companyId));
+    return deletedChats.map(c => c.chatId);
   }
   
   // ==================== QUOTE NOTES ====================
@@ -11448,43 +11524,69 @@ export class DbStorage implements IStorage {
 
   // ==================== WHATSAPP CALLS ====================
 
+  async createWhatsappCall(call: InsertWhatsappCall): Promise<WhatsappCall> {
+    const [created] = await db.insert(whatsappCalls).values(call).returning();
     return created;
   }
 
+  async getWhatsappCallsByCompany(companyId: string, limit: number = 50): Promise<WhatsappCall[]> {
     return db.select()
+      .from(whatsappCalls)
+      .where(eq(whatsappCalls.companyId, companyId))
+      .orderBy(desc(whatsappCalls.timestamp))
       .limit(limit);
   }
 
+  async getWhatsappCallsByChat(companyId: string, chatId: string): Promise<WhatsappCall[]> {
     // Query by chatId (preferred) OR by from field (backwards compatibility)
     return db.select()
+      .from(whatsappCalls)
       .where(and(
+        eq(whatsappCalls.companyId, companyId),
         or(
+          eq(whatsappCalls.chatId, chatId),
+          eq(whatsappCalls.from, chatId)
         )
       ))
+      .orderBy(desc(whatsappCalls.timestamp));
   }
   
+  async getLatestCallByChat(companyId: string, chatId: string): Promise<WhatsappCall | null> {
     const [call] = await db.select()
+      .from(whatsappCalls)
       .where(and(
+        eq(whatsappCalls.companyId, companyId),
         or(
+          eq(whatsappCalls.chatId, chatId),
+          eq(whatsappCalls.from, chatId)
         )
       ))
+      .orderBy(desc(whatsappCalls.timestamp))
       .limit(1);
     return call || null;
   }
 
+  async updateWhatsappCallStatus(companyId: string, callId: string, status: string, endedAt?: Date, duration?: number): Promise<WhatsappCall | null> {
     const updateData: any = { status };
     if (endedAt) updateData.endedAt = endedAt;
     if (duration !== undefined) updateData.duration = duration;
     
+    const [updated] = await db.update(whatsappCalls)
       .set(updateData)
       .where(and(
+        eq(whatsappCalls.companyId, companyId),
+        eq(whatsappCalls.callId, callId)
       ))
       .returning();
     return updated || null;
   }
 
+  async getWhatsappCallByCallId(companyId: string, callId: string): Promise<WhatsappCall | null> {
     const [call] = await db.select()
+      .from(whatsappCalls)
       .where(and(
+        eq(whatsappCalls.companyId, companyId),
+        eq(whatsappCalls.callId, callId)
       ))
       .limit(1);
     return call || null;
