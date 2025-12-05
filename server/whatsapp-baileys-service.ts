@@ -3,15 +3,11 @@ import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   WASocket,
-  BaileysEventMap,
   proto,
   downloadMediaMessage,
-  getContentType,
   jidNormalizedUser,
   isJidGroup,
   WAMessage,
-  MessageUpsertType,
-  ConnectionState,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import P from 'pino';
@@ -23,32 +19,15 @@ import { db } from './db';
 import { whatsappReactions, whatsappChats, whatsappMessages } from '@shared/schema';
 import { eq, and, desc, lt } from 'drizzle-orm';
 import { notificationService } from './notification-service';
-import { storage } from './storage';
-import { broadcastWhatsAppCall, broadcastWhatsAppMessage } from './websocket';
+import { broadcastWhatsAppMessage } from './websocket';
 import { whatsappMediaStorage } from './whatsapp-media-storage';
 
-interface WhatsAppSessionStatus {
+interface SessionStatus {
   isReady: boolean;
   isAuthenticated: boolean;
   qrCode: string | null;
   qrReceivedAt: number | null;
   status: 'disconnected' | 'qr_received' | 'authenticated' | 'ready';
-}
-
-interface StoredChat {
-  id: string;
-  name?: string;
-  conversationTimestamp?: number;
-  unreadCount?: number;
-  archived?: boolean;
-  pinned?: number;
-  lastMessage?: any;
-}
-
-interface StoredContact {
-  id: string;
-  name?: string;
-  notify?: string;
 }
 
 interface SessionMetrics {
@@ -60,59 +39,77 @@ interface SessionMetrics {
   lastDisconnectReason: string | null;
 }
 
-interface CompanyBaileysClient {
+interface CompanySession {
   sock: WASocket;
-  chats: Map<string, StoredChat>;
-  contacts: Map<string, StoredContact>;
-  status: WhatsAppSessionStatus;
-  messageHandlers: Map<string, (message: any) => void>;
-  messageStore: Map<string, proto.IWebMessageInfo>;
+  status: SessionStatus;
   saveCreds: () => Promise<void>;
-  metrics: SessionMetrics;
-  selfJid?: string; // The authenticated user's JID (e.g., "13057240606@s.whatsapp.net")
+  selfJid: string | null;
+  messageHandlers: Map<string, (message: any) => void>;
 }
 
-// Helper to check if a JID should be ignored (system JIDs, broadcasts, self)
-function isSystemOrSelfJid(jid: string | undefined | null, selfJid?: string): boolean {
+function isSystemJid(jid: string | undefined | null, selfJid?: string | null): boolean {
   if (!jid) return true;
-  
-  // Ignore status broadcasts
   if (jid === 'status@broadcast') return true;
-  
-  // Ignore server JIDs
   if (jid.endsWith('@server') || jid.endsWith('@broadcast')) return true;
-  
-  // Ignore newsletter JIDs
   if (jid.includes('@newsletter')) return true;
-  
-  // Ignore LID (linked device) JIDs - these are internal WhatsApp device identifiers
   if (jid.endsWith('@lid')) return true;
-  
-  // Ignore self JID (chat with yourself)
   if (selfJid) {
     const normalizedSelf = jidNormalizedUser(selfJid);
     const normalizedJid = jidNormalizedUser(jid);
     if (normalizedSelf === normalizedJid) return true;
   }
-  
   return false;
 }
 
+function normalizeWhatsAppId(contactId: string): string {
+  if (!contactId) return '';
+  let normalized = contactId.trim().replace(/[^0-9@.a-z]/gi, '');
+  if (!normalized.includes('@')) {
+    normalized = `${normalized}@s.whatsapp.net`;
+  }
+  return normalized;
+}
+
+function extractMessageContent(msg: WAMessage): string {
+  const message = msg.message;
+  if (!message) return '';
+  if (message.conversation) return message.conversation;
+  if (message.extendedTextMessage?.text) return message.extendedTextMessage.text;
+  if (message.imageMessage?.caption) return message.imageMessage.caption;
+  if (message.videoMessage?.caption) return message.videoMessage.caption;
+  if (message.documentMessage?.caption) return message.documentMessage.caption;
+  if (message.buttonsResponseMessage?.selectedButtonId) return message.buttonsResponseMessage.selectedButtonId;
+  if (message.listResponseMessage?.singleSelectReply?.selectedRowId) return message.listResponseMessage.singleSelectReply.selectedRowId;
+  return '';
+}
+
+function getMediaType(msg: WAMessage): string {
+  const message = msg.message;
+  if (!message) return 'text';
+  if (message.imageMessage) return 'image';
+  if (message.videoMessage) return 'video';
+  if (message.audioMessage) return 'audio';
+  if (message.documentMessage) return 'document';
+  if (message.stickerMessage) return 'sticker';
+  return 'text';
+}
+
+function hasMediaContent(msg: WAMessage): boolean {
+  const message = msg.message;
+  if (!message) return false;
+  return !!(message.imageMessage || message.videoMessage || message.audioMessage || 
+            message.documentMessage || message.stickerMessage);
+}
+
 class WhatsAppBaileysService extends EventEmitter {
-  private clients: Map<string, CompanyBaileysClient> = new Map();
+  private sessions: Map<string, CompanySession> = new Map();
+  private metrics: Map<string, SessionMetrics> = new Map();
   private reconnectAttempts: Map<string, number> = new Map();
   private reconnectTimers: Map<string, NodeJS.Timeout> = new Map();
   private loggedOutCompanies: Set<string> = new Set();
-  private messageReactions: Map<string, Array<{ emoji: string; senderId: string }>> = new Map();
+  private initLocks: Map<string, Promise<CompanySession>> = new Map();
   private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
-  // Persistent metrics storage - survives client reconnections
-  private sessionMetrics: Map<string, SessionMetrics> = new Map();
-  private readonly AVATARS_DIR = path.join(process.cwd(), 'server', 'avatars');
   private readonly AUTH_DIR = '.baileys_auth';
-  private initializationLock: Map<string, Promise<CompanyBaileysClient>> = new Map();
-  private globalInitLock: Promise<void> | null = null;
-  private readonly MESSAGE_STORE_MAX_SIZE = 500;
-  private readonly MEDIA_CACHE_MAX_SIZE = 100;
 
   constructor() {
     super();
@@ -121,67 +118,18 @@ class WhatsAppBaileysService extends EventEmitter {
     }
   }
 
-  private pruneMessageStore(companyId: string): void {
-    const client = this.clients.get(companyId);
-    if (!client || client.messageStore.size <= this.MESSAGE_STORE_MAX_SIZE) {
-      return;
-    }
-    
-    const messages = Array.from(client.messageStore.entries())
-      .map(([id, msg]) => ({
-        id,
-        timestamp: Number(msg.messageTimestamp) || 0
-      }))
-      .sort((a, b) => a.timestamp - b.timestamp);
-    
-    const toRemove = messages.slice(0, messages.length - this.MESSAGE_STORE_MAX_SIZE);
-    for (const { id } of toRemove) {
-      client.messageStore.delete(id);
-    }
-    
-    if (toRemove.length > 0) {
-      console.log(`[Baileys] Pruned ${toRemove.length} old messages from store for company: ${companyId}`);
-    }
-  }
-
-  private pruneMediaCache(): void {
-    if (this.sentMediaCache.size <= this.MEDIA_CACHE_MAX_SIZE) {
-      return;
-    }
-    
-    const keys = Array.from(this.sentMediaCache.keys());
-    const toRemove = keys.slice(0, keys.length - this.MEDIA_CACHE_MAX_SIZE);
-    for (const key of toRemove) {
-      this.sentMediaCache.delete(key);
-    }
-    
-    if (toRemove.length > 0) {
-      console.log(`[Baileys] Pruned ${toRemove.length} old entries from media cache`);
-    }
-  }
-
   private getAuthPath(companyId: string): string {
     return path.join(this.AUTH_DIR, companyId);
   }
 
   hasAuthenticatedSession(companyId: string): boolean {
-    if (this.loggedOutCompanies.has(companyId)) {
-      return false;
-    }
-    const authPath = this.getAuthPath(companyId);
-    const credsPath = path.join(authPath, 'creds.json');
-    try {
-      return fs.existsSync(credsPath);
-    } catch {
-      return false;
-    }
+    if (this.loggedOutCompanies.has(companyId)) return false;
+    const credsPath = path.join(this.getAuthPath(companyId), 'creds.json');
+    try { return fs.existsSync(credsPath); } catch { return false; }
   }
 
   hasSavedSession(companyId: string): boolean {
-    if (this.loggedOutCompanies.has(companyId)) {
-      return false;
-    }
-    return this.hasAuthenticatedSession(companyId);
+    return !this.loggedOutCompanies.has(companyId) && this.hasAuthenticatedSession(companyId);
   }
 
   isLoggedOut(companyId: string): boolean {
@@ -193,425 +141,74 @@ class WhatsAppBaileysService extends EventEmitter {
     console.log(`[Baileys] Cleared logged out status for company: ${companyId}`);
   }
 
-  getSavedSessionCompanyIds(): string[] {
+  isReady(companyId: string): boolean {
+    return this.sessions.get(companyId)?.status.isReady === true;
+  }
+
+  getSessionStatus(companyId: string): SessionStatus {
+    const session = this.sessions.get(companyId);
+    if (!session) {
+      return { isReady: false, isAuthenticated: false, qrCode: null, qrReceivedAt: null, status: 'disconnected' };
+    }
+    return { ...session.status };
+  }
+
+  getStatus(companyId: string): SessionStatus {
+    return this.getSessionStatus(companyId);
+  }
+
+  getQRCode(companyId: string): string | null {
+    return this.sessions.get(companyId)?.status.qrCode || null;
+  }
+
+  getSessionMetrics(companyId: string): SessionMetrics & { uptime: number | null } {
+    const m = this.metrics.get(companyId) || {
+      connectedAt: null, lastActivityAt: null, messagesSent: 0,
+      messagesReceived: 0, reconnectCount: 0, lastDisconnectReason: null
+    };
+    const uptime = m.connectedAt ? Math.floor((Date.now() - m.connectedAt.getTime()) / 1000) : null;
+    return { ...m, uptime };
+  }
+
+  getAllSessionsMetrics(): Map<string, SessionMetrics & { uptime: number | null; status: string }> {
+    const result = new Map<string, SessionMetrics & { uptime: number | null; status: string }>();
+    for (const [companyId, m] of this.metrics) {
+      const session = this.sessions.get(companyId);
+      const uptime = m.connectedAt ? Math.floor((Date.now() - m.connectedAt.getTime()) / 1000) : null;
+      result.set(companyId, { ...m, uptime, status: session?.status.status || 'disconnected' });
+    }
+    return result;
+  }
+
+  async getClientForCompany(companyId: string): Promise<CompanySession> {
+    const existing = this.sessions.get(companyId);
+    if (existing && (existing.status.isReady || existing.status.status === 'qr_received')) {
+      return existing;
+    }
+    if (existing?.status.status === 'disconnected') {
+      await this.shutdownSession(companyId);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    if (this.initLocks.has(companyId)) {
+      return this.initLocks.get(companyId)!;
+    }
+    const initPromise = this.createSession(companyId);
+    this.initLocks.set(companyId, initPromise);
     try {
-      if (!fs.existsSync(this.AUTH_DIR)) {
-        return [];
-      }
-      const entries = fs.readdirSync(this.AUTH_DIR, { withFileTypes: true });
-      return entries
-        .filter(entry => entry.isDirectory())
-        .map(entry => entry.name);
-    } catch (error) {
-      console.error('[Baileys] Error reading saved sessions:', error);
-      return [];
-    }
-  }
-
-  async autoConnectSavedSessions(): Promise<void> {
-    const savedCompanyIds = this.getSavedSessionCompanyIds();
-    if (savedCompanyIds.length === 0) {
-      console.log('[Baileys] No saved sessions found');
-      return;
-    }
-    console.log(`[Baileys] Found ${savedCompanyIds.length} saved session(s) - will connect on-demand`);
-  }
-
-  startConnectionHealthCheck(): void {
-    const HEALTH_CHECK_INTERVAL = 60000;
-    setInterval(async () => {
-      if (this.clients.size === 0) {
-        return;
-      }
-      console.log(`[Baileys] Health check: Checking ${this.clients.size} active session(s)`);
-      for (const [companyId, client] of this.clients) {
-        const isReady = client.status?.isReady === true;
-        if (isReady) {
-          console.log(`[Baileys] Health check: Session ${companyId} is connected`);
-        }
-      }
-    }, HEALTH_CHECK_INTERVAL);
-    console.log('[Baileys] Connection health check started');
-  }
-
-  async shutdownAllClients(): Promise<void> {
-    for (const [companyId, client] of this.clients) {
-      try {
-        console.log(`[Baileys] Shutting down client for company: ${companyId}`);
-        client.sock.end(undefined);
-      } catch (error) {
-        console.error(`[Baileys] Error shutting down client for ${companyId}:`, error);
-      }
-    }
-    this.clients.clear();
-  }
-
-  async shutdownClientForCompany(companyId: string): Promise<void> {
-    const client = this.clients.get(companyId);
-    if (client) {
-      try {
-        console.log(`[Baileys] Shutting down client for company: ${companyId}`);
-        client.sock.end(undefined);
-        this.clients.delete(companyId);
-      } catch (error) {
-        console.error(`[Baileys] Error shutting down client for ${companyId}:`, error);
-        this.clients.delete(companyId);
-      }
-    }
-  }
-
-  // ========== DATABASE PERSISTENCE METHODS ==========
-
-  private async persistChatToDb(companyId: string, chat: StoredChat): Promise<void> {
-    try {
-      const isGroup = chat.id.endsWith('@g.us');
-      const chatType = isGroup ? 'group' : 'individual';
-      const lastMessageContent = chat.lastMessage 
-        ? this.extractMessageContent(chat.lastMessage)
-        : null;
-      const lastMessageFromMe = chat.lastMessage?.key?.fromMe ?? false;
-
-      await db
-        .insert(whatsappChats)
-        .values({
-          companyId,
-          chatId: chat.id,
-          chatType,
-          name: chat.name || null,
-          pushName: chat.name || null,
-          lastMessageTimestamp: chat.conversationTimestamp || null,
-          lastMessageContent: lastMessageContent?.substring(0, 500) || null,
-          lastMessageFromMe,
-          unreadCount: chat.unreadCount || 0,
-          isArchived: chat.archived || false,
-          isPinned: !!chat.pinned,
-        })
-        .onConflictDoUpdate({
-          target: [whatsappChats.companyId, whatsappChats.chatId],
-          set: {
-            name: chat.name || null,
-            pushName: chat.name || null,
-            lastMessageTimestamp: chat.conversationTimestamp || null,
-            lastMessageContent: lastMessageContent?.substring(0, 500) || null,
-            lastMessageFromMe,
-            unreadCount: chat.unreadCount || 0,
-            isArchived: chat.archived || false,
-            isPinned: !!chat.pinned,
-            updatedAt: new Date(),
-          },
-        });
-    } catch (error) {
-      console.error(`[Baileys] Error persisting chat ${chat.id} for company ${companyId}:`, error);
-    }
-  }
-
-  private async deleteChatFromDb(companyId: string, chatId: string): Promise<void> {
-    try {
-      // Delete messages first (referential integrity)
-      const deletedMessages = await db
-        .delete(whatsappMessages)
-        .where(and(
-          eq(whatsappMessages.companyId, companyId),
-          eq(whatsappMessages.chatId, chatId)
-        ))
-        .returning({ id: whatsappMessages.id });
-      
-      // Delete the chat
-      const deletedChats = await db
-        .delete(whatsappChats)
-        .where(and(
-          eq(whatsappChats.companyId, companyId),
-          eq(whatsappChats.chatId, chatId)
-        ))
-        .returning({ id: whatsappChats.id });
-      
-      console.log(`[Baileys] Deleted chat ${chatId} from DB (${deletedChats.length} chat, ${deletedMessages.length} messages) for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error deleting chat ${chatId} from DB for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  private async cleanupOrphanedChats(companyId: string, companyClient: CompanyBaileysClient): Promise<void> {
-    try {
-      // Get chat IDs that exist in memory (synced from phone)
-      const phoneChatsIds = new Set(companyClient.chats.keys());
-      console.log(`[Baileys] Phone has ${phoneChatsIds.size} chats for company ${companyId}`);
-      
-      // Get all chat IDs from database
-      const dbChats = await db
-        .select({ chatId: whatsappChats.chatId })
-        .from(whatsappChats)
-        .where(eq(whatsappChats.companyId, companyId));
-      
-      console.log(`[Baileys] Database has ${dbChats.length} chats for company ${companyId}`);
-      
-      // Find orphaned chats (in DB but not in phone)
-      const orphanedChatIds = dbChats
-        .map(c => c.chatId)
-        .filter(chatId => !phoneChatsIds.has(chatId));
-      
-      // Also clean up orphaned messages from messageStore
-      let orphanedMessagesCount = 0;
-      const messageEntries = Array.from(companyClient.messageStore.entries());
-      for (const [msgId, msg] of messageEntries) {
-        const msgChatId = msg.key?.remoteJid;
-        if (msgChatId && !phoneChatsIds.has(msgChatId)) {
-          companyClient.messageStore.delete(msgId);
-          orphanedMessagesCount++;
-        }
-      }
-      if (orphanedMessagesCount > 0) {
-        console.log(`[Baileys] Removed ${orphanedMessagesCount} orphaned messages from memory for company ${companyId}`);
-      }
-      
-      if (orphanedChatIds.length === 0) {
-        console.log(`[Baileys] No orphaned chats found for company ${companyId}`);
-        return;
-      }
-      
-      console.log(`[Baileys] Found ${orphanedChatIds.length} orphaned chats for company ${companyId}: ${orphanedChatIds.join(', ')}`);
-      
-      // Delete orphaned chats and their messages from database
-      for (const chatId of orphanedChatIds) {
-        await this.deleteChatFromDb(companyId, chatId);
-      }
-      
-      console.log(`[Baileys] Cleaned up ${orphanedChatIds.length} orphaned chats for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error cleaning up orphaned chats for company ${companyId}:`, error);
-    }
-  }
-
-  private async loadChatsFromDb(companyId: string): Promise<StoredChat[]> {
-    try {
-      const dbChats = await db
-        .select()
-        .from(whatsappChats)
-        .where(eq(whatsappChats.companyId, companyId))
-        .orderBy(desc(whatsappChats.lastMessageTimestamp));
-
-      console.log(`[Baileys] Loaded ${dbChats.length} chats from DB for company: ${companyId}`);
-
-      return dbChats.map(dbChat => {
-        // Ensure timestamp is properly converted from DB bigint to number
-        const timestamp = dbChat.lastMessageTimestamp 
-          ? Number(dbChat.lastMessageTimestamp)
-          : Math.floor(Date.now() / 1000);
-        
-        return {
-          id: dbChat.chatId,
-          name: dbChat.name || dbChat.pushName || undefined,
-          conversationTimestamp: timestamp,
-          unreadCount: dbChat.unreadCount || 0,
-          archived: dbChat.isArchived || false,
-          pinned: dbChat.isPinned ? 1 : 0,
-        };
-      });
-    } catch (error) {
-      console.error(`[Baileys] Error loading chats from DB for company ${companyId}:`, error);
-      return [];
-    }
-  }
-
-  private async hydrateChatsFromDb(companyId: string, companyClient: CompanyBaileysClient): Promise<void> {
-    try {
-      const dbChats = await this.loadChatsFromDb(companyId);
-      for (const chat of dbChats) {
-        if (!companyClient.chats.has(chat.id)) {
-          companyClient.chats.set(chat.id, chat);
-        }
-      }
-      console.log(`[Baileys] Hydrated ${dbChats.length} chats from DB for company: ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error hydrating chats from DB for company ${companyId}:`, error);
-    }
-  }
-
-  private async persistMessageToDb(companyId: string, msg: proto.IWebMessageInfo): Promise<void> {
-    try {
-      const chatId = msg.key?.remoteJid;
-      const messageId = msg.key?.id;
-      if (!chatId || !messageId) return;
-      
-      // Skip system JIDs and self chat
-      const client = this.clients.get(companyId);
-      if (isSystemOrSelfJid(chatId, client?.selfJid)) return;
-
-      const fromMe = msg.key?.fromMe || false;
-      const senderId = msg.key?.participant || msg.key?.remoteJid || null;
-      const text = this.extractMessageContent(msg) || null;
-      const mediaType = this.getMediaType(msg) || null;
-      const timestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
-      const quotedMessageId = msg.message?.extendedTextMessage?.contextInfo?.stanzaId || null;
-      const isForwarded = !!msg.message?.extendedTextMessage?.contextInfo?.isForwarded;
-
-      await db
-        .insert(whatsappMessages)
-        .values({
-          companyId,
-          chatId,
-          messageId,
-          fromMe,
-          senderId,
-          text,
-          mediaType,
-          mediaUrl: null,
-          timestamp,
-          quotedMessageId,
-          isForwarded,
-          rawData: msg as any,
-        })
-        .onConflictDoNothing();
-    } catch (error) {
-      // Silent fail for message persistence - non-critical
-    }
-  }
-
-  private async persistMessagesInBatch(companyId: string, messages: proto.IWebMessageInfo[]): Promise<void> {
-    if (!messages || messages.length === 0) return;
-    
-    // Get selfJid for filtering
-    const client = this.clients.get(companyId);
-    const selfJid = client?.selfJid;
-    
-    try {
-      const values = messages
-        .filter(msg => {
-          const chatId = msg.key?.remoteJid;
-          // Filter out invalid, system, and self JIDs
-          return chatId && msg.key?.id && !isSystemOrSelfJid(chatId, selfJid);
-        })
-        .map(msg => ({
-          companyId,
-          chatId: msg.key!.remoteJid!,
-          messageId: msg.key!.id!,
-          fromMe: msg.key?.fromMe || false,
-          senderId: msg.key?.participant || msg.key?.remoteJid || null,
-          text: this.extractMessageContent(msg)?.substring(0, 5000) || null,
-          mediaType: this.getMediaType(msg) || null,
-          mediaUrl: null,
-          timestamp: msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000),
-          quotedMessageId: msg.message?.extendedTextMessage?.contextInfo?.stanzaId || null,
-          isForwarded: !!msg.message?.extendedTextMessage?.contextInfo?.isForwarded,
-          rawData: msg as any,
-        }));
-
-      if (values.length === 0) return;
-
-      // Insert in batches of 100
-      const batchSize = 100;
-      for (let i = 0; i < values.length; i += batchSize) {
-        const batch = values.slice(i, i + batchSize);
-        await db.insert(whatsappMessages).values(batch).onConflictDoNothing();
-      }
-      console.log(`[Baileys] Persisted ${values.length} messages to DB for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error persisting messages batch for company ${companyId}:`, error);
-    }
-  }
-
-  async loadMessagesFromDb(companyId: string, chatId: string, limit: number = 50, before?: number): Promise<proto.IWebMessageInfo[]> {
-    try {
-      const whereConditions = [
-        eq(whatsappMessages.companyId, companyId),
-        eq(whatsappMessages.chatId, chatId)
-      ];
-      
-      if (before) {
-        whereConditions.push(lt(whatsappMessages.timestamp, before));
-      }
-
-      const dbMessages = await db
-        .select()
-        .from(whatsappMessages)
-        .where(and(...whereConditions))
-        .orderBy(desc(whatsappMessages.timestamp))
-        .limit(limit);
-      
-      console.log(`[Baileys] Loaded ${dbMessages.length} messages from DB for chat ${chatId}${before ? ` before ${before}` : ''}`);
-      
-      const messages = dbMessages.map(m => m.rawData as proto.IWebMessageInfo).filter(Boolean);
-      return messages.reverse();
-    } catch (error) {
-      console.error(`[Baileys] Error loading messages from DB:`, error);
-      return [];
-    }
-  }
-
-  // ========== END DATABASE PERSISTENCE METHODS ==========
-
-  async getClientForCompany(companyId: string): Promise<CompanyBaileysClient> {
-    if (this.clients.has(companyId)) {
-      const existingClient = this.clients.get(companyId)!;
-      if (existingClient.status.isReady || existingClient.status.status === 'qr_received') {
-        return existingClient;
-      }
-      if (existingClient.status.status === 'disconnected') {
-        await this.shutdownClientForCompany(companyId);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        return existingClient;
-      }
-    }
-
-    if (this.initializationLock.has(companyId)) {
-      console.log(`[Baileys] Waiting for existing initialization of company: ${companyId}`);
-      return this.initializationLock.get(companyId)!;
-    }
-
-    if (this.globalInitLock) {
-      console.log(`[Baileys] Waiting for global init lock before initializing company: ${companyId}`);
-      await this.globalInitLock;
-    }
-
-    const initPromise = this.serializedCreateClient(companyId);
-    this.initializationLock.set(companyId, initPromise);
-
-    try {
-      const result = await initPromise;
-      return result;
+      return await initPromise;
     } finally {
-      this.initializationLock.delete(companyId);
+      this.initLocks.delete(companyId);
     }
   }
 
-  private async serializedCreateClient(companyId: string): Promise<CompanyBaileysClient> {
-    let resolveLock: (() => void) | undefined;
-    const lockPromise = new Promise<void>((resolve) => {
-      resolveLock = resolve;
-    });
-    this.globalInitLock = lockPromise;
-
-    console.log(`[Baileys] 🔒 Acquired global init lock for company: ${companyId}`);
-
-    try {
-      return await this.createClientForCompany(companyId);
-    } finally {
-      this.globalInitLock = null;
-      if (resolveLock) {
-        resolveLock();
-      }
-      console.log(`[Baileys] 🔓 Released global init lock for company: ${companyId}`);
-    }
-  }
-
-  async createClientForCompany(companyId: string): Promise<CompanyBaileysClient> {
-    console.log(`[Baileys] Creating new client for company: ${companyId}`);
-
+  private async createSession(companyId: string): Promise<CompanySession> {
+    console.log(`[Baileys] Creating session for company: ${companyId}`);
     const authPath = this.getAuthPath(companyId);
-    if (!fs.existsSync(authPath)) {
-      fs.mkdirSync(authPath, { recursive: true });
-    }
+    if (!fs.existsSync(authPath)) fs.mkdirSync(authPath, { recursive: true });
 
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
     const { version } = await fetchLatestBaileysVersion();
-
     const logger = P({ level: 'silent' }) as any;
-
-    // Flag to track if we're still waiting for initial history sync
-    // This MUST be true initially so Baileys actually sends the history events
-    let awaitingHistorySync = true;
 
     const sock = makeWASocket({
       version,
@@ -624,1299 +221,624 @@ class WhatsAppBaileysService extends EventEmitter {
       keepAliveIntervalMs: 25000,
       markOnlineOnConnect: true,
       syncFullHistory: true,
-      // CRITICAL: This handler tells Baileys to actually sync history messages
-      // Without this returning true, messaging-history.set never fires in v7
-      shouldSyncHistoryMessage: () => awaitingHistorySync,
+      shouldSyncHistoryMessage: () => true,
     });
 
-    // Store the flag on the socket so we can update it from event handlers
-    (sock as any).awaitingHistorySync = awaitingHistorySync;
-    (sock as any).setHistorySyncComplete = () => {
-      awaitingHistorySync = false;
-      (sock as any).awaitingHistorySync = false;
-    };
-
-    const sessionStatus: WhatsAppSessionStatus = {
-      isReady: false,
-      isAuthenticated: false,
-      qrCode: null,
-      qrReceivedAt: null,
-      status: 'disconnected',
-    };
-
-    // Get or create persistent metrics for this company
-    let persistentMetrics = this.sessionMetrics.get(companyId);
-    const isReconnect = !!persistentMetrics;
-    
-    if (!persistentMetrics) {
-      persistentMetrics = {
-        connectedAt: null,
-        lastActivityAt: null,
-        messagesSent: 0,
-        messagesReceived: 0,
-        reconnectCount: 0,
-        lastDisconnectReason: null,
-      };
-      this.sessionMetrics.set(companyId, persistentMetrics);
-    } else if (isReconnect) {
-      // Increment reconnect count on actual reconnections
-      persistentMetrics.reconnectCount++;
-    }
-    
-    const companyClient: CompanyBaileysClient = {
+    const session: CompanySession = {
       sock,
-      chats: new Map(),
-      contacts: new Map(),
-      status: sessionStatus,
-      messageHandlers: new Map(),
-      messageStore: new Map(),
+      status: { isReady: false, isAuthenticated: false, qrCode: null, qrReceivedAt: null, status: 'disconnected' },
       saveCreds,
-      metrics: persistentMetrics, // Reference the persistent metrics object
+      selfJid: null,
+      messageHandlers: new Map(),
     };
 
-    this.clients.set(companyId, companyClient);
-    this.setupEventHandlers(companyId, companyClient);
+    if (!this.metrics.has(companyId)) {
+      this.metrics.set(companyId, {
+        connectedAt: null, lastActivityAt: null, messagesSent: 0,
+        messagesReceived: 0, reconnectCount: 0, lastDisconnectReason: null
+      });
+    }
 
-    return companyClient;
+    this.sessions.set(companyId, session);
+    this.setupEventHandlers(companyId, session);
+    return session;
   }
 
-  private setupEventHandlers(companyId: string, companyClient: CompanyBaileysClient): void {
-    const { sock, status, saveCreds } = companyClient;
+  private setupEventHandlers(companyId: string, session: CompanySession): void {
+    const { sock, saveCreds } = session;
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
+    sock.ev.on('connection.update', async (update) => {
       const { connection, lastDisconnect, qr } = update;
+      const metrics = this.metrics.get(companyId)!;
 
       if (qr) {
         try {
-          const qrDataUrl = await qrcode.toDataURL(qr, { width: 256 });
-          status.qrCode = qrDataUrl;
-          status.qrReceivedAt = Date.now();
-          status.status = 'qr_received';
-          status.isAuthenticated = false;
-          status.isReady = false;
-          console.log(`[Baileys] QR code received for company: ${companyId}`);
-          this.emit('qr', { companyId, qrCode: qrDataUrl });
-          this.emit('status_change', { companyId, status: { ...status } });
-        } catch (error) {
-          console.error(`[Baileys] Error generating QR code for company ${companyId}:`, error);
+          const qrDataUrl = await qrcode.toDataURL(qr);
+          session.status = { ...session.status, qrCode: qrDataUrl, qrReceivedAt: Date.now(), status: 'qr_received' };
+          console.log(`[Baileys] QR code generated for company: ${companyId}`);
+        } catch (err) {
+          console.error(`[Baileys] Error generating QR:`, err);
         }
+      }
+
+      if (connection === 'open') {
+        session.selfJid = sock.user?.id || null;
+        session.status = { isReady: true, isAuthenticated: true, qrCode: null, qrReceivedAt: null, status: 'ready' };
+        metrics.connectedAt = new Date();
+        metrics.lastActivityAt = new Date();
+        this.reconnectAttempts.delete(companyId);
+        console.log(`[Baileys] Connected for company: ${companyId}, selfJid: ${session.selfJid}`);
+        this.emit('ready', { companyId });
+        
+        // Fetch groups after connection (workaround for missing history sync on reconnect)
+        this.fetchAndStoreGroups(companyId, sock, session.selfJid).catch(err => {
+          console.error(`[Baileys] Error fetching groups:`, err);
+        });
       }
 
       if (connection === 'close') {
-        const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-        
-        console.log(`[Baileys] Connection closed for company ${companyId}. Status: ${statusCode}. Reconnect: ${shouldReconnect}`);
-        
-        status.isReady = false;
-        status.isAuthenticated = false;
-        status.status = 'disconnected';
-        status.qrCode = null;
-        status.qrReceivedAt = null;
-        
-        // Update metrics
-        companyClient.metrics.lastDisconnectReason = String(statusCode);
-        
-        this.emit('disconnected', { companyId, reason: String(statusCode) });
-        this.emit('status_change', { companyId, status: { ...status } });
+        const reason = DisconnectReason[statusCode] || `Unknown (${statusCode})`;
+        metrics.lastDisconnectReason = reason;
+        session.status = { ...session.status, isReady: false, status: 'disconnected' };
+        console.log(`[Baileys] Disconnected for company ${companyId}: ${reason}`);
 
         if (statusCode === DisconnectReason.loggedOut) {
           this.loggedOutCompanies.add(companyId);
-          this.clients.delete(companyId);
-          const authPath = this.getAuthPath(companyId);
-          try {
-            if (fs.existsSync(authPath)) {
-              fs.rmSync(authPath, { recursive: true, force: true });
-            }
-          } catch (error) {
-            console.error(`[Baileys] Error removing auth files for ${companyId}:`, error);
-          }
-        } else if (shouldReconnect) {
+          this.sessions.delete(companyId);
+          this.deleteAuthFiles(companyId);
+          this.emit('logout', { companyId });
+        } else if (!this.loggedOutCompanies.has(companyId)) {
           this.scheduleReconnect(companyId);
         }
-      } else if (connection === 'open') {
-        console.log(`[Baileys] ✅ Connection opened for company: ${companyId}`);
-        status.isReady = true;
-        status.isAuthenticated = true;
-        status.status = 'ready';
-        status.qrCode = null;
-        status.qrReceivedAt = null;
-        
-        // Store the authenticated user's JID to filter self-messages
-        if (sock.user?.id) {
-          companyClient.selfJid = jidNormalizedUser(sock.user.id);
-          console.log(`[Baileys] Authenticated as: ${companyClient.selfJid} for company ${companyId}`);
-        }
-        
-        // Clear ALL stale data to force fresh sync from phone
-        // This prevents phantom chats/messages that were deleted on phone
-        const chatCount = companyClient.chats.size;
-        const storeSize = companyClient.messageStore.size;
-        if (chatCount > 0 || storeSize > 0) {
-          console.log(`[Baileys] Clearing stale data for company ${companyId}: ${chatCount} chats, ${storeSize} messages`);
-          companyClient.chats.clear();
-          companyClient.messageStore.clear();
-        }
-        
-        // Update metrics
-        companyClient.metrics.connectedAt = new Date();
-        companyClient.metrics.lastActivityAt = new Date();
-        
-        this.reconnectAttempts.delete(companyId);
-        const timer = this.reconnectTimers.get(companyId);
-        if (timer) {
-          clearTimeout(timer);
-          this.reconnectTimers.delete(companyId);
-        }
-
-        this.emit('ready', { companyId });
-        this.emit('authenticated', { companyId });
-        this.emit('status_change', { companyId, status: { ...status } });
-
-        // NOTE: We do NOT hydrate chats from DB here anymore
-        // Chats will come from phone via messaging-history.set, chats.set, chats.upsert events
-        // This ensures deleted chats on phone don't reappear in web
-
-        // Fetch participating groups to populate chats (workaround for Baileys v7 history sync issue)
-        console.log(`[Baileys] Attempting to fetch groups for company: ${companyId}`);
-        try {
-          const groups = await sock.groupFetchAllParticipating();
-          console.log(`[Baileys] groupFetchAllParticipating returned:`, groups ? Object.keys(groups).length : 'null', 'groups');
-          if (groups && Object.keys(groups).length > 0) {
-            for (const [groupId, groupMetadata] of Object.entries(groups)) {
-              if (!companyClient.chats.has(groupId)) {
-                companyClient.chats.set(groupId, {
-                  id: groupId,
-                  name: (groupMetadata as any).subject || groupId.replace('@g.us', ''),
-                  conversationTimestamp: (groupMetadata as any).subjectTime || Math.floor(Date.now() / 1000),
-                  unreadCount: 0,
-                  archived: false,
-                });
-              }
-            }
-            console.log(`[Baileys] Stored ${companyClient.chats.size} groups for company: ${companyId}`);
-          } else {
-            console.log(`[Baileys] No groups found for company: ${companyId}`);
-          }
-        } catch (error: any) {
-          console.log(`[Baileys] Could not fetch groups for ${companyId}:`, error?.message || error);
-        }
-
-        try {
-          const savedReactions = await db
-            .select()
-            .from(whatsappReactions)
-            .where(eq(whatsappReactions.companyId, companyId));
-          
-          for (const reaction of savedReactions) {
-            const cacheKey = `${companyId}:${reaction.messageId}`;
-            const existingReactions = this.messageReactions.get(cacheKey) || [];
-            existingReactions.push({ emoji: reaction.emoji, senderId: reaction.senderId });
-            this.messageReactions.set(cacheKey, existingReactions);
-          }
-          console.log(`[Baileys] Hydrated ${savedReactions.length} reactions for company: ${companyId}`);
-        } catch (error) {
-          console.error(`[Baileys] Failed to hydrate reactions for ${companyId}:`, error);
-        }
-
-        // Schedule cleanup of orphaned chats after connection is stable
-        // Delay to allow Baileys to sync chats from phone first
-        setTimeout(() => {
-          this.cleanupOrphanedChats(companyId, companyClient).catch(err => {
-            console.error(`[Baileys] Error cleaning up orphaned chats:`, err);
-          });
-        }, 5000);
       }
     });
 
-    // Handle chats sync events (history sync in Baileys v6)
-    sock.ev.on('chats.set', (chats: any) => {
-      if (!chats || !Array.isArray(chats)) return;
-      console.log(`[Baileys] chats.set received: ${chats.length} chats for company ${companyId}`);
-      let storedCount = 0;
+    sock.ev.on('messaging-history.set', async ({ chats, messages }) => {
+      console.log(`[Baileys] History sync for ${companyId}: ${chats?.length || 0} chats, ${messages?.length || 0} messages`);
+      if (chats?.length) {
+        for (const chat of chats) {
+          if (isSystemJid(chat.id, session.selfJid)) continue;
+          await this.upsertChatToDb(companyId, chat);
+        }
+      }
+      if (messages?.length) {
+        await this.upsertMessagesToDb(companyId, messages as proto.IWebMessageInfo[], session.selfJid);
+      }
+    });
+
+    sock.ev.on('chats.upsert', async (chats) => {
       for (const chat of chats) {
-        // Skip system JIDs and self chat
-        if (!chat.id || isSystemOrSelfJid(chat.id, companyClient.selfJid)) continue;
-        
-        const storedChat: StoredChat = {
-          id: chat.id,
-          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-          conversationTimestamp: chat.conversationTimestamp || chat.lastMessageRecvTimestamp || 0,
-          unreadCount: chat.unreadCount || 0,
-          archived: chat.archived || false,
-          pinned: chat.pinned || 0,
-        };
-        companyClient.chats.set(chat.id, storedChat);
-        // Persist to database (fire and forget)
-        this.persistChatToDb(companyId, storedChat).catch(() => {});
-        storedCount++;
-      }
-      console.log(`[Baileys] Stored ${storedCount} valid chats (filtered ${chats.length - storedCount} system/self) after chats.set for company ${companyId}`);
-    });
-
-    sock.ev.on('chats.upsert', (chats: any[]) => {
-      console.log(`[Baileys] chats.upsert received: ${chats.length} chats for company ${companyId}`);
-      for (const chat of chats) {
-        // Skip system JIDs and self chat
-        if (!chat.id || isSystemOrSelfJid(chat.id, companyClient.selfJid)) continue;
-        
-        const existing = companyClient.chats.get(chat.id);
-        const storedChat: StoredChat = {
-          id: chat.id,
-          name: chat.name || existing?.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-          conversationTimestamp: chat.conversationTimestamp || existing?.conversationTimestamp || 0,
-          unreadCount: chat.unreadCount ?? existing?.unreadCount ?? 0,
-          archived: chat.archived ?? existing?.archived ?? false,
-          pinned: chat.pinned ?? existing?.pinned ?? 0,
-        };
-        companyClient.chats.set(chat.id, storedChat);
-        // Persist to database (fire and forget)
-        this.persistChatToDb(companyId, storedChat).catch(() => {});
+        if (isSystemJid(chat.id, session.selfJid)) continue;
+        await this.upsertChatToDb(companyId, chat);
       }
     });
 
-    sock.ev.on('chats.update', (updates: any[]) => {
+    sock.ev.on('chats.update', async (updates) => {
       for (const update of updates) {
-        // Skip system JIDs and self chat
-        if (!update.id || isSystemOrSelfJid(update.id, companyClient.selfJid)) continue;
-        
-        const existing = companyClient.chats.get(update.id);
-        if (existing) {
-          companyClient.chats.set(update.id, {
-            ...existing,
-            ...update,
-            name: update.name || existing.name,
-          });
-        }
+        if (!update.id || isSystemJid(update.id, session.selfJid)) continue;
+        await this.updateChatInDb(companyId, update.id, update);
       }
     });
 
-    sock.ev.on('contacts.set', (contacts: any) => {
-      const contactsArray = contacts?.contacts || contacts;
-      if (!contactsArray || !Array.isArray(contactsArray)) return;
-      console.log(`[Baileys] contacts.set received: ${contactsArray.length} contacts for company ${companyId}`);
-      for (const contact of contactsArray) {
-        if (!contact.id) continue;
-        companyClient.contacts.set(contact.id, {
-          id: contact.id,
-          name: contact.name || contact.notify,
-          notify: contact.notify,
-        });
+    sock.ev.on('chats.delete', async (chatIds) => {
+      for (const chatId of chatIds) {
+        await this.archiveChatInDb(companyId, chatId);
       }
     });
 
-    sock.ev.on('contacts.upsert', (contacts: any[]) => {
-      for (const contact of contacts) {
-        if (!contact.id) continue;
-        companyClient.contacts.set(contact.id, {
-          id: contact.id,
-          name: contact.name || contact.notify,
-          notify: contact.notify,
-        });
-      }
-    });
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+      const metrics = this.metrics.get(companyId)!;
+      metrics.lastActivityAt = new Date();
 
-    sock.ev.on('messages.upsert', async ({ messages, type }: { messages: WAMessage[]; type: MessageUpsertType }) => {
       for (const msg of messages) {
-        const chatId = msg.key.remoteJid;
-        
-        // Skip invalid, system, or self JIDs
-        if (!chatId || isSystemOrSelfJid(chatId, companyClient.selfJid)) {
-          continue;
-        }
+        const chatId = msg.key?.remoteJid;
+        if (!chatId || isSystemJid(chatId, session.selfJid)) continue;
 
-        // Extract message content - skip if empty (protocol messages)
-        const messageContent = this.extractMessageContent(msg);
-        const hasMedia = this.hasMediaContent(msg);
-        
-        // Skip messages with no content and no media (likely protocol/system messages)
-        if (!messageContent && !hasMedia && !msg.message?.reactionMessage) {
-          continue;
-        }
+        await this.upsertMessageToDb(companyId, msg);
+        await this.updateChatLastMessage(companyId, chatId, msg);
 
-        const messageId = msg.key.id || '';
-        companyClient.messageStore.set(messageId, msg);
-        this.pruneMessageStore(companyId);
-
-        const messageTimestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
-        
-        // Update metrics
-        companyClient.metrics.lastActivityAt = new Date();
-        if (msg.key.fromMe) {
-          companyClient.metrics.messagesSent++;
-        } else {
-          companyClient.metrics.messagesReceived++;
-        }
-        
-        // Persist message to database (fire and forget)
-        this.persistMessageToDb(companyId, msg).catch(() => {});
-        
-        // Auto-create or update chat when receiving messages (workaround for Baileys v7 history sync issue)
-        const existingChat = companyClient.chats.get(chatId);
-        const chatName = msg.pushName || existingChat?.name || chatId.replace('@s.whatsapp.net', '').replace('@g.us', '');
-        
-        const storedChat: StoredChat = {
-          id: chatId,
-          name: chatName,
-          conversationTimestamp: messageTimestamp,
-          unreadCount: (existingChat?.unreadCount || 0) + (msg.key.fromMe ? 0 : 1),
-          archived: existingChat?.archived || false,
-          pinned: existingChat?.pinned,
-          lastMessage: msg,
-        };
-        companyClient.chats.set(chatId, storedChat);
-        
-        // Persist to database (fire and forget)
-        this.persistChatToDb(companyId, storedChat).catch(() => {});
-
-        if (msg.key.fromMe) continue;
-        if (type !== 'notify') continue;
-
-        const senderId = msg.key.participant || msg.key.remoteJid;
-        const pushname = msg.pushName || '';
-        const senderNumber = senderId.replace('@s.whatsapp.net', '').replace('@g.us', '');
-
-        console.log(`[Baileys] Message received for company ${companyId}: ${chatId}, ${(messageContent || '').substring(0, 50)}`);
-
-        this.emit('message', { companyId, message: msg });
-
-        for (const handler of companyClient.messageHandlers.values()) {
+        if (type === 'notify' && !msg.key?.fromMe) {
+          metrics.messagesReceived++;
+          const content = extractMessageContent(msg);
+          const senderNumber = (msg.key?.participant || msg.key?.remoteJid || '').replace(/@.*/, '');
+          
           try {
-            handler(msg);
-          } catch (error) {
-            console.error(`[Baileys] Error in message handler for company ${companyId}:`, error);
+            await notificationService.notifyWhatsAppMessage(companyId, {
+              chatId,
+              senderName: msg.pushName || senderNumber,
+              senderNumber,
+              messageText: content,
+              hasMedia: hasMediaContent(msg),
+              mediaType: getMediaType(msg),
+              isGroup: isJidGroup(chatId),
+            });
+
+            broadcastWhatsAppMessage(companyId, {
+              chatId,
+              senderName: msg.pushName || senderNumber,
+              senderNumber,
+              messageText: content,
+              hasMedia: hasMediaContent(msg),
+              mediaType: getMediaType(msg),
+              isGroup: isJidGroup(chatId),
+              timestamp: new Date(),
+            });
+          } catch (err) {
+            console.error(`[Baileys] Notification error:`, err);
           }
-        }
 
-        const isGroup = isJidGroup(chatId);
-        
-        try {
-          await notificationService.notifyWhatsAppMessage(companyId, {
-            chatId,
-            senderName: pushname || this.formatPhoneNumber(senderNumber) || 'Unknown',
-            senderNumber,
-            messageText: messageContent,
-            hasMedia,
-            mediaType: this.getMediaType(msg),
-            isGroup,
-            groupName: isGroup ? chatId : undefined,
-          });
-
-          broadcastWhatsAppMessage(companyId, {
-            chatId,
-            senderName: pushname || senderNumber,
-            senderNumber,
-            messageText: messageContent,
-            hasMedia,
-            mediaType: this.getMediaType(msg),
-            isGroup,
-            groupName: isGroup ? chatId : undefined,
-            timestamp: new Date(),
-          });
-        } catch (error) {
-          console.error(`[Baileys] Error in message notification for company ${companyId}:`, error);
+          for (const handler of session.messageHandlers.values()) {
+            try { handler(msg); } catch (e) { console.error('[Baileys] Handler error:', e); }
+          }
+          this.emit('message', { companyId, message: msg });
         }
       }
     });
 
-    sock.ev.on('messages.reaction', async (reactions: { key: proto.IMessageKey; reaction: proto.IReaction }[]) => {
+    sock.ev.on('messages.reaction', async (reactions) => {
       for (const { key, reaction } of reactions) {
         const messageId = key.id || '';
         const senderId = reaction.key?.participant || reaction.key?.remoteJid || '';
         const emoji = reaction.text || '';
-        
-        const cacheKey = `${companyId}:${messageId}`;
-        const existingReactions = this.messageReactions.get(cacheKey) || [];
 
         if (emoji === '') {
-          const filtered = existingReactions.filter(r => r.senderId !== senderId);
-          if (filtered.length > 0) {
-            this.messageReactions.set(cacheKey, filtered);
-          } else {
-            this.messageReactions.delete(cacheKey);
-          }
-          try {
-            await db.delete(whatsappReactions).where(
-              and(
-                eq(whatsappReactions.companyId, companyId),
-                eq(whatsappReactions.messageId, messageId),
-                eq(whatsappReactions.senderId, senderId)
-              )
-            );
-          } catch (error) {
-            console.error(`[Baileys] Error removing reaction from DB:`, error);
-          }
+          await db.delete(whatsappReactions).where(
+            and(eq(whatsappReactions.companyId, companyId), eq(whatsappReactions.messageId, messageId), eq(whatsappReactions.senderId, senderId))
+          ).catch(() => {});
         } else {
-          const existingIndex = existingReactions.findIndex(r => r.senderId === senderId);
-          if (existingIndex >= 0) {
-            existingReactions[existingIndex].emoji = emoji;
-          } else {
-            existingReactions.push({ emoji, senderId });
-          }
-          this.messageReactions.set(cacheKey, existingReactions);
-          try {
-            await db.insert(whatsappReactions).values({
-              companyId,
-              messageId,
-              emoji,
-              senderId,
-            }).onConflictDoUpdate({
-              target: [whatsappReactions.companyId, whatsappReactions.messageId, whatsappReactions.senderId],
-              set: { emoji },
-            });
-          } catch (error) {
-            console.error(`[Baileys] Error saving reaction to DB:`, error);
-          }
+          await db.insert(whatsappReactions).values({ companyId, messageId, emoji, senderId })
+            .onConflictDoUpdate({ target: [whatsappReactions.companyId, whatsappReactions.messageId, whatsappReactions.senderId], set: { emoji } })
+            .catch(() => {});
         }
-
-        console.log(`[Baileys] Reaction for company ${companyId}: ${emoji} on message ${messageId}`);
         this.emit('message_reaction', { companyId, messageId, emoji, senderId });
       }
     });
 
-    // Handle message deletions (when user deletes messages on phone)
-    sock.ev.on('messages.delete', (deletion: any) => {
-      try {
-        // Handle both single and bulk deletions
-        const keys = deletion.keys || (deletion.key ? [deletion.key] : []);
-        
-        for (const key of keys) {
-          const messageId = key.id;
-          const chatId = key.remoteJid;
-          
-          if (!messageId) continue;
-          
-          // Remove from memory store
-          if (companyClient.messageStore.has(messageId)) {
-            companyClient.messageStore.delete(messageId);
-            console.log(`[Baileys] Deleted message ${messageId} from memory for company ${companyId}`);
-          }
-          
-          // Remove from database (fire and forget)
-          db.delete(whatsappMessages)
-            .where(
-              and(
-                eq(whatsappMessages.companyId, companyId),
-                eq(whatsappMessages.messageId, messageId)
-              )
-            )
-            .catch(err => console.error(`[Baileys] Error deleting message from DB:`, err));
-          
-          // Emit event for real-time UI update
-          this.emit('message_deleted', { companyId, chatId, messageId });
-        }
-        
-        // Handle chat clear (all messages in chat deleted)
-        if (deletion.jid) {
-          const chatId = deletion.jid;
-          console.log(`[Baileys] Chat ${chatId} cleared for company ${companyId}`);
-          
-          // Remove all messages for this chat from memory
-          const messageEntries = Array.from(companyClient.messageStore.entries());
-          for (const [msgId, msg] of messageEntries) {
-            if (msg.key?.remoteJid === chatId) {
-              companyClient.messageStore.delete(msgId);
-            }
-          }
-          
-          // Remove all messages for this chat from database
-          db.delete(whatsappMessages)
-            .where(
-              and(
-                eq(whatsappMessages.companyId, companyId),
-                eq(whatsappMessages.chatId, chatId)
-              )
-            )
-            .catch(err => console.error(`[Baileys] Error clearing chat messages from DB:`, err));
-          
-          this.emit('chat_cleared', { companyId, chatId });
-        }
-      } catch (error) {
-        console.error(`[Baileys] Error handling messages.delete:`, error);
-      }
-    });
-
-    // Handle message updates (revoked/edited messages)
-    sock.ev.on('messages.update', (updates: any[]) => {
-      for (const update of updates) {
-        const key = update.key;
-        const messageId = key?.id;
-        const chatId = key?.remoteJid;
-        
-        if (!messageId) continue;
-        
-        // Check if message was revoked/deleted
-        const updateData = update.update || {};
-        if (updateData.messageStubType === 1 || // REVOKE
-            updateData.message?.protocolMessage?.type === 0) { // REVOKE protocol
-          
-          console.log(`[Baileys] Message ${messageId} revoked for company ${companyId}`);
-          
-          // Remove from memory store
-          companyClient.messageStore.delete(messageId);
-          
-          // Remove from database
-          db.delete(whatsappMessages)
-            .where(
-              and(
-                eq(whatsappMessages.companyId, companyId),
-                eq(whatsappMessages.messageId, messageId)
-              )
-            )
-            .catch(err => console.error(`[Baileys] Error deleting revoked message from DB:`, err));
-          
-          this.emit('message_deleted', { companyId, chatId, messageId });
+    sock.ev.on('messages.delete', async (deletion: any) => {
+      const keys = deletion.keys || (deletion.key ? [deletion.key] : []);
+      for (const key of keys) {
+        if (key.id) {
+          await db.delete(whatsappMessages).where(
+            and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, key.id))
+          ).catch(() => {});
         }
       }
     });
+  }
 
-    // Handle messaging history sync (primary source of chats in Baileys v7)
-    sock.ev.on('messaging-history.set', ({ chats, contacts, messages, isLatest, progress }) => {
-      console.log(`[Baileys] History sync for company ${companyId}: ${chats?.length || 0} chats, ${contacts?.length || 0} contacts, ${messages?.length || 0} messages, isLatest: ${isLatest}, progress: ${progress}%`);
+  private async fetchAndStoreGroups(companyId: string, sock: WASocket, selfJid: string | null): Promise<void> {
+    try {
+      console.log(`[Baileys] Fetching groups for company: ${companyId}`);
+      const groups = await sock.groupFetchAllParticipating();
       
-      // Store chats (filtering system and self JIDs)
-      if (chats && Array.isArray(chats)) {
-        let storedCount = 0;
-        for (const chat of chats) {
-          // Skip system JIDs and self chat
-          if (!chat.id || isSystemOrSelfJid(chat.id, companyClient.selfJid)) {
-            continue;
-          }
+      if (groups && Object.keys(groups).length > 0) {
+        console.log(`[Baileys] Found ${Object.keys(groups).length} groups for company: ${companyId}`);
+        
+        for (const [groupId, groupMetadata] of Object.entries(groups)) {
+          if (isSystemJid(groupId, selfJid)) continue;
           
-          const storedChat: StoredChat = {
-            id: chat.id,
-            name: chat.name || undefined,
-            conversationTimestamp: chat.conversationTimestamp ? Number(chat.conversationTimestamp) : undefined,
-            unreadCount: chat.unreadCount || 0,
-            archived: chat.archived || false,
-            pinned: chat.pinned || undefined,
-            lastMessage: chat.lastMessage || undefined,
-          };
-          companyClient.chats.set(chat.id, storedChat);
-          // Persist to database immediately
-          this.persistChatToDb(companyId, storedChat).catch(() => {});
-          storedCount++;
-        }
-        console.log(`[Baileys] Stored ${storedCount} valid chats (filtered ${chats.length - storedCount} system/self) for company ${companyId}`);
-      }
-      
-      // Store contacts
-      if (contacts && Array.isArray(contacts)) {
-        for (const contact of contacts) {
-          if (contact.id) {
-            companyClient.contacts.set(contact.id, {
-              id: contact.id,
-              name: contact.name || undefined,
-              notify: contact.notify || undefined,
-            });
-          }
-        }
-        console.log(`[Baileys] Stored ${companyClient.contacts.size} total contacts for company ${companyId}`);
-      }
-
-      // Persist messages to database (async batch, fire and forget)
-      if (messages && Array.isArray(messages) && messages.length > 0) {
-        console.log(`[Baileys] Persisting ${messages.length} history messages to DB for company ${companyId}`);
-        this.persistMessagesInBatch(companyId, messages as proto.IWebMessageInfo[]).catch(() => {});
-      }
-
-      // When sync is complete, mark it and clean up orphaned chats
-      if (isLatest) {
-        // Mark history sync as complete - stops requesting more history
-        if ((sock as any).setHistorySyncComplete) {
-          (sock as any).setHistorySyncComplete();
-          console.log(`[Baileys] History sync complete for company ${companyId}`);
-        }
-        
-        // Clean up orphaned chats from DB after a short delay to ensure all chats are stored
-        setTimeout(() => {
-          this.cleanupOrphanedChats(companyId, companyClient).catch(err => {
-            console.error(`[Baileys] Error cleaning up orphaned chats:`, err);
-          });
-        }, 2000);
-      }
-    });
-
-    // Handle real-time chat updates
-    sock.ev.on('chats.upsert', (chats: any[]) => {
-      console.log(`[Baileys] Chats upsert for company ${companyId}: ${chats.length} chats`);
-      for (const chat of chats) {
-        if (chat.id) {
-          const existing = companyClient.chats.get(chat.id) || {};
-          companyClient.chats.set(chat.id, {
-            ...existing,
-            id: chat.id,
-            name: chat.name || existing.name,
-            conversationTimestamp: chat.conversationTimestamp ? Number(chat.conversationTimestamp) : existing.conversationTimestamp,
-            unreadCount: chat.unreadCount ?? existing.unreadCount,
-            archived: chat.archived ?? existing.archived,
-            pinned: chat.pinned ?? existing.pinned,
-            lastMessage: chat.lastMessage || existing.lastMessage,
+          const groupData = groupMetadata as any;
+          await this.upsertChatToDb(companyId, {
+            id: groupId,
+            name: groupData.subject || groupId.replace('@g.us', ''),
+            conversationTimestamp: groupData.subjectTime || Math.floor(Date.now() / 1000),
+            unreadCount: 0,
+            archived: false,
+            pinned: false,
           });
         }
+        console.log(`[Baileys] Stored ${Object.keys(groups).length} groups for company: ${companyId}`);
+      } else {
+        console.log(`[Baileys] No groups found for company: ${companyId}`);
       }
-    });
-
-    // Handle chat updates (read status, archive, etc.)
-    sock.ev.on('chats.update', (updates: any[]) => {
-      for (const update of updates) {
-        if (update.id) {
-          const existing = companyClient.chats.get(update.id);
-          if (existing) {
-            companyClient.chats.set(update.id, {
-              ...existing,
-              ...update,
-              conversationTimestamp: update.conversationTimestamp ? Number(update.conversationTimestamp) : existing.conversationTimestamp,
-            });
-          }
-        }
-      }
-    });
-
-    // Handle chat deletions (sync deletions from phone to web)
-    sock.ev.on('chats.delete', (deletedChatIds: string[]) => {
-      console.log(`[Baileys] Chats deleted for company ${companyId}: ${deletedChatIds.length} chats`);
-      for (const chatId of deletedChatIds) {
-        // Remove from memory
-        companyClient.chats.delete(chatId);
-        companyClient.messages.delete(chatId);
-        
-        // Remove from database (async, fire and forget)
-        this.deleteChatFromDb(companyId, chatId).catch(err => {
-          console.error(`[Baileys] Error deleting chat ${chatId} from DB:`, err);
-        });
-      }
-    });
-
-    // Handle contact updates
-    sock.ev.on('contacts.upsert', (contacts: any[]) => {
-      console.log(`[Baileys] Contacts upsert for company ${companyId}: ${contacts.length} contacts`);
-      for (const contact of contacts) {
-        if (contact.id) {
-          companyClient.contacts.set(contact.id, {
-            id: contact.id,
-            name: contact.name || undefined,
-            notify: contact.notify || undefined,
-          });
-        }
-      }
-    });
-
-    // Handle contact updates
-    sock.ev.on('contacts.update', (updates: any[]) => {
-      for (const update of updates) {
-        if (update.id) {
-          const existing = companyClient.contacts.get(update.id);
-          if (existing) {
-            companyClient.contacts.set(update.id, {
-              ...existing,
-              ...update,
-            });
-          }
-        }
-      }
-    });
-  }
-
-  private extractMessageContent(msg: WAMessage): string {
-    const message = msg.message;
-    if (!message) return '';
-
-    if (message.conversation) return message.conversation;
-    if (message.extendedTextMessage?.text) return message.extendedTextMessage.text;
-    if (message.imageMessage?.caption) return message.imageMessage.caption;
-    if (message.videoMessage?.caption) return message.videoMessage.caption;
-    if (message.documentMessage?.caption) return message.documentMessage.caption;
-    if (message.buttonsResponseMessage?.selectedButtonId) return message.buttonsResponseMessage.selectedButtonId;
-    if (message.listResponseMessage?.singleSelectReply?.selectedRowId) return message.listResponseMessage.singleSelectReply.selectedRowId;
-    
-    return '';
-  }
-
-  private hasMediaContent(msg: WAMessage): boolean {
-    const message = msg.message;
-    if (!message) return false;
-    return !!(
-      message.imageMessage ||
-      message.videoMessage ||
-      message.audioMessage ||
-      message.documentMessage ||
-      message.stickerMessage
-    );
-  }
-
-  private getMediaType(msg: WAMessage): string {
-    const message = msg.message;
-    if (!message) return 'text';
-    if (message.imageMessage) return 'image';
-    if (message.videoMessage) return 'video';
-    if (message.audioMessage) return 'audio';
-    if (message.documentMessage) return 'document';
-    if (message.stickerMessage) return 'sticker';
-    return 'text';
-  }
-
-  private formatPhoneNumber(digits: string): string {
-    if (!digits) return '';
-    const cleaned = digits.replace(/\D/g, '');
-    if (cleaned.length === 10) {
-      return `+1${cleaned}`;
+    } catch (err: any) {
+      console.log(`[Baileys] Could not fetch groups:`, err?.message || err);
     }
-    if (cleaned.length === 11 && cleaned.startsWith('1')) {
-      return `+${cleaned}`;
-    }
-    return `+${cleaned}`;
   }
 
-  private async scheduleReconnect(companyId: string): Promise<void> {
-    const existingTimer = this.reconnectTimers.get(companyId);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
+  private async upsertChatToDb(companyId: string, chat: any): Promise<void> {
+    try {
+      const isGroup = chat.id.endsWith('@g.us');
+      const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : null;
+      const lastContent = chat.lastMessage ? extractMessageContent(chat.lastMessage as WAMessage) : null;
+      const lastFromMe = chat.lastMessage?.key?.fromMe ?? false;
+
+      await db.insert(whatsappChats).values({
+        companyId,
+        chatId: chat.id,
+        chatType: isGroup ? 'group' : 'individual',
+        name: chat.name || null,
+        pushName: chat.name || null,
+        lastMessageTimestamp: timestamp,
+        lastMessageContent: lastContent?.substring(0, 500) || null,
+        lastMessageFromMe: lastFromMe,
+        unreadCount: chat.unreadCount || 0,
+        isArchived: chat.archived || false,
+        isPinned: !!chat.pinned,
+      }).onConflictDoUpdate({
+        target: [whatsappChats.companyId, whatsappChats.chatId],
+        set: {
+          name: chat.name || null,
+          lastMessageTimestamp: timestamp,
+          lastMessageContent: lastContent?.substring(0, 500) || null,
+          lastMessageFromMe: lastFromMe,
+          unreadCount: chat.unreadCount || 0,
+          isArchived: chat.archived || false,
+          isPinned: !!chat.pinned,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (err) {
+      console.error(`[Baileys] Error upserting chat:`, err);
     }
+  }
+
+  private async updateChatInDb(companyId: string, chatId: string, update: any): Promise<void> {
+    try {
+      const setData: any = { updatedAt: new Date() };
+      if (update.unreadCount !== undefined) setData.unreadCount = update.unreadCount;
+      if (update.archived !== undefined) setData.isArchived = update.archived;
+      if (update.pinned !== undefined) setData.isPinned = !!update.pinned;
+      if (update.conversationTimestamp) setData.lastMessageTimestamp = Number(update.conversationTimestamp);
+
+      await db.update(whatsappChats).set(setData)
+        .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, chatId)));
+    } catch (err) {
+      console.error(`[Baileys] Error updating chat:`, err);
+    }
+  }
+
+  private async archiveChatInDb(companyId: string, chatId: string): Promise<void> {
+    try {
+      await db.update(whatsappChats).set({ isArchived: true, updatedAt: new Date() })
+        .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, chatId)));
+      console.log(`[Baileys] Archived chat ${chatId} for company ${companyId}`);
+    } catch (err) {
+      console.error(`[Baileys] Error archiving chat:`, err);
+    }
+  }
+
+  private async upsertMessageToDb(companyId: string, msg: proto.IWebMessageInfo): Promise<void> {
+    const chatId = msg.key?.remoteJid;
+    const messageId = msg.key?.id;
+    if (!chatId || !messageId) return;
+
+    try {
+      await db.insert(whatsappMessages).values({
+        companyId,
+        chatId,
+        messageId,
+        fromMe: msg.key?.fromMe || false,
+        senderId: msg.key?.participant || msg.key?.remoteJid || null,
+        text: extractMessageContent(msg)?.substring(0, 5000) || null,
+        mediaType: getMediaType(msg) || null,
+        mediaUrl: null,
+        timestamp: msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000),
+        quotedMessageId: msg.message?.extendedTextMessage?.contextInfo?.stanzaId || null,
+        isForwarded: !!msg.message?.extendedTextMessage?.contextInfo?.isForwarded,
+        rawData: msg as any,
+      }).onConflictDoNothing();
+    } catch (err) {
+      // Silent fail for duplicate messages
+    }
+  }
+
+  private async upsertMessagesToDb(companyId: string, messages: proto.IWebMessageInfo[], selfJid: string | null): Promise<void> {
+    const values = messages
+      .filter(msg => msg.key?.remoteJid && msg.key?.id && !isSystemJid(msg.key.remoteJid, selfJid))
+      .map(msg => ({
+        companyId,
+        chatId: msg.key!.remoteJid!,
+        messageId: msg.key!.id!,
+        fromMe: msg.key?.fromMe || false,
+        senderId: msg.key?.participant || msg.key?.remoteJid || null,
+        text: extractMessageContent(msg)?.substring(0, 5000) || null,
+        mediaType: getMediaType(msg) || null,
+        mediaUrl: null,
+        timestamp: msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000),
+        quotedMessageId: msg.message?.extendedTextMessage?.contextInfo?.stanzaId || null,
+        isForwarded: !!msg.message?.extendedTextMessage?.contextInfo?.isForwarded,
+        rawData: msg as any,
+      }));
+
+    if (values.length === 0) return;
+
+    try {
+      for (let i = 0; i < values.length; i += 100) {
+        await db.insert(whatsappMessages).values(values.slice(i, i + 100)).onConflictDoNothing();
+      }
+      console.log(`[Baileys] Persisted ${values.length} messages for company ${companyId}`);
+    } catch (err) {
+      console.error(`[Baileys] Error persisting messages:`, err);
+    }
+  }
+
+  private async updateChatLastMessage(companyId: string, chatId: string, msg: proto.IWebMessageInfo): Promise<void> {
+    try {
+      const timestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
+      await db.update(whatsappChats).set({
+        lastMessageTimestamp: timestamp,
+        lastMessageContent: extractMessageContent(msg)?.substring(0, 500) || null,
+        lastMessageFromMe: msg.key?.fromMe || false,
+        updatedAt: new Date(),
+      }).where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, chatId)));
+    } catch (err) {
+      // Silent fail
+    }
+  }
+
+  private scheduleReconnect(companyId: string): void {
+    const timer = this.reconnectTimers.get(companyId);
+    if (timer) clearTimeout(timer);
 
     const attempts = this.reconnectAttempts.get(companyId) || 0;
-    const MAX_ATTEMPTS = 10;
-    
-    if (attempts >= MAX_ATTEMPTS) {
-      console.log(`[Baileys] Max reconnect attempts (${MAX_ATTEMPTS}) reached for company ${companyId}. Stopping auto-reconnect.`);
+    if (attempts >= 10) {
+      console.log(`[Baileys] Max reconnect attempts reached for ${companyId}`);
       this.reconnectAttempts.delete(companyId);
       return;
     }
-    
-    // Exponential backoff with jitter: base * 2^attempt + random jitter
-    const baseDelay = 2000;
-    const maxDelay = 60000;
-    const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempts), maxDelay);
-    // Add random jitter (0-25% of delay) to prevent thundering herd
-    const jitter = Math.floor(Math.random() * exponentialDelay * 0.25);
-    const delay = exponentialDelay + jitter;
 
-    console.log(`[Baileys] Scheduling reconnect for company ${companyId} in ${delay}ms (attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
+    const delay = Math.min(2000 * Math.pow(2, attempts), 60000) + Math.floor(Math.random() * 5000);
+    console.log(`[Baileys] Scheduling reconnect for ${companyId} in ${delay}ms (attempt ${attempts + 1})`);
 
-    const timer = setTimeout(async () => {
+    const newTimer = setTimeout(async () => {
       try {
-        console.log(`[Baileys] Attempting to reconnect company ${companyId}...`);
-        this.clients.delete(companyId);
-        await this.createClientForCompany(companyId);
+        this.sessions.delete(companyId);
+        await this.createSession(companyId);
         this.reconnectAttempts.delete(companyId);
         this.reconnectTimers.delete(companyId);
-        console.log(`[Baileys] Successfully reconnected company ${companyId}`);
-      } catch (error) {
-        console.error(`[Baileys] Reconnect failed for company ${companyId}:`, error);
+        const metrics = this.metrics.get(companyId);
+        if (metrics) metrics.reconnectCount++;
+      } catch (err) {
+        console.error(`[Baileys] Reconnect failed for ${companyId}:`, err);
         this.reconnectAttempts.set(companyId, attempts + 1);
         this.scheduleReconnect(companyId);
       }
     }, delay);
 
-    this.reconnectTimers.set(companyId, timer);
+    this.reconnectTimers.set(companyId, newTimer);
     this.reconnectAttempts.set(companyId, attempts + 1);
   }
 
-  getSessionStatus(companyId: string): WhatsAppSessionStatus {
-    const companyClient = this.clients.get(companyId);
-    if (!companyClient) {
-      return {
-        isReady: false,
-        isAuthenticated: false,
-        qrCode: null,
-        qrReceivedAt: null,
-        status: 'disconnected',
-      };
+  private async shutdownSession(companyId: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (session) {
+      try { session.sock.end(undefined); } catch {}
+      this.sessions.delete(companyId);
     }
-    return { ...companyClient.status };
   }
 
-  getStatus(companyId: string): WhatsAppSessionStatus {
-    return this.getSessionStatus(companyId);
-  }
-
-  isReady(companyId: string): boolean {
-    const companyClient = this.clients.get(companyId);
-    return companyClient?.status.isReady === true;
-  }
-
-  getQRCode(companyId: string): string | null {
-    const companyClient = this.clients.get(companyId);
-    return companyClient?.status.qrCode || null;
-  }
-
-  getSessionMetrics(companyId: string): SessionMetrics & { uptime: number | null } {
-    // First try to get metrics from persistent storage (survives reconnections)
-    const persistentMetrics = this.sessionMetrics.get(companyId);
-    
-    // Use default values if no metrics exist yet
-    const metrics = persistentMetrics || {
-      connectedAt: null,
-      lastActivityAt: null,
-      messagesSent: 0,
-      messagesReceived: 0,
-      reconnectCount: 0,
-      lastDisconnectReason: null,
-    };
-    
-    const uptime = metrics.connectedAt 
-      ? Math.floor((Date.now() - metrics.connectedAt.getTime()) / 1000)
-      : null;
-    
-    return {
-      ...metrics,
-      uptime,
-    };
-  }
-
-  getAllSessionsMetrics(): Map<string, SessionMetrics & { uptime: number | null; status: string }> {
-    const allMetrics = new Map<string, SessionMetrics & { uptime: number | null; status: string }>();
-    
-    // Include all persistent metrics (even for disconnected sessions)
-    for (const [companyId, metrics] of this.sessionMetrics) {
-      const client = this.clients.get(companyId);
-      const uptime = metrics.connectedAt 
-        ? Math.floor((Date.now() - metrics.connectedAt.getTime()) / 1000)
-        : null;
-      
-      allMetrics.set(companyId, {
-        ...metrics,
-        uptime,
-        status: client?.status.status || 'disconnected',
-      });
-    }
-    
-    return allMetrics;
-  }
-
-  getCachedReactions(companyId: string, messageId: string): Array<{ emoji: string; senderId: string }> {
-    const cacheKey = `${companyId}:${messageId}`;
-    return this.messageReactions.get(cacheKey) || [];
-  }
-
-  async updateReactionCache(companyId: string, messageId: string, emoji: string, senderId: string): Promise<void> {
-    const cacheKey = `${companyId}:${messageId}`;
-    let existingReactions = this.messageReactions.get(cacheKey) || [];
-
-    if (emoji === '') {
-      existingReactions = existingReactions.filter(r => r.senderId !== senderId);
-      if (existingReactions.length > 0) {
-        this.messageReactions.set(cacheKey, existingReactions);
-      } else {
-        this.messageReactions.delete(cacheKey);
+  private deleteAuthFiles(companyId: string): void {
+    const authPath = this.getAuthPath(companyId);
+    try {
+      if (fs.existsSync(authPath)) {
+        fs.rmSync(authPath, { recursive: true, force: true });
+        console.log(`[Baileys] Auth files deleted for ${companyId}`);
       }
-      try {
-        await db.delete(whatsappReactions).where(
-          and(
-            eq(whatsappReactions.companyId, companyId),
-            eq(whatsappReactions.messageId, messageId),
-            eq(whatsappReactions.senderId, senderId)
-          )
-        );
-      } catch (error) {
-        console.error(`[Baileys] Error removing reaction from DB:`, error);
-      }
-    } else {
-      existingReactions = existingReactions.filter(r => r.senderId !== senderId);
-      existingReactions.push({ emoji, senderId });
-      this.messageReactions.set(cacheKey, existingReactions);
-      try {
-        await db.insert(whatsappReactions).values({
-          companyId,
-          messageId,
-          emoji,
-          senderId,
-        }).onConflictDoUpdate({
-          target: [whatsappReactions.companyId, whatsappReactions.messageId, whatsappReactions.senderId],
-          set: { emoji },
-        });
-      } catch (error) {
-        console.error(`[Baileys] Error saving reaction to DB:`, error);
-      }
+    } catch (err) {
+      console.error(`[Baileys] Error deleting auth files:`, err);
     }
-  }
-
-  private normalizeWhatsAppId(contactId: string): string {
-    if (!contactId) return '';
-    let normalized = contactId.trim();
-    normalized = normalized.replace(/[^0-9@.a-z]/gi, '');
-    if (!normalized.includes('@')) {
-      normalized = `${normalized}@s.whatsapp.net`;
-    }
-    return normalized;
   }
 
   async getChats(companyId: string): Promise<any[]> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-    
     try {
-      const chats = Array.from(client.chats.values());
-      console.log(`[Baileys] Found ${chats.length} chats for company ${companyId}`);
-      
-      return chats.map((chat) => {
-        // Transform lastMessage from Baileys format to frontend format
-        let lastMessage = null;
-        if (chat.lastMessage) {
-          const baileysMsg = chat.lastMessage as WAMessage;
-          lastMessage = {
-            body: this.extractMessageContent(baileysMsg),
-            type: this.getMediaType(baileysMsg),
-            timestamp: baileysMsg.messageTimestamp ? Number(baileysMsg.messageTimestamp) : 0,
-            fromMe: baileysMsg.key?.fromMe || false,
-            hasMedia: this.hasMediaContent(baileysMsg),
-          };
-        }
-        
-        return {
-          id: { _serialized: chat.id },
-          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-          isGroup: isJidGroup(chat.id),
-          timestamp: chat.conversationTimestamp || 0,
-          unreadCount: chat.unreadCount || 0,
-          archived: chat.archived || false,
-          pinned: chat.pinned || 0,
-          lastMessage,
-        };
-      });
-    } catch (error) {
-      console.error(`[Baileys] Error getting chats for company ${companyId}:`, error);
+      const chats = await db.select().from(whatsappChats)
+        .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.isArchived, false)))
+        .orderBy(desc(whatsappChats.lastMessageTimestamp));
+
+      return chats.map(chat => ({
+        id: { _serialized: chat.chatId },
+        name: chat.name || chat.chatId.replace(/@.*/, ''),
+        isGroup: chat.chatType === 'group',
+        timestamp: chat.lastMessageTimestamp || 0,
+        unreadCount: chat.unreadCount || 0,
+        archived: chat.isArchived || false,
+        pinned: chat.isPinned ? 1 : 0,
+        lastMessage: chat.lastMessageContent ? {
+          body: chat.lastMessageContent,
+          type: 'text',
+          timestamp: chat.lastMessageTimestamp || 0,
+          fromMe: chat.lastMessageFromMe || false,
+          hasMedia: false,
+        } : null,
+      }));
+    } catch (err) {
+      console.error(`[Baileys] Error getting chats from DB:`, err);
       return [];
     }
   }
 
   async getChatById(companyId: string, chatId: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
     try {
-      const isGroup = isJidGroup(normalizedId);
-      let name = normalizedId.replace('@s.whatsapp.net', '').replace('@g.us', '');
-      
-      if (isGroup) {
-        try {
-          const groupMetadata = await client.sock.groupMetadata(normalizedId);
-          name = groupMetadata.subject || name;
-        } catch {
-        }
-      }
+      const normalizedId = normalizeWhatsAppId(chatId);
+      const [chat] = await db.select().from(whatsappChats)
+        .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
+
+      if (!chat) return null;
 
       return {
-        id: { _serialized: normalizedId },
-        name,
-        isGroup,
-        timestamp: Date.now(),
-        unreadCount: 0,
+        id: { _serialized: chat.chatId },
+        name: chat.name || chat.chatId.replace(/@.*/, ''),
+        isGroup: chat.chatType === 'group',
+        timestamp: chat.lastMessageTimestamp || 0,
+        unreadCount: chat.unreadCount || 0,
       };
-    } catch (error) {
-      console.error(`[Baileys] Error getting chat ${chatId} for company ${companyId}:`, error);
-      throw error;
+    } catch (err) {
+      console.error(`[Baileys] Error getting chat:`, err);
+      return null;
     }
   }
 
   async getChatMessages(companyId: string, chatId: string, limit: number = 50): Promise<any[]> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
     try {
-      // First try to get messages from in-memory store
-      const memoryMessages = Array.from(client.messageStore.values())
-        .filter(msg => msg.key?.remoteJid === normalizedId);
-      
-      // If we have enough messages in memory, return them
-      if (memoryMessages.length >= limit) {
-        return memoryMessages
-          .slice(-limit)
-          .map(msg => this.convertBaileysMessage(msg as WAMessage));
-      }
+      const normalizedId = normalizeWhatsAppId(chatId);
+      const messages = await db.select().from(whatsappMessages)
+        .where(and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.chatId, normalizedId)))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(limit);
 
-      // Otherwise, load messages from database
-      console.log(`[Baileys] Loading messages from DB for chat ${chatId} (memory: ${memoryMessages.length}, need: ${limit})`);
-      const dbMessages = await this.loadMessagesFromDb(companyId, normalizedId, limit);
-      
-      // Merge memory and DB messages, deduplicate by message ID
-      const allMessages = new Map<string, proto.IWebMessageInfo>();
-      
-      // Add DB messages first (older)
-      for (const msg of dbMessages) {
-        if (msg.key?.id) {
-          allMessages.set(msg.key.id, msg);
-        }
-      }
-      
-      // Add memory messages (newer, will overwrite if duplicates)
-      for (const msg of memoryMessages) {
-        if (msg.key?.id) {
-          allMessages.set(msg.key.id, msg);
-        }
-      }
-      
-      // Sort by timestamp and return limited results
-      const sortedMessages = Array.from(allMessages.values())
-        .sort((a, b) => {
-          const tsA = a.messageTimestamp ? Number(a.messageTimestamp) : 0;
-          const tsB = b.messageTimestamp ? Number(b.messageTimestamp) : 0;
-          return tsA - tsB;
-        })
-        .slice(-limit)
-        .map(msg => this.convertBaileysMessage(msg as WAMessage));
-      
-      return sortedMessages;
-    } catch (error) {
-      console.error(`[Baileys] Error getting messages for chat ${chatId}:`, error);
+      return messages.reverse().map(msg => ({
+        id: { _serialized: msg.messageId },
+        from: msg.senderId || normalizedId,
+        to: normalizedId,
+        body: msg.text || '',
+        type: msg.mediaType || 'text',
+        timestamp: msg.timestamp,
+        fromMe: msg.fromMe,
+        hasMedia: msg.mediaType && msg.mediaType !== 'text',
+      }));
+    } catch (err) {
+      console.error(`[Baileys] Error getting messages from DB:`, err);
       return [];
     }
   }
 
-  private convertBaileysMessage(msg: WAMessage): any {
-    const messageId = msg.key.id || '';
-    const chatId = msg.key.remoteJid || '';
-    const fromMe = msg.key.fromMe || false;
-    const senderId = msg.key.participant || msg.key.remoteJid || '';
-    const timestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Date.now() / 1000;
-    const body = this.extractMessageContent(msg);
-    const hasMedia = this.hasMediaContent(msg);
-    const type = this.getMediaType(msg);
+  async loadMessagesFromDb(companyId: string, chatId: string, limit: number = 50, before?: number): Promise<proto.IWebMessageInfo[]> {
+    try {
+      const conditions = [eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.chatId, chatId)];
+      if (before) conditions.push(lt(whatsappMessages.timestamp, before));
 
-    return {
-      id: { _serialized: messageId },
-      from: senderId,
-      to: chatId,
-      body,
-      type,
-      timestamp,
-      fromMe,
-      hasMedia,
-      hasQuotedMsg: !!msg.message?.extendedTextMessage?.contextInfo?.quotedMessage,
-      _data: msg,
-    };
+      const messages = await db.select().from(whatsappMessages)
+        .where(and(...conditions))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(limit);
+
+      return messages.map(m => m.rawData as proto.IWebMessageInfo).filter(Boolean).reverse();
+    } catch (err) {
+      console.error(`[Baileys] Error loading messages from DB:`, err);
+      return [];
+    }
+  }
+
+  async getContacts(companyId: string): Promise<any[]> {
+    const chats = await this.getChats(companyId);
+    return chats.filter(c => !c.isGroup).map(c => ({
+      id: c.id,
+      name: c.name,
+      number: c.id._serialized.replace(/@.*/, ''),
+      isGroup: false,
+    }));
   }
 
   async sendMessage(companyId: string, to: string, message: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const normalizedId = this.normalizeWhatsAppId(to);
-    const client = this.clients.get(companyId)!;
-
+    const normalizedId = normalizeWhatsAppId(to);
     try {
-      const result = await client.sock.sendMessage(normalizedId, { text: message });
-      console.log(`[Baileys] Message sent for company ${companyId} to ${normalizedId}`);
-      
-      if (result) {
-        client.messageStore.set(result.key.id || '', {
-          key: result.key,
-          message: { conversation: message },
-          messageTimestamp: Math.floor(Date.now() / 1000),
-        } as WAMessage);
-        this.pruneMessageStore(companyId);
-      }
+      const result = await session.sock.sendMessage(normalizedId, { text: message });
+      const metrics = this.metrics.get(companyId);
+      if (metrics) metrics.messagesSent++;
+
+      const sentMsg: proto.IWebMessageInfo = {
+        key: result?.key,
+        message: { conversation: message },
+        messageTimestamp: Math.floor(Date.now() / 1000),
+        pushName: session.sock.user?.name,
+      };
+      await this.upsertMessageToDb(companyId, sentMsg);
+      await this.updateChatLastMessage(companyId, normalizedId, sentMsg);
 
       return {
         id: { _serialized: result?.key.id || '' },
-        from: client.sock.user?.id || '',
+        from: session.sock.user?.id || '',
         to: normalizedId,
         body: message,
         timestamp: Date.now() / 1000,
         fromMe: true,
       };
-    } catch (error) {
-      console.error(`[Baileys] Error sending message for company ${companyId}:`, error);
-      throw error;
+    } catch (err) {
+      console.error(`[Baileys] Error sending message:`, err);
+      throw err;
     }
   }
 
-  async sendMedia(
-    companyId: string,
-    to: string,
-    mediaBuffer: Buffer,
-    options: {
-      mimetype: string;
-      filename?: string;
-      caption?: string;
-    }
-  ): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+  async sendMedia(companyId: string, to: string, mediaBuffer: Buffer, options: { mimetype: string; filename?: string; caption?: string }): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const normalizedId = this.normalizeWhatsAppId(to);
-    const client = this.clients.get(companyId)!;
+    const normalizedId = normalizeWhatsAppId(to);
+    const { mimetype, filename, caption } = options;
 
     try {
       let messageContent: any;
-      const mimetype = options.mimetype.toLowerCase();
-
       if (mimetype.startsWith('image/')) {
-        messageContent = {
-          image: mediaBuffer,
-          caption: options.caption,
-          mimetype: options.mimetype,
-        };
+        messageContent = { image: mediaBuffer, caption, mimetype };
       } else if (mimetype.startsWith('video/')) {
-        messageContent = {
-          video: mediaBuffer,
-          caption: options.caption,
-          mimetype: options.mimetype,
-        };
+        messageContent = { video: mediaBuffer, caption, mimetype };
       } else if (mimetype.startsWith('audio/')) {
-        messageContent = {
-          audio: mediaBuffer,
-          mimetype: options.mimetype,
-          ptt: mimetype.includes('ogg'),
-        };
+        messageContent = { audio: mediaBuffer, mimetype, ptt: mimetype.includes('ogg') };
       } else {
-        messageContent = {
-          document: mediaBuffer,
-          mimetype: options.mimetype,
-          fileName: options.filename || 'file',
-          caption: options.caption,
-        };
+        messageContent = { document: mediaBuffer, mimetype, fileName: filename || 'file' };
       }
 
-      const result = await client.sock.sendMessage(normalizedId, messageContent);
-      console.log(`[Baileys] Media sent for company ${companyId} to ${normalizedId}`);
+      const result = await session.sock.sendMessage(normalizedId, messageContent);
+      const metrics = this.metrics.get(companyId);
+      if (metrics) metrics.messagesSent++;
 
       if (result?.key.id) {
-        this.sentMediaCache.set(result.key.id, {
-          mimetype: options.mimetype,
-          data: mediaBuffer.toString('base64'),
-        });
-        this.pruneMediaCache();
+        this.sentMediaCache.set(result.key.id, { mimetype, data: mediaBuffer.toString('base64') });
+        if (this.sentMediaCache.size > 100) {
+          const firstKey = this.sentMediaCache.keys().next().value;
+          if (firstKey) this.sentMediaCache.delete(firstKey);
+        }
       }
 
       return {
         id: { _serialized: result?.key.id || '' },
-        from: client.sock.user?.id || '',
+        from: session.sock.user?.id || '',
         to: normalizedId,
-        hasMedia: true,
+        body: caption || '',
         timestamp: Date.now() / 1000,
         fromMe: true,
+        hasMedia: true,
+        type: mimetype.startsWith('image/') ? 'image' : mimetype.startsWith('video/') ? 'video' : mimetype.startsWith('audio/') ? 'audio' : 'document',
       };
-    } catch (error) {
-      console.error(`[Baileys] Error sending media for company ${companyId}:`, error);
-      throw error;
+    } catch (err) {
+      console.error(`[Baileys] Error sending media:`, err);
+      throw err;
     }
   }
 
-  async getContacts(companyId: string): Promise<any[]> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+  async replyMessage(companyId: string, messageId: string, content: string): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const client = this.clients.get(companyId)!;
+    const [dbMsg] = await db.select().from(whatsappMessages)
+      .where(and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, messageId)));
 
-    try {
-      const contacts = Array.from(client.contacts.values());
-      if (contacts.length > 0) {
-        return contacts.map((contact) => ({
-          id: { _serialized: contact.id },
-          name: contact.name || contact.notify || contact.id.replace('@s.whatsapp.net', ''),
-          number: contact.id.replace('@s.whatsapp.net', ''),
-          pushname: contact.notify || null,
-          isMyContact: true,
-          isBlocked: false,
-        }));
-      }
-      return [];
-    } catch (error) {
-      console.error(`[Baileys] Error getting contacts for company ${companyId}:`, error);
-      return [];
-    }
-  }
+    if (!dbMsg?.rawData) throw new Error('Message not found');
 
-  async getContactById(companyId: string, contactId: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+    const quoted = dbMsg.rawData as WAMessage;
+    const chatId = quoted.key?.remoteJid;
+    if (!chatId) throw new Error('Invalid message');
 
-    const normalizedId = this.normalizeWhatsAppId(contactId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const contact = client.contacts.get(normalizedId);
-      const number = normalizedId.replace('@s.whatsapp.net', '');
-
-      return {
-        id: { _serialized: normalizedId },
-        name: contact?.name || contact?.notify || number,
-        number,
-        pushname: contact?.notify || null,
-        isMyContact: !!contact,
-        isBlocked: false,
-      };
-    } catch (error) {
-      console.error(`[Baileys] Error getting contact ${contactId} for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  async getProfilePicture(companyId: string, contactId: string): Promise<string | null> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(contactId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const url = await client.sock.profilePictureUrl(normalizedId, 'image');
-      return url || null;
-    } catch (error: any) {
-      if (error?.message?.includes('not-authorized') || error?.message?.includes('401')) {
-        return null;
-      }
-      console.error(`[Baileys] Error getting profile picture for ${contactId}:`, error);
-      return null;
-    }
-  }
-
-  async getProfilePicUrl(companyId: string, contactId: string): Promise<string | null> {
-    return this.getProfilePicture(companyId, contactId);
+    const result = await session.sock.sendMessage(chatId, { text: content }, { quoted });
+    return {
+      id: { _serialized: result?.key.id || '' },
+      from: session.sock.user?.id || '',
+      to: chatId,
+      body: content,
+      timestamp: Date.now() / 1000,
+      fromMe: true,
+    };
   }
 
   async markChatAsRead(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
+    const normalizedId = normalizeWhatsAppId(chatId);
     try {
-      // Get the chat's unread messages from memory store
-      const unreadMessages = Array.from(client.messageStore.values())
-        .filter(msg => msg.key?.remoteJid === normalizedId && !msg.key?.fromMe)
-        .slice(-50);
-
-      if (unreadMessages.length > 0) {
-        // Mark specific messages as read
-        await client.sock.readMessages(unreadMessages.map(msg => msg.key as proto.IMessageKey));
-      }
-      
-      // Also use chatModify to ensure the read status syncs with WhatsApp servers
-      // This handles the case where messages aren't in memory
-      const chat = client.chats.get(normalizedId);
-      if (chat && chat.unreadCount && chat.unreadCount > 0) {
-        await client.sock.chatModify({ markRead: true, lastMessages: [] }, normalizedId);
-        // Update local chat state
-        chat.unreadCount = 0;
-        client.chats.set(normalizedId, chat);
-      }
-      
-      console.log(`[Baileys] Chat marked as read for company ${companyId}: ${normalizedId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error marking chat as read for company ${companyId}:`, error);
-      throw error;
+      await session.sock.readMessages([{ remoteJid: normalizedId, id: undefined as any, participant: undefined }]);
+      await db.update(whatsappChats).set({ unreadCount: 0, updatedAt: new Date() })
+        .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
+    } catch (err) {
+      console.error(`[Baileys] Error marking as read:`, err);
+      throw err;
     }
   }
 
@@ -1924,1201 +846,599 @@ class WhatsAppBaileysService extends EventEmitter {
     return this.markChatAsRead(companyId, chatId);
   }
 
-  async getContactPresence(companyId: string, contactId: string): Promise<{ isOnline: boolean; lastSeen: number | null }> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(contactId);
-    const client = this.clients.get(companyId)!;
+  async getProfilePicUrl(companyId: string, contactId: string): Promise<string | null> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) return null;
 
     try {
-      await client.sock.presenceSubscribe(normalizedId);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      return {
-        isOnline: false,
-        lastSeen: null,
-      };
-    } catch (error) {
-      console.error(`[Baileys] Error getting presence for ${contactId}:`, error);
-      return {
-        isOnline: false,
-        lastSeen: null,
-      };
+      return await session.sock.profilePictureUrl(normalizeWhatsAppId(contactId), 'image') || null;
+    } catch {
+      return null;
     }
+  }
+
+  async downloadMedia(companyId: string, messageId: string, chatId?: string): Promise<{ mimetype: string; data: string } | null> {
+    const cached = this.sentMediaCache.get(messageId);
+    if (cached) return cached;
+
+    const [dbMsg] = await db.select().from(whatsappMessages)
+      .where(and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, messageId)));
+
+    if (!dbMsg?.rawData) throw new Error('Message not found');
+
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+
+    const msg = dbMsg.rawData as WAMessage;
+    try {
+      const buffer = await downloadMediaMessage(msg, 'buffer', {}, {
+        logger: P({ level: 'silent' }) as any,
+        reuploadRequest: session.sock.updateMediaMessage,
+      });
+
+      const messageContent = msg.message;
+      let mimetype = 'application/octet-stream';
+      if (messageContent?.imageMessage) mimetype = messageContent.imageMessage.mimetype || 'image/jpeg';
+      else if (messageContent?.videoMessage) mimetype = messageContent.videoMessage.mimetype || 'video/mp4';
+      else if (messageContent?.audioMessage) mimetype = messageContent.audioMessage.mimetype || 'audio/ogg';
+      else if (messageContent?.documentMessage) mimetype = messageContent.documentMessage.mimetype || 'application/octet-stream';
+      else if (messageContent?.stickerMessage) mimetype = messageContent.stickerMessage.mimetype || 'image/webp';
+
+      return { mimetype, data: (buffer as Buffer).toString('base64') };
+    } catch (err) {
+      console.error(`[Baileys] Error downloading media:`, err);
+      throw err;
+    }
+  }
+
+  async forwardMessage(companyId: string, messageId: string, chatId: string): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+
+    const [dbMsg] = await db.select().from(whatsappMessages)
+      .where(and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, messageId)));
+
+    if (!dbMsg?.rawData) throw new Error('Message not found');
+
+    const msg = dbMsg.rawData as WAMessage;
+    const normalizedChatId = normalizeWhatsAppId(chatId);
+
+    const result = await session.sock.sendMessage(normalizedChatId, { forward: msg });
+    return {
+      id: { _serialized: result?.key.id || '' },
+      from: session.sock.user?.id || '',
+      to: normalizedChatId,
+      timestamp: Date.now() / 1000,
+      fromMe: true,
+    };
+  }
+
+  async deleteMessage(companyId: string, messageId: string, forEveryone: boolean = false): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+
+    const [dbMsg] = await db.select().from(whatsappMessages)
+      .where(and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, messageId)));
+
+    if (!dbMsg?.rawData) throw new Error('Message not found');
+
+    const msg = dbMsg.rawData as WAMessage;
+    const chatId = msg.key?.remoteJid;
+    if (!chatId) throw new Error('Invalid message');
+
+    if (forEveryone) {
+      await session.sock.sendMessage(chatId, { delete: msg.key as proto.IMessageKey });
+    } else {
+      await session.sock.chatModify({ clear: { messages: [{ id: msg.key?.id!, fromMe: msg.key?.fromMe || false, timestamp: Number(msg.messageTimestamp) }] } }, chatId);
+    }
+
+    await db.delete(whatsappMessages).where(
+      and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, messageId))
+    );
   }
 
   async reactToMessage(companyId: string, messageId: string, emoji: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const client = this.clients.get(companyId)!;
+    const [dbMsg] = await db.select().from(whatsappMessages)
+      .where(and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, messageId)));
 
-    try {
-      const message = client.messageStore.get(messageId);
-      if (!message) {
-        throw new Error('Message not found');
-      }
+    if (!dbMsg?.rawData) throw new Error('Message not found');
 
-      await client.sock.sendMessage(message.key?.remoteJid!, {
-        react: {
-          text: emoji,
-          key: message.key as proto.IMessageKey,
-        },
-      });
+    const msg = dbMsg.rawData as WAMessage;
+    await session.sock.sendMessage(msg.key?.remoteJid!, { react: { text: emoji, key: msg.key as proto.IMessageKey } });
 
-      const myId = client.sock.user?.id || 'unknown';
-      await this.updateReactionCache(companyId, messageId, emoji, myId);
-
-      console.log(`[Baileys] Reaction sent for company ${companyId}: ${emoji} on message ${messageId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error reacting to message for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  async replyMessage(companyId: string, messageId: string, content: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const message = client.messageStore.get(messageId);
-      if (!message) {
-        throw new Error('Message not found');
-      }
-
-      const result = await client.sock.sendMessage(message.key?.remoteJid!, {
-        text: content,
-      }, {
-        quoted: message as WAMessage,
-      });
-
-      console.log(`[Baileys] Reply sent for company ${companyId} to message ${messageId}`);
-      return {
-        id: { _serialized: result?.key.id || '' },
-        from: client.sock.user?.id || '',
-        to: message.key?.remoteJid || null,
-        body: content,
-        timestamp: Date.now() / 1000,
-        fromMe: true,
-      };
-    } catch (error) {
-      console.error(`[Baileys] Error replying to message for company ${companyId}:`, error);
-      throw error;
-    }
-  }
-
-  async downloadMedia(companyId: string, messageId: string, chatId?: string): Promise<{ mimetype: string; data: string; storagePath?: string } | null> {
-    const cachedMedia = this.sentMediaCache.get(messageId);
-    if (cachedMedia) {
-      console.log(`[Baileys] Media found in memory cache for message ${messageId}`);
-      return cachedMedia;
-    }
-
-    const client = this.clients.get(companyId);
-    const message = client?.messageStore.get(messageId);
-    const actualChatId = chatId || message?.key?.remoteJid || 'unknown';
-
-    if (whatsappMediaStorage.isReady()) {
-      const storagePath = this.buildMediaStoragePath(companyId, actualChatId, messageId);
-      const storedMedia = await whatsappMediaStorage.getMedia({ companyId, storagePath });
-      if (storedMedia) {
-        console.log(`[Baileys] Media found in Object Storage for message ${messageId}`);
-        return {
-          mimetype: storedMedia.mimetype,
-          data: storedMedia.buffer.toString('base64'),
-          storagePath,
-        };
-      }
-    }
-
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    if (!message) {
-      throw new Error('Message not found');
-    }
-
-    try {
-      const buffer = await downloadMediaMessage(
-        message as WAMessage,
-        'buffer',
-        {},
-        {
-          logger: P({ level: 'silent' }) as any,
-          reuploadRequest: client!.sock.updateMediaMessage,
-        }
+    const myId = session.sock.user?.id || '';
+    if (emoji) {
+      await db.insert(whatsappReactions).values({ companyId, messageId, emoji, senderId: myId })
+        .onConflictDoUpdate({ target: [whatsappReactions.companyId, whatsappReactions.messageId, whatsappReactions.senderId], set: { emoji } });
+    } else {
+      await db.delete(whatsappReactions).where(
+        and(eq(whatsappReactions.companyId, companyId), eq(whatsappReactions.messageId, messageId), eq(whatsappReactions.senderId, myId))
       );
-
-      const messageContent = message.message;
-      let mimetype = 'application/octet-stream';
-      let filename: string | undefined;
-      
-      if (messageContent?.imageMessage) {
-        mimetype = messageContent.imageMessage.mimetype || 'image/jpeg';
-      } else if (messageContent?.videoMessage) {
-        mimetype = messageContent.videoMessage.mimetype || 'video/mp4';
-      } else if (messageContent?.audioMessage) {
-        mimetype = messageContent.audioMessage.mimetype || 'audio/ogg';
-      } else if (messageContent?.documentMessage) {
-        mimetype = messageContent.documentMessage.mimetype || 'application/octet-stream';
-        filename = messageContent.documentMessage.fileName || undefined;
-      } else if (messageContent?.stickerMessage) {
-        mimetype = messageContent.stickerMessage.mimetype || 'image/webp';
-      }
-
-      const result: { mimetype: string; data: string; storagePath?: string } = {
-        mimetype,
-        data: (buffer as Buffer).toString('base64'),
-      };
-
-      if (whatsappMediaStorage.isReady()) {
-        whatsappMediaStorage.uploadMedia({
-          companyId,
-          chatId: actualChatId,
-          messageId,
-          buffer: buffer as Buffer,
-          mimetype,
-          filename,
-        }).then(uploaded => {
-          if (uploaded) {
-            console.log(`[Baileys] Media persisted to Object Storage: ${uploaded.storagePath}`);
-          }
-        }).catch(err => {
-          console.error(`[Baileys] Background media upload failed (non-blocking):`, err);
-        });
-      }
-
-      console.log(`[Baileys] Media downloaded for company ${companyId} from message ${messageId}`);
-      return result;
-    } catch (error) {
-      console.error(`[Baileys] Error downloading media for company ${companyId}:`, error);
-      throw error;
     }
   }
 
-  private buildMediaStoragePath(companyId: string, chatId: string, messageId: string): string {
-    const mediaDir = process.env.WHATSAPP_MEDIA_DIR || "";
-    const prefix = mediaDir.split("/").filter(Boolean).slice(1).join("/");
-    const basePath = prefix ? `${prefix}/` : "";
-    const sanitizedChatId = chatId.replace(/[^a-zA-Z0-9@.-]/g, "_");
-    return `${basePath}${companyId}/${sanitizedChatId}/${messageId}`;
+  getCachedReactions(companyId: string, messageId: string): Array<{ emoji: string; senderId: string }> {
+    return [];
   }
 
-  async logout(companyId: string): Promise<void> {
-    console.log(`[Baileys] === LOGOUT for company: ${companyId} ===`);
-    
-    this.loggedOutCompanies.add(companyId);
-    
-    const timer = this.reconnectTimers.get(companyId);
-    if (timer) {
-      clearTimeout(timer);
-      this.reconnectTimers.delete(companyId);
-    }
-    this.reconnectAttempts.delete(companyId);
-
-    const client = this.clients.get(companyId);
-    if (client) {
-      try {
-        await client.sock.logout();
-      } catch (error) {
-        console.log(`[Baileys] Error during logout:`, error);
-      }
-      try {
-        client.sock.end(undefined);
-      } catch (error) {
-        console.log(`[Baileys] Error ending socket:`, error);
-      }
-      this.clients.delete(companyId);
-    }
-
-    const authPath = this.getAuthPath(companyId);
-    try {
-      if (fs.existsSync(authPath)) {
-        fs.rmSync(authPath, { recursive: true, force: true });
-        console.log(`[Baileys] Auth files deleted for company: ${companyId}`);
-      }
-    } catch (error) {
-      console.error(`[Baileys] Error deleting auth files for ${companyId}:`, error);
-    }
-
-    this.emit('logout', { companyId });
-    console.log(`[Baileys] === LOGOUT COMPLETE for company: ${companyId} ===`);
-  }
-
-  async destroy(companyId: string): Promise<void> {
-    const client = this.clients.get(companyId);
-    if (client) {
-      try {
-        client.sock.end(undefined);
-        this.clients.delete(companyId);
-        console.log(`[Baileys] Client destroyed for company: ${companyId}`);
-      } catch (error) {
-        console.error(`[Baileys] Failed to destroy client for company ${companyId}:`, error);
-      }
-    }
-  }
-
-  async destroyAll(): Promise<void> {
-    console.log(`[Baileys] Destroying all ${this.clients.size} client instances`);
-    const destroyPromises = Array.from(this.clients.keys()).map(companyId =>
-      this.destroy(companyId)
-    );
-    await Promise.allSettled(destroyPromises);
-    this.clients.clear();
-  }
-
-  async restartClientForCompany(companyId: string, force: boolean = false): Promise<CompanyBaileysClient> {
-    const existingClient = this.clients.get(companyId);
-    if (existingClient && !force) {
-      const hasQRActive = existingClient.status?.status === 'qr_received' && existingClient.status?.qrCode;
-      if (hasQRActive) {
-        console.log(`[Baileys] SKIPPING restart for company ${companyId} - QR code is active`);
-        return existingClient;
-      }
-    }
-
-    console.log(`[Baileys] Restarting client for company: ${companyId}`);
-
-    if (existingClient) {
-      try {
-        existingClient.sock.end(undefined);
-      } catch (error) {
-        console.error(`[Baileys] Error destroying existing client:`, error);
-      }
-      this.clients.delete(companyId);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    return await this.getClientForCompany(companyId);
+  async getReactionsFromDb(companyId: string, messageId: string): Promise<Array<{ emoji: string; senderId: string }>> {
+    const reactions = await db.select().from(whatsappReactions)
+      .where(and(eq(whatsappReactions.companyId, companyId), eq(whatsappReactions.messageId, messageId)));
+    return reactions.map(r => ({ emoji: r.emoji, senderId: r.senderId }));
   }
 
   async sendTyping(companyId: string, chatId: string, duration: number = 5000): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.sendPresenceUpdate('composing', normalizedId);
-      if (duration > 0) {
-        setTimeout(async () => {
-          try {
-            await client.sock.sendPresenceUpdate('paused', normalizedId);
-          } catch (error) {
-            console.error(`[Baileys] Error stopping typing:`, error);
-          }
-        }, duration);
-      }
-      console.log(`[Baileys] Typing indicator sent for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error sending typing indicator:`, error);
-      throw error;
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.sendPresenceUpdate('composing', normalizedId);
+    if (duration > 0) {
+      setTimeout(() => {
+        session.sock.sendPresenceUpdate('paused', normalizedId).catch(() => {});
+      }, duration);
     }
   }
 
   async stopTyping(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.sendPresenceUpdate('paused', normalizedId);
-      console.log(`[Baileys] Typing stopped for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error stopping typing:`, error);
-      throw error;
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.sendPresenceUpdate('paused', normalizeWhatsAppId(chatId));
   }
 
   async sendRecording(companyId: string, chatId: string, duration: number = 5000): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.sendPresenceUpdate('recording', normalizedId);
+    if (duration > 0) {
+      setTimeout(() => {
+        session.sock.sendPresenceUpdate('paused', normalizedId).catch(() => {});
+      }, duration);
     }
+  }
 
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
+  async getPresence(companyId: string, chatId: string): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) return null;
     try {
-      await client.sock.sendPresenceUpdate('recording', normalizedId);
-      if (duration > 0) {
-        setTimeout(async () => {
-          try {
-            await client.sock.sendPresenceUpdate('paused', normalizedId);
-          } catch (error) {
-            console.error(`[Baileys] Error stopping recording:`, error);
-          }
-        }, duration);
-      }
-      console.log(`[Baileys] Recording indicator sent for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error sending recording indicator:`, error);
-      throw error;
+      await session.sock.presenceSubscribe(normalizeWhatsAppId(chatId));
+      return { isOnline: false, lastSeen: null };
+    } catch {
+      return null;
     }
   }
 
   async isRegisteredUser(companyId: string, phoneNumber: string): Promise<boolean> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
     try {
-      const cleanNumber = phoneNumber.replace(/\D/g, '');
-      const results = await client.sock.onWhatsApp(cleanNumber);
-      const result = results?.[0];
-      return result?.exists || false;
-    } catch (error) {
-      console.error(`[Baileys] Error checking user registration:`, error);
+      const results = await session.sock.onWhatsApp(phoneNumber.replace(/\D/g, ''));
+      return results?.[0]?.exists || false;
+    } catch {
       return false;
     }
   }
 
   async getNumberId(companyId: string, phoneNumber: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
     try {
-      const cleanNumber = phoneNumber.replace(/\D/g, '');
-      const results = await client.sock.onWhatsApp(cleanNumber);
-      const result = results?.[0];
-      if (result?.exists) {
-        return {
-          _serialized: result.jid,
-          user: cleanNumber,
-        };
+      const results = await session.sock.onWhatsApp(phoneNumber.replace(/\D/g, ''));
+      if (results?.[0]?.exists) {
+        return { _serialized: results[0].jid, user: phoneNumber.replace(/\D/g, '') };
       }
       return null;
-    } catch (error) {
-      console.error(`[Baileys] Error getting number ID:`, error);
+    } catch {
       return null;
     }
   }
 
-  async validateAndGetNumberId(companyId: string, phoneNumber: string): Promise<{
-    isValid: boolean;
-    whatsappId: string | null;
-    formattedNumber: string;
-  }> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+  async getMyProfile(companyId: string): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const client = this.clients.get(companyId)!;
-    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    const user = session.sock.user;
+    if (!user) throw new Error('User info not available');
 
-    try {
-      const formatsToTry = [
-        cleanNumber,
-        cleanNumber.startsWith('1') && cleanNumber.length === 11 ? cleanNumber.substring(1) : null,
-        !cleanNumber.startsWith('1') && cleanNumber.length === 10 ? '1' + cleanNumber : null,
-      ].filter(Boolean) as string[];
+    const wid = user.id;
+    const phoneNumber = wid.replace(/@s\.whatsapp\.net$/, '').replace(/:\d+$/, '');
+    let profilePicUrl: string | null = null;
+    try { profilePicUrl = await session.sock.profilePictureUrl(wid, 'image') || null; } catch {}
 
-      for (const numberFormat of formatsToTry) {
-        const results = await client.sock.onWhatsApp(numberFormat);
-        const result = results?.[0];
-        if (result?.exists) {
-          return {
-            isValid: true,
-            whatsappId: result.jid,
-            formattedNumber: numberFormat,
-          };
-        }
-      }
-
-      return {
-        isValid: false,
-        whatsappId: null,
-        formattedNumber: cleanNumber,
-      };
-    } catch (error) {
-      console.error(`[Baileys] Error validating number:`, error);
-      return {
-        isValid: false,
-        whatsappId: null,
-        formattedNumber: cleanNumber,
-      };
-    }
+    return { wid, pushname: user.name || '', profilePicUrl, phoneNumber };
   }
 
-  async getMyProfile(companyId: string): Promise<{
-    wid: string;
-    pushname: string;
-    profilePicUrl: string | null;
-    about: string | null;
-    phoneNumber: string;
-  }> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
+  async getContactProfile(companyId: string, contactId: string): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
 
-    const client = this.clients.get(companyId)!;
+    const normalizedId = normalizeWhatsAppId(contactId);
+    const number = normalizedId.replace(/@.*/, '');
 
-    try {
-      const user = client.sock.user;
-      if (!user) {
-        throw new Error('User info not available');
-      }
+    let profilePicUrl: string | null = null;
+    try { profilePicUrl = await session.sock.profilePictureUrl(normalizedId, 'image') || null; } catch {}
 
-      const wid = user.id;
-      // Remove device suffix (e.g., ":18") and @s.whatsapp.net
-      // Format: "13057240606:18@s.whatsapp.net" -> "13057240606"
-      const phoneNumber = wid.replace(/@s\.whatsapp\.net$/, '').replace(/:\d+$/, '');
-      const pushname = user.name || '';
-
-      let profilePicUrl: string | null = null;
-      try {
-        profilePicUrl = await client.sock.profilePictureUrl(wid, 'image') || null;
-      } catch {
-      }
-
-      let about: string | null = null;
-      try {
-        const status = await client.sock.fetchStatus(wid);
-        about = status?.status || null;
-      } catch {
-      }
-
-      return { wid, pushname, profilePicUrl, about, phoneNumber };
-    } catch (error) {
-      console.error(`[Baileys] Error getting my profile:`, error);
-      throw error;
-    }
+    return {
+      id: normalizedId,
+      name: number,
+      number,
+      profilePicUrl,
+      isBlocked: false,
+      isBusiness: false,
+      pushname: null,
+    };
   }
 
-  async createGroup(companyId: string, title: string, participants: string[]): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const normalizedParticipants = participants.map(p => this.normalizeWhatsAppId(p));
-      const result = await client.sock.groupCreate(title, normalizedParticipants);
-      console.log(`[Baileys] Group created for company ${companyId}: ${title}`);
-      return result;
-    } catch (error) {
-      console.error(`[Baileys] Error creating group:`, error);
-      throw error;
-    }
-  }
-
-  async addParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const normalizedParticipants = participants.map(p => this.normalizeWhatsAppId(p));
-      await client.sock.groupParticipantsUpdate(normalizedChatId, normalizedParticipants, 'add');
-      console.log(`[Baileys] Participants added to group ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error adding participants:`, error);
-      throw error;
-    }
-  }
-
-  async removeParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const normalizedParticipants = participants.map(p => this.normalizeWhatsAppId(p));
-      await client.sock.groupParticipantsUpdate(normalizedChatId, normalizedParticipants, 'remove');
-      console.log(`[Baileys] Participants removed from group ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error removing participants:`, error);
-      throw error;
-    }
-  }
-
-  async promoteParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const normalizedParticipants = participants.map(p => this.normalizeWhatsAppId(p));
-      await client.sock.groupParticipantsUpdate(normalizedChatId, normalizedParticipants, 'promote');
-      console.log(`[Baileys] Participants promoted in group ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error promoting participants:`, error);
-      throw error;
-    }
-  }
-
-  async demoteParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const normalizedParticipants = participants.map(p => this.normalizeWhatsAppId(p));
-      await client.sock.groupParticipantsUpdate(normalizedChatId, normalizedParticipants, 'demote');
-      console.log(`[Baileys] Participants demoted in group ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error demoting participants:`, error);
-      throw error;
-    }
-  }
-
-  async leaveGroup(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.groupLeave(normalizedChatId);
-      console.log(`[Baileys] Left group ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error leaving group:`, error);
-      throw error;
-    }
-  }
-
-  async getGroupInviteCode(companyId: string, chatId: string): Promise<string> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const code = await client.sock.groupInviteCode(normalizedChatId);
-      return code || '';
-    } catch (error) {
-      console.error(`[Baileys] Error getting group invite code:`, error);
-      throw error;
-    }
-  }
-
-  async revokeGroupInvite(companyId: string, chatId: string): Promise<string> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const code = await client.sock.groupRevokeInvite(normalizedChatId);
-      return code || '';
-    } catch (error) {
-      console.error(`[Baileys] Error revoking group invite:`, error);
-      throw error;
-    }
-  }
-
-  async setGroupSubject(companyId: string, chatId: string, subject: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.groupUpdateSubject(normalizedChatId, subject);
-      console.log(`[Baileys] Group subject updated for ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error setting group subject:`, error);
-      throw error;
-    }
-  }
-
-  async setGroupDescription(companyId: string, chatId: string, description: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.groupUpdateDescription(normalizedChatId, description);
-      console.log(`[Baileys] Group description updated for ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error setting group description:`, error);
-      throw error;
-    }
-  }
-
-  async getGroupMetadata(companyId: string, chatId: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const metadata = await client.sock.groupMetadata(normalizedChatId);
-      return metadata;
-    } catch (error) {
-      console.error(`[Baileys] Error getting group metadata:`, error);
-      throw error;
-    }
+  async getContactInfo(companyId: string, contactId: string): Promise<any> {
+    return this.getContactProfile(companyId, contactId);
   }
 
   async archiveChat(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.chatModify({ archive: true, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Chat archived: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error archiving chat:`, error);
-      throw error;
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.chatModify({ archive: true, lastMessages: [] }, normalizedId);
+    await this.archiveChatInDb(companyId, normalizedId);
   }
 
   async unarchiveChat(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.chatModify({ archive: false, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Chat unarchived: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error unarchiving chat:`, error);
-      throw error;
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.chatModify({ archive: false, lastMessages: [] }, normalizedId);
+    await db.update(whatsappChats).set({ isArchived: false, updatedAt: new Date() })
+      .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
   }
 
   async pinChat(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.chatModify({ pin: true, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Chat pinned: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error pinning chat:`, error);
-      throw error;
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.chatModify({ pin: true }, normalizedId);
+    await db.update(whatsappChats).set({ isPinned: true, updatedAt: new Date() })
+      .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
   }
 
   async unpinChat(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.chatModify({ pin: false, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Chat unpinned: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error unpinning chat:`, error);
-      throw error;
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.chatModify({ pin: false }, normalizedId);
+    await db.update(whatsappChats).set({ isPinned: false, updatedAt: new Date() })
+      .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
   }
 
-  async muteChat(companyId: string, chatId: string, unmuteDate?: Date): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const muteUntil = unmuteDate ? Math.floor(unmuteDate.getTime() / 1000) : undefined;
-      await client.sock.chatModify({ mute: muteUntil || -1, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Chat muted: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error muting chat:`, error);
-      throw error;
-    }
+  async muteChat(companyId: string, chatId: string, muteExpiration?: number): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    const expiration = muteExpiration || Math.floor(Date.now() / 1000) + (8 * 60 * 60);
+    await session.sock.chatModify({ mute: expiration }, normalizedId);
+    await db.update(whatsappChats).set({ muteExpiration: expiration, updatedAt: new Date() })
+      .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
   }
 
   async unmuteChat(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.chatModify({ mute: null, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Chat unmuted: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error unmuting chat:`, error);
-      throw error;
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.chatModify({ mute: null }, normalizedId);
+    await db.update(whatsappChats).set({ muteExpiration: null, updatedAt: new Date() })
+      .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
   }
 
   async deleteChat(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
     try {
-      await client.sock.chatModify({ delete: true, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Chat deleted: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error deleting chat:`, error);
-      throw error;
-    }
+      await session.sock.chatModify({ delete: true, lastMessages: [] }, normalizedId);
+    } catch {}
+    await this.archiveChatInDb(companyId, normalizedId);
   }
 
-  async clearMessages(companyId: string, chatId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.chatModify({ clear: { messages: [] }, lastMessages: [] }, normalizedChatId);
-      console.log(`[Baileys] Messages cleared for chat: ${chatId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error clearing messages:`, error);
-      throw error;
-    }
+  async clearChat(companyId: string, chatId: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.chatModify({ clear: { messages: [] } }, normalizedId);
+    await db.delete(whatsappMessages).where(
+      and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.chatId, normalizedId))
+    );
   }
 
-  async sendPresenceAvailable(companyId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.sendPresenceUpdate('available');
-      console.log(`[Baileys] Presence set to available for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error sending presence available:`, error);
-      throw error;
-    }
-  }
-
-  async sendPresenceUnavailable(companyId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.sendPresenceUpdate('unavailable');
-      console.log(`[Baileys] Presence set to unavailable for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error sending presence unavailable:`, error);
-      throw error;
-    }
-  }
-
-  async setStatus(companyId: string, status: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.updateProfileStatus(status);
-      console.log(`[Baileys] Status updated for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error setting status:`, error);
-      throw error;
-    }
-  }
-
-  async setDisplayName(companyId: string, displayName: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.updateProfileName(displayName);
-      console.log(`[Baileys] Display name updated for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error setting display name:`, error);
-      throw error;
-    }
-  }
-
-  async setProfilePicture(companyId: string, imageBuffer: Buffer): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const userId = client.sock.user?.id;
-      if (!userId) {
-        throw new Error('User ID not available');
-      }
-      await client.sock.updateProfilePicture(userId, imageBuffer);
-      console.log(`[Baileys] Profile picture updated for company ${companyId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error setting profile picture:`, error);
-      throw error;
-    }
-  }
-
-  async blockContact(companyId: string, contactId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(contactId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.updateBlockStatus(normalizedId, 'block');
-      console.log(`[Baileys] Contact blocked: ${contactId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error blocking contact:`, error);
-      throw error;
-    }
-  }
-
-  async unblockContact(companyId: string, contactId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(contactId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      await client.sock.updateBlockStatus(normalizedId, 'unblock');
-      console.log(`[Baileys] Contact unblocked: ${contactId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error unblocking contact:`, error);
-      throw error;
-    }
-  }
-
-  async forwardMessage(companyId: string, messageId: string, chatId: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedChatId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const message = client.messageStore.get(messageId);
-      if (!message) {
-        throw new Error('Message not found');
-      }
-
-      const result = await client.sock.sendMessage(normalizedChatId, { forward: message as WAMessage });
-      console.log(`[Baileys] Message forwarded to ${chatId}`);
-      return result;
-    } catch (error) {
-      console.error(`[Baileys] Error forwarding message:`, error);
-      throw error;
-    }
-  }
-
-  async deleteMessage(companyId: string, messageId: string, forEveryone: boolean = false): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const message = client.messageStore.get(messageId);
-      if (!message) {
-        throw new Error('Message not found');
-      }
-
-      if (forEveryone) {
-        await client.sock.sendMessage(message.key?.remoteJid!, { delete: message.key as proto.IMessageKey });
-      } else {
-        await client.sock.chatModify(
-          { clear: { messages: [{ id: message.key?.id!, fromMe: message.key?.fromMe || false, timestamp: Number(message.messageTimestamp) }] }, lastMessages: [] },
-          message.key?.remoteJid!
-        );
-      }
-      
-      client.messageStore.delete(messageId);
-      console.log(`[Baileys] Message deleted: ${messageId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error deleting message:`, error);
-      throw error;
-    }
+  async markChatAsUnread(companyId: string, chatId: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    await session.sock.chatModify({ markRead: false, lastMessages: [] }, normalizedId);
+    await db.update(whatsappChats).set({ unreadCount: 1, updatedAt: new Date() })
+      .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, normalizedId)));
   }
 
   async starMessage(companyId: string, messageId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const message = client.messageStore.get(messageId);
-      if (!message) {
-        throw new Error('Message not found');
-      }
-
-      await client.sock.chatModify(
-        { star: { messages: [{ id: message.key?.id!, fromMe: message.key?.fromMe || false }], star: true }, lastMessages: [] },
-        message.key?.remoteJid!
-      );
-      console.log(`[Baileys] Message starred: ${messageId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error starring message:`, error);
-      throw error;
-    }
+    console.log(`[Baileys] Star message not fully supported, messageId: ${messageId}`);
   }
 
   async unstarMessage(companyId: string, messageId: string): Promise<void> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const message = client.messageStore.get(messageId);
-      if (!message) {
-        throw new Error('Message not found');
-      }
-
-      await client.sock.chatModify(
-        { star: { messages: [{ id: message.key?.id!, fromMe: message.key?.fromMe || false }], star: false }, lastMessages: [] },
-        message.key?.remoteJid!
-      );
-      console.log(`[Baileys] Message unstarred: ${messageId}`);
-    } catch (error) {
-      console.error(`[Baileys] Error unstarring message:`, error);
-      throw error;
-    }
+    console.log(`[Baileys] Unstar message not fully supported, messageId: ${messageId}`);
   }
 
   async sendLocation(companyId: string, chatId: string, latitude: number, longitude: number, name?: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
-
-    try {
-      const result = await client.sock.sendMessage(normalizedId, {
-        location: {
-          degreesLatitude: latitude,
-          degreesLongitude: longitude,
-          name,
-        },
-      });
-      console.log(`[Baileys] Location sent to ${chatId}`);
-      return result;
-    } catch (error) {
-      console.error(`[Baileys] Error sending location:`, error);
-      throw error;
-    }
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    const result = await session.sock.sendMessage(normalizedId, { location: { degreesLatitude: latitude, degreesLongitude: longitude, name } });
+    return { id: { _serialized: result?.key.id || '' }, timestamp: Date.now() / 1000, fromMe: true };
   }
 
   async sendContactCard(companyId: string, chatId: string, contactVCard: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    const normalizedId = normalizeWhatsAppId(chatId);
+    const result = await session.sock.sendMessage(normalizedId, { contacts: { displayName: 'Contact', contacts: [{ vcard: contactVCard }] } });
+    return { id: { _serialized: result?.key.id || '' }, timestamp: Date.now() / 1000, fromMe: true };
+  }
+
+  async createGroup(companyId: string, title: string, participants: string[]): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    return await session.sock.groupCreate(title, participants.map(normalizeWhatsAppId));
+  }
+
+  async addParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.groupParticipantsUpdate(normalizeWhatsAppId(chatId), participants.map(normalizeWhatsAppId), 'add');
+  }
+
+  async removeParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.groupParticipantsUpdate(normalizeWhatsAppId(chatId), participants.map(normalizeWhatsAppId), 'remove');
+  }
+
+  async promoteParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.groupParticipantsUpdate(normalizeWhatsAppId(chatId), participants.map(normalizeWhatsAppId), 'promote');
+  }
+
+  async demoteParticipants(companyId: string, chatId: string, participants: string[]): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.groupParticipantsUpdate(normalizeWhatsAppId(chatId), participants.map(normalizeWhatsAppId), 'demote');
+  }
+
+  async leaveGroup(companyId: string, chatId: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.groupLeave(normalizeWhatsAppId(chatId));
+  }
+
+  async getGroupInviteCode(companyId: string, chatId: string): Promise<string> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    return await session.sock.groupInviteCode(normalizeWhatsAppId(chatId)) || '';
+  }
+
+  async revokeGroupInvite(companyId: string, chatId: string): Promise<string> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    return await session.sock.groupRevokeInvite(normalizeWhatsAppId(chatId)) || '';
+  }
+
+  async setGroupSubject(companyId: string, chatId: string, subject: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.groupUpdateSubject(normalizeWhatsAppId(chatId), subject);
+  }
+
+  async setGroupDescription(companyId: string, chatId: string, description: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    await session.sock.groupUpdateDescription(normalizeWhatsAppId(chatId), description);
+  }
+
+  async getGroupMetadata(companyId: string, chatId: string): Promise<any> {
+    const session = this.sessions.get(companyId);
+    if (!session?.status.isReady) throw new Error('WhatsApp client is not ready');
+    return await session.sock.groupMetadata(normalizeWhatsAppId(chatId));
+  }
+
+  async logout(companyId: string): Promise<void> {
+    console.log(`[Baileys] Logging out company: ${companyId}`);
+    this.loggedOutCompanies.add(companyId);
+
+    const timer = this.reconnectTimers.get(companyId);
+    if (timer) { clearTimeout(timer); this.reconnectTimers.delete(companyId); }
+    this.reconnectAttempts.delete(companyId);
+
+    const session = this.sessions.get(companyId);
+    if (session) {
+      try { await session.sock.logout(); } catch {}
+      try { session.sock.end(undefined); } catch {}
+      this.sessions.delete(companyId);
     }
 
-    const normalizedId = this.normalizeWhatsAppId(chatId);
-    const client = this.clients.get(companyId)!;
+    this.deleteAuthFiles(companyId);
+    this.emit('logout', { companyId });
+  }
 
-    try {
-      const result = await client.sock.sendMessage(normalizedId, {
-        contacts: {
-          displayName: 'Contact',
-          contacts: [{ vcard: contactVCard }],
-        },
-      });
-      console.log(`[Baileys] Contact card sent to ${chatId}`);
-      return result;
-    } catch (error) {
-      console.error(`[Baileys] Error sending contact card:`, error);
-      throw error;
+  async destroy(companyId: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (session) {
+      try { session.sock.end(undefined); } catch {}
+      this.sessions.delete(companyId);
     }
   }
 
-  async getContactProfile(companyId: string, contactId: string): Promise<{
-    id: string;
-    name: string;
-    number: string;
-    profilePicUrl: string | null;
-    isBlocked: boolean;
-    isBusiness: boolean;
-    pushname: string | null;
-  }> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const normalizedId = this.normalizeWhatsAppId(contactId);
-    const client = this.clients.get(companyId)!;
-    const number = normalizedId.replace('@s.whatsapp.net', '');
-
-    try {
-      const contact = client.contacts.get(normalizedId);
-
-      let profilePicUrl: string | null = null;
-      try {
-        profilePicUrl = await client.sock.profilePictureUrl(normalizedId, 'image') || null;
-      } catch {
-      }
-
-      return {
-        id: normalizedId,
-        name: contact?.name || contact?.notify || number,
-        number,
-        profilePicUrl,
-        isBlocked: false,
-        isBusiness: false,
-        pushname: contact?.notify || null,
-      };
-    } catch (error) {
-      console.error(`[Baileys] Error getting contact profile:`, error);
-      throw error;
+  async destroyAll(): Promise<void> {
+    for (const companyId of this.sessions.keys()) {
+      await this.destroy(companyId);
     }
   }
 
-  async getContactInfo(companyId: string, contactId: string): Promise<{
-    id: string;
-    name: string | null;
-    number: string;
-    about: string | null;
-    profilePic: string | null;
-    pushname: string | null;
-    isBusiness: boolean;
-    isBlocked: boolean;
-    isEnterprise: boolean;
-    isUser: boolean;
-    labels: string[];
-  }> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
+  async restartClientForCompany(companyId: string, force: boolean = false): Promise<CompanySession> {
+    const existing = this.sessions.get(companyId);
+    if (existing && !force && existing.status.status === 'qr_received') {
+      return existing;
     }
-
-    const normalizedId = this.normalizeWhatsAppId(contactId);
-    const client = this.clients.get(companyId)!;
-    const number = normalizedId.replace('@s.whatsapp.net', '');
-
-    try {
-      const contact = client.contacts.get(normalizedId);
-
-      let profilePic: string | null = null;
-      try {
-        profilePic = await client.sock.profilePictureUrl(normalizedId, 'image') || null;
-      } catch {
-      }
-
-      let about: string | null = null;
-      try {
-        const status = await client.sock.fetchStatus(normalizedId);
-        about = status?.status || null;
-      } catch {
-      }
-
-      return {
-        id: normalizedId,
-        name: contact?.name || null,
-        number,
-        about,
-        profilePic,
-        pushname: contact?.notify || null,
-        isBusiness: false,
-        isBlocked: false,
-        isEnterprise: false,
-        isUser: true,
-        labels: [],
-      };
-    } catch (error) {
-      console.error(`[Baileys] Error getting contact info:`, error);
-      throw error;
-    }
-  }
-
-  async getMessageById(companyId: string, messageId: string): Promise<any> {
-    if (!this.isReady(companyId)) {
-      throw new Error('WhatsApp client is not ready');
-    }
-
-    const client = this.clients.get(companyId)!;
-    const message = client.messageStore.get(messageId);
-    
-    if (!message) {
-      throw new Error('Message not found');
-    }
-
-    return this.convertBaileysMessage(message as WAMessage);
+    await this.destroy(companyId);
+    await new Promise(r => setTimeout(r, 2000));
+    return await this.getClientForCompany(companyId);
   }
 
   onMessageHandler(companyId: string, handlerId: string, handler: (message: any) => void): void {
-    const client = this.clients.get(companyId);
-    if (client) {
-      client.messageHandlers.set(handlerId, handler);
-    }
+    this.sessions.get(companyId)?.messageHandlers.set(handlerId, handler);
   }
 
   offMessageHandler(companyId: string, handlerId: string): void {
-    const client = this.clients.get(companyId);
-    if (client) {
-      client.messageHandlers.delete(handlerId);
+    this.sessions.get(companyId)?.messageHandlers.delete(handlerId);
+  }
+
+  async searchMessages(companyId: string, query: string, chatId?: string, limit: number = 50): Promise<any[]> {
+    try {
+      const conditions = [eq(whatsappMessages.companyId, companyId)];
+      if (chatId) conditions.push(eq(whatsappMessages.chatId, normalizeWhatsAppId(chatId)));
+
+      const messages = await db.select().from(whatsappMessages)
+        .where(and(...conditions))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(500);
+
+      const queryLower = query.toLowerCase();
+      return messages
+        .filter(m => m.text?.toLowerCase().includes(queryLower))
+        .slice(0, limit)
+        .map(m => ({
+          id: { _serialized: m.messageId },
+          chatId: m.chatId,
+          body: m.text || '',
+          timestamp: m.timestamp,
+          fromMe: m.fromMe,
+        }));
+    } catch (err) {
+      console.error(`[Baileys] Search error:`, err);
+      return [];
+    }
+  }
+
+  async getPollVotes(companyId: string, messageId: string): Promise<any[]> {
+    return [];
+  }
+
+  async getMessageById(companyId: string, messageId: string): Promise<any> {
+    const [dbMsg] = await db.select().from(whatsappMessages)
+      .where(and(eq(whatsappMessages.companyId, companyId), eq(whatsappMessages.messageId, messageId)));
+
+    if (!dbMsg) throw new Error('Message not found');
+
+    return {
+      id: { _serialized: dbMsg.messageId },
+      from: dbMsg.senderId,
+      to: dbMsg.chatId,
+      body: dbMsg.text || '',
+      type: dbMsg.mediaType || 'text',
+      timestamp: dbMsg.timestamp,
+      fromMe: dbMsg.fromMe,
+      hasMedia: dbMsg.mediaType && dbMsg.mediaType !== 'text',
+    };
+  }
+
+  async getChatContact(companyId: string, chatId: string): Promise<any> {
+    return this.getContactProfile(companyId, chatId);
+  }
+
+  async syncHistory(companyId: string, chatId?: string): Promise<void> {
+    console.log(`[Baileys] Manual sync requested for ${companyId}${chatId ? `, chat: ${chatId}` : ''}`);
+  }
+
+  async clearState(companyId: string, chatId?: string): Promise<void> {
+    console.log(`[Baileys] Clear state requested for ${companyId}${chatId ? `, chat: ${chatId}` : ''}`);
+  }
+
+  async getChannels(companyId: string): Promise<any[]> { return []; }
+  async createChannel(companyId: string, title: string, options?: any): Promise<any> { throw new Error('Channels not supported'); }
+  async deleteChannel(companyId: string, channelId: string): Promise<void> {}
+  async getChannelByInviteCode(companyId: string, inviteCode: string): Promise<any> { return null; }
+  async searchChannels(companyId: string, options: any): Promise<any[]> { return []; }
+  async subscribeToChannel(companyId: string, channelId: string): Promise<any> { return null; }
+  async unsubscribeFromChannel(companyId: string, channelId: string): Promise<any> { return null; }
+  async getChannelMessages(companyId: string, channelId: string, limit?: number): Promise<any[]> { return []; }
+  async sendChannelMessage(companyId: string, channelId: string, content: any): Promise<any> { return null; }
+  async sendChannelSeen(companyId: string, channelId: string): Promise<void> {}
+  async setChannelSubject(companyId: string, channelId: string, subject: string): Promise<void> {}
+  async setChannelDescription(companyId: string, channelId: string, description: string): Promise<void> {}
+  async setChannelPicture(companyId: string, channelId: string, media: any): Promise<void> {}
+  async setChannelReactionSetting(companyId: string, channelId: string, reactionCode: number): Promise<void> {}
+  async muteChannel(companyId: string, channelId: string): Promise<void> {}
+  async unmuteChannel(companyId: string, channelId: string): Promise<void> {}
+  async getChannelSubscribers(companyId: string, channelId: string, limit?: number): Promise<any[]> { return []; }
+  async sendChannelAdminInvite(companyId: string, channelId: string, chatId: string): Promise<any> { return null; }
+  async acceptChannelAdminInvite(companyId: string, channelId: string): Promise<any> { return null; }
+  async revokeChannelAdminInvite(companyId: string, channelId: string, userId: string): Promise<any> { return null; }
+  async demoteChannelAdmin(companyId: string, channelId: string, userId: string): Promise<any> { return null; }
+  async transferChannelOwnership(companyId: string, channelId: string, newOwnerId: string): Promise<any> { return null; }
+  async getBroadcasts(companyId: string): Promise<any[]> { return []; }
+  async getBroadcastChat(companyId: string, broadcastId: string): Promise<any> { return null; }
+  async getBroadcastContact(companyId: string, broadcastId: string): Promise<any> { return null; }
+  async getCallHistory(companyId: string, limit?: number): Promise<any[]> { return []; }
+  async rejectCall(companyId: string, callId: string): Promise<void> {}
+  async setAutoDownloadAudio(companyId: string, enabled: boolean): Promise<void> {}
+  async setAutoDownloadDocuments(companyId: string, enabled: boolean): Promise<void> {}
+  async setAutoDownloadPhotos(companyId: string, enabled: boolean): Promise<void> {}
+  async setAutoDownloadVideos(companyId: string, enabled: boolean): Promise<void> {}
+  async validateAndGetNumberId(companyId: string, phoneNumber: string): Promise<{ isValid: boolean; whatsappId: string | null; formattedNumber: string }> {
+    const id = await this.getNumberId(companyId, phoneNumber);
+    return { isValid: !!id, whatsappId: id?._serialized || null, formattedNumber: phoneNumber.replace(/\D/g, '') };
+  }
+
+  autoConnectSavedSessions(): void {
+    console.log('[Baileys] Sessions will connect on-demand');
+  }
+
+  startConnectionHealthCheck(): void {
+    setInterval(() => {
+      if (this.sessions.size > 0) {
+        console.log(`[Baileys] Health check: ${this.sessions.size} active sessions`);
+      }
+    }, 60000);
+  }
+
+  shutdownAllClients(): Promise<void> {
+    return this.destroyAll();
+  }
+
+  shutdownClientForCompany(companyId: string): Promise<void> {
+    return this.destroy(companyId);
+  }
+
+  getSavedSessionCompanyIds(): string[] {
+    try {
+      if (!fs.existsSync(this.AUTH_DIR)) return [];
+      return fs.readdirSync(this.AUTH_DIR, { withFileTypes: true })
+        .filter(e => e.isDirectory())
+        .map(e => e.name);
+    } catch {
+      return [];
+    }
+  }
+
+  async updateReactionCache(companyId: string, messageId: string, emoji: string, senderId: string): Promise<void> {
+    if (emoji) {
+      await db.insert(whatsappReactions).values({ companyId, messageId, emoji, senderId })
+        .onConflictDoUpdate({ target: [whatsappReactions.companyId, whatsappReactions.messageId, whatsappReactions.senderId], set: { emoji } })
+        .catch(() => {});
+    } else {
+      await db.delete(whatsappReactions).where(
+        and(eq(whatsappReactions.companyId, companyId), eq(whatsappReactions.messageId, messageId), eq(whatsappReactions.senderId, senderId))
+      ).catch(() => {});
     }
   }
 }
