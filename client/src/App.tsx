@@ -714,10 +714,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
                 onClick={() => setLocation("/imessage")}
                 data-testid="sidebar-button-imessage"
                 className={circularButtonClass}

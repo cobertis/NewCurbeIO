@@ -1702,7 +1702,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                       messageId: newMessage.id,
                     }),
                   });
-      
+                }
                 // Broadcast notification update to all clients
                 broadcastNotificationUpdate(company.id);
               }
