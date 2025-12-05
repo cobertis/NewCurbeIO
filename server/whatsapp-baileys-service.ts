@@ -12,7 +12,6 @@ import makeWASocket, {
   WAMessage,
   MessageUpsertType,
   ConnectionState,
-  makeInMemoryStore,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import P from 'pino';
@@ -53,7 +52,6 @@ interface StoredContact {
 
 interface CompanyBaileysClient {
   sock: WASocket;
-  store: ReturnType<typeof makeInMemoryStore>;
   chats: Map<string, StoredChat>;
   contacts: Map<string, StoredContact>;
   status: WhatsAppSessionStatus;
@@ -290,9 +288,6 @@ class WhatsAppBaileysService extends EventEmitter {
 
     const logger = P({ level: 'silent' }) as any;
 
-    // Create in-memory store for this company (handles history sync)
-    const store = makeInMemoryStore({ logger });
-
     const sock = makeWASocket({
       version,
       auth: state,
@@ -304,18 +299,7 @@ class WhatsAppBaileysService extends EventEmitter {
       keepAliveIntervalMs: 25000,
       markOnlineOnConnect: true,
       syncFullHistory: true, // Enable history sync to get chats
-      getMessage: async (key) => {
-        // Required for retrying failed messages and history sync
-        if (store) {
-          const msg = await store.loadMessage(key.remoteJid!, key.id!);
-          return msg?.message || undefined;
-        }
-        return proto.Message.fromObject({});
-      },
     });
-
-    // Bind store to socket events (critical for history sync)
-    store.bind(sock.ev);
 
     const sessionStatus: WhatsAppSessionStatus = {
       isReady: false,
@@ -327,7 +311,6 @@ class WhatsAppBaileysService extends EventEmitter {
 
     const companyClient: CompanyBaileysClient = {
       sock,
-      store,
       chats: new Map(),
       contacts: new Map(),
       status: sessionStatus,
@@ -455,6 +438,79 @@ class WhatsAppBaileysService extends EventEmitter {
         } catch (error) {
           console.error(`[Baileys] Failed to hydrate reactions for ${companyId}:`, error);
         }
+      }
+    });
+
+    // Handle chats sync events (history sync in Baileys v6)
+    sock.ev.on('chats.set', (chats: any) => {
+      if (!chats || !Array.isArray(chats)) return;
+      console.log(`[Baileys] chats.set received: ${chats.length} chats for company ${companyId}`);
+      for (const chat of chats) {
+        if (!chat.id) continue;
+        companyClient.chats.set(chat.id, {
+          id: chat.id,
+          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
+          conversationTimestamp: chat.conversationTimestamp || chat.lastMessageRecvTimestamp || 0,
+          unreadCount: chat.unreadCount || 0,
+          archived: chat.archived || false,
+          pinned: chat.pinned || 0,
+        });
+      }
+      console.log(`[Baileys] Stored ${companyClient.chats.size} chats after chats.set for company ${companyId}`);
+    });
+
+    sock.ev.on('chats.upsert', (chats: any[]) => {
+      console.log(`[Baileys] chats.upsert received: ${chats.length} chats for company ${companyId}`);
+      for (const chat of chats) {
+        if (!chat.id) continue;
+        const existing = companyClient.chats.get(chat.id);
+        companyClient.chats.set(chat.id, {
+          id: chat.id,
+          name: chat.name || existing?.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
+          conversationTimestamp: chat.conversationTimestamp || existing?.conversationTimestamp || 0,
+          unreadCount: chat.unreadCount ?? existing?.unreadCount ?? 0,
+          archived: chat.archived ?? existing?.archived ?? false,
+          pinned: chat.pinned ?? existing?.pinned ?? 0,
+        });
+      }
+    });
+
+    sock.ev.on('chats.update', (updates: any[]) => {
+      for (const update of updates) {
+        if (!update.id) continue;
+        const existing = companyClient.chats.get(update.id);
+        if (existing) {
+          companyClient.chats.set(update.id, {
+            ...existing,
+            ...update,
+            name: update.name || existing.name,
+          });
+        }
+      }
+    });
+
+    sock.ev.on('contacts.set', (contacts: any) => {
+      const contactsArray = contacts?.contacts || contacts;
+      if (!contactsArray || !Array.isArray(contactsArray)) return;
+      console.log(`[Baileys] contacts.set received: ${contactsArray.length} contacts for company ${companyId}`);
+      for (const contact of contactsArray) {
+        if (!contact.id) continue;
+        companyClient.contacts.set(contact.id, {
+          id: contact.id,
+          name: contact.name || contact.notify,
+          notify: contact.notify,
+        });
+      }
+    });
+
+    sock.ev.on('contacts.upsert', (contacts: any[]) => {
+      for (const contact of contacts) {
+        if (!contact.id) continue;
+        companyClient.contacts.set(contact.id, {
+          id: contact.id,
+          name: contact.name || contact.notify,
+          notify: contact.notify,
+        });
       }
     });
 
@@ -867,48 +923,19 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
     
     try {
-      // Use makeInMemoryStore chats (populated by history sync)
-      const storeChats = client.store.chats.all();
-      console.log(`[Baileys] Found ${storeChats.length} chats from store for company ${companyId}`);
+      const chats = Array.from(client.chats.values());
+      console.log(`[Baileys] Found ${chats.length} chats for company ${companyId}`);
       
-      // Also merge any manually tracked chats
-      const manualChats = Array.from(client.chats.values());
-      
-      // Create a merged map to avoid duplicates
-      const chatMap = new Map<string, any>();
-      
-      // Add store chats first (these come from history sync)
-      for (const chat of storeChats) {
-        chatMap.set(chat.id, {
-          id: { _serialized: chat.id },
-          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-          isGroup: isJidGroup(chat.id),
-          timestamp: chat.conversationTimestamp || 0,
-          unreadCount: chat.unreadCount || 0,
-          archived: chat.archived || false,
-          pinned: chat.pinned || 0,
-          lastMessage: null,
-        });
-      }
-      
-      // Override with manual chats (these may have additional data)
-      for (const chat of manualChats) {
-        chatMap.set(chat.id, {
-          id: { _serialized: chat.id },
-          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-          isGroup: isJidGroup(chat.id),
-          timestamp: chat.conversationTimestamp || 0,
-          unreadCount: chat.unreadCount || 0,
-          archived: chat.archived || false,
-          pinned: chat.pinned || 0,
-          lastMessage: chat.lastMessage || null,
-        });
-      }
-      
-      const allChats = Array.from(chatMap.values());
-      console.log(`[Baileys] Total merged chats: ${allChats.length} for company ${companyId}`);
-      
-      return allChats;
+      return chats.map((chat) => ({
+        id: { _serialized: chat.id },
+        name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
+        isGroup: isJidGroup(chat.id),
+        timestamp: chat.conversationTimestamp || 0,
+        unreadCount: chat.unreadCount || 0,
+        archived: chat.archived || false,
+        pinned: chat.pinned || 0,
+        lastMessage: chat.lastMessage || null,
+      }));
     } catch (error) {
       console.error(`[Baileys] Error getting chats for company ${companyId}:`, error);
       return [];
@@ -957,15 +984,6 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
 
     try {
-      // Use store to get messages (populated by history sync)
-      const storeMessages = await client.store.loadMessages(normalizedId, limit);
-      
-      if (storeMessages && storeMessages.length > 0) {
-        console.log(`[Baileys] Found ${storeMessages.length} messages from store for chat ${normalizedId}`);
-        return storeMessages.map(msg => this.convertBaileysMessage(msg));
-      }
-      
-      // Fallback to manual message store
       const messages = Array.from(client.messageStore.values())
         .filter(msg => msg.key.remoteJid === normalizedId)
         .slice(-limit)
@@ -1206,6 +1224,35 @@ class WhatsAppBaileysService extends EventEmitter {
     } catch (error) {
       console.error(`[Baileys] Error marking chat as read for company ${companyId}:`, error);
       throw error;
+    }
+  }
+
+  async sendSeen(companyId: string, chatId: string): Promise<void> {
+    return this.markChatAsRead(companyId, chatId);
+  }
+
+  async getContactPresence(companyId: string, contactId: string): Promise<{ isOnline: boolean; lastSeen: number | null }> {
+    if (!this.isReady(companyId)) {
+      throw new Error('WhatsApp client is not ready');
+    }
+
+    const normalizedId = this.normalizeWhatsAppId(contactId);
+    const client = this.clients.get(companyId)!;
+
+    try {
+      await client.sock.presenceSubscribe(normalizedId);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      return {
+        isOnline: false,
+        lastSeen: null,
+      };
+    } catch (error) {
+      console.error(`[Baileys] Error getting presence for ${contactId}:`, error);
+      return {
+        isOnline: false,
+        lastSeen: null,
+      };
     }
   }
 
