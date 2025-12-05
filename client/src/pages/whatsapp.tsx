@@ -1153,20 +1153,6 @@ export default function WhatsAppPage() {
   const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
   const hasQRCode = !!status?.qrCode;
-  
-  // SIMPLIFIED DETERMINISTIC LOGIC:
-  // 1. Loading → Show loading spinner (no assumptions)
-  // 2. Has QR code → Show QR page
-  // 3. Authenticated/Ready → Show chats
-  // 4. Not authenticated, no QR, no saved session → Show connect button
-  // 5. Not authenticated, no QR, has saved session → Show main chat view with reconnecting banner
-  // NOTE: We also check hasSavedSessionFromChats from the chats endpoint error for redundancy
-  const hasAnySavedSession = hasSavedSession || hasSavedSessionFromChats;
-  const showLoadingState = statusLoading && !hasAnySavedSession;
-  const showQRPage = !statusLoading && hasQRCode && !qrWasScanned;
-  const showConnectPage = !statusLoading && !isAuthenticated && !hasQRCode && !hasAnySavedSession && !chatsLoading;
-  // When we have a saved session, show the main chat view with a subtle banner instead of a blocking page
-  const showReconnectingBanner = !isAuthenticated && hasAnySavedSession && !hasQRCode;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -1278,6 +1264,19 @@ export default function WhatsAppPage() {
   // Combine hasSavedSession from status query and chats error
   const hasSavedSessionFromChats = chatsErrorData?.hasSavedSession ?? false;
   const isReconnecting = chatsErrorData?.reconnecting ?? false;
+  
+  // SIMPLIFIED DETERMINISTIC LOGIC:
+  // 1. Loading → Show loading spinner (no assumptions)
+  // 2. Has QR code → Show QR page
+  // 3. Authenticated/Ready → Show chats
+  // 4. Not authenticated, no QR, no saved session → Show connect button
+  // 5. Not authenticated, no QR, has saved session → Show main chat view with reconnecting banner
+  const hasAnySavedSession = hasSavedSession || hasSavedSessionFromChats;
+  const showLoadingState = statusLoading && !hasAnySavedSession;
+  const showQRPage = !statusLoading && hasQRCode && !qrWasScanned;
+  const showConnectPage = !statusLoading && !isAuthenticated && !hasQRCode && !hasAnySavedSession && !chatsLoading;
+  // When we have a saved session, show the main chat view with a subtle banner instead of a blocking page
+  const showReconnectingBanner = !isAuthenticated && hasAnySavedSession && !hasQRCode;
   
   const chats = chatsData?.chats || [];
 
