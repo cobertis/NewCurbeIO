@@ -19,7 +19,6 @@ import {
   Clock,
   RefreshCw,
   LogOut,
-  X,
 } from "lucide-react";
 
 interface WhatsAppConnectionStatus {
@@ -318,20 +317,6 @@ export default function WhatsAppPage() {
                     data-testid="img-qr-code"
                   />
                 </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => disconnectMutation.mutate()}
-                  disabled={disconnectMutation.isPending}
-                  className="text-muted-foreground hover:text-foreground"
-                  data-testid="button-whatsapp-cancel"
-                >
-                  {disconnectMutation.isPending ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <X className="h-4 w-4 mr-2" />
-                  )}
-                  Cancel
-                </Button>
               </div>
               <div className="text-center md:text-left max-w-sm">
                 <h2 className="text-foreground text-2xl font-light mb-6">
@@ -366,17 +351,9 @@ export default function WhatsAppPage() {
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <RefreshCw className="h-16 w-16 text-muted-foreground animate-spin mb-6" />
           <h1 className="text-foreground text-2xl font-light mb-2">Connecting to WhatsApp</h1>
-          <p className="text-muted-foreground text-center mb-8">
+          <p className="text-muted-foreground text-center">
             Please wait while we generate the QR code...
           </p>
-          <Button
-            variant="outline"
-            onClick={() => disconnectMutation.mutate()}
-            disabled={disconnectMutation.isPending}
-            data-testid="button-whatsapp-cancel"
-          >
-            Cancel
-          </Button>
           {status?.lastError && (
             <p className="text-destructive text-sm mt-4">{status.lastError}</p>
           )}
