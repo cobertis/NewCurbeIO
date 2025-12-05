@@ -87,7 +87,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappChats } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -1188,6 +1188,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const result = await whatsappService.sendMedia(companyId, remoteJid, url, caption, type || 'image');
       res.json({ success: true, message: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get presence/online status for a chat (stub - presence not always available)
+  app.get('/api/whatsapp/chats/:chatId/presence', requireAuth, async (req, res) => {
+    res.json({ success: true, presence: { status: 'unavailable' } });
+  });
+
+  // Mark chat as read
+  app.post('/api/whatsapp/chats/:chatId/read', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const { chatId } = req.params;
+      await whatsappService.markAsRead(companyId, chatId, []);
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get contact avatar
+  app.get('/api/whatsapp/contacts/:contactId/avatar', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const { contactId } = req.params;
+      
+      // contactId could be UUID or JID - resolve it
+      let jid = contactId;
+      if (contactId.includes('-') && !contactId.includes('@')) {
+        const chat = await db.select().from(whatsappChats)
+          .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.id, contactId)))
+          .limit(1);
+        if (chat.length > 0 && chat[0].chatId) {
+          jid = chat[0].chatId;
+        }
+      }
+      
+      const url = await whatsappService.getProfilePicture(companyId, jid);
+      res.json({ success: true, url });
     } catch (error) {
       next(error);
     }

@@ -510,7 +510,16 @@ class WhatsAppService extends EventEmitter {
     return result;
   }
   
-  async sendMedia(companyId: string, jid: string, mediaBuffer: Buffer, mimetype: string, caption?: string): Promise<WAMessage | null> {
+  // Alias for sendMessage
+  async sendText(companyId: string, jid: string, text: string): Promise<WAMessage | null> {
+    return this.sendMessage(companyId, jid, text);
+  }
+  
+  async logout(companyId: string): Promise<void> {
+    return this.disconnect(companyId);
+  }
+  
+  async sendMedia(companyId: string, jid: string, urlOrBuffer: string | Buffer, caption?: string, type?: string): Promise<WAMessage | null> {
     const session = this.sessions.get(companyId);
     if (!session?.sock || !session.status.isReady) {
       throw new Error('WhatsApp not connected');
@@ -519,14 +528,30 @@ class WhatsAppService extends EventEmitter {
     const normalizedJid = jidNormalizedUser(jid);
     
     let messageContent: any;
-    if (mimetype.startsWith('image/')) {
-      messageContent = { image: mediaBuffer, caption };
-    } else if (mimetype.startsWith('video/')) {
-      messageContent = { video: mediaBuffer, caption };
-    } else if (mimetype.startsWith('audio/')) {
-      messageContent = { audio: mediaBuffer, mimetype };
+    const mediaType = type || 'image';
+    
+    if (typeof urlOrBuffer === 'string') {
+      // URL-based media
+      if (mediaType === 'image') {
+        messageContent = { image: { url: urlOrBuffer }, caption };
+      } else if (mediaType === 'video') {
+        messageContent = { video: { url: urlOrBuffer }, caption };
+      } else if (mediaType === 'audio') {
+        messageContent = { audio: { url: urlOrBuffer } };
+      } else {
+        messageContent = { document: { url: urlOrBuffer }, caption, fileName: 'file' };
+      }
     } else {
-      messageContent = { document: mediaBuffer, mimetype, fileName: 'file' };
+      // Buffer-based media
+      if (mediaType === 'image') {
+        messageContent = { image: urlOrBuffer, caption };
+      } else if (mediaType === 'video') {
+        messageContent = { video: urlOrBuffer, caption };
+      } else if (mediaType === 'audio') {
+        messageContent = { audio: urlOrBuffer };
+      } else {
+        messageContent = { document: urlOrBuffer, fileName: 'file' };
+      }
     }
     
     const result = await session.sock.sendMessage(normalizedJid, messageContent);
@@ -547,20 +572,70 @@ class WhatsAppService extends EventEmitter {
       ))
       .orderBy(desc(whatsappChats.lastMessageTimestamp));
     
-    return chats;
+    // Map to frontend expected format
+    return chats.map(chat => ({
+      id: chat.id,
+      chatId: chat.chatId,
+      name: chat.name || chat.pushName || chat.chatId?.split('@')[0] || 'Unknown',
+      isGroup: chat.chatType === 'group',
+      timestamp: chat.lastMessageTimestamp || 0,
+      unreadCount: chat.unreadCount || 0,
+      isPinned: chat.isPinned || false,
+      isArchived: chat.isArchived || false,
+      isMuted: chat.muteExpiration ? new Date(chat.muteExpiration) > new Date() : false,
+      profilePicUrl: chat.profilePicUrl || null,
+      lastMessage: chat.lastMessageContent ? {
+        body: chat.lastMessageContent,
+        timestamp: chat.lastMessageTimestamp || 0,
+        from: chat.lastMessageFromMe ? 'me' : chat.chatId,
+        type: 'chat',
+        hasMedia: false,
+      } : undefined,
+    }));
   }
   
-  async getMessages(companyId: string, chatId: string, limit: number = 50): Promise<any[]> {
+  async getMessages(companyId: string, chatIdOrUuid: string, limit: number = 50): Promise<any[]> {
+    // chatIdOrUuid could be either the internal UUID or the WhatsApp JID
+    // First, try to find the chat by UUID to get the actual chatId (JID)
+    let actualChatId = chatIdOrUuid;
+    
+    // If it looks like a UUID (contains hyphens and no @), look up the chat
+    if (chatIdOrUuid.includes('-') && !chatIdOrUuid.includes('@')) {
+      const chat = await db.select()
+        .from(whatsappChats)
+        .where(and(
+          eq(whatsappChats.companyId, companyId),
+          eq(whatsappChats.id, chatIdOrUuid)
+        ))
+        .limit(1);
+      
+      if (chat.length > 0 && chat[0].chatId) {
+        actualChatId = chat[0].chatId;
+      }
+    }
+    
     const messages = await db.select()
       .from(whatsappMessages)
       .where(and(
         eq(whatsappMessages.companyId, companyId),
-        eq(whatsappMessages.chatId, chatId)
+        eq(whatsappMessages.chatId, actualChatId)
       ))
       .orderBy(desc(whatsappMessages.timestamp))
       .limit(limit);
     
-    return messages.reverse();
+    // Map to frontend expected format
+    return messages.reverse().map(msg => ({
+      id: msg.messageId,
+      body: msg.content || '',
+      from: msg.senderJid || '',
+      to: msg.chatId,
+      timestamp: msg.timestamp || 0,
+      isFromMe: msg.isFromMe || false,
+      hasMedia: !!msg.mediaType,
+      type: msg.mediaType || 'chat',
+      mediaUrl: msg.mediaUrl || undefined,
+      ack: 4, // Assume read for history
+    }));
   }
   
   async getProfilePicture(companyId: string, jid: string): Promise<string | null> {
