@@ -1195,9 +1195,9 @@ class WhatsAppBaileysService extends EventEmitter {
 
     try {
       const messages = Array.from(client.messageStore.values())
-        .filter(msg => msg.key.remoteJid === normalizedId)
+        .filter(msg => msg.key?.remoteJid === normalizedId)
         .slice(-limit)
-        .map(msg => this.convertBaileysMessage(msg));
+        .map(msg => this.convertBaileysMessage(msg as WAMessage));
       
       return messages;
     } catch (error) {
@@ -1424,11 +1424,11 @@ class WhatsAppBaileysService extends EventEmitter {
 
     try {
       const messages = Array.from(client.messageStore.values())
-        .filter(msg => msg.key.remoteJid === normalizedId && !msg.key.fromMe)
+        .filter(msg => msg.key?.remoteJid === normalizedId && !msg.key?.fromMe)
         .slice(-10);
 
       if (messages.length > 0) {
-        await client.sock.readMessages(messages.map(msg => msg.key));
+        await client.sock.readMessages(messages.map(msg => msg.key as proto.IMessageKey));
       }
       console.log(`[Baileys] Chat marked as read for company ${companyId}: ${normalizedId}`);
     } catch (error) {
@@ -1479,10 +1479,10 @@ class WhatsAppBaileysService extends EventEmitter {
         throw new Error('Message not found');
       }
 
-      await client.sock.sendMessage(message.key.remoteJid!, {
+      await client.sock.sendMessage(message.key?.remoteJid!, {
         react: {
           text: emoji,
-          key: message.key,
+          key: message.key as proto.IMessageKey,
         },
       });
 
@@ -1509,17 +1509,17 @@ class WhatsAppBaileysService extends EventEmitter {
         throw new Error('Message not found');
       }
 
-      const result = await client.sock.sendMessage(message.key.remoteJid!, {
+      const result = await client.sock.sendMessage(message.key?.remoteJid!, {
         text: content,
       }, {
-        quoted: message,
+        quoted: message as WAMessage,
       });
 
       console.log(`[Baileys] Reply sent for company ${companyId} to message ${messageId}`);
       return {
         id: { _serialized: result?.key.id || '' },
         from: client.sock.user?.id || '',
-        to: message.key.remoteJid,
+        to: message.key?.remoteJid || null,
         body: content,
         timestamp: Date.now() / 1000,
         fromMe: true,
@@ -1539,7 +1539,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
     const client = this.clients.get(companyId);
     const message = client?.messageStore.get(messageId);
-    const actualChatId = chatId || message?.key.remoteJid || 'unknown';
+    const actualChatId = chatId || message?.key?.remoteJid || 'unknown';
 
     if (whatsappMediaStorage.isReady()) {
       const storagePath = this.buildMediaStoragePath(companyId, actualChatId, messageId);
@@ -1564,7 +1564,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
     try {
       const buffer = await downloadMediaMessage(
-        message,
+        message as WAMessage,
         'buffer',
         {},
         {
@@ -1794,7 +1794,8 @@ class WhatsAppBaileysService extends EventEmitter {
 
     try {
       const cleanNumber = phoneNumber.replace(/\D/g, '');
-      const [result] = await client.sock.onWhatsApp(cleanNumber);
+      const results = await client.sock.onWhatsApp(cleanNumber);
+      const result = results?.[0];
       return result?.exists || false;
     } catch (error) {
       console.error(`[Baileys] Error checking user registration:`, error);
@@ -1811,7 +1812,8 @@ class WhatsAppBaileysService extends EventEmitter {
 
     try {
       const cleanNumber = phoneNumber.replace(/\D/g, '');
-      const [result] = await client.sock.onWhatsApp(cleanNumber);
+      const results = await client.sock.onWhatsApp(cleanNumber);
+      const result = results?.[0];
       if (result?.exists) {
         return {
           _serialized: result.jid,
@@ -1845,7 +1847,8 @@ class WhatsAppBaileysService extends EventEmitter {
       ].filter(Boolean) as string[];
 
       for (const numberFormat of formatsToTry) {
-        const [result] = await client.sock.onWhatsApp(numberFormat);
+        const results = await client.sock.onWhatsApp(numberFormat);
+        const result = results?.[0];
         if (result?.exists) {
           return {
             isValid: true,
@@ -1897,7 +1900,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
       let profilePicUrl: string | null = null;
       try {
-        profilePicUrl = await client.sock.profilePictureUrl(wid, 'image');
+        profilePicUrl = await client.sock.profilePictureUrl(wid, 'image') || null;
       } catch {
       }
 
@@ -2376,7 +2379,7 @@ class WhatsAppBaileysService extends EventEmitter {
         throw new Error('Message not found');
       }
 
-      const result = await client.sock.sendMessage(normalizedChatId, { forward: message });
+      const result = await client.sock.sendMessage(normalizedChatId, { forward: message as WAMessage });
       console.log(`[Baileys] Message forwarded to ${chatId}`);
       return result;
     } catch (error) {
@@ -2399,11 +2402,11 @@ class WhatsAppBaileysService extends EventEmitter {
       }
 
       if (forEveryone) {
-        await client.sock.sendMessage(message.key.remoteJid!, { delete: message.key });
+        await client.sock.sendMessage(message.key?.remoteJid!, { delete: message.key as proto.IMessageKey });
       } else {
         await client.sock.chatModify(
-          { clear: { messages: [{ id: message.key.id!, fromMe: message.key.fromMe || false, timestamp: Number(message.messageTimestamp) }] }, lastMessages: [] },
-          message.key.remoteJid!
+          { clear: { messages: [{ id: message.key?.id!, fromMe: message.key?.fromMe || false, timestamp: Number(message.messageTimestamp) }] }, lastMessages: [] },
+          message.key?.remoteJid!
         );
       }
       
@@ -2429,8 +2432,8 @@ class WhatsAppBaileysService extends EventEmitter {
       }
 
       await client.sock.chatModify(
-        { star: { messages: [{ id: message.key.id!, fromMe: message.key.fromMe || false }], star: true }, lastMessages: [] },
-        message.key.remoteJid!
+        { star: { messages: [{ id: message.key?.id!, fromMe: message.key?.fromMe || false }], star: true }, lastMessages: [] },
+        message.key?.remoteJid!
       );
       console.log(`[Baileys] Message starred: ${messageId}`);
     } catch (error) {
@@ -2453,8 +2456,8 @@ class WhatsAppBaileysService extends EventEmitter {
       }
 
       await client.sock.chatModify(
-        { star: { messages: [{ id: message.key.id!, fromMe: message.key.fromMe || false }], star: false }, lastMessages: [] },
-        message.key.remoteJid!
+        { star: { messages: [{ id: message.key?.id!, fromMe: message.key?.fromMe || false }], star: false }, lastMessages: [] },
+        message.key?.remoteJid!
       );
       console.log(`[Baileys] Message unstarred: ${messageId}`);
     } catch (error) {
@@ -2532,7 +2535,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
       let profilePicUrl: string | null = null;
       try {
-        profilePicUrl = await client.sock.profilePictureUrl(normalizedId, 'image');
+        profilePicUrl = await client.sock.profilePictureUrl(normalizedId, 'image') || null;
       } catch {
       }
 
@@ -2577,7 +2580,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
       let profilePic: string | null = null;
       try {
-        profilePic = await client.sock.profilePictureUrl(normalizedId, 'image');
+        profilePic = await client.sock.profilePictureUrl(normalizedId, 'image') || null;
       } catch {
       }
 
@@ -2619,7 +2622,7 @@ class WhatsAppBaileysService extends EventEmitter {
       throw new Error('Message not found');
     }
 
-    return this.convertBaileysMessage(message);
+    return this.convertBaileysMessage(message as WAMessage);
   }
 
   onMessageHandler(companyId: string, handlerId: string, handler: (message: any) => void): void {
