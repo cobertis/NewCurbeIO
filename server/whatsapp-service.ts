@@ -258,9 +258,49 @@ class WhatsAppService extends EventEmitter {
         }
       });
       
-      // CRITICAL: Listen for chats.upsert to capture chat list
+      // CRITICAL: Listen for chats.set (initial full list of chats during sync)
+      sock.ev.on('chats.set', async ({ chats, isLatest }) => {
+        console.log(`[WhatsApp] chats.set received: ${chats.length} chats for company ${companyId}, isLatest: ${isLatest}`);
+        
+        for (const chat of chats) {
+          try {
+            const chatId = chat.id;
+            const isGroup = isJidGroup(chatId);
+            const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : Math.floor(Date.now() / 1000);
+            
+            await db.insert(whatsappChats)
+              .values({
+                companyId,
+                chatId,
+                name: chat.name || null,
+                chatType: isGroup ? 'group' : 'individual',
+                unreadCount: chat.unreadCount || 0,
+                lastMessageTimestamp: timestamp,
+                isArchived: chat.archived || false,
+                isPinned: chat.pinned ? true : false,
+                muteExpiration: (chat as any).muteExpiration || null,
+              })
+              .onConflictDoUpdate({
+                target: [whatsappChats.companyId, whatsappChats.chatId],
+                set: {
+                  name: chat.name || sql`${whatsappChats.name}`,
+                  unreadCount: chat.unreadCount || 0,
+                  lastMessageTimestamp: timestamp,
+                  isArchived: chat.archived || false,
+                  isPinned: chat.pinned ? true : false,
+                  muteExpiration: (chat as any).muteExpiration || null,
+                  updatedAt: new Date(),
+                },
+              });
+          } catch (error) {
+            console.error(`[WhatsApp] Error saving chat from chats.set ${chat.id}:`, error);
+          }
+        }
+      });
+      
+      // Listen for chats.upsert (individual chat updates)
       sock.ev.on('chats.upsert', async (chats) => {
-        console.log(`[WhatsApp] Received ${chats.length} chats for company ${companyId}`);
+        console.log(`[WhatsApp] chats.upsert received: ${chats.length} chats for company ${companyId}`);
         
         for (const chat of chats) {
           try {
