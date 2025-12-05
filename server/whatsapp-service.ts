@@ -258,47 +258,7 @@ class WhatsAppService extends EventEmitter {
         }
       });
       
-      // CRITICAL: Listen for chats.set (initial full list of chats during sync)
-      sock.ev.on('chats.set', async ({ chats, isLatest }) => {
-        console.log(`[WhatsApp] chats.set received: ${chats.length} chats for company ${companyId}, isLatest: ${isLatest}`);
-        
-        for (const chat of chats) {
-          try {
-            const chatId = chat.id;
-            const isGroup = isJidGroup(chatId);
-            const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : Math.floor(Date.now() / 1000);
-            
-            await db.insert(whatsappChats)
-              .values({
-                companyId,
-                chatId,
-                name: chat.name || null,
-                chatType: isGroup ? 'group' : 'individual',
-                unreadCount: chat.unreadCount || 0,
-                lastMessageTimestamp: timestamp,
-                isArchived: chat.archived || false,
-                isPinned: chat.pinned ? true : false,
-                muteExpiration: (chat as any).muteExpiration || null,
-              })
-              .onConflictDoUpdate({
-                target: [whatsappChats.companyId, whatsappChats.chatId],
-                set: {
-                  name: chat.name || sql`${whatsappChats.name}`,
-                  unreadCount: chat.unreadCount || 0,
-                  lastMessageTimestamp: timestamp,
-                  isArchived: chat.archived || false,
-                  isPinned: chat.pinned ? true : false,
-                  muteExpiration: (chat as any).muteExpiration || null,
-                  updatedAt: new Date(),
-                },
-              });
-          } catch (error) {
-            console.error(`[WhatsApp] Error saving chat from chats.set ${chat.id}:`, error);
-          }
-        }
-      });
-      
-      // Listen for chats.upsert (individual chat updates)
+      // Listen for chats.upsert (chat updates with conversation activity)
       sock.ev.on('chats.upsert', async (chats) => {
         console.log(`[WhatsApp] chats.upsert received: ${chats.length} chats for company ${companyId}`);
         
@@ -362,39 +322,22 @@ class WhatsAppService extends EventEmitter {
         }
       });
       
-      // Listen for contacts.upsert - CREATE CHATS from contacts (since chats.set doesn't fire in v6.x)
+      // Listen for contacts.upsert - ONLY update names for EXISTING chats (don't create new ones)
       sock.ev.on('contacts.upsert', async (contacts) => {
-        console.log(`[WhatsApp] contacts.upsert: ${contacts.length} contacts for company ${companyId}`);
-        
         for (const contact of contacts) {
           try {
-            const chatId = contact.id;
-            // Skip status broadcast and other non-chat JIDs
-            if (!chatId || chatId === 'status@broadcast' || !chatId.includes('@')) continue;
-            
-            const name = contact.name || contact.notify || (contact as any).verifiedName || null;
-            const isGroup = isJidGroup(chatId);
-            
-            // Insert or update chat from contact
-            await db.insert(whatsappChats)
-              .values({
-                companyId,
-                chatId,
-                name,
-                pushName: contact.notify || null,
-                chatType: isGroup ? 'group' : 'individual',
-                lastMessageTimestamp: Math.floor(Date.now() / 1000),
-              })
-              .onConflictDoUpdate({
-                target: [whatsappChats.companyId, whatsappChats.chatId],
-                set: {
-                  name: name || sql`${whatsappChats.name}`,
-                  pushName: contact.notify || sql`${whatsappChats.pushName}`,
-                  updatedAt: new Date(),
-                },
-              });
+            const name = contact.name || contact.notify || (contact as any).verifiedName;
+            if (name && contact.id) {
+              // Only update existing chats, don't create new ones
+              await db.update(whatsappChats)
+                .set({ name, pushName: contact.notify || null, updatedAt: new Date() })
+                .where(and(
+                  eq(whatsappChats.companyId, companyId),
+                  eq(whatsappChats.chatId, contact.id)
+                ));
+            }
           } catch (error) {
-            console.error(`[WhatsApp] Error creating chat from contact:`, error);
+            // Silently ignore - chat may not exist yet
           }
         }
       });
@@ -625,9 +568,13 @@ class WhatsAppService extends EventEmitter {
   }
   
   async getChats(companyId: string): Promise<any[]> {
+    // ONLY return chats with actual message activity (not empty contacts)
     return db.select()
       .from(whatsappChats)
-      .where(eq(whatsappChats.companyId, companyId))
+      .where(and(
+        eq(whatsappChats.companyId, companyId),
+        sql`${whatsappChats.lastMessageTimestamp} IS NOT NULL AND ${whatsappChats.lastMessageTimestamp} > 0`
+      ))
       .orderBy(desc(whatsappChats.lastMessageTimestamp));
   }
   
