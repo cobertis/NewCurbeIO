@@ -26387,6 +26387,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ success: false, error: 'Failed to get status' });
     }
   });
+
+  // GET /api/whatsapp/metrics - Get session metrics (uptime, message counts, etc.)
+  app.get("/api/whatsapp/metrics", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user?.companyId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized: No company ID' });
+      }
+
+      const companyId = user.companyId;
+      const metrics = whatsappService.getSessionMetrics(companyId);
+      const status = whatsappService.getSessionStatus(companyId);
+      
+      return res.json({ 
+        success: true, 
+        metrics: {
+          ...metrics,
+          status: status.status,
+          isReady: status.isReady,
+        }
+      });
+    } catch (error) {
+      console.error('[WhatsApp] Error getting metrics:', error);
+      return res.status(500).json({ success: false, error: 'Failed to get metrics' });
+    }
+  });
   // POST /api/whatsapp/init - Manually initialize WhatsApp client
   app.post("/api/whatsapp/init", requireActiveCompany, async (req: Request, res: Response) => {
     try {

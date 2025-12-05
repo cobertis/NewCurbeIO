@@ -50,6 +50,15 @@ interface StoredContact {
   notify?: string;
 }
 
+interface SessionMetrics {
+  connectedAt: Date | null;
+  lastActivityAt: Date | null;
+  messagesSent: number;
+  messagesReceived: number;
+  reconnectCount: number;
+  lastDisconnectReason: string | null;
+}
+
 interface CompanyBaileysClient {
   sock: WASocket;
   chats: Map<string, StoredChat>;
@@ -58,6 +67,7 @@ interface CompanyBaileysClient {
   messageHandlers: Map<string, (message: any) => void>;
   messageStore: Map<string, proto.IWebMessageInfo>;
   saveCreds: () => Promise<void>;
+  metrics: SessionMetrics;
 }
 
 class WhatsAppBaileysService extends EventEmitter {
@@ -67,6 +77,8 @@ class WhatsAppBaileysService extends EventEmitter {
   private loggedOutCompanies: Set<string> = new Set();
   private messageReactions: Map<string, Array<{ emoji: string; senderId: string }>> = new Map();
   private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
+  // Persistent metrics storage - survives client reconnections
+  private sessionMetrics: Map<string, SessionMetrics> = new Map();
   private readonly AVATARS_DIR = path.join(process.cwd(), 'server', 'avatars');
   private readonly AUTH_DIR = '.baileys_auth';
   private initializationLock: Map<string, Promise<CompanyBaileysClient>> = new Map();
@@ -401,6 +413,25 @@ class WhatsAppBaileysService extends EventEmitter {
       status: 'disconnected',
     };
 
+    // Get or create persistent metrics for this company
+    let persistentMetrics = this.sessionMetrics.get(companyId);
+    const isReconnect = !!persistentMetrics;
+    
+    if (!persistentMetrics) {
+      persistentMetrics = {
+        connectedAt: null,
+        lastActivityAt: null,
+        messagesSent: 0,
+        messagesReceived: 0,
+        reconnectCount: 0,
+        lastDisconnectReason: null,
+      };
+      this.sessionMetrics.set(companyId, persistentMetrics);
+    } else if (isReconnect) {
+      // Increment reconnect count on actual reconnections
+      persistentMetrics.reconnectCount++;
+    }
+    
     const companyClient: CompanyBaileysClient = {
       sock,
       chats: new Map(),
@@ -409,6 +440,7 @@ class WhatsAppBaileysService extends EventEmitter {
       messageHandlers: new Map(),
       messageStore: new Map(),
       saveCreds,
+      metrics: persistentMetrics, // Reference the persistent metrics object
     };
 
     this.clients.set(companyId, companyClient);
@@ -453,6 +485,9 @@ class WhatsAppBaileysService extends EventEmitter {
         status.qrCode = null;
         status.qrReceivedAt = null;
         
+        // Update metrics
+        companyClient.metrics.lastDisconnectReason = String(statusCode);
+        
         this.emit('disconnected', { companyId, reason: String(statusCode) });
         this.emit('status_change', { companyId, status: { ...status } });
 
@@ -477,6 +512,10 @@ class WhatsAppBaileysService extends EventEmitter {
         status.status = 'ready';
         status.qrCode = null;
         status.qrReceivedAt = null;
+        
+        // Update metrics
+        companyClient.metrics.connectedAt = new Date();
+        companyClient.metrics.lastActivityAt = new Date();
         
         this.reconnectAttempts.delete(companyId);
         const timer = this.reconnectTimers.get(companyId);
@@ -625,6 +664,14 @@ class WhatsAppBaileysService extends EventEmitter {
 
         const chatId = msg.key.remoteJid;
         const messageTimestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
+        
+        // Update metrics
+        companyClient.metrics.lastActivityAt = new Date();
+        if (msg.key.fromMe) {
+          companyClient.metrics.messagesSent++;
+        } else {
+          companyClient.metrics.messagesReceived++;
+        }
         
         // Auto-create or update chat when receiving messages (workaround for Baileys v7 history sync issue)
         const existingChat = companyClient.chats.get(chatId);
@@ -911,10 +958,23 @@ class WhatsAppBaileysService extends EventEmitter {
     }
 
     const attempts = this.reconnectAttempts.get(companyId) || 0;
-    const delays = [2000, 4000, 8000, 16000, 30000];
-    const delay = delays[Math.min(attempts, delays.length - 1)];
+    const MAX_ATTEMPTS = 10;
+    
+    if (attempts >= MAX_ATTEMPTS) {
+      console.log(`[Baileys] Max reconnect attempts (${MAX_ATTEMPTS}) reached for company ${companyId}. Stopping auto-reconnect.`);
+      this.reconnectAttempts.delete(companyId);
+      return;
+    }
+    
+    // Exponential backoff with jitter: base * 2^attempt + random jitter
+    const baseDelay = 2000;
+    const maxDelay = 60000;
+    const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempts), maxDelay);
+    // Add random jitter (0-25% of delay) to prevent thundering herd
+    const jitter = Math.floor(Math.random() * exponentialDelay * 0.25);
+    const delay = exponentialDelay + jitter;
 
-    console.log(`[Baileys] Scheduling reconnect for company ${companyId} in ${delay}ms (attempt ${attempts + 1})`);
+    console.log(`[Baileys] Scheduling reconnect for company ${companyId} in ${delay}ms (attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
 
     const timer = setTimeout(async () => {
       try {
@@ -961,6 +1021,50 @@ class WhatsAppBaileysService extends EventEmitter {
   getQRCode(companyId: string): string | null {
     const companyClient = this.clients.get(companyId);
     return companyClient?.status.qrCode || null;
+  }
+
+  getSessionMetrics(companyId: string): SessionMetrics & { uptime: number | null } {
+    // First try to get metrics from persistent storage (survives reconnections)
+    const persistentMetrics = this.sessionMetrics.get(companyId);
+    
+    // Use default values if no metrics exist yet
+    const metrics = persistentMetrics || {
+      connectedAt: null,
+      lastActivityAt: null,
+      messagesSent: 0,
+      messagesReceived: 0,
+      reconnectCount: 0,
+      lastDisconnectReason: null,
+    };
+    
+    const uptime = metrics.connectedAt 
+      ? Math.floor((Date.now() - metrics.connectedAt.getTime()) / 1000)
+      : null;
+    
+    return {
+      ...metrics,
+      uptime,
+    };
+  }
+
+  getAllSessionsMetrics(): Map<string, SessionMetrics & { uptime: number | null; status: string }> {
+    const allMetrics = new Map<string, SessionMetrics & { uptime: number | null; status: string }>();
+    
+    // Include all persistent metrics (even for disconnected sessions)
+    for (const [companyId, metrics] of this.sessionMetrics) {
+      const client = this.clients.get(companyId);
+      const uptime = metrics.connectedAt 
+        ? Math.floor((Date.now() - metrics.connectedAt.getTime()) / 1000)
+        : null;
+      
+      allMetrics.set(companyId, {
+        ...metrics,
+        uptime,
+        status: client?.status.status || 'disconnected',
+      });
+    }
+    
+    return allMetrics;
   }
 
   getCachedReactions(companyId: string, messageId: string): Array<{ emoji: string; senderId: string }> {
