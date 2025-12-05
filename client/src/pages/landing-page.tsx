@@ -67,7 +67,7 @@ import {
   Quote,
   Home,
 } from "lucide-react";
-import { SiTiktok, SiWhatsapp } from "react-icons/si";
+import { SiTiktok } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -438,7 +438,6 @@ const SOCIAL_PLATFORMS = [
   { value: "linkedin", label: "LinkedIn", icon: Linkedin, color: "#0A66C2" },
   { value: "youtube", label: "YouTube", icon: Youtube, color: "#FF0000" },
   { value: "tiktok", label: "TikTok", icon: SiTiktok, color: "#000000" },
-  { value: "whatsapp", label: "WhatsApp", icon: SiWhatsapp, color: "#25D366" },
   { value: "email", label: "Email", icon: Mail, color: "#EA4335" },
 ];
 
@@ -746,7 +745,6 @@ function BlockPreview({
       const contactIcons = {
         phone: Phone,
         email: Mail,
-        whatsapp: MessageCircle,
       };
       const ContactIcon = contactIcons[block.content.type as keyof typeof contactIcons] || Phone;
       return (
@@ -754,8 +752,6 @@ function BlockPreview({
           href={`${
             block.content.type === "email"
               ? "mailto:"
-              : block.content.type === "whatsapp"
-              ? "https://wa.me/"
               : "tel:"
           }${block.content.value || ""}`}
           className="flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-medium text-sm shadow-sm hover:shadow-md transition-shadow"
@@ -2200,10 +2196,6 @@ export default function LandingPageBuilder() {
                               if (platform === "email") {
                                 // For email, create mailto link
                                 return url.startsWith("mailto:") ? url : `mailto:${url}`;
-                              } else if (platform === "whatsapp") {
-                                // For WhatsApp, create wa.me link - remove all non-numeric characters
-                                const phoneNumber = url.replace(/[^0-9]/g, "");
-                                return `https://wa.me/${phoneNumber}`;
                               }
                               
                               // For other platforms, use URL as-is
@@ -3383,7 +3375,6 @@ export default function LandingPageBuilder() {
                       <SelectContent>
                         <SelectItem value="email">Email</SelectItem>
                         <SelectItem value="phone">Phone</SelectItem>
-                        <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

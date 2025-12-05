@@ -209,9 +209,6 @@ export function PublicBlock({
         return `tel:${value.replace(/\s/g, "")}`;
       case "email":
         return `mailto:${value}`;
-      case "whatsapp":
-        const cleanPhone = value.replace(/\D/g, "");
-        return `https://wa.me/${cleanPhone}`;
       default:
         return "#";
     }
@@ -223,8 +220,6 @@ export function PublicBlock({
         return Phone;
       case "email":
         return Mail;
-      case "whatsapp":
-        return MessageCircle;
       default:
         return Phone;
     }

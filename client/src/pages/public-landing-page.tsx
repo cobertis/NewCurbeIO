@@ -8,7 +8,6 @@ import {
   SiLinkedin,
   SiYoutube,
   SiTiktok,
-  SiWhatsapp,
 } from "react-icons/si";
 import { 
   Phone, 
@@ -456,10 +455,6 @@ export default function PublicLandingPage() {
             if (platform === "email") {
               // For email, create mailto link
               return url.startsWith("mailto:") ? url : `mailto:${url}`;
-            } else if (platform === "whatsapp") {
-              // For WhatsApp, create wa.me link - remove all non-numeric characters
-              const phoneNumber = url.replace(/[^0-9]/g, "");
-              return `https://wa.me/${phoneNumber}`;
             }
             
             // For other platforms, use URL as-is
@@ -474,7 +469,6 @@ export default function PublicLandingPage() {
               linkedin: SiLinkedin,
               youtube: SiYoutube,
               tiktok: SiTiktok,
-              whatsapp: SiWhatsapp,
               email: Mail,
             };
             return (
