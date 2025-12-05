@@ -1297,12 +1297,49 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
 
     try {
-      const messages = Array.from(client.messageStore.values())
-        .filter(msg => msg.key?.remoteJid === normalizedId)
+      // First try to get messages from in-memory store
+      const memoryMessages = Array.from(client.messageStore.values())
+        .filter(msg => msg.key?.remoteJid === normalizedId);
+      
+      // If we have enough messages in memory, return them
+      if (memoryMessages.length >= limit) {
+        return memoryMessages
+          .slice(-limit)
+          .map(msg => this.convertBaileysMessage(msg as WAMessage));
+      }
+
+      // Otherwise, load messages from database
+      console.log(`[Baileys] Loading messages from DB for chat ${chatId} (memory: ${memoryMessages.length}, need: ${limit})`);
+      const dbMessages = await this.loadMessagesFromDb(companyId, normalizedId, limit);
+      
+      // Merge memory and DB messages, deduplicate by message ID
+      const allMessages = new Map<string, proto.IWebMessageInfo>();
+      
+      // Add DB messages first (older)
+      for (const msg of dbMessages) {
+        if (msg.key?.id) {
+          allMessages.set(msg.key.id, msg);
+        }
+      }
+      
+      // Add memory messages (newer, will overwrite if duplicates)
+      for (const msg of memoryMessages) {
+        if (msg.key?.id) {
+          allMessages.set(msg.key.id, msg);
+        }
+      }
+      
+      // Sort by timestamp and return limited results
+      const sortedMessages = Array.from(allMessages.values())
+        .sort((a, b) => {
+          const tsA = a.messageTimestamp ? Number(a.messageTimestamp) : 0;
+          const tsB = b.messageTimestamp ? Number(b.messageTimestamp) : 0;
+          return tsA - tsB;
+        })
         .slice(-limit)
         .map(msg => this.convertBaileysMessage(msg as WAMessage));
       
-      return messages;
+      return sortedMessages;
     } catch (error) {
       console.error(`[Baileys] Error getting messages for chat ${chatId}:`, error);
       return [];
