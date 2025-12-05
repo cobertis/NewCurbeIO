@@ -69,6 +69,33 @@ interface CompanyBaileysClient {
   messageStore: Map<string, proto.IWebMessageInfo>;
   saveCreds: () => Promise<void>;
   metrics: SessionMetrics;
+  selfJid?: string; // The authenticated user's JID (e.g., "13057240606@s.whatsapp.net")
+}
+
+// Helper to check if a JID should be ignored (system JIDs, broadcasts, self)
+function isSystemOrSelfJid(jid: string | undefined | null, selfJid?: string): boolean {
+  if (!jid) return true;
+  
+  // Ignore status broadcasts
+  if (jid === 'status@broadcast') return true;
+  
+  // Ignore server JIDs
+  if (jid.endsWith('@server') || jid.endsWith('@broadcast')) return true;
+  
+  // Ignore newsletter JIDs
+  if (jid.includes('@newsletter')) return true;
+  
+  // Ignore LID (linked device) JIDs - these are internal WhatsApp device identifiers
+  if (jid.endsWith('@lid')) return true;
+  
+  // Ignore self JID (chat with yourself)
+  if (selfJid) {
+    const normalizedSelf = jidNormalizedUser(selfJid);
+    const normalizedJid = jidNormalizedUser(jid);
+    if (normalizedSelf === normalizedJid) return true;
+  }
+  
+  return false;
 }
 
 class WhatsAppBaileysService extends EventEmitter {
@@ -406,6 +433,10 @@ class WhatsAppBaileysService extends EventEmitter {
       const chatId = msg.key?.remoteJid;
       const messageId = msg.key?.id;
       if (!chatId || !messageId) return;
+      
+      // Skip system JIDs and self chat
+      const client = this.clients.get(companyId);
+      if (isSystemOrSelfJid(chatId, client?.selfJid)) return;
 
       const fromMe = msg.key?.fromMe || false;
       const senderId = msg.key?.participant || msg.key?.remoteJid || null;
@@ -440,9 +471,17 @@ class WhatsAppBaileysService extends EventEmitter {
   private async persistMessagesInBatch(companyId: string, messages: proto.IWebMessageInfo[]): Promise<void> {
     if (!messages || messages.length === 0) return;
     
+    // Get selfJid for filtering
+    const client = this.clients.get(companyId);
+    const selfJid = client?.selfJid;
+    
     try {
       const values = messages
-        .filter(msg => msg.key?.remoteJid && msg.key?.id)
+        .filter(msg => {
+          const chatId = msg.key?.remoteJid;
+          // Filter out invalid, system, and self JIDs
+          return chatId && msg.key?.id && !isSystemOrSelfJid(chatId, selfJid);
+        })
         .map(msg => ({
           companyId,
           chatId: msg.key!.remoteJid!,
@@ -705,6 +744,12 @@ class WhatsAppBaileysService extends EventEmitter {
         status.qrCode = null;
         status.qrReceivedAt = null;
         
+        // Store the authenticated user's JID to filter self-messages
+        if (sock.user?.id) {
+          companyClient.selfJid = jidNormalizedUser(sock.user.id);
+          console.log(`[Baileys] Authenticated as: ${companyClient.selfJid} for company ${companyId}`);
+        }
+        
         // Clear ALL stale data to force fresh sync from phone
         // This prevents phantom chats/messages that were deleted on phone
         const chatCount = companyClient.chats.size;
@@ -790,8 +835,11 @@ class WhatsAppBaileysService extends EventEmitter {
     sock.ev.on('chats.set', (chats: any) => {
       if (!chats || !Array.isArray(chats)) return;
       console.log(`[Baileys] chats.set received: ${chats.length} chats for company ${companyId}`);
+      let storedCount = 0;
       for (const chat of chats) {
-        if (!chat.id) continue;
+        // Skip system JIDs and self chat
+        if (!chat.id || isSystemOrSelfJid(chat.id, companyClient.selfJid)) continue;
+        
         const storedChat: StoredChat = {
           id: chat.id,
           name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
@@ -803,14 +851,17 @@ class WhatsAppBaileysService extends EventEmitter {
         companyClient.chats.set(chat.id, storedChat);
         // Persist to database (fire and forget)
         this.persistChatToDb(companyId, storedChat).catch(() => {});
+        storedCount++;
       }
-      console.log(`[Baileys] Stored ${companyClient.chats.size} chats after chats.set for company ${companyId}`);
+      console.log(`[Baileys] Stored ${storedCount} valid chats (filtered ${chats.length - storedCount} system/self) after chats.set for company ${companyId}`);
     });
 
     sock.ev.on('chats.upsert', (chats: any[]) => {
       console.log(`[Baileys] chats.upsert received: ${chats.length} chats for company ${companyId}`);
       for (const chat of chats) {
-        if (!chat.id) continue;
+        // Skip system JIDs and self chat
+        if (!chat.id || isSystemOrSelfJid(chat.id, companyClient.selfJid)) continue;
+        
         const existing = companyClient.chats.get(chat.id);
         const storedChat: StoredChat = {
           id: chat.id,
@@ -828,7 +879,9 @@ class WhatsAppBaileysService extends EventEmitter {
 
     sock.ev.on('chats.update', (updates: any[]) => {
       for (const update of updates) {
-        if (!update.id) continue;
+        // Skip system JIDs and self chat
+        if (!update.id || isSystemOrSelfJid(update.id, companyClient.selfJid)) continue;
+        
         const existing = companyClient.chats.get(update.id);
         if (existing) {
           companyClient.chats.set(update.id, {
@@ -867,13 +920,26 @@ class WhatsAppBaileysService extends EventEmitter {
 
     sock.ev.on('messages.upsert', async ({ messages, type }: { messages: WAMessage[]; type: MessageUpsertType }) => {
       for (const msg of messages) {
-        if (!msg.key.remoteJid) continue;
+        const chatId = msg.key.remoteJid;
+        
+        // Skip invalid, system, or self JIDs
+        if (!chatId || isSystemOrSelfJid(chatId, companyClient.selfJid)) {
+          continue;
+        }
+
+        // Extract message content - skip if empty (protocol messages)
+        const messageContent = this.extractMessageContent(msg);
+        const hasMedia = this.hasMediaContent(msg);
+        
+        // Skip messages with no content and no media (likely protocol/system messages)
+        if (!messageContent && !hasMedia && !msg.message?.reactionMessage) {
+          continue;
+        }
 
         const messageId = msg.key.id || '';
         companyClient.messageStore.set(messageId, msg);
         this.pruneMessageStore(companyId);
 
-        const chatId = msg.key.remoteJid;
         const messageTimestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
         
         // Update metrics
@@ -911,10 +977,8 @@ class WhatsAppBaileysService extends EventEmitter {
         const senderId = msg.key.participant || msg.key.remoteJid;
         const pushname = msg.pushName || '';
         const senderNumber = senderId.replace('@s.whatsapp.net', '').replace('@g.us', '');
-        const messageContent = this.extractMessageContent(msg);
-        const hasMedia = this.hasMediaContent(msg);
 
-        console.log(`[Baileys] Message received for company ${companyId}: ${chatId}, ${messageContent.substring(0, 50)}`);
+        console.log(`[Baileys] Message received for company ${companyId}: ${chatId}, ${(messageContent || '').substring(0, 50)}`);
 
         this.emit('message', { companyId, message: msg });
 
@@ -1112,25 +1176,30 @@ class WhatsAppBaileysService extends EventEmitter {
     sock.ev.on('messaging-history.set', ({ chats, contacts, messages, isLatest, progress }) => {
       console.log(`[Baileys] History sync for company ${companyId}: ${chats?.length || 0} chats, ${contacts?.length || 0} contacts, ${messages?.length || 0} messages, isLatest: ${isLatest}, progress: ${progress}%`);
       
-      // Store chats
+      // Store chats (filtering system and self JIDs)
       if (chats && Array.isArray(chats)) {
+        let storedCount = 0;
         for (const chat of chats) {
-          if (chat.id) {
-            const storedChat: StoredChat = {
-              id: chat.id,
-              name: chat.name || undefined,
-              conversationTimestamp: chat.conversationTimestamp ? Number(chat.conversationTimestamp) : undefined,
-              unreadCount: chat.unreadCount || 0,
-              archived: chat.archived || false,
-              pinned: chat.pinned || undefined,
-              lastMessage: chat.lastMessage || undefined,
-            };
-            companyClient.chats.set(chat.id, storedChat);
-            // Persist to database immediately
-            this.persistChatToDb(companyId, storedChat).catch(() => {});
+          // Skip system JIDs and self chat
+          if (!chat.id || isSystemOrSelfJid(chat.id, companyClient.selfJid)) {
+            continue;
           }
+          
+          const storedChat: StoredChat = {
+            id: chat.id,
+            name: chat.name || undefined,
+            conversationTimestamp: chat.conversationTimestamp ? Number(chat.conversationTimestamp) : undefined,
+            unreadCount: chat.unreadCount || 0,
+            archived: chat.archived || false,
+            pinned: chat.pinned || undefined,
+            lastMessage: chat.lastMessage || undefined,
+          };
+          companyClient.chats.set(chat.id, storedChat);
+          // Persist to database immediately
+          this.persistChatToDb(companyId, storedChat).catch(() => {});
+          storedCount++;
         }
-        console.log(`[Baileys] Stored ${companyClient.chats.size} total chats for company ${companyId}`);
+        console.log(`[Baileys] Stored ${storedCount} valid chats (filtered ${chats.length - storedCount} system/self) for company ${companyId}`);
       }
       
       // Store contacts
