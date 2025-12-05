@@ -8,138 +8,25 @@ import makeWASocket, {
   isJidGroup,
   WAMessage,
   Browsers,
-  AuthenticationState,
-  SignalDataTypeMap,
-  initAuthCreds,
-  BufferJSON,
   makeCacheableSignalKeyStore,
+  WAMessageKey,
+  WAMessageContent,
 } from '@whiskeysockets/baileys';
+import { useBaileysAuthState } from 'baileysauth';
 import { Boom } from '@hapi/boom';
 import P from 'pino';
 import qrcode from 'qrcode';
 import { EventEmitter } from 'events';
 import { db } from './db';
 import { 
-  whatsappSessions, 
   whatsappChats, 
   whatsappMessages,
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import NodeCache from 'node-cache';
 
-// ============================================================
-// PostgreSQL Auth State Adapter - ATOMIC BLOB STORAGE
-// ============================================================
-// Stores entire auth state (creds + all keys) as a single atomic JSON blob
-// This matches Baileys' useSingleFileAuthState semantics for SQL
-
-interface AuthStateBlob {
-  creds: any;
-  keys: { [key: string]: any };
-}
-
-async function usePostgresAuthState(companyId: string): Promise<{
-  state: AuthenticationState;
-  saveCreds: () => Promise<void>;
-  removeCreds: () => Promise<void>;
-}> {
-  const AUTH_KEY = `${companyId}:auth_state`;
-  
-  // Load entire auth state blob atomically
-  const loadAuthBlob = async (): Promise<AuthStateBlob | null> => {
-    const result = await db.select()
-      .from(whatsappSessions)
-      .where(eq(whatsappSessions.id, AUTH_KEY))
-      .limit(1);
-    
-    if (result.length === 0) return null;
-    try {
-      return JSON.parse(result[0].data, BufferJSON.reviver);
-    } catch (e) {
-      console.error('[WhatsApp Auth] Failed to parse auth blob:', e);
-      return null;
-    }
-  };
-  
-  // Save entire auth state blob atomically
-  const saveAuthBlob = async (blob: AuthStateBlob): Promise<void> => {
-    const serialized = JSON.stringify(blob, BufferJSON.replacer);
-    await db.insert(whatsappSessions)
-      .values({
-        id: AUTH_KEY,
-        companyId,
-        data: serialized,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: whatsappSessions.id,
-        set: { data: serialized, updatedAt: new Date() },
-      });
-  };
-  
-  // Load or initialize auth state
-  let authBlob = await loadAuthBlob();
-  if (!authBlob) {
-    authBlob = {
-      creds: initAuthCreds(),
-      keys: {},
-    };
-    console.log('[WhatsApp Auth] Initialized new auth state for company', companyId);
-  } else {
-    console.log('[WhatsApp Auth] Loaded existing auth state for company', companyId);
-  }
-  
-  // Build the state object that Baileys expects
-  const state: AuthenticationState = {
-    creds: authBlob.creds,
-    keys: {
-      get: async (type: keyof SignalDataTypeMap, ids: string[]) => {
-        const data: { [id: string]: any } = {};
-        for (const id of ids) {
-          const key = `${type}-${id}`;
-          if (authBlob!.keys[key]) {
-            data[id] = authBlob!.keys[key];
-          }
-        }
-        return data;
-      },
-      set: async (data: any) => {
-        let changed = false;
-        for (const [type, entries] of Object.entries(data)) {
-          for (const [id, value] of Object.entries(entries as any)) {
-            const key = `${type}-${id}`;
-            if (value) {
-              authBlob!.keys[key] = value;
-              changed = true;
-            } else if (authBlob!.keys[key]) {
-              delete authBlob!.keys[key];
-              changed = true;
-            }
-          }
-        }
-        // Save entire blob atomically after any key changes
-        if (changed) {
-          await saveAuthBlob(authBlob!);
-        }
-      },
-    },
-  };
-  
-  return {
-    state,
-    saveCreds: async () => {
-      // Update creds in blob and save atomically
-      authBlob!.creds = state.creds;
-      await saveAuthBlob(authBlob!);
-      console.log('[WhatsApp Auth] Saved credentials for company', companyId);
-    },
-    removeCreds: async () => {
-      await db.delete(whatsappSessions)
-        .where(eq(whatsappSessions.companyId, companyId));
-      console.log('[WhatsApp Auth] Removed all auth data for company', companyId);
-    },
-  };
-}
+// Database URL for baileysauth
+const DATABASE_URL = process.env.DATABASE_URL || '';
 
 interface SessionStatus {
   isReady: boolean;
@@ -154,16 +41,16 @@ interface CompanySession {
   sock: WASocket;
   status: SessionStatus;
   saveCreds: () => Promise<void>;
-  removeCreds: () => Promise<void>;
+  wipeCreds: () => Promise<void>;
   selfJid: string | null;
   companyId: string;
 }
 
 class WhatsAppService extends EventEmitter {
   private sessions: Map<string, CompanySession> = new Map();
-  private initializingCompanies: Set<string> = new Set();
   private initMutex: Map<string, Promise<CompanySession>> = new Map();
   private logger = P({ level: 'warn' });
+  // Keep retry counter cache outside socket to prevent loops across restarts
   private msgRetryCounterCache = new NodeCache();
   
   async getClientForCompany(companyId: string): Promise<CompanySession | null> {
@@ -173,7 +60,24 @@ class WhatsAppService extends EventEmitter {
     return null;
   }
   
-  // Close existing socket gracefully before creating new one
+  async hasSavedSession(companyId: string): Promise<boolean> {
+    // Check if we have an active session first
+    const existing = this.sessions.get(companyId);
+    if (existing?.status.isAuthenticated) {
+      return true;
+    }
+    
+    // Check database for saved auth state using baileysauth
+    try {
+      const sessionId = `wa_${companyId}`;
+      const { state } = await useBaileysAuthState(DATABASE_URL, sessionId);
+      return !!(state.creds?.me?.id);
+    } catch (error) {
+      console.log(`[WhatsApp] Error checking saved session:`, error);
+      return false;
+    }
+  }
+  
   private async closeExistingSocket(companyId: string): Promise<void> {
     const existing = this.sessions.get(companyId);
     if (existing?.sock) {
@@ -185,7 +89,6 @@ class WhatsAppService extends EventEmitter {
         console.log(`[WhatsApp] Error closing socket:`, e);
       }
       this.sessions.delete(companyId);
-      // Wait for socket to fully close
       await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
@@ -203,7 +106,6 @@ class WhatsAppService extends EventEmitter {
       return existing;
     }
     
-    // Create mutex promise
     const initPromise = this.doInitializeClient(companyId);
     this.initMutex.set(companyId, initPromise);
     
@@ -215,52 +117,32 @@ class WhatsAppService extends EventEmitter {
   }
   
   private async doInitializeClient(companyId: string): Promise<CompanySession> {
-    // Close any existing socket first to prevent stream errors
     await this.closeExistingSocket(companyId);
-    
-    this.initializingCompanies.add(companyId);
     
     try {
       console.log(`[WhatsApp] Initializing client for company ${companyId}`);
       
-      const { state, saveCreds, removeCreds } = await usePostgresAuthState(companyId);
+      // Use baileysauth library for PostgreSQL auth state
+      // Session ID format: wa_<companyId>
+      const sessionId = `wa_${companyId}`;
+      const { saveCreds, wipeCreds, state } = await useBaileysAuthState(DATABASE_URL, sessionId);
       
       const hasSavedSession = !!(state.creds?.me?.id);
+      console.log(`[WhatsApp] Auth state loaded, hasSavedSession: ${hasSavedSession}`);
       
-      const { version } = await fetchLatestBaileysVersion();
-      console.log(`[WhatsApp] Using Baileys version ${version.join('.')}`);
+      const { version, isLatest } = await fetchLatestBaileysVersion();
+      console.log(`[WhatsApp] Using WA v${version.join('.')}, isLatest: ${isLatest}`);
       
       const sock = makeWASocket({
         version,
+        logger: this.logger,
         auth: {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(state.keys, this.logger),
         },
-        logger: this.logger,
-        browser: Browsers.macOS('Desktop'),
-        syncFullHistory: true,
-        markOnlineOnConnect: false,
+        msgRetryCounterCache: this.msgRetryCounterCache as any,
         generateHighQualityLinkPreview: true,
-        // CRITICAL: Enable history sync processing
-        shouldSyncHistoryMessage: () => true,
-        // Don't use tight timeouts
-        defaultQueryTimeoutMs: undefined,
-        // CRITICAL: Message retry counter cache for decryption
-        msgRetryCounterCache: this.msgRetryCounterCache,
-        // getMessage is required for retry logic when not using makeInMemoryStore
-        getMessage: async (key) => {
-          const msg = await db.select()
-            .from(whatsappMessages)
-            .where(and(
-              eq(whatsappMessages.companyId, companyId),
-              eq(whatsappMessages.messageId, key.id || '')
-            ))
-            .limit(1);
-          if (msg.length > 0 && msg[0].rawData) {
-            return (msg[0].rawData as any).message;
-          }
-          return proto.Message.fromObject({});
-        },
+        getMessage: this.getMessage.bind(this, companyId),
       });
       
       const session: CompanySession = {
@@ -274,368 +156,324 @@ class WhatsAppService extends EventEmitter {
           hasSavedSession,
         },
         saveCreds,
-        removeCreds,
+        wipeCreds,
         selfJid: state.creds?.me?.id || null,
         companyId,
       };
       
       this.sessions.set(companyId, session);
       
-      sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-          console.log(`[WhatsApp] QR code received for company ${companyId}`);
-          session.status.qrCode = qr;
-          session.status.qrDataUrl = await qrcode.toDataURL(qr);
-          session.status.status = 'qr_received';
-          this.emit('qr', { companyId, qr, qrDataUrl: session.status.qrDataUrl });
-        }
-        
-        if (connection === 'close') {
-          const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
-          console.log(`[WhatsApp] Connection closed for company ${companyId}, reason: ${reason}`);
+      // Use the official Baileys pattern with ev.process for batch event handling
+      sock.ev.process(async (events) => {
+        // Connection updates
+        if (events['connection.update']) {
+          const update = events['connection.update'];
+          const { connection, lastDisconnect, qr } = update;
           
-          // Mark session as not ready
-          session.status.isReady = false;
-          session.status.status = 'disconnected';
+          if (qr) {
+            console.log(`[WhatsApp] QR code received for company ${companyId}`);
+            session.status.qrCode = qr;
+            session.status.qrDataUrl = await qrcode.toDataURL(qr);
+            session.status.status = 'qr_received';
+            this.emit('qr', { companyId, qr, qrDataUrl: session.status.qrDataUrl });
+          }
           
-          if (reason === DisconnectReason.loggedOut) {
-            console.log(`[WhatsApp] Logged out, clearing session for company ${companyId}`);
-            await removeCreds();
-            this.sessions.delete(companyId);
-            session.status = {
-              isReady: false,
-              isAuthenticated: false,
-              qrCode: null,
-              qrDataUrl: null,
-              status: 'disconnected',
-              hasSavedSession: false,
-            };
-            this.emit('logout', { companyId });
-          } else if (reason === 515) {
-            // Stream error 515 - wait longer before reconnecting
-            console.log(`[WhatsApp] Stream error 515, waiting before reconnect for company ${companyId}...`);
-            // Save credentials before reconnecting
-            await saveCreds();
-            setTimeout(() => {
-              this.initializeClient(companyId).catch(console.error);
-            }, 5000);
-          } else {
-            console.log(`[WhatsApp] Attempting to reconnect for company ${companyId}...`);
-            // Save credentials before reconnecting
-            await saveCreds();
-            setTimeout(() => {
-              this.initializeClient(companyId).catch(console.error);
-            }, 3000);
-          }
-        }
-        
-        if (connection === 'open') {
-          console.log(`[WhatsApp] Connected successfully for company ${companyId}`);
-          session.status.isReady = true;
-          session.status.isAuthenticated = true;
-          session.status.status = 'ready';
-          session.status.qrCode = null;
-          session.status.qrDataUrl = null;
-          session.selfJid = sock.user?.id || null;
-          this.emit('ready', { companyId, selfJid: session.selfJid });
-        }
-      });
-      
-      sock.ev.on('creds.update', async () => {
-        await saveCreds();
-      });
-      
-      sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        for (const msg of messages) {
-          if (!msg.message) continue;
-          
-          try {
-            await this.persistMessage(companyId, msg);
-            this.emit('message', { companyId, message: msg });
-          } catch (error) {
-            console.error(`[WhatsApp] Error persisting message:`, error);
-          }
-        }
-      });
-      
-      // Listen for chats.set (initial bulk chat list from history sync)
-      // Cast to 'any' because TypeScript definitions may not include this event
-      (sock.ev as any).on('chats.set', async (data: { chats: any[], isLatest?: boolean }) => {
-        const { chats, isLatest } = data;
-        console.log(`[WhatsApp] chats.set received: ${chats.length} chats for company ${companyId}, isLatest: ${isLatest}`);
-        
-        for (const chat of chats) {
-          try {
-            // Only save chats that have conversation activity
-            if (!chat.conversationTimestamp && !chat.lastMsgTimestamp) continue;
+          if (connection === 'close') {
+            const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
+            console.log(`[WhatsApp] Connection closed for company ${companyId}, reason: ${reason}`);
             
-            const chatId = chat.id;
-            const isGroup = isJidGroup(chatId);
-            const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : 
-                             chat.lastMsgTimestamp ? Number(chat.lastMsgTimestamp) : 
-                             Math.floor(Date.now() / 1000);
+            session.status.isReady = false;
+            session.status.status = 'disconnected';
             
-            await db.insert(whatsappChats)
-              .values({
-                companyId,
-                chatId,
-                name: chat.name || null,
-                chatType: isGroup ? 'group' : 'individual',
-                unreadCount: chat.unreadCount || 0,
-                lastMessageTimestamp: timestamp,
-                isArchived: chat.archived || false,
-                isPinned: chat.pinned ? true : false,
-              })
-              .onConflictDoUpdate({
-                target: [whatsappChats.companyId, whatsappChats.chatId],
-                set: {
-                  name: chat.name || sql`${whatsappChats.name}`,
-                  unreadCount: chat.unreadCount || 0,
-                  lastMessageTimestamp: timestamp,
-                  isArchived: chat.archived || false,
-                  isPinned: chat.pinned ? true : false,
-                  updatedAt: new Date(),
-                },
-              });
-          } catch (error) {
-            console.error(`[WhatsApp] Error saving chat from chats.set:`, error);
-          }
-        }
-      });
-      
-      // Listen for chats.upsert (chat updates with conversation activity)
-      sock.ev.on('chats.upsert', async (chats) => {
-        console.log(`[WhatsApp] chats.upsert received: ${chats.length} chats for company ${companyId}`);
-        
-        for (const chat of chats) {
-          try {
-            const chatId = chat.id;
-            const isGroup = isJidGroup(chatId);
-            const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : Math.floor(Date.now() / 1000);
-            
-            await db.insert(whatsappChats)
-              .values({
-                companyId,
-                chatId,
-                name: chat.name || null,
-                chatType: isGroup ? 'group' : 'individual',
-                unreadCount: chat.unreadCount || 0,
-                lastMessageTimestamp: timestamp,
-                isArchived: chat.archived || false,
-                isPinned: chat.pinned ? true : false,
-                muteExpiration: (chat as any).muteExpiration || null,
-              })
-              .onConflictDoUpdate({
-                target: [whatsappChats.companyId, whatsappChats.chatId],
-                set: {
-                  name: chat.name || sql`${whatsappChats.name}`,
-                  unreadCount: chat.unreadCount || 0,
-                  lastMessageTimestamp: timestamp,
-                  isArchived: chat.archived || false,
-                  isPinned: chat.pinned ? true : false,
-                  muteExpiration: (chat as any).muteExpiration || null,
-                  updatedAt: new Date(),
-                },
-              });
-          } catch (error) {
-            console.error(`[WhatsApp] Error saving chat ${chat.id}:`, error);
-          }
-        }
-      });
-      
-      // Listen for chats.update (status changes, read receipts, etc)
-      sock.ev.on('chats.update', async (updates) => {
-        for (const update of updates) {
-          try {
-            const updateData: any = { updatedAt: new Date() };
-            
-            if (update.unreadCount !== undefined) updateData.unreadCount = update.unreadCount;
-            if (update.archived !== undefined) updateData.isArchived = update.archived;
-            if (update.pinned !== undefined) updateData.isPinned = update.pinned ? true : false;
-            if ((update as any).muteExpiration !== undefined) updateData.muteExpiration = (update as any).muteExpiration;
-            if (update.conversationTimestamp) updateData.lastMessageTimestamp = Number(update.conversationTimestamp);
-            
-            await db.update(whatsappChats)
-              .set(updateData)
-              .where(and(
-                eq(whatsappChats.companyId, companyId),
-                eq(whatsappChats.chatId, update.id!)
-              ));
-          } catch (error) {
-            console.error(`[WhatsApp] Error updating chat:`, error);
-          }
-        }
-      });
-      
-      // Listen for contacts.upsert - ONLY update names for EXISTING chats (don't create new ones)
-      sock.ev.on('contacts.upsert', async (contacts) => {
-        for (const contact of contacts) {
-          try {
-            const name = contact.name || contact.notify || (contact as any).verifiedName;
-            if (name && contact.id) {
-              // Only update existing chats, don't create new ones
-              await db.update(whatsappChats)
-                .set({ name, pushName: contact.notify || null, updatedAt: new Date() })
-                .where(and(
-                  eq(whatsappChats.companyId, companyId),
-                  eq(whatsappChats.chatId, contact.id)
-                ));
+            if (reason === DisconnectReason.loggedOut) {
+              console.log(`[WhatsApp] Logged out, clearing session for company ${companyId}`);
+              await wipeCreds();
+              this.sessions.delete(companyId);
+              session.status = {
+                isReady: false,
+                isAuthenticated: false,
+                qrCode: null,
+                qrDataUrl: null,
+                status: 'disconnected',
+                hasSavedSession: false,
+              };
+              this.emit('logout', { companyId });
+            } else {
+              // Reconnect if not logged out
+              console.log(`[WhatsApp] Reconnecting for company ${companyId}...`);
+              setTimeout(() => {
+                this.initializeClient(companyId).catch(console.error);
+              }, 3000);
             }
-          } catch (error) {
-            // Silently ignore - chat may not exist yet
+          }
+          
+          if (connection === 'open') {
+            console.log(`[WhatsApp] Connected successfully for company ${companyId}`);
+            session.status.isReady = true;
+            session.status.isAuthenticated = true;
+            session.status.status = 'ready';
+            session.status.qrCode = null;
+            session.status.qrDataUrl = null;
+            session.selfJid = sock.user?.id || null;
+            this.emit('ready', { companyId, selfJid: session.selfJid });
           }
         }
-      });
-      
-      // Listen for messaging-history.set (initial sync of chats and messages)
-      sock.ev.on('messaging-history.set', async ({ chats: historyChats, messages: historyMessages, isLatest }) => {
-        console.log(`[WhatsApp] History sync for company ${companyId}: ${historyChats?.length || 0} chats, ${historyMessages?.length || 0} messages, isLatest: ${isLatest}`);
         
-        // Process chats from history
-        if (historyChats && historyChats.length > 0) {
-          for (const chat of historyChats) {
+        // Credentials updated - save them
+        if (events['creds.update']) {
+          await saveCreds();
+        }
+        
+        // History received - this is where chats and messages come from
+        if (events['messaging-history.set']) {
+          const { chats, contacts, messages, isLatest, progress, syncType } = events['messaging-history.set'];
+          console.log(`[WhatsApp] History sync: ${chats.length} chats, ${contacts.length} contacts, ${messages.length} msgs (isLatest: ${isLatest}, progress: ${progress}%, syncType: ${syncType})`);
+          
+          // Save chats from history
+          for (const chat of chats) {
             try {
-              const chatId = chat.id;
-              const isGroup = isJidGroup(chatId);
-              const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : Math.floor(Date.now() / 1000);
-              
-              await db.insert(whatsappChats)
-                .values({
-                  companyId,
-                  chatId,
-                  name: chat.name || null,
-                  chatType: isGroup ? 'group' : 'individual',
-                  unreadCount: chat.unreadCount || 0,
-                  lastMessageTimestamp: timestamp,
-                  isArchived: chat.archived || false,
-                  isPinned: chat.pinned ? true : false,
-                  muteExpiration: (chat as any).muteExpiration || null,
-                })
-                .onConflictDoUpdate({
-                  target: [whatsappChats.companyId, whatsappChats.chatId],
-                  set: {
-                    name: chat.name || sql`${whatsappChats.name}`,
-                    unreadCount: chat.unreadCount || 0,
-                    lastMessageTimestamp: timestamp,
-                    isArchived: chat.archived || false,
-                    isPinned: chat.pinned ? true : false,
-                    muteExpiration: (chat as any).muteExpiration || null,
-                    updatedAt: new Date(),
-                  },
-                });
+              await this.persistChat(companyId, chat);
             } catch (error) {
-              console.error(`[WhatsApp] Error saving history chat:`, error);
+              console.error(`[WhatsApp] Error saving chat from history:`, error);
             }
           }
-        }
-        
-        // Process messages from history
-        if (historyMessages && historyMessages.length > 0) {
-          for (const msg of historyMessages) {
+          
+          // Save messages from history
+          for (const msg of messages) {
             try {
               await this.persistMessage(companyId, msg);
             } catch (error) {
-              console.error(`[WhatsApp] Error persisting history message:`, error);
+              console.error(`[WhatsApp] Error saving message from history:`, error);
+            }
+          }
+        }
+        
+        // New messages received
+        if (events['messages.upsert']) {
+          const upsert = events['messages.upsert'];
+          console.log(`[WhatsApp] Messages upsert: ${upsert.messages.length} messages, type: ${upsert.type}`);
+          
+          for (const msg of upsert.messages) {
+            if (!msg.message) continue;
+            
+            try {
+              await this.persistMessage(companyId, msg);
+              this.emit('message', { companyId, message: msg });
+            } catch (error) {
+              console.error(`[WhatsApp] Error persisting message:`, error);
+            }
+          }
+        }
+        
+        // Chat updates
+        if (events['chats.upsert']) {
+          const chats = events['chats.upsert'];
+          console.log(`[WhatsApp] Chats upsert: ${chats.length} chats`);
+          
+          for (const chat of chats) {
+            try {
+              await this.persistChat(companyId, chat);
+            } catch (error) {
+              console.error(`[WhatsApp] Error saving chat:`, error);
+            }
+          }
+        }
+        
+        if (events['chats.update']) {
+          for (const update of events['chats.update']) {
+            try {
+              const updateData: any = { updatedAt: new Date() };
+              
+              if (update.unreadCount !== undefined) updateData.unreadCount = update.unreadCount;
+              if (update.archived !== undefined) updateData.isArchived = update.archived;
+              if (update.pinned !== undefined) updateData.isPinned = update.pinned ? true : false;
+              if (update.conversationTimestamp) updateData.lastMessageTimestamp = Number(update.conversationTimestamp);
+              
+              await db.update(whatsappChats)
+                .set(updateData)
+                .where(and(
+                  eq(whatsappChats.companyId, companyId),
+                  eq(whatsappChats.chatId, update.id!)
+                ));
+            } catch (error) {
+              console.error(`[WhatsApp] Error updating chat:`, error);
+            }
+          }
+        }
+        
+        // Contacts updates
+        if (events['contacts.update']) {
+          for (const contact of events['contacts.update']) {
+            try {
+              if (contact.id && contact.notify) {
+                await db.update(whatsappChats)
+                  .set({ name: contact.notify, updatedAt: new Date() })
+                  .where(and(
+                    eq(whatsappChats.companyId, companyId),
+                    eq(whatsappChats.chatId, contact.id)
+                  ));
+              }
+            } catch (error) {
+              console.error(`[WhatsApp] Error updating contact:`, error);
             }
           }
         }
       });
       
       return session;
-    } finally {
-      this.initializingCompanies.delete(companyId);
+    } catch (error) {
+      console.error(`[WhatsApp] Error initializing client:`, error);
+      throw error;
     }
+  }
+  
+  // getMessage for retry logic
+  private async getMessage(companyId: string, key: WAMessageKey): Promise<WAMessageContent | undefined> {
+    const msg = await db.select()
+      .from(whatsappMessages)
+      .where(and(
+        eq(whatsappMessages.companyId, companyId),
+        eq(whatsappMessages.messageId, key.id || '')
+      ))
+      .limit(1);
+    
+    if (msg.length > 0 && msg[0].rawData) {
+      return (msg[0].rawData as any).message;
+    }
+    
+    // Return empty message for retry
+    return proto.Message.fromObject({});
+  }
+  
+  private async persistChat(companyId: string, chat: any): Promise<void> {
+    const chatId = chat.id;
+    const isGroup = isJidGroup(chatId);
+    const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : 
+                     chat.lastMsgTimestamp ? Number(chat.lastMsgTimestamp) : 
+                     Math.floor(Date.now() / 1000);
+    
+    await db.insert(whatsappChats)
+      .values({
+        companyId,
+        chatId,
+        name: chat.name || null,
+        chatType: isGroup ? 'group' : 'individual',
+        unreadCount: chat.unreadCount || 0,
+        lastMessageTimestamp: timestamp,
+        isArchived: chat.archived || false,
+        isPinned: chat.pinned ? true : false,
+      })
+      .onConflictDoUpdate({
+        target: [whatsappChats.companyId, whatsappChats.chatId],
+        set: {
+          name: chat.name || sql`${whatsappChats.name}`,
+          unreadCount: chat.unreadCount || 0,
+          lastMessageTimestamp: timestamp,
+          isArchived: chat.archived || false,
+          isPinned: chat.pinned ? true : false,
+          updatedAt: new Date(),
+        },
+      });
   }
   
   private async persistMessage(companyId: string, msg: WAMessage): Promise<void> {
     const chatId = msg.key.remoteJid;
     if (!chatId) return;
     
-    await this.ensureChat(companyId, chatId, msg);
+    const isGroup = isJidGroup(chatId);
+    const isFromMe = msg.key.fromMe || false;
+    const senderJid = isGroup 
+      ? (msg.key.participant || chatId)
+      : (isFromMe ? 'me' : chatId);
     
-    const messageContent = msg.message;
-    let text = '';
+    // Extract message content
+    let content = '';
     let mediaType: string | null = null;
     let mediaUrl: string | null = null;
     
-    if (messageContent?.conversation) {
-      text = messageContent.conversation;
-    } else if (messageContent?.extendedTextMessage) {
-      text = messageContent.extendedTextMessage.text || '';
-    } else if (messageContent?.imageMessage) {
-      mediaType = 'image';
-      text = messageContent.imageMessage.caption || '';
-    } else if (messageContent?.videoMessage) {
-      mediaType = 'video';
-      text = messageContent.videoMessage.caption || '';
-    } else if (messageContent?.audioMessage) {
-      mediaType = 'audio';
-    } else if (messageContent?.documentMessage) {
-      mediaType = 'document';
-      text = messageContent.documentMessage.fileName || '';
-    } else if (messageContent?.stickerMessage) {
-      mediaType = 'sticker';
+    const message = msg.message;
+    if (message) {
+      if (message.conversation) {
+        content = message.conversation;
+      } else if (message.extendedTextMessage?.text) {
+        content = message.extendedTextMessage.text;
+      } else if (message.imageMessage) {
+        content = message.imageMessage.caption || '[Image]';
+        mediaType = 'image';
+      } else if (message.videoMessage) {
+        content = message.videoMessage.caption || '[Video]';
+        mediaType = 'video';
+      } else if (message.audioMessage) {
+        content = '[Audio]';
+        mediaType = 'audio';
+      } else if (message.documentMessage) {
+        content = message.documentMessage.fileName || '[Document]';
+        mediaType = 'document';
+      } else if (message.stickerMessage) {
+        content = '[Sticker]';
+        mediaType = 'sticker';
+      } else if (message.reactionMessage) {
+        content = message.reactionMessage.text || '';
+        mediaType = 'reaction';
+      }
     }
     
-    const timestamp = Number(msg.messageTimestamp);
+    const timestamp = msg.messageTimestamp 
+      ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : Number(msg.messageTimestamp))
+      : Math.floor(Date.now() / 1000);
     
+    // Insert message
     await db.insert(whatsappMessages)
       .values({
         companyId,
         chatId,
         messageId: msg.key.id || '',
-        fromMe: msg.key.fromMe || false,
-        senderId: msg.key.participant || chatId,
-        text,
+        senderJid,
+        content,
         mediaType,
         mediaUrl,
+        isFromMe,
         timestamp,
-        quotedMessageId: messageContent?.extendedTextMessage?.contextInfo?.stanzaId || null,
-        isForwarded: messageContent?.extendedTextMessage?.contextInfo?.isForwarded || false,
         rawData: msg as any,
       })
       .onConflictDoNothing();
     
+    // Update chat with last message
     await db.update(whatsappChats)
-      .set({ 
+      .set({
+        lastMessageContent: content.substring(0, 255),
         lastMessageTimestamp: timestamp,
-        lastMessageContent: text.substring(0, 500),
-        lastMessageFromMe: msg.key.fromMe || false,
         updatedAt: new Date(),
       })
       .where(and(
         eq(whatsappChats.companyId, companyId),
         eq(whatsappChats.chatId, chatId)
       ));
-  }
-  
-  private async ensureChat(companyId: string, chatId: string, msg?: WAMessage): Promise<string> {
-    const existing = await db.select()
-      .from(whatsappChats)
-      .where(and(
-        eq(whatsappChats.companyId, companyId),
-        eq(whatsappChats.chatId, chatId)
-      ))
-      .limit(1);
     
-    if (existing.length > 0) {
-      return existing[0].id;
-    }
-    
-    const isGroup = isJidGroup(chatId);
-    const [created] = await db.insert(whatsappChats)
+    // Ensure chat exists
+    await db.insert(whatsappChats)
       .values({
         companyId,
         chatId,
         chatType: isGroup ? 'group' : 'individual',
-        name: msg?.pushName || null,
-        pushName: msg?.pushName || null,
+        lastMessageContent: content.substring(0, 255),
+        lastMessageTimestamp: timestamp,
       })
-      .returning();
-    
-    return created.id;
+      .onConflictDoNothing();
+  }
+  
+  async disconnect(companyId: string): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (session?.sock) {
+      try {
+        session.sock.ev.removeAllListeners();
+        session.sock.logout();
+        await session.wipeCreds();
+      } catch (e) {
+        console.error(`[WhatsApp] Error disconnecting:`, e);
+      }
+      this.sessions.delete(companyId);
+    }
   }
   
   getStatus(companyId: string): SessionStatus {
@@ -653,80 +491,64 @@ class WhatsAppService extends EventEmitter {
     return session.status;
   }
   
-  async logout(companyId: string): Promise<void> {
+  async sendMessage(companyId: string, jid: string, content: string): Promise<WAMessage | null> {
     const session = this.sessions.get(companyId);
-    if (session) {
-      try {
-        await session.sock.logout();
-      } catch (e) {
-        console.log('[WhatsApp] Error during logout:', e);
-      }
-      await session.removeCreds();
-      this.sessions.delete(companyId);
-    }
-  }
-  
-  async sendText(companyId: string, chatId: string, text: string): Promise<proto.WebMessageInfo | null> {
-    const session = this.sessions.get(companyId);
-    if (!session?.status.isReady) {
+    if (!session?.sock || !session.status.isReady) {
       throw new Error('WhatsApp not connected');
     }
     
-    const result = await session.sock.sendMessage(chatId, { text });
+    const normalizedJid = jidNormalizedUser(jid);
+    const result = await session.sock.sendMessage(normalizedJid, { text: content });
+    
     if (result) {
       await this.persistMessage(companyId, result);
     }
-    return result ?? null;
+    
+    return result;
   }
   
-  async sendMedia(
-    companyId: string, 
-    chatId: string, 
-    url: string, 
-    caption?: string,
-    type: 'image' | 'video' | 'document' | 'audio' = 'image'
-  ): Promise<proto.WebMessageInfo | null> {
+  async sendMedia(companyId: string, jid: string, mediaBuffer: Buffer, mimetype: string, caption?: string): Promise<WAMessage | null> {
     const session = this.sessions.get(companyId);
-    if (!session?.status.isReady) {
+    if (!session?.sock || !session.status.isReady) {
       throw new Error('WhatsApp not connected');
     }
     
-    let message: any;
-    switch (type) {
-      case 'image':
-        message = { image: { url }, caption };
-        break;
-      case 'video':
-        message = { video: { url }, caption };
-        break;
-      case 'audio':
-        message = { audio: { url }, mimetype: 'audio/mp4' };
-        break;
-      case 'document':
-        message = { document: { url }, caption };
-        break;
+    const normalizedJid = jidNormalizedUser(jid);
+    
+    let messageContent: any;
+    if (mimetype.startsWith('image/')) {
+      messageContent = { image: mediaBuffer, caption };
+    } else if (mimetype.startsWith('video/')) {
+      messageContent = { video: mediaBuffer, caption };
+    } else if (mimetype.startsWith('audio/')) {
+      messageContent = { audio: mediaBuffer, mimetype };
+    } else {
+      messageContent = { document: mediaBuffer, mimetype, fileName: 'file' };
     }
     
-    const result = await session.sock.sendMessage(chatId, message);
+    const result = await session.sock.sendMessage(normalizedJid, messageContent);
+    
     if (result) {
       await this.persistMessage(companyId, result);
     }
-    return result ?? null;
+    
+    return result;
   }
   
   async getChats(companyId: string): Promise<any[]> {
-    // ONLY return chats with actual message activity (not empty contacts)
-    return db.select()
+    const chats = await db.select()
       .from(whatsappChats)
       .where(and(
         eq(whatsappChats.companyId, companyId),
         sql`${whatsappChats.lastMessageTimestamp} IS NOT NULL AND ${whatsappChats.lastMessageTimestamp} > 0`
       ))
       .orderBy(desc(whatsappChats.lastMessageTimestamp));
+    
+    return chats;
   }
   
   async getMessages(companyId: string, chatId: string, limit: number = 50): Promise<any[]> {
-    return db.select()
+    const messages = await db.select()
       .from(whatsappMessages)
       .where(and(
         eq(whatsappMessages.companyId, companyId),
@@ -734,14 +556,37 @@ class WhatsAppService extends EventEmitter {
       ))
       .orderBy(desc(whatsappMessages.timestamp))
       .limit(limit);
+    
+    return messages.reverse();
   }
   
-  async hasSavedSession(companyId: string): Promise<boolean> {
-    const result = await db.select()
-      .from(whatsappSessions)
-      .where(eq(whatsappSessions.companyId, companyId))
-      .limit(1);
-    return result.length > 0;
+  async getProfilePicture(companyId: string, jid: string): Promise<string | null> {
+    const session = this.sessions.get(companyId);
+    if (!session?.sock || !session.status.isReady) {
+      return null;
+    }
+    
+    try {
+      const url = await session.sock.profilePictureUrl(jid, 'image');
+      return url;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  async markAsRead(companyId: string, chatId: string, messageIds: string[]): Promise<void> {
+    const session = this.sessions.get(companyId);
+    if (!session?.sock || !session.status.isReady) {
+      return;
+    }
+    
+    const keys = messageIds.map(id => ({
+      remoteJid: chatId,
+      id,
+      fromMe: false,
+    }));
+    
+    await session.sock.readMessages(keys);
   }
 }
 
