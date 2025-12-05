@@ -362,23 +362,39 @@ class WhatsAppService extends EventEmitter {
         }
       });
       
-      // Listen for contacts.upsert to get contact names
+      // Listen for contacts.upsert - CREATE CHATS from contacts (since chats.set doesn't fire in v6.x)
       sock.ev.on('contacts.upsert', async (contacts) => {
-        console.log(`[WhatsApp] Received ${contacts.length} contacts for company ${companyId}`);
+        console.log(`[WhatsApp] contacts.upsert: ${contacts.length} contacts for company ${companyId}`);
         
         for (const contact of contacts) {
           try {
-            const name = contact.name || contact.notify || contact.verifiedName;
-            if (name) {
-              await db.update(whatsappChats)
-                .set({ name, updatedAt: new Date() })
-                .where(and(
-                  eq(whatsappChats.companyId, companyId),
-                  eq(whatsappChats.chatId, contact.id)
-                ));
-            }
+            const chatId = contact.id;
+            // Skip status broadcast and other non-chat JIDs
+            if (!chatId || chatId === 'status@broadcast' || !chatId.includes('@')) continue;
+            
+            const name = contact.name || contact.notify || (contact as any).verifiedName || null;
+            const isGroup = isJidGroup(chatId);
+            
+            // Insert or update chat from contact
+            await db.insert(whatsappChats)
+              .values({
+                companyId,
+                chatId,
+                name,
+                pushName: contact.notify || null,
+                chatType: isGroup ? 'group' : 'individual',
+                lastMessageTimestamp: Math.floor(Date.now() / 1000),
+              })
+              .onConflictDoUpdate({
+                target: [whatsappChats.companyId, whatsappChats.chatId],
+                set: {
+                  name: name || sql`${whatsappChats.name}`,
+                  pushName: contact.notify || sql`${whatsappChats.pushName}`,
+                  updatedAt: new Date(),
+                },
+              });
           } catch (error) {
-            console.error(`[WhatsApp] Error updating contact name:`, error);
+            console.error(`[WhatsApp] Error creating chat from contact:`, error);
           }
         }
       });
