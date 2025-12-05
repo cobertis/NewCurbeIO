@@ -23,7 +23,8 @@ import {
   whatsappMessages,
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import NodeCache from 'node-cache';
+import NodeCache from '@cacheable/node-cache';
+import type { CacheStore } from '@whiskeysockets/baileys';
 
 // Database URL for baileysauth
 const DATABASE_URL = process.env.DATABASE_URL || '';
@@ -51,7 +52,9 @@ class WhatsAppService extends EventEmitter {
   private initMutex: Map<string, Promise<CompanySession>> = new Map();
   private logger = P({ level: 'warn' });
   // Keep retry counter cache outside socket to prevent loops across restarts
-  private msgRetryCounterCache = new NodeCache();
+  // As per official Baileys example: external map to store retry counts of messages
+  // when decryption/encryption fails - keep this out of the socket itself
+  private msgRetryCounterCache: CacheStore = new NodeCache();
   
   async getClientForCompany(companyId: string): Promise<CompanySession | null> {
     if (this.sessions.has(companyId)) {
@@ -140,7 +143,7 @@ class WhatsAppService extends EventEmitter {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(state.keys, this.logger),
         },
-        msgRetryCounterCache: this.msgRetryCounterCache as any,
+        msgRetryCounterCache: this.msgRetryCounterCache,
         generateHighQualityLinkPreview: true,
         getMessage: this.getMessage.bind(this, companyId),
       });
