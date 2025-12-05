@@ -20,6 +20,190 @@ export function setupEventHandlers(
   companyId: string,
   onNewMessage?: (message: SelectWhatsappV2Message) => void
 ): void {
+  socket.ev.on("chats.set", async ({ chats: chatList }) => {
+    console.log(`[WhatsApp] Syncing ${chatList.length} chats for company ${companyId}`);
+    
+    for (const chatItem of chatList) {
+      if (!chatItem.id) continue;
+
+      try {
+        const existingChat = await storage.getChat(companyId, chatItem.id);
+        if (existingChat) continue;
+
+        const isGroup = isGroupJid(chatItem.id);
+        const phone = extractPhoneFromJid(chatItem.id);
+
+        let contact = await storage.getContact(companyId, chatItem.id);
+        if (!contact && !isGroup && phone) {
+          const contactData: InsertWhatsappV2Contact = {
+            companyId,
+            jid: chatItem.id,
+            name: chatItem.name || phone,
+            businessName: null,
+            avatarUrl: null,
+            isBusiness: false,
+            phone,
+          };
+          contact = await storage.upsertContact(contactData);
+        }
+
+        const chatData: InsertWhatsappV2Chat = {
+          companyId,
+          jid: chatItem.id,
+          contactId: contact?.id || null,
+          title: isGroup ? (chatItem.name || chatItem.id) : null,
+          isGroup,
+          unreadCount: chatItem.unreadCount || 0,
+          lastMessageId: null,
+          lastMessageTs: chatItem.conversationTimestamp 
+            ? typeof chatItem.conversationTimestamp === 'number' 
+              ? chatItem.conversationTimestamp 
+              : Number(chatItem.conversationTimestamp)
+            : null,
+          archived: chatItem.archived || false,
+          mutedUntil: null,
+        };
+
+        await storage.upsertChat(chatData);
+      } catch (error) {
+        console.error("Failed to sync chat:", error);
+      }
+    }
+    
+    console.log(`[WhatsApp] Chat sync complete for company ${companyId}`);
+  });
+
+  socket.ev.on("messaging-history.set", async ({ chats: historyChats, messages: historyMessages, isLatest }) => {
+    console.log(`[WhatsApp] History sync: ${historyChats?.length || 0} chats, ${historyMessages?.length || 0} messages, isLatest: ${isLatest}`);
+    
+    if (historyChats) {
+      for (const chatItem of historyChats) {
+        if (!chatItem.id) continue;
+
+        try {
+          const existingChat = await storage.getChat(companyId, chatItem.id);
+          if (existingChat) continue;
+
+          const isGroup = isGroupJid(chatItem.id);
+          const phone = extractPhoneFromJid(chatItem.id);
+
+          let contact = await storage.getContact(companyId, chatItem.id);
+          if (!contact && !isGroup && phone) {
+            const contactData: InsertWhatsappV2Contact = {
+              companyId,
+              jid: chatItem.id,
+              name: chatItem.name || phone,
+              businessName: null,
+              avatarUrl: null,
+              isBusiness: false,
+              phone,
+            };
+            contact = await storage.upsertContact(contactData);
+          }
+
+          const chatData: InsertWhatsappV2Chat = {
+            companyId,
+            jid: chatItem.id,
+            contactId: contact?.id || null,
+            title: isGroup ? (chatItem.name || chatItem.id) : null,
+            isGroup,
+            unreadCount: chatItem.unreadCount || 0,
+            lastMessageId: null,
+            lastMessageTs: chatItem.conversationTimestamp 
+              ? typeof chatItem.conversationTimestamp === 'number' 
+                ? chatItem.conversationTimestamp 
+                : Number(chatItem.conversationTimestamp)
+              : null,
+            archived: chatItem.archived || false,
+            mutedUntil: null,
+          };
+
+          await storage.upsertChat(chatData);
+        } catch (error) {
+          console.error("Failed to sync history chat:", error);
+        }
+      }
+    }
+
+    if (historyMessages) {
+      for (const msg of historyMessages) {
+        if (!msg.key || !msg.key.remoteJid || !msg.message) continue;
+
+        const remoteJid = msg.key.remoteJid;
+        const messageKey = msg.key.id || "";
+        const fromMe = msg.key.fromMe || false;
+        const timestamp = msg.messageTimestamp
+          ? typeof msg.messageTimestamp === "number"
+            ? msg.messageTimestamp
+            : Number(msg.messageTimestamp)
+          : Math.floor(Date.now() / 1000);
+
+        try {
+          const existingMessage = await storage.getMessage(companyId, messageKey);
+          if (existingMessage) continue;
+
+          let chat = await storage.getChat(companyId, remoteJid);
+          if (!chat) {
+            const isGroup = isGroupJid(remoteJid);
+            const phone = extractPhoneFromJid(remoteJid);
+
+            let contact = await storage.getContact(companyId, remoteJid);
+            if (!contact && !isGroup && phone) {
+              const contactData: InsertWhatsappV2Contact = {
+                companyId,
+                jid: remoteJid,
+                name: msg.pushName || phone,
+                businessName: null,
+                avatarUrl: null,
+                isBusiness: false,
+                phone,
+              };
+              contact = await storage.upsertContact(contactData);
+            }
+
+            const chatData: InsertWhatsappV2Chat = {
+              companyId,
+              jid: remoteJid,
+              contactId: contact?.id || null,
+              title: isGroup ? remoteJid : null,
+              isGroup,
+              unreadCount: fromMe ? 0 : 1,
+              lastMessageId: null,
+              lastMessageTs: timestamp,
+              archived: false,
+              mutedUntil: null,
+            };
+
+            chat = await storage.upsertChat(chatData);
+          }
+
+          const messageType = getMessageType(msg.message);
+          const textContent = extractTextContent(msg.message);
+
+          const messageData: InsertWhatsappV2Message = {
+            companyId,
+            chatId: chat.id,
+            messageKey,
+            remoteJid,
+            fromMe,
+            content: textContent,
+            messageData: msg as unknown as Record<string, unknown>,
+            messageType,
+            status: fromMe ? MESSAGE_STATUS.SENT : MESSAGE_STATUS.DELIVERED,
+            mediaUrl: null,
+            mediaMimeType: null,
+            timestamp,
+          };
+
+          const savedMessage = await storage.insertMessage(messageData);
+          await storage.updateChatLastMessage(chat.id, savedMessage.id, timestamp);
+        } catch (error) {
+          console.error("Failed to sync history message:", error);
+        }
+      }
+    }
+  });
+
   socket.ev.on("contacts.upsert", async (contacts) => {
     for (const contact of contacts) {
       if (!contact.id) continue;
