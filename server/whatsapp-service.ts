@@ -258,6 +258,145 @@ class WhatsAppService extends EventEmitter {
         }
       });
       
+      // CRITICAL: Listen for chats.upsert to capture chat list
+      sock.ev.on('chats.upsert', async (chats) => {
+        console.log(`[WhatsApp] Received ${chats.length} chats for company ${companyId}`);
+        
+        for (const chat of chats) {
+          try {
+            const chatId = chat.id;
+            const isGroup = isJidGroup(chatId);
+            const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : Math.floor(Date.now() / 1000);
+            
+            await db.insert(whatsappChats)
+              .values({
+                companyId,
+                chatId,
+                name: chat.name || null,
+                chatType: isGroup ? 'group' : 'individual',
+                unreadCount: chat.unreadCount || 0,
+                lastMessageTimestamp: timestamp,
+                isArchived: chat.archived || false,
+                isPinned: chat.pinned ? true : false,
+                muteExpiration: (chat as any).muteExpiration || null,
+              })
+              .onConflictDoUpdate({
+                target: [whatsappChats.companyId, whatsappChats.chatId],
+                set: {
+                  name: chat.name || sql`${whatsappChats.name}`,
+                  unreadCount: chat.unreadCount || 0,
+                  lastMessageTimestamp: timestamp,
+                  isArchived: chat.archived || false,
+                  isPinned: chat.pinned ? true : false,
+                  muteExpiration: (chat as any).muteExpiration || null,
+                  updatedAt: new Date(),
+                },
+              });
+          } catch (error) {
+            console.error(`[WhatsApp] Error saving chat ${chat.id}:`, error);
+          }
+        }
+      });
+      
+      // Listen for chats.update (status changes, read receipts, etc)
+      sock.ev.on('chats.update', async (updates) => {
+        for (const update of updates) {
+          try {
+            const updateData: any = { updatedAt: new Date() };
+            
+            if (update.unreadCount !== undefined) updateData.unreadCount = update.unreadCount;
+            if (update.archived !== undefined) updateData.isArchived = update.archived;
+            if (update.pinned !== undefined) updateData.isPinned = update.pinned ? true : false;
+            if ((update as any).muteExpiration !== undefined) updateData.muteExpiration = (update as any).muteExpiration;
+            if (update.conversationTimestamp) updateData.lastMessageTimestamp = Number(update.conversationTimestamp);
+            
+            await db.update(whatsappChats)
+              .set(updateData)
+              .where(and(
+                eq(whatsappChats.companyId, companyId),
+                eq(whatsappChats.chatId, update.id!)
+              ));
+          } catch (error) {
+            console.error(`[WhatsApp] Error updating chat:`, error);
+          }
+        }
+      });
+      
+      // Listen for contacts.upsert to get contact names
+      sock.ev.on('contacts.upsert', async (contacts) => {
+        console.log(`[WhatsApp] Received ${contacts.length} contacts for company ${companyId}`);
+        
+        for (const contact of contacts) {
+          try {
+            const name = contact.name || contact.notify || contact.verifiedName;
+            if (name) {
+              await db.update(whatsappChats)
+                .set({ name, updatedAt: new Date() })
+                .where(and(
+                  eq(whatsappChats.companyId, companyId),
+                  eq(whatsappChats.chatId, contact.id)
+                ));
+            }
+          } catch (error) {
+            console.error(`[WhatsApp] Error updating contact name:`, error);
+          }
+        }
+      });
+      
+      // Listen for messaging-history.set (initial sync of chats and messages)
+      sock.ev.on('messaging-history.set', async ({ chats: historyChats, messages: historyMessages, isLatest }) => {
+        console.log(`[WhatsApp] History sync for company ${companyId}: ${historyChats?.length || 0} chats, ${historyMessages?.length || 0} messages, isLatest: ${isLatest}`);
+        
+        // Process chats from history
+        if (historyChats && historyChats.length > 0) {
+          for (const chat of historyChats) {
+            try {
+              const chatId = chat.id;
+              const isGroup = isJidGroup(chatId);
+              const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : Math.floor(Date.now() / 1000);
+              
+              await db.insert(whatsappChats)
+                .values({
+                  companyId,
+                  chatId,
+                  name: chat.name || null,
+                  chatType: isGroup ? 'group' : 'individual',
+                  unreadCount: chat.unreadCount || 0,
+                  lastMessageTimestamp: timestamp,
+                  isArchived: chat.archived || false,
+                  isPinned: chat.pinned ? true : false,
+                  muteExpiration: (chat as any).muteExpiration || null,
+                })
+                .onConflictDoUpdate({
+                  target: [whatsappChats.companyId, whatsappChats.chatId],
+                  set: {
+                    name: chat.name || sql`${whatsappChats.name}`,
+                    unreadCount: chat.unreadCount || 0,
+                    lastMessageTimestamp: timestamp,
+                    isArchived: chat.archived || false,
+                    isPinned: chat.pinned ? true : false,
+                    muteExpiration: (chat as any).muteExpiration || null,
+                    updatedAt: new Date(),
+                  },
+                });
+            } catch (error) {
+              console.error(`[WhatsApp] Error saving history chat:`, error);
+            }
+          }
+        }
+        
+        // Process messages from history
+        if (historyMessages && historyMessages.length > 0) {
+          for (const msg of historyMessages) {
+            try {
+              await this.persistMessage(companyId, msg);
+            } catch (error) {
+              console.error(`[WhatsApp] Error persisting history message:`, error);
+            }
+          }
+        }
+      });
+      
       return session;
     } finally {
       this.initializingCompanies.delete(companyId);
