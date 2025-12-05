@@ -72,35 +72,40 @@ async function usePostgresAuthState(companyId: string): Promise<{
     creds = initAuthCreds();
   }
   
-  return {
-    state: {
-      creds,
-      keys: {
-        get: async (type: keyof SignalDataTypeMap, ids: string[]) => {
-          const data: { [id: string]: any } = {};
-          for (const id of ids) {
-            const value = await getKey(`${type}-${id}`);
+  const state: AuthenticationState = {
+    creds,
+    keys: {
+      get: async (type: keyof SignalDataTypeMap, ids: string[]) => {
+        const data: { [id: string]: any } = {};
+        await Promise.all(ids.map(async (id) => {
+          const value = await getKey(`${type}-${id}`);
+          if (value) {
+            data[id] = value;
+          }
+        }));
+        return data;
+      },
+      set: async (data: any) => {
+        const tasks: Promise<void>[] = [];
+        for (const [type, entries] of Object.entries(data)) {
+          for (const [id, value] of Object.entries(entries as any)) {
             if (value) {
-              data[id] = value;
+              tasks.push(setKey(`${type}-${id}`, value));
+            } else {
+              tasks.push(removeKey(`${type}-${id}`));
             }
           }
-          return data;
-        },
-        set: async (data: any) => {
-          for (const [type, entries] of Object.entries(data)) {
-            for (const [id, value] of Object.entries(entries as any)) {
-              if (value) {
-                await setKey(`${type}-${id}`, value);
-              } else {
-                await removeKey(`${type}-${id}`);
-              }
-            }
-          }
-        },
+        }
+        await Promise.all(tasks);
       },
     },
+  };
+  
+  return {
+    state,
     saveCreds: async () => {
-      await setKey('creds', creds);
+      // CRITICAL: Save state.creds (which Baileys mutates) not the local creds variable
+      await setKey('creds', state.creds);
     },
     removeCreds: async () => {
       await db.delete(whatsappSessions)
