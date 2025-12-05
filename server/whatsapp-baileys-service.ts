@@ -1798,13 +1798,26 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
 
     try {
-      const messages = Array.from(client.messageStore.values())
+      // Get the chat's unread messages from memory store
+      const unreadMessages = Array.from(client.messageStore.values())
         .filter(msg => msg.key?.remoteJid === normalizedId && !msg.key?.fromMe)
-        .slice(-10);
+        .slice(-50);
 
-      if (messages.length > 0) {
-        await client.sock.readMessages(messages.map(msg => msg.key as proto.IMessageKey));
+      if (unreadMessages.length > 0) {
+        // Mark specific messages as read
+        await client.sock.readMessages(unreadMessages.map(msg => msg.key as proto.IMessageKey));
       }
+      
+      // Also use chatModify to ensure the read status syncs with WhatsApp servers
+      // This handles the case where messages aren't in memory
+      const chat = client.chats.get(normalizedId);
+      if (chat && chat.unreadCount && chat.unreadCount > 0) {
+        await client.sock.chatModify({ markRead: true, lastMessages: [] }, normalizedId);
+        // Update local chat state
+        chat.unreadCount = 0;
+        client.chats.set(normalizedId, chat);
+      }
+      
       console.log(`[Baileys] Chat marked as read for company ${companyId}: ${normalizedId}`);
     } catch (error) {
       console.error(`[Baileys] Error marking chat as read for company ${companyId}:`, error);
