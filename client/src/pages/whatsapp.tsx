@@ -19,7 +19,6 @@ import {
   CheckCheck,
   Clock,
   ArrowLeft,
-  QrCode,
   Smartphone,
   RefreshCw,
   LogOut,
@@ -139,7 +138,7 @@ export default function WhatsAppPage() {
 
   const { data: status, isLoading: statusLoading } = useQuery<WhatsAppConnectionStatus>({
     queryKey: ["/api/whatsapp-v2/status"],
-    refetchInterval: 3000,
+    refetchInterval: 2000,
   });
 
   const { data: chats, isLoading: chatsLoading } = useQuery<WhatsAppChat[]>({
@@ -255,8 +254,9 @@ export default function WhatsAppPage() {
     }
   }, [handleSendMessage]);
 
-  const isConnected = status?.isConnected === true;
+  const isConnected = status?.connectionState === "open";
   const isConnecting = status?.connectionState === "connecting";
+  const hasQrCode = !!status?.qrCode;
   const selectedChat = chats?.find((c) => c.id === selectedChatId);
 
   const filteredChats = chats?.filter((chat) => {
@@ -276,18 +276,107 @@ export default function WhatsAppPage() {
 
   if (statusLoading) {
     return (
-      <div className="h-[calc(100vh-6rem)] flex items-center justify-center bg-[#111b21]">
-        <LoadingSpinner message="Loading WhatsApp..." />
+      <div className="h-[calc(100vh-6rem)] flex items-center justify-center bg-[#111b21] rounded-lg">
+        <div className="text-center">
+          <RefreshCw className="h-12 w-12 text-[#00a884] animate-spin mx-auto mb-4" />
+          <p className="text-[#8696a0]">Loading WhatsApp...</p>
+        </div>
       </div>
     );
   }
 
-  if (!isConnected && !isConnecting) {
+  if (!isConnected) {
+    if (isConnecting && hasQrCode) {
+      const qrSrc = status.qrCode!.startsWith("data:") 
+        ? status.qrCode 
+        : `data:image/png;base64,${status.qrCode}`;
+      
+      return (
+        <div className="h-[calc(100vh-6rem)] flex flex-col bg-[#111b21] rounded-lg overflow-hidden">
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="flex flex-col items-center">
+                <div className="bg-white p-4 rounded-lg mb-4">
+                  <img
+                    src={qrSrc}
+                    alt="WhatsApp QR Code"
+                    className="w-64 h-64"
+                    data-testid="img-qr-code"
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => disconnectMutation.mutate()}
+                  disabled={disconnectMutation.isPending}
+                  className="text-[#00a884] hover:text-[#06cf9c] hover:bg-transparent"
+                  data-testid="button-whatsapp-cancel"
+                >
+                  {disconnectMutation.isPending ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                  )}
+                  Cancel
+                </Button>
+              </div>
+              <div className="text-center md:text-left max-w-sm">
+                <h2 className="text-[#e9edef] text-2xl font-light mb-6">
+                  Link with QR code
+                </h2>
+                <ol className="text-[#8696a0] space-y-4 list-decimal list-inside">
+                  <li>Open WhatsApp on your phone</li>
+                  <li>
+                    Tap <span className="text-[#e9edef]">Menu</span> or{" "}
+                    <span className="text-[#e9edef]">Settings</span> and select{" "}
+                    <span className="text-[#e9edef]">Linked Devices</span>
+                  </li>
+                  <li>
+                    Tap on <span className="text-[#e9edef]">Link a Device</span>
+                  </li>
+                  <li>Point your phone at this screen to capture the QR code</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          {status?.lastError && (
+            <div className="p-4 bg-red-500/10 border-t border-red-500/20 text-center">
+              <p className="text-red-400 text-sm">{status.lastError}</p>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (isConnecting && !hasQrCode) {
+      return (
+        <div className="h-[calc(100vh-6rem)] flex flex-col bg-[#111b21] rounded-lg overflow-hidden">
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <RefreshCw className="h-16 w-16 text-[#00a884] animate-spin mb-6" />
+            <h1 className="text-[#e9edef] text-2xl font-light mb-2">Connecting to WhatsApp</h1>
+            <p className="text-[#8696a0] text-center mb-8">
+              Please wait while we generate the QR code...
+            </p>
+            <Button
+              variant="ghost"
+              onClick={() => disconnectMutation.mutate()}
+              disabled={disconnectMutation.isPending}
+              className="text-[#8696a0] hover:text-white hover:bg-[#374045]"
+              data-testid="button-whatsapp-cancel"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="h-[calc(100vh-6rem)] flex flex-col bg-[#111b21] rounded-lg overflow-hidden">
         <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="w-[264px] h-[264px] mb-8 flex items-center justify-center">
-            <QrCode className="w-48 h-48 text-[#00a884] opacity-20" />
+          <div className="w-[280px] h-[280px] mb-8 flex items-center justify-center">
+            <svg viewBox="0 0 212 212" width="212" height="212" className="text-[#00a884]">
+              <path fill="currentColor" d="M105.946.25C164.318.25 211.64 47.596 211.64 106c0 58.404-47.322 105.75-105.694 105.75C47.574 211.75.25 164.404.25 106 .25 47.596 47.574.25 105.946.25zm-.067 18.69c-48.176 0-87.346 39.169-87.346 87.346 0 16.263 4.469 31.501 12.218 44.525l-12.991 38.742 39.769-12.641c12.531 7.092 27.001 11.148 42.35 11.148 48.177 0 87.348-39.169 87.348-87.346 0-48.176-39.171-87.346-87.348-87.346zm-6.06 29.622c1.614 0 3.229.008 4.63.081 1.667.077 3.578.337 5.317 3.996 2.078 4.373 6.59 16.112 7.168 17.275.582 1.163 1.048 2.597.289 4.065-.758 1.468-1.163 2.401-2.284 3.681-1.12 1.279-2.377 2.866-3.384 3.852-1.123 1.099-2.281 2.322-1.004 4.53 1.277 2.207 5.682 9.429 12.24 15.298 8.425 7.545 15.511 9.937 17.768 11.063 2.258 1.124 3.576.964 4.924-.462 1.35-1.428 5.777-6.701 7.323-9.015 1.546-2.313 3.105-1.962 5.211-1.202 2.108.757 13.334 6.298 15.629 7.459 2.294 1.161 3.811 1.705 4.393 2.712.58 1.006.58 5.789-1.236 11.368-1.814 5.581-10.535 10.961-14.549 11.426-3.614.416-8.184.595-13.248-1.071-3.062-1.008-6.994-2.362-12.03-4.637-21.201-9.574-35.014-31.142-36.064-32.568-1.048-1.428-8.556-11.433-8.556-21.783 0-10.349 5.252-15.47 7.228-17.624 1.975-2.154 4.345-2.712 5.808-2.712z"></path>
+            </svg>
           </div>
           <h1 className="text-[#e9edef] text-3xl font-light mb-4">WhatsApp Web</h1>
           <p className="text-[#8696a0] text-center max-w-md mb-8">
@@ -308,62 +397,16 @@ export default function WhatsAppPage() {
             )}
             Link with phone number
           </Button>
+          {status?.lastError && (
+            <p className="text-red-400 text-sm mt-4">{status.lastError}</p>
+          )}
         </div>
         <div className="p-4 border-t border-[#222d34] flex items-center justify-center gap-2">
+          <svg viewBox="0 0 10 12" width="10" height="12" className="text-[#8696a0]">
+            <path fill="currentColor" d="M5.175 0a4.825 4.825 0 00-4.821 4.83v1.96h-.34c-.557 0-1.012.448-1.012 1.003v3.22c0 .552.455 1.001 1.013 1.001h10.138c.558 0 1.013-.449 1.013-1.001v-3.22c0-.555-.455-1.004-1.013-1.004h-.337v-1.96A4.826 4.826 0 005.175 0zm2.674 6.79H2.326V4.83a2.857 2.857 0 012.849-2.854 2.858 2.858 0 012.85 2.854v1.96h-.175z"></path>
+          </svg>
           <span className="text-[#8696a0] text-sm">End-to-end encrypted</span>
         </div>
-      </div>
-    );
-  }
-
-  if (isConnecting && status?.qrCode) {
-    return (
-      <div className="h-[calc(100vh-6rem)] flex flex-col bg-[#111b21] rounded-lg overflow-hidden">
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="flex flex-col md:flex-row items-center gap-12">
-            <div className="flex flex-col items-center">
-              <div className="bg-white p-4 rounded-lg mb-4">
-                <img
-                  src={`data:image/png;base64,${status.qrCode}`}
-                  alt="WhatsApp QR Code"
-                  className="w-64 h-64"
-                  data-testid="img-qr-code"
-                />
-              </div>
-              <Button
-                variant="ghost"
-                onClick={() => disconnectMutation.mutate()}
-                className="text-[#00a884] hover:text-[#06cf9c] hover:bg-transparent"
-                data-testid="button-whatsapp-disconnect"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </div>
-            <div className="text-center md:text-left max-w-sm">
-              <h2 className="text-[#e9edef] text-2xl font-light mb-6">
-                Link with QR code
-              </h2>
-              <ol className="text-[#8696a0] space-y-4 list-decimal list-inside">
-                <li>Open WhatsApp on your phone</li>
-                <li>
-                  Tap <span className="text-[#e9edef]">Menu</span> or{" "}
-                  <span className="text-[#e9edef]">Settings</span> and select{" "}
-                  <span className="text-[#e9edef]">Linked Devices</span>
-                </li>
-                <li>
-                  Tap on <span className="text-[#e9edef]">Link a Device</span>
-                </li>
-                <li>Point your phone at this screen to capture the QR code</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-        {status?.lastError && (
-          <div className="p-4 bg-red-500/10 border-t border-red-500/20 text-center">
-            <p className="text-red-400 text-sm">{status.lastError}</p>
-          </div>
-        )}
       </div>
     );
   }
@@ -384,11 +427,16 @@ export default function WhatsAppPage() {
               variant="ghost"
               size="icon"
               onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
               className="text-[#aebac1] hover:text-white hover:bg-[#374045] rounded-full"
               title="Logout"
               data-testid="button-whatsapp-logout"
             >
-              <LogOut className="h-5 w-5" />
+              {logoutMutation.isPending ? (
+                <RefreshCw className="h-5 w-5 animate-spin" />
+              ) : (
+                <LogOut className="h-5 w-5" />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -418,11 +466,12 @@ export default function WhatsAppPage() {
         <div className="flex-1 overflow-y-auto">
           {chatsLoading ? (
             <div className="flex items-center justify-center h-32">
-              <LoadingSpinner fullScreen={false} className="h-6 w-6" />
+              <RefreshCw className="h-6 w-6 text-[#00a884] animate-spin" />
             </div>
           ) : !filteredChats || filteredChats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-[#8696a0]">
               <p className="text-sm">No chats found</p>
+              <p className="text-xs mt-1">Start a conversation from your phone</p>
             </div>
           ) : (
             filteredChats.map((chat) => {
@@ -526,7 +575,7 @@ export default function WhatsAppPage() {
             >
               {messagesLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <LoadingSpinner fullScreen={false} className="h-8 w-8" />
+                  <RefreshCw className="h-8 w-8 text-[#00a884] animate-spin" />
                 </div>
               ) : !messages || messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
