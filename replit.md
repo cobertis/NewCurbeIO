@@ -79,6 +79,19 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - Media cache limited to 100 entries per tenant
 - Prevents unbounded memory growth in long-running sessions
 
+**Session Metrics System (Dec 2024):**
+- Persistent metrics stored in separate Map (survives reconnections)
+- Tracks: connectedAt, lastActivityAt, messagesSent, messagesReceived, reconnectCount, uptime
+- `/api/whatsapp/metrics` endpoint for monitoring
+- Exponential backoff with jitter for reconnections (2s→30s, ±25% randomization)
+
+**Media Persistence (Object Storage - Dec 2024):**
+- Optional integration with Replit Object Storage for multimedia files
+- 3-tier lookup: memory cache → Object Storage → WhatsApp download
+- Fire-and-forget async uploads (non-blocking)
+- Requires `WHATSAPP_MEDIA_DIR` env var (format: `/bucket-name/whatsapp-media`)
+- Media survives server restarts when Object Storage is configured
+
 **Production Specs for 100 Sessions:**
 - 64GB RAM, 32 vCPU, NVMe SSD, 16-32GB swap
 - Significantly reduced from previous Chrome-based estimates
