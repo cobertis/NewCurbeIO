@@ -278,7 +278,7 @@ export default function WhatsAppPage() {
     return (
       <div className="h-[calc(100vh-6rem)] flex items-center justify-center bg-[#111b21] rounded-lg">
         <div className="text-center">
-          <RefreshCw className="h-12 w-12 text-[#00a884] animate-spin mx-auto mb-4" />
+          <RefreshCw className="h-12 w-12 text-[#aebac1] animate-spin mx-auto mb-4" />
           <p className="text-[#8696a0]">Loading WhatsApp...</p>
         </div>
       </div>
@@ -308,7 +308,7 @@ export default function WhatsAppPage() {
                   variant="ghost"
                   onClick={() => disconnectMutation.mutate()}
                   disabled={disconnectMutation.isPending}
-                  className="text-[#00a884] hover:text-[#06cf9c] hover:bg-transparent"
+                  className="text-[#aebac1] hover:text-white hover:bg-transparent"
                   data-testid="button-whatsapp-cancel"
                 >
                   {disconnectMutation.isPending ? (
@@ -351,7 +351,7 @@ export default function WhatsAppPage() {
       return (
         <div className="h-[calc(100vh-6rem)] flex flex-col bg-[#111b21] rounded-lg overflow-hidden">
           <div className="flex-1 flex flex-col items-center justify-center p-8">
-            <RefreshCw className="h-16 w-16 text-[#00a884] animate-spin mb-6" />
+            <RefreshCw className="h-16 w-16 text-[#aebac1] animate-spin mb-6" />
             <h1 className="text-[#e9edef] text-2xl font-light mb-2">Connecting to WhatsApp</h1>
             <p className="text-[#8696a0] text-center mb-8">
               Please wait while we generate the QR code...
@@ -374,7 +374,7 @@ export default function WhatsAppPage() {
       <div className="h-[calc(100vh-6rem)] flex flex-col bg-[#111b21] rounded-lg overflow-hidden">
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <div className="w-[280px] h-[280px] mb-8 flex items-center justify-center">
-            <svg viewBox="0 0 212 212" width="212" height="212" className="text-[#00a884]">
+            <svg viewBox="0 0 212 212" width="212" height="212" className="text-[#8696a0]">
               <path fill="currentColor" d="M105.946.25C164.318.25 211.64 47.596 211.64 106c0 58.404-47.322 105.75-105.694 105.75C47.574 211.75.25 164.404.25 106 .25 47.596 47.574.25 105.946.25zm-.067 18.69c-48.176 0-87.346 39.169-87.346 87.346 0 16.263 4.469 31.501 12.218 44.525l-12.991 38.742 39.769-12.641c12.531 7.092 27.001 11.148 42.35 11.148 48.177 0 87.348-39.169 87.348-87.346 0-48.176-39.171-87.346-87.348-87.346zm-6.06 29.622c1.614 0 3.229.008 4.63.081 1.667.077 3.578.337 5.317 3.996 2.078 4.373 6.59 16.112 7.168 17.275.582 1.163 1.048 2.597.289 4.065-.758 1.468-1.163 2.401-2.284 3.681-1.12 1.279-2.377 2.866-3.384 3.852-1.123 1.099-2.281 2.322-1.004 4.53 1.277 2.207 5.682 9.429 12.24 15.298 8.425 7.545 15.511 9.937 17.768 11.063 2.258 1.124 3.576.964 4.924-.462 1.35-1.428 5.777-6.701 7.323-9.015 1.546-2.313 3.105-1.962 5.211-1.202 2.108.757 13.334 6.298 15.629 7.459 2.294 1.161 3.811 1.705 4.393 2.712.58 1.006.58 5.789-1.236 11.368-1.814 5.581-10.535 10.961-14.549 11.426-3.614.416-8.184.595-13.248-1.071-3.062-1.008-6.994-2.362-12.03-4.637-21.201-9.574-35.014-31.142-36.064-32.568-1.048-1.428-8.556-11.433-8.556-21.783 0-10.349 5.252-15.47 7.228-17.624 1.975-2.154 4.345-2.712 5.808-2.712z"></path>
             </svg>
           </div>
@@ -387,7 +387,7 @@ export default function WhatsAppPage() {
           <Button
             onClick={() => connectMutation.mutate()}
             disabled={connectMutation.isPending}
-            className="bg-[#00a884] hover:bg-[#06cf9c] text-white px-8 py-6 text-lg rounded-full"
+            className="bg-[#2a3942] hover:bg-[#374045] text-white px-8 py-6 text-lg rounded-full border border-[#3b4a54]"
             data-testid="button-whatsapp-connect"
           >
             {connectMutation.isPending ? (
@@ -466,7 +466,7 @@ export default function WhatsAppPage() {
         <div className="flex-1 overflow-y-auto">
           {chatsLoading ? (
             <div className="flex items-center justify-center h-32">
-              <RefreshCw className="h-6 w-6 text-[#00a884] animate-spin" />
+              <RefreshCw className="h-6 w-6 text-[#aebac1] animate-spin" />
             </div>
           ) : !filteredChats || filteredChats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-[#8696a0]">
@@ -502,7 +502,7 @@ export default function WhatsAppPage() {
                       </span>
                       <span className={cn(
                         "text-xs flex-shrink-0",
-                        chat.unreadCount > 0 ? "text-[#00a884]" : "text-[#8696a0]"
+                        chat.unreadCount > 0 ? "text-white" : "text-[#8696a0]"
                       )}>
                         {lastMessageTime}
                       </span>
@@ -513,7 +513,7 @@ export default function WhatsAppPage() {
                         {lastMessageText || "No messages"}
                       </p>
                       {chat.unreadCount > 0 && (
-                        <span className="bg-[#00a884] text-[#111b21] text-xs font-medium rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                        <span className="bg-[#3b4a54] text-white text-xs font-medium rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
                           {chat.unreadCount}
                         </span>
                       )}
@@ -575,7 +575,7 @@ export default function WhatsAppPage() {
             >
               {messagesLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <RefreshCw className="h-8 w-8 text-[#00a884] animate-spin" />
+                  <RefreshCw className="h-8 w-8 text-[#aebac1] animate-spin" />
                 </div>
               ) : !messages || messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
@@ -605,7 +605,7 @@ export default function WhatsAppPage() {
                               className={cn(
                                 "max-w-[65%] rounded-lg px-3 py-2 shadow relative",
                                 message.fromMe
-                                  ? "bg-[#005c4b] text-[#e9edef]"
+                                  ? "bg-[#2a3942] text-[#e9edef]"
                                   : "bg-[#202c33] text-[#e9edef]"
                               )}
                               style={{
@@ -700,12 +700,12 @@ export default function WhatsAppPage() {
               <div className="w-[320px] h-[188px] mx-auto mb-8 flex items-center justify-center">
                 <svg viewBox="0 0 303 172" width="250" preserveAspectRatio="xMidYMid meet" fill="none">
                   <path fillRule="evenodd" clipRule="evenodd" d="M229.565 160.229c32.647-10.984 57.366-41.988 53.825-86.81-5.381-68.1-71.025-84.993-111.918-64.932C115.998-16.447 28.178 1.542 6.461 67.157c-24.204 73.118 64.608 97.378 116.203 96.027 40.534-.962 72.381-13.037 106.901-2.955z" fill="#364147"></path>
-                  <path fillRule="evenodd" clipRule="evenodd" d="M131.589 68.942H85.095a7.093 7.093 0 00-7.093 7.093v46.495a7.093 7.093 0 007.093 7.093h46.494a7.093 7.093 0 007.093-7.093V76.035a7.093 7.093 0 00-7.093-7.093z" fill="#42CBA5"></path>
-                  <path d="M105.102 90.48c-4.416 0-8 3.584-8 8s3.584 8 8 8 8-3.584 8-8-3.584-8-8-8z" fill="#0DA884"></path>
-                  <path d="M111.342 122.53h-12.48a7.24 7.24 0 01-7.24-7.24 7.24 7.24 0 017.24-7.24h12.48a7.24 7.24 0 017.24 7.24 7.24 7.24 0 01-7.24 7.24z" fill="#0DA884"></path>
-                  <path fillRule="evenodd" clipRule="evenodd" d="M217.905 68.942h-46.494a7.093 7.093 0 00-7.093 7.093v46.495a7.093 7.093 0 007.093 7.093h46.494a7.093 7.093 0 007.093-7.093V76.035a7.093 7.093 0 00-7.093-7.093z" fill="#42CBA5"></path>
-                  <path d="M191.418 90.48c-4.416 0-8 3.584-8 8s3.584 8 8 8 8-3.584 8-8-3.584-8-8-8z" fill="#0DA884"></path>
-                  <path d="M197.658 122.53h-12.48a7.24 7.24 0 01-7.24-7.24 7.24 7.24 0 017.24-7.24h12.48a7.24 7.24 0 017.24 7.24 7.24 7.24 0 01-7.24 7.24z" fill="#0DA884"></path>
+                  <path fillRule="evenodd" clipRule="evenodd" d="M131.589 68.942H85.095a7.093 7.093 0 00-7.093 7.093v46.495a7.093 7.093 0 007.093 7.093h46.494a7.093 7.093 0 007.093-7.093V76.035a7.093 7.093 0 00-7.093-7.093z" fill="#6b7c85"></path>
+                  <path d="M105.102 90.48c-4.416 0-8 3.584-8 8s3.584 8 8 8 8-3.584 8-8-3.584-8-8-8z" fill="#4a5961"></path>
+                  <path d="M111.342 122.53h-12.48a7.24 7.24 0 01-7.24-7.24 7.24 7.24 0 017.24-7.24h12.48a7.24 7.24 0 017.24 7.24 7.24 7.24 0 01-7.24 7.24z" fill="#4a5961"></path>
+                  <path fillRule="evenodd" clipRule="evenodd" d="M217.905 68.942h-46.494a7.093 7.093 0 00-7.093 7.093v46.495a7.093 7.093 0 007.093 7.093h46.494a7.093 7.093 0 007.093-7.093V76.035a7.093 7.093 0 00-7.093-7.093z" fill="#6b7c85"></path>
+                  <path d="M191.418 90.48c-4.416 0-8 3.584-8 8s3.584 8 8 8 8-3.584 8-8-3.584-8-8-8z" fill="#4a5961"></path>
+                  <path d="M197.658 122.53h-12.48a7.24 7.24 0 01-7.24-7.24 7.24 7.24 0 017.24-7.24h12.48a7.24 7.24 0 017.24 7.24 7.24 7.24 0 01-7.24 7.24z" fill="#4a5961"></path>
                 </svg>
               </div>
               <h1 className="text-[#e9edef] text-3xl font-light mb-4">WhatsApp Web</h1>
