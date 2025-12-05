@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system designed to enhance operational efficiency and communication for businesses. It offers comprehensive customer relationship management, communication tools (iMessage/SMS/RCS/WhatsApp), and an admin dashboard for managing Quotes, Policies, and Campaigns. The system aims to provide a unified platform for managing customer interactions, automating marketing campaigns, and streamlining policy and quote management to increase operational efficiency and improve customer engagement.
+Curbe is a multi-tenant CRM system designed to enhance operational efficiency and communication for businesses. It offers comprehensive customer relationship management, communication tools (iMessage/SMS/RCS), and an admin dashboard for managing Quotes, Policies, and Campaigns. The system aims to provide a unified platform for managing customer interactions, automating marketing campaigns, and streamlining policy and quote management to increase operational efficiency and improve customer engagement.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -30,7 +30,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 **Key Features:**
 - **User & Company Management:** CRUD, RBAC, 2FA, multi-tenancy.
-- **Communication Systems:** Email, SMS/MMS (BulkVS), iMessage (BlueBubbles), and comprehensive WhatsApp integration using Baileys (WebSocket-based) with session management, message operations, chat/contact/group management, and real-time notifications.
+- **Communication Systems:** Email, SMS/MMS (BulkVS), iMessage (BlueBubbles).
 - **Billing & Stripe Integration:** Automated customer and subscription management.
 - **Quotes Management System:** 3-step wizard with Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
 - **Policies Management System:** Converts quotes to policies, manages statuses, assigns agents, supports cursor-based pagination, and hybrid search.
@@ -55,68 +55,13 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Open Redirect Protection:** Tracking endpoint validates redirect URLs against an allowlist.
 - **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 - **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
-- **WhatsApp Security (Baileys):** Full multi-tenant session isolation with company-scoped auth directories (`.baileys_auth/{companyId}/`), separate WebSocket client instances per company, all API endpoints company-scoped via authenticated user's companyId. Global mutex serializes client initialization to prevent race conditions. Memory-bounded message store (500 messages max per tenant) prevents RAM exhaustion.
 - **iMessage Security:** Webhook secret isolation, admin-only settings, feature gating, multi-tenant GUID scoping, and early-return guards for self-sent webhook duplicates.
-
-## Production Deployment Notes
-
-### WhatsApp Multi-Tenant Architecture (Baileys - Dec 2024)
-**Migration Complete:** Migrated from whatsapp-web.js (Chrome-based) to Baileys (WebSocket-based) for improved stability and resource efficiency.
-
-**Resource Benefits:**
-- **RAM Usage:** ~80-120MB per session (vs ~500MB with Chrome) - 80% reduction
-- **No Browser Required:** Direct WebSocket connection to WhatsApp servers
-- **Faster Reconnection:** No browser startup delay
-- **Better Stability:** Eliminates Chrome/Puppeteer crash issues
-
-**Session Storage Architecture:**
-- Auth credentials: `.baileys_auth/{companyId}/` directories using `useMultiFileAuthState`
-- Each company has fully isolated session data
-- Sessions persist across server restarts (no need to re-scan QR)
-
-**Memory Management:**
-- Message store limited to 500 messages per tenant (auto-eviction of oldest)
-- Media cache limited to 100 entries per tenant
-- Prevents unbounded memory growth in long-running sessions
-
-**Message Persistence (Database - Dec 2024):**
-- Messages persisted to `whatsappMessages` PostgreSQL table
-- Hybrid architecture: memory cache (fast) + database fallback (complete history)
-- Syncs during `messaging-history.set` event (initial connection)
-- Real-time persistence via `messages.upsert` event (incoming/outgoing messages)
-- Fire-and-forget async inserts prevent blocking
-- Batch inserts for history sync (100 messages per batch)
-- Indexed by: companyId, chatId, timestamp for efficient queries
-- Supports cursor-based pagination with `before` timestamp filter
-- Deduplication via unique constraint on messageId + chatId + companyId
-- Solves chat history mismatch between app and phone (messages survive restarts)
-
-**Session Metrics System (Dec 2024):**
-- Persistent metrics stored in separate Map (survives reconnections)
-- Tracks: connectedAt, lastActivityAt, messagesSent, messagesReceived, reconnectCount, uptime
-- `/api/whatsapp/metrics` endpoint for monitoring
-- Exponential backoff with jitter for reconnections (2s→30s, ±25% randomization)
-
-**Media Persistence (Object Storage - Dec 2024):**
-- Optional integration with Replit Object Storage for multimedia files
-- 3-tier lookup: memory cache → Object Storage → WhatsApp download
-- Fire-and-forget async uploads (non-blocking)
-- Requires `WHATSAPP_MEDIA_DIR` env var (format: `/bucket-name/whatsapp-media`)
-- Media survives server restarts when Object Storage is configured
-
-**Production Specs for 100 Sessions:**
-- 64GB RAM, 32 vCPU, NVMe SSD, 16-32GB swap
-- Significantly reduced from previous Chrome-based estimates
-
-**Known Considerations:**
-- Baileys uses reverse engineering (same as whatsapp-web.js) - still unofficial
-- For zero-risk enterprise solution, consider migrating to official WhatsApp Business API
 
 ## External Dependencies
 
 - **Database:** PostgreSQL, Drizzle ORM, `postgres`.
 - **Email:** Nodemailer.
-- **SMS/MMS/iMessage/WhatsApp:** Twilio, BulkVS, BlueBubbles, @whiskeysockets/baileys.
+- **SMS/MMS/iMessage:** Twilio, BulkVS, BlueBubbles.
 - **Payments:** Stripe.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 - **Drag & Drop:** @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities.

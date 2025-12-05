@@ -19,7 +19,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout } from "lucide-react";
-import { SiWhatsapp } from "react-icons/si";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -78,7 +77,6 @@ import Tasks from "@/pages/tasks";
 import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
-import WhatsAppPage from "@/pages/whatsapp";
 import NotFound from "@/pages/not-found";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -132,20 +130,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],
   });
-
-  // Query WhatsApp chats to calculate total unread messages for sidebar badge
-  const { data: whatsappChatsData } = useQuery<{ success: boolean; chats: Array<{ id: string; unreadCount: number }> }>({
-    queryKey: ["/api/whatsapp/chats"],
-    enabled: !!user?.companyId && user?.role !== 'superadmin', // Only fetch for company users
-    refetchInterval: 10000, // Refresh every 10 seconds for badge updates
-    staleTime: 5000,
-  });
-
-  // Calculate total WhatsApp unread messages
-  const whatsappUnreadCount = useMemo(() => {
-    if (!whatsappChatsData?.chats) return 0;
-    return whatsappChatsData.chats.reduce((total, chat) => total + (chat.unreadCount || 0), 0);
-  }, [whatsappChatsData?.chats]);
 
   // Fetch company data for all users with a companyId
   const { data: companyData, isLoading: isLoadingCompany, isFetched: isCompanyFetched } = useQuery<{ company: any }>({
@@ -249,11 +233,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       // Also invalidate unread count for sidebar badge
       queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
       // Play sound when new SMS arrives
-      playNotificationSound();
-    } else if (message.type === 'whatsapp_message') {
-      // When a new WhatsApp message arrives, invalidate chats to update the sidebar badge
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
-      // Play sound for new WhatsApp messages
       playNotificationSound();
     } else if (message.type === 'notification_update') {
       // When a broadcast notification is sent, update notifications in real-time
@@ -731,24 +710,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
           {/* Communications Icons */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setLocation("/whatsapp")}
-                data-testid="sidebar-button-whatsapp"
-                className={cn(circularButtonClass, "relative")}
-              >
-                <SiWhatsapp className="h-[18px] w-[18px] text-green-600" />
-                {whatsappUnreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
-                    <span className="text-white text-[9px] font-bold">{whatsappUnreadCount > 9 ? '!' : whatsappUnreadCount}</span>
-                  </span>
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">WhatsApp</TooltipContent>
-          </Tooltip>
-
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -1570,13 +1531,6 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SmsMmsPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/whatsapp">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <WhatsAppPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
