@@ -410,7 +410,7 @@ function ImessageAudioMessage({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Use real waveform if available, otherwise generate random bars - WhatsApp uses 64 bars
+  // Use real waveform if available, otherwise generate random bars (64 bars standard)
   const waveformBars = useMemo(() => {
     if (waveform && waveform.length > 0) {
       // Resample to 64 bars if needed
@@ -430,7 +430,7 @@ function ImessageAudioMessage({
       }
       return resampled;
     }
-    // Fallback: generate 64 random bars (WhatsApp standard)
+    // Fallback: generate 64 random bars
     return Array.from({ length: 64 }, () => Math.floor(Math.random() * 90) + 20);
   }, [waveform]);
 
@@ -455,7 +455,7 @@ function ImessageAudioMessage({
         )}
       </Button>
 
-      {/* Waveform Visualization - WhatsApp style: 64 bars */}
+      {/* Waveform Visualization - 64 bars */}
       <div className="flex-1 flex items-center gap-[2px] min-w-0" style={{ height: '32px' }}>
         {waveformBars.map((amp, i) => {
           const progress = duration > 0 ? currentTime / duration : 0;
@@ -535,7 +535,7 @@ export default function IMessagePage() {
   const [recordingWaveform, setRecordingWaveform] = useState<number[]>([]); // Progressive bars array
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
-  const DISPLAY_BAR_COUNT = 64; // WhatsApp standard: 64 bars
+  const DISPLAY_BAR_COUNT = 64; // Standard bar count for waveform display
   
   // Voice recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -2122,7 +2122,7 @@ export default function IMessagePage() {
                       {/* Recording indicator */}
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                       
-                      {/* Waveform bars - WhatsApp style */}
+                      {/* Waveform bars */}
                       <div className="flex-1 flex items-center gap-[2px]" style={{ 
                         height: '32px'
                       }}>
@@ -2185,7 +2185,7 @@ export default function IMessagePage() {
                         )}
                       </Button>
                       
-                      {/* Static waveform with progress indicator - WhatsApp style */}
+                      {/* Static waveform with progress indicator */}
                       <div className="flex-1 relative">
                         <div className="flex items-center gap-[2px]" style={{ 
                           height: '32px'

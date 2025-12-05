@@ -173,7 +173,7 @@ export default function SmsMmsPage() {
       });
     },
     onMutate: async ({ message, mediaFile }) => {
-      // OPTIMISTIC UPDATE: Add message IMMEDIATELY like WhatsApp
+      // OPTIMISTIC UPDATE: Add message immediately for better UX
       if (!selectedThread || !activeNumbers[0]) return;
 
       await queryClient.cancelQueries({ queryKey: ["/api/bulkvs/threads", selectedThreadId, "messages"] });

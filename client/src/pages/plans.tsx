@@ -23,7 +23,6 @@ const PLAN_FEATURES = [
   { name: "Campañas por Email", shared: true, dedicated: true, unlimited: true },
   { name: "SMS Automáticos", shared: true, dedicated: true, unlimited: true },
   { name: "Sistema de Referidos", shared: false, dedicated: true, unlimited: true },
-  { name: "WhatsApp Integrado", shared: false, dedicated: true, unlimited: true },
   { name: "iMessage Bridge", shared: false, dedicated: false, unlimited: true },
   { name: "Soporte Prioritario / Multiusuario", shared: false, dedicated: false, unlimited: true },
 ];
@@ -43,7 +42,7 @@ const PUBLIC_PLANS: PublicPlan[] = [
     price: 97,
     accounts: "1 cuenta incluida",
     icon: Users,
-    features: [true, true, true, true, true, false, false, false, false],
+    features: [true, true, true, true, true, false, false, false],
   },
   {
     name: "Dedicated Plan",
@@ -51,14 +50,14 @@ const PUBLIC_PLANS: PublicPlan[] = [
     accounts: "5 cuentas incluidas",
     popular: true,
     icon: Zap,
-    features: [true, true, true, true, true, true, true, false, false],
+    features: [true, true, true, true, true, true, false, false],
   },
   {
     name: "Unlimited Plan",
     price: 497,
     accounts: "Cuentas ilimitadas",
     icon: Star,
-    features: [true, true, true, true, true, true, true, true, true],
+    features: [true, true, true, true, true, true, true, true],
   },
 ];
 

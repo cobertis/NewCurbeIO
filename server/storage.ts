@@ -8706,7 +8706,7 @@ export class DbStorage implements IStorage {
     const limit = options?.limit || 50;
     const offset = options?.offset || 0;
     
-    // Order by createdAt ASC (oldest first) for WhatsApp-style chronological display
+    // Order by createdAt ASC (oldest first) for chronological display
     return db
       .select()
       .from(bulkvsMessages)

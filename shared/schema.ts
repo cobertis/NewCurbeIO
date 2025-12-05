@@ -3328,7 +3328,7 @@ export const bulkvsThreads = pgTable("bulkvs_threads", {
   externalPhone: text("external_phone").notNull(), // E.164 contact phone
   displayName: text("display_name"), // Contact name
   
-  labels: text("labels").array().default([]), // Tags tipo WhatsApp ["client", "hot_lead", etc]
+  labels: text("labels").array().default([]), // Tags ["client", "hot_lead", etc]
   isPinned: boolean("is_pinned").notNull().default(false),
   isArchived: boolean("is_archived").notNull().default(false),
   isMuted: boolean("is_muted").notNull().default(false),
