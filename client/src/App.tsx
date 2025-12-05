@@ -77,6 +77,7 @@ import Tasks from "@/pages/tasks";
 import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
+import WhatsAppPage from "@/pages/whatsapp";
 import NotFound from "@/pages/not-found";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -734,6 +735,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">SMS</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/whatsapp")}
+                data-testid="sidebar-button-whatsapp"
+                className={circularButtonClass}
+              >
+                <MessageCircle className="h-[18px] w-[18px] text-green-500" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">WhatsApp</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -1538,6 +1552,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IMessagePage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/whatsapp">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <WhatsAppPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

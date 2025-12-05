@@ -109,6 +109,7 @@ import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
+import { whatsappService } from "./whatsapp-service";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -1088,6 +1089,106 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
+  // ============================================================
+  // WhatsApp Routes (Baileys v6.7.x - PostgreSQL-backed)
+  // ============================================================
+
+  // Get WhatsApp status
+  app.get('/api/whatsapp/status', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const status = whatsappService.getStatus(companyId);
+      const hasSaved = await whatsappService.hasSavedSession(companyId);
+      res.json({ ...status, hasSavedSession: hasSaved });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Initialize/Connect WhatsApp
+  app.post('/api/whatsapp/connect', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const session = await whatsappService.initializeClient(companyId);
+      res.json({ 
+        success: true, 
+        status: session.status,
+        selfJid: session.selfJid 
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Logout/Disconnect WhatsApp
+  app.post('/api/whatsapp/logout', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      await whatsappService.logout(companyId);
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get all chats
+  app.get('/api/whatsapp/chats', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const chats = await whatsappService.getChats(companyId);
+      res.json(chats);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get messages for a chat
+  app.get('/api/whatsapp/chats/:chatId/messages', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const { chatId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const messages = await whatsappService.getMessages(companyId, chatId, limit);
+      res.json(messages);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Send text message
+  app.post('/api/whatsapp/send', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const { remoteJid, text } = req.body;
+      
+      if (!remoteJid || !text) {
+        return res.status(400).json({ error: 'remoteJid and text are required' });
+      }
+      
+      const result = await whatsappService.sendText(companyId, remoteJid, text);
+      res.json({ success: true, message: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Send media message
+  app.post('/api/whatsapp/send-media', requireAuth, async (req, res, next) => {
+    try {
+      const companyId = (req.user as any).companyId;
+      const { remoteJid, url, caption, type } = req.body;
+      
+      if (!remoteJid || !url) {
+        return res.status(400).json({ error: 'remoteJid and url are required' });
+      }
+      
+      const result = await whatsappService.sendMedia(companyId, remoteJid, url, caption, type || 'image');
+      res.json({ success: true, message: result });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // ==================== iMESSAGE API ENDPOINTS ====================
   
   /**
