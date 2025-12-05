@@ -1099,7 +1099,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const companyId = (req.user as any).companyId;
       const status = whatsappService.getStatus(companyId);
       const hasSaved = await whatsappService.hasSavedSession(companyId);
-      res.json({ ...status, hasSavedSession: hasSaved });
+      res.json({ 
+        success: true, 
+        status,
+        hasSavedSession: hasSaved 
+      });
     } catch (error) {
       next(error);
     }

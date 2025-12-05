@@ -1153,7 +1153,7 @@ export default function WhatsAppPage() {
   const status = statusData?.status;
   const hasSavedSession = statusData?.hasSavedSession ?? false;
   const isAuthenticated = status?.status === 'authenticated' || status?.status === 'ready';
-  const hasQRCode = !!status?.qrCode;
+  const hasQRCode = !!status?.qrCode || !!status?.qrDataUrl;
 
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
@@ -1180,27 +1180,27 @@ export default function WhatsAppPage() {
 
   // Auto-stop initialization state when we get QR code or authenticated
   useEffect(() => {
-    if (status?.qrCode || isAuthenticated) {
+    if (status?.qrCode || status?.qrDataUrl || isAuthenticated) {
       setIsInitializing(false);
     }
-  }, [status?.qrCode, isAuthenticated]);
+  }, [status?.qrCode, status?.qrDataUrl, isAuthenticated]);
 
   // AUTO-INITIALIZE: When no session and not already initializing, auto-start connection (once)
   useEffect(() => {
-    const shouldAutoInit = !statusLoading && !isAuthenticated && !status?.qrCode && !hasSavedSession && !isInitializing && !initWhatsAppMutation.isPending && !hasAttemptedAutoInit.current;
+    const shouldAutoInit = !statusLoading && !isAuthenticated && !hasQRCode && !hasSavedSession && !isInitializing && !initWhatsAppMutation.isPending && !hasAttemptedAutoInit.current;
     if (shouldAutoInit) {
       hasAttemptedAutoInit.current = true;
       console.log('[WhatsApp] Auto-initializing connection (once)...');
       initWhatsAppMutation.mutate();
     }
-  }, [statusLoading, isAuthenticated, status?.qrCode, hasSavedSession, isInitializing, initWhatsAppMutation.isPending]);
+  }, [statusLoading, isAuthenticated, hasQRCode, hasSavedSession, isInitializing, initWhatsAppMutation.isPending]);
   
   // Reset auto-init flag when user logs out or session changes
   useEffect(() => {
-    if (hasSavedSession || isAuthenticated || status?.qrCode) {
+    if (hasSavedSession || isAuthenticated || hasQRCode) {
       hasAttemptedAutoInit.current = false;
     }
-  }, [hasSavedSession, isAuthenticated, status?.qrCode]);
+  }, [hasSavedSession, isAuthenticated, hasQRCode]);
 
   // Detect when QR code was scanned (had QR, now don't have QR but not yet authenticated)
   useEffect(() => {
@@ -3474,7 +3474,7 @@ export default function WhatsAppPage() {
               </p>
               <div className="flex justify-center bg-white p-6 rounded-lg">
                 <img 
-                  src={status?.qrCode} 
+                  src={status?.qrDataUrl || status?.qrCode} 
                   alt="QR Code" 
                   className="w-64 h-64"
                   data-testid="img-qr-code"
