@@ -1132,6 +1132,7 @@ export default function WhatsAppPage() {
 
   // State for manual WhatsApp initialization
   const [isInitializing, setIsInitializing] = useState(false);
+  const hasAttemptedAutoInit = useRef(false);
   const [initError, setInitError] = useState<string | null>(null);
   
   // QR scan success animation states
@@ -1157,7 +1158,7 @@ export default function WhatsAppPage() {
   // Manual WhatsApp initialization mutation
   const initWhatsAppMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/whatsapp/init', { method: 'POST' });
+      const response = await fetch('/api/whatsapp/connect', { method: 'POST' });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to initialize WhatsApp');
@@ -1183,6 +1184,23 @@ export default function WhatsAppPage() {
       setIsInitializing(false);
     }
   }, [status?.qrCode, isAuthenticated]);
+
+  // AUTO-INITIALIZE: When no session and not already initializing, auto-start connection (once)
+  useEffect(() => {
+    const shouldAutoInit = !statusLoading && !isAuthenticated && !status?.qrCode && !hasSavedSession && !isInitializing && !initWhatsAppMutation.isPending && !hasAttemptedAutoInit.current;
+    if (shouldAutoInit) {
+      hasAttemptedAutoInit.current = true;
+      console.log('[WhatsApp] Auto-initializing connection (once)...');
+      initWhatsAppMutation.mutate();
+    }
+  }, [statusLoading, isAuthenticated, status?.qrCode, hasSavedSession, isInitializing, initWhatsAppMutation.isPending]);
+  
+  // Reset auto-init flag when user logs out or session changes
+  useEffect(() => {
+    if (hasSavedSession || isAuthenticated || status?.qrCode) {
+      hasAttemptedAutoInit.current = false;
+    }
+  }, [hasSavedSession, isAuthenticated, status?.qrCode]);
 
   // Detect when QR code was scanned (had QR, now don't have QR but not yet authenticated)
   useEffect(() => {
@@ -1785,7 +1803,7 @@ export default function WhatsAppPage() {
       
       // Automatically start a new session to show QR code
       try {
-        await apiRequest('POST', '/api/whatsapp/init', {});
+        await apiRequest('POST', '/api/whatsapp/connect', {});
         queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/status'] });
       } catch (error) {
         console.log('[WhatsApp] Init after logout failed, user can retry manually');
@@ -3476,7 +3494,7 @@ export default function WhatsAppPage() {
   }
 
   // =====================================================
-  // RENDER: CONNECT PAGE (no session, show connect button)
+  // RENDER: INITIALIZING PAGE (auto-connecting, waiting for QR)
   // =====================================================
 
   if (showConnectPage) {
@@ -3485,34 +3503,21 @@ export default function WhatsAppPage() {
         <Card className="w-full max-w-lg p-8 bg-[var(--whatsapp-bg-secondary)] border-[var(--whatsapp-border)]">
           <div className="text-center space-y-6">
             <div className="w-20 h-20 bg-[var(--whatsapp-green-primary)] rounded-full flex items-center justify-center mb-4 mx-auto">
-              <MessageSquare className="h-10 w-10 text-white" />
+              <RefreshCw className="h-10 w-10 text-white animate-spin" />
             </div>
             
             <h2 className="text-xl font-semibold text-[var(--whatsapp-text-primary)]">
-              Connect WhatsApp
+              Generating QR Code...
             </h2>
             <p className="text-[var(--whatsapp-text-secondary)]">
-              Link your WhatsApp account to start messaging
+              Please wait while we prepare your WhatsApp connection
             </p>
             
-            <Button
-              onClick={() => initWhatsAppMutation.mutate()}
-              disabled={initWhatsAppMutation.isPending || isInitializing}
-              className="bg-[var(--whatsapp-green-primary)] hover:bg-[var(--whatsapp-green-dark)] text-white"
-              data-testid="button-connect-whatsapp"
-            >
-              {initWhatsAppMutation.isPending || isInitializing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Connect WhatsApp
-                </>
-              )}
-            </Button>
+            <div className="flex justify-center gap-1">
+              <div className="w-2 h-2 bg-[var(--whatsapp-green-primary)] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-[var(--whatsapp-green-primary)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-[var(--whatsapp-green-primary)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
             
             {initError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
