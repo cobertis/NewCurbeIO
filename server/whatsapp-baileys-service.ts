@@ -570,6 +570,10 @@ class WhatsAppBaileysService extends EventEmitter {
 
     const logger = P({ level: 'silent' }) as any;
 
+    // Flag to track if we're still waiting for initial history sync
+    // This MUST be true initially so Baileys actually sends the history events
+    let awaitingHistorySync = true;
+
     const sock = makeWASocket({
       version,
       auth: state,
@@ -580,8 +584,18 @@ class WhatsAppBaileysService extends EventEmitter {
       defaultQueryTimeoutMs: 60000,
       keepAliveIntervalMs: 25000,
       markOnlineOnConnect: true,
-      syncFullHistory: true, // Enable history sync to get chats
+      syncFullHistory: true,
+      // CRITICAL: This handler tells Baileys to actually sync history messages
+      // Without this returning true, messaging-history.set never fires in v7
+      shouldSyncHistoryMessage: () => awaitingHistorySync,
     });
+
+    // Store the flag on the socket so we can update it from event handlers
+    (sock as any).awaitingHistorySync = awaitingHistorySync;
+    (sock as any).setHistorySyncComplete = () => {
+      awaitingHistorySync = false;
+      (sock as any).awaitingHistorySync = false;
+    };
 
     const sessionStatus: WhatsAppSessionStatus = {
       isReady: false,
@@ -1102,7 +1116,7 @@ class WhatsAppBaileysService extends EventEmitter {
       if (chats && Array.isArray(chats)) {
         for (const chat of chats) {
           if (chat.id) {
-            companyClient.chats.set(chat.id, {
+            const storedChat: StoredChat = {
               id: chat.id,
               name: chat.name || undefined,
               conversationTimestamp: chat.conversationTimestamp ? Number(chat.conversationTimestamp) : undefined,
@@ -1110,7 +1124,10 @@ class WhatsAppBaileysService extends EventEmitter {
               archived: chat.archived || false,
               pinned: chat.pinned || undefined,
               lastMessage: chat.lastMessage || undefined,
-            });
+            };
+            companyClient.chats.set(chat.id, storedChat);
+            // Persist to database immediately
+            this.persistChatToDb(companyId, storedChat).catch(() => {});
           }
         }
         console.log(`[Baileys] Stored ${companyClient.chats.size} total chats for company ${companyId}`);
@@ -1136,11 +1153,20 @@ class WhatsAppBaileysService extends EventEmitter {
         this.persistMessagesInBatch(companyId, messages as proto.IWebMessageInfo[]).catch(() => {});
       }
 
-      // When sync is complete, clean up orphaned chats from DB
+      // When sync is complete, mark it and clean up orphaned chats
       if (isLatest) {
-        this.cleanupOrphanedChats(companyId, companyClient).catch(err => {
-          console.error(`[Baileys] Error cleaning up orphaned chats:`, err);
-        });
+        // Mark history sync as complete - stops requesting more history
+        if ((sock as any).setHistorySyncComplete) {
+          (sock as any).setHistorySyncComplete();
+          console.log(`[Baileys] History sync complete for company ${companyId}`);
+        }
+        
+        // Clean up orphaned chats from DB after a short delay to ensure all chats are stored
+        setTimeout(() => {
+          this.cleanupOrphanedChats(companyId, companyClient).catch(err => {
+            console.error(`[Baileys] Error cleaning up orphaned chats:`, err);
+          });
+        }, 2000);
       }
     });
 
