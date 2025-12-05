@@ -1,0 +1,54 @@
+Esta es la hoja de ruta definitiva. Si quieres que `curbe.io` sea un CRM robusto que soporte a cientos de agentes de seguros sin colapsar tu servidor ni quemar los números de tus clientes, olvida los tutoriales de YouTube.
+
+Aquí tienes la **Arquitectura de Producción** para Baileys.
+
+### Fase 1: Estabilización Inmediata (El "Torniquete")
+
+1.  **Ejecuta el Downgrade YA:** Baja a la versión `v6.7.21`.
+    * **Por qué:** No puedes construir un edificio sobre cimientos que se mueven. La v7-RC tiene fugas de eventos. La v6.7 es sólida como una roca. Hazlo hoy.
+
+### Fase 2: La Arquitectura de Datos (El fin de `makeInMemoryStore`)
+
+El `makeInMemoryStore` es un juguete para bots personales. Para un SaaS, es veneno.
+**La Solución Correcta:** Construir un "Custom Store" que escriba directamente en tu base de datos.
+
+* **El Problema:** Tus agentes tienen historiales de chat gigantes (siniestros, pólizas, fotos). Si cargas eso en RAM (`makeInMemoryStore`), con 20 agentes tu servidor colapsa por *Out Of Memory*.
+* **La Implementación:**
+    * Escucha el evento `connection.update` y `messages.upsert`.
+    * Cuando llegue un mensaje, **no lo guardes en una variable**. Insértalo directamente en tu tabla `messages` (Postgres/Mongo) mediante una cola.
+    * **Beneficio:** Tu consumo de RAM será plano (siempre bajo), tengas 1 usuario o 1000. El historial vive en el disco, no en la memoria volátil.
+
+### Fase 3: Gestión de Sesiones (Auth State)
+
+* **Error Común:** Usar carpetas de archivos (`auth_info_baileys`) en el servidor.
+* **Riesgo:** Si usas Docker/Kubernetes o quieres escalar horizontalmente (más servidores), perderás las sesiones porque los archivos no se comparten.
+* **Solución:** Implementa `useMultiFileAuthState` pero adaptado para guardar los JSONs y llaves en **Redis** o en una columna `JSONB` de **PostgreSQL**.
+    * Esto hace que tu sesión sea "portable". Si el servidor se reinicia, la sesión se recupera desde la base de datos sin pedir QR de nuevo.
+
+### Fase 4: Manejo de Archivos (Crítico para Seguros)
+
+Tus clientes envían fotos de choques y PDFs de pólizas.
+* **La Regla de Oro:** NUNCA guardes los archivos multimedia (imágenes/videos) en tu base de datos ni en la carpeta del proyecto.
+* **Flujo Correcto:**
+    1.  Baileys recibe el mensaje con media.
+    2.  Tu código descarga el stream.
+    3.  Sube el archivo inmediatamente a un **S3 (AWS S3, MinIO, DigitalOcean Spaces)**.
+    4.  Guarda solo la URL pública/privada en tu base de datos.
+* **Por qué:** Mantienes tu base de datos ligera y rápida.
+
+### Fase 5: El Sistema Anti-Ban (Colas de Mensajes)
+
+Los agentes de seguros son intensos. Si mandan un broadcast a 50 clientes:
+* **Sin Arquitectura:** El bucle `for` dispara 50 peticiones en 1 segundo. WhatsApp detecta comportamiento inhumano -> **BAN**.
+* **Solución Correcta (Redis + BullMQ):**
+    * Crea una "cola de salida" de mensajes.
+    * Agrega un "delay" aleatorio (jitter) entre mensajes (ej: 3 a 10 segundos).
+    * Agrega eventos de "presencia" (`conn.sendPresenceUpdate('composing')`) antes de enviar cada mensaje en la cola.
+
+### Resumen del Plan de Batalla
+
+1.  **Hoy:** Downgrade a `v6.7.21`.
+2.  **Mañana:** Elimina `makeInMemoryStore`. Redirige los eventos de mensajes (`upsert`) a tu base de datos actual.
+3.  **Semana que viene:** Implementa una cola de mensajes (BullMQ) para proteger los números de tus clientes.
+
+**¿Por dónde quieres empezar? ¿Te doy el snippet de código para deshacerte del `makeInMemoryStore` y guardar los mensajes directo en base de datos, o prefieres ver la configuración de la cola Anti-Ban?**

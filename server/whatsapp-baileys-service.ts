@@ -12,6 +12,7 @@ import makeWASocket, {
   WAMessage,
   MessageUpsertType,
   ConnectionState,
+  makeInMemoryStore,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import P from 'pino';
@@ -52,6 +53,7 @@ interface StoredContact {
 
 interface CompanyBaileysClient {
   sock: WASocket;
+  store: ReturnType<typeof makeInMemoryStore>;
   chats: Map<string, StoredChat>;
   contacts: Map<string, StoredContact>;
   status: WhatsAppSessionStatus;
@@ -288,6 +290,9 @@ class WhatsAppBaileysService extends EventEmitter {
 
     const logger = P({ level: 'silent' }) as any;
 
+    // Create in-memory store for this company (handles history sync)
+    const store = makeInMemoryStore({ logger });
+
     const sock = makeWASocket({
       version,
       auth: state,
@@ -299,7 +304,18 @@ class WhatsAppBaileysService extends EventEmitter {
       keepAliveIntervalMs: 25000,
       markOnlineOnConnect: true,
       syncFullHistory: true, // Enable history sync to get chats
+      getMessage: async (key) => {
+        // Required for retrying failed messages and history sync
+        if (store) {
+          const msg = await store.loadMessage(key.remoteJid!, key.id!);
+          return msg?.message || undefined;
+        }
+        return proto.Message.fromObject({});
+      },
     });
+
+    // Bind store to socket events (critical for history sync)
+    store.bind(sock.ev);
 
     const sessionStatus: WhatsAppSessionStatus = {
       isReady: false,
@@ -311,6 +327,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
     const companyClient: CompanyBaileysClient = {
       sock,
+      store,
       chats: new Map(),
       contacts: new Map(),
       status: sessionStatus,
@@ -850,19 +867,48 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
     
     try {
-      const chats = Array.from(client.chats.values());
-      console.log(`[Baileys] Found ${chats.length} chats for company ${companyId}`);
+      // Use makeInMemoryStore chats (populated by history sync)
+      const storeChats = client.store.chats.all();
+      console.log(`[Baileys] Found ${storeChats.length} chats from store for company ${companyId}`);
       
-      return chats.map((chat) => ({
-        id: { _serialized: chat.id },
-        name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-        isGroup: isJidGroup(chat.id),
-        timestamp: chat.conversationTimestamp || 0,
-        unreadCount: chat.unreadCount || 0,
-        archived: chat.archived || false,
-        pinned: chat.pinned || 0,
-        lastMessage: chat.lastMessage || null,
-      }));
+      // Also merge any manually tracked chats
+      const manualChats = Array.from(client.chats.values());
+      
+      // Create a merged map to avoid duplicates
+      const chatMap = new Map<string, any>();
+      
+      // Add store chats first (these come from history sync)
+      for (const chat of storeChats) {
+        chatMap.set(chat.id, {
+          id: { _serialized: chat.id },
+          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
+          isGroup: isJidGroup(chat.id),
+          timestamp: chat.conversationTimestamp || 0,
+          unreadCount: chat.unreadCount || 0,
+          archived: chat.archived || false,
+          pinned: chat.pinned || 0,
+          lastMessage: null,
+        });
+      }
+      
+      // Override with manual chats (these may have additional data)
+      for (const chat of manualChats) {
+        chatMap.set(chat.id, {
+          id: { _serialized: chat.id },
+          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
+          isGroup: isJidGroup(chat.id),
+          timestamp: chat.conversationTimestamp || 0,
+          unreadCount: chat.unreadCount || 0,
+          archived: chat.archived || false,
+          pinned: chat.pinned || 0,
+          lastMessage: chat.lastMessage || null,
+        });
+      }
+      
+      const allChats = Array.from(chatMap.values());
+      console.log(`[Baileys] Total merged chats: ${allChats.length} for company ${companyId}`);
+      
+      return allChats;
     } catch (error) {
       console.error(`[Baileys] Error getting chats for company ${companyId}:`, error);
       return [];
@@ -911,6 +957,15 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
 
     try {
+      // Use store to get messages (populated by history sync)
+      const storeMessages = await client.store.loadMessages(normalizedId, limit);
+      
+      if (storeMessages && storeMessages.length > 0) {
+        console.log(`[Baileys] Found ${storeMessages.length} messages from store for chat ${normalizedId}`);
+        return storeMessages.map(msg => this.convertBaileysMessage(msg));
+      }
+      
+      // Fallback to manual message store
       const messages = Array.from(client.messageStore.values())
         .filter(msg => msg.key.remoteJid === normalizedId)
         .slice(-limit)
