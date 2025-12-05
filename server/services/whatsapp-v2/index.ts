@@ -8,7 +8,7 @@ import {
   logoutClient,
   isSessionActive,
 } from "./client-manager";
-import { setupEventHandlers, sendTextMessage, markChatAsRead } from "./event-handlers";
+import { sendTextMessage, markChatAsRead } from "./event-handlers";
 import type {
   WhatsAppV2StorageInterface,
   WhatsAppV2ConnectionStatus,
@@ -29,14 +29,6 @@ class WhatsAppV2Service {
 
   async connect(config: WhatsAppV2ServiceConfig): Promise<WASocket> {
     const socket = await initializeClient(this.storage, config);
-    
-    setupEventHandlers(
-      socket,
-      this.storage,
-      config.companyId,
-      config.onNewMessage
-    );
-
     return socket;
   }
 

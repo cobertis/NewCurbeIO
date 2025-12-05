@@ -204,6 +204,58 @@ export function setupEventHandlers(
     }
   });
 
+  socket.ev.on("chats.upsert", async (chats) => {
+    console.log(`[WhatsApp] chats.upsert: ${chats.length} chats for company ${companyId}`);
+    
+    for (const chatItem of chats) {
+      if (!chatItem.id) continue;
+
+      try {
+        const existingChat = await storage.getChat(companyId, chatItem.id);
+        if (existingChat) continue;
+
+        const isGroup = isGroupJid(chatItem.id);
+        const phone = extractPhoneFromJid(chatItem.id);
+
+        let contact = await storage.getContact(companyId, chatItem.id);
+        if (!contact && !isGroup && phone) {
+          const contactData: InsertWhatsappV2Contact = {
+            companyId,
+            jid: chatItem.id,
+            name: chatItem.name || phone,
+            businessName: null,
+            avatarUrl: null,
+            isBusiness: false,
+            phone,
+          };
+          contact = await storage.upsertContact(contactData);
+        }
+
+        const chatData: InsertWhatsappV2Chat = {
+          companyId,
+          jid: chatItem.id,
+          contactId: contact?.id || null,
+          title: isGroup ? (chatItem.name || chatItem.id) : null,
+          isGroup,
+          unreadCount: chatItem.unreadCount || 0,
+          lastMessageId: null,
+          lastMessageTs: chatItem.conversationTimestamp 
+            ? typeof chatItem.conversationTimestamp === 'number' 
+              ? chatItem.conversationTimestamp 
+              : Number(chatItem.conversationTimestamp)
+            : null,
+          archived: chatItem.archived || false,
+          mutedUntil: null,
+        };
+
+        await storage.upsertChat(chatData);
+        console.log(`[WhatsApp] Created chat from upsert: ${chatItem.id}`);
+      } catch (error) {
+        console.error("Failed to create chat from upsert:", error);
+      }
+    }
+  });
+
   socket.ev.on("contacts.upsert", async (contacts) => {
     for (const contact of contacts) {
       if (!contact.id) continue;

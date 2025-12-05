@@ -9,6 +9,7 @@ import { Boom } from "@hapi/boom";
 import pino from "pino";
 import QRCode from "qrcode";
 import { usePostgresAuthState } from "./postgres-auth";
+import { setupEventHandlers } from "./event-handlers";
 import type {
   WhatsAppV2Session,
   WhatsAppV2ConnectionStatus,
@@ -19,6 +20,7 @@ import type {
 const logger = pino({ level: "warn" });
 
 const sessions: Map<string, WhatsAppV2Session> = new Map();
+const handlersRegistered: Set<string> = new Set();
 
 export async function initializeClient(
   storage: WhatsAppV2StorageInterface,
@@ -54,11 +56,17 @@ export async function initializeClient(
       },
       printQRInTerminal: false,
       generateHighQualityLinkPreview: true,
-      syncFullHistory: false,
+      syncFullHistory: true,
       markOnlineOnConnect: false,
     });
 
     session.socket = socket;
+
+    if (!handlersRegistered.has(companyId)) {
+      setupEventHandlers(socket, storage, companyId, onNewMessage);
+      handlersRegistered.add(companyId);
+      console.log(`[WhatsApp] Event handlers registered for company ${companyId}`);
+    }
 
     socket.ev.on("creds.update", saveCreds);
 
