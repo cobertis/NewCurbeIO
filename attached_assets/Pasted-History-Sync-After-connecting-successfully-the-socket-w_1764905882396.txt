@@ -1,0 +1,41 @@
+History Sync
+After connecting successfully, the socket will try to download and process old chats, contacts and messages.
+
+This data is delivered to you via the messaging-history.set event. Here's an example on how to handle this data:
+
+sock.ev.on('messaging-history.set', ({
+	chats: newChats,
+	contacts: newContacts,
+	messages: newMessages,
+	syncType
+}) => {
+  // handle the chats, contacts and messages
+
+
+  Handling Messages
+Messages, from a history sync or from a messages.upsert event, come in the form of proto.IWebMessageInfo. This is the protobuf that WhatsApp Web stores its messages in.
+
+The message data specifically is in the format proto.IMessage. You can send messages in this format using the sock.relayMessage function.
+
+Understanding the WAMessage format
+Explain the key, and other fields properly here.
+
+That being said, let's look at some common message types:
+
+Text Messages
+Text based messages come in the form of proto.IMessage.conversation and proto.IMessage.extendedTextMessage. If the message comes in with reply data or attached metadata (link preview, group invite), then it is usually extendedTextMessage. Status updates are also only extendedTextMessage as it contains the fields for the color/font of the text-based status updates.
+
+Handling this should be as easy as extracting the text from the
+
+Media Messages
+Media messages come in the following protobuf messages: proto.IMessage.audioMessage, proto.IMessage.documentMessage, proto.IMessage.imageMessage, video, sticker .. so on Handle missing media : -> sock.updateMediaMessage
+})
+
+You should store this data in your database and use it however you want. However, you should keep a record of messages so you can provide those messages to the getMessage function in the socket config.
+
+Disabling History Sync
+You can choose to disable or receive no history sync messages by setting the shouldSyncHistoryMessage option to () => false.
+
+On-Demand History Sync
+It is possible ask the main device for history data beyond the initial sync. This is done using the sock.fetchMessageHistory function.
+

@@ -8,6 +8,7 @@ import makeWASocket, {
   jidNormalizedUser,
   isJidGroup,
   WAMessage,
+  Browsers,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import P from 'pino';
@@ -215,11 +216,11 @@ class WhatsAppBaileysService extends EventEmitter {
       auth: state,
       printQRInTerminal: false,
       logger,
-      browser: ['Curbe CRM', 'Chrome', '120.0.0'],
+      browser: Browsers.macOS('Desktop'),
       connectTimeoutMs: 60000,
       defaultQueryTimeoutMs: 60000,
       keepAliveIntervalMs: 25000,
-      markOnlineOnConnect: true,
+      markOnlineOnConnect: false,
       syncFullHistory: true,
       shouldSyncHistoryMessage: () => true,
     });
@@ -300,11 +301,18 @@ class WhatsAppBaileysService extends EventEmitter {
       console.log(`[Baileys] History sync for ${companyId}: ${chats?.length || 0} chats, ${messages?.length || 0} messages`);
       if (chats?.length) {
         for (const chat of chats) {
-          if (isSystemJid(chat.id, session.selfJid)) continue;
+          const chatId = chat.id;
+          const isFiltered = isSystemJid(chatId, session.selfJid);
+          console.log(`[Baileys] History chat: ${chatId}, selfJid: ${session.selfJid}, filtered: ${isFiltered}`);
+          if (isFiltered) continue;
           await this.upsertChatToDb(companyId, chat);
+          console.log(`[Baileys] Chat saved to DB: ${chatId}`);
         }
       }
       if (messages?.length) {
+        for (const msg of messages as proto.IWebMessageInfo[]) {
+          console.log(`[Baileys] History message from: ${msg.key?.remoteJid}, id: ${msg.key?.id}`);
+        }
         await this.upsertMessagesToDb(companyId, messages as proto.IWebMessageInfo[], session.selfJid);
       }
     });
