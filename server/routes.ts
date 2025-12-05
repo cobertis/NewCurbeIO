@@ -87,7 +87,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappChats } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -109,7 +109,6 @@ import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
-import { whatsappService } from "./whatsapp-service";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -1089,151 +1088,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  // ============================================================
-  // WhatsApp Routes (Baileys v6.7.x - PostgreSQL-backed)
-  // ============================================================
-
-  // Get WhatsApp status
-  app.get('/api/whatsapp/status', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const status = whatsappService.getStatus(companyId);
-      const hasSaved = await whatsappService.hasSavedSession(companyId);
-      res.json({ 
-        success: true, 
-        status,
-        hasSavedSession: hasSaved 
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Initialize/Connect WhatsApp
-  app.post('/api/whatsapp/connect', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const session = await whatsappService.initializeClient(companyId);
-      res.json({ 
-        success: true, 
-        status: session.status,
-        selfJid: session.selfJid 
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Logout/Disconnect WhatsApp
-  app.post('/api/whatsapp/logout', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      await whatsappService.logout(companyId);
-      res.json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Get all chats
-  app.get('/api/whatsapp/chats', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const chats = await whatsappService.getChats(companyId);
-      res.json({ success: true, chats });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Get messages for a chat
-  app.get('/api/whatsapp/chats/:chatId/messages', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const { chatId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 50;
-      const messages = await whatsappService.getMessages(companyId, chatId, limit);
-      res.json({ success: true, messages });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Send text message
-  app.post('/api/whatsapp/send', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const { remoteJid, text } = req.body;
-      
-      if (!remoteJid || !text) {
-        return res.status(400).json({ error: 'remoteJid and text are required' });
-      }
-      
-      const result = await whatsappService.sendText(companyId, remoteJid, text);
-      res.json({ success: true, message: result });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Send media message
-  app.post('/api/whatsapp/send-media', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const { remoteJid, url, caption, type } = req.body;
-      
-      if (!remoteJid || !url) {
-        return res.status(400).json({ error: 'remoteJid and url are required' });
-      }
-      
-      const result = await whatsappService.sendMedia(companyId, remoteJid, url, caption, type || 'image');
-      res.json({ success: true, message: result });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Get presence/online status for a chat (stub - presence not always available)
-  app.get('/api/whatsapp/chats/:chatId/presence', requireAuth, async (req, res) => {
-    res.json({ success: true, presence: { status: 'unavailable' } });
-  });
-
-  // Mark chat as read
-  app.post('/api/whatsapp/chats/:chatId/read', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const { chatId } = req.params;
-      await whatsappService.markAsRead(companyId, chatId, []);
-      res.json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Get contact avatar
-  app.get('/api/whatsapp/contacts/:contactId/avatar', requireAuth, async (req, res, next) => {
-    try {
-      const companyId = (req.user as any).companyId;
-      const { contactId } = req.params;
-      
-      // contactId could be UUID or JID - resolve it
-      let jid = contactId;
-      if (contactId.includes('-') && !contactId.includes('@')) {
-        const chat = await db.select().from(whatsappChats)
-          .where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.id, contactId)))
-          .limit(1);
-        if (chat.length > 0 && chat[0].chatId) {
-          jid = chat[0].chatId;
-        }
-      }
-      
-      const url = await whatsappService.getProfilePicture(companyId, jid);
-      res.json({ success: true, url });
-    } catch (error) {
-      next(error);
-    }
-  });
-
   // ==================== iMESSAGE API ENDPOINTS ====================
   
   /**
