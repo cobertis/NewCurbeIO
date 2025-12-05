@@ -90,9 +90,6 @@ import { and, eq, ne, gte, desc, or, sql } from "drizzle-orm";
 import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
-import path from "path";
-import fs from "fs";
-import { promises as fsPromises } from "fs";
 import crypto from "crypto";
 import multer from "multer";
 import ffmpeg from "fluent-ffmpeg";
@@ -109,6 +106,7 @@ import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
+import { createWhatsAppV2Service, getWhatsAppV2Service, type WhatsAppV2StorageInterface } from "./services/whatsapp-v2";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -26835,6 +26833,219 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting campaign placeholder:", error);
       res.status(500).json({ message: "Failed to delete placeholder" });
+    }
+  });
+
+  // ==================== WHATSAPP V2 ROUTES ====================
+
+  const createWhatsAppV2StorageWrapper = (): WhatsAppV2StorageInterface => ({
+    getAuthSession: (companyId, sessionId) => storage.getWhatsappV2AuthSession(companyId, sessionId),
+    setAuthSession: (data) => storage.setWhatsappV2AuthSession(data),
+    deleteAuthSession: (companyId, sessionId) => storage.deleteWhatsappV2AuthSession(companyId, sessionId),
+    getAllAuthSessions: (companyId) => storage.getAllWhatsappV2AuthSessions(companyId),
+    clearAllAuthSessions: (companyId) => storage.clearAllWhatsappV2AuthSessions(companyId),
+    getContact: (companyId, jid) => storage.getWhatsappV2Contact(companyId, jid),
+    upsertContact: (data) => storage.upsertWhatsappV2Contact(data),
+    getContacts: (companyId) => storage.getWhatsappV2Contacts(companyId),
+    getChat: (companyId, jid) => storage.getWhatsappV2Chat(companyId, jid),
+    upsertChat: (data) => storage.upsertWhatsappV2Chat(data),
+    getChatsWithMessages: (companyId) => storage.getWhatsappV2ChatsWithMessages(companyId),
+    updateChatLastMessage: (chatId, messageId, timestamp) => storage.updateWhatsappV2ChatLastMessage(chatId, messageId, timestamp),
+    updateChatUnreadCount: (chatId, count) => storage.updateWhatsappV2ChatUnreadCount(chatId, count),
+    getMessage: (companyId, messageKey) => storage.getWhatsappV2Message(companyId, messageKey),
+    insertMessage: (data) => storage.insertWhatsappV2Message(data),
+    getMessagesByChat: (chatId, limit, beforeTimestamp) => storage.getWhatsappV2MessagesByChat(chatId, limit, beforeTimestamp),
+    updateMessageStatus: (companyId, messageKey, status) => storage.updateWhatsappV2MessageStatus(companyId, messageKey, status),
+  });
+
+  app.get("/api/whatsapp-v2/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const service = getWhatsAppV2Service();
+      if (!service) {
+        return res.json({
+          companyId: user.companyId,
+          isConnected: false,
+          connectionState: "close",
+          qrCode: null,
+          lastError: null,
+          phoneNumber: null,
+        });
+      }
+      
+      const status = service.getStatus(user.companyId);
+      res.json(status);
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error getting status:", error);
+      res.status(500).json({ message: "Failed to get WhatsApp status" });
+    }
+  });
+
+  app.post("/api/whatsapp-v2/connect", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const storageWrapper = createWhatsAppV2StorageWrapper();
+      const service = createWhatsAppV2Service(storageWrapper);
+      
+      let qrCodeForResponse: string | null = null;
+      
+      await service.connect({
+        companyId: user.companyId,
+        onQRCode: (qr) => {
+          qrCodeForResponse = qr;
+        },
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const status = service.getStatus(user.companyId);
+      res.json(status);
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error connecting:", error);
+      res.status(500).json({ message: "Failed to connect to WhatsApp", error: error.message });
+    }
+  });
+
+  app.post("/api/whatsapp-v2/disconnect", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const service = getWhatsAppV2Service();
+      if (!service) {
+        return res.status(400).json({ message: "WhatsApp service not initialized" });
+      }
+      
+      await service.disconnect(user.companyId);
+      res.json({ message: "Disconnected from WhatsApp" });
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error disconnecting:", error);
+      res.status(500).json({ message: "Failed to disconnect from WhatsApp" });
+    }
+  });
+
+  app.post("/api/whatsapp-v2/logout", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const service = getWhatsAppV2Service();
+      if (!service) {
+        return res.status(400).json({ message: "WhatsApp service not initialized" });
+      }
+      
+      await service.logout(user.companyId);
+      res.json({ message: "Logged out from WhatsApp" });
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error logging out:", error);
+      res.status(500).json({ message: "Failed to logout from WhatsApp" });
+    }
+  });
+
+  app.get("/api/whatsapp-v2/chats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const chats = await storage.getWhatsappV2ChatsWithMessages(user.companyId);
+      res.json(chats);
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error fetching chats:", error);
+      res.status(500).json({ message: "Failed to fetch chats" });
+    }
+  });
+
+  app.get("/api/whatsapp-v2/chats/:chatId/messages", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { chatId } = req.params;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const beforeTimestamp = req.query.beforeTimestamp ? parseInt(req.query.beforeTimestamp as string, 10) : undefined;
+      
+      const messages = await storage.getWhatsappV2MessagesByChat(chatId, limit, beforeTimestamp);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  const sendWhatsAppV2MessageSchema = z.object({
+    text: z.string().min(1, "Message text is required"),
+  });
+
+  app.post("/api/whatsapp-v2/chats/:jid/send", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { jid } = req.params;
+      const parsed = sendWhatsAppV2MessageSchema.safeParse(req.body);
+      
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid request body", errors: parsed.error.errors });
+      }
+      
+      const service = getWhatsAppV2Service();
+      if (!service) {
+        return res.status(400).json({ message: "WhatsApp service not initialized" });
+      }
+      
+      if (!service.isConnected(user.companyId)) {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+      
+      const message = await service.sendMessage(user.companyId, jid, parsed.data.text);
+      res.json(message);
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message", error: error.message });
+    }
+  });
+
+  app.post("/api/whatsapp-v2/chats/:jid/read", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { jid } = req.params;
+      
+      const service = getWhatsAppV2Service();
+      if (!service) {
+        return res.status(400).json({ message: "WhatsApp service not initialized" });
+      }
+      
+      if (!service.isConnected(user.companyId)) {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+      
+      await service.markAsRead(user.companyId, jid);
+      res.json({ message: "Chat marked as read" });
+    } catch (error: any) {
+      console.error("[WhatsApp V2] Error marking chat as read:", error);
+      res.status(500).json({ message: "Failed to mark chat as read" });
     }
   });
 

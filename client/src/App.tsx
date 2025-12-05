@@ -77,6 +77,7 @@ import Tasks from "@/pages/tasks";
 import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
+import WhatsAppV2Page from "@/pages/whatsapp-v2";
 import NotFound from "@/pages/not-found";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -1538,6 +1539,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IMessagePage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/whatsapp-v2">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <WhatsAppV2Page />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

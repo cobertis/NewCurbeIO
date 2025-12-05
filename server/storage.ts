@@ -199,7 +199,15 @@ import {
   type CampaignSchedule,
   type InsertCampaignSchedule,
   type CampaignFollowup,
-  type InsertCampaignFollowup
+  type InsertCampaignFollowup,
+  type SelectWhatsappV2AuthSession,
+  type InsertWhatsappV2AuthSession,
+  type SelectWhatsappV2Contact,
+  type InsertWhatsappV2Contact,
+  type SelectWhatsappV2Chat,
+  type InsertWhatsappV2Chat,
+  type SelectWhatsappV2Message,
+  type InsertWhatsappV2Message
 } from "@shared/schema";
 import { db } from "./db";
 import { 
@@ -297,11 +305,16 @@ import {
   campaignPlaceholders,
   campaignVariants,
   campaignSchedules,
-  campaignFollowups
+  campaignFollowups,
+  whatsappV2AuthSessions,
+  whatsappV2Contacts,
+  whatsappV2Chats,
+  whatsappV2Messages
 } from "@shared/schema";
 import { eq, and, or, desc, sql, inArray, like, gte, lt, not, isNull, isNotNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { formatForStorage } from "@shared/phone";
+import type { WhatsAppV2ChatWithContact } from "./services/whatsapp-v2/types";
 
 export interface IStorage {
   // Users
@@ -1226,6 +1239,31 @@ export interface IStorage {
   createCampaignPlaceholder(data: InsertCampaignPlaceholder): Promise<CampaignPlaceholder>;
   updateCampaignPlaceholder(id: string, companyId: string, data: Partial<InsertCampaignPlaceholder>): Promise<CampaignPlaceholder>;
   deleteCampaignPlaceholder(id: string, companyId: string): Promise<void>;
+  
+  // WhatsApp V2 Auth Sessions
+  getWhatsappV2AuthSession(companyId: string, sessionId: string): Promise<SelectWhatsappV2AuthSession | null>;
+  setWhatsappV2AuthSession(data: InsertWhatsappV2AuthSession): Promise<void>;
+  deleteWhatsappV2AuthSession(companyId: string, sessionId: string): Promise<void>;
+  getAllWhatsappV2AuthSessions(companyId: string): Promise<SelectWhatsappV2AuthSession[]>;
+  clearAllWhatsappV2AuthSessions(companyId: string): Promise<void>;
+  
+  // WhatsApp V2 Contacts
+  getWhatsappV2Contact(companyId: string, jid: string): Promise<SelectWhatsappV2Contact | null>;
+  upsertWhatsappV2Contact(data: InsertWhatsappV2Contact): Promise<SelectWhatsappV2Contact>;
+  getWhatsappV2Contacts(companyId: string): Promise<SelectWhatsappV2Contact[]>;
+  
+  // WhatsApp V2 Chats
+  getWhatsappV2Chat(companyId: string, jid: string): Promise<SelectWhatsappV2Chat | null>;
+  upsertWhatsappV2Chat(data: InsertWhatsappV2Chat): Promise<SelectWhatsappV2Chat>;
+  getWhatsappV2ChatsWithMessages(companyId: string): Promise<WhatsAppV2ChatWithContact[]>;
+  updateWhatsappV2ChatLastMessage(chatId: string, messageId: string, timestamp: number): Promise<void>;
+  updateWhatsappV2ChatUnreadCount(chatId: string, count: number): Promise<void>;
+  
+  // WhatsApp V2 Messages
+  getWhatsappV2Message(companyId: string, messageKey: string): Promise<SelectWhatsappV2Message | null>;
+  insertWhatsappV2Message(data: InsertWhatsappV2Message): Promise<SelectWhatsappV2Message>;
+  getWhatsappV2MessagesByChat(chatId: string, limit?: number, beforeTimestamp?: number): Promise<SelectWhatsappV2Message[]>;
+  updateWhatsappV2MessageStatus(companyId: string, messageKey: string, status: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -11434,6 +11472,237 @@ export class DbStorage implements IStorage {
         and(
           eq(campaignPlaceholders.id, id),
           eq(campaignPlaceholders.companyId, companyId)
+        )
+      );
+  }
+
+  // ==================== WHATSAPP V2 AUTH SESSIONS ====================
+
+  async getWhatsappV2AuthSession(companyId: string, sessionId: string): Promise<SelectWhatsappV2AuthSession | null> {
+    const result = await db
+      .select()
+      .from(whatsappV2AuthSessions)
+      .where(
+        and(
+          eq(whatsappV2AuthSessions.companyId, companyId),
+          eq(whatsappV2AuthSessions.sessionId, sessionId)
+        )
+      );
+    return result[0] || null;
+  }
+
+  async setWhatsappV2AuthSession(data: InsertWhatsappV2AuthSession): Promise<void> {
+    await db
+      .insert(whatsappV2AuthSessions)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [whatsappV2AuthSessions.companyId, whatsappV2AuthSessions.sessionId],
+        set: {
+          data: data.data,
+          updatedAt: new Date(),
+        },
+      });
+  }
+
+  async deleteWhatsappV2AuthSession(companyId: string, sessionId: string): Promise<void> {
+    await db
+      .delete(whatsappV2AuthSessions)
+      .where(
+        and(
+          eq(whatsappV2AuthSessions.companyId, companyId),
+          eq(whatsappV2AuthSessions.sessionId, sessionId)
+        )
+      );
+  }
+
+  async getAllWhatsappV2AuthSessions(companyId: string): Promise<SelectWhatsappV2AuthSession[]> {
+    return db
+      .select()
+      .from(whatsappV2AuthSessions)
+      .where(eq(whatsappV2AuthSessions.companyId, companyId));
+  }
+
+  async clearAllWhatsappV2AuthSessions(companyId: string): Promise<void> {
+    await db
+      .delete(whatsappV2AuthSessions)
+      .where(eq(whatsappV2AuthSessions.companyId, companyId));
+  }
+
+  // ==================== WHATSAPP V2 CONTACTS ====================
+
+  async getWhatsappV2Contact(companyId: string, jid: string): Promise<SelectWhatsappV2Contact | null> {
+    const result = await db
+      .select()
+      .from(whatsappV2Contacts)
+      .where(
+        and(
+          eq(whatsappV2Contacts.companyId, companyId),
+          eq(whatsappV2Contacts.jid, jid)
+        )
+      );
+    return result[0] || null;
+  }
+
+  async upsertWhatsappV2Contact(data: InsertWhatsappV2Contact): Promise<SelectWhatsappV2Contact> {
+    const result = await db
+      .insert(whatsappV2Contacts)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [whatsappV2Contacts.companyId, whatsappV2Contacts.jid],
+        set: {
+          name: data.name,
+          businessName: data.businessName,
+          avatarUrl: data.avatarUrl,
+          isBusiness: data.isBusiness,
+          phone: data.phone,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result[0];
+  }
+
+  async getWhatsappV2Contacts(companyId: string): Promise<SelectWhatsappV2Contact[]> {
+    return db
+      .select()
+      .from(whatsappV2Contacts)
+      .where(eq(whatsappV2Contacts.companyId, companyId));
+  }
+
+  // ==================== WHATSAPP V2 CHATS ====================
+
+  async getWhatsappV2Chat(companyId: string, jid: string): Promise<SelectWhatsappV2Chat | null> {
+    const result = await db
+      .select()
+      .from(whatsappV2Chats)
+      .where(
+        and(
+          eq(whatsappV2Chats.companyId, companyId),
+          eq(whatsappV2Chats.jid, jid)
+        )
+      );
+    return result[0] || null;
+  }
+
+  async upsertWhatsappV2Chat(data: InsertWhatsappV2Chat): Promise<SelectWhatsappV2Chat> {
+    const result = await db
+      .insert(whatsappV2Chats)
+      .values(data)
+      .onConflictDoUpdate({
+        target: [whatsappV2Chats.companyId, whatsappV2Chats.jid],
+        set: {
+          contactId: data.contactId,
+          title: data.title,
+          isGroup: data.isGroup,
+          archived: data.archived,
+          mutedUntil: data.mutedUntil,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result[0];
+  }
+
+  async getWhatsappV2ChatsWithMessages(companyId: string): Promise<WhatsAppV2ChatWithContact[]> {
+    const result = await db
+      .select({
+        chat: whatsappV2Chats,
+        contact: whatsappV2Contacts,
+        lastMessage: whatsappV2Messages,
+      })
+      .from(whatsappV2Chats)
+      .leftJoin(whatsappV2Contacts, eq(whatsappV2Chats.contactId, whatsappV2Contacts.id))
+      .leftJoin(whatsappV2Messages, eq(whatsappV2Chats.lastMessageId, whatsappV2Messages.id))
+      .where(
+        and(
+          eq(whatsappV2Chats.companyId, companyId),
+          isNotNull(whatsappV2Chats.lastMessageTs)
+        )
+      )
+      .orderBy(desc(whatsappV2Chats.lastMessageTs));
+    
+    return result.map(row => ({
+      ...row.chat,
+      contact: row.contact || null,
+      lastMessage: row.lastMessage || null,
+    }));
+  }
+
+  async updateWhatsappV2ChatLastMessage(chatId: string, messageId: string, timestamp: number): Promise<void> {
+    await db
+      .update(whatsappV2Chats)
+      .set({
+        lastMessageId: messageId,
+        lastMessageTs: timestamp,
+        updatedAt: new Date(),
+      })
+      .where(eq(whatsappV2Chats.id, chatId));
+  }
+
+  async updateWhatsappV2ChatUnreadCount(chatId: string, count: number): Promise<void> {
+    await db
+      .update(whatsappV2Chats)
+      .set({
+        unreadCount: count,
+        updatedAt: new Date(),
+      })
+      .where(eq(whatsappV2Chats.id, chatId));
+  }
+
+  // ==================== WHATSAPP V2 MESSAGES ====================
+
+  async getWhatsappV2Message(companyId: string, messageKey: string): Promise<SelectWhatsappV2Message | null> {
+    const result = await db
+      .select()
+      .from(whatsappV2Messages)
+      .where(
+        and(
+          eq(whatsappV2Messages.companyId, companyId),
+          eq(whatsappV2Messages.messageKey, messageKey)
+        )
+      );
+    return result[0] || null;
+  }
+
+  async insertWhatsappV2Message(data: InsertWhatsappV2Message): Promise<SelectWhatsappV2Message> {
+    const result = await db
+      .insert(whatsappV2Messages)
+      .values(data)
+      .onConflictDoNothing()
+      .returning();
+    
+    if (result.length === 0) {
+      const existing = await this.getWhatsappV2Message(data.companyId, data.messageKey);
+      if (existing) return existing;
+      throw new Error("Failed to insert message");
+    }
+    
+    return result[0];
+  }
+
+  async getWhatsappV2MessagesByChat(chatId: string, limit: number = 50, beforeTimestamp?: number): Promise<SelectWhatsappV2Message[]> {
+    const conditions = [eq(whatsappV2Messages.chatId, chatId)];
+    
+    if (beforeTimestamp !== undefined) {
+      conditions.push(lt(whatsappV2Messages.timestamp, beforeTimestamp));
+    }
+    
+    return db
+      .select()
+      .from(whatsappV2Messages)
+      .where(and(...conditions))
+      .orderBy(desc(whatsappV2Messages.timestamp))
+      .limit(limit);
+  }
+
+  async updateWhatsappV2MessageStatus(companyId: string, messageKey: string, status: string): Promise<void> {
+    await db
+      .update(whatsappV2Messages)
+      .set({ status })
+      .where(
+        and(
+          eq(whatsappV2Messages.companyId, companyId),
+          eq(whatsappV2Messages.messageKey, messageKey)
         )
       );
   }
