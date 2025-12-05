@@ -394,13 +394,6 @@ export default function WhatsAppPage() {
                 <LogOut className="h-5 w-5" />
               )}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </Button>
           </div>
         </div>
 
