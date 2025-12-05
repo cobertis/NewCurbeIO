@@ -1,0 +1,70 @@
+Aquí tienes el desglose técnico y funcional de Baileys. No te voy a dar una lista genérica copiada de GitHub; te la voy a traducir a utilidad real para tu CRM de seguros.
+
+Si controlas Baileys, controlas la API a nivel de socket. Esto es lo que puedes hacer:
+
+1. Mensajería Core (Lo básico, pero instantáneo)
+A diferencia de Selenium, aquí inyectas el paquete en el socket TCP. La latencia es casi cero.
+
+Texto Simple y Emojis: Envío y recepción estándar.
+
+Archivos Multimedia (Media Messages):
+
+Imágenes, Videos, GIFs.
+
+Audio PTT (Push To Talk): Puedes enviar un audio .mp3 o .ogg y hacer que aparezca como una "nota de voz grabada" (con el espectro de audio visible), lo cual es crucial para que tus agentes parezcan humanos.
+
+Documentos (PDFs para pólizas, DOCX, XLS).
+
+Ubicación: Enviar coordenadas (Live Location o estática).
+
+Contactos (vCards): Enviar fichas de contactos parseables.
+
+Citar Mensajes (Quoting): Responder a un mensaje específico manteniendo el contexto (el contextInfo del payload).
+
+Reenvío (Forwarding): Reenviar mensajes tal cual.
+
+2. Simulación de Comportamiento Humano (Vital para Anti-Ban)
+Si tu CRM manda mensajes de golpe sin "avisar", WhatsApp te marca como bot. Baileys te permite simular la presencia:
+
+Typing Presence: Enviar el estado "Escribiendo..." (composing).
+
+Recording Presence: Enviar el estado "Grabando audio..." (recording).
+
+Online/Offline: Forzar o consultar si el usuario está en línea.
+
+Read Receipts: Marcar mensajes como leídos (doble check azul) programáticamente o mantenerlos en gris ("ghosting").
+
+3. Gestión de Grupos (Comunidades y Equipos)
+Control total sobre la administración de grupos:
+
+CRUD de Grupos: Crear grupos, editar título, editar descripción.
+
+Gestión de Participantes: Añadir, eliminar (kick), promover a admin, degradar.
+
+Enlaces de Invitación: Generar, revocar y obtener el código del enlace de invitación.
+
+Configuración: Cambiar quién puede enviar mensajes (solo admins o todos).
+
+4. Funciones Avanzadas (La ventaja competitiva)
+Aquí es donde Baileys brilla sobre soluciones más simples:
+
+Encuestas (Polls): Crear encuestas nativas y escuchar los eventos de voto en tiempo real.
+
+Reacciones: Enviar y recibir reacciones (emojis pegados al mensaje).
+
+Edición de Mensajes: Modificar un mensaje de texto ya enviado (dentro de la ventana de tiempo permitida por Meta).
+
+Eliminación (Revoke): "Eliminar para todos".
+
+Mensajes Temporales: Configurar chats para que desaparezcan (disappearingMessages).
+
+Historial de Chats (History Sync): Cuando conectas una sesión nueva, Baileys descarga y desencripta el historial reciente del teléfono. Esto es crítico para tu CRM, para que cuando un agente entre, vea qué se habló antes.
+
+5. Metadatos y Privacidad
+Foto de Perfil: Obtener (fetch) la URL de la foto de perfil de cualquier usuario o grupo.
+
+Estado (Bio): Leer el texto de estado ("En el gimnasio", "Ocupado").
+
+Bloqueo: Bloquear y desbloquear contactos.
+
+Privacidad: Cambiar configuraciones de quién ve tu última conexión, foto, etc.
