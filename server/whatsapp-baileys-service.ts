@@ -1459,16 +1459,31 @@ class WhatsAppBaileysService extends EventEmitter {
       const chats = Array.from(client.chats.values());
       console.log(`[Baileys] Found ${chats.length} chats for company ${companyId}`);
       
-      return chats.map((chat) => ({
-        id: { _serialized: chat.id },
-        name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-        isGroup: isJidGroup(chat.id),
-        timestamp: chat.conversationTimestamp || 0,
-        unreadCount: chat.unreadCount || 0,
-        archived: chat.archived || false,
-        pinned: chat.pinned || 0,
-        lastMessage: chat.lastMessage || null,
-      }));
+      return chats.map((chat) => {
+        // Transform lastMessage from Baileys format to frontend format
+        let lastMessage = null;
+        if (chat.lastMessage) {
+          const baileysMsg = chat.lastMessage as WAMessage;
+          lastMessage = {
+            body: this.extractMessageContent(baileysMsg),
+            type: this.getMediaType(baileysMsg),
+            timestamp: baileysMsg.messageTimestamp ? Number(baileysMsg.messageTimestamp) : 0,
+            fromMe: baileysMsg.key?.fromMe || false,
+            hasMedia: this.hasMediaContent(baileysMsg),
+          };
+        }
+        
+        return {
+          id: { _serialized: chat.id },
+          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
+          isGroup: isJidGroup(chat.id),
+          timestamp: chat.conversationTimestamp || 0,
+          unreadCount: chat.unreadCount || 0,
+          archived: chat.archived || false,
+          pinned: chat.pinned || 0,
+          lastMessage,
+        };
+      });
     } catch (error) {
       console.error(`[Baileys] Error getting chats for company ${companyId}:`, error);
       return [];
