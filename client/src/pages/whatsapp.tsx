@@ -4915,7 +4915,7 @@ export default function WhatsAppPage() {
             <div className="p-2 space-y-1">
               {chats
                 .filter(chat => 
-                  chat.name.toLowerCase().includes(forwardSearchQuery.toLowerCase()) ||
+                  (chat.name || '').toLowerCase().includes(forwardSearchQuery.toLowerCase()) ||
                   chat.id.includes(forwardSearchQuery)
                 )
                 .map(chat => (
