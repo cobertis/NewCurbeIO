@@ -1742,7 +1742,9 @@ class WhatsAppBaileysService extends EventEmitter {
       }
 
       const wid = user.id;
-      const phoneNumber = wid.replace('@s.whatsapp.net', '');
+      // Remove device suffix (e.g., ":18") and @s.whatsapp.net
+      // Format: "13057240606:18@s.whatsapp.net" -> "13057240606"
+      const phoneNumber = wid.replace(/@s\.whatsapp\.net$/, '').replace(/:\d+$/, '');
       const pushname = user.name || '';
 
       let profilePicUrl: string | null = null;
