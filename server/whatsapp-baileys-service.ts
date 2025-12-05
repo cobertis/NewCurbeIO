@@ -307,8 +307,9 @@ class WhatsAppBaileysService extends EventEmitter {
 
   private async cleanupOrphanedChats(companyId: string, companyClient: CompanyBaileysClient): Promise<void> {
     try {
-      // Get chat IDs that exist in memory (from phone sync)
+      // Get chat IDs that exist in memory (synced from phone)
       const phoneChatsIds = new Set(companyClient.chats.keys());
+      console.log(`[Baileys] Phone has ${phoneChatsIds.size} chats for company ${companyId}`);
       
       // Get all chat IDs from database
       const dbChats = await db
@@ -316,19 +317,35 @@ class WhatsAppBaileysService extends EventEmitter {
         .from(whatsappChats)
         .where(eq(whatsappChats.companyId, companyId));
       
+      console.log(`[Baileys] Database has ${dbChats.length} chats for company ${companyId}`);
+      
       // Find orphaned chats (in DB but not in phone)
       const orphanedChatIds = dbChats
         .map(c => c.chatId)
         .filter(chatId => !phoneChatsIds.has(chatId));
+      
+      // Also clean up orphaned messages from messageStore
+      let orphanedMessagesCount = 0;
+      const messageEntries = Array.from(companyClient.messageStore.entries());
+      for (const [msgId, msg] of messageEntries) {
+        const msgChatId = msg.key?.remoteJid;
+        if (msgChatId && !phoneChatsIds.has(msgChatId)) {
+          companyClient.messageStore.delete(msgId);
+          orphanedMessagesCount++;
+        }
+      }
+      if (orphanedMessagesCount > 0) {
+        console.log(`[Baileys] Removed ${orphanedMessagesCount} orphaned messages from memory for company ${companyId}`);
+      }
       
       if (orphanedChatIds.length === 0) {
         console.log(`[Baileys] No orphaned chats found for company ${companyId}`);
         return;
       }
       
-      console.log(`[Baileys] Found ${orphanedChatIds.length} orphaned chats for company ${companyId}, cleaning up...`);
+      console.log(`[Baileys] Found ${orphanedChatIds.length} orphaned chats for company ${companyId}: ${orphanedChatIds.join(', ')}`);
       
-      // Delete orphaned chats and their messages
+      // Delete orphaned chats and their messages from database
       for (const chatId of orphanedChatIds) {
         await this.deleteChatFromDb(companyId, chatId);
       }
@@ -674,11 +691,13 @@ class WhatsAppBaileysService extends EventEmitter {
         status.qrCode = null;
         status.qrReceivedAt = null;
         
-        // Clear stale message store to prevent phantom messages
-        // Messages will be re-synced from phone via messaging-history.set event
+        // Clear ALL stale data to force fresh sync from phone
+        // This prevents phantom chats/messages that were deleted on phone
+        const chatCount = companyClient.chats.size;
         const storeSize = companyClient.messageStore.size;
-        if (storeSize > 0) {
-          console.log(`[Baileys] Clearing ${storeSize} stale messages from memory for company: ${companyId}`);
+        if (chatCount > 0 || storeSize > 0) {
+          console.log(`[Baileys] Clearing stale data for company ${companyId}: ${chatCount} chats, ${storeSize} messages`);
+          companyClient.chats.clear();
           companyClient.messageStore.clear();
         }
         
@@ -697,8 +716,9 @@ class WhatsAppBaileysService extends EventEmitter {
         this.emit('authenticated', { companyId });
         this.emit('status_change', { companyId, status: { ...status } });
 
-        // Hydrate chats from database immediately (for instant UI display)
-        await this.hydrateChatsFromDb(companyId, companyClient);
+        // NOTE: We do NOT hydrate chats from DB here anymore
+        // Chats will come from phone via messaging-history.set, chats.set, chats.upsert events
+        // This ensures deleted chats on phone don't reappear in web
 
         // Fetch participating groups to populate chats (workaround for Baileys v7 history sync issue)
         console.log(`[Baileys] Attempting to fetch groups for company: ${companyId}`);
@@ -975,6 +995,102 @@ class WhatsAppBaileysService extends EventEmitter {
 
         console.log(`[Baileys] Reaction for company ${companyId}: ${emoji} on message ${messageId}`);
         this.emit('message_reaction', { companyId, messageId, emoji, senderId });
+      }
+    });
+
+    // Handle message deletions (when user deletes messages on phone)
+    sock.ev.on('messages.delete', (deletion: any) => {
+      try {
+        // Handle both single and bulk deletions
+        const keys = deletion.keys || (deletion.key ? [deletion.key] : []);
+        
+        for (const key of keys) {
+          const messageId = key.id;
+          const chatId = key.remoteJid;
+          
+          if (!messageId) continue;
+          
+          // Remove from memory store
+          if (companyClient.messageStore.has(messageId)) {
+            companyClient.messageStore.delete(messageId);
+            console.log(`[Baileys] Deleted message ${messageId} from memory for company ${companyId}`);
+          }
+          
+          // Remove from database (fire and forget)
+          db.delete(whatsappMessages)
+            .where(
+              and(
+                eq(whatsappMessages.companyId, companyId),
+                eq(whatsappMessages.messageId, messageId)
+              )
+            )
+            .catch(err => console.error(`[Baileys] Error deleting message from DB:`, err));
+          
+          // Emit event for real-time UI update
+          this.emit('message_deleted', { companyId, chatId, messageId });
+        }
+        
+        // Handle chat clear (all messages in chat deleted)
+        if (deletion.jid) {
+          const chatId = deletion.jid;
+          console.log(`[Baileys] Chat ${chatId} cleared for company ${companyId}`);
+          
+          // Remove all messages for this chat from memory
+          const messageEntries = Array.from(companyClient.messageStore.entries());
+          for (const [msgId, msg] of messageEntries) {
+            if (msg.key?.remoteJid === chatId) {
+              companyClient.messageStore.delete(msgId);
+            }
+          }
+          
+          // Remove all messages for this chat from database
+          db.delete(whatsappMessages)
+            .where(
+              and(
+                eq(whatsappMessages.companyId, companyId),
+                eq(whatsappMessages.chatId, chatId)
+              )
+            )
+            .catch(err => console.error(`[Baileys] Error clearing chat messages from DB:`, err));
+          
+          this.emit('chat_cleared', { companyId, chatId });
+        }
+      } catch (error) {
+        console.error(`[Baileys] Error handling messages.delete:`, error);
+      }
+    });
+
+    // Handle message updates (revoked/edited messages)
+    sock.ev.on('messages.update', (updates: any[]) => {
+      for (const update of updates) {
+        const key = update.key;
+        const messageId = key?.id;
+        const chatId = key?.remoteJid;
+        
+        if (!messageId) continue;
+        
+        // Check if message was revoked/deleted
+        const updateData = update.update || {};
+        if (updateData.messageStubType === 1 || // REVOKE
+            updateData.message?.protocolMessage?.type === 0) { // REVOKE protocol
+          
+          console.log(`[Baileys] Message ${messageId} revoked for company ${companyId}`);
+          
+          // Remove from memory store
+          companyClient.messageStore.delete(messageId);
+          
+          // Remove from database
+          db.delete(whatsappMessages)
+            .where(
+              and(
+                eq(whatsappMessages.companyId, companyId),
+                eq(whatsappMessages.messageId, messageId)
+              )
+            )
+            .catch(err => console.error(`[Baileys] Error deleting revoked message from DB:`, err));
+          
+          this.emit('message_deleted', { companyId, chatId, messageId });
+        }
       }
     });
 

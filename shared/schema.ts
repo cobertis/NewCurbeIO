@@ -4200,21 +4200,19 @@ export type WhatsappChat = typeof whatsappChats.$inferSelect;
 export type InsertWhatsappChat = z.infer<typeof insertWhatsappChatSchema>;
 
 export const whatsappMessages = pgTable("whatsapp_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: serial("id").primaryKey(),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  chatId: text("chat_id").notNull(), // WhatsApp chat ID
-  messageId: text("message_id").notNull(), // WhatsApp message ID
-  from: text("from").notNull(), // Sender number
-  to: text("to").notNull(), // Recipient number
-  body: text("body"), // Message text content
-  timestamp: timestamp("timestamp").notNull(),
-  isFromMe: boolean("is_from_me").notNull().default(false),
-  status: text("status").notNull().default("pending"), // pending, sent, delivered, read, failed
-  hasMedia: boolean("has_media").default(false),
-  mediaUrl: text("media_url"), // URL to stored media file
-  mimeType: text("mime_type"), // Media MIME type
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  chatId: text("chat_id").notNull(),
+  messageId: text("message_id").notNull(),
+  fromMe: boolean("from_me").notNull().default(false),
+  senderId: text("sender_id"),
+  text: text("text"),
+  mediaType: text("media_type"),
+  mediaUrl: text("media_url"),
+  timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+  quotedMessageId: text("quoted_message_id"),
+  isForwarded: boolean("is_forwarded").default(false),
+  rawData: jsonb("raw_data"),
 }, (table) => ({
   companyIdx: index("whatsapp_messages_company_idx").on(table.companyId),
   chatIdIdx: index("whatsapp_messages_chat_id_idx").on(table.chatId),
@@ -4242,14 +4240,9 @@ export const whatsappContacts = pgTable("whatsapp_contacts", {
 
 export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({
   id: true,
-  createdAt: true,
-  updatedAt: true,
 }).extend({
   chatId: z.string().min(1, "Chat ID is required"),
   messageId: z.string().min(1, "Message ID is required"),
-  from: z.string().min(1, "Sender is required"),
-  to: z.string().min(1, "Recipient is required"),
-  status: z.enum(["pending", "sent", "delivered", "read", "failed"]).default("pending"),
 });
 
 export const insertWhatsappContactSchema = createInsertSchema(whatsappContacts).omit({
