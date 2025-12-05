@@ -48,18 +48,20 @@ interface CompanySession {
   messageHandlers: Map<string, (message: any) => void>;
 }
 
-function isSystemJid(jid: string | undefined | null, selfJid?: string | null): boolean {
+function isSystemJid(jid: string | undefined | null): boolean {
   if (!jid) return true;
   if (jid === 'status@broadcast') return true;
   if (jid.endsWith('@server') || jid.endsWith('@broadcast')) return true;
   if (jid.includes('@newsletter')) return true;
   if (jid.endsWith('@lid')) return true;
-  if (selfJid) {
-    const normalizedSelf = jidNormalizedUser(selfJid);
-    const normalizedJid = jidNormalizedUser(jid);
-    if (normalizedSelf === normalizedJid) return true;
-  }
   return false;
+}
+
+function isSelfJid(jid: string | undefined | null, selfJid: string | null): boolean {
+  if (!jid || !selfJid) return false;
+  const normalizedSelf = jidNormalizedUser(selfJid);
+  const normalizedJid = jidNormalizedUser(jid);
+  return normalizedSelf === normalizedJid;
 }
 
 function normalizeWhatsAppId(contactId: string): string {
@@ -300,14 +302,18 @@ class WhatsAppBaileysService extends EventEmitter {
     sock.ev.on('messaging-history.set', async ({ chats, messages }) => {
       console.log(`[Baileys] History sync for ${companyId}: ${chats?.length || 0} chats, ${messages?.length || 0} messages`);
       if (chats?.length) {
+        let savedCount = 0;
         for (const chat of chats) {
           const chatId = chat.id;
-          const isFiltered = isSystemJid(chatId, session.selfJid);
-          console.log(`[Baileys] History chat: ${chatId}, selfJid: ${session.selfJid}, filtered: ${isFiltered}`);
-          if (isFiltered) continue;
+          if (isSystemJid(chatId)) {
+            console.log(`[Baileys] Skipping system chat: ${chatId}`);
+            continue;
+          }
           await this.upsertChatToDb(companyId, chat);
+          savedCount++;
           console.log(`[Baileys] Chat saved to DB: ${chatId}`);
         }
+        console.log(`[Baileys] History sync complete: ${savedCount}/${chats.length} chats saved`);
       }
       if (messages?.length) {
         for (const msg of messages as proto.IWebMessageInfo[]) {
@@ -319,14 +325,14 @@ class WhatsAppBaileysService extends EventEmitter {
 
     sock.ev.on('chats.upsert', async (chats) => {
       for (const chat of chats) {
-        if (isSystemJid(chat.id, session.selfJid)) continue;
+        if (isSystemJid(chat.id)) continue;
         await this.upsertChatToDb(companyId, chat);
       }
     });
 
     sock.ev.on('chats.update', async (updates) => {
       for (const update of updates) {
-        if (!update.id || isSystemJid(update.id, session.selfJid)) continue;
+        if (!update.id || isSystemJid(update.id)) continue;
         await this.updateChatInDb(companyId, update.id, update);
       }
     });
@@ -343,7 +349,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
       for (const msg of messages) {
         const chatId = msg.key?.remoteJid;
-        if (!chatId || isSystemJid(chatId, session.selfJid)) continue;
+        if (!chatId || isSystemJid(chatId)) continue;
 
         await this.upsertMessageToDb(companyId, msg);
         await this.updateChatLastMessage(companyId, chatId, msg);
@@ -426,7 +432,7 @@ class WhatsAppBaileysService extends EventEmitter {
         console.log(`[Baileys] Found ${Object.keys(groups).length} groups for company: ${companyId}`);
         
         for (const [groupId, groupMetadata] of Object.entries(groups)) {
-          if (isSystemJid(groupId, selfJid)) continue;
+          if (isSystemJid(groupId)) continue;
           
           const groupData = groupMetadata as any;
           await this.upsertChatToDb(companyId, {
@@ -536,7 +542,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
   private async upsertMessagesToDb(companyId: string, messages: proto.IWebMessageInfo[], selfJid: string | null): Promise<void> {
     const values = messages
-      .filter(msg => msg.key?.remoteJid && msg.key?.id && !isSystemJid(msg.key.remoteJid, selfJid))
+      .filter(msg => msg.key?.remoteJid && msg.key?.id && !isSystemJid(msg.key.remoteJid))
       .map(msg => ({
         companyId,
         chatId: msg.key!.remoteJid!,
