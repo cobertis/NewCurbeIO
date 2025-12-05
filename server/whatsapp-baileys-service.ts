@@ -20,8 +20,8 @@ import path from 'path';
 import fs from 'fs';
 import { EventEmitter } from 'events';
 import { db } from './db';
-import { whatsappReactions } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { whatsappReactions, whatsappChats } from '@shared/schema';
+import { eq, and, desc } from 'drizzle-orm';
 import { notificationService } from './notification-service';
 import { storage } from './storage';
 import { broadcastWhatsAppCall, broadcastWhatsAppMessage } from './websocket';
@@ -220,6 +220,91 @@ class WhatsAppBaileysService extends EventEmitter {
     }
   }
 
+  // ========== DATABASE PERSISTENCE METHODS ==========
+
+  private async persistChatToDb(companyId: string, chat: StoredChat): Promise<void> {
+    try {
+      const isGroup = chat.id.endsWith('@g.us');
+      const chatType = isGroup ? 'group' : 'individual';
+      const lastMessageContent = chat.lastMessage 
+        ? this.extractMessageContent(chat.lastMessage)
+        : null;
+      const lastMessageFromMe = chat.lastMessage?.key?.fromMe ?? false;
+
+      await db
+        .insert(whatsappChats)
+        .values({
+          companyId,
+          chatId: chat.id,
+          chatType,
+          name: chat.name || null,
+          pushName: chat.name || null,
+          lastMessageTimestamp: chat.conversationTimestamp || null,
+          lastMessageContent: lastMessageContent?.substring(0, 500) || null,
+          lastMessageFromMe,
+          unreadCount: chat.unreadCount || 0,
+          isArchived: chat.archived || false,
+          isPinned: !!chat.pinned,
+        })
+        .onConflictDoUpdate({
+          target: [whatsappChats.companyId, whatsappChats.chatId],
+          set: {
+            name: chat.name || null,
+            pushName: chat.name || null,
+            lastMessageTimestamp: chat.conversationTimestamp || null,
+            lastMessageContent: lastMessageContent?.substring(0, 500) || null,
+            lastMessageFromMe,
+            unreadCount: chat.unreadCount || 0,
+            isArchived: chat.archived || false,
+            isPinned: !!chat.pinned,
+            updatedAt: new Date(),
+          },
+        });
+    } catch (error) {
+      console.error(`[Baileys] Error persisting chat ${chat.id} for company ${companyId}:`, error);
+    }
+  }
+
+  private async loadChatsFromDb(companyId: string): Promise<StoredChat[]> {
+    try {
+      const dbChats = await db
+        .select()
+        .from(whatsappChats)
+        .where(eq(whatsappChats.companyId, companyId))
+        .orderBy(desc(whatsappChats.lastMessageTimestamp));
+
+      console.log(`[Baileys] Loaded ${dbChats.length} chats from DB for company: ${companyId}`);
+
+      return dbChats.map(dbChat => ({
+        id: dbChat.chatId,
+        name: dbChat.name || dbChat.pushName || undefined,
+        conversationTimestamp: dbChat.lastMessageTimestamp || undefined,
+        unreadCount: dbChat.unreadCount || 0,
+        archived: dbChat.isArchived || false,
+        pinned: dbChat.isPinned ? 1 : 0,
+      }));
+    } catch (error) {
+      console.error(`[Baileys] Error loading chats from DB for company ${companyId}:`, error);
+      return [];
+    }
+  }
+
+  private async hydrateChatsFromDb(companyId: string, companyClient: CompanyBaileysClient): Promise<void> {
+    try {
+      const dbChats = await this.loadChatsFromDb(companyId);
+      for (const chat of dbChats) {
+        if (!companyClient.chats.has(chat.id)) {
+          companyClient.chats.set(chat.id, chat);
+        }
+      }
+      console.log(`[Baileys] Hydrated ${dbChats.length} chats from DB for company: ${companyId}`);
+    } catch (error) {
+      console.error(`[Baileys] Error hydrating chats from DB for company ${companyId}:`, error);
+    }
+  }
+
+  // ========== END DATABASE PERSISTENCE METHODS ==========
+
   async getClientForCompany(companyId: string): Promise<CompanyBaileysClient> {
     if (this.clients.has(companyId)) {
       const existingClient = this.clients.get(companyId)!;
@@ -397,6 +482,9 @@ class WhatsAppBaileysService extends EventEmitter {
         this.emit('authenticated', { companyId });
         this.emit('status_change', { companyId, status: { ...status } });
 
+        // Hydrate chats from database immediately (for instant UI display)
+        await this.hydrateChatsFromDb(companyId, companyClient);
+
         // Fetch participating groups to populate chats (workaround for Baileys v7 history sync issue)
         console.log(`[Baileys] Attempting to fetch groups for company: ${companyId}`);
         try {
@@ -447,14 +535,17 @@ class WhatsAppBaileysService extends EventEmitter {
       console.log(`[Baileys] chats.set received: ${chats.length} chats for company ${companyId}`);
       for (const chat of chats) {
         if (!chat.id) continue;
-        companyClient.chats.set(chat.id, {
+        const storedChat: StoredChat = {
           id: chat.id,
           name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
           conversationTimestamp: chat.conversationTimestamp || chat.lastMessageRecvTimestamp || 0,
           unreadCount: chat.unreadCount || 0,
           archived: chat.archived || false,
           pinned: chat.pinned || 0,
-        });
+        };
+        companyClient.chats.set(chat.id, storedChat);
+        // Persist to database (fire and forget)
+        this.persistChatToDb(companyId, storedChat).catch(() => {});
       }
       console.log(`[Baileys] Stored ${companyClient.chats.size} chats after chats.set for company ${companyId}`);
     });
@@ -464,14 +555,17 @@ class WhatsAppBaileysService extends EventEmitter {
       for (const chat of chats) {
         if (!chat.id) continue;
         const existing = companyClient.chats.get(chat.id);
-        companyClient.chats.set(chat.id, {
+        const storedChat: StoredChat = {
           id: chat.id,
           name: chat.name || existing?.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
           conversationTimestamp: chat.conversationTimestamp || existing?.conversationTimestamp || 0,
           unreadCount: chat.unreadCount ?? existing?.unreadCount ?? 0,
           archived: chat.archived ?? existing?.archived ?? false,
           pinned: chat.pinned ?? existing?.pinned ?? 0,
-        });
+        };
+        companyClient.chats.set(chat.id, storedChat);
+        // Persist to database (fire and forget)
+        this.persistChatToDb(companyId, storedChat).catch(() => {});
       }
     });
 
@@ -529,7 +623,7 @@ class WhatsAppBaileysService extends EventEmitter {
         const existingChat = companyClient.chats.get(chatId);
         const chatName = msg.pushName || existingChat?.name || chatId.replace('@s.whatsapp.net', '').replace('@g.us', '');
         
-        companyClient.chats.set(chatId, {
+        const storedChat: StoredChat = {
           id: chatId,
           name: chatName,
           conversationTimestamp: messageTimestamp,
@@ -537,7 +631,11 @@ class WhatsAppBaileysService extends EventEmitter {
           archived: existingChat?.archived || false,
           pinned: existingChat?.pinned,
           lastMessage: msg,
-        });
+        };
+        companyClient.chats.set(chatId, storedChat);
+        
+        // Persist to database (fire and forget)
+        this.persistChatToDb(companyId, storedChat).catch(() => {});
 
         if (msg.key.fromMe) continue;
         if (type !== 'notify') continue;
