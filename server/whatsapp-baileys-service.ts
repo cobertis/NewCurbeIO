@@ -1,7 +1,6 @@
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion,
   WASocket,
   proto,
   downloadMediaMessage,
@@ -21,7 +20,6 @@ import { whatsappReactions, whatsappChats, whatsappMessages } from '@shared/sche
 import { eq, and, desc, lt } from 'drizzle-orm';
 import { notificationService } from './notification-service';
 import { broadcastWhatsAppMessage } from './websocket';
-import { whatsappMediaStorage } from './whatsapp-media-storage';
 
 interface SessionStatus {
   isReady: boolean;
@@ -105,10 +103,8 @@ function hasMediaContent(msg: WAMessage): boolean {
 class WhatsAppBaileysService extends EventEmitter {
   private sessions: Map<string, CompanySession> = new Map();
   private metrics: Map<string, SessionMetrics> = new Map();
-  private reconnectAttempts: Map<string, number> = new Map();
-  private reconnectTimers: Map<string, NodeJS.Timeout> = new Map();
   private loggedOutCompanies: Set<string> = new Set();
-  private initLocks: Map<string, Promise<CompanySession>> = new Map();
+  private initPromises: Map<string, Promise<CompanySession>> = new Map();
   private sentMediaCache: Map<string, { mimetype: string; data: string }> = new Map();
   private readonly AUTH_DIR = '.baileys_auth';
 
@@ -181,24 +177,54 @@ class WhatsAppBaileysService extends EventEmitter {
     return result;
   }
 
+  isConnecting(companyId: string): boolean {
+    return this.initPromises.has(companyId);
+  }
+
   async getClientForCompany(companyId: string): Promise<CompanySession> {
     const existing = this.sessions.get(companyId);
     if (existing && (existing.status.isReady || existing.status.status === 'qr_received')) {
       return existing;
     }
+    
+    const pendingPromise = this.initPromises.get(companyId);
+    if (pendingPromise) {
+      console.log(`[Baileys] Waiting for existing connection for company: ${companyId}`);
+      return pendingPromise;
+    }
+    
     if (existing?.status.status === 'disconnected') {
-      await this.shutdownSession(companyId);
-      await new Promise(r => setTimeout(r, 1000));
+      this.sessions.delete(companyId);
     }
-    if (this.initLocks.has(companyId)) {
-      return this.initLocks.get(companyId)!;
-    }
+    
     const initPromise = this.createSession(companyId);
-    this.initLocks.set(companyId, initPromise);
+    this.initPromises.set(companyId, initPromise);
+    
     try {
-      return await initPromise;
+      const session = await initPromise;
+      return session;
     } finally {
-      this.initLocks.delete(companyId);
+      this.initPromises.delete(companyId);
+    }
+  }
+
+  private async getMessageFromDb(companyId: string, chatId: string, messageId: string): Promise<proto.IMessage | undefined> {
+    try {
+      const [dbMsg] = await db.select().from(whatsappMessages)
+        .where(and(
+          eq(whatsappMessages.companyId, companyId),
+          eq(whatsappMessages.chatId, chatId),
+          eq(whatsappMessages.messageId, messageId)
+        ));
+      
+      if (dbMsg?.rawData) {
+        const rawData = dbMsg.rawData as proto.IWebMessageInfo;
+        return rawData.message || undefined;
+      }
+      return undefined;
+    } catch (err) {
+      console.error(`[Baileys] Error fetching message from DB:`, err);
+      return undefined;
     }
   }
 
@@ -208,21 +234,20 @@ class WhatsAppBaileysService extends EventEmitter {
     if (!fs.existsSync(authPath)) fs.mkdirSync(authPath, { recursive: true });
 
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
-    const { version } = await fetchLatestBaileysVersion();
     const logger = P({ level: 'silent' }) as any;
 
     const sock = makeWASocket({
-      version,
       auth: state,
       printQRInTerminal: false,
       logger,
       browser: Browsers.macOS('Desktop'),
-      connectTimeoutMs: 60000,
-      defaultQueryTimeoutMs: 60000,
-      keepAliveIntervalMs: 25000,
       markOnlineOnConnect: false,
       syncFullHistory: true,
-      shouldSyncHistoryMessage: () => true,
+      getMessage: async (key) => {
+        const chatId = key.remoteJid || '';
+        const messageId = key.id || '';
+        return await this.getMessageFromDb(companyId, chatId, messageId);
+      },
     });
 
     const session: CompanySession = {
@@ -269,11 +294,9 @@ class WhatsAppBaileysService extends EventEmitter {
         session.status = { isReady: true, isAuthenticated: true, qrCode: null, qrReceivedAt: null, status: 'ready' };
         metrics.connectedAt = new Date();
         metrics.lastActivityAt = new Date();
-        this.reconnectAttempts.delete(companyId);
         console.log(`[Baileys] Connected for company: ${companyId}, selfJid: ${session.selfJid}`);
         this.emit('ready', { companyId });
         
-        // Fetch groups after connection (workaround for missing history sync on reconnect)
         this.fetchAndStoreGroups(companyId, sock, session.selfJid).catch(err => {
           console.error(`[Baileys] Error fetching groups:`, err);
         });
@@ -292,27 +315,33 @@ class WhatsAppBaileysService extends EventEmitter {
           this.deleteAuthFiles(companyId);
           this.emit('logout', { companyId });
         } else if (!this.loggedOutCompanies.has(companyId)) {
-          this.scheduleReconnect(companyId);
+          metrics.reconnectCount++;
+          console.log(`[Baileys] Will reconnect for ${companyId} (attempt ${metrics.reconnectCount})`);
+          this.sessions.delete(companyId);
+          setTimeout(() => {
+            if (!this.loggedOutCompanies.has(companyId)) {
+              this.getClientForCompany(companyId).catch(err => {
+                console.error(`[Baileys] Reconnect failed for ${companyId}:`, err);
+              });
+            }
+          }, 3000);
         }
       }
     });
 
-    sock.ev.on('messaging-history.set', async ({ chats, messages }) => {
-      console.log(`[Baileys] History sync for ${companyId}: ${chats?.length || 0} chats, ${messages?.length || 0} messages`);
+    sock.ev.on('messaging-history.set', async ({ chats, messages, isLatest }) => {
+      console.log(`[Baileys] History sync for ${companyId}: ${chats?.length || 0} chats, ${messages?.length || 0} messages, isLatest: ${isLatest}`);
+      
       if (chats?.length) {
         for (const chat of chats) {
           const chatId = chat.id;
-          const isFiltered = isSystemJid(chatId, session.selfJid);
-          console.log(`[Baileys] History chat: ${chatId}, selfJid: ${session.selfJid}, filtered: ${isFiltered}`);
-          if (isFiltered) continue;
+          if (isSystemJid(chatId, session.selfJid)) continue;
           await this.upsertChatToDb(companyId, chat);
-          console.log(`[Baileys] Chat saved to DB: ${chatId}`);
         }
+        console.log(`[Baileys] Persisted ${chats.length} chats for ${companyId}`);
       }
+      
       if (messages?.length) {
-        for (const msg of messages as proto.IWebMessageInfo[]) {
-          console.log(`[Baileys] History message from: ${msg.key?.remoteJid}, id: ${msg.key?.id}`);
-        }
         await this.upsertMessagesToDb(companyId, messages as proto.IWebMessageInfo[], session.selfJid);
       }
     });
@@ -439,8 +468,6 @@ class WhatsAppBaileysService extends EventEmitter {
           });
         }
         console.log(`[Baileys] Stored ${Object.keys(groups).length} groups for company: ${companyId}`);
-      } else {
-        console.log(`[Baileys] No groups found for company: ${companyId}`);
       }
     } catch (err: any) {
       console.log(`[Baileys] Could not fetch groups:`, err?.message || err);
@@ -530,7 +557,6 @@ class WhatsAppBaileysService extends EventEmitter {
         rawData: msg as any,
       }).onConflictDoNothing();
     } catch (err) {
-      // Silent fail for duplicate messages
     }
   }
 
@@ -574,48 +600,6 @@ class WhatsAppBaileysService extends EventEmitter {
         updatedAt: new Date(),
       }).where(and(eq(whatsappChats.companyId, companyId), eq(whatsappChats.chatId, chatId)));
     } catch (err) {
-      // Silent fail
-    }
-  }
-
-  private scheduleReconnect(companyId: string): void {
-    const timer = this.reconnectTimers.get(companyId);
-    if (timer) clearTimeout(timer);
-
-    const attempts = this.reconnectAttempts.get(companyId) || 0;
-    if (attempts >= 10) {
-      console.log(`[Baileys] Max reconnect attempts reached for ${companyId}`);
-      this.reconnectAttempts.delete(companyId);
-      return;
-    }
-
-    const delay = Math.min(2000 * Math.pow(2, attempts), 60000) + Math.floor(Math.random() * 5000);
-    console.log(`[Baileys] Scheduling reconnect for ${companyId} in ${delay}ms (attempt ${attempts + 1})`);
-
-    const newTimer = setTimeout(async () => {
-      try {
-        this.sessions.delete(companyId);
-        await this.createSession(companyId);
-        this.reconnectAttempts.delete(companyId);
-        this.reconnectTimers.delete(companyId);
-        const metrics = this.metrics.get(companyId);
-        if (metrics) metrics.reconnectCount++;
-      } catch (err) {
-        console.error(`[Baileys] Reconnect failed for ${companyId}:`, err);
-        this.reconnectAttempts.set(companyId, attempts + 1);
-        this.scheduleReconnect(companyId);
-      }
-    }, delay);
-
-    this.reconnectTimers.set(companyId, newTimer);
-    this.reconnectAttempts.set(companyId, attempts + 1);
-  }
-
-  private async shutdownSession(companyId: string): Promise<void> {
-    const session = this.sessions.get(companyId);
-    if (session) {
-      try { session.sock.end(undefined); } catch {}
-      this.sessions.delete(companyId);
     }
   }
 
@@ -1263,10 +1247,6 @@ class WhatsAppBaileysService extends EventEmitter {
     console.log(`[Baileys] Logging out company: ${companyId}`);
     this.loggedOutCompanies.add(companyId);
 
-    const timer = this.reconnectTimers.get(companyId);
-    if (timer) { clearTimeout(timer); this.reconnectTimers.delete(companyId); }
-    this.reconnectAttempts.delete(companyId);
-
     const session = this.sessions.get(companyId);
     if (session) {
       try { await session.sock.logout(); } catch {}
@@ -1448,6 +1428,10 @@ class WhatsAppBaileysService extends EventEmitter {
         and(eq(whatsappReactions.companyId, companyId), eq(whatsappReactions.messageId, messageId), eq(whatsappReactions.senderId, senderId))
       ).catch(() => {});
     }
+  }
+
+  canAttemptReconnect(companyId: string): boolean {
+    return true;
   }
 }
 
