@@ -278,6 +278,33 @@ class WhatsAppBaileysService extends EventEmitter {
     }
   }
 
+  private async deleteChatFromDb(companyId: string, chatId: string): Promise<void> {
+    try {
+      // Delete messages first (referential integrity)
+      const deletedMessages = await db
+        .delete(whatsappMessages)
+        .where(and(
+          eq(whatsappMessages.companyId, companyId),
+          eq(whatsappMessages.chatId, chatId)
+        ))
+        .returning({ id: whatsappMessages.id });
+      
+      // Delete the chat
+      const deletedChats = await db
+        .delete(whatsappChats)
+        .where(and(
+          eq(whatsappChats.companyId, companyId),
+          eq(whatsappChats.chatId, chatId)
+        ))
+        .returning({ id: whatsappChats.id });
+      
+      console.log(`[Baileys] Deleted chat ${chatId} from DB (${deletedChats.length} chat, ${deletedMessages.length} messages) for company ${companyId}`);
+    } catch (error) {
+      console.error(`[Baileys] Error deleting chat ${chatId} from DB for company ${companyId}:`, error);
+      throw error;
+    }
+  }
+
   private async loadChatsFromDb(companyId: string): Promise<StoredChat[]> {
     try {
       const dbChats = await db
@@ -977,6 +1004,21 @@ class WhatsAppBaileysService extends EventEmitter {
             });
           }
         }
+      }
+    });
+
+    // Handle chat deletions (sync deletions from phone to web)
+    sock.ev.on('chats.delete', (deletedChatIds: string[]) => {
+      console.log(`[Baileys] Chats deleted for company ${companyId}: ${deletedChatIds.length} chats`);
+      for (const chatId of deletedChatIds) {
+        // Remove from memory
+        companyClient.chats.delete(chatId);
+        companyClient.messages.delete(chatId);
+        
+        // Remove from database (async, fire and forget)
+        this.deleteChatFromDb(companyId, chatId).catch(err => {
+          console.error(`[Baileys] Error deleting chat ${chatId} from DB:`, err);
+        });
       }
     });
 
