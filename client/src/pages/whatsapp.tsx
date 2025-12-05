@@ -3374,7 +3374,8 @@ export default function WhatsAppPage() {
   ) || [];
 
   const filteredChats = chats.filter(chat => {
-    const matchesSearch = chat.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const chatName = chat.name || chat.id || '';
+    const matchesSearch = chatName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = 
       activeFilter === 'all' ? !chat.isArchived :
       activeFilter === 'unread' ? chat.unreadCount > 0 && !chat.isArchived :
