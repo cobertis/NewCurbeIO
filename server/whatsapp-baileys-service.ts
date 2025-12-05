@@ -305,6 +305,40 @@ class WhatsAppBaileysService extends EventEmitter {
     }
   }
 
+  private async cleanupOrphanedChats(companyId: string, companyClient: CompanyBaileysClient): Promise<void> {
+    try {
+      // Get chat IDs that exist in memory (from phone sync)
+      const phoneChatsIds = new Set(companyClient.chats.keys());
+      
+      // Get all chat IDs from database
+      const dbChats = await db
+        .select({ chatId: whatsappChats.chatId })
+        .from(whatsappChats)
+        .where(eq(whatsappChats.companyId, companyId));
+      
+      // Find orphaned chats (in DB but not in phone)
+      const orphanedChatIds = dbChats
+        .map(c => c.chatId)
+        .filter(chatId => !phoneChatsIds.has(chatId));
+      
+      if (orphanedChatIds.length === 0) {
+        console.log(`[Baileys] No orphaned chats found for company ${companyId}`);
+        return;
+      }
+      
+      console.log(`[Baileys] Found ${orphanedChatIds.length} orphaned chats for company ${companyId}, cleaning up...`);
+      
+      // Delete orphaned chats and their messages
+      for (const chatId of orphanedChatIds) {
+        await this.deleteChatFromDb(companyId, chatId);
+      }
+      
+      console.log(`[Baileys] Cleaned up ${orphanedChatIds.length} orphaned chats for company ${companyId}`);
+    } catch (error) {
+      console.error(`[Baileys] Error cleaning up orphaned chats for company ${companyId}:`, error);
+    }
+  }
+
   private async loadChatsFromDb(companyId: string): Promise<StoredChat[]> {
     try {
       const dbChats = await db
@@ -699,6 +733,14 @@ class WhatsAppBaileysService extends EventEmitter {
         } catch (error) {
           console.error(`[Baileys] Failed to hydrate reactions for ${companyId}:`, error);
         }
+
+        // Schedule cleanup of orphaned chats after connection is stable
+        // Delay to allow Baileys to sync chats from phone first
+        setTimeout(() => {
+          this.cleanupOrphanedChats(companyId, companyClient).catch(err => {
+            console.error(`[Baileys] Error cleaning up orphaned chats:`, err);
+          });
+        }, 5000);
       }
     });
 
@@ -968,6 +1010,13 @@ class WhatsAppBaileysService extends EventEmitter {
       if (messages && Array.isArray(messages) && messages.length > 0) {
         console.log(`[Baileys] Persisting ${messages.length} history messages to DB for company ${companyId}`);
         this.persistMessagesInBatch(companyId, messages as proto.IWebMessageInfo[]).catch(() => {});
+      }
+
+      // When sync is complete, clean up orphaned chats from DB
+      if (isLatest) {
+        this.cleanupOrphanedChats(companyId, companyClient).catch(err => {
+          console.error(`[Baileys] Error cleaning up orphaned chats:`, err);
+        });
       }
     });
 
