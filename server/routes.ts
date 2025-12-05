@@ -1140,7 +1140,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const companyId = (req.user as any).companyId;
       const chats = await whatsappService.getChats(companyId);
-      res.json(chats);
+      res.json({ success: true, chats });
     } catch (error) {
       next(error);
     }
@@ -1153,7 +1153,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { chatId } = req.params;
       const limit = parseInt(req.query.limit as string) || 50;
       const messages = await whatsappService.getMessages(companyId, chatId, limit);
-      res.json(messages);
+      res.json({ success: true, messages });
     } catch (error) {
       next(error);
     }
