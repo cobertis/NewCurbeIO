@@ -168,11 +168,24 @@ class WhatsAppService extends EventEmitter {
         version,
         auth: state,
         logger: this.logger,
-        browser: Browsers.ubuntu('Chrome'),
-        printQRInTerminal: true,
+        browser: Browsers.macOS('Desktop'),
         syncFullHistory: true,
         markOnlineOnConnect: true,
         generateHighQualityLinkPreview: true,
+        // getMessage is required for retry logic when not using makeInMemoryStore
+        getMessage: async (key) => {
+          const msg = await db.select()
+            .from(whatsappMessages)
+            .where(and(
+              eq(whatsappMessages.companyId, companyId),
+              eq(whatsappMessages.messageId, key.id || '')
+            ))
+            .limit(1);
+          if (msg.length > 0 && msg[0].rawData) {
+            return (msg[0].rawData as any).message;
+          }
+          return undefined;
+        },
       });
       
       const session: CompanySession = {
@@ -254,6 +267,51 @@ class WhatsAppService extends EventEmitter {
             this.emit('message', { companyId, message: msg });
           } catch (error) {
             console.error(`[WhatsApp] Error persisting message:`, error);
+          }
+        }
+      });
+      
+      // Listen for chats.set (initial bulk chat list from history sync)
+      // Cast to 'any' because TypeScript definitions may not include this event
+      (sock.ev as any).on('chats.set', async (data: { chats: any[], isLatest?: boolean }) => {
+        const { chats, isLatest } = data;
+        console.log(`[WhatsApp] chats.set received: ${chats.length} chats for company ${companyId}, isLatest: ${isLatest}`);
+        
+        for (const chat of chats) {
+          try {
+            // Only save chats that have conversation activity
+            if (!chat.conversationTimestamp && !chat.lastMsgTimestamp) continue;
+            
+            const chatId = chat.id;
+            const isGroup = isJidGroup(chatId);
+            const timestamp = chat.conversationTimestamp ? Number(chat.conversationTimestamp) : 
+                             chat.lastMsgTimestamp ? Number(chat.lastMsgTimestamp) : 
+                             Math.floor(Date.now() / 1000);
+            
+            await db.insert(whatsappChats)
+              .values({
+                companyId,
+                chatId,
+                name: chat.name || null,
+                chatType: isGroup ? 'group' : 'individual',
+                unreadCount: chat.unreadCount || 0,
+                lastMessageTimestamp: timestamp,
+                isArchived: chat.archived || false,
+                isPinned: chat.pinned ? true : false,
+              })
+              .onConflictDoUpdate({
+                target: [whatsappChats.companyId, whatsappChats.chatId],
+                set: {
+                  name: chat.name || sql`${whatsappChats.name}`,
+                  unreadCount: chat.unreadCount || 0,
+                  lastMessageTimestamp: timestamp,
+                  isArchived: chat.archived || false,
+                  isPinned: chat.pinned ? true : false,
+                  updatedAt: new Date(),
+                },
+              });
+          } catch (error) {
+            console.error(`[WhatsApp] Error saving chat from chats.set:`, error);
           }
         }
       });
