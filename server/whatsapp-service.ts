@@ -28,32 +28,45 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import NodeCache from 'node-cache';
 
 // ============================================================
-// PostgreSQL Auth State Adapter
+// PostgreSQL Auth State Adapter - ATOMIC BLOB STORAGE
 // ============================================================
-// This replaces useMultiFileAuthState - stores auth in database instead of files
+// Stores entire auth state (creds + all keys) as a single atomic JSON blob
+// This matches Baileys' useSingleFileAuthState semantics for SQL
+
+interface AuthStateBlob {
+  creds: any;
+  keys: { [key: string]: any };
+}
 
 async function usePostgresAuthState(companyId: string): Promise<{
   state: AuthenticationState;
   saveCreds: () => Promise<void>;
   removeCreds: () => Promise<void>;
 }> {
-  const KEY_PREFIX = `${companyId}:`;
+  const AUTH_KEY = `${companyId}:auth_state`;
   
-  const getKey = async (key: string): Promise<any> => {
+  // Load entire auth state blob atomically
+  const loadAuthBlob = async (): Promise<AuthStateBlob | null> => {
     const result = await db.select()
       .from(whatsappSessions)
-      .where(eq(whatsappSessions.id, KEY_PREFIX + key))
+      .where(eq(whatsappSessions.id, AUTH_KEY))
       .limit(1);
     
     if (result.length === 0) return null;
-    return JSON.parse(result[0].data, BufferJSON.reviver);
+    try {
+      return JSON.parse(result[0].data, BufferJSON.reviver);
+    } catch (e) {
+      console.error('[WhatsApp Auth] Failed to parse auth blob:', e);
+      return null;
+    }
   };
   
-  const setKey = async (key: string, data: any): Promise<void> => {
-    const serialized = JSON.stringify(data, BufferJSON.replacer);
+  // Save entire auth state blob atomically
+  const saveAuthBlob = async (blob: AuthStateBlob): Promise<void> => {
+    const serialized = JSON.stringify(blob, BufferJSON.replacer);
     await db.insert(whatsappSessions)
       .values({
-        id: KEY_PREFIX + key,
+        id: AUTH_KEY,
         companyId,
         data: serialized,
         updatedAt: new Date(),
@@ -64,41 +77,50 @@ async function usePostgresAuthState(companyId: string): Promise<{
       });
   };
   
-  const removeKey = async (key: string): Promise<void> => {
-    await db.delete(whatsappSessions)
-      .where(eq(whatsappSessions.id, KEY_PREFIX + key));
-  };
-  
-  let creds = await getKey('creds');
-  if (!creds) {
-    creds = initAuthCreds();
+  // Load or initialize auth state
+  let authBlob = await loadAuthBlob();
+  if (!authBlob) {
+    authBlob = {
+      creds: initAuthCreds(),
+      keys: {},
+    };
+    console.log('[WhatsApp Auth] Initialized new auth state for company', companyId);
+  } else {
+    console.log('[WhatsApp Auth] Loaded existing auth state for company', companyId);
   }
   
+  // Build the state object that Baileys expects
   const state: AuthenticationState = {
-    creds,
+    creds: authBlob.creds,
     keys: {
       get: async (type: keyof SignalDataTypeMap, ids: string[]) => {
         const data: { [id: string]: any } = {};
-        await Promise.all(ids.map(async (id) => {
-          const value = await getKey(`${type}-${id}`);
-          if (value) {
-            data[id] = value;
+        for (const id of ids) {
+          const key = `${type}-${id}`;
+          if (authBlob!.keys[key]) {
+            data[id] = authBlob!.keys[key];
           }
-        }));
+        }
         return data;
       },
       set: async (data: any) => {
-        const tasks: Promise<void>[] = [];
+        let changed = false;
         for (const [type, entries] of Object.entries(data)) {
           for (const [id, value] of Object.entries(entries as any)) {
+            const key = `${type}-${id}`;
             if (value) {
-              tasks.push(setKey(`${type}-${id}`, value));
-            } else {
-              tasks.push(removeKey(`${type}-${id}`));
+              authBlob!.keys[key] = value;
+              changed = true;
+            } else if (authBlob!.keys[key]) {
+              delete authBlob!.keys[key];
+              changed = true;
             }
           }
         }
-        await Promise.all(tasks);
+        // Save entire blob atomically after any key changes
+        if (changed) {
+          await saveAuthBlob(authBlob!);
+        }
       },
     },
   };
@@ -106,12 +128,15 @@ async function usePostgresAuthState(companyId: string): Promise<{
   return {
     state,
     saveCreds: async () => {
-      // CRITICAL: Save state.creds (which Baileys mutates) not the local creds variable
-      await setKey('creds', state.creds);
+      // Update creds in blob and save atomically
+      authBlob!.creds = state.creds;
+      await saveAuthBlob(authBlob!);
+      console.log('[WhatsApp Auth] Saved credentials for company', companyId);
     },
     removeCreds: async () => {
       await db.delete(whatsappSessions)
         .where(eq(whatsappSessions.companyId, companyId));
+      console.log('[WhatsApp Auth] Removed all auth data for company', companyId);
     },
   };
 }
@@ -137,6 +162,7 @@ interface CompanySession {
 class WhatsAppService extends EventEmitter {
   private sessions: Map<string, CompanySession> = new Map();
   private initializingCompanies: Set<string> = new Set();
+  private initMutex: Map<string, Promise<CompanySession>> = new Map();
   private logger = P({ level: 'warn' });
   private msgRetryCounterCache = new NodeCache();
   
@@ -147,18 +173,50 @@ class WhatsAppService extends EventEmitter {
     return null;
   }
   
+  // Close existing socket gracefully before creating new one
+  private async closeExistingSocket(companyId: string): Promise<void> {
+    const existing = this.sessions.get(companyId);
+    if (existing?.sock) {
+      console.log(`[WhatsApp] Closing existing socket for company ${companyId}`);
+      try {
+        existing.sock.ev.removeAllListeners();
+        existing.sock.end(undefined);
+      } catch (e) {
+        console.log(`[WhatsApp] Error closing socket:`, e);
+      }
+      this.sessions.delete(companyId);
+      // Wait for socket to fully close
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+  
   async initializeClient(companyId: string): Promise<CompanySession> {
-    if (this.initializingCompanies.has(companyId)) {
-      console.log(`[WhatsApp] Already initializing for company ${companyId}, waiting...`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const existing = this.sessions.get(companyId);
-      if (existing) return existing;
+    // Use mutex to prevent concurrent initialization
+    const existingMutex = this.initMutex.get(companyId);
+    if (existingMutex) {
+      console.log(`[WhatsApp] Waiting for existing initialization for company ${companyId}`);
+      return existingMutex;
     }
     
     const existing = this.sessions.get(companyId);
     if (existing?.status.isReady) {
       return existing;
     }
+    
+    // Create mutex promise
+    const initPromise = this.doInitializeClient(companyId);
+    this.initMutex.set(companyId, initPromise);
+    
+    try {
+      return await initPromise;
+    } finally {
+      this.initMutex.delete(companyId);
+    }
+  }
+  
+  private async doInitializeClient(companyId: string): Promise<CompanySession> {
+    // Close any existing socket first to prevent stream errors
+    await this.closeExistingSocket(companyId);
     
     this.initializingCompanies.add(companyId);
     
@@ -238,6 +296,10 @@ class WhatsAppService extends EventEmitter {
           const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
           console.log(`[WhatsApp] Connection closed for company ${companyId}, reason: ${reason}`);
           
+          // Mark session as not ready
+          session.status.isReady = false;
+          session.status.status = 'disconnected';
+          
           if (reason === DisconnectReason.loggedOut) {
             console.log(`[WhatsApp] Logged out, clearing session for company ${companyId}`);
             await removeCreds();
@@ -251,8 +313,18 @@ class WhatsAppService extends EventEmitter {
               hasSavedSession: false,
             };
             this.emit('logout', { companyId });
+          } else if (reason === 515) {
+            // Stream error 515 - wait longer before reconnecting
+            console.log(`[WhatsApp] Stream error 515, waiting before reconnect for company ${companyId}...`);
+            // Save credentials before reconnecting
+            await saveCreds();
+            setTimeout(() => {
+              this.initializeClient(companyId).catch(console.error);
+            }, 5000);
           } else {
             console.log(`[WhatsApp] Attempting to reconnect for company ${companyId}...`);
+            // Save credentials before reconnecting
+            await saveCreds();
             setTimeout(() => {
               this.initializeClient(companyId).catch(console.error);
             }, 3000);
