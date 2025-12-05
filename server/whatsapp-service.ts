@@ -170,8 +170,12 @@ class WhatsAppService extends EventEmitter {
         logger: this.logger,
         browser: Browsers.macOS('Desktop'),
         syncFullHistory: true,
-        markOnlineOnConnect: true,
+        markOnlineOnConnect: false,
         generateHighQualityLinkPreview: true,
+        // CRITICAL: Enable history sync processing
+        shouldSyncHistoryMessage: () => true,
+        // Don't use tight timeouts
+        defaultQueryTimeoutMs: undefined,
         // getMessage is required for retry logic when not using makeInMemoryStore
         getMessage: async (key) => {
           const msg = await db.select()
