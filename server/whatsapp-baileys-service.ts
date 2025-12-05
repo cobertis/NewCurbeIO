@@ -20,7 +20,7 @@ import path from 'path';
 import fs from 'fs';
 import { EventEmitter } from 'events';
 import { db } from './db';
-import { whatsappReactions, whatsappChats } from '@shared/schema';
+import { whatsappReactions, whatsappChats, whatsappMessages } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { notificationService } from './notification-service';
 import { storage } from './storage';
@@ -320,6 +320,100 @@ class WhatsAppBaileysService extends EventEmitter {
       console.log(`[Baileys] Hydrated ${dbChats.length} chats from DB for company: ${companyId}`);
     } catch (error) {
       console.error(`[Baileys] Error hydrating chats from DB for company ${companyId}:`, error);
+    }
+  }
+
+  private async persistMessageToDb(companyId: string, msg: proto.IWebMessageInfo): Promise<void> {
+    try {
+      const chatId = msg.key?.remoteJid;
+      const messageId = msg.key?.id;
+      if (!chatId || !messageId) return;
+
+      const fromMe = msg.key?.fromMe || false;
+      const senderId = msg.key?.participant || msg.key?.remoteJid || null;
+      const text = this.extractMessageContent(msg) || null;
+      const mediaType = this.getMediaType(msg) || null;
+      const timestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
+      const quotedMessageId = msg.message?.extendedTextMessage?.contextInfo?.stanzaId || null;
+      const isForwarded = !!msg.message?.extendedTextMessage?.contextInfo?.isForwarded;
+
+      await db
+        .insert(whatsappMessages)
+        .values({
+          companyId,
+          chatId,
+          messageId,
+          fromMe,
+          senderId,
+          text,
+          mediaType,
+          mediaUrl: null,
+          timestamp,
+          quotedMessageId,
+          isForwarded,
+          rawData: msg as any,
+        })
+        .onConflictDoNothing();
+    } catch (error) {
+      // Silent fail for message persistence - non-critical
+    }
+  }
+
+  private async persistMessagesInBatch(companyId: string, messages: proto.IWebMessageInfo[]): Promise<void> {
+    if (!messages || messages.length === 0) return;
+    
+    try {
+      const values = messages
+        .filter(msg => msg.key?.remoteJid && msg.key?.id)
+        .map(msg => ({
+          companyId,
+          chatId: msg.key!.remoteJid!,
+          messageId: msg.key!.id!,
+          fromMe: msg.key?.fromMe || false,
+          senderId: msg.key?.participant || msg.key?.remoteJid || null,
+          text: this.extractMessageContent(msg)?.substring(0, 5000) || null,
+          mediaType: this.getMediaType(msg) || null,
+          mediaUrl: null,
+          timestamp: msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000),
+          quotedMessageId: msg.message?.extendedTextMessage?.contextInfo?.stanzaId || null,
+          isForwarded: !!msg.message?.extendedTextMessage?.contextInfo?.isForwarded,
+          rawData: msg as any,
+        }));
+
+      if (values.length === 0) return;
+
+      // Insert in batches of 100
+      const batchSize = 100;
+      for (let i = 0; i < values.length; i += batchSize) {
+        const batch = values.slice(i, i + batchSize);
+        await db.insert(whatsappMessages).values(batch).onConflictDoNothing();
+      }
+      console.log(`[Baileys] Persisted ${values.length} messages to DB for company ${companyId}`);
+    } catch (error) {
+      console.error(`[Baileys] Error persisting messages batch for company ${companyId}:`, error);
+    }
+  }
+
+  async loadMessagesFromDb(companyId: string, chatId: string, limit: number = 50, before?: number): Promise<proto.IWebMessageInfo[]> {
+    try {
+      let query = db
+        .select()
+        .from(whatsappMessages)
+        .where(and(
+          eq(whatsappMessages.companyId, companyId),
+          eq(whatsappMessages.chatId, chatId)
+        ))
+        .orderBy(desc(whatsappMessages.timestamp))
+        .limit(limit);
+
+      const dbMessages = await query;
+      
+      console.log(`[Baileys] Loaded ${dbMessages.length} messages from DB for chat ${chatId}`);
+      
+      return dbMessages.map(m => m.rawData as proto.IWebMessageInfo).filter(Boolean);
+    } catch (error) {
+      console.error(`[Baileys] Error loading messages from DB:`, error);
+      return [];
     }
   }
 
@@ -674,6 +768,9 @@ class WhatsAppBaileysService extends EventEmitter {
           companyClient.metrics.messagesReceived++;
         }
         
+        // Persist message to database (fire and forget)
+        this.persistMessageToDb(companyId, msg).catch(() => {});
+        
         // Auto-create or update chat when receiving messages (workaround for Baileys v7 history sync issue)
         const existingChat = companyClient.chats.get(chatId);
         const chatName = msg.pushName || existingChat?.name || chatId.replace('@s.whatsapp.net', '').replace('@g.us', '');
@@ -801,7 +898,7 @@ class WhatsAppBaileysService extends EventEmitter {
 
     // Handle messaging history sync (primary source of chats in Baileys v7)
     sock.ev.on('messaging-history.set', ({ chats, contacts, messages, isLatest, progress }) => {
-      console.log(`[Baileys] History sync for company ${companyId}: ${chats?.length || 0} chats, ${contacts?.length || 0} contacts, isLatest: ${isLatest}, progress: ${progress}%`);
+      console.log(`[Baileys] History sync for company ${companyId}: ${chats?.length || 0} chats, ${contacts?.length || 0} contacts, ${messages?.length || 0} messages, isLatest: ${isLatest}, progress: ${progress}%`);
       
       // Store chats
       if (chats && Array.isArray(chats)) {
@@ -833,6 +930,12 @@ class WhatsAppBaileysService extends EventEmitter {
           }
         }
         console.log(`[Baileys] Stored ${companyClient.contacts.size} total contacts for company ${companyId}`);
+      }
+
+      // Persist messages to database (async batch, fire and forget)
+      if (messages && Array.isArray(messages) && messages.length > 0) {
+        console.log(`[Baileys] Persisting ${messages.length} history messages to DB for company ${companyId}`);
+        this.persistMessagesInBatch(companyId, messages as proto.IWebMessageInfo[]).catch(() => {});
       }
     });
 
