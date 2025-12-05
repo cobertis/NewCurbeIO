@@ -674,6 +674,14 @@ class WhatsAppBaileysService extends EventEmitter {
         status.qrCode = null;
         status.qrReceivedAt = null;
         
+        // Clear stale message store to prevent phantom messages
+        // Messages will be re-synced from phone via messaging-history.set event
+        const storeSize = companyClient.messageStore.size;
+        if (storeSize > 0) {
+          console.log(`[Baileys] Clearing ${storeSize} stale messages from memory for company: ${companyId}`);
+          companyClient.messageStore.clear();
+        }
+        
         // Update metrics
         companyClient.metrics.connectedAt = new Date();
         companyClient.metrics.lastActivityAt = new Date();
