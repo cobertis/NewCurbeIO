@@ -275,14 +275,21 @@ class WhatsAppBaileysService extends EventEmitter {
 
       console.log(`[Baileys] Loaded ${dbChats.length} chats from DB for company: ${companyId}`);
 
-      return dbChats.map(dbChat => ({
-        id: dbChat.chatId,
-        name: dbChat.name || dbChat.pushName || undefined,
-        conversationTimestamp: dbChat.lastMessageTimestamp || undefined,
-        unreadCount: dbChat.unreadCount || 0,
-        archived: dbChat.isArchived || false,
-        pinned: dbChat.isPinned ? 1 : 0,
-      }));
+      return dbChats.map(dbChat => {
+        // Ensure timestamp is properly converted from DB bigint to number
+        const timestamp = dbChat.lastMessageTimestamp 
+          ? Number(dbChat.lastMessageTimestamp)
+          : Math.floor(Date.now() / 1000);
+        
+        return {
+          id: dbChat.chatId,
+          name: dbChat.name || dbChat.pushName || undefined,
+          conversationTimestamp: timestamp,
+          unreadCount: dbChat.unreadCount || 0,
+          archived: dbChat.isArchived || false,
+          pinned: dbChat.isPinned ? 1 : 0,
+        };
+      });
     } catch (error) {
       console.error(`[Baileys] Error loading chats from DB for company ${companyId}:`, error);
       return [];
