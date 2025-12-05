@@ -10,6 +10,38 @@ import { startBirthdayScheduler } from "./birthday-scheduler";
 import { startImessageCampaignProcessor } from "./imessage-campaign-processor";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 
+// Handle unhandled promise rejections to prevent server crashes (e.g., Baileys timeouts)
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  const errorMessage = reason?.message || reason?.toString() || 'Unknown error';
+  const isBaileysTimeout = errorMessage.includes('Timed Out') || 
+                           errorMessage.includes('Connection Closed') ||
+                           reason?.isBoom;
+  
+  if (isBaileysTimeout) {
+    console.error(`[Baileys] Unhandled rejection (non-fatal): ${errorMessage}`);
+  } else {
+    console.error('[Server] Unhandled promise rejection:', reason);
+  }
+});
+
+process.on('uncaughtException', (error: Error) => {
+  const isBaileysError = error.message?.includes('Timed Out') ||
+                         error.message?.includes('Connection Closed') ||
+                         (error as any)?.isBoom;
+  
+  if (isBaileysError) {
+    console.error(`[Baileys] Uncaught exception (recovered): ${error.message}`);
+  } else {
+    console.error('[Server] Uncaught exception:', error);
+    // Only exit for truly critical errors, not Baileys network issues
+    if (!error.message?.includes('ECONNRESET') && 
+        !error.message?.includes('ETIMEDOUT') &&
+        !error.message?.includes('socket hang up')) {
+      process.exit(1);
+    }
+  }
+});
+
 if (!process.env.SESSION_SECRET) {
   throw new Error('CRITICAL: SESSION_SECRET environment variable must be set for production security');
 }
