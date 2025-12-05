@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, uniqueIndex, AnyPgColumn, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, uniqueIndex, AnyPgColumn, serial, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { validateCardNumber, validateCVV, validateExpirationDate } from './creditCardUtils';
@@ -4160,6 +4160,44 @@ export type InsertImessageCampaignMessage = z.infer<typeof insertImessageCampaig
 // =====================================================
 // WHATSAPP INTEGRATION (WhatsApp Web.js)
 // =====================================================
+
+// WhatsApp Chats - persists chat list across server restarts
+export const whatsappChats = pgTable("whatsapp_chats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  chatId: text("chat_id").notNull(), // WhatsApp chat ID (e.g., "17866302522@s.whatsapp.net")
+  chatType: text("chat_type").notNull().default("individual"), // "individual" or "group"
+  name: text("name"), // Chat name (contact name or group subject)
+  pushName: text("push_name"), // WhatsApp push name
+  profilePicUrl: text("profile_pic_url"), // Profile picture URL
+  lastMessageTimestamp: bigint("last_message_timestamp", { mode: "number" }), // Unix timestamp
+  lastMessageContent: text("last_message_content"), // Preview of last message
+  lastMessageFromMe: boolean("last_message_from_me").default(false),
+  unreadCount: integer("unread_count").default(0),
+  isArchived: boolean("is_archived").default(false),
+  isPinned: boolean("is_pinned").default(false),
+  muteExpiration: bigint("mute_expiration", { mode: "number" }), // Unix timestamp when mute expires
+  metadata: jsonb("metadata"), // Additional metadata as JSON
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdx: index("whatsapp_chats_company_idx").on(table.companyId),
+  companyChatIdx: uniqueIndex("whatsapp_chats_company_chat_idx").on(table.companyId, table.chatId),
+  lastMessageIdx: index("whatsapp_chats_last_message_idx").on(table.companyId, table.lastMessageTimestamp),
+  pinnedIdx: index("whatsapp_chats_pinned_idx").on(table.companyId, table.isPinned),
+}));
+
+export const insertWhatsappChatSchema = createInsertSchema(whatsappChats).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  chatId: z.string().min(1, "Chat ID is required"),
+  chatType: z.enum(["individual", "group"]).default("individual"),
+});
+
+export type WhatsappChat = typeof whatsappChats.$inferSelect;
+export type InsertWhatsappChat = z.infer<typeof insertWhatsappChatSchema>;
 
 export const whatsappMessages = pgTable("whatsapp_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
