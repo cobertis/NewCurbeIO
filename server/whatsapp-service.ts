@@ -22,11 +22,8 @@ import {
   whatsappSessions, 
   whatsappChats, 
   whatsappMessages,
-  whatsappContacts,
-  type InsertWhatsappChat,
-  type InsertWhatsappMessage,
 } from '@shared/schema';
-import { eq, and, desc, lt, sql } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 
 // ============================================================
 // PostgreSQL Auth State Adapter
@@ -268,83 +265,73 @@ class WhatsAppService extends EventEmitter {
   }
   
   private async persistMessage(companyId: string, msg: WAMessage): Promise<void> {
-    const remoteJid = msg.key.remoteJid;
-    if (!remoteJid) return;
+    const chatId = msg.key.remoteJid;
+    if (!chatId) return;
     
-    const chatId = await this.ensureChat(companyId, remoteJid);
+    await this.ensureChat(companyId, chatId, msg);
     
     const messageContent = msg.message;
-    let body = '';
-    let type = 'text';
-    let hasMedia = false;
-    let mediaUrl = null;
-    let mimetype = null;
-    let fileName = null;
-    let caption = null;
+    let text = '';
+    let mediaType: string | null = null;
+    let mediaUrl: string | null = null;
     
     if (messageContent?.conversation) {
-      body = messageContent.conversation;
+      text = messageContent.conversation;
     } else if (messageContent?.extendedTextMessage) {
-      body = messageContent.extendedTextMessage.text || '';
+      text = messageContent.extendedTextMessage.text || '';
     } else if (messageContent?.imageMessage) {
-      type = 'image';
-      hasMedia = true;
-      caption = messageContent.imageMessage.caption;
-      mimetype = messageContent.imageMessage.mimetype;
+      mediaType = 'image';
+      text = messageContent.imageMessage.caption || '';
     } else if (messageContent?.videoMessage) {
-      type = 'video';
-      hasMedia = true;
-      caption = messageContent.videoMessage.caption;
-      mimetype = messageContent.videoMessage.mimetype;
+      mediaType = 'video';
+      text = messageContent.videoMessage.caption || '';
     } else if (messageContent?.audioMessage) {
-      type = 'audio';
-      hasMedia = true;
-      mimetype = messageContent.audioMessage.mimetype;
+      mediaType = 'audio';
     } else if (messageContent?.documentMessage) {
-      type = 'document';
-      hasMedia = true;
-      fileName = messageContent.documentMessage.fileName;
-      mimetype = messageContent.documentMessage.mimetype;
+      mediaType = 'document';
+      text = messageContent.documentMessage.fileName || '';
     } else if (messageContent?.stickerMessage) {
-      type = 'sticker';
-      hasMedia = true;
+      mediaType = 'sticker';
     }
+    
+    const timestamp = Number(msg.messageTimestamp);
     
     await db.insert(whatsappMessages)
       .values({
         companyId,
         chatId,
         messageId: msg.key.id || '',
-        remoteJid,
         fromMe: msg.key.fromMe || false,
-        participant: msg.key.participant,
-        body,
-        type,
-        hasMedia,
+        senderId: msg.key.participant || chatId,
+        text,
+        mediaType,
         mediaUrl,
-        mimetype,
-        fileName,
-        caption,
-        quotedMessageId: messageContent?.extendedTextMessage?.contextInfo?.stanzaId,
-        status: msg.key.fromMe ? 'sent' : 'received',
-        timestamp: new Date(Number(msg.messageTimestamp) * 1000),
+        timestamp,
+        quotedMessageId: messageContent?.extendedTextMessage?.contextInfo?.stanzaId || null,
+        isForwarded: messageContent?.extendedTextMessage?.contextInfo?.isForwarded || false,
+        rawData: msg as any,
       })
       .onConflictDoNothing();
     
     await db.update(whatsappChats)
       .set({ 
-        lastMessageAt: new Date(Number(msg.messageTimestamp) * 1000),
+        lastMessageTimestamp: timestamp,
+        lastMessageContent: text.substring(0, 500),
+        lastMessageFromMe: msg.key.fromMe || false,
         updatedAt: new Date(),
       })
-      .where(eq(whatsappChats.id, chatId));
+      .where(and(
+        eq(whatsappChats.companyId, companyId),
+        eq(whatsappChats.chatId, chatId)
+      ));
   }
   
-  private async ensureChat(companyId: string, remoteJid: string): Promise<string> {
+  private async ensureChat(companyId: string, chatId: string, msg?: WAMessage): Promise<string> {
     const existing = await db.select()
       .from(whatsappChats)
       .where(and(
         eq(whatsappChats.companyId, companyId),
-        eq(whatsappChats.remoteJid, remoteJid)
+        eq(whatsappChats.chatId, chatId)
       ))
       .limit(1);
     
@@ -352,11 +339,14 @@ class WhatsAppService extends EventEmitter {
       return existing[0].id;
     }
     
+    const isGroup = isJidGroup(chatId);
     const [created] = await db.insert(whatsappChats)
       .values({
         companyId,
-        remoteJid,
-        isGroup: isJidGroup(remoteJid),
+        chatId,
+        chatType: isGroup ? 'group' : 'individual',
+        name: msg?.pushName || null,
+        pushName: msg?.pushName || null,
       })
       .returning();
     
@@ -391,13 +381,13 @@ class WhatsAppService extends EventEmitter {
     }
   }
   
-  async sendText(companyId: string, remoteJid: string, text: string): Promise<proto.WebMessageInfo | null> {
+  async sendText(companyId: string, chatId: string, text: string): Promise<proto.WebMessageInfo | null> {
     const session = this.sessions.get(companyId);
     if (!session?.status.isReady) {
       throw new Error('WhatsApp not connected');
     }
     
-    const result = await session.sock.sendMessage(remoteJid, { text });
+    const result = await session.sock.sendMessage(chatId, { text });
     if (result) {
       await this.persistMessage(companyId, result);
     }
@@ -406,7 +396,7 @@ class WhatsAppService extends EventEmitter {
   
   async sendMedia(
     companyId: string, 
-    remoteJid: string, 
+    chatId: string, 
     url: string, 
     caption?: string,
     type: 'image' | 'video' | 'document' | 'audio' = 'image'
@@ -432,7 +422,7 @@ class WhatsAppService extends EventEmitter {
         break;
     }
     
-    const result = await session.sock.sendMessage(remoteJid, message);
+    const result = await session.sock.sendMessage(chatId, message);
     if (result) {
       await this.persistMessage(companyId, result);
     }
@@ -443,7 +433,7 @@ class WhatsAppService extends EventEmitter {
     return db.select()
       .from(whatsappChats)
       .where(eq(whatsappChats.companyId, companyId))
-      .orderBy(desc(whatsappChats.lastMessageAt));
+      .orderBy(desc(whatsappChats.lastMessageTimestamp));
   }
   
   async getMessages(companyId: string, chatId: string, limit: number = 50): Promise<any[]> {

@@ -4543,82 +4543,52 @@ export type CreateCampaignWithDetails = z.infer<typeof createCampaignWithDetails
 // ============================================================
 
 // WhatsApp Sessions - stores Baileys auth credentials in database (NOT file system)
+// This is a NEW table created specifically for Baileys auth persistence
 export const whatsappSessions = pgTable("whatsapp_sessions", {
-  id: varchar("id").primaryKey(), // Format: "companyId:keyType" (e.g., "uuid:creds", "uuid:app-state-sync-key-xxx")
+  id: varchar("id").primaryKey(),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  data: text("data").notNull(), // JSON stringified auth data
+  data: text("data").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// WhatsApp Chats - stores chat metadata
+// WhatsApp Chats - matches EXISTING database table structure
 export const whatsappChats = pgTable("whatsapp_chats", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  remoteJid: varchar("remote_jid").notNull(), // WhatsApp JID (e.g., "1234567890@s.whatsapp.net")
-  name: varchar("name"),
-  isGroup: boolean("is_group").default(false),
+  chatId: text("chat_id").notNull(),
+  chatType: text("chat_type"),
+  name: text("name"),
+  pushName: text("push_name"),
   profilePicUrl: text("profile_pic_url"),
+  lastMessageTimestamp: bigint("last_message_timestamp", { mode: "number" }),
+  lastMessageContent: text("last_message_content"),
+  lastMessageFromMe: boolean("last_message_from_me"),
   unreadCount: integer("unread_count").default(0),
-  isPinned: boolean("is_pinned").default(false),
   isArchived: boolean("is_archived").default(false),
-  isMuted: boolean("is_muted").default(false),
-  lastMessageAt: timestamp("last_message_at"),
-  metadata: text("metadata"), // JSON for group info, etc
+  isPinned: boolean("is_pinned").default(false),
+  muteExpiration: bigint("mute_expiration", { mode: "number" }),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  companyJidUnique: unique("whatsapp_chats_company_jid_unique").on(table.companyId, table.remoteJid),
-  companyIdIdx: index("whatsapp_chats_company_id_idx").on(table.companyId),
-  lastMessageAtIdx: index("whatsapp_chats_last_message_at_idx").on(table.lastMessageAt),
-}));
+});
 
-// WhatsApp Messages - stores all messages with UPSERT support
+// WhatsApp Messages - matches EXISTING database table structure  
 export const whatsappMessages = pgTable("whatsapp_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: serial("id").primaryKey(),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  chatId: varchar("chat_id").notNull().references(() => whatsappChats.id, { onDelete: 'cascade' }),
-  messageId: varchar("message_id").notNull(), // Baileys message key ID
-  remoteJid: varchar("remote_jid").notNull(),
+  chatId: text("chat_id").notNull(),
+  messageId: text("message_id").notNull(),
   fromMe: boolean("from_me").default(false),
-  participant: varchar("participant"), // For group messages
-  body: text("body"), // Message text content
-  type: varchar("type").default("text"), // text, image, video, audio, document, sticker, location, etc
-  hasMedia: boolean("has_media").default(false),
-  mediaUrl: text("media_url"), // URL for media files
-  mediaKey: text("media_key"), // Encrypted media key
-  mimetype: varchar("mimetype"),
-  fileName: varchar("file_name"),
-  caption: text("caption"),
-  quotedMessageId: varchar("quoted_message_id"),
-  status: varchar("status").default("pending"), // pending, sent, delivered, read
-  isStarred: boolean("is_starred").default(false),
-  isDeleted: boolean("is_deleted").default(false),
-  timestamp: timestamp("timestamp").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  messageUnique: unique("whatsapp_messages_unique").on(table.companyId, table.remoteJid, table.messageId),
-  companyIdIdx: index("whatsapp_messages_company_id_idx").on(table.companyId),
-  chatIdIdx: index("whatsapp_messages_chat_id_idx").on(table.chatId),
-  timestampIdx: index("whatsapp_messages_timestamp_idx").on(table.timestamp),
-}));
-
-// WhatsApp Contacts - stores contact info
-export const whatsappContacts = pgTable("whatsapp_contacts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  remoteJid: varchar("remote_jid").notNull(),
-  name: varchar("name"),
-  pushname: varchar("pushname"),
-  profilePicUrl: text("profile_pic_url"),
-  isBusiness: boolean("is_business").default(false),
-  isBlocked: boolean("is_blocked").default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  companyJidUnique: unique("whatsapp_contacts_company_jid_unique").on(table.companyId, table.remoteJid),
-}));
+  senderId: text("sender_id"),
+  text: text("text"),
+  mediaType: text("media_type"),
+  mediaUrl: text("media_url"),
+  timestamp: bigint("timestamp", { mode: "number" }).notNull(),
+  quotedMessageId: text("quoted_message_id"),
+  isForwarded: boolean("is_forwarded").default(false),
+  rawData: jsonb("raw_data"),
+});
 
 // =====================================================
 // WHATSAPP ZOD SCHEMAS FOR VALIDATION
@@ -4627,8 +4597,7 @@ export const whatsappContacts = pgTable("whatsapp_contacts", {
 // Insert schemas
 export const insertWhatsappSessionSchema = createInsertSchema(whatsappSessions);
 export const insertWhatsappChatSchema = createInsertSchema(whatsappChats).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertWhatsappContactSchema = createInsertSchema(whatsappContacts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true });
 
 // =====================================================
 // WHATSAPP TYPES
@@ -4641,5 +4610,3 @@ export type WhatsappChat = typeof whatsappChats.$inferSelect;
 export type InsertWhatsappChat = z.infer<typeof insertWhatsappChatSchema>;
 export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
-export type WhatsappContact = typeof whatsappContacts.$inferSelect;
-export type InsertWhatsappContact = z.infer<typeof insertWhatsappContactSchema>;
