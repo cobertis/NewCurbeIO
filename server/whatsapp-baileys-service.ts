@@ -25,6 +25,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { notificationService } from './notification-service';
 import { storage } from './storage';
 import { broadcastWhatsAppCall, broadcastWhatsAppMessage } from './websocket';
+import { whatsappMediaStorage } from './whatsapp-media-storage';
 
 interface WhatsAppSessionStatus {
   isReady: boolean;
@@ -1529,37 +1530,52 @@ class WhatsAppBaileysService extends EventEmitter {
     }
   }
 
-  async downloadMedia(companyId: string, messageId: string): Promise<{ mimetype: string; data: string } | null> {
+  async downloadMedia(companyId: string, messageId: string, chatId?: string): Promise<{ mimetype: string; data: string; storagePath?: string } | null> {
     const cachedMedia = this.sentMediaCache.get(messageId);
     if (cachedMedia) {
-      console.log(`[Baileys] Media found in cache for message ${messageId}`);
+      console.log(`[Baileys] Media found in memory cache for message ${messageId}`);
       return cachedMedia;
+    }
+
+    const client = this.clients.get(companyId);
+    const message = client?.messageStore.get(messageId);
+    const actualChatId = chatId || message?.key.remoteJid || 'unknown';
+
+    if (whatsappMediaStorage.isReady()) {
+      const storagePath = this.buildMediaStoragePath(companyId, actualChatId, messageId);
+      const storedMedia = await whatsappMediaStorage.getMedia({ companyId, storagePath });
+      if (storedMedia) {
+        console.log(`[Baileys] Media found in Object Storage for message ${messageId}`);
+        return {
+          mimetype: storedMedia.mimetype,
+          data: storedMedia.buffer.toString('base64'),
+          storagePath,
+        };
+      }
     }
 
     if (!this.isReady(companyId)) {
       throw new Error('WhatsApp client is not ready');
     }
 
-    const client = this.clients.get(companyId)!;
+    if (!message) {
+      throw new Error('Message not found');
+    }
 
     try {
-      const message = client.messageStore.get(messageId);
-      if (!message) {
-        throw new Error('Message not found');
-      }
-
       const buffer = await downloadMediaMessage(
         message,
         'buffer',
         {},
         {
           logger: P({ level: 'silent' }) as any,
-          reuploadRequest: client.sock.updateMediaMessage,
+          reuploadRequest: client!.sock.updateMediaMessage,
         }
       );
 
       const messageContent = message.message;
       let mimetype = 'application/octet-stream';
+      let filename: string | undefined;
       
       if (messageContent?.imageMessage) {
         mimetype = messageContent.imageMessage.mimetype || 'image/jpeg';
@@ -1569,12 +1585,32 @@ class WhatsAppBaileysService extends EventEmitter {
         mimetype = messageContent.audioMessage.mimetype || 'audio/ogg';
       } else if (messageContent?.documentMessage) {
         mimetype = messageContent.documentMessage.mimetype || 'application/octet-stream';
+        filename = messageContent.documentMessage.fileName || undefined;
+      } else if (messageContent?.stickerMessage) {
+        mimetype = messageContent.stickerMessage.mimetype || 'image/webp';
       }
 
-      const result = {
+      const result: { mimetype: string; data: string; storagePath?: string } = {
         mimetype,
         data: (buffer as Buffer).toString('base64'),
       };
+
+      if (whatsappMediaStorage.isReady()) {
+        whatsappMediaStorage.uploadMedia({
+          companyId,
+          chatId: actualChatId,
+          messageId,
+          buffer: buffer as Buffer,
+          mimetype,
+          filename,
+        }).then(uploaded => {
+          if (uploaded) {
+            console.log(`[Baileys] Media persisted to Object Storage: ${uploaded.storagePath}`);
+          }
+        }).catch(err => {
+          console.error(`[Baileys] Background media upload failed (non-blocking):`, err);
+        });
+      }
 
       console.log(`[Baileys] Media downloaded for company ${companyId} from message ${messageId}`);
       return result;
@@ -1582,6 +1618,14 @@ class WhatsAppBaileysService extends EventEmitter {
       console.error(`[Baileys] Error downloading media for company ${companyId}:`, error);
       throw error;
     }
+  }
+
+  private buildMediaStoragePath(companyId: string, chatId: string, messageId: string): string {
+    const mediaDir = process.env.WHATSAPP_MEDIA_DIR || "";
+    const prefix = mediaDir.split("/").filter(Boolean).slice(1).join("/");
+    const basePath = prefix ? `${prefix}/` : "";
+    const sanitizedChatId = chatId.replace(/[^a-zA-Z0-9@.-]/g, "_");
+    return `${basePath}${companyId}/${sanitizedChatId}/${messageId}`;
   }
 
   async logout(companyId: string): Promise<void> {
