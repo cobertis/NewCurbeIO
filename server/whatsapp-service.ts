@@ -626,11 +626,11 @@ class WhatsAppService extends EventEmitter {
     // Map to frontend expected format
     return messages.reverse().map(msg => ({
       id: msg.messageId,
-      body: msg.content || '',
-      from: msg.senderJid || '',
+      body: msg.text || '',
+      from: msg.senderId || '',
       to: msg.chatId,
       timestamp: msg.timestamp || 0,
-      isFromMe: msg.isFromMe || false,
+      isFromMe: msg.fromMe || false,
       hasMedia: !!msg.mediaType,
       type: msg.mediaType || 'chat',
       mediaUrl: msg.mediaUrl || undefined,
@@ -646,7 +646,7 @@ class WhatsAppService extends EventEmitter {
     
     try {
       const url = await session.sock.profilePictureUrl(jid, 'image');
-      return url;
+      return url ?? null;
     } catch (e) {
       return null;
     }
