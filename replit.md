@@ -79,6 +79,18 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - Media cache limited to 100 entries per tenant
 - Prevents unbounded memory growth in long-running sessions
 
+**Message Persistence (Database - Dec 2024):**
+- Messages persisted to `whatsappMessages` PostgreSQL table
+- Hybrid architecture: memory cache (fast) + database fallback (complete history)
+- Syncs during `messaging-history.set` event (initial connection)
+- Real-time persistence via `messages.upsert` event (incoming/outgoing messages)
+- Fire-and-forget async inserts prevent blocking
+- Batch inserts for history sync (100 messages per batch)
+- Indexed by: companyId, chatId, timestamp for efficient queries
+- Supports cursor-based pagination with `before` timestamp filter
+- Deduplication via unique constraint on messageId + chatId + companyId
+- Solves chat history mismatch between app and phone (messages survive restarts)
+
 **Session Metrics System (Dec 2024):**
 - Persistent metrics stored in separate Map (survives reconnections)
 - Tracks: connectedAt, lastActivityAt, messagesSent, messagesReceived, reconnectCount, uptime

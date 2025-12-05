@@ -21,7 +21,7 @@ import fs from 'fs';
 import { EventEmitter } from 'events';
 import { db } from './db';
 import { whatsappReactions, whatsappChats, whatsappMessages } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, lt } from 'drizzle-orm';
 import { notificationService } from './notification-service';
 import { storage } from './storage';
 import { broadcastWhatsAppCall, broadcastWhatsAppMessage } from './websocket';
@@ -396,21 +396,26 @@ class WhatsAppBaileysService extends EventEmitter {
 
   async loadMessagesFromDb(companyId: string, chatId: string, limit: number = 50, before?: number): Promise<proto.IWebMessageInfo[]> {
     try {
-      let query = db
+      const whereConditions = [
+        eq(whatsappMessages.companyId, companyId),
+        eq(whatsappMessages.chatId, chatId)
+      ];
+      
+      if (before) {
+        whereConditions.push(lt(whatsappMessages.timestamp, before));
+      }
+
+      const dbMessages = await db
         .select()
         .from(whatsappMessages)
-        .where(and(
-          eq(whatsappMessages.companyId, companyId),
-          eq(whatsappMessages.chatId, chatId)
-        ))
+        .where(and(...whereConditions))
         .orderBy(desc(whatsappMessages.timestamp))
         .limit(limit);
-
-      const dbMessages = await query;
       
-      console.log(`[Baileys] Loaded ${dbMessages.length} messages from DB for chat ${chatId}`);
+      console.log(`[Baileys] Loaded ${dbMessages.length} messages from DB for chat ${chatId}${before ? ` before ${before}` : ''}`);
       
-      return dbMessages.map(m => m.rawData as proto.IWebMessageInfo).filter(Boolean);
+      const messages = dbMessages.map(m => m.rawData as proto.IWebMessageInfo).filter(Boolean);
+      return messages.reverse();
     } catch (error) {
       console.error(`[Baileys] Error loading messages from DB:`, error);
       return [];
