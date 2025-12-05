@@ -12,6 +12,7 @@ import makeWASocket, {
   SignalDataTypeMap,
   initAuthCreds,
   BufferJSON,
+  makeCacheableSignalKeyStore,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import P from 'pino';
@@ -24,6 +25,7 @@ import {
   whatsappMessages,
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
+import NodeCache from 'node-cache';
 
 // ============================================================
 // PostgreSQL Auth State Adapter
@@ -136,6 +138,7 @@ class WhatsAppService extends EventEmitter {
   private sessions: Map<string, CompanySession> = new Map();
   private initializingCompanies: Set<string> = new Set();
   private logger = P({ level: 'warn' });
+  private msgRetryCounterCache = new NodeCache();
   
   async getClientForCompany(companyId: string): Promise<CompanySession | null> {
     if (this.sessions.has(companyId)) {
@@ -171,7 +174,10 @@ class WhatsAppService extends EventEmitter {
       
       const sock = makeWASocket({
         version,
-        auth: state,
+        auth: {
+          creds: state.creds,
+          keys: makeCacheableSignalKeyStore(state.keys, this.logger),
+        },
         logger: this.logger,
         browser: Browsers.macOS('Desktop'),
         syncFullHistory: true,
@@ -181,6 +187,8 @@ class WhatsAppService extends EventEmitter {
         shouldSyncHistoryMessage: () => true,
         // Don't use tight timeouts
         defaultQueryTimeoutMs: undefined,
+        // CRITICAL: Message retry counter cache for decryption
+        msgRetryCounterCache: this.msgRetryCounterCache,
         // getMessage is required for retry logic when not using makeInMemoryStore
         getMessage: async (key) => {
           const msg = await db.select()
@@ -193,7 +201,7 @@ class WhatsAppService extends EventEmitter {
           if (msg.length > 0 && msg[0].rawData) {
             return (msg[0].rawData as any).message;
           }
-          return undefined;
+          return proto.Message.fromObject({});
         },
       });
       
