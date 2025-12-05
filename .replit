@@ -32,10 +32,6 @@ localPort = 36721
 externalPort = 5173
 
 [[ports]]
-localPort = 37163
-externalPort = 8008
-
-[[ports]]
 localPort = 37203
 externalPort = 9000
 
@@ -72,6 +68,10 @@ localPort = 44593
 externalPort = 4200
 
 [[ports]]
+localPort = 45067
+externalPort = 8008
+
+[[ports]]
 localPort = 46561
 externalPort = 3000
 
@@ -105,3 +105,8 @@ waitForPort = 5000
 [agent]
 integrations = ["javascript_stripe:1.0.0", "javascript_object_storage:1.0.0"]
 expertMode = true
+
+[userenv]
+
+[userenv.shared]
+WHATSAPP_MEDIA_DIR = "/curbe-media/whatsapp-media"
