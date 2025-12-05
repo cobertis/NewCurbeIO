@@ -34,8 +34,26 @@ interface WhatsAppSessionStatus {
   status: 'disconnected' | 'qr_received' | 'authenticated' | 'ready';
 }
 
+interface StoredChat {
+  id: string;
+  name?: string;
+  conversationTimestamp?: number;
+  unreadCount?: number;
+  archived?: boolean;
+  pinned?: number;
+  lastMessage?: any;
+}
+
+interface StoredContact {
+  id: string;
+  name?: string;
+  notify?: string;
+}
+
 interface CompanyBaileysClient {
   sock: WASocket;
+  chats: Map<string, StoredChat>;
+  contacts: Map<string, StoredContact>;
   status: WhatsAppSessionStatus;
   messageHandlers: Map<string, (message: any) => void>;
   messageStore: Map<string, proto.IWebMessageInfo>;
@@ -280,7 +298,7 @@ class WhatsAppBaileysService extends EventEmitter {
       defaultQueryTimeoutMs: 60000,
       keepAliveIntervalMs: 25000,
       markOnlineOnConnect: true,
-      syncFullHistory: false,
+      syncFullHistory: true, // Enable history sync to get chats
     });
 
     const sessionStatus: WhatsAppSessionStatus = {
@@ -293,6 +311,8 @@ class WhatsAppBaileysService extends EventEmitter {
 
     const companyClient: CompanyBaileysClient = {
       sock,
+      chats: new Map(),
+      contacts: new Map(),
       status: sessionStatus,
       messageHandlers: new Map(),
       messageStore: new Map(),
@@ -377,6 +397,31 @@ class WhatsAppBaileysService extends EventEmitter {
         this.emit('authenticated', { companyId });
         this.emit('status_change', { companyId, status: { ...status } });
 
+        // Fetch participating groups to populate chats (workaround for Baileys v7 history sync issue)
+        console.log(`[Baileys] Attempting to fetch groups for company: ${companyId}`);
+        try {
+          const groups = await sock.groupFetchAllParticipating();
+          console.log(`[Baileys] groupFetchAllParticipating returned:`, groups ? Object.keys(groups).length : 'null', 'groups');
+          if (groups && Object.keys(groups).length > 0) {
+            for (const [groupId, groupMetadata] of Object.entries(groups)) {
+              if (!companyClient.chats.has(groupId)) {
+                companyClient.chats.set(groupId, {
+                  id: groupId,
+                  name: (groupMetadata as any).subject || groupId.replace('@g.us', ''),
+                  conversationTimestamp: (groupMetadata as any).subjectTime || Math.floor(Date.now() / 1000),
+                  unreadCount: 0,
+                  archived: false,
+                });
+              }
+            }
+            console.log(`[Baileys] Stored ${companyClient.chats.size} groups for company: ${companyId}`);
+          } else {
+            console.log(`[Baileys] No groups found for company: ${companyId}`);
+          }
+        } catch (error: any) {
+          console.log(`[Baileys] Could not fetch groups for ${companyId}:`, error?.message || error);
+        }
+
         try {
           const savedReactions = await db
             .select()
@@ -404,10 +449,26 @@ class WhatsAppBaileysService extends EventEmitter {
         companyClient.messageStore.set(messageId, msg);
         this.pruneMessageStore(companyId);
 
+        const chatId = msg.key.remoteJid;
+        const messageTimestamp = msg.messageTimestamp ? Number(msg.messageTimestamp) : Math.floor(Date.now() / 1000);
+        
+        // Auto-create or update chat when receiving messages (workaround for Baileys v7 history sync issue)
+        const existingChat = companyClient.chats.get(chatId);
+        const chatName = msg.pushName || existingChat?.name || chatId.replace('@s.whatsapp.net', '').replace('@g.us', '');
+        
+        companyClient.chats.set(chatId, {
+          id: chatId,
+          name: chatName,
+          conversationTimestamp: messageTimestamp,
+          unreadCount: (existingChat?.unreadCount || 0) + (msg.key.fromMe ? 0 : 1),
+          archived: existingChat?.archived || false,
+          pinned: existingChat?.pinned,
+          lastMessage: msg,
+        });
+
         if (msg.key.fromMe) continue;
         if (type !== 'notify') continue;
 
-        const chatId = msg.key.remoteJid;
         const senderId = msg.key.participant || msg.key.remoteJid;
         const pushname = msg.pushName || '';
         const senderNumber = senderId.replace('@s.whatsapp.net', '').replace('@g.us', '');
@@ -509,6 +570,108 @@ class WhatsAppBaileysService extends EventEmitter {
 
         console.log(`[Baileys] Reaction for company ${companyId}: ${emoji} on message ${messageId}`);
         this.emit('message_reaction', { companyId, messageId, emoji, senderId });
+      }
+    });
+
+    // Handle messaging history sync (primary source of chats in Baileys v7)
+    sock.ev.on('messaging-history.set', ({ chats, contacts, messages, isLatest, progress }) => {
+      console.log(`[Baileys] History sync for company ${companyId}: ${chats?.length || 0} chats, ${contacts?.length || 0} contacts, isLatest: ${isLatest}, progress: ${progress}%`);
+      
+      // Store chats
+      if (chats && Array.isArray(chats)) {
+        for (const chat of chats) {
+          if (chat.id) {
+            companyClient.chats.set(chat.id, {
+              id: chat.id,
+              name: chat.name || undefined,
+              conversationTimestamp: chat.conversationTimestamp ? Number(chat.conversationTimestamp) : undefined,
+              unreadCount: chat.unreadCount || 0,
+              archived: chat.archived || false,
+              pinned: chat.pinned || undefined,
+              lastMessage: chat.lastMessage || undefined,
+            });
+          }
+        }
+        console.log(`[Baileys] Stored ${companyClient.chats.size} total chats for company ${companyId}`);
+      }
+      
+      // Store contacts
+      if (contacts && Array.isArray(contacts)) {
+        for (const contact of contacts) {
+          if (contact.id) {
+            companyClient.contacts.set(contact.id, {
+              id: contact.id,
+              name: contact.name || undefined,
+              notify: contact.notify || undefined,
+            });
+          }
+        }
+        console.log(`[Baileys] Stored ${companyClient.contacts.size} total contacts for company ${companyId}`);
+      }
+    });
+
+    // Handle real-time chat updates
+    sock.ev.on('chats.upsert', (chats: any[]) => {
+      console.log(`[Baileys] Chats upsert for company ${companyId}: ${chats.length} chats`);
+      for (const chat of chats) {
+        if (chat.id) {
+          const existing = companyClient.chats.get(chat.id) || {};
+          companyClient.chats.set(chat.id, {
+            ...existing,
+            id: chat.id,
+            name: chat.name || existing.name,
+            conversationTimestamp: chat.conversationTimestamp ? Number(chat.conversationTimestamp) : existing.conversationTimestamp,
+            unreadCount: chat.unreadCount ?? existing.unreadCount,
+            archived: chat.archived ?? existing.archived,
+            pinned: chat.pinned ?? existing.pinned,
+            lastMessage: chat.lastMessage || existing.lastMessage,
+          });
+        }
+      }
+    });
+
+    // Handle chat updates (read status, archive, etc.)
+    sock.ev.on('chats.update', (updates: any[]) => {
+      for (const update of updates) {
+        if (update.id) {
+          const existing = companyClient.chats.get(update.id);
+          if (existing) {
+            companyClient.chats.set(update.id, {
+              ...existing,
+              ...update,
+              conversationTimestamp: update.conversationTimestamp ? Number(update.conversationTimestamp) : existing.conversationTimestamp,
+            });
+          }
+        }
+      }
+    });
+
+    // Handle contact updates
+    sock.ev.on('contacts.upsert', (contacts: any[]) => {
+      console.log(`[Baileys] Contacts upsert for company ${companyId}: ${contacts.length} contacts`);
+      for (const contact of contacts) {
+        if (contact.id) {
+          companyClient.contacts.set(contact.id, {
+            id: contact.id,
+            name: contact.name || undefined,
+            notify: contact.notify || undefined,
+          });
+        }
+      }
+    });
+
+    // Handle contact updates
+    sock.ev.on('contacts.update', (updates: any[]) => {
+      for (const update of updates) {
+        if (update.id) {
+          const existing = companyClient.contacts.get(update.id);
+          if (existing) {
+            companyClient.contacts.set(update.id, {
+              ...existing,
+              ...update,
+            });
+          }
+        }
       }
     });
   }
@@ -687,21 +850,19 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
     
     try {
-      const store = client.sock.store;
-      if (store && store.chats) {
-        const chats = store.chats.all();
-        return chats.map((chat: any) => ({
-          id: { _serialized: chat.id },
-          name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
-          isGroup: isJidGroup(chat.id),
-          timestamp: chat.conversationTimestamp || 0,
-          unreadCount: chat.unreadCount || 0,
-          archived: chat.archived || false,
-          pinned: chat.pinned || false,
-          lastMessage: chat.lastMessage || null,
-        }));
-      }
-      return [];
+      const chats = Array.from(client.chats.values());
+      console.log(`[Baileys] Found ${chats.length} chats for company ${companyId}`);
+      
+      return chats.map((chat) => ({
+        id: { _serialized: chat.id },
+        name: chat.name || chat.id.replace('@s.whatsapp.net', '').replace('@g.us', ''),
+        isGroup: isJidGroup(chat.id),
+        timestamp: chat.conversationTimestamp || 0,
+        unreadCount: chat.unreadCount || 0,
+        archived: chat.archived || false,
+        pinned: chat.pinned || 0,
+        lastMessage: chat.lastMessage || null,
+      }));
     } catch (error) {
       console.error(`[Baileys] Error getting chats for company ${companyId}:`, error);
       return [];
@@ -902,9 +1063,9 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
 
     try {
-      const store = client.sock.store;
-      if (store && store.contacts) {
-        return Object.values(store.contacts).map((contact: any) => ({
+      const contacts = Array.from(client.contacts.values());
+      if (contacts.length > 0) {
+        return contacts.map((contact) => ({
           id: { _serialized: contact.id },
           name: contact.name || contact.notify || contact.id.replace('@s.whatsapp.net', ''),
           number: contact.id.replace('@s.whatsapp.net', ''),
@@ -929,8 +1090,7 @@ class WhatsAppBaileysService extends EventEmitter {
     const client = this.clients.get(companyId)!;
 
     try {
-      const store = client.sock.store;
-      const contact = store?.contacts?.[normalizedId];
+      const contact = client.contacts.get(normalizedId);
       const number = normalizedId.replace('@s.whatsapp.net', '');
 
       return {
@@ -2011,8 +2171,7 @@ class WhatsAppBaileysService extends EventEmitter {
     const number = normalizedId.replace('@s.whatsapp.net', '');
 
     try {
-      const store = client.sock.store;
-      const contact = store?.contacts?.[normalizedId];
+      const contact = client.contacts.get(normalizedId);
 
       let profilePicUrl: string | null = null;
       try {
@@ -2057,8 +2216,7 @@ class WhatsAppBaileysService extends EventEmitter {
     const number = normalizedId.replace('@s.whatsapp.net', '');
 
     try {
-      const store = client.sock.store;
-      const contact = store?.contacts?.[normalizedId];
+      const contact = client.contacts.get(normalizedId);
 
       let profilePic: string | null = null;
       try {
