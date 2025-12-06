@@ -58,17 +58,17 @@ function formatMessagePreview(preview: string | undefined, fromMe?: boolean): st
   if (!preview) return "No messages";
   
   const mediaTypes: Record<string, string> = {
-    "[image]": "📷 Imagen",
-    "image": "📷 Imagen",
-    "📷 Image": "📷 Imagen",
+    "[image]": "📷 Image",
+    "image": "📷 Image",
+    "📷 Image": "📷 Image",
     "[video]": "🎥 Video",
     "video": "🎥 Video",
     "🎥 Video": "🎥 Video",
     "[audio]": "🎵 Audio",
     "audio": "🎵 Audio",
     "🎵 Audio": "🎵 Audio",
-    "[document]": "📄 Documento",
-    "document": "📄 Documento",
+    "[document]": "📄 Document",
+    "document": "📄 Document",
     "[sticker]": "🎨 Sticker",
     "sticker": "🎨 Sticker",
     "🎨 Sticker": "🎨 Sticker",
@@ -76,7 +76,7 @@ function formatMessagePreview(preview: string | undefined, fromMe?: boolean): st
   
   const formattedType = mediaTypes[preview.toLowerCase()] || mediaTypes[preview];
   if (formattedType) {
-    const direction = fromMe === true ? " enviado" : fromMe === false ? " recibido" : "";
+    const direction = fromMe === true ? " sent" : fromMe === false ? " received" : "";
     return formattedType + direction;
   }
   
