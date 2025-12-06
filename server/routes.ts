@@ -24383,26 +24383,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           let remoteJid = presenceData.id;
           const isTyping = presenceData.presences?.[remoteJid]?.lastKnownPresence === "composing";
           
-          // If it's a @lid JID, try to find the corresponding conversation
+          // If it's a @lid JID, try to find the corresponding conversation via messages
           if (remoteJid.endsWith('@lid')) {
-            const contact = await db.query.whatsappContacts.findFirst({
+            const message = await db.query.whatsappMessages.findFirst({
               where: and(
-                eq(whatsappContacts.instanceId, instance.id),
-                eq(whatsappContacts.lid, remoteJid)
+                eq(whatsappMessages.instanceId, instance.id),
+                eq(whatsappMessages.senderJid, remoteJid)
               ),
             });
-            if (contact) {
-              // Find conversation with this contact
-              const conversation = await db.query.whatsappConversations.findFirst({
-                where: and(
-                  eq(whatsappConversations.instanceId, instance.id),
-                  eq(whatsappConversations.contactId, contact.id)
-                ),
-              });
-              if (conversation) {
-                remoteJid = conversation.remoteJid;
-                console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid}`);
-              }
+            if (message) {
+              remoteJid = message.remoteJid;
+              console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid}`);
             }
           }
           

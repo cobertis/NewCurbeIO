@@ -457,13 +457,11 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
   async sendTyping(instanceName: string, remoteJid: string): Promise<void> {
     try {
       const phoneNumber = remoteJid.replace('@s.whatsapp.net', '').replace('@lid', '');
+      console.log(`[Evolution API] Sending typing to ${phoneNumber} via ${instanceName}`);
       await this.request("POST", `/chat/sendPresence/${instanceName}`, {
         number: phoneNumber,
-        options: {
-          delay: 1500,
-          presence: "composing",
-          number: phoneNumber
-        }
+        delay: 1200,
+        presence: "composing"
       });
       console.log(`[Evolution API] Typing indicator sent to ${remoteJid}`);
     } catch (error: any) {
