@@ -27545,7 +27545,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Handle different event types
-      const event = payload.event;
+      const rawEvent = payload.event || ""; const event = rawEvent.toUpperCase().replace(/\./g, "_");
 
       if (event === "QRCODE_UPDATED") {
         const qrCode = payload.data?.qrcode?.base64;
