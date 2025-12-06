@@ -518,7 +518,9 @@ export default function WhatsAppPage() {
                           </p>
                           <div className="flex items-center justify-end gap-1 mt-1">
                             <span className="text-[10px] text-gray-500">
-                              {format(new Date(msg.timestamp), "HH:mm")}
+                              {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
+                                ? format(new Date(msg.timestamp), "HH:mm") 
+                                : ""}
                             </span>
                             {msg.fromMe && (
                               msg.status === "read" ? (
