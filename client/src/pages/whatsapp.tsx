@@ -276,45 +276,8 @@ export default function WhatsAppPage() {
         "w-full md:w-[400px] border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-col",
         selectedChat && "hidden md:flex"
       )}>
-        <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {instance?.profileName?.[0] || "W"}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-sm font-medium dark:text-white">{instance?.profileName || "WhatsApp"}</p>
-              <div className="flex items-center gap-1 text-xs text-green-600">
-                <Wifi className="w-3 h-3" />
-                Connected
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => syncChatsMutation.mutate()}
-              disabled={syncChatsMutation.isPending}
-              data-testid="button-sync-chats"
-            >
-              <RefreshCw className={cn("w-5 h-5", syncChatsMutation.isPending && "animate-spin")} />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => disconnectMutation.mutate()}
-              disabled={disconnectMutation.isPending}
-              data-testid="button-disconnect"
-            >
-              <WifiOff className="w-5 h-5 text-red-500" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="p-2 bg-white dark:bg-gray-950">
-          <div className="relative">
+        <div className="p-2 bg-white dark:bg-gray-950 flex items-center gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Search or start new chat"
@@ -324,6 +287,24 @@ export default function WhatsAppPage() {
               data-testid="input-search-chats"
             />
           </div>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => syncChatsMutation.mutate()}
+            disabled={syncChatsMutation.isPending}
+            data-testid="button-sync-chats"
+          >
+            <RefreshCw className={cn("w-4 h-4", syncChatsMutation.isPending && "animate-spin")} />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => disconnectMutation.mutate()}
+            disabled={disconnectMutation.isPending}
+            data-testid="button-disconnect"
+          >
+            <WifiOff className="w-4 h-4 text-red-500" />
+          </Button>
         </div>
 
         <div className="p-2 border-b dark:border-gray-800">
