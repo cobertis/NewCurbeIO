@@ -939,7 +939,10 @@ export default function WhatsAppPage() {
                           {["image", "video", "audio", "document"].includes(msg.messageType) ? (
                             <div className="mb-1">
                               <MediaMessage message={msg} remoteJid={msg.remoteJid} />
-                              {msg.content && msg.messageType !== msg.content && (
+                              {msg.content && 
+                               msg.content !== msg.messageType && 
+                               msg.content !== `[${msg.messageType}]` &&
+                               !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
                                 <p className="text-sm dark:text-white break-words mt-1">
                                   {msg.content}
                                 </p>
