@@ -293,12 +293,32 @@ function MediaMessage({
 
     if (message.messageType === "audio") {
       return (
-        <audio 
-          src={mediaUrl} 
-          controls 
-          className="max-w-48"
-          preload="metadata"
-        />
+        <div className="flex items-center gap-3 p-2 min-w-[200px]">
+          <button 
+            onClick={() => {
+              const audio = document.getElementById(`audio-${message.id}`) as HTMLAudioElement;
+              if (audio) {
+                if (audio.paused) audio.play();
+                else audio.pause();
+              }
+            }}
+            className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-green-600 transition-colors"
+          >
+            <Play className="w-5 h-5 text-white ml-0.5" />
+          </button>
+          <div className="flex-1">
+            <div className="flex items-center gap-1">
+              {[...Array(20)].map((_, i) => (
+                <div 
+                  key={i} 
+                  className="w-1 bg-gray-400 dark:bg-gray-500 rounded-full"
+                  style={{ height: `${Math.random() * 16 + 4}px` }}
+                />
+              ))}
+            </div>
+          </div>
+          <audio id={`audio-${message.id}`} src={mediaUrl} className="hidden" />
+        </div>
       );
     }
 
@@ -445,6 +465,11 @@ export default function WhatsAppPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectAttemptedRef = useRef(false);
   const previousUnreadRef = useRef<number>(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
 
   // Notification sound function using Web Audio API
   const playNotificationSound = useCallback(() => {
@@ -589,6 +614,40 @@ export default function WhatsAppPage() {
     },
   });
 
+  const sendAudioMutation = useMutation({
+    mutationFn: async ({ number, base64 }: { number: string; base64: string }) => {
+      return apiRequest("POST", "/api/whatsapp/send-audio", {
+        number,
+        base64,
+      });
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
+      const previousMessages = queryClient.getQueryData(["/api/whatsapp/chats", selectedChat, "messages"]);
+      const optimisticMessage = {
+        id: `temp_${Date.now()}`,
+        messageId: `temp_${Date.now()}`,
+        content: "[audio]",
+        fromMe: true,
+        timestamp: new Date().toISOString(),
+        messageType: "audio",
+        status: "sending",
+      };
+      queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], (old: any[] = []) => [...old, optimisticMessage]);
+      return { previousMessages };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
+    },
+    onError: (error: any, _variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], context.previousMessages);
+      }
+      toast({ title: "Send Failed", description: error.message || "Failed to send audio", variant: "destructive" });
+    },
+  });
+
   const syncChatsMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", "/api/whatsapp/sync-chats");
@@ -612,10 +671,6 @@ export default function WhatsAppPage() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   // Detect new messages and play notification sound
   useEffect(() => {
@@ -764,6 +819,69 @@ export default function WhatsAppPage() {
       preview: pendingAttachment.preview,
       mediaType: pendingAttachment.type,
     });
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const chunks: Blob[] = [];
+      
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingDuration(d => d + 1);
+      }, 1000);
+    } catch (error) {
+      toast({ title: "Microphone Error", description: "Could not access microphone", variant: "destructive" });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setAudioBlob(null);
+    setRecordingDuration(0);
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  const sendAudio = async () => {
+    if (!audioBlob || !selectedChat) return;
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      sendAudioMutation.mutate({
+        number: selectedChat,
+        base64,
+      });
+    };
+    reader.readAsDataURL(audioBlob);
+    setAudioBlob(null);
+    setRecordingDuration(0);
   };
 
   const filteredChats = chats.filter((chat) =>
@@ -976,61 +1094,62 @@ export default function WhatsAppPage() {
                     <p className="text-xs">Send a message to start the conversation</p>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    {messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={cn(
-                          "flex",
-                          msg.fromMe ? "justify-end" : "justify-start"
-                        )}
-                        data-testid={`message-${msg.id}`}
-                      >
+                  <div className="flex flex-col-reverse">
+                    <div className="space-y-1">
+                      {messages.map((msg) => (
                         <div
+                          key={msg.id}
                           className={cn(
-                            "max-w-[65%] rounded-lg px-3 py-2 shadow-sm",
-                            msg.fromMe
-                              ? "bg-primary/10 dark:bg-primary/20"
-                              : "bg-white dark:bg-gray-800"
+                            "flex",
+                            msg.fromMe ? "justify-end" : "justify-start"
                           )}
+                          data-testid={`message-${msg.id}`}
                         >
-                          {["image", "video", "audio", "document"].includes(msg.messageType) ? (
-                            <div className="mb-1">
-                              <MediaMessage message={msg} remoteJid={msg.remoteJid} />
-                              {msg.content && 
-                               msg.content !== msg.messageType && 
-                               msg.content !== `[${msg.messageType}]` &&
-                               !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
-                                <p className="text-sm dark:text-white break-words mt-1">
-                                  {msg.content}
-                                </p>
+                          <div
+                            className={cn(
+                              "max-w-[65%] rounded-lg px-3 py-2 shadow-sm",
+                              msg.fromMe
+                                ? "bg-primary/10 dark:bg-primary/20"
+                                : "bg-white dark:bg-gray-800"
+                            )}
+                          >
+                            {["image", "video", "audio", "document"].includes(msg.messageType) ? (
+                              <div className="mb-1">
+                                <MediaMessage message={msg} remoteJid={msg.remoteJid} />
+                                {msg.content && 
+                                 msg.content !== msg.messageType && 
+                                 msg.content !== `[${msg.messageType}]` &&
+                                 !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
+                                  <p className="text-sm dark:text-white break-words mt-1">
+                                    {msg.content}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm dark:text-white break-words">
+                                {msg.content || `[${msg.messageType}]`}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-end gap-1 mt-1">
+                              <span className="text-[10px] text-gray-500">
+                                {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
+                                  ? format(new Date(msg.timestamp), "HH:mm") 
+                                  : ""}
+                              </span>
+                              {msg.fromMe && (
+                                msg.status === "read" ? (
+                                  <CheckCheck className="w-3 h-3 text-blue-500" />
+                                ) : msg.status === "delivered" ? (
+                                  <CheckCheck className="w-3 h-3 text-gray-400" />
+                                ) : (
+                                  <Check className="w-3 h-3 text-gray-400" />
+                                )
                               )}
                             </div>
-                          ) : (
-                            <p className="text-sm dark:text-white break-words">
-                              {msg.content || `[${msg.messageType}]`}
-                            </p>
-                          )}
-                          <div className="flex items-center justify-end gap-1 mt-1">
-                            <span className="text-[10px] text-gray-500">
-                              {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
-                                ? format(new Date(msg.timestamp), "HH:mm") 
-                                : ""}
-                            </span>
-                            {msg.fromMe && (
-                              msg.status === "read" ? (
-                                <CheckCheck className="w-3 h-3 text-blue-500" />
-                              ) : msg.status === "delivered" ? (
-                                <CheckCheck className="w-3 h-3 text-gray-400" />
-                              ) : (
-                                <Check className="w-3 h-3 text-gray-400" />
-                              )
-                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1092,53 +1211,94 @@ export default function WhatsAppPage() {
             )}
 
             <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center gap-2">
-              <Button variant="ghost" size="icon">
-                <Smile className="w-6 h-6 text-gray-500" />
-              </Button>
-              <>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
-                  data-testid="input-file-attachment"
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={sendMediaMutation.isPending}
-                  data-testid="button-attach-file"
-                >
-                  {sendMediaMutation.isPending ? (
-                    <LoadingSpinner fullScreen={false} />
-                  ) : (
-                    <Paperclip className="w-6 h-6 text-gray-500" />
-                  )}
-                </Button>
-              </>
-              <Input
-                placeholder="Type a message"
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                className="flex-1 bg-white dark:bg-gray-800 border-0 rounded-lg"
-                data-testid="input-message"
-              />
-              {messageText.trim() ? (
-                <Button 
-                  size="icon"
-                  onClick={handleSend}
-                  disabled={sendMessageMutation.isPending}
-                  data-testid="button-send-message"
-                >
-                  <Send className="w-5 h-5" />
-                </Button>
+              {isRecording ? (
+                <div className="flex items-center gap-2 flex-1 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                  <span className="text-red-600 dark:text-red-400 font-medium">
+                    {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                  </span>
+                  <div className="flex-1" />
+                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="text-red-500">
+                    <X className="w-5 h-5" />
+                  </Button>
+                  <Button size="icon" onClick={stopRecording} className="bg-red-500 hover:bg-red-600">
+                    <Check className="w-5 h-5 text-white" />
+                  </Button>
+                </div>
+              ) : audioBlob ? (
+                <div className="flex items-center gap-2 flex-1 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
+                  <Play className="w-5 h-5 text-green-600" />
+                  <div className="flex-1 h-1 bg-green-200 dark:bg-green-800 rounded" />
+                  <span className="text-green-600 dark:text-green-400 text-sm">
+                    {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={() => setAudioBlob(null)}>
+                    <X className="w-5 h-5" />
+                  </Button>
+                  <Button size="icon" onClick={sendAudio} disabled={sendAudioMutation.isPending}>
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </div>
               ) : (
-                <Button variant="ghost" size="icon">
-                  <Mic className="w-6 h-6 text-gray-500" />
-                </Button>
+                <>
+                  <Button variant="ghost" size="icon">
+                    <Smile className="w-6 h-6 text-gray-500" />
+                  </Button>
+                  <>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                      data-testid="input-file-attachment"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={sendMediaMutation.isPending}
+                      data-testid="button-attach-file"
+                    >
+                      {sendMediaMutation.isPending ? (
+                        <LoadingSpinner fullScreen={false} />
+                      ) : (
+                        <Paperclip className="w-6 h-6 text-gray-500" />
+                      )}
+                    </Button>
+                  </>
+                  <Input
+                    placeholder="Type a message"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleSend()}
+                    className="flex-1 bg-white dark:bg-gray-800 border-0 rounded-lg"
+                    data-testid="input-message"
+                  />
+                  {messageText.trim() ? (
+                    <Button 
+                      size="icon"
+                      onClick={handleSend}
+                      disabled={sendMessageMutation.isPending}
+                      data-testid="button-send-message"
+                    >
+                      <Send className="w-5 h-5" />
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onMouseDown={startRecording}
+                      onMouseUp={stopRecording}
+                      onMouseLeave={stopRecording}
+                      onTouchStart={startRecording}
+                      onTouchEnd={stopRecording}
+                      data-testid="button-record-audio"
+                    >
+                      <Mic className="w-6 h-6 text-gray-500" />
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </>

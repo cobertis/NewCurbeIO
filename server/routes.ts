@@ -23317,6 +23317,83 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message || "Failed to send media" });
     }
   });
+  // POST /api/whatsapp/send-audio - Send WhatsApp audio message (PTT/voice note)
+  app.post("/api/whatsapp/send-audio", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { number, base64 } = req.body;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+      if (!number || !base64) {
+        return res.status(400).json({ message: "Number and base64 required" });
+      }
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+      if (!instance) {
+        return res.status(404).json({ message: "No WhatsApp instance" });
+      }
+      if (instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+      
+      const result = await evolutionApi.sendWhatsAppAudio(instance.instanceName, number, base64);
+      
+      const mediaUrl = `data:audio/webm;base64,${base64}`;
+      
+      const remoteJid = number.includes("@") ? number : `${number.replace(/\\D/g, "")}@s.whatsapp.net`;
+      let conversation = await db.query.whatsappConversations.findFirst({
+        where: and(
+          eq(whatsappConversations.instanceId, instance.id),
+          eq(whatsappConversations.remoteJid, remoteJid)
+        ),
+      });
+      
+      if (!conversation) {
+        const [newConvo] = await db.insert(whatsappConversations).values({
+          instanceId: instance.id,
+          companyId: user.companyId,
+          remoteJid,
+          lastMessageAt: new Date(),
+          lastMessagePreview: "[audio]",
+          lastMessageFromMe: true,
+        }).returning();
+        conversation = newConvo;
+      } else {
+        await db.update(whatsappConversations)
+          .set({ 
+            lastMessageAt: new Date(),
+            lastMessagePreview: "[audio]",
+            lastMessageFromMe: true,
+            updatedAt: new Date(),
+          })
+          .where(eq(whatsappConversations.id, conversation.id));
+      }
+      
+      const [message] = await db.insert(whatsappMessages).values({
+        conversationId: conversation.id,
+        instanceId: instance.id,
+        companyId: user.companyId,
+        messageId: result.key?.id || `sent_${Date.now()}`,
+        remoteJid,
+        fromMe: true,
+        content: "audio",
+        messageType: "audio",
+        mediaUrl,
+        status: "sent",
+        timestamp: new Date(),
+      }).returning();
+      
+      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId);
+      broadcastWhatsAppChatUpdate(user.companyId);
+      res.json({ success: true, message });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error sending audio:", error);
+      res.status(500).json({ message: error.message || "Failed to send audio" });
+    }
+  });
+
   // POST /api/whatsapp/download-media/:messageId - Download media for a message
   app.post("/api/whatsapp/download-media/:messageId", requireActiveCompany, async (req: Request, res: Response) => {
     try {

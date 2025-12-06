@@ -262,6 +262,20 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     }
   }
 
+  async sendWhatsAppAudio(instanceName: string, number: string, base64: string): Promise<any> {
+    const remoteJid = number.includes("@") ? number : `${number.replace(/\D/g, "")}@s.whatsapp.net`;
+    return this.request('POST', `/message/sendWhatsAppAudio/${instanceName}`, {
+      number: remoteJid,
+      audioMessage: {
+        audio: `data:audio/webm;base64,${base64}`,
+      },
+      options: {
+        presence: "recording",
+        encoding: true,
+      }
+    });
+  }
+
   async fetchContacts(instanceName: string): Promise<any[]> {
     console.log(`[Evolution API] Fetching contacts for: ${instanceName}`);
     try {
