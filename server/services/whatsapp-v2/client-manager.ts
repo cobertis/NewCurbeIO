@@ -17,7 +17,7 @@ import type {
   WhatsAppV2ServiceConfig,
 } from "./types";
 
-const logger = pino({ level: "warn" });
+const logger = pino({ level: "silent" });
 
 const sessions: Map<string, WhatsAppV2Session> = new Map();
 
