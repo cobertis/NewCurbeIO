@@ -289,6 +289,21 @@ export default function WhatsAppPage() {
     },
   });
 
+  const deleteChatMutation = useMutation({
+    mutationFn: async (chatId: string) => {
+      const res = await apiRequest("DELETE", `/api/whatsapp/chats/${chatId}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      setSelectedChat(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
+      toast({ title: "Deleted", description: "Chat deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);

@@ -27343,6 +27343,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // DELETE /api/whatsapp/chats/:id - Delete WhatsApp conversation
+  app.delete("/api/whatsapp/chats/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      // Get the conversation
+      const conversation = await db.query.whatsappConversations.findFirst({
+        where: eq(whatsappConversations.id, id),
+      });
+
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+
+      // Verify the conversation belongs to users company
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.id, conversation.instanceId),
+      });
+
+      if (!instance || instance.companyId !== user.companyId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Delete messages first
+      await db.delete(whatsappMessages).where(eq(whatsappMessages.conversationId, id));
+      
+      // Delete conversation
+      await db.delete(whatsappConversations).where(eq(whatsappConversations.id, id));
+
+      console.log(`[WhatsApp] Deleted conversation ${id} and its messages`);
+      res.json({ success: true, message: "Conversation deleted" });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
   // POST /api/whatsapp/send - Send WhatsApp message
   app.post("/api/whatsapp/send", requireActiveCompany, async (req: Request, res: Response) => {
     try {
