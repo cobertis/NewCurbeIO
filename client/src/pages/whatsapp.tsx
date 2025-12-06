@@ -169,6 +169,8 @@ function ContactAvatar({
   );
 }
 
+type ConnectionPhase = "loading" | "waitingForQr" | "qrReady" | "connected";
+
 export default function WhatsAppPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -177,13 +179,14 @@ export default function WhatsAppPage() {
   const [messageText, setMessageText] = useState("");
   const [newChatNumber, setNewChatNumber] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const connectAttemptedRef = useRef(false);
 
   const { data: instanceData, isLoading: loadingInstance, refetch: refetchInstance } = useQuery<{
     instance: WhatsappInstance | null;
     connected: boolean;
   }>({
     queryKey: ["/api/whatsapp/instance"],
-    refetchInterval: 5000,
+    refetchInterval: 3000,
   });
 
   const { data: chats = [], isLoading: loadingChats } = useQuery<WhatsappConversation[]>({
@@ -204,8 +207,8 @@ export default function WhatsAppPage() {
     onSuccess: () => {
       refetchInstance();
     },
-    onError: (error: any) => {
-      toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
+    onError: () => {
+      connectAttemptedRef.current = false;
     },
   });
 
@@ -215,6 +218,7 @@ export default function WhatsAppPage() {
       return res.json();
     },
     onSuccess: () => {
+      connectAttemptedRef.current = false;
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instance"] });
       toast({ title: "Disconnected", description: "WhatsApp has been disconnected" });
     },
@@ -250,19 +254,26 @@ export default function WhatsAppPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-connect when no QR and not connected
+  const connectionPhase: ConnectionPhase = (() => {
+    if (instanceData?.connected) return "connected";
+    if (instanceData?.instance?.qrCode) return "qrReady";
+    if (loadingInstance || connectMutation.isPending) return "loading";
+    return "waitingForQr";
+  })();
+
   useEffect(() => {
-    const shouldConnect = !loadingInstance && 
-      !instanceData?.connected && 
-      !instanceData?.instance?.qrCode && 
-      !connectMutation.isPending;
-    
-    if (shouldConnect) {
+    if (connectionPhase === "connected") {
+      connectAttemptedRef.current = false;
+    }
+  }, [connectionPhase]);
+
+  useEffect(() => {
+    if (connectionPhase === "waitingForQr" && !connectAttemptedRef.current) {
+      connectAttemptedRef.current = true;
       connectMutation.mutate();
     }
-  }, [loadingInstance, instanceData?.connected, instanceData?.instance?.qrCode]);
+  }, [connectionPhase]);
 
-  // Auto-sync chats when connected and no chats loaded
   useEffect(() => {
     if (instanceData?.connected && !loadingChats && chats.length === 0 && !syncChatsMutation.isPending) {
       syncChatsMutation.mutate();
@@ -279,21 +290,17 @@ export default function WhatsAppPage() {
     chat.lastMessagePreview?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const instance = instanceData?.instance;
-  const isConnected = instanceData?.connected;
-  const qrCode = instance?.qrCode;
-  const isLoading = loadingInstance || connectMutation.isPending;
-
-  // Not connected - show QR or loading
-  if (!isConnected) {
+  if (connectionPhase !== "connected") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900 p-8">
         <div className="text-center space-y-6 max-w-md">
-          {qrCode ? (
+          {connectionPhase === "qrReady" && instanceData?.instance?.qrCode ? (
             <>
               <div className="bg-white dark:bg-gray-800 p-6 rounded-xl inline-block shadow-lg">
                 <img 
-                  src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} 
+                  src={instanceData.instance.qrCode.startsWith('data:') 
+                    ? instanceData.instance.qrCode 
+                    : `data:image/png;base64,${instanceData.instance.qrCode}`} 
                   alt="QR Code" 
                   className="w-72 h-72"
                   data-testid="whatsapp-qr-code"
@@ -309,14 +316,9 @@ export default function WhatsAppPage() {
               </div>
             </>
           ) : (
-            <>
-              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <LoadingSpinner fullScreen={false} />
-              </div>
-              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                {isLoading ? "Generating QR Code..." : "Connecting..."}
-              </h2>
-            </>
+            <div className="flex flex-col items-center justify-center py-12">
+              <LoadingSpinner fullScreen={false} />
+            </div>
           )}
         </div>
       </div>

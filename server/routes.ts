@@ -26919,16 +26919,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
         }
         
-        // Instance not found in Evolution API
+        // Instance not found in Evolution API - clear stale QR code
+        console.log("[WhatsApp] Instance not found in Evolution API, clearing stale data");
+        await db.update(whatsappInstances)
+          .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
+          .where(eq(whatsappInstances.id, instance.id));
+        
         return res.json({ 
-          instance: { ...instance, status: "disconnected" },
-          connected: false 
+          instance: { ...instance, qrCode: null, status: "disconnected" },
+          connected: false,
+          needsReconnect: true
         });
       } catch (error: any) {
         console.log("[WhatsApp] Error fetching instance info:", error.message);
+        // Clear stale QR code on error (likely 404)
+        await db.update(whatsappInstances)
+          .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
+          .where(eq(whatsappInstances.id, instance.id));
+        
         return res.json({ 
-          instance: { ...instance, status: "disconnected" },
-          connected: false 
+          instance: { ...instance, qrCode: null, status: "disconnected" },
+          connected: false,
+          needsReconnect: true
         });
       }
     } catch (error: any) {
