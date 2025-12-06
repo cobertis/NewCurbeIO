@@ -231,17 +231,18 @@ function MediaMessage({
             loading="lazy"
           />
           <Dialog open={showFullImage} onOpenChange={setShowFullImage}>
-            <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-black/90">
+            <DialogContent className="max-w-fit max-h-fit p-0 border-0 bg-transparent [&>button]:hidden">
               <button 
                 onClick={() => setShowFullImage(false)}
-                className="absolute top-2 right-2 z-50 p-2 bg-white/10 rounded-full hover:bg-white/20"
+                className="absolute top-2 right-2 z-50 p-2 bg-black/50 rounded-full hover:bg-black/70"
               >
                 <X className="w-6 h-6 text-white" />
               </button>
               <img 
                 src={mediaUrl} 
                 alt="Full size" 
-                className="max-w-full max-h-[85vh] object-contain mx-auto"
+                className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg"
+                onClick={() => setShowFullImage(false)}
               />
             </DialogContent>
           </Dialog>
