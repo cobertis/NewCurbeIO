@@ -26926,15 +26926,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Company not found" });
       }
 
-      // Use company slug as instance name
       const instanceName = `curbe_${company.slug}`;
+      const webhookUrl = `https://${REPLIT_DOMAIN}/api/whatsapp/webhook/${company.slug}`;
 
-      // Check if instance already exists in DB
+      // Get or create DB instance
       let instance = await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
       });
 
-      // If no instance, create one
       if (!instance) {
         const [newInstance] = await db.insert(whatsappInstances).values({
           companyId: user.companyId,
@@ -26944,72 +26943,79 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         instance = newInstance;
       }
 
-      // Delete existing instance first to ensure clean state, then create new one
+      // Step 1: Check if instance exists in Evolution API and its state
+      let evolutionState: string | null = null;
       try {
-        // First try to delete any existing instance in Evolution API
-        try {
-          console.log("[WhatsApp] Deleting existing instance before creating new one:", instanceName);
-          await evolutionApi.deleteInstance(instanceName);
-          console.log("[WhatsApp] Existing instance deleted successfully");
-        } catch (deleteError: any) {
-          // Ignore 404 errors - instance doesn't exist which is fine
-          if (!deleteError.message?.includes("404")) {
-            console.log("[WhatsApp] Could not delete existing instance:", deleteError.message);
-          }
-        }
-        
-        // Now create fresh instance
-        const result = await evolutionApi.createInstance(instanceName);
-        
-        // Set webhook for this instance
-        const webhookUrl = `https://${REPLIT_DOMAIN}/api/whatsapp/webhook/${company.slug}`;
-        await evolutionApi.setWebhook(instanceName, webhookUrl);
-        
-        // Update instance with webhook URL
-        await db.update(whatsappInstances)
-          .set({ 
-            webhookUrl,
-            status: "connecting",
-            qrCode: result.qrcode?.base64 || null,
-            updatedAt: new Date(),
-          })
-          .where(eq(whatsappInstances.id, instance.id));
+        const stateResult = await evolutionApi.getConnectionState(instanceName);
+        evolutionState = stateResult.state;
+        console.log(`[WhatsApp] Instance ${instanceName} exists with state: ${evolutionState}`);
+      } catch (stateError: any) {
+        console.log(`[WhatsApp] Instance ${instanceName} not found in Evolution API`);
+        evolutionState = null;
+      }
 
+      // Step 2: If connected, just return success
+      if (evolutionState === "open") {
+        await db.update(whatsappInstances)
+          .set({ status: "open", qrCode: null, lastConnectedAt: new Date(), updatedAt: new Date() })
+          .where(eq(whatsappInstances.id, instance.id));
+        
+        console.log(`[WhatsApp] Instance ${instanceName} is already connected`);
         return res.json({
           success: true,
-          qrCode: result.qrcode?.base64,
+          connected: true,
           instanceName,
-          status: "connecting",
+          status: "open",
         });
-      } catch (error: any) {
-        // If instance already exists, try to get QR code
-        if (error.message?.includes("already") || error.message?.includes("exists")) {
-          try {
-            const qrResult = await evolutionApi.fetchQrCode(instanceName);
-            return res.json({
-              success: true,
-              qrCode: qrResult.base64,
-              instanceName,
-              status: "connecting",
-            });
-          } catch (qrError) {
-            // Instance might already be connected
-            const state = await evolutionApi.getConnectionState(instanceName);
-            if (state.state === "open") {
-              await db.update(whatsappInstances)
-                .set({ status: "open", updatedAt: new Date() })
-                .where(eq(whatsappInstances.id, instance.id));
-              return res.json({
-                success: true,
-                connected: true,
-                instanceName,
-                status: "open",
-              });
-            }
-          }
-        }
-        throw error;
       }
+
+      // Step 3: If instance exists but disconnected, try to get QR
+      if (evolutionState === "close" || evolutionState === "connecting") {
+        try {
+          const qrResult = await evolutionApi.fetchQrCode(instanceName);
+          const qrCode = qrResult.base64;
+          
+          await db.update(whatsappInstances)
+            .set({ status: "connecting", qrCode, webhookUrl, updatedAt: new Date() })
+            .where(eq(whatsappInstances.id, instance.id));
+          
+          console.log(`[WhatsApp] Got QR for existing instance ${instanceName}`);
+          return res.json({
+            success: true,
+            qrCode,
+            instanceName,
+            status: "connecting",
+          });
+        } catch (qrError) {
+          console.log(`[WhatsApp] Failed to get QR for ${instanceName}, will recreate`);
+        }
+      }
+
+      // Step 4: Instance doesn't exist or is broken - create new one
+      console.log(`[WhatsApp] Creating new instance: ${instanceName}`);
+      
+      try {
+        await evolutionApi.deleteInstance(instanceName);
+      } catch (e) {
+        // Ignore - instance might not exist
+      }
+
+      const result = await evolutionApi.createInstance(instanceName);
+      await evolutionApi.setWebhook(instanceName, webhookUrl);
+      
+      const qrCode = result.qrcode?.base64 || null;
+      
+      await db.update(whatsappInstances)
+        .set({ webhookUrl, status: "connecting", qrCode, updatedAt: new Date() })
+        .where(eq(whatsappInstances.id, instance.id));
+
+      return res.json({
+        success: true,
+        qrCode,
+        instanceName,
+        status: "connecting",
+      });
+
     } catch (error: any) {
       console.error("[WhatsApp] Error connecting:", error);
       res.status(500).json({ message: error.message || "Failed to connect" });

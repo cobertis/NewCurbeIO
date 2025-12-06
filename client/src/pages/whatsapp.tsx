@@ -158,12 +158,19 @@ export default function WhatsAppPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-connect when page loads if not connected and no QR code
+  // Auto-connect only when instance doesn't exist or is explicitly disconnected
   useEffect(() => {
-    if (!loadingInstance && !instanceData?.connected && !instanceData?.instance?.qrCode && !connectMutation.isPending) {
+    const status = instanceData?.instance?.status;
+    const shouldConnect = !loadingInstance && 
+      !instanceData?.connected && 
+      !instanceData?.instance?.qrCode && 
+      !connectMutation.isPending &&
+      (status === "disconnected" || status === undefined || !instanceData?.instance);
+    
+    if (shouldConnect) {
       connectMutation.mutate();
     }
-  }, [loadingInstance, instanceData?.connected, instanceData?.instance?.qrCode]);
+  }, [loadingInstance, instanceData?.connected, instanceData?.instance?.qrCode, instanceData?.instance?.status]);
 
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
@@ -182,6 +189,72 @@ export default function WhatsAppPage() {
   const instance = instanceData?.instance;
   const isConnected = instanceData?.connected;
 
+  // If disconnected, show full-screen QR code
+  if (!isConnected) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900 p-8">
+        <div className="text-center space-y-6 max-w-md">
+          {instance?.qrCode ? (
+            <>
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl inline-block shadow-lg">
+                <img 
+                  src={instance.qrCode.startsWith('data:') ? instance.qrCode : `data:image/png;base64,${instance.qrCode}`} 
+                  alt="QR Code" 
+                  className="w-72 h-72"
+                  data-testid="whatsapp-qr-code"
+                />
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">Scan to Connect</h2>
+                <p className="text-gray-500 dark:text-gray-400">
+                  1. Open WhatsApp on your phone<br />
+                  2. Go to Settings &rarr; Linked Devices<br />
+                  3. Tap "Link a Device" and scan this code
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => refetchInstance()}
+                className="gap-2"
+                data-testid="button-refresh-qr"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh QR
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                {connectMutation.isPending ? (
+                  <LoadingSpinner fullScreen={false} />
+                ) : (
+                  <QrCode className="w-12 h-12 text-primary" />
+                )}
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                {connectMutation.isPending ? "Generating QR Code..." : "Connecting to WhatsApp..."}
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400">
+                Please wait while we prepare the connection
+              </p>
+              {!connectMutation.isPending && (
+                <Button 
+                  onClick={() => connectMutation.mutate()}
+                  className="gap-2"
+                  data-testid="button-connect-whatsapp"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retry Connection
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Connected - show chat interface
   return (
     <div className="flex h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
       <div className={cn(
@@ -197,53 +270,31 @@ export default function WhatsAppPage() {
             </Avatar>
             <div>
               <p className="text-sm font-medium dark:text-white">{instance?.profileName || "WhatsApp"}</p>
-              {isConnected ? (
-                <div className="flex items-center gap-1 text-xs text-green-600">
-                  <Wifi className="w-3 h-3" />
-                  Connected
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 text-xs text-amber-500">
-                  <WifiOff className="w-3 h-3" />
-                  Disconnected
-                </div>
-              )}
+              <div className="flex items-center gap-1 text-xs text-green-600">
+                <Wifi className="w-3 h-3" />
+                Connected
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {isConnected && (
-              <>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => syncChatsMutation.mutate()}
-                  disabled={syncChatsMutation.isPending}
-                  data-testid="button-sync-chats"
-                >
-                  <RefreshCw className={cn("w-5 h-5", syncChatsMutation.isPending && "animate-spin")} />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => disconnectMutation.mutate()}
-                  disabled={disconnectMutation.isPending}
-                  data-testid="button-disconnect"
-                >
-                  <WifiOff className="w-5 h-5 text-red-500" />
-                </Button>
-              </>
-            )}
-            {!isConnected && (
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => connectMutation.mutate()}
-                disabled={connectMutation.isPending}
-                data-testid="button-reconnect"
-              >
-                <RefreshCw className={cn("w-5 h-5", connectMutation.isPending && "animate-spin")} />
-              </Button>
-            )}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => syncChatsMutation.mutate()}
+              disabled={syncChatsMutation.isPending}
+              data-testid="button-sync-chats"
+            >
+              <RefreshCw className={cn("w-5 h-5", syncChatsMutation.isPending && "animate-spin")} />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => disconnectMutation.mutate()}
+              disabled={disconnectMutation.isPending}
+              data-testid="button-disconnect"
+            >
+              <WifiOff className="w-5 h-5 text-red-500" />
+            </Button>
           </div>
         </div>
 
