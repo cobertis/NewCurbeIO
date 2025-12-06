@@ -1,0 +1,116 @@
+Role: Senior Full-Stack Developer specialized in WhatsApp Automation & UI Clones. Goal: Build a "White-Label WhatsApp Web" module inside this Repl. It must function exactly like WhatsApp Web but powered by the external "Evolution API v2".
+
+Global Configuration (Hardcoded for this MVP):
+
+Evolution Base URL: https://evolution.curbe.io
+
+Global API Key: 429683C4C977415CAAFCCE10F7D57E11
+
+App URL (Dynamic): Use the Replit Webview URL.
+
+Tech Stack (Mandatory):
+
+Backend: Node.js + Express (Acts as a Proxy and Webhook receiver).
+
+Real-Time: socket.io (To bridge the backend Webhook -> Frontend UI).
+
+Frontend: React + Vite + Tailwind CSS (For a pixel-perfect WhatsApp replica).
+
+Icons: lucide-react or react-icons.
+
+STEP 1: THE BACKEND (Server.js)
+Create an Express server with socket.io initialized. It must have these routes:
+
+POST /api/connect:
+
+Receives { instanceName } from Frontend.
+
+Calls Evolution API: POST /instance/create
+
+Body: { "instanceName": instanceName, "qrcode": true, "integration": "WHATSAPP-BAILEYS" }
+
+Critical: If it returns a base64 QR, send it to frontend. If it returns "already connected", tell frontend to load chat.
+
+POST /webhook (The Real-Time Engine):
+
+This is the public route Evolution will hit.
+
+Listen for event MESSAGES_UPSERT.
+
+When a message arrives, extract: { remoteJid, text, fromMe, pushName, timestamp }.
+
+Action: io.emit('new_message', data) to the Frontend immediately.
+
+Auto-Config: On /api/connect, automatically call Evolution POST /webhook/set/{instanceName} setting this Replit URL + /webhook as the target.
+
+POST /api/send:
+
+Proxy for sending messages. Frontend sends { number, text, instanceName }.
+
+Backend calls Evolution: POST /message/sendText/{instanceName}.
+
+GET /api/chats/{instanceName}:
+
+Calls Evolution: GET /chat/findMessages/{instanceName} using query params to fetch the last 20 messages or contacts.
+
+STEP 2: THE FRONTEND (UI/UX - Pixel Perfect)
+Use Tailwind CSS to mimic WhatsApp Web exactly.
+
+Layout Structure:
+
+Sidebar (Left - 30% width):
+
+Header: User Avatar + Status Icons.
+
+Search Bar: Gray background, rounded.
+
+Chat List:
+
+Display list of active chats.
+
+Show Avatar (placeholder if null), Name (bold), Last Message (truncated, gray), and Time (green if unread).
+
+Hover effect: Light gray background.
+
+Active state: Darker gray background.
+
+Main Chat Area (Right - 70% width):
+
+Background: Use the classic "WhatsApp Doodle" beige background (#efeae2).
+
+Header: Contact Info (Name + "Online" status).
+
+Message List (Scrollable):
+
+Outgoing (Me): Green bubble (#d9fdd3), aligned right.
+
+Incoming (Client): White bubble (#ffffff), aligned left.
+
+Details: Small timestamp in bottom right of bubble. Add "Double Check" icon (blue if read, gray if sent).
+
+Input Area (Bottom):
+
+Smiley Icon (Button).
+
+Text Input (White, rounded pill shape).
+
+Mic Icon (if empty) / Send Plane Icon (if text exists).
+
+Logic Requirements:
+
+Socket Listener: On useEffect, listen to socket.on('new_message'). If the message belongs to the active chat, push it to the array instantly. If it belongs to another chat, move that chat to the top of the Sidebar.
+
+QR Mode: If not connected, overlay the entire UI with a centered "Scan QR Code" card showing the Base64 image.
+
+EXECUTION ORDER
+Initialize the project structure (Backend + Frontend).
+
+Install dependencies (express, socket.io, axios, cors, vite, tailwindcss).
+
+Build the Backend Proxy first to handle CORS and API Keys securely (NEVER expose the API Key in React).
+
+Build the UI Components.
+
+Connect the Webhook loop.
+
+Start now. Create the file structure.

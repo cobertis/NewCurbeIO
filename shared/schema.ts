@@ -4465,6 +4465,107 @@ export type CampaignPlaceholder = typeof campaignPlaceholders.$inferSelect;
 export type InsertCampaignPlaceholder = z.infer<typeof insertCampaignPlaceholderSchema>;
 
 // =====================================================
+// WHATSAPP EVOLUTION API (Multi-tenant WhatsApp integration)
+// =====================================================
+
+export const whatsappInstances = pgTable("whatsapp_instances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  instanceName: text("instance_name").notNull(),
+  status: text("status").notNull().default("disconnected"),
+  qrCode: text("qr_code"),
+  webhookUrl: text("webhook_url"),
+  webhookSecret: text("webhook_secret"),
+  phoneNumber: text("phone_number"),
+  profileName: text("profile_name"),
+  profilePicUrl: text("profile_pic_url"),
+  lastConnectedAt: timestamp("last_connected_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyInstanceUnique: unique().on(table.companyId, table.instanceName),
+  companyIdIdx: index("whatsapp_instances_company_id_idx").on(table.companyId),
+}));
+
+export const whatsappContacts = pgTable("whatsapp_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  instanceId: varchar("instance_id").notNull().references(() => whatsappInstances.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  remoteJid: text("remote_jid").notNull(),
+  pushName: text("push_name"),
+  profilePicUrl: text("profile_pic_url"),
+  isGroup: boolean("is_group").notNull().default(false),
+  isBlocked: boolean("is_blocked").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  instanceContactUnique: unique().on(table.instanceId, table.remoteJid),
+  instanceIdIdx: index("whatsapp_contacts_instance_id_idx").on(table.instanceId),
+  companyIdIdx: index("whatsapp_contacts_company_id_idx").on(table.companyId),
+}));
+
+export const whatsappConversations = pgTable("whatsapp_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  instanceId: varchar("instance_id").notNull().references(() => whatsappInstances.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  contactId: varchar("contact_id").references(() => whatsappContacts.id, { onDelete: "set null" }),
+  remoteJid: text("remote_jid").notNull(),
+  unreadCount: integer("unread_count").notNull().default(0),
+  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+  lastMessagePreview: text("last_message_preview"),
+  isPinned: boolean("is_pinned").notNull().default(false),
+  isArchived: boolean("is_archived").notNull().default(false),
+  isMuted: boolean("is_muted").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  instanceConvoUnique: unique().on(table.instanceId, table.remoteJid),
+  instanceIdIdx: index("whatsapp_conversations_instance_id_idx").on(table.instanceId),
+  companyIdIdx: index("whatsapp_conversations_company_id_idx").on(table.companyId),
+  lastMessageIdx: index("whatsapp_conversations_last_message_idx").on(table.lastMessageAt),
+}));
+
+export const whatsappMessages = pgTable("whatsapp_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => whatsappConversations.id, { onDelete: "cascade" }),
+  instanceId: varchar("instance_id").notNull().references(() => whatsappInstances.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  messageId: text("message_id").notNull(),
+  remoteJid: text("remote_jid").notNull(),
+  fromMe: boolean("from_me").notNull().default(false),
+  senderJid: text("sender_jid"),
+  messageType: text("message_type").notNull().default("text"),
+  content: text("content"),
+  mediaUrl: text("media_url"),
+  mediaType: text("media_type"),
+  quotedMessageId: text("quoted_message_id"),
+  status: text("status").notNull().default("sent"),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  messageIdUnique: unique().on(table.instanceId, table.messageId),
+  conversationIdIdx: index("whatsapp_messages_conversation_id_idx").on(table.conversationId),
+  instanceIdIdx: index("whatsapp_messages_instance_id_idx").on(table.instanceId),
+  timestampIdx: index("whatsapp_messages_timestamp_idx").on(table.timestamp),
+}));
+
+// WhatsApp Insert Schemas
+export const insertWhatsappInstanceSchema = createInsertSchema(whatsappInstances).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWhatsappContactSchema = createInsertSchema(whatsappContacts).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWhatsappConversationSchema = createInsertSchema(whatsappConversations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true, createdAt: true });
+
+// WhatsApp Types
+export type WhatsappInstance = typeof whatsappInstances.$inferSelect;
+export type InsertWhatsappInstance = z.infer<typeof insertWhatsappInstanceSchema>;
+export type WhatsappContact = typeof whatsappContacts.$inferSelect;
+export type InsertWhatsappContact = z.infer<typeof insertWhatsappContactSchema>;
+export type WhatsappConversation = typeof whatsappConversations.$inferSelect;
+export type InsertWhatsappConversation = z.infer<typeof insertWhatsappConversationSchema>;
+export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
+export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
+
+// =====================================================
 // CAMPAIGN WIZARD COMPREHENSIVE PAYLOAD SCHEMA
 // =====================================================
 

@@ -1,0 +1,57 @@
+Rol: Eres un Ingeniero Full Stack Experto. Tu objetivo es desarrollar un "Módulo de Chat WhatsApp" independiente que será integrado dentro de un CRM existente.
+
+Stack:
+
+Backend: Node.js con Express.
+
+Frontend: HTML/CSS/JS (Sencillo y responsivo) o React (si lo prefieres).
+
+Comunicación: Socket.io (para el QR en tiempo real y el chat en vivo).
+
+API Externa: Usaremos "Evolution API v2".
+
+Configuración Global (Variables de Entorno):
+
+EVOLUTION_URL: "https://evolution.curbe.io"
+
+GLOBAL_API_KEY: "429683C4C977415CAAFCCE10F7D57E11"
+
+Funcionalidades Requeridas:
+
+1. Gestión de Sesión (El QR):
+
+Crea una vista donde el usuario pueda escribir el nombre de su empresa (que será el instanceName).
+
+Al dar clic en "Conectar", el backend debe llamar a Evolution API:
+
+Endpoint: POST /instance/create
+
+Body: { "instanceName": "nombre_cliente", "qrcode": true, "integration": "WHATSAPP-BAILEYS" }
+
+Manejo del QR: Evolution devolverá un base64 o un código QR. Debes mostrarlo en el Frontend inmediatamente.
+
+Escucha de Estado: Usa WebSockets o Polling para verificar si el estado cambia a open (conectado). Endpoint: /instance/connectionState/{instanceName}.
+
+2. Interfaz de Chat (Estilo WhatsApp Web):
+
+Una vez conectado, mostrar una interfaz de dos columnas.
+
+Izquierda: Lista de contactos/chats activos.
+
+Derecha: Historial de conversación.
+
+Enviar Mensajes: Al escribir y enviar, llamar a:
+
+Endpoint: POST /message/sendText/{instanceName}
+
+Body: { "number": "numero_destino", "text": "mensaje" }
+
+3. Webhook (Recepción de Mensajes):
+
+Crea un endpoint /webhook en Express.
+
+Configura este webhook en la instancia de Evolution automáticamente al crearla (POST /webhook/set/{instanceName}).
+
+Cuando llegue un evento MESSAGES_UPSERT al webhook, emite el mensaje vía Socket.io al Frontend para que aparezca en el chat sin recargar la página.
+
+Instrucción Clave: Escribe el código modular. Primero el servidor Express configurado para Proxy con Evolution, luego la lógica de conexión Socket.io, y finalmente el Frontend. ¡Empieza!
