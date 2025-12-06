@@ -23274,7 +23274,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(whatsappConversations.remoteJid, remoteJid)
         ),
       });
-      const preview = caption || `[${type}]`;
+      const preview = type === 'document' ? `📄 ${fileName || 'Document'}` : (caption || `[${type}]`);
       if (!conversation) {
         const [newConvo] = await db.insert(whatsappConversations).values({
           instanceId: instance.id,
