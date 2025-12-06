@@ -20,7 +20,6 @@ import type {
 const logger = pino({ level: "warn" });
 
 const sessions: Map<string, WhatsAppV2Session> = new Map();
-const handlersRegistered: Set<string> = new Set();
 
 export async function initializeClient(
   storage: WhatsAppV2StorageInterface,
@@ -31,6 +30,11 @@ export async function initializeClient(
   const existingSession = sessions.get(companyId);
   if (existingSession?.socket && existingSession.connectionState?.connection === "open") {
     return existingSession.socket;
+  }
+
+  if (existingSession?.isConnecting) {
+    console.log(`[WhatsApp] Already connecting for company ${companyId}, waiting...`);
+    return existingSession.socket!;
   }
 
   const session: WhatsAppV2Session = {
@@ -56,17 +60,14 @@ export async function initializeClient(
       },
       printQRInTerminal: false,
       generateHighQualityLinkPreview: true,
-      syncFullHistory: true,
+      syncFullHistory: false,
       markOnlineOnConnect: false,
     });
 
     session.socket = socket;
 
-    if (!handlersRegistered.has(companyId)) {
-      setupEventHandlers(socket, storage, companyId, onNewMessage);
-      handlersRegistered.add(companyId);
-      console.log(`[WhatsApp] Event handlers registered for company ${companyId}`);
-    }
+    setupEventHandlers(socket, storage, companyId, onNewMessage);
+    console.log(`[WhatsApp] Event handlers registered for company ${companyId}`);
 
     socket.ev.on("creds.update", saveCreds);
 
@@ -98,20 +99,22 @@ export async function initializeClient(
 
       if (connection === "close") {
         const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
-        const shouldReconnect = reason !== DisconnectReason.loggedOut;
-
+        const errorMessage = lastDisconnect?.error?.message || "Connection closed";
+        
+        const isStreamError = errorMessage.includes("Stream Errored") || 
+                              errorMessage.includes("conflict") ||
+                              reason === 515;
+        
         if (reason === DisconnectReason.loggedOut) {
           await storage.clearAllAuthSessions(companyId);
           session.lastError = "Logged out from WhatsApp";
+          sessions.delete(companyId);
+        } else if (isStreamError) {
+          session.lastError = "Stream Errored (restart required)";
+          session.isConnecting = false;
+          sessions.delete(companyId);
         } else {
-          session.lastError = lastDisconnect?.error?.message || "Connection closed";
-        }
-
-        if (shouldReconnect) {
-          setTimeout(() => {
-            initializeClient(storage, config).catch(console.error);
-          }, 3000);
-        } else {
+          session.lastError = errorMessage;
           sessions.delete(companyId);
         }
       }
@@ -121,6 +124,7 @@ export async function initializeClient(
   } catch (error) {
     session.isConnecting = false;
     session.lastError = error instanceof Error ? error.message : "Unknown error";
+    sessions.delete(companyId);
     throw error;
   }
 }
