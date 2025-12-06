@@ -209,6 +209,30 @@ export default function WhatsAppPage() {
   const [newChatNumber, setNewChatNumber] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const connectAttemptedRef = useRef(false);
+  const previousUnreadRef = useRef<number>(0);
+
+  // Notification sound function using Web Audio API
+  const playNotificationSound = useCallback(() => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+      console.log('Could not play notification sound');
+    }
+  }, []);
 
   const { data: instanceData, isLoading: loadingInstance, refetch: refetchInstance } = useQuery<{
     instance: WhatsappInstance | null;
@@ -307,6 +331,17 @@ export default function WhatsAppPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Detect new messages and play notification sound
+  useEffect(() => {
+    if (chats.length > 0) {
+      const totalUnread = chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+      if (totalUnread > previousUnreadRef.current && previousUnreadRef.current > 0) {
+        playNotificationSound();
+      }
+      previousUnreadRef.current = totalUnread;
+    }
+  }, [chats, playNotificationSound]);
 
   const connectionPhase: ConnectionPhase = (() => {
     if (instanceData?.connected) return "connected";

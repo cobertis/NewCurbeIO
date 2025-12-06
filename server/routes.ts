@@ -26890,6 +26890,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               })
               .where(eq(whatsappInstances.id, instance.id));
           }
+          
+          // Auto-verify and reconfigure webhook when connected
+          if (connected) {
+            try {
+              const company = await storage.getCompany(user.companyId);
+              if (company) {
+                const expectedWebhookUrl = `https://${REPLIT_DOMAIN}/api/whatsapp/webhook/${company.slug}`;
+                const currentWebhook = await evolutionApi.getWebhook(instance.instanceName);
+                const currentUrl = currentWebhook?.webhook?.url || currentWebhook?.url || '';
+                
+                if (currentUrl !== expectedWebhookUrl) {
+                  console.log(`[WhatsApp] Webhook URL mismatch. Current: ${currentUrl}, Expected: ${expectedWebhookUrl}`);
+                  await evolutionApi.setWebhook(instance.instanceName, expectedWebhookUrl);
+                  console.log(`[WhatsApp] Webhook reconfigured successfully`);
+                }
+              }
+            } catch (webhookError: any) {
+              console.log(`[WhatsApp] Webhook verification error:`, webhookError.message);
+            }
+          }
 
           // If not connected, try to get QR code
           let qrCode = instance.qrCode;
@@ -27172,6 +27192,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/whatsapp/unread-count - Get total unread count across all WhatsApp conversations
+  app.get("/api/whatsapp/unread-count", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.json({ total: 0 });
+      }
+
+      const result = await db
+        .select({ total: sql<number>`COALESCE(SUM(${whatsappConversations.unreadCount}), 0)` })
+        .from(whatsappConversations)
+        .where(
+          and(
+            eq(whatsappConversations.companyId, user.companyId),
+            eq(whatsappConversations.instanceId, instance.id)
+          )
+        );
+
+      const total = Number(result[0]?.total || 0);
+      res.json({ total });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error getting unread count:", error);
+      res.status(500).json({ message: "Failed to get unread count" });
+    }
+  });
+
+  // POST /api/whatsapp/profile-picture - Lazy load profile picture for a contact
   // POST /api/whatsapp/profile-picture - Lazy load profile picture for a contact
   app.post("/api/whatsapp/profile-picture", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27657,14 +27712,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }).returning();
             conversation = newConvo;
           } else {
-            await db.update(whatsappConversations)
-              .set({
-                lastMessageAt: timestamp,
-                lastMessagePreview: messageText.substring(0, 100) || messageType,
-                unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
-                updatedAt: new Date(),
-              })
-              .where(eq(whatsappConversations.id, conversation.id));
+            // Only update conversation if this message is newer
+            if (!conversation.lastMessageAt || timestamp > new Date(conversation.lastMessageAt)) {
+              await db.update(whatsappConversations)
+                .set({
+                  lastMessageAt: timestamp,
+                  lastMessagePreview: messageText.substring(0, 100) || messageType,
+                  unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
+                  updatedAt: new Date(),
+                })
+                .where(eq(whatsappConversations.id, conversation.id));
+            } else if (!fromMe) {
+              // Still increment unread count even if not the newest message
+              await db.update(whatsappConversations)
+                .set({
+                  unreadCount: (conversation.unreadCount || 0) + 1,
+                  updatedAt: new Date(),
+                })
+                .where(eq(whatsappConversations.id, conversation.id));
+            }
           }
 
           // Insert message

@@ -132,6 +132,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/notifications"],
   });
 
+  // WhatsApp unread count query
+  const { data: whatsappUnread } = useQuery<{ total: number }>({
+    queryKey: ['/api/whatsapp/unread-count'],
+    refetchInterval: 5000,
+    enabled: !!user,
+  });
+
   // Fetch company data for all users with a companyId
   const { data: companyData, isLoading: isLoadingCompany, isFetched: isCompanyFetched } = useQuery<{ company: any }>({
     ...getCompanyQueryOptions(user?.companyId || undefined),
@@ -716,9 +723,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setLocation("/whatsapp")}
                 data-testid="sidebar-button-whatsapp"
-                className={circularButtonClass}
+                className={cn(circularButtonClass, "relative")}
               >
                 <MessageCircle className="h-[18px] w-[18px] text-[#25D366]" />
+                {whatsappUnread?.total && whatsappUnread.total > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
+                    {whatsappUnread.total > 99 ? '99+' : whatsappUnread.total}
+                  </span>
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">WhatsApp</TooltipContent>

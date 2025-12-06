@@ -101,6 +101,11 @@ class EvolutionApiService {
     });
   }
 
+  async getWebhook(instanceName: string): Promise<any> {
+    console.log(`[Evolution API] Getting webhook config for: ${instanceName}`);
+    return this.request("GET", `/webhook/find/${instanceName}`);
+  }
+
   async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     console.log(`[Evolution API] Setting webhook for ${instanceName}: ${webhookUrl}`);
     return this.request("POST", `/webhook/set/${instanceName}`, {
