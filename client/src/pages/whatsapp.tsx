@@ -292,6 +292,19 @@ function MediaMessage({
     }
 
     if (message.messageType === "audio") {
+      const generateStaticWaveform = (id: string) => {
+        let hash = 0;
+        for (let i = 0; i < id.length; i++) {
+          hash = ((hash << 5) - hash) + id.charCodeAt(i);
+          hash = hash & hash;
+        }
+        return [...Array(20)].map((_, i) => {
+          const seed = Math.abs((hash * (i + 1) * 9301 + 49297) % 233280);
+          return 4 + (seed / 233280) * 16;
+        });
+      };
+      const staticWaveform = generateStaticWaveform(message.id);
+      
       return (
         <div className="flex items-center gap-3 p-2 min-w-[200px]">
           <button 
@@ -308,11 +321,11 @@ function MediaMessage({
           </button>
           <div className="flex-1">
             <div className="flex items-center gap-1">
-              {[...Array(20)].map((_, i) => (
+              {staticWaveform.map((height, i) => (
                 <div 
                   key={i} 
                   className="w-1 bg-gray-400 dark:bg-gray-500 rounded-full"
-                  style={{ height: `${Math.random() * 16 + 4}px` }}
+                  style={{ height: `${height}px` }}
                 />
               ))}
             </div>
