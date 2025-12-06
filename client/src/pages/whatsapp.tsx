@@ -63,31 +63,31 @@ function formatJidToPhone(jid: string, contactName?: string): string {
   // If we have a contact name from WhatsApp, use it
   if (contactName) return contactName;
   
+  // Check if this is a group
+  if (jid.includes("@g.us")) {
+    const groupId = jid.split("@")[0];
+    return `Group (${groupId.slice(-6)})`;
+  }
+  
   // Check if this is a WhatsApp Business ID (@lid) - not a real phone number
-  if (jid.includes("@lid") || jid.includes("@g.us")) {
-    return "WhatsApp Chat";
+  if (jid.includes("@lid")) {
+    const bizId = jid.split("@")[0];
+    // Show truncated ID to distinguish between multiple business contacts
+    return `Business (${bizId.slice(-6)})`;
   }
   
   const phone = jid.split("@")[0];
   
-  // Standard phone number formatting for different country codes
-  if (phone.length >= 10 && phone.length <= 15) {
-    // Try to format as international number
-    if (phone.length === 10) {
-      // US format without country code
-      return `(${phone.substring(0, 3)}) ${phone.substring(3, 6)}-${phone.substring(6)}`;
-    } else if (phone.length === 11 && phone.startsWith("1")) {
-      // US with country code
-      return `+1 (${phone.substring(1, 4)}) ${phone.substring(4, 7)}-${phone.substring(7)}`;
-    } else if (phone.length >= 12 && phone.length <= 15) {
-      // International format (most countries)
-      const countryCode = phone.substring(0, phone.length - 10);
-      const rest = phone.substring(phone.length - 10);
-      return `+${countryCode} (${rest.substring(0, 3)}) ${rest.substring(3, 6)}-${rest.substring(6)}`;
-    }
+  // Standard phone number formatting for US numbers
+  if (phone.length === 10) {
+    // US format without country code: (305) 555-1234
+    return `(${phone.substring(0, 3)}) ${phone.substring(3, 6)}-${phone.substring(6)}`;
+  } else if (phone.length === 11 && phone.startsWith("1")) {
+    // US with country code: +1 (305) 555-1234
+    return `+1 (${phone.substring(1, 4)}) ${phone.substring(4, 7)}-${phone.substring(7)}`;
   }
   
-  // Fallback: just add + prefix if it looks like a number
+  // Fallback: just add + prefix for international numbers
   if (/^\d+$/.test(phone)) {
     return `+${phone}`;
   }
@@ -221,11 +221,13 @@ export default function WhatsAppPage() {
   const { data: chats = [], isLoading: loadingChats } = useQuery<WhatsappConversation[]>({
     queryKey: ["/api/whatsapp/chats"],
     enabled: instanceData?.connected === true,
+    refetchInterval: 5000,
   });
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<WhatsappMessage[]>({
     queryKey: ["/api/whatsapp/chats", selectedChat, "messages"],
     enabled: !!selectedChat && instanceData?.connected === true,
+    refetchInterval: 3000,
   });
 
   const connectMutation = useMutation({
@@ -356,7 +358,7 @@ export default function WhatsAppPage() {
 
   // Connected - show chat interface
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-full overflow-hidden bg-gray-50 dark:bg-gray-900">
       <div className={cn(
         "w-full md:w-[400px] border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-col",
         selectedChat && "hidden md:flex"
