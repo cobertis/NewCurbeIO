@@ -23761,6 +23761,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           broadcastWhatsAppMessage(company.id, remoteJid, messageId);
           broadcastWhatsAppChatUpdate(company.id);
         }
+      } else if (event === "MESSAGES_UPDATE") {
+        // Handle message status updates (delivered, read)
+        const updates = payload.data || [];
+        for (const update of (Array.isArray(updates) ? updates : [updates])) {
+          const key = update.key;
+          if (!key?.id) continue;
+          
+          const messageId = key.id;
+          const remoteJid = key.remoteJid;
+          
+          // Map Evolution API ack values to status strings
+          // ack: 0 = error, 1 = pending, 2 = server, 3 = delivered, 4 = read, 5 = played
+          const ackValue = update.update?.status;
+          let newStatus = null;
+          
+          if (ackValue === 3 || ackValue === "DELIVERY_ACK") {
+            newStatus = "delivered";
+          } else if (ackValue === 4 || ackValue === "READ" || ackValue === 5 || ackValue === "PLAYED") {
+            newStatus = "read";
+          } else if (ackValue === 2 || ackValue === "SERVER_ACK") {
+            newStatus = "sent";
+          }
+          
+          if (newStatus) {
+            // Update message status in database
+            const result = await db.update(whatsappMessages)
+              .set({ status: newStatus })
+              .where(and(
+                eq(whatsappMessages.instanceId, instance.id),
+                eq(whatsappMessages.messageId, messageId)
+              ))
+              .returning();
+            
+            if (result.length > 0) {
+              console.log(`[WhatsApp Webhook] Message status updated: ${messageId} -> ${newStatus}`);
+              // Broadcast status update to frontend
+              if (remoteJid) {
+                broadcastWhatsAppMessage(company.id, remoteJid, messageId);
+              }
+            }
+          }
+        }
       }
       res.status(200).send("OK");
     } catch (error: any) {
