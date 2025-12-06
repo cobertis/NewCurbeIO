@@ -26874,12 +26874,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             .where(eq(whatsappInstances.id, instance.id));
         }
 
+        // If not connected, try to get the current QR code
+        let qrCode = instance.qrCode;
+        if (!connected && state.state !== "open") {
+          try {
+            const qrResult = await evolutionApi.fetchQrCode(instance.instanceName);
+            if (qrResult.base64) {
+              qrCode = qrResult.base64;
+              // Update DB with latest QR
+              await db.update(whatsappInstances)
+                .set({ qrCode: qrResult.base64, updatedAt: new Date() })
+                .where(eq(whatsappInstances.id, instance.id));
+            }
+          } catch (qrError) {
+            console.log("[WhatsApp] Could not fetch QR code:", qrError);
+          }
+        }
+
         return res.json({ 
-          instance: { ...instance, status: state.state },
+          instance: { ...instance, status: state.state, qrCode },
           connected 
         });
-      } catch (error) {
+      } catch (error: any) {
         console.log("[WhatsApp] Error checking connection state:", error);
+        // If instance doesn't exist in Evolution API, clear local qrCode and mark as disconnected
+        if (error.message?.includes("404") || error.message?.includes("does not exist")) {
+          // Clear the qrCode since the instance needs to be recreated
+          await db.update(whatsappInstances)
+            .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
+            .where(eq(whatsappInstances.id, instance.id));
+          return res.json({ instance: { ...instance, qrCode: null, status: "disconnected" }, connected: false });
+        }
         return res.json({ instance, connected: false });
       }
     } catch (error: any) {
@@ -26919,8 +26944,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         instance = newInstance;
       }
 
-      // Create instance in Evolution API (or get QR if exists)
+      // Delete existing instance first to ensure clean state, then create new one
       try {
+        // First try to delete any existing instance in Evolution API
+        try {
+          console.log("[WhatsApp] Deleting existing instance before creating new one:", instanceName);
+          await evolutionApi.deleteInstance(instanceName);
+          console.log("[WhatsApp] Existing instance deleted successfully");
+        } catch (deleteError: any) {
+          // Ignore 404 errors - instance doesn't exist which is fine
+          if (!deleteError.message?.includes("404")) {
+            console.log("[WhatsApp] Could not delete existing instance:", deleteError.message);
+          }
+        }
+        
+        // Now create fresh instance
         const result = await evolutionApi.createInstance(instanceName);
         
         // Set webhook for this instance
