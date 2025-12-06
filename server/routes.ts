@@ -86,7 +86,7 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, desc, or, sql } from "drizzle-orm";
+import { and, eq, ne, gte, desc, or, sql, inArray } from "drizzle-orm";
 import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -27129,7 +27129,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (contactIds.length > 0) {
         const contacts = await db.query.whatsappContacts.findMany({
-          where: sql`${whatsappContacts.id} = ANY(${contactIds})`,
+          where: inArray(whatsappContacts.id, contactIds),
         });
         contactMap = new Map(contacts.map(c => [c.id, c]));
       }
@@ -27143,7 +27143,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const contactsByJid = await db.query.whatsappContacts.findMany({
           where: and(
             eq(whatsappContacts.instanceId, instance.id),
-            sql`${whatsappContacts.remoteJid} = ANY(${remoteJidsWithoutContact})`
+            inArray(whatsappContacts.remoteJid, remoteJidsWithoutContact)
           ),
         });
         for (const c of contactsByJid) {
