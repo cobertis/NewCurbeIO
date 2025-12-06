@@ -1508,33 +1508,6 @@ export default function WhatsAppPage() {
                 </div>
               ) : (
                 <>
-                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon" data-testid="button-emoji-picker">
-                        <Smile className="w-6 h-6 text-gray-500" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent 
-                      className="w-auto p-0 border-0" 
-                      side="top" 
-                      align="start"
-                      sideOffset={10}
-                    >
-                      <Picker 
-                        data={data} 
-                        onEmojiSelect={handleEmojiSelect}
-                        theme="light"
-                        set="native"
-                        previewPosition="none"
-                        skinTonePosition="search"
-                        searchPosition="sticky"
-                        navPosition="bottom"
-                        perLine={8}
-                        emojiSize={24}
-                        emojiButtonSize={32}
-                      />
-                    </PopoverContent>
-                  </Popover>
                   <>
                     <input
                       type="file"
@@ -1558,14 +1531,46 @@ export default function WhatsAppPage() {
                       )}
                     </Button>
                   </>
-                  <Input
-                    placeholder="Type a message"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                    className="flex-1 bg-white dark:bg-gray-800 border-0 rounded-lg"
-                    data-testid="input-message"
-                  />
+                  <div className="flex-1 relative">
+                    <Input
+                      placeholder="Type a message"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleSend()}
+                      className="w-full bg-white dark:bg-gray-800 border-0 rounded-lg pr-10"
+                      data-testid="input-message"
+                    />
+                    <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                      <PopoverTrigger asChild>
+                        <button 
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          data-testid="button-emoji-picker"
+                        >
+                          <Smile className="w-5 h-5 text-gray-500" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent 
+                        className="w-auto p-0 border-0" 
+                        side="top" 
+                        align="end"
+                        sideOffset={10}
+                      >
+                        <Picker 
+                          data={data} 
+                          onEmojiSelect={handleEmojiSelect}
+                          theme="light"
+                          set="native"
+                          previewPosition="none"
+                          skinTonePosition="search"
+                          searchPosition="sticky"
+                          navPosition="bottom"
+                          perLine={8}
+                          emojiSize={24}
+                          emojiButtonSize={32}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                   {messageText.trim() ? (
                     <Button 
                       size="icon"
