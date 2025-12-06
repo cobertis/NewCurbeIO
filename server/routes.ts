@@ -27270,12 +27270,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Get messages from DB
-      const messages = await db.query.whatsappMessages.findMany({
+      let messages = await db.query.whatsappMessages.findMany({
         where: eq(whatsappMessages.conversationId, conversation.id),
         orderBy: [desc(whatsappMessages.timestamp)],
         limit: 100,
       });
 
+      // If no messages in DB, fetch from Evolution API and save them
+      if (messages.length === 0) {
+        try {
+          console.log(`[WhatsApp] No messages in DB for ${remoteJid}, fetching from Evolution API...`);
+          const apiMessages = await evolutionApi.fetchMessages(instance.instanceName!, decodeURIComponent(remoteJid), 50);
+          
+          if (apiMessages && apiMessages.length > 0) {
+            const company = await db.query.companies.findFirst({
+              where: eq(companies.id, user.companyId),
+            });
+            
+            for (const msg of apiMessages) {
+              const key = msg.key;
+              if (!key?.id) continue;
+              
+              const messageText = evolutionApi.extractMessageText(msg);
+              const messageType = evolutionApi.extractMessageType(msg);
+              const timestamp = msg.messageTimestamp 
+                ? new Date(msg.messageTimestamp * 1000) 
+                : new Date();
+              
+              // Check if message already exists
+              const existing = await db.query.whatsappMessages.findFirst({
+                where: and(
+                  eq(whatsappMessages.instanceId, instance.id),
+                  eq(whatsappMessages.messageId, key.id)
+                ),
+              });
+              
+              if (!existing) {
+                await db.insert(whatsappMessages).values({
+                  conversationId: conversation.id,
+                  instanceId: instance.id,
+                  companyId: company!.id,
+                  messageId: key.id,
+                  remoteJid: decodeURIComponent(remoteJid),
+                  fromMe: key.fromMe || false,
+                  senderJid: key.fromMe ? null : decodeURIComponent(remoteJid),
+                  messageType,
+                  content: messageText || messageType,
+                  status: key.fromMe ? "sent" : "received",
+                  timestamp,
+                });
+              }
+            }
+            
+            // Refetch from DB after insert
+            messages = await db.query.whatsappMessages.findMany({
+              where: eq(whatsappMessages.conversationId, conversation.id),
+              orderBy: [desc(whatsappMessages.timestamp)],
+              limit: 100,
+            });
+            console.log(`[WhatsApp] Fetched and saved ${messages.length} messages from Evolution API`);
+          }
+        } catch (fetchError) {
+          console.error("[WhatsApp] Error fetching messages from Evolution API:", fetchError);
+        }
+      }
+
+      // Mark conversation as read
       // Mark conversation as read
       await db.update(whatsappConversations)
         .set({ unreadCount: 0, updatedAt: new Date() })
