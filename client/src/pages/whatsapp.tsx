@@ -289,8 +289,7 @@ export default function WhatsAppPage() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ number, text }: { number: string; text: string }) => {
-      const res = await apiRequest("POST", "/api/whatsapp/send", { number, text });
-      return res.json();
+      return apiRequest("POST", "/api/whatsapp/send", { number, text });
     },
     onMutate: async ({ number, text }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
