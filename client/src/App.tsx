@@ -482,17 +482,17 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Center: Navigation Pills */}
-            <nav className="flex-1 flex items-center justify-center gap-1">
+            <nav className="flex-1 flex items-center justify-center gap-2">
               {navigationItems.map((item) => (
                 <Link key={item.url} href={item.url}>
                   <Button 
                     variant="ghost" 
                     size="sm"
                     className={cn(
-                      "text-sm font-medium transition-all duration-200 px-4 py-1.5 h-8",
+                      "text-sm font-medium transition-all duration-200 px-4 py-1.5 h-8 rounded-lg",
                       location === item.url 
-                        ? "bg-gray-900 text-white rounded-full hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100" 
-                        : "text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-full dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800/60"
+                        ? "bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100" 
+                        : "bg-white/80 text-gray-700 shadow-sm border border-gray-200/60 hover:bg-white hover:text-gray-900 hover:border-gray-300 dark:bg-gray-800/80 dark:text-gray-300 dark:border-gray-700/60 dark:hover:bg-gray-700 dark:hover:text-white"
                     )}
                     data-testid={`nav-${item.title.toLowerCase()}`}
                   >
