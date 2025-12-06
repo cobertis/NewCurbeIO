@@ -27535,6 +27535,179 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/whatsapp/send-media - Send WhatsApp media message
+  app.post("/api/whatsapp/send-media", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { number, mediaType, base64, mimetype, caption, fileName } = req.body;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      if (!number || !base64 || !mimetype) {
+        return res.status(400).json({ message: "Number, base64, and mimetype required" });
+      }
+
+      const validMediaTypes = ["image", "video", "audio", "document"];
+      const type = mediaType || "image";
+      if (!validMediaTypes.includes(type)) {
+        return res.status(400).json({ message: "Invalid media type" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.status(404).json({ message: "No WhatsApp instance" });
+      }
+
+      if (instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+
+      // Upload to object storage first
+      const { objectStorage } = await import("./objectStorage");
+      const mediaUrl = await objectStorage.uploadWhatsAppMedia(
+        base64,
+        mimetype,
+        user.companyId,
+        `sent_${Date.now()}`
+      );
+
+      // Send via Evolution API
+      const result = await evolutionApi.sendMediaMessage(
+        instance.instanceName, 
+        number, 
+        type as "image" | "video" | "audio" | "document",
+        base64,
+        mimetype,
+        caption,
+        fileName
+      );
+
+      // Create/update conversation and message in DB
+      const remoteJid = number.includes("@") ? number : `${number.replace(/\D/g, "")}@s.whatsapp.net`;
+
+      let conversation = await db.query.whatsappConversations.findFirst({
+        where: and(
+          eq(whatsappConversations.instanceId, instance.id),
+          eq(whatsappConversations.remoteJid, remoteJid)
+        ),
+      });
+
+      const preview = caption || `[${type}]`;
+
+      if (!conversation) {
+        const [newConvo] = await db.insert(whatsappConversations).values({
+          instanceId: instance.id,
+          companyId: user.companyId,
+          remoteJid,
+          lastMessageAt: new Date(),
+          lastMessagePreview: preview.substring(0, 100),
+        }).returning();
+        conversation = newConvo;
+      } else {
+        await db.update(whatsappConversations)
+          .set({ 
+            lastMessageAt: new Date(),
+            lastMessagePreview: preview.substring(0, 100),
+            updatedAt: new Date(),
+          })
+          .where(eq(whatsappConversations.id, conversation.id));
+      }
+
+      // Save message to DB
+      const [message] = await db.insert(whatsappMessages).values({
+        conversationId: conversation.id,
+        instanceId: instance.id,
+        companyId: user.companyId,
+        messageId: result.key?.id || `sent_${Date.now()}`,
+        remoteJid,
+        fromMe: true,
+        content: caption || type,
+        messageType: type,
+        mediaUrl,
+        status: "sent",
+        timestamp: new Date(),
+      }).returning();
+
+      res.json({ success: true, message });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error sending media:", error);
+      res.status(500).json({ message: error.message || "Failed to send media" });
+    }
+  });
+
+  // POST /api/whatsapp/download-media/:messageId - Download media for a message
+  app.post("/api/whatsapp/download-media/:messageId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { messageId } = req.params;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      // Find the message
+      const message = await db.query.whatsappMessages.findFirst({
+        where: and(
+          eq(whatsappMessages.id, messageId),
+          eq(whatsappMessages.companyId, user.companyId)
+        ),
+      });
+
+      if (!message) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      // If already has media URL, return it
+      if (message.mediaUrl) {
+        return res.json({ mediaUrl: message.mediaUrl });
+      }
+
+      // Get instance
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.id, message.instanceId),
+      });
+
+      if (!instance) {
+        return res.status(404).json({ message: "Instance not found" });
+      }
+
+      // Download media from Evolution API
+      const mediaData = await evolutionApi.getBase64FromMediaMessage(
+        instance.instanceName,
+        message.messageId,
+        message.remoteJid
+      );
+
+      if (!mediaData?.base64 || !mediaData?.mimetype) {
+        return res.status(404).json({ message: "Media not available" });
+      }
+
+      // Upload to object storage
+      const { objectStorage } = await import("./objectStorage");
+      const mediaUrl = await objectStorage.uploadWhatsAppMedia(
+        mediaData.base64,
+        mediaData.mimetype,
+        user.companyId,
+        message.messageId
+      );
+
+      // Update message with media URL
+      await db.update(whatsappMessages)
+        .set({ mediaUrl, updatedAt: new Date() })
+        .where(eq(whatsappMessages.id, messageId));
+
+      res.json({ mediaUrl });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error downloading media:", error);
+      res.status(500).json({ message: error.message || "Failed to download media" });
+    }
+  });
+
   // POST /api/whatsapp/webhook/:companySlug - Webhook from Evolution API
   app.post("/api/whatsapp/webhook/:companySlug", async (req: Request, res: Response) => {
     try {

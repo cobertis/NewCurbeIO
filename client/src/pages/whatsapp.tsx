@@ -14,8 +14,13 @@ import { cn } from "@/lib/utils";
 import { 
   Search, Send, MoreVertical, Phone, Video, RefreshCw, 
   QrCode, Wifi, WifiOff, MessageCircle, Check, CheckCheck,
-  Smile, Paperclip, Mic, ArrowLeft, User
+  Smile, Paperclip, Mic, ArrowLeft, User, Image, FileText, 
+  Download, Play, Volume2, X
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import { format, isToday, isYesterday } from "date-fns";
 
 interface WhatsappInstance {
@@ -55,6 +60,7 @@ interface WhatsappMessage {
   fromMe: boolean;
   content?: string;
   messageType: string;
+  mediaUrl?: string;
   status: string;
   timestamp: string;
 }
@@ -120,6 +126,160 @@ function formatMessageTime(dateStr: string | null | undefined): string {
 function getInitials(jid: string): string {
   const phone = jid.split("@")[0];
   return phone.slice(-2);
+}
+
+function MediaMessage({ 
+  message,
+  remoteJid,
+  onMediaLoaded 
+}: { 
+  message: WhatsappMessage;
+  remoteJid: string;
+  onMediaLoaded?: (mediaUrl: string) => void;
+}) {
+  const [mediaUrl, setMediaUrl] = useState<string | null>(message.mediaUrl || null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [showFullImage, setShowFullImage] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const downloadMedia = async () => {
+    if (mediaUrl || loading) return;
+    
+    setLoading(true);
+    setError(false);
+    
+    try {
+      const response = await apiRequest("POST", `/api/whatsapp/download-media/${message.id}`);
+      const data = await response.json();
+      
+      if (data.mediaUrl) {
+        setMediaUrl(data.mediaUrl);
+        onMediaLoaded?.(data.mediaUrl);
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats", remoteJid, "messages"] });
+      } else {
+        setError(true);
+        toast({
+          title: "Media unavailable",
+          description: "Could not download this media",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      setError(true);
+      toast({
+        title: "Download failed",
+        description: "Failed to download media",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderMedia = () => {
+    const mediaTypes = ["image", "video", "audio", "document"];
+    if (!mediaTypes.includes(message.messageType)) {
+      return null;
+    }
+
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center w-48 h-32 bg-gray-200 dark:bg-gray-700 rounded-lg">
+          <LoadingSpinner fullScreen={false} />
+        </div>
+      );
+    }
+
+    if (!mediaUrl) {
+      return (
+        <button 
+          onClick={downloadMedia}
+          className="flex flex-col items-center justify-center w-48 h-32 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+          disabled={loading}
+        >
+          {message.messageType === "image" && <Image className="w-8 h-8 text-gray-500 mb-2" />}
+          {message.messageType === "video" && <Play className="w-8 h-8 text-gray-500 mb-2" />}
+          {message.messageType === "audio" && <Volume2 className="w-8 h-8 text-gray-500 mb-2" />}
+          {message.messageType === "document" && <FileText className="w-8 h-8 text-gray-500 mb-2" />}
+          <span className="text-xs text-gray-500 flex items-center gap-1">
+            <Download className="w-3 h-3" />
+            {error ? "Retry" : "Load"} {message.messageType}
+          </span>
+        </button>
+      );
+    }
+
+    if (message.messageType === "image") {
+      return (
+        <>
+          <img 
+            src={mediaUrl} 
+            alt="Image" 
+            className="max-w-48 max-h-48 rounded-lg cursor-pointer object-cover"
+            onClick={() => setShowFullImage(true)}
+            loading="lazy"
+          />
+          <Dialog open={showFullImage} onOpenChange={setShowFullImage}>
+            <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-black/90">
+              <button 
+                onClick={() => setShowFullImage(false)}
+                className="absolute top-2 right-2 z-50 p-2 bg-white/10 rounded-full hover:bg-white/20"
+              >
+                <X className="w-6 h-6 text-white" />
+              </button>
+              <img 
+                src={mediaUrl} 
+                alt="Full size" 
+                className="max-w-full max-h-[85vh] object-contain mx-auto"
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    }
+
+    if (message.messageType === "video") {
+      return (
+        <video 
+          src={mediaUrl} 
+          controls 
+          className="max-w-48 max-h-48 rounded-lg"
+          preload="metadata"
+        />
+      );
+    }
+
+    if (message.messageType === "audio") {
+      return (
+        <audio 
+          src={mediaUrl} 
+          controls 
+          className="max-w-48"
+          preload="metadata"
+        />
+      );
+    }
+
+    if (message.messageType === "document") {
+      return (
+        <a 
+          href={mediaUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+        >
+          <FileText className="w-6 h-6 text-gray-500" />
+          <span className="text-sm text-blue-600 dark:text-blue-400">Open document</span>
+        </a>
+      );
+    }
+
+    return null;
+  };
+
+  return renderMedia();
 }
 
 const profilePicCache = new Map<string, string | null>();
@@ -680,9 +840,20 @@ export default function WhatsAppPage() {
                               : "bg-white dark:bg-gray-800"
                           )}
                         >
-                          <p className="text-sm dark:text-white break-words">
-                            {msg.content || `[${msg.messageType}]`}
-                          </p>
+                          {["image", "video", "audio", "document"].includes(msg.messageType) ? (
+                            <div className="mb-1">
+                              <MediaMessage message={msg} remoteJid={msg.remoteJid} />
+                              {msg.content && msg.messageType !== msg.content && (
+                                <p className="text-sm dark:text-white break-words mt-1">
+                                  {msg.content}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm dark:text-white break-words">
+                              {msg.content || `[${msg.messageType}]`}
+                            </p>
+                          )}
                           <div className="flex items-center justify-end gap-1 mt-1">
                             <span className="text-[10px] text-gray-500">
                               {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 

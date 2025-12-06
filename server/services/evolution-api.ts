@@ -165,6 +165,49 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     });
   }
 
+  async sendMediaMessage(
+    instanceName: string, 
+    number: string, 
+    mediaType: "image" | "video" | "audio" | "document",
+    base64: string,
+    mimetype: string,
+    caption?: string,
+    fileName?: string
+  ): Promise<any> {
+    console.log(`[Evolution API] Sending ${mediaType} to ${number} via ${instanceName}`);
+    
+    const normalizedNumber = number.replace(/\D/g, "");
+    
+    let cleanBase64 = base64;
+    if (base64.includes(",")) {
+      cleanBase64 = base64.split(",")[1];
+    }
+    if (cleanBase64.startsWith("data:")) {
+      cleanBase64 = cleanBase64.replace(/^data:[^;]+;base64,/, "");
+    }
+    
+    const mediaEndpoints: Record<string, string> = {
+      image: "sendMedia",
+      video: "sendMedia", 
+      audio: "sendWhatsAppAudio",
+      document: "sendMedia"
+    };
+    
+    const endpoint = mediaEndpoints[mediaType] || "sendMedia";
+    
+    const payload: any = {
+      number: normalizedNumber,
+      mediatype: mediaType,
+      media: cleanBase64,
+      mimetype,
+    };
+    
+    if (caption) payload.caption = caption;
+    if (fileName) payload.fileName = fileName;
+    
+    return this.request("POST", `/message/${endpoint}/${instanceName}`, payload);
+  }
+
   async fetchChats(instanceName: string): Promise<any[]> {
     console.log(`[Evolution API] Fetching chats for: ${instanceName}`);
     return this.request("POST", `/chat/findChats/${instanceName}`, {
