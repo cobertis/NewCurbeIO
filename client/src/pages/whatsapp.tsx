@@ -1166,9 +1166,9 @@ export default function WhatsAppPage() {
               </div>
             </div>
 
-            <ScrollArea 
-              viewportRef={scrollViewportRef}
-              className="flex-1 p-4 bg-gray-50 dark:bg-gray-900"
+            <div 
+              ref={scrollViewportRef}
+              className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 overflow-y-auto"
               style={{ scrollBehavior: 'auto' }}
             >
               <div 
@@ -1245,7 +1245,7 @@ export default function WhatsAppPage() {
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
 
             {pendingAttachment && (
               <div className="p-4 border-t bg-gray-50 dark:bg-gray-800">
