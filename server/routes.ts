@@ -26899,11 +26899,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 const expectedWebhookUrl = `https://${REPLIT_DOMAIN}/api/whatsapp/webhook/${company.slug}`;
                 const currentWebhook = await evolutionApi.getWebhook(instance.instanceName);
                 const currentUrl = currentWebhook?.webhook?.url || currentWebhook?.url || '';
+                const currentEvents = currentWebhook?.webhook?.events || currentWebhook?.events || [];
                 
-                if (currentUrl !== expectedWebhookUrl) {
-                  console.log(`[WhatsApp] Webhook URL mismatch. Current: ${currentUrl}, Expected: ${expectedWebhookUrl}`);
+                const requiredEvents = [
+                  "APPLICATION_STARTUP", "CALL", "CHATS_DELETE", "CHATS_SET", "CHATS_UPDATE",
+                  "CHATS_UPSERT", "CONNECTION_UPDATE", "CONTACTS_SET", "CONTACTS_UPDATE",
+                  "CONTACTS_UPSERT", "GROUP_PARTICIPANTS_UPDATE", "GROUP_UPDATE", "GROUPS_UPSERT",
+                  "LABELS_ASSOCIATION", "LABELS_EDIT", "LOGOUT_INSTANCE", "MESSAGES_DELETE",
+                  "MESSAGES_SET", "MESSAGES_UPDATE", "MESSAGES_UPSERT", "PRESENCE_UPDATE",
+                  "QRCODE_UPDATED", "REMOVE_INSTANCE", "SEND_MESSAGE", "TYPEBOT_CHANGE_STATUS",
+                  "TYPEBOT_START"
+                ];
+                
+                const missingEvents = requiredEvents.filter(e => !currentEvents.includes(e));
+                const needsReconfigure = currentUrl !== expectedWebhookUrl || missingEvents.length > 0;
+                
+                if (needsReconfigure) {
+                  console.log(`[WhatsApp] Webhook needs reconfiguration. URL match: ${currentUrl === expectedWebhookUrl}, Missing events: ${missingEvents.length}`);
                   await evolutionApi.setWebhook(instance.instanceName, expectedWebhookUrl);
-                  console.log(`[WhatsApp] Webhook reconfigured successfully`);
+                  console.log(`[WhatsApp] Webhook reconfigured with all ${requiredEvents.length} events`);
                 }
               }
             } catch (webhookError: any) {
