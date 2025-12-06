@@ -59,11 +59,25 @@ interface WhatsappMessage {
   timestamp: string;
 }
 
+function formatPhoneNumber(phone: string): string {
+  if (!phone) return "";
+  
+  // Standard phone number formatting for US numbers
+  if (phone.length === 10) {
+    return `(${phone.substring(0, 3)}) ${phone.substring(3, 6)}-${phone.substring(6)}`;
+  } else if (phone.length === 11 && phone.startsWith("1")) {
+    return `+1 (${phone.substring(1, 4)}) ${phone.substring(4, 7)}-${phone.substring(7)}`;
+  }
+  
+  if (/^\d+$/.test(phone)) {
+    return `+${phone}`;
+  }
+  
+  return phone;
+}
+
 function formatJidToPhone(jid: string, contactName?: string, businessPhone?: string, businessName?: string): string {
   if (!jid) return "";
-  
-  // If we have a contact name from WhatsApp, use it
-  if (contactName) return contactName;
   
   // Check if this is a group
   if (jid.includes("@g.us")) {
@@ -73,43 +87,22 @@ function formatJidToPhone(jid: string, contactName?: string, businessPhone?: str
   
   // Check if this is a WhatsApp Business ID (@lid)
   if (jid.includes("@lid")) {
-    // For @lid contacts, prefer businessName, then formatted businessPhone
-    if (businessName) return businessName;
-    
+    // ALWAYS show phone number first for @lid contacts
     if (businessPhone) {
-      // Format the business phone number like a regular phone
-      if (businessPhone.length === 10) {
-        return `(${businessPhone.substring(0, 3)}) ${businessPhone.substring(3, 6)}-${businessPhone.substring(6)}`;
-      } else if (businessPhone.length === 11 && businessPhone.startsWith("1")) {
-        return `+1 (${businessPhone.substring(1, 4)}) ${businessPhone.substring(4, 7)}-${businessPhone.substring(7)}`;
-      } else if (/^\d+$/.test(businessPhone)) {
-        return `+${businessPhone}`;
-      }
-      return businessPhone;
+      return formatPhoneNumber(businessPhone);
     }
     
-    // Fallback: show truncated ID to distinguish between multiple business contacts
+    // Fallback to business name if no phone
+    if (businessName) return businessName;
+    
+    // Last fallback: show truncated ID
     const bizId = jid.split("@")[0];
     return `Business (${bizId.slice(-6)})`;
   }
   
+  // Regular contacts - extract phone from JID
   const phone = jid.split("@")[0];
-  
-  // Standard phone number formatting for US numbers
-  if (phone.length === 10) {
-    // US format without country code: (305) 555-1234
-    return `(${phone.substring(0, 3)}) ${phone.substring(3, 6)}-${phone.substring(6)}`;
-  } else if (phone.length === 11 && phone.startsWith("1")) {
-    // US with country code: +1 (305) 555-1234
-    return `+1 (${phone.substring(1, 4)}) ${phone.substring(4, 7)}-${phone.substring(7)}`;
-  }
-  
-  // Fallback: just add + prefix for international numbers
-  if (/^\d+$/.test(phone)) {
-    return `+${phone}`;
-  }
-  
-  return phone;
+  return formatPhoneNumber(phone);
 }
 
 function formatMessageTime(dateStr: string | null | undefined): string {
