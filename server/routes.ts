@@ -27129,7 +27129,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (contactIds.length > 0) {
         const contacts = await db.query.whatsappContacts.findMany({
-          where: inArray(whatsappContacts.id, contactIds),
+          where: and(eq(whatsappContacts.instanceId, instance.id), inArray(whatsappContacts.id, contactIds)),
         });
         contactMap = new Map(contacts.map(c => [c.id, c]));
       }
