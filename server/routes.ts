@@ -23303,7 +23303,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         messageId: result.key?.id || `sent_${Date.now()}`,
         remoteJid,
         fromMe: true,
-        content: caption || type,
+        content: type === "document" ? (fileName || caption || "Document") : (caption || type),
         messageType: type,
         mediaUrl,
         status: "sent",

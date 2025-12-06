@@ -303,16 +303,36 @@ function MediaMessage({
     }
 
     if (message.messageType === "document") {
+      const fileName = message.content && message.content !== 'document' && message.content !== '[document]' 
+        ? message.content 
+        : 'Document';
+      const displayName = fileName.length > 25 ? fileName.substring(0, 22) + '...' : fileName;
+      const ext = fileName.split('.').pop()?.toUpperCase() || 'FILE';
+      
+      const handleDownload = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const link = document.createElement('a');
+        link.href = mediaUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+      
       return (
-        <a 
-          href={mediaUrl} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+        <button 
+          onClick={handleDownload}
+          className="flex items-center gap-3 p-3 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 min-w-[200px] text-left"
         >
-          <FileText className="w-6 h-6 text-gray-500" />
-          <span className="text-sm text-blue-600 dark:text-blue-400">Open document</span>
-        </a>
+          <div className="w-10 h-10 bg-red-500 rounded flex items-center justify-center flex-shrink-0">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{displayName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{ext}</p>
+          </div>
+          <Download className="w-5 h-5 text-gray-400 flex-shrink-0" />
+        </button>
       );
     }
 
@@ -377,7 +397,6 @@ function ContactAvatar({
     pendingFetches.add(remoteJid);
     
     apiRequest("POST", "/api/whatsapp/profile-picture", { remoteJid })
-      .then(res => res.json())
       .then(data => {
         const url = data.profilePicUrl || null;
         profilePicCache.set(remoteJid, url);
@@ -477,8 +496,7 @@ export default function WhatsAppPage() {
 
   const connectMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/whatsapp/connect");
-      return res.json();
+      return apiRequest("POST", "/api/whatsapp/connect");
     },
     onSuccess: () => {
       refetchInstance();
@@ -490,8 +508,7 @@ export default function WhatsAppPage() {
 
   const disconnectMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/whatsapp/disconnect");
-      return res.json();
+      return apiRequest("POST", "/api/whatsapp/disconnect");
     },
     onSuccess: () => {
       connectAttemptedRef.current = false;
@@ -535,14 +552,13 @@ export default function WhatsAppPage() {
   const sendMediaMutation = useMutation({
     mutationFn: async ({ number, file, preview, mediaType }: { number: string; file: File; preview: string; mediaType: string }) => {
       const base64 = preview.split(',')[1];
-      const res = await apiRequest("POST", "/api/whatsapp/send-media", {
+      return apiRequest("POST", "/api/whatsapp/send-media", {
         number,
         mediaType,
         base64,
         mimetype: file.type,
         fileName: file.name,
       });
-      return res.json();
     },
     onMutate: async ({ preview, mediaType }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
@@ -575,8 +591,7 @@ export default function WhatsAppPage() {
 
   const syncChatsMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/whatsapp/sync-chats");
-      return res.json();
+      return apiRequest("POST", "/api/whatsapp/sync-chats");
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
@@ -586,8 +601,7 @@ export default function WhatsAppPage() {
 
   const deleteChatMutation = useMutation({
     mutationFn: async (chatId: string) => {
-      const res = await apiRequest("DELETE", `/api/whatsapp/chats/${chatId}`);
-      return res.json();
+      return apiRequest("DELETE", `/api/whatsapp/chats/${chatId}`);
     },
     onSuccess: () => {
       setSelectedChat(null);
