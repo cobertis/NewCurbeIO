@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -158,6 +158,120 @@ function getInitials(jid: string): string {
   return phone.slice(-2);
 }
 
+const formatAudioTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const AudioMessagePlayer = ({ messageId, mediaUrl }: { messageId: string; mediaUrl: string }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  
+  const waveform = useMemo(() => {
+    let hash = 0;
+    for (let i = 0; i < messageId.length; i++) {
+      hash = ((hash << 5) - hash) + messageId.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return [...Array(40)].map((_, i) => {
+      const seed = Math.abs((hash * (i + 1) * 9301 + 49297) % 233280);
+      return 6 + (seed / 233280) * 18;
+    });
+  }, [messageId]);
+  
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleEnded = () => { setIsPlaying(false); setCurrentTime(0); };
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+    };
+  }, []);
+  
+  const togglePlayback = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  };
+  
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    audio.currentTime = percentage * duration;
+  };
+  
+  return (
+    <div className="flex items-center gap-3 p-2 min-w-[220px]">
+      <button 
+        onClick={togglePlayback}
+        className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-green-600 transition-colors"
+        data-testid={`button-audio-toggle-${messageId}`}
+      >
+        {isPlaying ? (
+          <Pause className="w-5 h-5 text-white" />
+        ) : (
+          <Play className="w-5 h-5 text-white ml-0.5" />
+        )}
+      </button>
+      <div className="flex-1 flex flex-col gap-1">
+        <div 
+          className="flex items-end gap-0.5 h-6 cursor-pointer"
+          onClick={handleSeek}
+          data-testid={`audio-waveform-${messageId}`}
+        >
+          {waveform.map((height, i) => {
+            const barProgress = (i / waveform.length) * 100;
+            const isPlayed = barProgress < progress;
+            return (
+              <div 
+                key={i} 
+                className={cn(
+                  "w-1 rounded-full transition-colors",
+                  isPlayed ? "bg-green-500" : "bg-gray-300 dark:bg-gray-500"
+                )}
+                style={{ height: `${height}px` }}
+              />
+            );
+          })}
+        </div>
+        <div className="flex justify-between text-[10px] text-gray-500">
+          <span>{formatAudioTime(currentTime)}</span>
+          <span>{duration > 0 ? formatAudioTime(duration) : '--:--'}</span>
+        </div>
+      </div>
+      <audio ref={audioRef} src={mediaUrl} preload="metadata" className="hidden" />
+    </div>
+  );
+};
+
 function MediaMessage({ 
   message,
   remoteJid,
@@ -292,47 +406,7 @@ function MediaMessage({
     }
 
     if (message.messageType === "audio") {
-      const generateStaticWaveform = (id: string) => {
-        let hash = 0;
-        for (let i = 0; i < id.length; i++) {
-          hash = ((hash << 5) - hash) + id.charCodeAt(i);
-          hash = hash & hash;
-        }
-        return [...Array(20)].map((_, i) => {
-          const seed = Math.abs((hash * (i + 1) * 9301 + 49297) % 233280);
-          return 4 + (seed / 233280) * 16;
-        });
-      };
-      const staticWaveform = generateStaticWaveform(message.id);
-      
-      return (
-        <div className="flex items-center gap-3 p-2 min-w-[200px]">
-          <button 
-            onClick={() => {
-              const audio = document.getElementById(`audio-${message.id}`) as HTMLAudioElement;
-              if (audio) {
-                if (audio.paused) audio.play();
-                else audio.pause();
-              }
-            }}
-            className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-green-600 transition-colors"
-          >
-            <Play className="w-5 h-5 text-white ml-0.5" />
-          </button>
-          <div className="flex-1">
-            <div className="flex items-center gap-1">
-              {staticWaveform.map((height, i) => (
-                <div 
-                  key={i} 
-                  className="w-1 bg-gray-400 dark:bg-gray-500 rounded-full"
-                  style={{ height: `${height}px` }}
-                />
-              ))}
-            </div>
-          </div>
-          <audio id={`audio-${message.id}`} src={mediaUrl} className="hidden" />
-        </div>
-      );
+      return <AudioMessagePlayer messageId={message.id} mediaUrl={mediaUrl} />;
     }
 
     if (message.messageType === "document") {
