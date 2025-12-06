@@ -23357,7 +23357,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const mediaUrl = `data:${mediaData.mimetype};base64,${mediaData.base64}`;
       // Update message with media URL
       await db.update(whatsappMessages)
-        .set({ mediaUrl, updatedAt: new Date() })
+        .set({ mediaUrl })
         .where(eq(whatsappMessages.id, messageId));
       res.json({ mediaUrl });
     } catch (error: any) {

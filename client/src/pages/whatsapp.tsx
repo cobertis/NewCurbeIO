@@ -586,7 +586,7 @@ export default function WhatsAppPage() {
     };
     
     syncMessages();
-    const interval = setInterval(syncMessages, 3000);
+    const interval = setInterval(syncMessages, 30000);
     return () => clearInterval(interval);
   }, [selectedChat, instanceData?.connected, queryClient]);
 
@@ -612,7 +612,7 @@ export default function WhatsAppPage() {
       }
     };
     
-    const interval = setInterval(syncAllMessages, 10000);
+    const interval = setInterval(syncAllMessages, 60000);
     return () => clearInterval(interval);
   }, [instanceData?.connected, selectedChat, queryClient]);
 
