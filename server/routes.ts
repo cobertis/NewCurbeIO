@@ -24059,6 +24059,73 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to sync messages" });
     }
   });
+
+  // POST /api/whatsapp/mark-read - Mark messages as read
+  app.post("/api/whatsapp/mark-read", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { remoteJid } = req.body;
+      if (!remoteJid) {
+        return res.status(400).json({ message: "remoteJid is required" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance || instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+
+      const unreadMessages = await db.query.whatsappMessages.findMany({
+        where: and(
+          eq(whatsappMessages.instanceId, instance.id),
+          eq(whatsappMessages.remoteJid, remoteJid),
+          eq(whatsappMessages.fromMe, false),
+          ne(whatsappMessages.status, "read")
+        ),
+      });
+
+      if (unreadMessages.length === 0) {
+        return res.json({ marked: 0 });
+      }
+
+      const readMessages = unreadMessages.map(msg => ({
+        remoteJid: msg.remoteJid,
+        fromMe: false,
+        id: msg.messageId,
+      }));
+
+      await evolutionApi.markMessagesAsRead(instance.instanceName, readMessages);
+
+      await db.update(whatsappMessages)
+        .set({ status: "read" })
+        .where(and(
+          eq(whatsappMessages.instanceId, instance.id),
+          eq(whatsappMessages.remoteJid, remoteJid),
+          eq(whatsappMessages.fromMe, false)
+        ));
+
+      await db.update(whatsappConversations)
+        .set({ unreadCount: 0 })
+        .where(and(
+          eq(whatsappConversations.instanceId, instance.id),
+          eq(whatsappConversations.remoteJid, remoteJid)
+        ));
+
+      broadcastWhatsAppChatUpdate(user.companyId);
+
+      res.json({ marked: unreadMessages.length });
+    } catch (error: any) {
+      console.error("[WhatsApp] Mark read error:", error);
+      res.status(500).json({ message: "Failed to mark messages as read" });
+    }
+  });
+
   const httpServer = createServer(app);
   // Setup WebSocket for real-time chat updates with session validation
   setupWebSocket(httpServer, sessionStore);

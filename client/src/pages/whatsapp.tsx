@@ -877,6 +877,18 @@ export default function WhatsAppPage() {
           queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
           queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
         }
+        
+        // Mark messages as read when opening the chat
+        try {
+          await fetch(`/api/whatsapp/mark-read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ remoteJid: selectedChat }),
+          });
+        } catch (error) {
+          console.log('Mark read error:', error);
+        }
       } catch (error) {
         console.log('Sync error:', error);
       }

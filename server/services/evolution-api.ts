@@ -444,6 +444,15 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       return null;
     }
   }
+
+  async markMessagesAsRead(instanceName: string, readMessages: Array<{ remoteJid: string; fromMe: boolean; id: string }>): Promise<void> {
+    try {
+      await this.request("POST", `/chat/markMessageAsRead/${instanceName}`, { readMessages });
+      console.log(`[Evolution API] Marked ${readMessages.length} messages as read`);
+    } catch (error: any) {
+      console.error(`[Evolution API] Failed to mark messages as read:`, error.message);
+    }
+  }
 }
 
 export const evolutionApi = new EvolutionApiService();
