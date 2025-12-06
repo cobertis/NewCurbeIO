@@ -23634,7 +23634,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 .where(eq(whatsappConversations.id, conversation.id));
             }
           }
-          // Handle media messages - download and upload to object storage
+          // Handle media messages - download and create Data URI directly
           let mediaUrl: string | null = null;
           const mediaTypes = ["image", "video", "audio", "document"];
           if (mediaTypes.includes(messageType)) {
@@ -23646,20 +23646,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 remoteJid
               );
               if (mediaData?.base64 && mediaData?.mimetype) {
-                console.log(`[WhatsApp Webhook] Media downloaded: ${mediaData.mimetype}`);
-                const { objectStorage } = await import("./objectStorage");
-                mediaUrl = await objectStorage.uploadWhatsAppMedia(
-                  mediaData.base64,
-                  mediaData.mimetype,
-                  company.id,
-                  messageId
-                );
-                console.log(`[WhatsApp Webhook] Media uploaded: ${mediaUrl}`);
+                // Create Data URI directly (bypasses Object Storage permission issues)
+                mediaUrl = `data:${mediaData.mimetype};base64,${mediaData.base64}`;
+                console.log(`[WhatsApp Webhook] Media saved as Data URI: ${mediaData.mimetype}`);
               } else {
                 console.log(`[WhatsApp Webhook] No media data returned for ${messageId}`);
               }
             } catch (mediaError: any) {
-              console.error(`[WhatsApp Webhook] Failed to download/upload media:`, mediaError.message);
+              console.error(`[WhatsApp Webhook] Failed to download media:`, mediaError.message);
+              // Don't fail the entire message - save without media
             }
           }
           // Insert message
