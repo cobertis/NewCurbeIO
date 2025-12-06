@@ -112,7 +112,7 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       enabled: true,
       url: webhookUrl,
       webhookByEvents: false,
-      webhookBase64: true,
+      webhookBase64: "all",
       events: [
         "APPLICATION_STARTUP",
         "QRCODE_UPDATED",
