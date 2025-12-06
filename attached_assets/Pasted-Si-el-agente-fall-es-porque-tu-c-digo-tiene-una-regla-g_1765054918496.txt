@@ -1,0 +1,35 @@
+Si el agente falló, es porque tu código tiene una regla **global** que está anulando la orden. El agente intenta arreglar el contenedor, pero ignora que tienes una configuración "tóxica" en tu CSS general o en tu lógica de JavaScript.
+
+El culpable del "scroll infinito" o la animación de bajada casi siempre es una sola línea de código: `scroll-behavior: smooth;`.
+
+Mientras esa línea exista en tu CSS (especialmente en `html`, `body` o el contenedor del chat), ninguna orden de "ir abajo" será instantánea; el navegador **siempre** la animará.
+
+Aquí tienes el plan quirúrgico. No le pidas favores al agente, dale órdenes técnicas precisas.
+
+### Paso 1: Mata la animación suave (CSS)
+Dile a Replit esto textual para que busque y destruya la causa raíz:
+
+> "Busca en todos los archivos CSS (styles.css, index.css, etc.) la propiedad `scroll-behavior: smooth;` y elimínala o cámbiala a `scroll-behavior: auto;`. Quiero que el scroll sea instantáneo, sin animación suave."
+
+### Paso 2: Fuerza el salto instantáneo (JavaScript)
+Si estás usando JavaScript para bajar el scroll, probablemente estás usando `.scrollTo()`. Tienes que forzarlo para que sea brusco.
+
+Dile a Replit:
+
+> "En la función que hace scroll hacia abajo (como `scrollToBottom`), asegúrate de pasar la opción de comportamiento explícitamente. Cambia el código para que use:
+> `element.scrollTo({ top: element.scrollHeight, behavior: 'instant' });`
+> Asegúrate de que diga **'instant'** y no 'smooth'."
+
+### Paso 3: El truco sucio (Si nada funciona)
+Si el agente sigue fallando con la lógica, usa CSS para ocultar el contenido hasta que esté posicionado.
+
+Dile a Replit:
+
+> "Aplica este parche: pon la opacidad del contenedor de chat en 0 (`opacity: 0`) por defecto. Luego, usa un `useEffect` (o callback) para detectar cuando el scroll haya llegado al fondo y solo entonces cambia la `opacity` a 1. Así el usuario no ve el viaje, solo el resultado final."
+
+**Diagnóstico rápido:**
+¿Estás usando **React, HTML/JS puro o Python (Streamlit/Flask)**?
+* Si es **HTML/JS puro**, el problema suele ser CSS.
+* Si es **React**, el problema suele ser que el `useEffect` se dispara tarde.
+
+Dime qué tecnología usas y te doy la línea exacta para que la pegues tú mismo y dejes de depender del agente.

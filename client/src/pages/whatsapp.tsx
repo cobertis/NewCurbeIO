@@ -591,13 +591,13 @@ export default function WhatsAppPage() {
         fileName: file.name,
       });
     },
-    onMutate: async ({ preview, mediaType }) => {
+    onMutate: async ({ file, preview, mediaType }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
       const previousMessages = queryClient.getQueryData(["/api/whatsapp/chats", selectedChat, "messages"]);
       const optimisticMessage = {
         id: `temp_${Date.now()}`,
         messageId: `temp_${Date.now()}`,
-        content: `[${mediaType}]`,
+        content: mediaType === "document" ? file.name : `[${mediaType}]`,
         fromMe: true,
         timestamp: new Date().toISOString(),
         messageType: mediaType,
@@ -621,22 +621,23 @@ export default function WhatsAppPage() {
   });
 
   const sendAudioMutation = useMutation({
-    mutationFn: async ({ number, base64 }: { number: string; base64: string }) => {
+    mutationFn: async ({ number, base64, audioDataUrl }: { number: string; base64: string; audioDataUrl: string }) => {
       return apiRequest("POST", "/api/whatsapp/send-audio", {
         number,
         base64,
       });
     },
-    onMutate: async () => {
+    onMutate: async ({ audioDataUrl }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
       const previousMessages = queryClient.getQueryData(["/api/whatsapp/chats", selectedChat, "messages"]);
       const optimisticMessage = {
         id: `temp_${Date.now()}`,
         messageId: `temp_${Date.now()}`,
-        content: "[audio]",
+        content: "audio",
         fromMe: true,
         timestamp: new Date().toISOString(),
         messageType: "audio",
+        mediaUrl: audioDataUrl,
         status: "sending",
       };
       queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], (old: any[] = []) => [...old, optimisticMessage]);
@@ -922,14 +923,16 @@ export default function WhatsAppPage() {
   };
 
   const sendAudio = async () => {
-    if (!audioBlob || !selectedChat) return;
+    if (!audioBlob || !selectedChat || !audioUrl) return;
     
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = (reader.result as string).split(',')[1];
+      const audioDataUrl = reader.result as string;
       sendAudioMutation.mutate({
         number: selectedChat,
         base64,
+        audioDataUrl,
       });
     };
     reader.readAsDataURL(audioBlob);
