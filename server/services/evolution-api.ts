@@ -92,8 +92,8 @@ class EvolutionApiService {
   async setSettings(instanceName: string): Promise<any> {
     console.log(`[Evolution API] Setting instance settings for: ${instanceName}`);
     return this.request("POST", `/settings/set/${instanceName}`, {
-      rejectCall: true,
-      ignoreGroups: true,
+      rejectCall: false,
+      groupsIgnore: false,
       alwaysOnline: false,
       readMessages: false,
       readStatus: false,
