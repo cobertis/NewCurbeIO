@@ -22,6 +22,9 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { format, isToday, isYesterday } from "date-fns";
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface WhatsappInstance {
   id: string;
@@ -565,6 +568,12 @@ export default function WhatsAppPage() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const handleEmojiSelect = (emoji: any) => {
+    setMessageText(prev => prev + emoji.native);
+    setShowEmojiPicker(false);
+  };
 
   // Notification sound function using Web Audio API
   const playNotificationSound = useCallback(() => {
@@ -1499,9 +1508,33 @@ export default function WhatsAppPage() {
                 </div>
               ) : (
                 <>
-                  <Button variant="ghost" size="icon">
-                    <Smile className="w-6 h-6 text-gray-500" />
-                  </Button>
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" data-testid="button-emoji-picker">
+                        <Smile className="w-6 h-6 text-gray-500" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent 
+                      className="w-auto p-0 border-0" 
+                      side="top" 
+                      align="start"
+                      sideOffset={10}
+                    >
+                      <Picker 
+                        data={data} 
+                        onEmojiSelect={handleEmojiSelect}
+                        theme="light"
+                        set="native"
+                        previewPosition="none"
+                        skinTonePosition="search"
+                        searchPosition="sticky"
+                        navPosition="bottom"
+                        perLine={8}
+                        emojiSize={24}
+                        emojiButtonSize={32}
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <>
                     <input
                       type="file"
