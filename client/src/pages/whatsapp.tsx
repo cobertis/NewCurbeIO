@@ -194,7 +194,7 @@ export default function WhatsAppPage() {
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-lg inline-block">
                 <img 
-                  src={`data:image/png;base64,${instance.qrCode}`} 
+                  src={instance.qrCode.startsWith('data:') ? instance.qrCode : `data:image/png;base64,${instance.qrCode}`} 
                   alt="QR Code" 
                   className="w-64 h-64"
                   data-testid="whatsapp-qr-code"
