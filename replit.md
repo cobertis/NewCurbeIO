@@ -30,7 +30,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 **Key Features:**
 - **User & Company Management:** CRUD, RBAC, 2FA, multi-tenancy.
-- **Communication Systems:** Email, SMS/MMS (BulkVS), iMessage (BlueBubbles).
+- **Communication Systems:** Email, SMS/MMS (BulkVS), iMessage (BlueBubbles), WhatsApp (Evolution API v2).
 - **Billing & Stripe Integration:** Automated customer and subscription management.
 - **Quotes Management System:** 3-step wizard with Google Places Autocomplete, CMS Marketplace API integration, plan comparison, and document management.
 - **Policies Management System:** Converts quotes to policies, manages statuses, assigns agents, supports cursor-based pagination, and hybrid search.
@@ -56,6 +56,7 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 - **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
 - **iMessage Security:** Webhook secret isolation, admin-only settings, feature gating, multi-tenant GUID scoping, and early-return guards for self-sent webhook duplicates.
+- **WhatsApp Integration:** Evolution API v2 integration with multi-tenant session isolation, QR code authentication, real-time webhooks (MESSAGES_UPSERT, CONNECTION_UPDATE, QRCODE_UPDATED), and company-scoped instances.
 
 ## External Dependencies
 

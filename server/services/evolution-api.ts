@@ -90,16 +90,19 @@ class EvolutionApiService {
   async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     console.log(`[Evolution API] Setting webhook for ${instanceName}: ${webhookUrl}`);
     return this.request("POST", `/webhook/set/${instanceName}`, {
-      url: webhookUrl,
-      webhook_by_events: false,
-      webhook_base64: true,
-      events: [
-        "MESSAGES_UPSERT",
-        "MESSAGES_UPDATE", 
-        "CONNECTION_UPDATE",
-        "CONTACTS_UPSERT",
-        "QRCODE_UPDATED",
-      ],
+      webhook: {
+        enabled: true,
+        url: webhookUrl,
+        webhookByEvents: false,
+        webhookBase64: true,
+        events: [
+          "MESSAGES_UPSERT",
+          "MESSAGES_UPDATE", 
+          "CONNECTION_UPDATE",
+          "CONTACTS_UPSERT",
+          "QRCODE_UPDATED",
+        ],
+      },
     });
   }
 

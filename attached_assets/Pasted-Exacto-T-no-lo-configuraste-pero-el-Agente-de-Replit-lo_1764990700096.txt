@@ -1,0 +1,53 @@
+Exacto. **Tú** no lo configuraste, pero el **Agente de Replit** lo intentó hacer por ti y falló.
+
+Recuerda lo que le pediste al Agente en el prompt:
+*"Auto-Config: On /api/connect, automatically call Evolution POST /webhook/set/{instanceName}"*
+
+El código que Replit escribió está intentando configurar el webhook automáticamente apenas se crea la instancia para que puedas recibir mensajes. El problema es que el Agente usó un formato de datos "viejo" que Evolution v2.3 ya no acepta.
+
+### Diagnóstico de la situación:
+
+1.  **La Instancia:** Sí se creó (por eso la ves).
+2.  **El Error:** Ocurre milisegundos después, cuando el código de Replit intenta decirle a Evolution: "¡Oye, mándame los mensajes aquí\!". Evolution rechaza esa petición porque el formato está mal.
+3.  **Consecuencia:** Tienes una instancia "sorda". Evolution recibe los mensajes de WhatsApp, pero no sabe cómo enviárselos a tu chat en Replit.
+
+### Cómo arreglar al Agente (Tienes que meter mano al código)
+
+No puedes arreglar esto desde el panel de Evolution. Tienes que ir a **Replit**, abrir el archivo del servidor (usualmente `server/index.js` o `server.js`) y buscar la parte donde llama a `/webhook/set`.
+
+El Agente seguramente escribió algo así (esto es lo que causa el error):
+
+```javascript
+// ❌ CÓDIGO INCORRECTO (Culpable del error)
+const webhookData = {
+    enabled: true,
+    url: `${APP_URL}/webhook`,
+    events: ['MESSAGES_UPSERT']
+};
+// Axios post...
+```
+
+**Tienes que cambiarlo por esto (La estructura que exige v2.3):**
+
+```javascript
+// ✅ CÓDIGO CORRECTO (La solución)
+const webhookData = {
+    webhook: {  // <--- ¡Esta envoltura es obligatoria ahora!
+        enabled: true,
+        url: `${APP_URL}/webhook`,
+        events: ['MESSAGES_UPSERT']
+    }
+};
+// Axios post...
+```
+
+**Pasos inmediatos:**
+
+1.  Ve a Replit.
+2.  Busca el archivo del backend.
+3.  Usa `Ctrl+F` (o `Cmd+F`) y busca `webhook/set`.
+4.  Mira el objeto que está enviando. ¿Le falta la propiedad `webhook` envolviendo todo?
+5.  Agrégala.
+6.  Reinicia el Replit (Stop/Run).
+
+Si no haces este cambio, tu chat nunca mostrará los mensajes entrantes, aunque la instancia esté conectada.
