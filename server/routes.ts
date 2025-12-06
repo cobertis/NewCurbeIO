@@ -26848,6 +26848,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // GET /api/whatsapp/instance - Get company's WhatsApp instance
   app.get("/api/whatsapp/instance", requireActiveCompany, async (req: Request, res: Response) => {
+    // Disable caching to ensure fresh data
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     try {
       const user = req.user!;
       if (!user.companyId) {

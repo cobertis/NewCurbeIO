@@ -123,7 +123,9 @@ class EvolutionApiService {
 
   async fetchChats(instanceName: string): Promise<any[]> {
     console.log(`[Evolution API] Fetching chats for: ${instanceName}`);
-    return this.request("GET", `/chat/findChats/${instanceName}`);
+    return this.request("POST", `/chat/findChats/${instanceName}`, {
+      where: {},
+    });
   }
 
   async fetchMessages(instanceName: string, remoteJid: string, limit: number = 50): Promise<EvolutionMessage[]> {
