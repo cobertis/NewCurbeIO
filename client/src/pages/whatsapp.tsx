@@ -158,6 +158,13 @@ export default function WhatsAppPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto-connect when page loads if not connected and no QR code
+  useEffect(() => {
+    if (!loadingInstance && !instanceData?.connected && !instanceData?.instance?.qrCode && !connectMutation.isPending) {
+      connectMutation.mutate();
+    }
+  }, [loadingInstance, instanceData?.connected, instanceData?.instance?.qrCode]);
+
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
     sendMessageMutation.mutate({ number: selectedChat, text: messageText });
@@ -175,124 +182,79 @@ export default function WhatsAppPage() {
   const instance = instanceData?.instance;
   const isConnected = instanceData?.connected;
 
-  if (!isConnected) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-gradient-to-b from-[#00a884] to-[#008069] dark:from-[#1f2c33] dark:to-[#111b21]">
-        <Card className="p-8 max-w-md w-full mx-4 text-center space-y-6 bg-white dark:bg-[#222e35]">
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-full bg-[#25D366] flex items-center justify-center">
-              <MessageCircle className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">WhatsApp Web</h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Connect your WhatsApp to start messaging
-          </p>
-
-          {instance?.qrCode ? (
-            <div className="space-y-4">
-              <div className="bg-white p-4 rounded-lg inline-block">
-                <img 
-                  src={instance.qrCode.startsWith('data:') ? instance.qrCode : `data:image/png;base64,${instance.qrCode}`} 
-                  alt="QR Code" 
-                  className="w-64 h-64"
-                  data-testid="whatsapp-qr-code"
-                />
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                1. Open WhatsApp on your phone<br />
-                2. Go to Settings → Linked Devices<br />
-                3. Tap "Link a Device" and scan this code
-              </p>
-              <Button 
-                variant="outline" 
-                onClick={() => refetchInstance()}
-                className="gap-2"
-                data-testid="button-refresh-qr"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Refresh QR
-              </Button>
-            </div>
-          ) : (
-            <Button 
-              onClick={() => connectMutation.mutate()}
-              disabled={connectMutation.isPending}
-              className="bg-[#25D366] hover:bg-[#128C7E] text-white gap-2"
-              data-testid="button-connect-whatsapp"
-            >
-              {connectMutation.isPending ? (
-                <LoadingSpinner fullScreen={false} />
-              ) : (
-                <QrCode className="w-4 h-4" />
-              )}
-              Connect WhatsApp
-            </Button>
-          )}
-
-          {instance?.status === "connecting" && (
-            <div className="flex items-center justify-center gap-2 text-amber-500">
-              <Wifi className="w-4 h-4 animate-pulse" />
-              <span>Connecting...</span>
-            </div>
-          )}
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-[#f0f2f5] dark:bg-[#0b141a]">
+    <div className="flex h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900">
       <div className={cn(
-        "w-full md:w-[400px] border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111b21] flex flex-col",
+        "w-full md:w-[400px] border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-col",
         selectedChat && "hidden md:flex"
       )}>
-        <div className="p-3 bg-[#f0f2f5] dark:bg-[#202c33] flex items-center justify-between">
+        <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-[#25D366] text-white">
+              <AvatarFallback className="bg-primary text-primary-foreground">
                 {instance?.profileName?.[0] || "W"}
               </AvatarFallback>
             </Avatar>
             <div>
               <p className="text-sm font-medium dark:text-white">{instance?.profileName || "WhatsApp"}</p>
-              <div className="flex items-center gap-1 text-xs text-green-600">
-                <Wifi className="w-3 h-3" />
-                Connected
-              </div>
+              {isConnected ? (
+                <div className="flex items-center gap-1 text-xs text-green-600">
+                  <Wifi className="w-3 h-3" />
+                  Connected
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-xs text-amber-500">
+                  <WifiOff className="w-3 h-3" />
+                  Disconnected
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => syncChatsMutation.mutate()}
-              disabled={syncChatsMutation.isPending}
-              data-testid="button-sync-chats"
-            >
-              <RefreshCw className={cn("w-5 h-5", syncChatsMutation.isPending && "animate-spin")} />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => disconnectMutation.mutate()}
-              disabled={disconnectMutation.isPending}
-              data-testid="button-disconnect"
-            >
-              <WifiOff className="w-5 h-5 text-red-500" />
-            </Button>
+            {isConnected && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => syncChatsMutation.mutate()}
+                  disabled={syncChatsMutation.isPending}
+                  data-testid="button-sync-chats"
+                >
+                  <RefreshCw className={cn("w-5 h-5", syncChatsMutation.isPending && "animate-spin")} />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => disconnectMutation.mutate()}
+                  disabled={disconnectMutation.isPending}
+                  data-testid="button-disconnect"
+                >
+                  <WifiOff className="w-5 h-5 text-red-500" />
+                </Button>
+              </>
+            )}
+            {!isConnected && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => connectMutation.mutate()}
+                disabled={connectMutation.isPending}
+                data-testid="button-reconnect"
+              >
+                <RefreshCw className={cn("w-5 h-5", connectMutation.isPending && "animate-spin")} />
+              </Button>
+            )}
           </div>
         </div>
 
-        <div className="p-2 bg-white dark:bg-[#111b21]">
+        <div className="p-2 bg-white dark:bg-gray-950">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               placeholder="Search or start new chat"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-[#f0f2f5] dark:bg-[#202c33] border-0"
+              className="pl-10 bg-gray-100 dark:bg-gray-800 border-0"
               data-testid="input-search-chats"
             />
           </div>
@@ -341,8 +303,8 @@ export default function WhatsAppPage() {
                 key={chat.id}
                 onClick={() => setSelectedChat(chat.remoteJid)}
                 className={cn(
-                  "flex items-center gap-3 p-3 cursor-pointer hover:bg-[#f0f2f5] dark:hover:bg-[#202c33] border-b border-gray-100 dark:border-gray-800",
-                  selectedChat === chat.remoteJid && "bg-[#f0f2f5] dark:bg-[#2a3942]"
+                  "flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800",
+                  selectedChat === chat.remoteJid && "bg-gray-100 dark:bg-gray-800"
                 )}
                 data-testid={`chat-item-${chat.id}`}
               >
@@ -365,7 +327,7 @@ export default function WhatsAppPage() {
                       {chat.lastMessagePreview || "No messages"}
                     </p>
                     {chat.unreadCount > 0 && (
-                      <Badge className="bg-[#25D366] text-white rounded-full h-5 min-w-[20px] flex items-center justify-center">
+                      <Badge className="bg-primary text-primary-foreground rounded-full h-5 min-w-[20px] flex items-center justify-center">
                         {chat.unreadCount}
                       </Badge>
                     )}
@@ -383,7 +345,7 @@ export default function WhatsAppPage() {
       )}>
         {selectedChat ? (
           <>
-            <div className="p-3 bg-[#f0f2f5] dark:bg-[#202c33] flex items-center gap-3 border-b dark:border-gray-800">
+            <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center gap-3 border-b dark:border-gray-800">
               <Button
                 variant="ghost"
                 size="icon"
@@ -416,11 +378,7 @@ export default function WhatsAppPage() {
             </div>
 
             <ScrollArea 
-              className="flex-1 p-4"
-              style={{ 
-                backgroundColor: "#efeae2",
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cg fill='%23d6d0c6' fill-opacity='0.4'%3E%3Cpath d='M20 40c0 8-8 8-8 16s8 8 8 16-8 8-8 16 8 8 8 16'/%3E%3C/g%3E%3C/svg%3E")` 
-              }}
+              className="flex-1 p-4 bg-gray-50 dark:bg-gray-900"
             >
               <div className="dark:opacity-80">
                 {loadingMessages ? (
@@ -448,8 +406,8 @@ export default function WhatsAppPage() {
                           className={cn(
                             "max-w-[65%] rounded-lg px-3 py-2 shadow-sm",
                             msg.fromMe
-                              ? "bg-[#d9fdd3] dark:bg-[#005c4b]"
-                              : "bg-white dark:bg-[#202c33]"
+                              ? "bg-primary/10 dark:bg-primary/20"
+                              : "bg-white dark:bg-gray-800"
                           )}
                         >
                           <p className="text-sm dark:text-white break-words">
@@ -478,7 +436,7 @@ export default function WhatsAppPage() {
               </div>
             </ScrollArea>
 
-            <div className="p-3 bg-[#f0f2f5] dark:bg-[#202c33] flex items-center gap-2">
+            <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center gap-2">
               <Button variant="ghost" size="icon">
                 <Smile className="w-6 h-6 text-gray-500" />
               </Button>
@@ -490,7 +448,7 @@ export default function WhatsAppPage() {
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                className="flex-1 bg-white dark:bg-[#2a3942] border-0 rounded-lg"
+                className="flex-1 bg-white dark:bg-gray-800 border-0 rounded-lg"
                 data-testid="input-message"
               />
               {messageText.trim() ? (
@@ -498,10 +456,9 @@ export default function WhatsAppPage() {
                   size="icon"
                   onClick={handleSend}
                   disabled={sendMessageMutation.isPending}
-                  className="bg-[#25D366] hover:bg-[#128C7E]"
                   data-testid="button-send-message"
                 >
-                  <Send className="w-5 h-5 text-white" />
+                  <Send className="w-5 h-5" />
                 </Button>
               ) : (
                 <Button variant="ghost" size="icon">
@@ -511,16 +468,66 @@ export default function WhatsAppPage() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] dark:bg-[#222e35]">
-            <div className="text-center space-y-4">
-              <div className="w-20 h-20 rounded-full bg-[#25D366]/10 flex items-center justify-center mx-auto">
-                <MessageCircle className="w-10 h-10 text-[#25D366]" />
+          <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
+            {!isConnected ? (
+              <div className="text-center space-y-6 p-8">
+                {instance?.qrCode ? (
+                  <>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg inline-block shadow-lg">
+                      <img 
+                        src={instance.qrCode.startsWith('data:') ? instance.qrCode : `data:image/png;base64,${instance.qrCode}`} 
+                        alt="QR Code" 
+                        className="w-64 h-64"
+                        data-testid="whatsapp-qr-code"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300">Scan to Connect</h2>
+                      <p className="text-sm text-gray-500 max-w-sm">
+                        1. Open WhatsApp on your phone<br />
+                        2. Go to Settings &rarr; Linked Devices<br />
+                        3. Tap "Link a Device" and scan this code
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => refetchInstance()}
+                      className="gap-2"
+                      data-testid="button-refresh-qr"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Refresh QR
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                      {connectMutation.isPending ? (
+                        <LoadingSpinner fullScreen={false} />
+                      ) : (
+                        <QrCode className="w-10 h-10 text-primary" />
+                      )}
+                    </div>
+                    <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300">
+                      {connectMutation.isPending ? "Generating QR Code..." : "Connecting..."}
+                    </h2>
+                    <p className="text-gray-500 max-w-sm">
+                      Please wait while we connect to WhatsApp
+                    </p>
+                  </>
+                )}
               </div>
-              <h2 className="text-2xl font-light text-gray-700 dark:text-gray-300">WhatsApp Web</h2>
-              <p className="text-gray-500 max-w-sm">
-                Select a chat from the list or enter a phone number to start a new conversation
-              </p>
-            </div>
+            ) : (
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <MessageCircle className="w-10 h-10 text-primary" />
+                </div>
+                <h2 className="text-2xl font-light text-gray-700 dark:text-gray-300">WhatsApp</h2>
+                <p className="text-gray-500 max-w-sm">
+                  Select a chat from the list or enter a phone number to start a new conversation
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
