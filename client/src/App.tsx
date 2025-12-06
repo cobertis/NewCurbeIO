@@ -132,12 +132,37 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/notifications"],
   });
 
-  // WhatsApp unread count query
+  // WhatsApp unread count query - no polling, updated via WebSocket
   const { data: whatsappUnread } = useQuery<{ total: number }>({
     queryKey: ['/api/whatsapp/unread-count'],
-    refetchInterval: 5000,
     enabled: !!user,
   });
+
+  // Listen for WhatsApp unread count updates via WebSocket
+  useEffect(() => {
+    if (!user) return;
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        // Update unread count when new WhatsApp message arrives
+        if (data.type === 'whatsapp:message' || data.type === 'whatsapp:chat_update') {
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/unread-count'] });
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    };
+    
+    return () => {
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
+    };
+  }, [user]);
 
   // Fetch company data for all users with a companyId
   const { data: companyData, isLoading: isLoadingCompany, isFetched: isCompanyFetched } = useQuery<{ company: any }>({
