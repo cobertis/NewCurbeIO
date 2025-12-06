@@ -23667,7 +23667,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             fromMe,
             senderJid: fromMe ? null : remoteJid,
             messageType,
-            content: messageText || mediaUrl || messageType,
+            content: messageText || `[${messageType}]`,
             mediaUrl,
             status: fromMe ? "sent" : "received",
             timestamp,
