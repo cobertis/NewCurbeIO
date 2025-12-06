@@ -908,3 +908,33 @@ export function broadcastWhatsAppQrCode(companyId: string, qrCode?: string) {
     data: { qrCode }
   });
 }
+
+export function broadcastWhatsAppTyping(companyId: string, remoteJid: string, isTyping: boolean): void {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'whatsapp_typing',
+    remoteJid,
+    isTyping,
+    companyId
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast whatsapp_typing to ${sentCount} client(s) for company ${companyId}`);
+}

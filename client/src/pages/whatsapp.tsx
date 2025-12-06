@@ -545,6 +545,7 @@ export default function WhatsAppPage() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [typingJid, setTypingJid] = useState<string | null>(null);
   const [pendingAttachment, setPendingAttachment] = useState<{
     file: File;
     preview: string;
@@ -557,6 +558,7 @@ export default function WhatsAppPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectAttemptedRef = useRef(false);
   const previousUnreadRef = useRef<number>(0);
+  const lastTypingSentRef = useRef<number>(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -604,6 +606,22 @@ export default function WhatsAppPage() {
   }>({
     queryKey: ["/api/whatsapp/instance"],
   });
+
+  const sendTypingIndicator = useCallback(() => {
+    if (!selectedChat || !instanceData?.connected) return;
+    
+    const now = Date.now();
+    // Only send typing every 3 seconds to avoid spam
+    if (now - lastTypingSentRef.current < 3000) return;
+    lastTypingSentRef.current = now;
+    
+    fetch('/api/whatsapp/send-typing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ remoteJid: selectedChat }),
+    }).catch(() => {});
+  }, [selectedChat, instanceData?.connected]);
 
   const { data: chats = [], isLoading: loadingChats } = useQuery<WhatsappConversation[]>({
     queryKey: ["/api/whatsapp/chats"],
@@ -842,6 +860,16 @@ export default function WhatsAppPage() {
           }
           if (data.type === 'whatsapp:connection' || data.type === 'whatsapp:qr_code') {
             queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/instance'] });
+          }
+        }
+        // Handle typing indicator
+        if (data.type === 'whatsapp_typing') {
+          if (data.isTyping) {
+            setTypingJid(data.remoteJid);
+            // Clear typing indicator after 5 seconds
+            setTimeout(() => setTypingJid(null), 5000);
+          } else {
+            setTypingJid(null);
           }
         }
       } catch (e) {
@@ -1297,7 +1325,13 @@ export default function WhatsAppPage() {
               />
               <div className="flex-1">
                 <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat, chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessPhone, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessName)}</p>
-                <p className="text-xs text-gray-500">Online</p>
+                <p className="text-xs text-gray-500">
+                  {typingJid === selectedChat ? (
+                    <span className="text-green-500 animate-pulse">typing...</span>
+                  ) : (
+                    "Online"
+                  )}
+                </p>
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon">
@@ -1547,7 +1581,10 @@ export default function WhatsAppPage() {
                     <Input
                       placeholder="Type a message"
                       value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
+                      onChange={(e) => {
+                        setMessageText(e.target.value);
+                        sendTypingIndicator();
+                      }}
                       onKeyPress={(e) => e.key === "Enter" && handleSend()}
                       className="w-full bg-white dark:bg-gray-800 border-0 rounded-lg pr-10"
                       data-testid="input-message"

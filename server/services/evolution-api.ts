@@ -453,6 +453,19 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       console.error(`[Evolution API] Failed to mark messages as read:`, error.message);
     }
   }
+
+  async sendTyping(instanceName: string, remoteJid: string): Promise<void> {
+    try {
+      await this.request("POST", `/chat/sendPresence/${instanceName}`, {
+        number: remoteJid.replace('@s.whatsapp.net', '').replace('@lid', ''),
+        options: {
+          delay: 3000,
+          presence: "composing"
+        }
+      });
+    } catch (error: any) {
+    }
+  }
 }
 
 export const evolutionApi = new EvolutionApiService();
