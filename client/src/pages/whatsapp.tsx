@@ -369,6 +369,57 @@ export default function WhatsAppPage() {
     }
   }, [instanceData?.connected, loadingChats, chats.length]);
 
+  // Sync messages every 3 seconds when a chat is selected
+  useEffect(() => {
+    if (!selectedChat || !instanceData?.connected) return;
+    
+    const syncMessages = async () => {
+      try {
+        const res = await fetch(`/api/whatsapp/sync-messages/${encodeURIComponent(selectedChat)}`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await res.json();
+        if (data.synced > 0) {
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+        }
+      } catch (error) {
+        console.log('Sync error:', error);
+      }
+    };
+    
+    syncMessages();
+    const interval = setInterval(syncMessages, 3000);
+    return () => clearInterval(interval);
+  }, [selectedChat, instanceData?.connected, queryClient]);
+
+  // Global sync - sync all messages every 10 seconds when connected
+  useEffect(() => {
+    if (!instanceData?.connected) return;
+    
+    const syncAllMessages = async () => {
+      try {
+        const res = await fetch('/api/whatsapp/sync-all-messages', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        const data = await res.json();
+        if (data.synced > 0) {
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+          if (selectedChat) {
+            queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
+          }
+        }
+      } catch (error) {
+        console.log('Global sync error:', error);
+      }
+    };
+    
+    const interval = setInterval(syncAllMessages, 10000);
+    return () => clearInterval(interval);
+  }, [instanceData?.connected, selectedChat, queryClient]);
+
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
     sendMessageMutation.mutate({ number: selectedChat, text: messageText });

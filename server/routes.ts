@@ -27855,6 +27855,194 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/whatsapp/sync-messages/:remoteJid - Sync messages for a specific chat from Evolution API
+  app.post("/api/whatsapp/sync-messages/:remoteJid", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { remoteJid } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance || instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+
+      // Fetch latest messages from Evolution API
+      const apiMessages = await evolutionApi.fetchMessages(instance.instanceName, remoteJid, 20);
+      
+      let newCount = 0;
+      for (const msg of apiMessages) {
+        const messageId = msg.key?.id;
+        if (!messageId) continue;
+
+        // Check if message already exists
+        const existing = await db.query.whatsappMessages.findFirst({
+          where: and(
+            eq(whatsappMessages.instanceId, instance.id),
+            eq(whatsappMessages.messageId, messageId)
+          ),
+        });
+
+        if (!existing) {
+          // Get or check conversation exists
+          const conversation = await db.query.whatsappConversations.findFirst({
+            where: and(
+              eq(whatsappConversations.instanceId, instance.id),
+              eq(whatsappConversations.remoteJid, remoteJid)
+            ),
+          });
+
+          if (!conversation) continue; // Skip if no conversation exists
+
+          // Extract message details
+          const messageText = evolutionApi.extractMessageText(msg);
+          const messageType = evolutionApi.extractMessageType(msg);
+          const fromMe = msg.key?.fromMe || false;
+          const timestamp = new Date(msg.messageTimestamp * 1000);
+
+          // Insert new message
+          await db.insert(whatsappMessages).values({
+            conversationId: conversation.id,
+            instanceId: instance.id,
+            companyId: user.companyId,
+            messageId,
+            remoteJid,
+            fromMe,
+            content: messageText,
+            messageType,
+            status: fromMe ? "sent" : "received",
+            timestamp,
+          });
+
+          // Update conversation if this is the newest message
+          const conversationLastMessageAt = conversation.lastMessageAt ? new Date(conversation.lastMessageAt) : null;
+          if (!conversationLastMessageAt || timestamp > conversationLastMessageAt) {
+            await db.update(whatsappConversations)
+              .set({
+                lastMessagePreview: messageText?.substring(0, 100) || messageType,
+                lastMessageAt: timestamp,
+                unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
+                updatedAt: new Date(),
+              })
+              .where(eq(whatsappConversations.id, conversation.id));
+          }
+
+          newCount++;
+        }
+      }
+
+      res.json({ synced: newCount });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error syncing messages:", error);
+      res.status(500).json({ message: "Failed to sync messages" });
+    }
+  });
+
+  // POST /api/whatsapp/sync-all-messages - Sync messages for all active conversations
+  app.post("/api/whatsapp/sync-all-messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance || instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+
+      // Get active conversations (limit to most recent 10 for efficiency)
+      const conversations = await db.query.whatsappConversations.findMany({
+        where: eq(whatsappConversations.instanceId, instance.id),
+        orderBy: [desc(whatsappConversations.lastMessageAt)],
+        limit: 10,
+      });
+
+      let totalSynced = 0;
+      const chatUpdates: { remoteJid: string; newMessages: number }[] = [];
+
+      for (const conversation of conversations) {
+        try {
+          // Fetch latest messages from Evolution API
+          const apiMessages = await evolutionApi.fetchMessages(instance.instanceName, conversation.remoteJid, 10);
+          
+          let newCount = 0;
+          for (const msg of apiMessages) {
+            const messageId = msg.key?.id;
+            if (!messageId) continue;
+
+            // Check if message already exists
+            const existing = await db.query.whatsappMessages.findFirst({
+              where: and(
+                eq(whatsappMessages.instanceId, instance.id),
+                eq(whatsappMessages.messageId, messageId)
+              ),
+            });
+
+            if (!existing) {
+              // Extract message details
+              const messageText = evolutionApi.extractMessageText(msg);
+              const messageType = evolutionApi.extractMessageType(msg);
+              const fromMe = msg.key?.fromMe || false;
+              const timestamp = new Date(msg.messageTimestamp * 1000);
+
+              // Insert new message
+              await db.insert(whatsappMessages).values({
+                conversationId: conversation.id,
+                instanceId: instance.id,
+                companyId: user.companyId,
+                messageId,
+                remoteJid: conversation.remoteJid,
+                fromMe,
+                content: messageText,
+                messageType,
+                status: fromMe ? "sent" : "received",
+                timestamp,
+              });
+
+              // Update conversation if this is the newest message
+              const conversationLastMessageAt = conversation.lastMessageAt ? new Date(conversation.lastMessageAt) : null;
+              if (!conversationLastMessageAt || timestamp > conversationLastMessageAt) {
+                await db.update(whatsappConversations)
+                  .set({
+                    lastMessagePreview: messageText?.substring(0, 100) || messageType,
+                    lastMessageAt: timestamp,
+                    unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(whatsappConversations.id, conversation.id));
+              }
+
+              newCount++;
+            }
+          }
+
+          if (newCount > 0) {
+            chatUpdates.push({ remoteJid: conversation.remoteJid, newMessages: newCount });
+            totalSynced += newCount;
+          }
+        } catch (chatError) {
+          console.error(`[WhatsApp] Error syncing messages for ${conversation.remoteJid}:`, chatError);
+        }
+      }
+
+      res.json({ synced: totalSynced, chatUpdates });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error syncing all messages:", error);
+      res.status(500).json({ message: "Failed to sync messages" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Setup WebSocket for real-time chat updates with session validation
