@@ -165,6 +165,13 @@ export default function WhatsAppPage() {
     }
   }, [loadingInstance, instanceData?.connected, instanceData?.instance?.qrCode]);
 
+  // Auto-sync chats when connected and no chats loaded
+  useEffect(() => {
+    if (instanceData?.connected && !loadingChats && chats.length === 0 && !syncChatsMutation.isPending) {
+      syncChatsMutation.mutate();
+    }
+  }, [instanceData?.connected, loadingChats, chats.length]);
+
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
     sendMessageMutation.mutate({ number: selectedChat, text: messageText });

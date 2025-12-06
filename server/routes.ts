@@ -27295,9 +27295,40 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log(`[WhatsApp Webhook] Auto-syncing chats for ${companySlug}`);
               const chats = await evolutionApi.fetchChats(instance.instanceName);
               let synced = 0;
+              let updated = 0;
               for (const chat of chats) {
-                const remoteJid = chat.id || chat.remoteJid;
+                // Evolution API returns remoteJid inside lastMessage.key, not at root level
+                const remoteJid = chat.lastMessage?.key?.remoteJid || chat.id || chat.remoteJid;
                 if (!remoteJid || remoteJid.includes("@g.us") || remoteJid.includes("@broadcast")) continue;
+                
+                // Extract timestamp from lastMessage (Evolution API uses seconds, convert to ms)
+                const messageTimestamp = chat.lastMessage?.messageTimestamp;
+                const lastMessageAt = messageTimestamp ? new Date(messageTimestamp * 1000) : new Date();
+                
+                // Extract message preview from various message types
+                const msg = chat.lastMessage?.message;
+                let lastMessagePreview: string | null = null;
+                if (msg) {
+                  if (msg.conversation) {
+                    lastMessagePreview = msg.conversation;
+                  } else if (msg.extendedTextMessage?.text) {
+                    lastMessagePreview = msg.extendedTextMessage.text;
+                  } else if (msg.imageMessage) {
+                    lastMessagePreview = msg.imageMessage.caption || "📷 Image";
+                  } else if (msg.videoMessage) {
+                    lastMessagePreview = msg.videoMessage.caption || "🎥 Video";
+                  } else if (msg.audioMessage) {
+                    lastMessagePreview = "🎵 Audio";
+                  } else if (msg.documentMessage) {
+                    lastMessagePreview = `📄 ${msg.documentMessage.fileName || "Document"}`;
+                  } else if (msg.stickerMessage) {
+                    lastMessagePreview = "🎨 Sticker";
+                  } else if (msg.contactMessage) {
+                    lastMessagePreview = `👤 ${msg.contactMessage.displayName || "Contact"}`;
+                  } else if (msg.locationMessage) {
+                    lastMessagePreview = "📍 Location";
+                  }
+                }
                 
                 const existing = await db.query.whatsappConversations.findFirst({
                   where: and(
@@ -27313,12 +27344,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                     unreadCount: chat.unreadCount || 0,
                     isPinned: chat.pinned || false,
                     isArchived: chat.archived || false,
-                    lastMessageAt: chat.lastMsgTimestamp ? new Date(chat.lastMsgTimestamp * 1000) : new Date(),
+                    lastMessageAt,
+                    lastMessagePreview,
                   });
                   synced++;
+                } else {
+                  // Update existing conversation with latest message info
+                  await db.update(whatsappConversations)
+                    .set({
+                      unreadCount: chat.unreadCount || 0,
+                      lastMessageAt: lastMessageAt || existing.lastMessageAt,
+                      lastMessagePreview: lastMessagePreview || existing.lastMessagePreview,
+                    })
+                    .where(eq(whatsappConversations.id, existing.id));
+                  updated++;
                 }
               }
-              console.log(`[WhatsApp Webhook] Auto-synced ${synced} chats for ${companySlug}`);
+              console.log(`[WhatsApp Webhook] Auto-synced ${synced} new, ${updated} updated chats for ${companySlug}`);
             } catch (syncError) {
               console.error(`[WhatsApp Webhook] Failed to auto-sync chats:`, syncError);
             }
@@ -27444,9 +27486,43 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const chats = await evolutionApi.fetchChats(instance.instanceName);
       
       let synced = 0;
+      let updated = 0;
       for (const chat of chats) {
-        const remoteJid = chat.id || chat.remoteJid;
+        // Evolution API returns remoteJid inside lastMessage.key, not at root level
+        const remoteJid = chat.lastMessage?.key?.remoteJid || chat.id || chat.remoteJid;
         if (!remoteJid) continue;
+        
+        // Skip group chats and broadcast lists
+        if (remoteJid.includes("@g.us") || remoteJid.includes("@broadcast")) continue;
+
+        // Extract timestamp from lastMessage (Evolution API uses seconds, convert to ms)
+        const messageTimestamp = chat.lastMessage?.messageTimestamp;
+        const lastMessageAt = messageTimestamp ? new Date(messageTimestamp * 1000) : null;
+        
+        // Extract message preview from various message types
+        const msg = chat.lastMessage?.message;
+        let lastMessagePreview: string | null = null;
+        if (msg) {
+          if (msg.conversation) {
+            lastMessagePreview = msg.conversation;
+          } else if (msg.extendedTextMessage?.text) {
+            lastMessagePreview = msg.extendedTextMessage.text;
+          } else if (msg.imageMessage) {
+            lastMessagePreview = msg.imageMessage.caption || "📷 Image";
+          } else if (msg.videoMessage) {
+            lastMessagePreview = msg.videoMessage.caption || "🎥 Video";
+          } else if (msg.audioMessage) {
+            lastMessagePreview = "🎵 Audio";
+          } else if (msg.documentMessage) {
+            lastMessagePreview = `📄 ${msg.documentMessage.fileName || "Document"}`;
+          } else if (msg.stickerMessage) {
+            lastMessagePreview = "🎨 Sticker";
+          } else if (msg.contactMessage) {
+            lastMessagePreview = `👤 ${msg.contactMessage.displayName || "Contact"}`;
+          } else if (msg.locationMessage) {
+            lastMessagePreview = "📍 Location";
+          }
+        }
 
         // Check if conversation exists
         const existing = await db.query.whatsappConversations.findFirst({
@@ -27461,14 +27537,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             instanceId: instance.id,
             companyId: user.companyId,
             remoteJid,
-            lastMessageAt: chat.lastMsgTimestamp ? new Date(chat.lastMsgTimestamp * 1000) : null,
-            lastMessagePreview: chat.lastMessage?.conversation || null,
+            unreadCount: chat.unreadCount || 0,
+            lastMessageAt,
+            lastMessagePreview,
           });
           synced++;
+        } else {
+          // Update existing conversation with latest message info
+          await db.update(whatsappConversations)
+            .set({
+              unreadCount: chat.unreadCount || 0,
+              lastMessageAt: lastMessageAt || existing.lastMessageAt,
+              lastMessagePreview: lastMessagePreview || existing.lastMessagePreview,
+            })
+            .where(eq(whatsappConversations.id, existing.id));
+          updated++;
         }
       }
 
-      res.json({ success: true, synced, total: chats.length });
+      res.json({ success: true, synced, updated, total: chats.length });
     } catch (error: any) {
       console.error("[WhatsApp] Error syncing chats:", error);
       res.status(500).json({ message: "Failed to sync chats" });
