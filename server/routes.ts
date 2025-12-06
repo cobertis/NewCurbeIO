@@ -26912,10 +26912,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 ];
                 
                 const missingEvents = requiredEvents.filter(e => !currentEvents.includes(e));
-                const needsReconfigure = currentUrl !== expectedWebhookUrl || missingEvents.length > 0;
+                const webhookBase64Active = currentWebhook?.webhook?.webhookBase64 === true || currentWebhook?.webhookBase64 === true;
+                const needsReconfigure = currentUrl !== expectedWebhookUrl || missingEvents.length > 0 || !webhookBase64Active;
                 
                 if (needsReconfigure) {
-                  console.log(`[WhatsApp] Webhook needs reconfiguration. URL match: ${currentUrl === expectedWebhookUrl}, Missing events: ${missingEvents.length}`);
+                  console.log(`[WhatsApp] Webhook needs reconfiguration. URL match: ${currentUrl === expectedWebhookUrl}, Missing events: ${missingEvents.length}, Base64 active: ${webhookBase64Active}`);
                   await evolutionApi.setWebhook(instance.instanceName, expectedWebhookUrl);
                   console.log(`[WhatsApp] Webhook reconfigured with all ${requiredEvents.length} events`);
                 }
@@ -27223,7 +27224,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const result = await db
-        .select({ total: sql<number>`COALESCE(SUM(${whatsappConversations.unreadCount}), 0)` })
+        .select({ total: sql<number>`COUNT(*) FILTER (WHERE ${whatsappConversations.unreadCount} > 0)` })
         .from(whatsappConversations)
         .where(
           and(
