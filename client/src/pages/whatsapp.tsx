@@ -388,6 +388,7 @@ export default function WhatsAppPage() {
   const [messageText, setMessageText] = useState("");
   const [newChatNumber, setNewChatNumber] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const connectAttemptedRef = useRef(false);
   const previousUnreadRef = useRef<number>(0);
 
@@ -496,6 +497,44 @@ export default function WhatsAppPage() {
         queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], context.previousMessages);
       }
       toast({ title: "Send Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendMediaMutation = useMutation({
+    mutationFn: async ({ number, file }: { number: string; file: File }) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const base64 = (reader.result as string).split(',')[1];
+            const mediaType = file.type.startsWith('image/') ? 'image' 
+              : file.type.startsWith('video/') ? 'video'
+              : file.type.startsWith('audio/') ? 'audio'
+              : 'document';
+            
+            const res = await apiRequest("POST", "/api/whatsapp/send-media", {
+              number,
+              mediaType,
+              base64,
+              mimetype: file.type,
+              fileName: file.name,
+            });
+            resolve(res.json());
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
+      toast({ title: "File sent", description: "Your file has been sent" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Send Failed", description: error.message || "Failed to send file", variant: "destructive" });
     },
   });
 
@@ -620,6 +659,22 @@ export default function WhatsAppPage() {
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
     sendMessageMutation.mutate({ number: selectedChat, text: messageText });
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedChat) return;
+    
+    if (file.size > 16 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 16MB", variant: "destructive" });
+      return;
+    }
+    
+    sendMediaMutation.mutate({ number: selectedChat, file });
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const filteredChats = chats.filter((chat) =>
@@ -893,9 +948,29 @@ export default function WhatsAppPage() {
               <Button variant="ghost" size="icon">
                 <Smile className="w-6 h-6 text-gray-500" />
               </Button>
-              <Button variant="ghost" size="icon">
-                <Paperclip className="w-6 h-6 text-gray-500" />
-              </Button>
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                  data-testid="input-file-attachment"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sendMediaMutation.isPending}
+                  data-testid="button-attach-file"
+                >
+                  {sendMediaMutation.isPending ? (
+                    <LoadingSpinner fullScreen={false} />
+                  ) : (
+                    <Paperclip className="w-6 h-6 text-gray-500" />
+                  )}
+                </Button>
+              </>
               <Input
                 placeholder="Type a message"
                 value={messageText}
