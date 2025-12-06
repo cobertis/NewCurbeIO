@@ -143,9 +143,11 @@ function MediaMessage({
   const [showFullImage, setShowFullImage] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const downloadAttemptedRef = useRef(false);
 
-  const downloadMedia = async () => {
-    if (mediaUrl || loading) return;
+  const downloadMedia = useCallback(async () => {
+    if (mediaUrl || loading || downloadAttemptedRef.current) return;
+    downloadAttemptedRef.current = true;
     
     setLoading(true);
     setError(false);
@@ -176,7 +178,14 @@ function MediaMessage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [mediaUrl, loading, message.id, onMediaLoaded, remoteJid, queryClient, toast]);
+
+  useEffect(() => {
+    const mediaTypes = ["image", "video", "audio", "document"];
+    if (!mediaUrl && !loading && mediaTypes.includes(message.messageType)) {
+      downloadMedia();
+    }
+  }, [mediaUrl, loading, message.messageType, downloadMedia]);
 
   const renderMedia = () => {
     const mediaTypes = ["image", "video", "audio", "document"];

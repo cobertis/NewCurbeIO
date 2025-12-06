@@ -112,3 +112,4 @@ expertMode = true
 WHATSAPP_MEDIA_DIR = "/curbe-media/whatsapp-media"
 EVOLUTION_API_URL = "https://evolution.curbe.io"
 EVOLUTION_API_KEY = "429683C4C977415CAAFCCE10F7D57E11"
+PRIVATE_OBJECT_DIR = "/curbe-media"
