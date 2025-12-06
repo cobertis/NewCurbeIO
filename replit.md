@@ -56,7 +56,7 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Unsubscribe Token Enforcement:** Unsubscribe endpoint requires and validates security tokens.
 - **BulkVS Security:** User-scoped data isolation, `BULKVS_WEBHOOK_SECRET` validation, E.164 phone normalization, 5MB file upload limit.
 - **iMessage Security:** Webhook secret isolation, admin-only settings, feature gating, multi-tenant GUID scoping, and early-return guards for self-sent webhook duplicates.
-- **WhatsApp Integration:** Evolution API v2 integration with multi-tenant session isolation, QR code authentication, real-time webhooks (MESSAGES_UPSERT, CONNECTION_UPDATE, QRCODE_UPDATED), and company-scoped instances.
+- **WhatsApp Integration:** Evolution API v2 integration with multi-tenant session isolation, QR code authentication, real-time webhooks (MESSAGES_UPSERT, CONNECTION_UPDATE, QRCODE_UPDATED), company-scoped instances, and Business Profile hydration for @lid contacts (fetches real phone numbers with smart 5-minute retry logic until phone is captured).
 
 ## External Dependencies
 
