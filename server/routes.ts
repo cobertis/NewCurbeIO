@@ -27282,11 +27282,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[WhatsApp] No messages in DB for ${remoteJid}, fetching from Evolution API...`);
           const apiMessages = await evolutionApi.fetchMessages(instance.instanceName!, decodeURIComponent(remoteJid), 50);
           
-          if (apiMessages && apiMessages.length > 0) {
-            const company = await db.query.companies.findFirst({
-              where: eq(companies.id, user.companyId),
-            });
-            
+
+            // Use companyId from user directly
             for (const msg of apiMessages) {
               const key = msg.key;
               if (!key?.id) continue;
@@ -27309,7 +27306,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 await db.insert(whatsappMessages).values({
                   conversationId: conversation.id,
                   instanceId: instance.id,
-                  companyId: company!.id,
+                  companyId: user.companyId!,
                   messageId: key.id,
                   remoteJid: decodeURIComponent(remoteJid),
                   fromMe: key.fromMe || false,
@@ -27328,8 +27325,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               orderBy: [desc(whatsappMessages.timestamp)],
               limit: 100,
             });
-            console.log(`[WhatsApp] Fetched and saved ${messages.length} messages from Evolution API`);
-          }
         } catch (fetchError) {
           console.error("[WhatsApp] Error fetching messages from Evolution API:", fetchError);
         }
