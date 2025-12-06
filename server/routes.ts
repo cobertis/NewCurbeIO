@@ -27253,6 +27253,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             .where(eq(whatsappInstances.id, instance.id));
           
           console.log(`[WhatsApp Webhook] Connection state: ${state}`);
+          
+          // Auto-sync chats when connected
+          if (state === "open") {
+            try {
+              console.log(`[WhatsApp Webhook] Auto-syncing chats for ${companySlug}`);
+              const chats = await evolutionApi.fetchChats(instance.instanceName);
+              let synced = 0;
+              for (const chat of chats) {
+                const remoteJid = chat.id || chat.remoteJid;
+                if (!remoteJid || remoteJid.includes("@g.us") || remoteJid.includes("@broadcast")) continue;
+                
+                const existing = await db.query.whatsappConversations.findFirst({
+                  where: and(
+                    eq(whatsappConversations.instanceId, instance.id),
+                    eq(whatsappConversations.remoteJid, remoteJid)
+                  ),
+                });
+                
+                if (!existing) {
+                  await db.insert(whatsappConversations).values({
+                    instanceId: instance.id,
+                    remoteJid,
+                    unreadCount: chat.unreadCount || 0,
+                    isPinned: chat.pinned || false,
+                    isArchived: chat.archived || false,
+                    lastMessageAt: chat.lastMsgTimestamp ? new Date(chat.lastMsgTimestamp * 1000) : new Date(),
+                  });
+                  synced++;
+                }
+              }
+              console.log(`[WhatsApp Webhook] Auto-synced ${synced} chats for ${companySlug}`);
+            } catch (syncError) {
+              console.error(`[WhatsApp Webhook] Failed to auto-sync chats:`, syncError);
+            }
+          }
         }
       } else if (event === "MESSAGES_UPSERT") {
         const messages = payload.data || [];
