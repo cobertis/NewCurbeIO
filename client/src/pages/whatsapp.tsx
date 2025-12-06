@@ -57,12 +57,41 @@ interface WhatsappMessage {
   timestamp: string;
 }
 
-function formatJidToPhone(jid: string): string {
+function formatJidToPhone(jid: string, contactName?: string): string {
   if (!jid) return "";
-  const phone = jid.split("@")[0];
-  if (phone.length > 10) {
-    return `+${phone.substring(0, 2)} (${phone.substring(2, 5)}) ${phone.substring(5, 8)}-${phone.substring(8)}`;
+  
+  // If we have a contact name from WhatsApp, use it
+  if (contactName) return contactName;
+  
+  // Check if this is a WhatsApp Business ID (@lid) - not a real phone number
+  if (jid.includes("@lid") || jid.includes("@g.us")) {
+    return "WhatsApp Chat";
   }
+  
+  const phone = jid.split("@")[0];
+  
+  // Standard phone number formatting for different country codes
+  if (phone.length >= 10 && phone.length <= 15) {
+    // Try to format as international number
+    if (phone.length === 10) {
+      // US format without country code
+      return `(${phone.substring(0, 3)}) ${phone.substring(3, 6)}-${phone.substring(6)}`;
+    } else if (phone.length === 11 && phone.startsWith("1")) {
+      // US with country code
+      return `+1 (${phone.substring(1, 4)}) ${phone.substring(4, 7)}-${phone.substring(7)}`;
+    } else if (phone.length >= 12 && phone.length <= 15) {
+      // International format (most countries)
+      const countryCode = phone.substring(0, phone.length - 10);
+      const rest = phone.substring(phone.length - 10);
+      return `+${countryCode} (${rest.substring(0, 3)}) ${rest.substring(3, 6)}-${rest.substring(6)}`;
+    }
+  }
+  
+  // Fallback: just add + prefix if it looks like a number
+  if (/^\d+$/.test(phone)) {
+    return `+${phone}`;
+  }
+  
   return phone;
 }
 
@@ -419,7 +448,7 @@ export default function WhatsAppPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
                     <p className="font-medium truncate dark:text-white">
-                      {formatJidToPhone(chat.remoteJid)}
+                      {formatJidToPhone(chat.remoteJid, chat.contact?.pushName)}
                     </p>
                     <span className="text-xs text-gray-500 flex-shrink-0">
                       {chat.lastMessageAt && formatMessageTime(chat.lastMessageAt)}
@@ -464,7 +493,7 @@ export default function WhatsAppPage() {
                 className="h-10 w-10"
               />
               <div className="flex-1">
-                <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat)}</p>
+                <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat, chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName)}</p>
                 <p className="text-xs text-gray-500">Online</p>
               </div>
               <div className="flex gap-1">
