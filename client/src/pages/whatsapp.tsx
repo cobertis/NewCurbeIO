@@ -48,9 +48,39 @@ interface WhatsappConversation {
   unreadCount: number;
   lastMessageAt?: string;
   lastMessagePreview?: string;
+  lastMessageFromMe?: boolean;
   isPinned: boolean;
   isArchived: boolean;
   contact?: WhatsappContact;
+}
+
+function formatMessagePreview(preview: string | undefined, fromMe?: boolean): string {
+  if (!preview) return "No messages";
+  
+  const mediaTypes: Record<string, string> = {
+    "[image]": "📷 Imagen",
+    "image": "📷 Imagen",
+    "📷 Image": "📷 Imagen",
+    "[video]": "🎥 Video",
+    "video": "🎥 Video",
+    "🎥 Video": "🎥 Video",
+    "[audio]": "🎵 Audio",
+    "audio": "🎵 Audio",
+    "🎵 Audio": "🎵 Audio",
+    "[document]": "📄 Documento",
+    "document": "📄 Documento",
+    "[sticker]": "🎨 Sticker",
+    "sticker": "🎨 Sticker",
+    "🎨 Sticker": "🎨 Sticker",
+  };
+  
+  const formattedType = mediaTypes[preview.toLowerCase()] || mediaTypes[preview];
+  if (formattedType) {
+    const direction = fromMe === true ? " enviado" : fromMe === false ? " recibido" : "";
+    return formattedType + direction;
+  }
+  
+  return preview;
 }
 
 interface WhatsappMessage {
@@ -850,7 +880,7 @@ export default function WhatsAppPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-gray-500 truncate">
-                      {chat.lastMessagePreview || "No messages"}
+                      {formatMessagePreview(chat.lastMessagePreview, chat.lastMessageFromMe)}
                     </p>
                     {chat.unreadCount > 0 && (
                       <Badge className="bg-primary text-primary-foreground rounded-full h-5 min-w-[20px] flex items-center justify-center">

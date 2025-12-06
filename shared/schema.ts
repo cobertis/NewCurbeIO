@@ -4516,6 +4516,7 @@ export const whatsappConversations = pgTable("whatsapp_conversations", {
   unreadCount: integer("unread_count").notNull().default(0),
   lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
   lastMessagePreview: text("last_message_preview"),
+  lastMessageFromMe: boolean("last_message_from_me"),
   isPinned: boolean("is_pinned").notNull().default(false),
   isArchived: boolean("is_archived").notNull().default(false),
   isMuted: boolean("is_muted").notNull().default(false),

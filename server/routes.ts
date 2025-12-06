@@ -23195,6 +23195,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           remoteJid,
           lastMessageAt: new Date(),
           lastMessagePreview: text.substring(0, 100),
+          lastMessageFromMe: true,
         }).returning();
         conversation = newConvo;
       } else {
@@ -23202,6 +23203,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .set({ 
             lastMessageAt: new Date(),
             lastMessagePreview: text.substring(0, 100),
+            lastMessageFromMe: true,
             updatedAt: new Date(),
           })
           .where(eq(whatsappConversations.id, conversation.id));
@@ -23278,6 +23280,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           remoteJid,
           lastMessageAt: new Date(),
           lastMessagePreview: preview.substring(0, 100),
+          lastMessageFromMe: true,
         }).returning();
         conversation = newConvo;
       } else {
@@ -23285,6 +23288,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .set({ 
             lastMessageAt: new Date(),
             lastMessagePreview: preview.substring(0, 100),
+            lastMessageFromMe: true,
             updatedAt: new Date(),
           })
           .where(eq(whatsappConversations.id, conversation.id));
@@ -23440,6 +23444,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                     lastMessagePreview = "📍 Location";
                   }
                 }
+                const lastMessageFromMe = chat.lastMessage?.key?.fromMe || false;
                 const existing = await db.query.whatsappConversations.findFirst({
                   where: and(
                     eq(whatsappConversations.instanceId, instance.id),
@@ -23455,6 +23460,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                     isArchived: chat.archived || false,
                     lastMessageAt,
                     lastMessagePreview,
+                    lastMessageFromMe,
                   });
                   synced++;
                 } else {
@@ -23464,6 +23470,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                       unreadCount: chat.unreadCount || 0,
                       lastMessageAt: lastMessageAt || existing.lastMessageAt,
                       lastMessagePreview: lastMessagePreview || existing.lastMessagePreview,
+                      lastMessageFromMe,
                     })
                     .where(eq(whatsappConversations.id, existing.id));
                   updated++;
@@ -23604,6 +23611,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               remoteJid,
               lastMessageAt: timestamp,
               lastMessagePreview: messageText.substring(0, 100) || messageType,
+              lastMessageFromMe: fromMe,
               unreadCount: fromMe ? 0 : 1,
             }).returning();
             conversation = newConvo;
@@ -23614,6 +23622,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 .set({
                   lastMessageAt: timestamp,
                   lastMessagePreview: messageText.substring(0, 100) || messageType,
+                  lastMessageFromMe: fromMe,
                   unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
                   updatedAt: new Date(),
                 })
@@ -23725,6 +23734,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             lastMessagePreview = "📍 Location";
           }
         }
+        const lastMessageFromMe = chat.lastMessage?.key?.fromMe || false;
         // Check if conversation exists
         const existing = await db.query.whatsappConversations.findFirst({
           where: and(
@@ -23740,6 +23750,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             unreadCount: chat.unreadCount || 0,
             lastMessageAt,
             lastMessagePreview,
+            lastMessageFromMe,
           });
           synced++;
         } else {
@@ -23749,6 +23760,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               unreadCount: chat.unreadCount || 0,
               lastMessageAt: lastMessageAt || existing.lastMessageAt,
               lastMessagePreview: lastMessagePreview || existing.lastMessagePreview,
+              lastMessageFromMe,
             })
             .where(eq(whatsappConversations.id, existing.id));
           updated++;
@@ -23820,6 +23832,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await db.update(whatsappConversations)
               .set({
                 lastMessagePreview: messageText?.substring(0, 100) || messageType,
+                lastMessageFromMe: fromMe,
                 lastMessageAt: timestamp,
                 unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
                 updatedAt: new Date(),
@@ -23896,6 +23909,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 await db.update(whatsappConversations)
                   .set({
                     lastMessagePreview: messageText?.substring(0, 100) || messageType,
+                    lastMessageFromMe: fromMe,
                     lastMessageAt: timestamp,
                     unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
                     updatedAt: new Date(),
