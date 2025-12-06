@@ -189,12 +189,27 @@ export default function WhatsAppPage() {
   const instance = instanceData?.instance;
   const isConnected = instanceData?.connected;
 
-  // If disconnected, show full-screen QR code
+  // Show "Connecting..." screen when status is connecting (after QR scan)
+  const isConnecting = instance?.status === "connecting" && !instance?.qrCode;
+  
+  // If disconnected or connecting, show appropriate screen
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900 p-8">
         <div className="text-center space-y-6 max-w-md">
-          {instance?.qrCode ? (
+          {isConnecting ? (
+            <>
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <LoadingSpinner fullScreen={false} />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                Connecting to WhatsApp...
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400">
+                QR code scanned successfully. Establishing connection...
+              </p>
+            </>
+          ) : instance?.qrCode ? (
             <>
               <div className="bg-white dark:bg-gray-800 p-6 rounded-xl inline-block shadow-lg">
                 <img 
@@ -232,7 +247,7 @@ export default function WhatsAppPage() {
                 )}
               </div>
               <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                {connectMutation.isPending ? "Generating QR Code..." : "Connecting to WhatsApp..."}
+                {connectMutation.isPending ? "Generating QR Code..." : "Connect WhatsApp"}
               </h2>
               <p className="text-gray-500 dark:text-gray-400">
                 Please wait while we prepare the connection

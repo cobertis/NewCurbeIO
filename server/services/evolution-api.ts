@@ -12,8 +12,10 @@ interface EvolutionInstanceResponse {
 }
 
 interface EvolutionConnectionState {
-  instance: string;
-  state: "open" | "close" | "connecting";
+  instance: {
+    instanceName: string;
+    state: "open" | "close" | "connecting";
+  };
 }
 
 interface EvolutionMessage {

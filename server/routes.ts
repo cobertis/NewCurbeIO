@@ -26862,50 +26862,69 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ instance: null, connected: false });
       }
 
-      // Check connection state with Evolution API
+      // Use fetchInstances to get complete instance info
       try {
-        const state = await evolutionApi.getConnectionState(instance.instanceName);
-        const connected = state.state === "open";
+        const instances = await evolutionApi.getInstanceInfo(instance.instanceName);
+        const evolutionInstance = Array.isArray(instances) ? instances[0] : null;
         
-        // Update status in DB if changed
-        if (instance.status !== state.state) {
-          await db.update(whatsappInstances)
-            .set({ status: state.state, updatedAt: new Date() })
-            .where(eq(whatsappInstances.id, instance.id));
-        }
-
-        // If not connected, try to get the current QR code
-        let qrCode = instance.qrCode;
-        if (!connected && state.state !== "open") {
-          try {
-            const qrResult = await evolutionApi.fetchQrCode(instance.instanceName);
-            if (qrResult.base64) {
-              qrCode = qrResult.base64;
-              // Update DB with latest QR
-              await db.update(whatsappInstances)
-                .set({ qrCode: qrResult.base64, updatedAt: new Date() })
-                .where(eq(whatsappInstances.id, instance.id));
-            }
-          } catch (qrError) {
-            console.log("[WhatsApp] Could not fetch QR code:", qrError);
+        if (evolutionInstance) {
+          const connectionStatus = evolutionInstance.connectionStatus;
+          const connected = connectionStatus === "open";
+          const profileName = evolutionInstance.profileName || null;
+          const profilePicUrl = evolutionInstance.profilePicUrl || null;
+          
+          // Update DB with latest info
+          if (instance.status !== connectionStatus || instance.profileName !== profileName) {
+            await db.update(whatsappInstances)
+              .set({ 
+                status: connectionStatus, 
+                profileName,
+                qrCode: connected ? null : instance.qrCode,
+                lastConnectedAt: connected ? new Date() : instance.lastConnectedAt,
+                updatedAt: new Date() 
+              })
+              .where(eq(whatsappInstances.id, instance.id));
           }
-        }
 
+          // If not connected, try to get QR code
+          let qrCode = instance.qrCode;
+          if (!connected) {
+            try {
+              const qrResult = await evolutionApi.fetchQrCode(instance.instanceName);
+              if (qrResult.base64) {
+                qrCode = qrResult.base64;
+                await db.update(whatsappInstances)
+                  .set({ qrCode: qrResult.base64, status: "connecting", updatedAt: new Date() })
+                  .where(eq(whatsappInstances.id, instance.id));
+              }
+            } catch (qrError) {
+              console.log("[WhatsApp] Could not fetch QR code");
+            }
+          }
+
+          return res.json({ 
+            instance: { 
+              ...instance, 
+              status: connectionStatus, 
+              profileName,
+              profilePicUrl,
+              qrCode: connected ? null : qrCode 
+            },
+            connected 
+          });
+        }
+        
+        // Instance not found in Evolution API
         return res.json({ 
-          instance: { ...instance, status: state.state, qrCode },
-          connected 
+          instance: { ...instance, status: "disconnected" },
+          connected: false 
         });
       } catch (error: any) {
-        console.log("[WhatsApp] Error checking connection state:", error);
-        // If instance doesn't exist in Evolution API, clear local qrCode and mark as disconnected
-        if (error.message?.includes("404") || error.message?.includes("does not exist")) {
-          // Clear the qrCode since the instance needs to be recreated
-          await db.update(whatsappInstances)
-            .set({ qrCode: null, status: "disconnected", updatedAt: new Date() })
-            .where(eq(whatsappInstances.id, instance.id));
-          return res.json({ instance: { ...instance, qrCode: null, status: "disconnected" }, connected: false });
-        }
-        return res.json({ instance, connected: false });
+        console.log("[WhatsApp] Error fetching instance info:", error.message);
+        return res.json({ 
+          instance: { ...instance, status: "disconnected" },
+          connected: false 
+        });
       }
     } catch (error: any) {
       console.error("[WhatsApp] Error getting instance:", error);
@@ -26943,12 +26962,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         instance = newInstance;
       }
 
-      // Step 1: Check if instance exists in Evolution API and its state
+      // Step 1: Check if instance exists in Evolution API using fetchInstances
       let evolutionState: string | null = null;
+      let profileName: string | null = null;
       try {
-        const stateResult = await evolutionApi.getConnectionState(instanceName);
-        evolutionState = stateResult.state;
-        console.log(`[WhatsApp] Instance ${instanceName} exists with state: ${evolutionState}`);
+        const instances = await evolutionApi.getInstanceInfo(instanceName);
+        const evolutionInstance = Array.isArray(instances) ? instances[0] : null;
+        if (evolutionInstance) {
+          evolutionState = evolutionInstance.connectionStatus;
+          profileName = evolutionInstance.profileName || null;
+          console.log(`[WhatsApp] Instance ${instanceName} exists with state: ${evolutionState}`);
+        }
       } catch (stateError: any) {
         console.log(`[WhatsApp] Instance ${instanceName} not found in Evolution API`);
         evolutionState = null;

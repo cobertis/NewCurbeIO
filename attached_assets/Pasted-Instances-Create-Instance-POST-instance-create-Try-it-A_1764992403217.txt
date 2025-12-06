@@ -1,0 +1,211 @@
+Instances
+Create Instance
+POST
+/
+instance
+/
+create
+
+Try it
+Authorizations
+​
+apikey
+stringheaderrequired
+Your authorization key header
+
+Body
+application/json
+​
+instanceName
+stringrequired
+instance (Instance name)
+
+​
+integration
+enum<string>required
+WhatsApp engine
+
+Available options: WHATSAPP-BAILEYS, WHATSAPP-BUSINESS 
+​
+token
+string
+apikey (Enter or leave empty to create dynamically)
+
+​
+qrcode
+boolean
+Create QR Code automatically after creation
+
+​
+number
+string
+559999999999 (Instance owner number with Country Code)
+
+​
+rejectCall
+boolean
+Reject WhatsApp calls automatically
+
+​
+msgCall
+string
+Message to be sent when a call is rejected automatically
+
+​
+groupsIgnore
+boolean
+Ignore group messages
+
+​
+alwaysOnline
+boolean
+Keep WhatsApp always online
+
+​
+readMessages
+boolean
+Send read receipts to received messages
+
+​
+readStatus
+boolean
+Show sent messages read status
+
+​
+syncFullHistory
+boolean
+Syncronize full WhatsApp history with EvolutionAPI
+
+​
+proxyHost
+string
+proxy host
+
+​
+proxyPort
+string
+proxy port
+
+​
+proxyProtocol
+string
+proxy protocol
+
+​
+proxyUsername
+string
+proxy Username
+
+​
+proxyPassword
+string
+proxy password
+
+​
+webhook
+object
+Webhook URL
+
+Show child attributes
+
+​
+rabbitmq
+object
+Show child attributes
+
+​
+sqs
+object
+Enable SQS
+
+Show child attributes
+
+​
+chatwootAccountId
+integer
+Chatwoot account ID
+
+​
+chatwootToken
+string
+Chatwoot authentication token
+
+​
+chatwootUrl
+string
+Chatwoot server URL
+
+​
+chatwootSignMsg
+boolean
+Send message signature on Chatwoot
+
+​
+chatwootReopenConversation
+boolean
+Reopen conversation on Chatwoot
+
+​
+chatwootConversationPending
+boolean
+TODO
+
+​
+chatwootImportContacts
+boolean
+Import Chatwoot contacts
+
+​
+chatwootNameInbox
+string
+Name inbox chatwoot
+
+​
+chatwootMergeBrazilContacts
+boolean
+TODO
+
+​
+chatwootImportMessages
+boolean
+Import chatwoot messages
+
+​
+chatwootDaysLimitImportMessages
+integer
+Limit message import chatwoot
+
+​
+chatwootOrganization
+string
+Evolution Bot
+
+​
+chatwootLogo
+string
+https://evolution-api.com/files/evolution-api-favicon.png
+
+Response
+
+201
+
+application/json
+Created
+
+​
+instance
+object
+Show child attributes
+
+​
+hash
+object
+Show child attributes
+
+​
+settings
+object
+Show child attributes
+
+Get Information
+Fetch Instances

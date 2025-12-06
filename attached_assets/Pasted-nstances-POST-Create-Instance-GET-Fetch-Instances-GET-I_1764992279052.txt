@@ -1,0 +1,248 @@
+nstances
+POST
+Create Instance
+GET
+Fetch Instances
+GET
+Instance Connect
+PUT
+Restart Instance
+GET
+Connection State
+DEL
+Logout Instance
+DEL
+Delete Instance
+POST
+Set Presence
+Webhook
+POST
+Set Webhook
+GET
+Find Webhook
+Settings
+POST
+Set Settings
+GET
+Find Settings
+Send Message
+POST
+Send Plain Text
+POST
+Send Status
+POST
+Send Media
+POST
+Send WhatsApp Audio
+POST
+Send Sticker
+POST
+Send Location
+POST
+Send Contact
+POST
+Send Reaction
+POST
+Send Poll
+POST
+Send List
+POST
+Send Buttons
+Chat Controller
+POST
+Check is WhatsApp
+POST
+Mark Message As Read
+POST
+Mark Message As Unread
+POST
+Archive Chat
+DEL
+Delete Message for Everyone
+POST
+Update Message
+POST
+Send Presence
+POST
+Update Block Status
+POST
+Fetch Profile Picture URL
+POST
+Get Base64
+POST
+Find Contacts
+POST
+Find Messages
+POST
+Find Status Message
+POST
+Find Chats
+Profile Settings
+POST
+Fetch Business Profile
+POST
+Fetch Profile
+POST
+Update Profile Name
+POST
+Update Profile Status
+POST
+Update Profile Picture
+DEL
+Remove Profile Picture
+GET
+Fetch Privacy Settings
+POST
+Update Privacy Settings
+Group Controller
+POST
+Create Group
+POST
+Update Group Picture
+POST
+Update Group Subject
+POST
+Update Group Description
+GET
+Fetch Invite Code
+POST
+Revoke Invite Code
+POST
+Send Group Invite
+GET
+Find Group by Invite Code
+GET
+Find Group by JID
+GET
+Fetch All Groups
+GET
+Find Group Members
+POST
+Update Group Members
+POST
+Update Group Setting
+POST
+Toggle Ephemeral
+DEL
+Leave Group
+Typebot
+POST
+Create Typebot
+POST
+Start Typebot
+GET
+Find Typebot
+GET
+Fetch Typebot
+POST
+Update Typebot
+DEL
+Delete Typebot
+POST
+Change Session Status
+GET
+Fetch Session Typebot
+POST
+Settings Typebot
+GET
+Fetch Typebot Settings
+OpenAI
+POST
+Create OpenIA Bot
+GET
+Find OpenIA Bot
+GET
+Find OpenIA Bots
+PUT
+Update Bot
+DEL
+Delete OpenIA Bot
+GET
+Find OpenIA Creds
+POST
+Creds config OpenAI
+DEL
+Delete OpenIA Bot
+POST
+Settigns config OpenAI
+GET
+Find settings OpenAI
+POST
+Change status OpenAI
+GET
+Find sessions OpenAI
+Evolution Bot
+POST
+Create Evolution Bot
+GET
+Find Evolution Bots
+GET
+Fetch Evolution Bot
+PUT
+Update Evolution Bot
+DEL
+Delete Evolution Bot
+POST
+Set Settings Bot
+GET
+Find Settings Bot
+POST
+Change Evolution Bot status
+GET
+Fetch Evolution Bot Session
+Dify
+POST
+Create Dify Bot
+GET
+Find Dify Bots
+GET
+Find Dify Bot
+PUT
+Update Dify Bot
+POST
+Set Dify Settings
+GET
+Find Dify Settings
+POST
+Change Status Bot
+GET
+Find Status Bot
+Flowise
+POST
+Create Flowise Bot
+GET
+Find Flowise Bots
+GET
+Find Flowise Bot
+POST
+Update Flowise Bot
+DEL
+Delete Flowise Bot
+POST
+Set Settings Flowise Bots
+GET
+Find Flowise settings
+POST
+Change Status Session
+GET
+Find Sessions Flowise
+Chatwoot
+POST
+Set Chatwoot
+GET
+Find Chatwoot
+Websocket
+POST
+Set Websocket
+GET
+Find Websocket
+SQS
+POST
+Set SQS
+GET
+Find SQS
+RabbitMQ
+POST
+Set RabbitMQ
+GET
+Find RabbitMQ
