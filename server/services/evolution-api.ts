@@ -264,15 +264,11 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
 
   async sendWhatsAppAudio(instanceName: string, number: string, base64: string): Promise<any> {
     const remoteJid = number.includes("@") ? number : `${number.replace(/\D/g, "")}@s.whatsapp.net`;
+    console.log(`[Evolution API] Sending WhatsApp audio to ${remoteJid} via ${instanceName}`);
     return this.request('POST', `/message/sendWhatsAppAudio/${instanceName}`, {
       number: remoteJid,
-      audioMessage: {
-        audio: `data:audio/webm;base64,${base64}`,
-      },
-      options: {
-        presence: "recording",
-        encoding: true,
-      }
+      audio: base64,
+      delay: 1200,
     });
   }
 

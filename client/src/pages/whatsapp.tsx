@@ -15,7 +15,7 @@ import {
   Search, Send, MoreVertical, Phone, Video, RefreshCw, 
   QrCode, Wifi, WifiOff, MessageCircle, Check, CheckCheck,
   Smile, Paperclip, Mic, ArrowLeft, User, Image, FileText, 
-  Download, Play, Volume2, X
+  Download, Play, Volume2, X, Trash2, Square, Pause
 } from "lucide-react";
 import {
   Dialog,
@@ -469,6 +469,12 @@ export default function WhatsAppPage() {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioWaveform, setAudioWaveform] = useState<number[]>([]);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
 
   // Notification sound function using Web Audio API
@@ -824,15 +830,39 @@ export default function WhatsAppPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
       mediaRecorderRef.current = mediaRecorder;
       const chunks: Blob[] = [];
+      
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      
+      const updateWaveform = () => {
+        if (!analyserRef.current) return;
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const bars = Array.from(dataArray.slice(0, 20)).map(v => Math.max(4, (v / 255) * 24));
+        setAudioWaveform(bars);
+        animationFrameRef.current = requestAnimationFrame(updateWaveform);
+      };
+      updateWaveform();
       
       mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
         stream.getTracks().forEach(track => track.stop());
+        audioContext.close();
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        setAudioWaveform([]);
       };
       
       mediaRecorder.start();
@@ -853,18 +883,41 @@ export default function WhatsAppPage() {
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current);
       }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     }
   };
 
   const cancelRecording = () => {
-    if (mediaRecorderRef.current) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
     setAudioBlob(null);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
     setRecordingDuration(0);
+    setIsPlaying(false);
     if (recordingIntervalRef.current) {
       clearInterval(recordingIntervalRef.current);
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    setAudioWaveform([]);
+  };
+
+  const toggleAudioPlayback = () => {
+    if (!audioPreviewRef.current || !audioUrl) return;
+    if (isPlaying) {
+      audioPreviewRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioPreviewRef.current.play();
+      setIsPlaying(true);
     }
   };
 
@@ -880,8 +933,13 @@ export default function WhatsAppPage() {
       });
     };
     reader.readAsDataURL(audioBlob);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
     setAudioBlob(null);
     setRecordingDuration(0);
+    setIsPlaying(false);
   };
 
   const filteredChats = chats.filter((chat) =>
@@ -1212,31 +1270,72 @@ export default function WhatsAppPage() {
 
             <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center gap-2">
               {isRecording ? (
-                <div className="flex items-center gap-2 flex-1 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                  <span className="text-red-600 dark:text-red-400 font-medium">
+                <div className="flex items-center gap-3 flex-1 bg-red-50 dark:bg-red-900/20 rounded-full px-4 py-2">
+                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="h-8 w-8 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full" data-testid="button-cancel-recording">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                  <div className="flex-1 flex items-center justify-center gap-0.5">
+                    {audioWaveform.length > 0 ? audioWaveform.map((height, i) => (
+                      <div 
+                        key={i} 
+                        className="w-1 bg-red-500 rounded-full transition-all duration-75"
+                        style={{ height: `${height}px` }}
+                      />
+                    )) : [...Array(20)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="w-1 bg-red-300 dark:bg-red-700 rounded-full animate-pulse"
+                        style={{ height: `${Math.random() * 16 + 4}px`, animationDelay: `${i * 50}ms` }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-red-600 dark:text-red-400 font-mono text-sm min-w-[40px]">
                     {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                   </span>
-                  <div className="flex-1" />
-                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="text-red-500">
-                    <X className="w-5 h-5" />
-                  </Button>
-                  <Button size="icon" onClick={stopRecording} className="bg-red-500 hover:bg-red-600">
-                    <Check className="w-5 h-5 text-white" />
+                  <Button size="icon" onClick={stopRecording} className="h-10 w-10 bg-red-500 hover:bg-red-600 rounded-full" data-testid="button-stop-recording">
+                    <Square className="w-4 h-4 text-white fill-white" />
                   </Button>
                 </div>
-              ) : audioBlob ? (
-                <div className="flex items-center gap-2 flex-1 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
-                  <Play className="w-5 h-5 text-green-600" />
-                  <div className="flex-1 h-1 bg-green-200 dark:bg-green-800 rounded" />
-                  <span className="text-green-600 dark:text-green-400 text-sm">
+              ) : audioBlob && audioUrl ? (
+                <div className="flex items-center gap-3 flex-1 bg-green-50 dark:bg-green-900/20 rounded-full px-4 py-2">
+                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="h-8 w-8 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full" data-testid="button-discard-audio">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={toggleAudioPlayback}
+                    className="h-10 w-10 bg-green-500 hover:bg-green-600 rounded-full flex-shrink-0"
+                    data-testid="button-toggle-audio-playback"
+                  >
+                    {isPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white ml-0.5" />}
+                  </Button>
+                  <div className="flex-1 flex items-center gap-0.5">
+                    {[...Array(30)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="w-1 bg-green-400 dark:bg-green-600 rounded-full"
+                        style={{ height: `${Math.sin(i * 0.5) * 8 + 8}px` }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-green-600 dark:text-green-400 font-mono text-sm min-w-[40px]">
                     {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                   </span>
-                  <Button variant="ghost" size="icon" onClick={() => setAudioBlob(null)}>
-                    <X className="w-5 h-5" />
-                  </Button>
-                  <Button size="icon" onClick={sendAudio} disabled={sendAudioMutation.isPending}>
-                    <Send className="w-5 h-5" />
+                  <audio 
+                    ref={audioPreviewRef} 
+                    src={audioUrl} 
+                    onEnded={() => setIsPlaying(false)}
+                    className="hidden"
+                  />
+                  <Button 
+                    size="icon" 
+                    onClick={sendAudio} 
+                    disabled={sendAudioMutation.isPending}
+                    className="h-10 w-10 bg-green-500 hover:bg-green-600 rounded-full"
+                    data-testid="button-send-audio"
+                  >
+                    {sendAudioMutation.isPending ? <LoadingSpinner fullScreen={false} /> : <Send className="w-5 h-5 text-white" />}
                   </Button>
                 </div>
               ) : (
