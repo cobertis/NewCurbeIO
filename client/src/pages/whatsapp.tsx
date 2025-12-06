@@ -226,6 +226,14 @@ export default function WhatsAppPage() {
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<WhatsappMessage[]>({
     queryKey: ["/api/whatsapp/chats", selectedChat, "messages"],
+    queryFn: async () => {
+      if (!selectedChat) return [];
+      const res = await fetch(`/api/whatsapp/chats/${encodeURIComponent(selectedChat)}/messages`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch messages");
+      return res.json();
+    },
     enabled: !!selectedChat && instanceData?.connected === true,
     refetchInterval: 3000,
   });
