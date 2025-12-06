@@ -144,10 +144,24 @@ class EvolutionApiService {
 
   async fetchMessages(instanceName: string, remoteJid: string, limit: number = 50): Promise<EvolutionMessage[]> {
     console.log(`[Evolution API] Fetching messages from ${remoteJid} via ${instanceName}`);
-    return this.request("POST", `/chat/findMessages/${instanceName}`, {
+    const response: any = await this.request("POST", `/chat/findMessages/${instanceName}`, {
       where: { key: { remoteJid } },
       limit,
     });
+    
+    // Evolution API v2 returns {messages: {records: [...], total, pages}}
+    if (response?.messages?.records) {
+      console.log(`[Evolution API] Found ${response.messages.records.length} messages`);
+      return response.messages.records;
+    }
+    
+    // Fallback if format is different
+    if (Array.isArray(response)) {
+      return response;
+    }
+    
+    console.log(`[Evolution API] Unexpected response format:`, JSON.stringify(response).slice(0, 200));
+    return [];
   }
 
   async deleteInstance(instanceName: string): Promise<any> {
