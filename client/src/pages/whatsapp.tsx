@@ -292,12 +292,30 @@ export default function WhatsAppPage() {
       const res = await apiRequest("POST", "/api/whatsapp/send", { number, text });
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async ({ number, text }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
+      const previousMessages = queryClient.getQueryData(["/api/whatsapp/chats", selectedChat, "messages"]);
+      const optimisticMessage = {
+        id: `temp_${Date.now()}`,
+        messageId: `temp_${Date.now()}`,
+        content: text,
+        fromMe: true,
+        timestamp: new Date().toISOString(),
+        messageType: "text",
+        status: "sending",
+      };
+      queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], (old: any[] = []) => [...old, optimisticMessage]);
       setMessageText("");
+      return { previousMessages };
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], context.previousMessages);
+      }
       toast({ title: "Send Failed", description: error.message, variant: "destructive" });
     },
   });

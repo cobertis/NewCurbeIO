@@ -26912,9 +26912,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 ];
                 
                 const missingEvents = requiredEvents.filter(e => !currentEvents.includes(e));
-                const webhookBase64Active = currentWebhook?.webhookBase64 === "all" || currentWebhook?.webhook?.webhookBase64 === "all";
+                const webhookBase64Active = currentWebhook?.webhook?.webhookBase64 === true || currentWebhook?.webhookBase64 === true;
                 
-                const needsReconfigure = currentUrl !== expectedWebhookUrl || missingEvents.length > 0 || !webhookBase64Active;
+                const needsReconfigure = currentUrl !== expectedWebhookUrl || missingEvents.length > 0;
                 
                 if (needsReconfigure) {
                   console.log(`[WhatsApp] Webhook needs reconfiguration. URL match: ${currentUrl === expectedWebhookUrl}, Missing events: ${missingEvents.length}`);
