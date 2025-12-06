@@ -455,13 +455,11 @@ export default function WhatsAppPage() {
     connected: boolean;
   }>({
     queryKey: ["/api/whatsapp/instance"],
-    refetchInterval: 3000,
   });
 
   const { data: chats = [], isLoading: loadingChats } = useQuery<WhatsappConversation[]>({
     queryKey: ["/api/whatsapp/chats"],
     enabled: instanceData?.connected === true,
-    refetchInterval: 5000,
   });
 
   const { data: messages = [], isLoading: loadingMessages } = useQuery<WhatsappMessage[]>({
@@ -475,7 +473,6 @@ export default function WhatsAppPage() {
       return res.json();
     },
     enabled: !!selectedChat && instanceData?.connected === true,
-    refetchInterval: 3000,
   });
 
   const connectMutation = useMutation({
@@ -643,7 +640,52 @@ export default function WhatsAppPage() {
     }
   }, [instanceData?.connected, loadingChats, chats.length]);
 
-  // Sync messages every 3 seconds when a chat is selected
+  // WebSocket listener for real-time WhatsApp updates
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
+    
+    ws.onopen = () => {
+      console.log('[WhatsApp] WebSocket connected');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type?.startsWith('whatsapp:')) {
+          console.log('[WhatsApp] WebSocket event:', data.type);
+          if (data.type === 'whatsapp:message') {
+            if (data.data?.remoteJid === selectedChat) {
+              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
+            }
+            queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+          }
+          if (data.type === 'whatsapp:chat_update') {
+            queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+          }
+          if (data.type === 'whatsapp:connection' || data.type === 'whatsapp:qr_code') {
+            queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/instance'] });
+          }
+        }
+      } catch (e) {
+        console.log('[WhatsApp] WebSocket parse error:', e);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.log('[WhatsApp] WebSocket error:', error);
+    };
+    
+    ws.onclose = () => {
+      console.log('[WhatsApp] WebSocket closed');
+    };
+    
+    return () => {
+      ws.close();
+    };
+  }, [selectedChat, queryClient]);
+
+  // Initial sync when chat is selected (one-time, not polling)
   useEffect(() => {
     if (!selectedChat || !instanceData?.connected) return;
     
@@ -664,35 +706,7 @@ export default function WhatsAppPage() {
     };
     
     syncMessages();
-    const interval = setInterval(syncMessages, 30000);
-    return () => clearInterval(interval);
   }, [selectedChat, instanceData?.connected, queryClient]);
-
-  // Global sync - sync all messages every 10 seconds when connected
-  useEffect(() => {
-    if (!instanceData?.connected) return;
-    
-    const syncAllMessages = async () => {
-      try {
-        const res = await fetch('/api/whatsapp/sync-all-messages', {
-          method: 'POST',
-          credentials: 'include',
-        });
-        const data = await res.json();
-        if (data.synced > 0) {
-          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
-          if (selectedChat) {
-            queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
-          }
-        }
-      } catch (error) {
-        console.log('Global sync error:', error);
-      }
-    };
-    
-    const interval = setInterval(syncAllMessages, 60000);
-    return () => clearInterval(interval);
-  }, [instanceData?.connected, selectedChat, queryClient]);
 
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;

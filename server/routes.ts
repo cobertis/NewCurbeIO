@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -23221,6 +23221,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: "sent",
         timestamp: new Date(),
       }).returning();
+      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId);
+      broadcastWhatsAppChatUpdate(user.companyId);
       res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending message:", error);
@@ -23307,6 +23309,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: "sent",
         timestamp: new Date(),
       }).returning();
+      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId);
+      broadcastWhatsAppChatUpdate(user.companyId);
       res.json({ success: true, message });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending media:", error);
@@ -23391,7 +23395,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           await db.update(whatsappInstances)
             .set({ qrCode, status: "connecting", updatedAt: new Date() })
             .where(eq(whatsappInstances.id, instance.id));
-          // Broadcast QR update via WebSocket (will add later)
+          broadcastWhatsAppQrCode(company.id, qrCode);
           console.log(`[WhatsApp Webhook] QR updated for ${companySlug}`);
         }
       } else if (event === "CONNECTION_UPDATE") {
@@ -23406,6 +23410,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             })
             .where(eq(whatsappInstances.id, instance.id));
           console.log(`[WhatsApp Webhook] Connection state: ${state}`);
+          broadcastWhatsAppConnection(company.id, state === "open", state);
           // Auto-sync chats when connected
           if (state === "open") {
             try {
@@ -23676,6 +23681,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             timestamp,
           });
           console.log(`[WhatsApp Webhook] Message saved: ${messageId} from ${remoteJid} (type: ${messageType})`);
+          broadcastWhatsAppMessage(company.id, remoteJid, messageId);
+          broadcastWhatsAppChatUpdate(company.id);
         }
       }
       res.status(200).send("OK");

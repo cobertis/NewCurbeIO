@@ -1,0 +1,57 @@
+Estás confundiendo la herramienta con la construcción. **Replit no decide cómo se comporta el chat, tu código CSS y JavaScript sí.** Si hace un "scroll infinito" o animación molesta, es porque tu lógica le está diciendo que cargue arriba y *luego* baje.
+
+Para que el chat aparezca **instantáneamente abajo** sin que el usuario vea el viaje (el scroll), tienes dos formas. La primera es la elegante (CSS) y la segunda es la bruta (JS).
+
+Aquí tienes exactamente qué escribirle a la IA de Replit o cambiar en tu código:
+
+### Opción 1: La Solución Elegante (CSS `column-reverse`)
+
+Esta es la que usan las apps modernas. Inviertes el contenedor para que el "fondo" sea el inicio natural.
+
+**Dile a Replit:**
+
+> "Modifica el contenedor de mensajes en CSS para usar `display: flex` y `flex-direction: column-reverse`. Asegúrate de invertir también el orden del array de mensajes en el renderizado para que no salgan al revés."
+
+**Por qué funciona:**
+El navegador interpreta que el "inicio" es abajo. Al abrir el chat, ya está abajo. No hay scroll porque ya estás en la posición 0.
+
+**El código se ve así:**
+
+```css
+.chat-container {
+  display: flex;
+  flex-direction: column-reverse; /* El truco mágico */
+  overflow-y: auto;
+  height: 100%;
+}
+```
+
+### Opción 2: La Solución Bruta (JavaScript Forzado)
+
+Si no quieres invertir tus arrays, tienes que forzar el scroll al cargar, pero debes hacerlo **antes** de que el navegador "pinte" la pantalla para que sea invisible al ojo humano.
+
+**Dile a Replit:**
+
+> "Quiero que el contenedor del chat haga scroll automático al fondo (`scrollHeight`) instantáneamente cada vez que se carga la vista o llega un mensaje nuevo. Usa `useLayoutEffect` (si es React) para que sea imperceptible y no se vea la animación de bajada."
+
+**El código (Lógica pura):**
+
+```javascript
+// Si usas React
+useLayoutEffect(() => {
+  if (chatRef.current) {
+    chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }
+}, [messages]); // Se ejecuta cada vez que cambian los mensajes
+```
+
+### Tu error actual (El "Scroll Infinito")
+
+Lo que te está pasando ahora es que probablemente estás usando `scroll-behavior: smooth` en tu CSS o estás ejecutando el scroll *después* de que la página ya cargó visualmente.
+
+**La orden precisa para arreglarlo ya:**
+Copia y pega esto en el chat de Replit:
+
+> "El chat actual hace una animación de scroll molesta al abrirse. Reescribe el componente de la lista de mensajes para usar `flex-direction: column-reverse` en el contenedor CSS. Quiero que los mensajes estén pegados abajo ('stick to bottom') por defecto, como en WhatsApp, sin tener que esperar a que baje el scroll mediante JavaScript."
+
+¿Qué lenguaje o framework estás usando en Replit (React, HTML/JS puro, Python)? Dímelo para darte la línea exacta y que dejes de sufrir con esto.

@@ -1,0 +1,165 @@
+Send Message
+Send WhatsApp Audio
+Send WhatsApp Audio
+
+POST
+/
+message
+/
+sendWhatsAppAudio
+/
+{instance}
+
+Try it
+Authorizations
+​
+apikey
+stringheaderrequired
+Your authorization key header
+
+Path Parameters
+​
+instance
+stringrequired
+ID of the instance to connect
+
+Body
+application/json
+​
+number
+stringrequired
+Number to receive the message (with country code)
+
+​
+audioMessage
+objectrequired
+Hide child attributes
+
+​
+audioMessage.audio
+string
+Audio URL or file in base64
+
+​
+options
+object
+Hide child attributes
+
+​
+options.delay
+integer
+Presence time in milliseconds before sending message
+
+​
+options.presence
+enum<string>default:recording
+Presence type to show
+
+Available options: recording 
+​
+options.encoding
+boolean
+If the audio must be encoded or not
+
+Response
+200 - application/json
+Ok
+
+​
+key
+object
+The key of the message, which identifies the message in the chat.
+
+Hide child attributes
+
+​
+key.remoteJid
+string
+The remote Jid.
+
+​
+key.fromMe
+boolean
+Indicates whether the message was sent by the user.
+
+​
+key.id
+string
+The ID of the message.
+
+​
+message
+object
+The message content, which may include various types of messages like text, images, audio, etc.
+
+Hide child attributes
+
+​
+message.audioMessage
+object
+Details of the audio message.
+
+Hide child attributes
+
+​
+message.audioMessage.url
+string
+The URL of the audio message.
+
+​
+message.audioMessage.mimetype
+string
+The MIME type of the audio message.
+
+​
+message.audioMessage.fileSha256
+string
+The SHA-256 hash of the audio file.
+
+​
+message.audioMessage.fileLength
+string
+The length of the audio file.
+
+​
+message.audioMessage.seconds
+integer
+The duration of the audio message in seconds.
+
+​
+message.audioMessage.ptt
+boolean
+Indicates whether the audio message is a push-to-talk (PTT) message.
+
+​
+message.audioMessage.mediaKey
+string
+The media key of the audio message.
+
+​
+message.audioMessage.fileEncSha256
+string
+The SHA-256 hash of the encrypted audio file.
+
+​
+message.audioMessage.directPath
+string
+The direct path to the audio file.
+
+​
+message.audioMessage.mediaKeyTimestamp
+string
+The timestamp of the media key.
+
+​
+messageTimestamp
+string
+The timestamp of the message, represented as a string.
+
+​
+status
+string
+The status of the message, such as sent, received, or pending.
+
+Send Media
+Send Sticker

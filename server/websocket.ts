@@ -831,3 +831,80 @@ export function broadcastImessageReadReceipt(companyId: string, conversationId: 
   
   console.log(`[WebSocket] Broadcast iMessage read receipt to ${sentCount} client(s)`);
 }
+
+// ==================== WHATSAPP WEBSOCKET HANDLERS ====================
+
+export type WhatsAppEventType = 
+  | 'whatsapp:message'
+  | 'whatsapp:chat_update'
+  | 'whatsapp:connection'
+  | 'whatsapp:qr_code';
+
+export interface WhatsAppEvent {
+  type: WhatsAppEventType;
+  companyId: string;
+  data: {
+    remoteJid?: string;
+    messageId?: string;
+    status?: string;
+    qrCode?: string;
+    connected?: boolean;
+  };
+}
+
+export function broadcastWhatsAppEvent(companyId: string, event: WhatsAppEvent) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify(event);
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast ${event.type} to ${sentCount} client(s) for company ${companyId}`);
+}
+
+export function broadcastWhatsAppMessage(companyId: string, remoteJid: string, messageId?: string) {
+  broadcastWhatsAppEvent(companyId, {
+    type: 'whatsapp:message',
+    companyId,
+    data: { remoteJid, messageId }
+  });
+}
+
+export function broadcastWhatsAppChatUpdate(companyId: string) {
+  broadcastWhatsAppEvent(companyId, {
+    type: 'whatsapp:chat_update',
+    companyId,
+    data: {}
+  });
+}
+
+export function broadcastWhatsAppConnection(companyId: string, connected: boolean, status?: string) {
+  broadcastWhatsAppEvent(companyId, {
+    type: 'whatsapp:connection',
+    companyId,
+    data: { connected, status }
+  });
+}
+
+export function broadcastWhatsAppQrCode(companyId: string, qrCode?: string) {
+  broadcastWhatsAppEvent(companyId, {
+    type: 'whatsapp:qr_code',
+    companyId,
+    data: { qrCode }
+  });
+}
