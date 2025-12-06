@@ -27102,12 +27102,115 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         orderBy: [desc(whatsappConversations.lastMessageAt)],
       });
 
-      res.json(conversations);
+      // Get contacts for conversations that have contact_id
+      const contactIds = conversations.map(c => c.contactId).filter(Boolean) as string[];
+      let contactMap = new Map<string, any>();
+      
+      if (contactIds.length > 0) {
+        const contacts = await db.query.whatsappContacts.findMany({
+          where: sql`${whatsappContacts.id} = ANY(${contactIds})`,
+        });
+        contactMap = new Map(contacts.map(c => [c.id, c]));
+      }
+      
+      // Also get contacts by remoteJid for conversations without contact_id
+      const remoteJidsWithoutContact = conversations
+        .filter(c => !c.contactId)
+        .map(c => c.remoteJid);
+        
+      if (remoteJidsWithoutContact.length > 0) {
+        const contactsByJid = await db.query.whatsappContacts.findMany({
+          where: and(
+            eq(whatsappContacts.instanceId, instance.id),
+            sql`${whatsappContacts.remoteJid} = ANY(${remoteJidsWithoutContact})`
+          ),
+        });
+        for (const c of contactsByJid) {
+          contactMap.set(c.remoteJid, c);
+        }
+      }
+      
+      // Attach contact info to conversations
+      const conversationsWithContacts = conversations.map(conv => ({
+        ...conv,
+        contact: conv.contactId 
+          ? contactMap.get(conv.contactId) 
+          : contactMap.get(conv.remoteJid) || null,
+      }));
+
+      res.json(conversationsWithContacts);
     } catch (error: any) {
       console.error("[WhatsApp] Error getting chats:", error);
       res.status(500).json({ message: "Failed to get chats" });
     }
   });
+
+  // POST /api/whatsapp/profile-picture - Lazy load profile picture for a contact
+  app.post("/api/whatsapp/profile-picture", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { remoteJid } = req.body;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      if (!remoteJid) {
+        return res.status(400).json({ message: "remoteJid required" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.status(404).json({ message: "No WhatsApp instance" });
+      }
+
+      // Fetch profile picture from Evolution API
+      const result = await evolutionApi.fetchProfilePicture(instance.instanceName, remoteJid);
+      const profilePicUrl = (result as any).profilePictureUrl || null;
+
+      // Update or create contact with profile picture
+      const existingContact = await db.query.whatsappContacts.findFirst({
+        where: and(
+          eq(whatsappContacts.instanceId, instance.id),
+          eq(whatsappContacts.remoteJid, remoteJid)
+        ),
+      });
+
+      let contactId: string;
+      if (existingContact) {
+        await db.update(whatsappContacts)
+          .set({ profilePicUrl, updatedAt: new Date() })
+          .where(eq(whatsappContacts.id, existingContact.id));
+        contactId = existingContact.id;
+      } else {
+        const [newContact] = await db.insert(whatsappContacts).values({
+          instanceId: instance.id,
+          companyId: user.companyId,
+          remoteJid,
+          profilePicUrl,
+          isGroup: remoteJid.includes("@g.us"),
+        }).returning();
+        contactId = newContact.id;
+      }
+
+      // Link contact to conversation
+      await db.update(whatsappConversations)
+        .set({ contactId, updatedAt: new Date() })
+        .where(and(
+          eq(whatsappConversations.instanceId, instance.id),
+          eq(whatsappConversations.remoteJid, remoteJid)
+        ));
+
+      res.json({ profilePicUrl, contactId });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error fetching profile picture:", error);
+      res.status(500).json({ message: "Failed to fetch profile picture" });
+    }
+  });
+
 
   // GET /api/whatsapp/chats/:remoteJid/messages - Get messages for a chat
   app.get("/api/whatsapp/chats/:remoteJid/messages", requireActiveCompany, async (req: Request, res: Response) => {

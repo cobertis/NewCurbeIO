@@ -151,6 +151,27 @@ class EvolutionApiService {
     return this.request("GET", `/instance/fetchInstances?instanceName=${instanceName}`);
   }
 
+  async fetchProfilePicture(instanceName: string, number: string): Promise<{ profilePictureUrl?: string }> {
+    try {
+      return this.request("POST", `/chat/fetchProfilePictureUrl/${instanceName}`, {
+        number,
+      });
+    } catch (error) {
+      return { profilePictureUrl: undefined };
+    }
+  }
+
+  async fetchContacts(instanceName: string): Promise<any[]> {
+    console.log(`[Evolution API] Fetching contacts for: ${instanceName}`);
+    try {
+      return this.request("POST", `/chat/findContacts/${instanceName}`, {
+        where: {},
+      });
+    } catch (error) {
+      return [];
+    }
+  }
+
   extractMessageText(message: EvolutionMessage): string {
     const msg = message.message;
     if (!msg) return "";

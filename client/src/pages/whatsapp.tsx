@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { 
   Search, Send, MoreVertical, Phone, Video, RefreshCw, 
   QrCode, Wifi, WifiOff, MessageCircle, Check, CheckCheck,
-  Smile, Paperclip, Mic, ArrowLeft
+  Smile, Paperclip, Mic, ArrowLeft, User
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 
@@ -27,6 +27,14 @@ interface WhatsappInstance {
   profileName?: string;
 }
 
+interface WhatsappContact {
+  id: string;
+  remoteJid: string;
+  pushName?: string;
+  profilePicUrl?: string;
+  isGroup: boolean;
+}
+
 interface WhatsappConversation {
   id: string;
   remoteJid: string;
@@ -35,6 +43,7 @@ interface WhatsappConversation {
   lastMessagePreview?: string;
   isPinned: boolean;
   isArchived: boolean;
+  contact?: WhatsappContact;
 }
 
 interface WhatsappMessage {
@@ -57,8 +66,10 @@ function formatJidToPhone(jid: string): string {
   return phone;
 }
 
-function formatMessageTime(dateStr: string): string {
+function formatMessageTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
   if (isToday(date)) {
     return format(date, "HH:mm");
   } else if (isYesterday(date)) {
@@ -70,6 +81,92 @@ function formatMessageTime(dateStr: string): string {
 function getInitials(jid: string): string {
   const phone = jid.split("@")[0];
   return phone.slice(-2);
+}
+
+const profilePicCache = new Map<string, string | null>();
+const pendingFetches = new Set<string>();
+
+function ContactAvatar({ 
+  remoteJid, 
+  profilePicUrl, 
+  className = "h-12 w-12",
+  onProfilePicLoaded
+}: { 
+  remoteJid: string; 
+  profilePicUrl?: string | null;
+  className?: string;
+  onProfilePicLoaded?: (remoteJid: string, url: string) => void;
+}) {
+  const avatarRef = useRef<HTMLDivElement>(null);
+  const [localPicUrl, setLocalPicUrl] = useState<string | null>(
+    profilePicUrl || profilePicCache.get(remoteJid) || null
+  );
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (profilePicUrl) {
+      setLocalPicUrl(profilePicUrl);
+      profilePicCache.set(remoteJid, profilePicUrl);
+    }
+  }, [profilePicUrl, remoteJid]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    );
+
+    if (avatarRef.current) {
+      observer.observe(avatarRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || localPicUrl || pendingFetches.has(remoteJid)) return;
+    if (profilePicCache.has(remoteJid)) {
+      setLocalPicUrl(profilePicCache.get(remoteJid) || null);
+      return;
+    }
+
+    pendingFetches.add(remoteJid);
+    
+    apiRequest("POST", "/api/whatsapp/profile-picture", { remoteJid })
+      .then(res => res.json())
+      .then(data => {
+        const url = data.profilePicUrl || null;
+        profilePicCache.set(remoteJid, url);
+        setLocalPicUrl(url);
+        if (url && onProfilePicLoaded) {
+          onProfilePicLoaded(remoteJid, url);
+        }
+      })
+      .catch(() => {
+        profilePicCache.set(remoteJid, null);
+      })
+      .finally(() => {
+        pendingFetches.delete(remoteJid);
+      });
+  }, [isVisible, localPicUrl, remoteJid, onProfilePicLoaded]);
+
+  return (
+    <div ref={avatarRef}>
+      <Avatar className={className}>
+        {localPicUrl ? (
+          <AvatarImage src={localPicUrl} alt="Profile" />
+        ) : null}
+        <AvatarFallback className="bg-gray-300 dark:bg-gray-600">
+          <User className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+        </AvatarFallback>
+      </Avatar>
+    </div>
+  );
 }
 
 export default function WhatsAppPage() {
@@ -312,11 +409,11 @@ export default function WhatsAppPage() {
                 )}
                 data-testid={`chat-item-${chat.id}`}
               >
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="bg-gray-300 dark:bg-gray-600">
-                    {getInitials(chat.remoteJid)}
-                  </AvatarFallback>
-                </Avatar>
+                <ContactAvatar 
+                  remoteJid={chat.remoteJid}
+                  profilePicUrl={chat.contact?.profilePicUrl}
+                  className="h-12 w-12"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
                     <p className="font-medium truncate dark:text-white">
@@ -359,11 +456,11 @@ export default function WhatsAppPage() {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gray-300 dark:bg-gray-600">
-                  {getInitials(selectedChat)}
-                </AvatarFallback>
-              </Avatar>
+              <ContactAvatar 
+                remoteJid={selectedChat}
+                profilePicUrl={chats.find(c => c.remoteJid === selectedChat)?.contact?.profilePicUrl}
+                className="h-10 w-10"
+              />
               <div className="flex-1">
                 <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat)}</p>
                 <p className="text-xs text-gray-500">Online</p>
