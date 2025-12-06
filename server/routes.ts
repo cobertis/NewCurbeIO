@@ -24329,7 +24329,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else if (event === "MESSAGES_UPDATE") {
-        // Handle message status updates (delivered, read)
+        console.log(`[WhatsApp Webhook] MESSAGES_UPDATE payload:`, JSON.stringify(payload.data, null, 2));
         const updates = payload.data || [];
         for (const update of (Array.isArray(updates) ? updates : [updates])) {
           const key = update.key;
@@ -24377,11 +24377,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else if (event === "PRESENCE_UPDATE") {
-        // Handle typing indicator from remote user
         const presenceData = payload.data;
+        console.log(`[WhatsApp Webhook] PRESENCE_UPDATE payload:`, JSON.stringify(presenceData, null, 2));
         if (presenceData?.id) {
-          const remoteJid = presenceData.id;
+          let remoteJid = presenceData.id;
           const isTyping = presenceData.presences?.[remoteJid]?.lastKnownPresence === "composing";
+          
+          // If it's a @lid JID, try to find the corresponding conversation
+          if (remoteJid.endsWith('@lid')) {
+            const contact = await db.query.whatsappContacts.findFirst({
+              where: and(
+                eq(whatsappContacts.instanceId, instance.id),
+                eq(whatsappContacts.lid, remoteJid)
+              ),
+            });
+            if (contact) {
+              // Find conversation with this contact
+              const conversation = await db.query.whatsappConversations.findFirst({
+                where: and(
+                  eq(whatsappConversations.instanceId, instance.id),
+                  eq(whatsappConversations.contactId, contact.id)
+                ),
+              });
+              if (conversation) {
+                remoteJid = conversation.remoteJid;
+                console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid}`);
+              }
+            }
+          }
+          
           broadcastWhatsAppTyping(company.id, remoteJid, isTyping);
         }
       }
