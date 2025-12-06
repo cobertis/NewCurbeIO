@@ -87,7 +87,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -109,6 +109,7 @@ import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
+import { evolutionApi } from "./services/evolution-api";
 
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -26835,6 +26836,534 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error deleting campaign placeholder:", error);
       res.status(500).json({ message: "Failed to delete placeholder" });
+    }
+  });
+
+  // =====================================================
+  // WHATSAPP EVOLUTION API ROUTES
+  // =====================================================
+
+  // Get domain for webhook URL
+  const REPLIT_DOMAIN = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
+
+  // GET /api/whatsapp/instance - Get company's WhatsApp instance
+  app.get("/api/whatsapp/instance", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.json({ instance: null, connected: false });
+      }
+
+      // Check connection state with Evolution API
+      try {
+        const state = await evolutionApi.getConnectionState(instance.instanceName);
+        const connected = state.state === "open";
+        
+        // Update status in DB if changed
+        if (instance.status !== state.state) {
+          await db.update(whatsappInstances)
+            .set({ status: state.state, updatedAt: new Date() })
+            .where(eq(whatsappInstances.id, instance.id));
+        }
+
+        return res.json({ 
+          instance: { ...instance, status: state.state },
+          connected 
+        });
+      } catch (error) {
+        console.log("[WhatsApp] Error checking connection state:", error);
+        return res.json({ instance, connected: false });
+      }
+    } catch (error: any) {
+      console.error("[WhatsApp] Error getting instance:", error);
+      res.status(500).json({ message: "Failed to get instance" });
+    }
+  });
+
+  // POST /api/whatsapp/connect - Create/connect WhatsApp instance
+  app.post("/api/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Use company slug as instance name
+      const instanceName = `curbe_${company.slug}`;
+
+      // Check if instance already exists in DB
+      let instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      // If no instance, create one
+      if (!instance) {
+        const [newInstance] = await db.insert(whatsappInstances).values({
+          companyId: user.companyId,
+          instanceName,
+          status: "disconnected",
+        }).returning();
+        instance = newInstance;
+      }
+
+      // Create instance in Evolution API (or get QR if exists)
+      try {
+        const result = await evolutionApi.createInstance(instanceName);
+        
+        // Set webhook for this instance
+        const webhookUrl = `https://${REPLIT_DOMAIN}/api/whatsapp/webhook/${company.slug}`;
+        await evolutionApi.setWebhook(instanceName, webhookUrl);
+        
+        // Update instance with webhook URL
+        await db.update(whatsappInstances)
+          .set({ 
+            webhookUrl,
+            status: "connecting",
+            qrCode: result.qrcode?.base64 || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(whatsappInstances.id, instance.id));
+
+        return res.json({
+          success: true,
+          qrCode: result.qrcode?.base64,
+          instanceName,
+          status: "connecting",
+        });
+      } catch (error: any) {
+        // If instance already exists, try to get QR code
+        if (error.message?.includes("already") || error.message?.includes("exists")) {
+          try {
+            const qrResult = await evolutionApi.fetchQrCode(instanceName);
+            return res.json({
+              success: true,
+              qrCode: qrResult.base64,
+              instanceName,
+              status: "connecting",
+            });
+          } catch (qrError) {
+            // Instance might already be connected
+            const state = await evolutionApi.getConnectionState(instanceName);
+            if (state.state === "open") {
+              await db.update(whatsappInstances)
+                .set({ status: "open", updatedAt: new Date() })
+                .where(eq(whatsappInstances.id, instance.id));
+              return res.json({
+                success: true,
+                connected: true,
+                instanceName,
+                status: "open",
+              });
+            }
+          }
+        }
+        throw error;
+      }
+    } catch (error: any) {
+      console.error("[WhatsApp] Error connecting:", error);
+      res.status(500).json({ message: error.message || "Failed to connect" });
+    }
+  });
+
+  // POST /api/whatsapp/disconnect - Disconnect WhatsApp instance
+  app.post("/api/whatsapp/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.status(404).json({ message: "No instance found" });
+      }
+
+      await evolutionApi.logoutInstance(instance.instanceName);
+      
+      await db.update(whatsappInstances)
+        .set({ status: "disconnected", qrCode: null, updatedAt: new Date() })
+        .where(eq(whatsappInstances.id, instance.id));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error disconnecting:", error);
+      res.status(500).json({ message: "Failed to disconnect" });
+    }
+  });
+
+  // GET /api/whatsapp/chats - Get WhatsApp chats
+  app.get("/api/whatsapp/chats", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.status(404).json({ message: "No WhatsApp instance" });
+      }
+
+      // Get conversations from DB
+      const conversations = await db.query.whatsappConversations.findMany({
+        where: eq(whatsappConversations.instanceId, instance.id),
+        orderBy: [desc(whatsappConversations.lastMessageAt)],
+      });
+
+      res.json(conversations);
+    } catch (error: any) {
+      console.error("[WhatsApp] Error getting chats:", error);
+      res.status(500).json({ message: "Failed to get chats" });
+    }
+  });
+
+  // GET /api/whatsapp/chats/:remoteJid/messages - Get messages for a chat
+  app.get("/api/whatsapp/chats/:remoteJid/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { remoteJid } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.status(404).json({ message: "No WhatsApp instance" });
+      }
+
+      // Get conversation
+      const conversation = await db.query.whatsappConversations.findFirst({
+        where: and(
+          eq(whatsappConversations.instanceId, instance.id),
+          eq(whatsappConversations.remoteJid, decodeURIComponent(remoteJid))
+        ),
+      });
+
+      if (!conversation) {
+        return res.json([]);
+      }
+
+      // Get messages from DB
+      const messages = await db.query.whatsappMessages.findMany({
+        where: eq(whatsappMessages.conversationId, conversation.id),
+        orderBy: [desc(whatsappMessages.timestamp)],
+        limit: 100,
+      });
+
+      // Mark conversation as read
+      await db.update(whatsappConversations)
+        .set({ unreadCount: 0, updatedAt: new Date() })
+        .where(eq(whatsappConversations.id, conversation.id));
+
+      res.json(messages.reverse());
+    } catch (error: any) {
+      console.error("[WhatsApp] Error getting messages:", error);
+      res.status(500).json({ message: "Failed to get messages" });
+    }
+  });
+
+  // POST /api/whatsapp/send - Send WhatsApp message
+  app.post("/api/whatsapp/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { number, text } = req.body;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      if (!number || !text) {
+        return res.status(400).json({ message: "Number and text required" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance) {
+        return res.status(404).json({ message: "No WhatsApp instance" });
+      }
+
+      if (instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+
+      // Send via Evolution API
+      const result = await evolutionApi.sendTextMessage(instance.instanceName, number, text);
+
+      // Create/update conversation and message in DB
+      const remoteJid = number.includes("@") ? number : `${number.replace(/\D/g, "")}@s.whatsapp.net`;
+
+      let conversation = await db.query.whatsappConversations.findFirst({
+        where: and(
+          eq(whatsappConversations.instanceId, instance.id),
+          eq(whatsappConversations.remoteJid, remoteJid)
+        ),
+      });
+
+      if (!conversation) {
+        const [newConvo] = await db.insert(whatsappConversations).values({
+          instanceId: instance.id,
+          companyId: user.companyId,
+          remoteJid,
+          lastMessageAt: new Date(),
+          lastMessagePreview: text.substring(0, 100),
+        }).returning();
+        conversation = newConvo;
+      } else {
+        await db.update(whatsappConversations)
+          .set({ 
+            lastMessageAt: new Date(),
+            lastMessagePreview: text.substring(0, 100),
+            updatedAt: new Date(),
+          })
+          .where(eq(whatsappConversations.id, conversation.id));
+      }
+
+      // Save message to DB
+      const [message] = await db.insert(whatsappMessages).values({
+        conversationId: conversation.id,
+        instanceId: instance.id,
+        companyId: user.companyId,
+        messageId: result.key?.id || `sent_${Date.now()}`,
+        remoteJid,
+        fromMe: true,
+        content: text,
+        messageType: "text",
+        status: "sent",
+        timestamp: new Date(),
+      }).returning();
+
+      res.json({ success: true, message });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error sending message:", error);
+      res.status(500).json({ message: error.message || "Failed to send" });
+    }
+  });
+
+  // POST /api/whatsapp/webhook/:companySlug - Webhook from Evolution API
+  app.post("/api/whatsapp/webhook/:companySlug", async (req: Request, res: Response) => {
+    try {
+      const { companySlug } = req.params;
+      const payload = req.body;
+      
+      console.log(`[WhatsApp Webhook] Event for ${companySlug}:`, payload.event);
+
+      // Find company
+      const company = await storage.getCompanyBySlug(companySlug);
+      if (!company) {
+        console.error(`[WhatsApp Webhook] Company not found: ${companySlug}`);
+        return res.status(200).send("OK"); // Return 200 to prevent retries
+      }
+
+      // Get instance
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, company.id),
+      });
+
+      if (!instance) {
+        console.error(`[WhatsApp Webhook] Instance not found for company: ${company.id}`);
+        return res.status(200).send("OK");
+      }
+
+      // Handle different event types
+      const event = payload.event;
+
+      if (event === "QRCODE_UPDATED") {
+        const qrCode = payload.data?.qrcode?.base64;
+        if (qrCode) {
+          await db.update(whatsappInstances)
+            .set({ qrCode, status: "connecting", updatedAt: new Date() })
+            .where(eq(whatsappInstances.id, instance.id));
+          
+          // Broadcast QR update via WebSocket (will add later)
+          console.log(`[WhatsApp Webhook] QR updated for ${companySlug}`);
+        }
+      } else if (event === "CONNECTION_UPDATE") {
+        const state = payload.data?.state;
+        if (state) {
+          await db.update(whatsappInstances)
+            .set({ 
+              status: state,
+              qrCode: state === "open" ? null : instance.qrCode,
+              lastConnectedAt: state === "open" ? new Date() : instance.lastConnectedAt,
+              updatedAt: new Date(),
+            })
+            .where(eq(whatsappInstances.id, instance.id));
+          
+          console.log(`[WhatsApp Webhook] Connection state: ${state}`);
+        }
+      } else if (event === "MESSAGES_UPSERT") {
+        const messages = payload.data || [];
+        
+        for (const msg of (Array.isArray(messages) ? messages : [messages])) {
+          const key = msg.key;
+          if (!key?.remoteJid) continue;
+
+          const remoteJid = key.remoteJid;
+          const fromMe = key.fromMe || false;
+          const messageId = key.id;
+          const pushName = msg.pushName;
+          const messageText = evolutionApi.extractMessageText(msg);
+          const messageType = evolutionApi.extractMessageType(msg);
+          const timestamp = new Date(msg.messageTimestamp * 1000);
+
+          // Skip if already exists
+          const existing = await db.query.whatsappMessages.findFirst({
+            where: and(
+              eq(whatsappMessages.instanceId, instance.id),
+              eq(whatsappMessages.messageId, messageId)
+            ),
+          });
+
+          if (existing) continue;
+
+          // Get or create contact
+          let contact = await db.query.whatsappContacts.findFirst({
+            where: and(
+              eq(whatsappContacts.instanceId, instance.id),
+              eq(whatsappContacts.remoteJid, remoteJid)
+            ),
+          });
+
+          if (!contact && !fromMe) {
+            const [newContact] = await db.insert(whatsappContacts).values({
+              instanceId: instance.id,
+              companyId: company.id,
+              remoteJid,
+              pushName: pushName || null,
+              isGroup: remoteJid.endsWith("@g.us"),
+            }).returning();
+            contact = newContact;
+          }
+
+          // Get or create conversation
+          let conversation = await db.query.whatsappConversations.findFirst({
+            where: and(
+              eq(whatsappConversations.instanceId, instance.id),
+              eq(whatsappConversations.remoteJid, remoteJid)
+            ),
+          });
+
+          if (!conversation) {
+            const [newConvo] = await db.insert(whatsappConversations).values({
+              instanceId: instance.id,
+              companyId: company.id,
+              contactId: contact?.id,
+              remoteJid,
+              lastMessageAt: timestamp,
+              lastMessagePreview: messageText.substring(0, 100) || messageType,
+              unreadCount: fromMe ? 0 : 1,
+            }).returning();
+            conversation = newConvo;
+          } else {
+            await db.update(whatsappConversations)
+              .set({
+                lastMessageAt: timestamp,
+                lastMessagePreview: messageText.substring(0, 100) || messageType,
+                unreadCount: fromMe ? conversation.unreadCount : (conversation.unreadCount || 0) + 1,
+                updatedAt: new Date(),
+              })
+              .where(eq(whatsappConversations.id, conversation.id));
+          }
+
+          // Insert message
+          await db.insert(whatsappMessages).values({
+            conversationId: conversation.id,
+            instanceId: instance.id,
+            companyId: company.id,
+            messageId,
+            remoteJid,
+            fromMe,
+            senderJid: fromMe ? null : remoteJid,
+            messageType,
+            content: messageText,
+            status: fromMe ? "sent" : "received",
+            timestamp,
+          });
+
+          console.log(`[WhatsApp Webhook] Message saved: ${messageId} from ${remoteJid}`);
+        }
+      }
+
+      res.status(200).send("OK");
+    } catch (error: any) {
+      console.error("[WhatsApp Webhook] Error:", error);
+      res.status(200).send("OK"); // Return 200 to prevent retries
+    }
+  });
+
+  // GET /api/whatsapp/sync-chats - Sync chats from Evolution API
+  app.post("/api/whatsapp/sync-chats", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+
+      if (!instance || instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+
+      // Fetch chats from Evolution API
+      const chats = await evolutionApi.fetchChats(instance.instanceName);
+      
+      let synced = 0;
+      for (const chat of chats) {
+        const remoteJid = chat.id || chat.remoteJid;
+        if (!remoteJid) continue;
+
+        // Check if conversation exists
+        const existing = await db.query.whatsappConversations.findFirst({
+          where: and(
+            eq(whatsappConversations.instanceId, instance.id),
+            eq(whatsappConversations.remoteJid, remoteJid)
+          ),
+        });
+
+        if (!existing) {
+          await db.insert(whatsappConversations).values({
+            instanceId: instance.id,
+            companyId: user.companyId,
+            remoteJid,
+            lastMessageAt: chat.lastMsgTimestamp ? new Date(chat.lastMsgTimestamp * 1000) : null,
+            lastMessagePreview: chat.lastMessage?.conversation || null,
+          });
+          synced++;
+        }
+      }
+
+      res.json({ success: true, synced, total: chats.length });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error syncing chats:", error);
+      res.status(500).json({ message: "Failed to sync chats" });
     }
   });
 
