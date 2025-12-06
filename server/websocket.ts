@@ -885,6 +885,14 @@ export function broadcastWhatsAppMessage(companyId: string, remoteJid: string, m
   });
 }
 
+export function broadcastWhatsAppMessageStatus(companyId: string, remoteJid: string, messageId: string, status: string) {
+  broadcastWhatsAppEvent(companyId, {
+    type: 'whatsapp:message_status',
+    companyId,
+    data: { remoteJid, messageId, status }
+  });
+}
+
 export function broadcastWhatsAppChatUpdate(companyId: string) {
   broadcastWhatsAppEvent(companyId, {
     type: 'whatsapp:chat_update',

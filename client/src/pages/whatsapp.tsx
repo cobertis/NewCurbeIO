@@ -855,6 +855,12 @@ export default function WhatsAppPage() {
             }
             queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
           }
+          if (data.type === 'whatsapp:message_status') {
+            const { remoteJid, messageId, status } = data.data || {};
+            if (remoteJid === selectedChat && messageId && status) {
+              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
+            }
+          }
           if (data.type === 'whatsapp:chat_update') {
             queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
           }

@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -24366,7 +24366,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log(`[WhatsApp Webhook] Message status updated: ${messageId} -> ${newStatus}`);
               // Broadcast status update to frontend
               if (remoteJid) {
-                broadcastWhatsAppMessage(company.id, remoteJid, messageId);
+                broadcastWhatsAppMessageStatus(company.id, remoteJid, messageId, newStatus);
+                console.log(`[WhatsApp Webhook] Broadcasting status update: ${messageId} -> ${newStatus}`);
               }
 
             }
