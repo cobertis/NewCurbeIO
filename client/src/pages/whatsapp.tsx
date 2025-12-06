@@ -104,13 +104,8 @@ export default function WhatsAppPage() {
       const res = await apiRequest("POST", "/api/whatsapp/connect");
       return res.json();
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/instance"] });
-      if (data.qrCode) {
-        toast({ title: "Scan QR Code", description: "Open WhatsApp on your phone and scan the code" });
-      } else if (data.connected) {
-        toast({ title: "Connected!", description: "WhatsApp is now connected" });
-      }
+    onSuccess: () => {
+      refetchInstance();
     },
     onError: (error: any) => {
       toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
@@ -158,19 +153,17 @@ export default function WhatsAppPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-connect only when instance doesn't exist or is explicitly disconnected
+  // Auto-connect when no QR and not connected
   useEffect(() => {
-    const status = instanceData?.instance?.status;
     const shouldConnect = !loadingInstance && 
       !instanceData?.connected && 
       !instanceData?.instance?.qrCode && 
-      !connectMutation.isPending &&
-      (status === "disconnected" || status === undefined || !instanceData?.instance);
+      !connectMutation.isPending;
     
     if (shouldConnect) {
       connectMutation.mutate();
     }
-  }, [loadingInstance, instanceData?.connected, instanceData?.instance?.qrCode, instanceData?.instance?.status]);
+  }, [loadingInstance, instanceData?.connected, instanceData?.instance?.qrCode]);
 
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
@@ -182,38 +175,21 @@ export default function WhatsAppPage() {
     chat.lastMessagePreview?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loadingInstance) {
-    return <LoadingSpinner fullScreen message="Loading WhatsApp..." />;
-  }
-
   const instance = instanceData?.instance;
   const isConnected = instanceData?.connected;
+  const qrCode = instance?.qrCode;
+  const isLoading = loadingInstance || connectMutation.isPending;
 
-  // Show "Connecting..." screen when status is connecting (after QR scan)
-  const isConnecting = instance?.status === "connecting" && !instance?.qrCode;
-  
-  // If disconnected or connecting, show appropriate screen
+  // Not connected - show QR or loading
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-gray-50 dark:bg-gray-900 p-8">
         <div className="text-center space-y-6 max-w-md">
-          {isConnecting ? (
-            <>
-              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <LoadingSpinner fullScreen={false} />
-              </div>
-              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                Connecting to WhatsApp...
-              </h2>
-              <p className="text-gray-500 dark:text-gray-400">
-                QR code scanned successfully. Establishing connection...
-              </p>
-            </>
-          ) : instance?.qrCode ? (
+          {qrCode ? (
             <>
               <div className="bg-white dark:bg-gray-800 p-6 rounded-xl inline-block shadow-lg">
                 <img 
-                  src={instance.qrCode.startsWith('data:') ? instance.qrCode : `data:image/png;base64,${instance.qrCode}`} 
+                  src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`} 
                   alt="QR Code" 
                   className="w-72 h-72"
                   data-testid="whatsapp-qr-code"
@@ -227,41 +203,15 @@ export default function WhatsAppPage() {
                   3. Tap "Link a Device" and scan this code
                 </p>
               </div>
-              <Button 
-                variant="outline" 
-                onClick={() => refetchInstance()}
-                className="gap-2"
-                data-testid="button-refresh-qr"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Refresh QR
-              </Button>
             </>
           ) : (
             <>
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                {connectMutation.isPending ? (
-                  <LoadingSpinner fullScreen={false} />
-                ) : (
-                  <QrCode className="w-12 h-12 text-primary" />
-                )}
+                <LoadingSpinner fullScreen={false} />
               </div>
               <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                {connectMutation.isPending ? "Generating QR Code..." : "Connect WhatsApp"}
+                {isLoading ? "Generating QR Code..." : "Connecting..."}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400">
-                Please wait while we prepare the connection
-              </p>
-              {!connectMutation.isPending && (
-                <Button 
-                  onClick={() => connectMutation.mutate()}
-                  className="gap-2"
-                  data-testid="button-connect-whatsapp"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Retry Connection
-                </Button>
-              )}
             </>
           )}
         </div>
@@ -516,65 +466,15 @@ export default function WhatsAppPage() {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
-            {!isConnected ? (
-              <div className="text-center space-y-6 p-8">
-                {instance?.qrCode ? (
-                  <>
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg inline-block shadow-lg">
-                      <img 
-                        src={instance.qrCode.startsWith('data:') ? instance.qrCode : `data:image/png;base64,${instance.qrCode}`} 
-                        alt="QR Code" 
-                        className="w-64 h-64"
-                        data-testid="whatsapp-qr-code"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300">Scan to Connect</h2>
-                      <p className="text-sm text-gray-500 max-w-sm">
-                        1. Open WhatsApp on your phone<br />
-                        2. Go to Settings &rarr; Linked Devices<br />
-                        3. Tap "Link a Device" and scan this code
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => refetchInstance()}
-                      className="gap-2"
-                      data-testid="button-refresh-qr"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Refresh QR
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                      {connectMutation.isPending ? (
-                        <LoadingSpinner fullScreen={false} />
-                      ) : (
-                        <QrCode className="w-10 h-10 text-primary" />
-                      )}
-                    </div>
-                    <h2 className="text-xl font-medium text-gray-700 dark:text-gray-300">
-                      {connectMutation.isPending ? "Generating QR Code..." : "Connecting..."}
-                    </h2>
-                    <p className="text-gray-500 max-w-sm">
-                      Please wait while we connect to WhatsApp
-                    </p>
-                  </>
-                )}
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <MessageCircle className="w-10 h-10 text-primary" />
               </div>
-            ) : (
-              <div className="text-center space-y-4">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <MessageCircle className="w-10 h-10 text-primary" />
-                </div>
-                <h2 className="text-2xl font-light text-gray-700 dark:text-gray-300">WhatsApp</h2>
-                <p className="text-gray-500 max-w-sm">
-                  Select a chat from the list or enter a phone number to start a new conversation
-                </p>
-              </div>
-            )}
+              <h2 className="text-2xl font-light text-gray-700 dark:text-gray-300">WhatsApp</h2>
+              <p className="text-gray-500 max-w-sm">
+                Select a chat from the list or enter a phone number to start a new conversation
+              </p>
+            </div>
           </div>
         )}
       </div>
