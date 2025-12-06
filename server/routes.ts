@@ -27035,12 +27035,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Step 4: Instance does not exist or is broken - create new one
       console.log(`[WhatsApp] Creating new instance: ${instanceName}`);
       
+      // CRITICAL: Clean up all old data from previous connections to prevent data leakage
+      console.log(`[WhatsApp] Cleaning up old data for instance ${instance.id}...`);
+      await db.delete(whatsappMessages).where(eq(whatsappMessages.instanceId, instance.id));
+      await db.delete(whatsappConversations).where(eq(whatsappConversations.instanceId, instance.id));
+      await db.delete(whatsappContacts).where(eq(whatsappContacts.instanceId, instance.id));
+      console.log(`[WhatsApp] Old data cleaned successfully`);
+      
       try {
         await evolutionApi.deleteInstance(instanceName);
       } catch (e) {
         // Ignore - instance might not exist
       }
-
       // Step 4a: Create instance
       console.log(`[WhatsApp] Step 1/3: Creating instance...`);
       const result = await evolutionApi.createInstance(instanceName);
