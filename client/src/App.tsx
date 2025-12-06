@@ -728,7 +728,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 >
                   <MessageCircle className="h-[18px] w-[18px] text-[#25D366]" />
                 </button>
-                {whatsappUnread?.total && whatsappUnread.total > 0 && (
+                {whatsappUnread?.total > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-[14px] min-w-[14px] flex items-center justify-center px-0.5 pointer-events-none">
                     {whatsappUnread.total > 99 ? '99+' : whatsappUnread.total}
                   </span>
