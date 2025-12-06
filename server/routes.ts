@@ -23250,14 +23250,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-      // Upload to object storage first
-      const { objectStorage } = await import("./objectStorage");
-      const mediaUrl = await objectStorage.uploadWhatsAppMedia(
-        base64,
-        mimetype,
-        user.companyId,
-        `sent_${Date.now()}`
-      );
+      // Store as Data URI directly (Object Storage has permission issues)
+      const mediaUrl = `data:${mimetype};base64,${base64}`;
       // Send via Evolution API
       const result = await evolutionApi.sendMediaMessage(
         instance.instanceName, 

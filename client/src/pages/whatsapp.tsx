@@ -386,6 +386,11 @@ export default function WhatsAppPage() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
+  const [pendingAttachment, setPendingAttachment] = useState<{
+    file: File;
+    preview: string;
+    type: 'image' | 'video' | 'audio' | 'document';
+  } | null>(null);
   const [newChatNumber, setNewChatNumber] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -501,39 +506,42 @@ export default function WhatsAppPage() {
   });
 
   const sendMediaMutation = useMutation({
-    mutationFn: async ({ number, file }: { number: string; file: File }) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          try {
-            const base64 = (reader.result as string).split(',')[1];
-            const mediaType = file.type.startsWith('image/') ? 'image' 
-              : file.type.startsWith('video/') ? 'video'
-              : file.type.startsWith('audio/') ? 'audio'
-              : 'document';
-            
-            const res = await apiRequest("POST", "/api/whatsapp/send-media", {
-              number,
-              mediaType,
-              base64,
-              mimetype: file.type,
-              fileName: file.name,
-            });
-            resolve(res.json());
-          } catch (error) {
-            reject(error);
-          }
-        };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
+    mutationFn: async ({ number, file, preview, mediaType }: { number: string; file: File; preview: string; mediaType: string }) => {
+      const base64 = preview.split(',')[1];
+      const res = await apiRequest("POST", "/api/whatsapp/send-media", {
+        number,
+        mediaType,
+        base64,
+        mimetype: file.type,
+        fileName: file.name,
       });
+      return res.json();
+    },
+    onMutate: async ({ preview, mediaType }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
+      const previousMessages = queryClient.getQueryData(["/api/whatsapp/chats", selectedChat, "messages"]);
+      const optimisticMessage = {
+        id: `temp_${Date.now()}`,
+        messageId: `temp_${Date.now()}`,
+        content: `[${mediaType}]`,
+        fromMe: true,
+        timestamp: new Date().toISOString(),
+        messageType: mediaType,
+        mediaUrl: preview,
+        status: "sending",
+      };
+      queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], (old: any[] = []) => [...old, optimisticMessage]);
+      setPendingAttachment(null);
+      return { previousMessages };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
-      toast({ title: "File sent", description: "Your file has been sent" });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], context.previousMessages);
+      }
       toast({ title: "Send Failed", description: error.message || "Failed to send file", variant: "destructive" });
     },
   });
@@ -670,11 +678,34 @@ export default function WhatsAppPage() {
       return;
     }
     
-    sendMediaMutation.mutate({ number: selectedChat, file });
+    const mediaType = file.type.startsWith('image/') ? 'image' 
+      : file.type.startsWith('video/') ? 'video'
+      : file.type.startsWith('audio/') ? 'audio'
+      : 'document';
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPendingAttachment({
+        file,
+        preview: reader.result as string,
+        type: mediaType,
+      });
+    };
+    reader.readAsDataURL(file);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleSendAttachment = () => {
+    if (!pendingAttachment || !selectedChat) return;
+    sendMediaMutation.mutate({
+      number: selectedChat,
+      file: pendingAttachment.file,
+      preview: pendingAttachment.preview,
+      mediaType: pendingAttachment.type,
+    });
   };
 
   const filteredChats = chats.filter((chat) =>
@@ -943,6 +974,61 @@ export default function WhatsAppPage() {
                 )}
               </div>
             </ScrollArea>
+
+            {pendingAttachment && (
+              <div className="p-4 border-t bg-gray-50 dark:bg-gray-800">
+                <div className="flex items-start gap-3">
+                  <div className="relative">
+                    {pendingAttachment.type === 'image' ? (
+                      <img 
+                        src={pendingAttachment.preview} 
+                        alt="Preview" 
+                        className="w-20 h-20 object-cover rounded-lg"
+                      />
+                    ) : pendingAttachment.type === 'video' ? (
+                      <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <Video className="w-8 h-8 text-gray-500" />
+                      </div>
+                    ) : pendingAttachment.type === 'audio' ? (
+                      <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <Mic className="w-8 h-8 text-gray-500" />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <FileText className="w-8 h-8 text-gray-500" />
+                      </div>
+                    )}
+                    <button 
+                      onClick={() => setPendingAttachment(null)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                      data-testid="button-remove-attachment"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {pendingAttachment.file.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(pendingAttachment.file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleSendAttachment}
+                    disabled={sendMediaMutation.isPending}
+                    className="shrink-0"
+                    data-testid="button-send-attachment"
+                  >
+                    {sendMediaMutation.isPending ? (
+                      <LoadingSpinner fullScreen={false} />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center gap-2">
               <Button variant="ghost" size="icon">
