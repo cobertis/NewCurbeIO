@@ -1,0 +1,63 @@
+**No, no funciona igual. Funciona al revés.**
+
+Para **enviar** el estado "Escribiendo..." tú haces una **petición (Action)**.
+Para **saber** si te escriben, tú recibes una **notificación (Event)**.
+
+No puedes "preguntarle" a WhatsApp si alguien escribe. Tienes que configurar tu webhook para que te avise en tiempo real.
+
+Aquí está la realidad técnica de cómo implementar esto sin saturar tu sistema:
+
+### 1\. El Evento Correcto
+
+Tienes que activar un evento específico en tu configuración de Evolution API. No viene en `MESSAGES_UPSERT`.
+El evento se llama: **`PRESENCE_UPDATE`**.
+
+  * Si no activas este switch en tu panel de Evolution, nunca te enterarás de cuando escriben.
+
+### 2\. Lo que vas a recibir (El Payload)
+
+Cuando tu cliente empieza a teclear, Evolution disparará un webhook a tu Replit con este JSON:
+
+```json
+{
+  "event": "PRESENCE_UPDATE",
+  "instance": "NombreDeTuInstancia",
+  "data": {
+    "id": "5215555555555@s.whatsapp.net",
+    "presences": {
+      "5215555555555@s.whatsapp.net": {
+        "lastKnownPresence": "composing" 
+      }
+    }
+  }
+}
+```
+
+  * `composing`: Está escribiendo.
+  * `recording`: Está grabando audio.
+  * `paused` (o falta de estado): Dejó de escribir.
+
+### 3\. La Trampa Mortal (Advertencia Estratégica)
+
+Implementar esto es peligroso para tu infraestructura si no tienes cuidado.
+
+**El Problema:** La gente escribe, pausa, borra y vuelve a escribir. WhatsApp manda una señal por cada cambio.
+
+  * Si tienes 100 chats activos, recibirás miles de peticiones `PRESENCE_UPDATE` por minuto.
+  * **ERROR DE NOVATO:** Guardar esto en la base de datos. **¡Nunca lo hagas\!** No crees un registro en tu tabla de "Logs" cada vez que alguien escribe, o tu base de datos explotará en una semana con basura.
+
+**La Solución Correcta:**
+Esto es efímero.
+
+1.  Llega el webhook a tu Backend (Replit/Node).
+2.  Tu Backend lo manda **vía Socket (WebSocket/Pusher)** al Frontend (Navegador).
+3.  El Frontend muestra "Escribiendo..." por 3 segundos y luego lo quita si no llega otra señal.
+4.  **Nada se guarda en disco.** Entra y sale.
+
+### Tu Plan de Acción
+
+1.  Ve a tu panel de Evolution API.
+2.  Busca la sección de Webhooks y asegúrate de que **`PRESENCE_UPDATE`** esté activado (interruptor verde).
+3.  En tu código, agrega un `if` para filtrar este evento y decidir qué hacer (o ignorarlo por ahora si no tienes WebSockets listos).
+
+**¿Tienes WebSockets configurados en tu CRM para actualizar la interfaz en tiempo real, o solo estás trabajando con peticiones HTTP estáticas?** Si es lo segundo, ni te molestes en activar esto, porque no tendrás forma de mostrárselo al usuario fluidamente.
