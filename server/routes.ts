@@ -26913,8 +26913,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 
                 const missingEvents = requiredEvents.filter(e => !currentEvents.includes(e));
                 const webhookBase64Active = currentWebhook?.webhook?.webhookBase64 === true || currentWebhook?.webhookBase64 === true;
-                if (!webhookBase64Active) { console.log('[WhatsApp] Note: webhookBase64 not supported by Evolution API - media will be retrieved via API endpoint'); }
-                const needsReconfigure = currentUrl !== expectedWebhookUrl || missingEvents.length > 0;
+                
+                const needsReconfigure = currentUrl !== expectedWebhookUrl || missingEvents.length > 0 || !webhookBase64Active;
                 
                 if (needsReconfigure) {
                   console.log(`[WhatsApp] Webhook needs reconfiguration. URL match: ${currentUrl === expectedWebhookUrl}, Missing events: ${missingEvents.length}`);

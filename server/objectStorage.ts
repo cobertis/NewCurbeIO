@@ -154,6 +154,52 @@ export class ObjectStorageService {
     const entityId = rawObjectPath.slice(objectEntityDir.length);
     return `/objects/${entityId}`;
   }
+
+  async uploadWhatsAppMedia(
+    base64Data: string,
+    mimetype: string,
+    companyId: string,
+    messageId: string
+  ): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const extension = this.getExtensionFromMimetype(mimetype);
+    const objectName = `whatsapp-media/${companyId}/${messageId}${extension}`;
+    const fullPath = `${privateObjectDir}/${objectName}`;
+    const { bucketName, objectName: storagePath } = parseObjectPath(fullPath);
+    
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(storagePath);
+    
+    const buffer = Buffer.from(base64Data, "base64");
+    
+    await file.save(buffer, {
+      contentType: mimetype,
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+    
+    console.log(`[ObjectStorage] WhatsApp media uploaded: ${objectName}`);
+    return `/objects/${objectName}`;
+  }
+
+  private getExtensionFromMimetype(mimetype: string): string {
+    const mimeMap: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/png": ".png",
+      "image/gif": ".gif",
+      "image/webp": ".webp",
+      "video/mp4": ".mp4",
+      "video/3gpp": ".3gp",
+      "audio/ogg": ".ogg",
+      "audio/mpeg": ".mp3",
+      "audio/mp4": ".m4a",
+      "application/pdf": ".pdf",
+      "application/msword": ".doc",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    };
+    return mimeMap[mimetype] || "";
+  }
 }
 
 function parseObjectPath(path: string): {
