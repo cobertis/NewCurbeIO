@@ -108,7 +108,7 @@ class EvolutionApiService {
 
 async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     console.log(`[Evolution API] Setting webhook for ${instanceName}: ${webhookUrl}`);
-    return this.request("POST", `/webhook/set/${instanceName}`, {
+    const payload = {
       webhook: {
         enabled: true,
         url: webhookUrl,
@@ -116,34 +116,40 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
         webhookBase64: true,
         events: [
           "APPLICATION_STARTUP",
-          "CALL",
-          "CHATS_DELETE",
-          "CHATS_SET",
-          "CHATS_UPDATE",
-          "CHATS_UPSERT",
-          "CONNECTION_UPDATE",
-          "CONTACTS_SET",
-          "CONTACTS_UPDATE",
-          "CONTACTS_UPSERT",
-          "GROUP_PARTICIPANTS_UPDATE",
-          "GROUP_UPDATE",
-          "GROUPS_UPSERT",
-          "LABELS_ASSOCIATION",
-          "LABELS_EDIT",
-          "LOGOUT_INSTANCE",
-          "MESSAGES_DELETE",
-          "MESSAGES_SET",
-          "MESSAGES_UPDATE",
-          "MESSAGES_UPSERT",
-          "PRESENCE_UPDATE",
           "QRCODE_UPDATED",
-          "REMOVE_INSTANCE",
+          "MESSAGES_SET",
+          "MESSAGES_UPSERT",
+          "MESSAGES_EDITED",
+          "MESSAGES_UPDATE",
+          "MESSAGES_DELETE",
           "SEND_MESSAGE",
-          "TYPEBOT_CHANGE_STATUS",
+          "SEND_MESSAGE_UPDATE",
+          "CONTACTS_SET",
+          "CONTACTS_UPSERT",
+          "CONTACTS_UPDATE",
+          "PRESENCE_UPDATE",
+          "CHATS_SET",
+          "CHATS_UPSERT",
+          "CHATS_UPDATE",
+          "CHATS_DELETE",
+          "GROUPS_UPSERT",
+          "GROUP_UPDATE",
+          "GROUP_PARTICIPANTS_UPDATE",
+          "CONNECTION_UPDATE",
+          "LABELS_EDIT",
+          "LABELS_ASSOCIATION",
+          "CALL",
           "TYPEBOT_START",
+          "TYPEBOT_CHANGE_STATUS",
+          "REMOVE_INSTANCE",
+          "LOGOUT_INSTANCE",
         ],
       },
-    });
+    };
+    console.log(`[Evolution API] Webhook payload:`, JSON.stringify(payload, null, 2));
+    const result = await this.request("POST", `/webhook/set/${instanceName}`, payload);
+    console.log(`[Evolution API] Webhook set response:`, JSON.stringify(result, null, 2));
+    return result;
   }
 
   async fetchQrCode(instanceName: string): Promise<{ base64: string }> {
