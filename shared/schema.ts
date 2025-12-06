@@ -4496,6 +4496,7 @@ export const whatsappContacts = pgTable("whatsapp_contacts", {
   profilePicUrl: text("profile_pic_url"),
   businessPhone: text("business_phone"),
   businessName: text("business_name"),
+  profileFetchedAt: timestamp("profile_fetched_at", { withTimezone: true }),
   isGroup: boolean("is_group").notNull().default(false),
   isBlocked: boolean("is_blocked").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

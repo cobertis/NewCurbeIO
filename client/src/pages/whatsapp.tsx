@@ -33,6 +33,8 @@ interface WhatsappContact {
   pushName?: string;
   profilePicUrl?: string;
   isGroup: boolean;
+  businessPhone?: string;
+  businessName?: string;
 }
 
 interface WhatsappConversation {
@@ -57,7 +59,7 @@ interface WhatsappMessage {
   timestamp: string;
 }
 
-function formatJidToPhone(jid: string, contactName?: string): string {
+function formatJidToPhone(jid: string, contactName?: string, businessPhone?: string, businessName?: string): string {
   if (!jid) return "";
   
   // If we have a contact name from WhatsApp, use it
@@ -69,10 +71,25 @@ function formatJidToPhone(jid: string, contactName?: string): string {
     return `Group (${groupId.slice(-6)})`;
   }
   
-  // Check if this is a WhatsApp Business ID (@lid) - not a real phone number
+  // Check if this is a WhatsApp Business ID (@lid)
   if (jid.includes("@lid")) {
+    // For @lid contacts, prefer businessName, then formatted businessPhone
+    if (businessName) return businessName;
+    
+    if (businessPhone) {
+      // Format the business phone number like a regular phone
+      if (businessPhone.length === 10) {
+        return `(${businessPhone.substring(0, 3)}) ${businessPhone.substring(3, 6)}-${businessPhone.substring(6)}`;
+      } else if (businessPhone.length === 11 && businessPhone.startsWith("1")) {
+        return `+1 (${businessPhone.substring(1, 4)}) ${businessPhone.substring(4, 7)}-${businessPhone.substring(7)}`;
+      } else if (/^\d+$/.test(businessPhone)) {
+        return `+${businessPhone}`;
+      }
+      return businessPhone;
+    }
+    
+    // Fallback: show truncated ID to distinguish between multiple business contacts
     const bizId = jid.split("@")[0];
-    // Show truncated ID to distinguish between multiple business contacts
     return `Business (${bizId.slice(-6)})`;
   }
   
@@ -576,7 +593,7 @@ export default function WhatsAppPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
                     <p className="font-medium truncate dark:text-white">
-                      {formatJidToPhone(chat.remoteJid, chat.contact?.pushName)}
+                      {formatJidToPhone(chat.remoteJid, chat.contact?.pushName, chat.contact?.businessPhone, chat.contact?.businessName)}
                     </p>
                     <span className="text-xs text-gray-500 flex-shrink-0">
                       {chat.lastMessageAt && formatMessageTime(chat.lastMessageAt)}
@@ -621,7 +638,7 @@ export default function WhatsAppPage() {
                 className="h-10 w-10"
               />
               <div className="flex-1">
-                <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat, chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName)}</p>
+                <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat, chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessPhone, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessName)}</p>
                 <p className="text-xs text-gray-500">Online</p>
               </div>
               <div className="flex gap-1">

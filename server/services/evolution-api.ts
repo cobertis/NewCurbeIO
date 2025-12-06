@@ -257,6 +257,105 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
   }
 
   /**
+   * Validates a phone number from Evolution API responses
+   * Preserves the exact digit sequence - only validates, does not modify
+   * @param candidate - The string to validate
+   * @returns Original digits if valid, or null if clearly invalid
+   */
+  private normalizeToE164(candidate: string | null | undefined): string | null {
+    if (!candidate) return null;
+    
+    // Extract digits only - preserve EXACTLY as received
+    const digits = candidate.replace(/\D/g, '');
+    
+    // Reject empty or too short (less than 10 digits)
+    if (digits.length < 10) {
+      console.log(`[Evolution API] normalizeToE164: rejected "${digits}" (too short: ${digits.length} < 10)`);
+      return null;
+    }
+    
+    // Accept any number up to 25 digits (Evolution returns various formats)
+    // Store the full number exactly as received
+    if (digits.length > 25) {
+      console.log(`[Evolution API] normalizeToE164: rejected "${digits}" (too long: ${digits.length} > 25)`);
+      return null;
+    }
+    
+    // Reject if it's all zeros (invalid)
+    if (/^0+$/.test(digits)) {
+      console.log(`[Evolution API] normalizeToE164: rejected "${digits}" (all zeros)`);
+      return null;
+    }
+    
+    // Store exactly as received - frontend will handle display formatting
+    console.log(`[Evolution API] normalizeToE164: accepted "${digits}" (length ${digits.length})`);
+    return digits;
+  }
+
+  /**
+   * Fetches the business profile for a WhatsApp Business ID (@lid)
+   * Returns the real phone number (E.164 normalized) and business name if available
+   * 
+   * @param instanceName - The Evolution API instance name
+   * @param jid - The @lid JID to look up (e.g., "12345678901234567@lid")
+   * @returns Object with businessPhone (E.164 digits) and businessName, or null if not found
+   */
+  async getBusinessProfile(
+    instanceName: string,
+    jid: string
+  ): Promise<{ businessPhone: string | null; businessName: string | null }> {
+    console.log(`[Evolution API] Fetching business profile for ${jid}`);
+    try {
+      const response: any = await this.request("POST", `/chat/fetchProfile/${instanceName}`, {
+        number: jid
+      });
+      
+      console.log(`[Evolution API] Business profile response:`, JSON.stringify(response).slice(0, 500));
+      
+      let businessPhone: string | null = null;
+      let businessName: string | null = null;
+      
+      // Try multiple sources for the phone number, in order of preference:
+      // 1. response.number.user (most reliable)
+      // 2. response.wid (can be JID or object)
+      // 3. response.id
+      const phoneCandidates: string[] = [];
+      
+      if (response?.number?.user) {
+        phoneCandidates.push(response.number.user);
+      }
+      if (response?.wid) {
+        if (typeof response.wid === 'string') {
+          phoneCandidates.push(response.wid.split('@')[0]);
+        } else if (response.wid?.user) {
+          phoneCandidates.push(response.wid.user);
+        }
+      }
+      if (response?.id && typeof response.id === 'string') {
+        phoneCandidates.push(response.id.split('@')[0]);
+      }
+      
+      // Validate each candidate until we find a valid E.164 number
+      for (const candidate of phoneCandidates) {
+        const normalized = this.normalizeToE164(candidate);
+        if (normalized) {
+          businessPhone = normalized;
+          break;
+        }
+      }
+      
+      // Extract business name from multiple sources
+      businessName = response?.verifiedName || response?.pushName || response?.name || null;
+      
+      console.log(`[Evolution API] Extracted businessPhone: ${businessPhone}, businessName: ${businessName}`);
+      return { businessPhone, businessName };
+    } catch (error: any) {
+      console.log(`[Evolution API] Failed to fetch business profile:`, error.message);
+      return { businessPhone: null, businessName: null };
+    }
+  }
+
+  /**
    * Downloads media from a message and returns it as base64
    * This is the fallback when webhookBase64 is not available (SaaS Evolution API)
    */

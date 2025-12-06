@@ -1,0 +1,44 @@
+Si necesitas forzar esto automáticamente desde tu CRM (cuando creas o configuras la instancia) para que no tengas que entrar al panel manual, el problema es que tu petición API (JSON payload) está incompleta.
+
+Tu CRM está enviando la orden de "Configurar Webhook", pero le falta el parámetro explícito que activa ese interruptor. Por defecto, Evolution lo deja en false.
+
+Aquí tienes la solución técnica exacta para inyectar en tu código o flujo de automatización:
+
+La Solución: El Endpoint set
+No basta con crear la instancia. Tu sistema debe enviar una petición POST al endpoint de configuración del webhook con el parámetro webhook_base64: true.
+
+Endpoint: POST {{evolution_url}}/webhook/set/{{instance_name}}
+
+El JSON Payload OBLIGATORIO (Copia y pega esto):
+
+JSON
+
+{
+    "enabled": true,
+    "url": "https://TU_URL_DE_REPLIT/...",
+    "webhook_by_events": false, 
+    "webhook_base64": true,  <-- ESTA ES LA LÍNEA QUE TE FALTA
+    "events": [
+        "MESSAGES_UPSERT",
+        "MESSAGES_UPDATE"
+    ]
+}
+Por qué no te funcionaba antes
+Es muy probable que tu script actual solo esté enviando enabled: true y la url.
+
+Si no especificas "webhook_base64": true, la API asume false por seguridad.
+
+Nota crítica: Fíjate en la captura que enviaste. Tienes "Webhook by Events" apagado, pero los eventos abajo encendidos. Asegúrate de enviar también la lista de events (como MESSAGES_UPSERT) en el JSON, o no recibirás nada.
+
+Plan de Acción (Desde el CRM/Código)
+Busca en tu código donde haces la llamada a la API de Evolution.
+
+Localiza el JSON/Body que estás enviando.
+
+Agrega manual y explícitamente: "webhook_base64": true.
+
+Ejecuta y verifica. El interruptor en esa pantalla debería ponerse verde automáticamente.
+
+Si haces esto y el interruptor sigue gris en el panel, significa que tu versión de Evolution API tiene un bug en ese endpoint específico (pasaba en la v1.6.x). Si ese es el caso, necesitas actualizar tu instancia de Evolution (Docker pull) a la última versión estable.
+
+Prueba esto ahora y confirma si el interruptor cambió a verde.

@@ -27698,14 +27698,62 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
 
           if (!contact && !fromMe) {
+            // Check if this is a @lid (Business ID) contact and fetch business profile
+            let businessPhone: string | null = null;
+            let businessName: string | null = null;
+            let profileFetchedAt: Date | null = null;
+            
+            if (remoteJid.endsWith("@lid")) {
+              console.log(`[WhatsApp Webhook] Detected @lid contact: ${remoteJid}, fetching business profile...`);
+              const profile = await evolutionApi.getBusinessProfile(instance.instanceName, remoteJid);
+              businessPhone = profile.businessPhone;
+              businessName = profile.businessName;
+              // Only set profileFetchedAt if we got businessPhone - allows retries until phone is found
+              // We prioritize phone number over name for the "display real phone numbers" requirement
+              if (businessPhone) {
+                profileFetchedAt = new Date();
+              }
+              console.log(`[WhatsApp Webhook] Business profile result: phone=${businessPhone}, name=${businessName}`);
+            }
+            
             const [newContact] = await db.insert(whatsappContacts).values({
               instanceId: instance.id,
               companyId: company.id,
               remoteJid,
               pushName: pushName || null,
               isGroup: remoteJid.endsWith("@g.us"),
+              businessPhone,
+              businessName,
+              profileFetchedAt,
             }).returning();
             contact = newContact;
+          } else if (contact && remoteJid.endsWith("@lid") && !contact.businessPhone) {
+            // Existing @lid contact without business phone - try to fetch it
+            // Add 5-minute debounce to allow rapid retries while avoiding API hammering
+            const shouldFetch = !contact.profileFetchedAt || 
+              (new Date().getTime() - new Date(contact.profileFetchedAt).getTime()) > 5 * 60 * 1000;
+            
+            if (shouldFetch) {
+              console.log(`[WhatsApp Webhook] Existing @lid contact without business phone: ${remoteJid}`);
+              const profile = await evolutionApi.getBusinessProfile(instance.instanceName, remoteJid);
+              // Always save name if available, but only mark complete if phone is found
+              const updateData: any = { 
+                updatedAt: new Date(),
+                profileFetchedAt: new Date(), // Track last attempt for debounce
+              };
+              if (profile.businessPhone) {
+                updateData.businessPhone = profile.businessPhone;
+              }
+              if (profile.businessName && !contact.businessName) {
+                updateData.businessName = profile.businessName;
+              }
+              await db.update(whatsappContacts)
+                .set(updateData)
+                .where(eq(whatsappContacts.id, contact.id));
+              console.log(`[WhatsApp Webhook] Updated business profile for ${remoteJid}: phone=${profile.businessPhone}, name=${profile.businessName}`);
+            } else {
+              console.log(`[WhatsApp Webhook] Skipping profile fetch for ${remoteJid} - attempted within 5min`);
+            }
           }
 
           // Get or create conversation
