@@ -27032,7 +27032,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
-      // Step 4: Instance doesn't exist or is broken - create new one
+      // Step 4: Instance does not exist or is broken - create new one
       console.log(`[WhatsApp] Creating new instance: ${instanceName}`);
       
       try {
@@ -27041,7 +27041,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Ignore - instance might not exist
       }
 
+      // Step 4a: Create instance
+      console.log(`[WhatsApp] Step 1/3: Creating instance...`);
       const result = await evolutionApi.createInstance(instanceName);
+      
+      // Step 4b: Set settings (must be before QR is shown)
+      console.log(`[WhatsApp] Step 2/3: Configuring settings...`);
+      await evolutionApi.setSettings(instanceName);
+      
+      // Step 4c: Set webhook
+      console.log(`[WhatsApp] Step 3/3: Configuring webhooks...`);
       await evolutionApi.setWebhook(instanceName, webhookUrl);
       
       const qrCode = result.qrcode?.base64 || null;
@@ -27049,7 +27058,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappInstances)
         .set({ webhookUrl, status: "connecting", qrCode, updatedAt: new Date() })
         .where(eq(whatsappInstances.id, instance.id));
-
+      
       return res.json({
         success: true,
         qrCode,

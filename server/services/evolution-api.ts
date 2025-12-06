@@ -89,6 +89,18 @@ class EvolutionApiService {
     return this.request("GET", `/instance/connectionState/${instanceName}`);
   }
 
+  async setSettings(instanceName: string): Promise<any> {
+    console.log(`[Evolution API] Setting instance settings for: ${instanceName}`);
+    return this.request("POST", `/settings/set/${instanceName}`, {
+      rejectCall: true,
+      ignoreGroups: true,
+      alwaysOnline: false,
+      readMessages: false,
+      readStatus: false,
+      syncFullHistory: true,
+    });
+  }
+
   async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     console.log(`[Evolution API] Setting webhook for ${instanceName}: ${webhookUrl}`);
     return this.request("POST", `/webhook/set/${instanceName}`, {
@@ -98,11 +110,13 @@ class EvolutionApiService {
         webhookByEvents: false,
         webhookBase64: true,
         events: [
-          "MESSAGES_UPSERT",
-          "MESSAGES_UPDATE", 
-          "CONNECTION_UPDATE",
-          "CONTACTS_UPSERT",
           "QRCODE_UPDATED",
+          "CONNECTION_UPDATE",
+          "MESSAGES_UPSERT",
+          "MESSAGES_UPDATE",
+          "SEND_MESSAGE",
+          "CHATS_UPSERT",
+          "CONTACTS_UPSERT",
         ],
       },
     });
