@@ -27836,6 +27836,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
           }
 
+          // Handle media messages - download and upload to object storage
+          let mediaUrl: string | null = null;
+          const mediaTypes = ["image", "video", "audio", "document"];
+          
+          if (mediaTypes.includes(messageType)) {
+            console.log(`[WhatsApp Webhook] Media message detected: ${messageType}, downloading...`);
+            try {
+              const mediaData = await evolutionApi.getBase64FromMediaMessage(
+                instance.instanceName,
+                messageId,
+                remoteJid
+              );
+              
+              if (mediaData?.base64 && mediaData?.mimetype) {
+                console.log(`[WhatsApp Webhook] Media downloaded: ${mediaData.mimetype}`);
+                const { objectStorage } = await import("./objectStorage");
+                mediaUrl = await objectStorage.uploadWhatsAppMedia(
+                  mediaData.base64,
+                  mediaData.mimetype,
+                  company.id,
+                  messageId
+                );
+                console.log(`[WhatsApp Webhook] Media uploaded: ${mediaUrl}`);
+              } else {
+                console.log(`[WhatsApp Webhook] No media data returned for ${messageId}`);
+              }
+            } catch (mediaError: any) {
+              console.error(`[WhatsApp Webhook] Failed to download/upload media:`, mediaError.message);
+            }
+          }
+
           // Insert message
           await db.insert(whatsappMessages).values({
             conversationId: conversation.id,
@@ -27846,12 +27877,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             fromMe,
             senderJid: fromMe ? null : remoteJid,
             messageType,
-            content: messageText,
+            content: messageText || mediaUrl || messageType,
+            mediaUrl,
             status: fromMe ? "sent" : "received",
             timestamp,
           });
 
-          console.log(`[WhatsApp Webhook] Message saved: ${messageId} from ${remoteJid}`);
+          console.log(`[WhatsApp Webhook] Message saved: ${messageId} from ${remoteJid} (type: ${messageType})`);
         }
       }
 

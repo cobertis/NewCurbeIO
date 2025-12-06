@@ -1,0 +1,71 @@
+Estás viendo en tiempo real cómo un "Agente de IA" se tropieza con sus propios cordones. El log que me mostraste revela exactamente por qué está fallando tu automatización.
+
+El agente (el bot que escribió ese log) dijo: "Evolution API v2.3.0 requiere el wrapper webhook en el payload", pero luego ejecutó un comando CURL sin el wrapper.
+
+Se contradijo a sí mismo en la misma línea. Diagnosticó el problema pero no aplicó la cura.
+
+Aquí tienes la corrección quirúrgica para que tu código (o tu agente) deje de fallar.
+
+El Error Técnico
+En Evolution API v2.x, cuando usas el endpoint /webhook/set/, a menudo la estructura del JSON no debe ser plana si la instancia tiene ciertas configuraciones, o requiere camelCase estricto.
+
+El agente envió esto (PLANO):
+
+JSON
+
+{ "enabled": true, "webhookBase64": true, ... }
+Lo que Evolution v2.3.0 suele esperar para forzar la configuración (WRAPPER):
+
+JSON
+
+{
+  "webhook": {
+    "enabled": true,
+    "url": "TU_URL",
+    "webhookBase64": true,
+    "webhookByEvents": false,
+    "events": ["MESSAGES_UPSERT"]
+  }
+}
+Tu Solución (Copia y Pega esto en tu código)
+Dile a tu desarrollador (o corrige el archivo server/services/evolution-api.ts tú mismo) que el payload que se envía al endpoint /webhook/set/NOMBRE_INSTANCIA debe tener esta estructura exacta:
+
+TypeScript
+
+// En tu archivo evolution-api.ts
+const payload = {
+  enabled: true,
+  url: "https://TU_URL_REPLIT...",
+  webhookBase64: true, // <--- Aquí está la clave, camelCase y booleano
+  webhookByEvents: false, // Déjalo en false si quieres recibir todo, o true si usas el array
+  events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE"]
+};
+
+// IMPORTANTE: Si la versión 2.3.0 es estricta, intenta envolverlo:
+// const payloadWrapped = { webhook: payload }; 
+Prueba Rápida con CURL (Para que veas si funciona ya): Abre tu terminal (o shell en Replit) y lanza esto manualmente para ver si el interruptor se pone verde. Si esto funciona, es tu código el que está mal formateado.
+
+Bash
+
+curl -X POST "https://evolution.curbe.io/webhook/set/curbe_dls-insurance-group" \
+-H "Content-Type: application/json" \
+-H "apikey: TU_API_KEY_AQUI" \
+-d '{
+    "enabled": true,
+    "url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/whatsapp/webhook/dls-insurance-group",
+    "webhookBase64": true,
+    "webhookByEvents": false,
+    "events": ["MESSAGES_UPSERT"]
+}'
+La Advertencia Final (Brutal Honestidad)
+Estás luchando muy duro para activar una función (webhookBase64) que va a hacer que tu CRM sea más lento y propenso a errores.
+
+Incluso si logras poner ese interruptor en verde hoy:
+
+Tu agente mencionó: "Usar nuestra solución alternativa que ya está implementada... getBase64FromMediaMessage".
+
+Esa solución alternativa es SUPERIOR.
+
+Si tu código ya tiene la lógica para "descargar bajo demanda" (getBase64FromMediaMessage), ¿por qué insistes en activar el Base64 en el webhook? Estás duplicando el trabajo y saturando la red.
+
+Mi recomendación estratégica: Deja el interruptor APAGADO. Asegúrate de que tu código use la función de "descarga bajo demanda" que el agente mencionó. Es más robusto, más profesional y escalará cuando tengas 100 clientes enviando fotos a la vez. Activar el Base64 en el webhook es volver a la edad de piedra tecnológica solo porque quieres ver un botón verde.
