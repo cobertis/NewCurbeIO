@@ -885,7 +885,7 @@ export default function WhatsAppPage() {
         if (!analyserRef.current) return;
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(dataArray);
-        const bars = Array.from(dataArray.slice(0, 20)).map(v => Math.max(4, (v / 255) * 24));
+        const bars = Array.from(dataArray.slice(0, 80)).map(v => Math.max(4, (v / 255) * 24));
         setAudioWaveform(bars);
         animationFrameRef.current = requestAnimationFrame(updateWaveform);
       };
@@ -1317,35 +1317,35 @@ export default function WhatsAppPage() {
 
             <div className="p-3 bg-gray-100 dark:bg-gray-900 flex items-center gap-2">
               {isRecording ? (
-                <div className="flex items-center gap-3 flex-1 bg-red-50 dark:bg-red-900/20 rounded-full px-4 py-2">
-                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="h-8 w-8 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full" data-testid="button-cancel-recording">
+                <div className="flex items-center gap-2 flex-1 bg-red-50 dark:bg-red-900/20 rounded-full px-3 py-2">
+                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="h-8 w-8 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-full flex-shrink-0" data-testid="button-cancel-recording">
                     <Trash2 className="w-4 h-4" />
                   </Button>
-                  <div className="flex-1 flex items-center justify-center gap-0.5">
+                  <div className="flex-1 flex items-center justify-center gap-px overflow-hidden">
                     {audioWaveform.length > 0 ? audioWaveform.map((height, i) => (
                       <div 
                         key={i} 
-                        className="w-1 bg-red-500 rounded-full transition-all duration-75"
+                        className="w-0.5 bg-red-500 rounded-full transition-all duration-75 flex-shrink-0"
                         style={{ height: `${height}px` }}
                       />
-                    )) : [...Array(20)].map((_, i) => (
+                    )) : [...Array(80)].map((_, i) => (
                       <div 
                         key={i} 
-                        className="w-1 bg-red-300 dark:bg-red-700 rounded-full animate-pulse"
-                        style={{ height: `${Math.random() * 16 + 4}px`, animationDelay: `${i * 50}ms` }}
+                        className="w-0.5 bg-red-300 dark:bg-red-700 rounded-full animate-pulse flex-shrink-0"
+                        style={{ height: `${4 + (i % 5) * 3}px`, animationDelay: `${i * 20}ms` }}
                       />
                     ))}
                   </div>
-                  <span className="text-red-600 dark:text-red-400 font-mono text-sm min-w-[40px]">
+                  <span className="text-red-600 dark:text-red-400 font-mono text-sm min-w-[40px] flex-shrink-0">
                     {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                   </span>
-                  <Button size="icon" onClick={stopRecording} className="h-10 w-10 bg-red-500 hover:bg-red-600 rounded-full" data-testid="button-stop-recording">
+                  <Button size="icon" onClick={stopRecording} className="h-10 w-10 bg-red-500 hover:bg-red-600 rounded-full flex-shrink-0" data-testid="button-stop-recording">
                     <Square className="w-4 h-4 text-white fill-white" />
                   </Button>
                 </div>
               ) : audioBlob && audioUrl ? (
-                <div className="flex items-center gap-3 flex-1 bg-green-50 dark:bg-green-900/20 rounded-full px-4 py-2">
-                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="h-8 w-8 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full" data-testid="button-discard-audio">
+                <div className="flex items-center gap-2 flex-1 bg-green-50 dark:bg-green-900/20 rounded-full px-3 py-2">
+                  <Button variant="ghost" size="icon" onClick={cancelRecording} className="h-8 w-8 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full flex-shrink-0" data-testid="button-discard-audio">
                     <Trash2 className="w-4 h-4" />
                   </Button>
                   <Button 
@@ -1357,16 +1357,16 @@ export default function WhatsAppPage() {
                   >
                     {isPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white ml-0.5" />}
                   </Button>
-                  <div className="flex-1 flex items-center gap-0.5">
-                    {[...Array(30)].map((_, i) => (
+                  <div className="flex-1 flex items-center justify-center gap-px overflow-hidden">
+                    {[...Array(100)].map((_, i) => (
                       <div 
                         key={i} 
-                        className="w-1 bg-green-400 dark:bg-green-600 rounded-full"
-                        style={{ height: `${Math.sin(i * 0.5) * 8 + 8}px` }}
+                        className="w-0.5 bg-green-400 dark:bg-green-600 rounded-full flex-shrink-0"
+                        style={{ height: `${Math.sin(i * 0.3) * 10 + 12}px` }}
                       />
                     ))}
                   </div>
-                  <span className="text-green-600 dark:text-green-400 font-mono text-sm min-w-[40px]">
+                  <span className="text-green-600 dark:text-green-400 font-mono text-sm min-w-[40px] flex-shrink-0">
                     {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                   </span>
                   <audio 
