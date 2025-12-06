@@ -876,25 +876,63 @@ export default function WhatsAppPage() {
     syncMessages();
   }, [selectedChat, instanceData?.connected, queryClient]);
 
+  // Use ResizeObserver to keep scroll locked to bottom until content stabilizes
   useEffect(() => {
     if (loadingMessages) {
       setChatReady(false);
       return;
     }
     
-    if (messages.length > 0 && scrollViewportRef.current) {
-      const viewport = scrollViewportRef.current;
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
-          }
-          setChatReady(true);
-        });
-      });
-    } else {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) {
       setChatReady(true);
+      return;
     }
+    
+    // Immediately scroll to bottom
+    viewport.scrollTop = viewport.scrollHeight;
+    
+    // Track if we should keep scrolling to bottom
+    let isLocked = true;
+    let stabilityTimer: ReturnType<typeof setTimeout>;
+    let scrollCount = 0;
+    
+    // ResizeObserver keeps scroll at bottom while content grows (images loading, etc)
+    const resizeObserver = new ResizeObserver(() => {
+      if (isLocked && viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+        scrollCount++;
+        
+        // After each resize, reset stability timer
+        clearTimeout(stabilityTimer);
+        stabilityTimer = setTimeout(() => {
+          // Content has stabilized (no resizes for 200ms)
+          isLocked = false;
+          setChatReady(true);
+        }, 200);
+      }
+    });
+    
+    // Observe the content container (first child of viewport)
+    const contentContainer = viewport.firstElementChild;
+    if (contentContainer) {
+      resizeObserver.observe(contentContainer);
+    }
+    
+    // Also observe viewport itself
+    resizeObserver.observe(viewport);
+    
+    // Initial scroll and set ready after short delay if no resizes happen
+    stabilityTimer = setTimeout(() => {
+      viewport.scrollTop = viewport.scrollHeight;
+      setChatReady(true);
+      isLocked = false;
+    }, 150);
+    
+    return () => {
+      clearTimeout(stabilityTimer);
+      resizeObserver.disconnect();
+    };
   }, [loadingMessages, selectedChat, messages.length]);
 
   const handleSend = () => {
