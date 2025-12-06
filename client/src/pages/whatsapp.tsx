@@ -461,7 +461,9 @@ export default function WhatsAppPage() {
     type: 'image' | 'video' | 'audio' | 'document';
   } | null>(null);
   const [newChatNumber, setNewChatNumber] = useState("");
+  const [chatReady, setChatReady] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectAttemptedRef = useRef(false);
   const previousUnreadRef = useRef<number>(0);
@@ -733,6 +735,9 @@ export default function WhatsAppPage() {
           if (data.type === 'whatsapp:message') {
             if (data.data?.remoteJid === selectedChat) {
               queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
+              if (scrollViewportRef.current) {
+                scrollViewportRef.current.scrollTop = scrollViewportRef.current.scrollHeight;
+              }
             }
             queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
           }
@@ -783,6 +788,21 @@ export default function WhatsAppPage() {
     
     syncMessages();
   }, [selectedChat, instanceData?.connected, queryClient]);
+
+  useEffect(() => {
+    if (!loadingMessages && messages.length > 0 && scrollViewportRef.current) {
+      setChatReady(false);
+      requestAnimationFrame(() => {
+        const viewport = scrollViewportRef.current;
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+        setChatReady(true);
+      });
+    } else if (loadingMessages) {
+      setChatReady(false);
+    }
+  }, [loadingMessages, selectedChat]);
 
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
@@ -1141,9 +1161,17 @@ export default function WhatsAppPage() {
             </div>
 
             <ScrollArea 
+              viewportRef={scrollViewportRef}
               className="flex-1 p-4 bg-gray-50 dark:bg-gray-900"
+              style={{ scrollBehavior: 'auto' }}
             >
-              <div className="dark:opacity-80">
+              <div 
+                className="dark:opacity-80"
+                style={{ 
+                  opacity: chatReady ? 1 : 0,
+                  transition: 'none'
+                }}
+              >
                 {loadingMessages ? (
                   <div className="flex justify-center py-8">
                     <LoadingSpinner fullScreen={false} />
@@ -1155,8 +1183,7 @@ export default function WhatsAppPage() {
                     <p className="text-xs">Send a message to start the conversation</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col-reverse">
-                    <div className="space-y-1">
+                  <div className="space-y-1">
                       {messages.map((msg) => (
                         <div
                           key={msg.id}
@@ -1210,7 +1237,6 @@ export default function WhatsAppPage() {
                           </div>
                         </div>
                       ))}
-                    </div>
                   </div>
                 )}
               </div>
