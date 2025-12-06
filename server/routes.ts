@@ -24383,21 +24383,54 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           let remoteJid = presenceData.id;
           const isTyping = presenceData.presences?.[remoteJid]?.lastKnownPresence === "composing";
           
-          // If it's a @lid JID, try to find the corresponding conversation via messages
+          // If it's a @lid JID, try to find the corresponding conversation
           if (remoteJid.endsWith('@lid')) {
-            const message = await db.query.whatsappMessages.findFirst({
+            // First check if there's a contact with this @lid that has a businessPhone
+            const lidContact = await db.query.whatsappContacts.findFirst({
               where: and(
-                eq(whatsappMessages.instanceId, instance.id),
-                eq(whatsappMessages.senderJid, remoteJid)
+                eq(whatsappContacts.instanceId, instance.id),
+                eq(whatsappContacts.remoteJid, remoteJid)
               ),
             });
-            if (message) {
-              remoteJid = message.remoteJid;
-              console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid}`);
+            
+            if (lidContact?.businessPhone) {
+              // Find conversation with a contact that has this phone number in their remoteJid
+              const phoneNumber = lidContact.businessPhone.replace(/\D/g, '');
+              const conversation = await db.query.whatsappConversations.findFirst({
+                where: and(
+                  eq(whatsappConversations.instanceId, instance.id),
+                  sql`${whatsappConversations.remoteJid} LIKE ${phoneNumber + '%'}`
+                ),
+              });
+              if (conversation) {
+                remoteJid = conversation.remoteJid;
+                console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid} via businessPhone`);
+              }
+            } else {
+              // Try to get businessPhone from Evolution API
+              try {
+                const profile = await evolutionApi.getBusinessProfile(instance.instanceName, remoteJid);
+                if (profile?.businessPhone) {
+                  const phoneNumber = profile.businessPhone.replace(/\D/g, '');
+                  const conversation = await db.query.whatsappConversations.findFirst({
+                    where: and(
+                      eq(whatsappConversations.instanceId, instance.id),
+                      sql`${whatsappConversations.remoteJid} LIKE ${phoneNumber + '%'}`
+                    ),
+                  });
+                  if (conversation) {
+                    remoteJid = conversation.remoteJid;
+                    console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid} via API`);
+                  }
+                }
+              } catch (e) {
+                // Silently fail - typing indicator is not critical
+              }
             }
           }
           
           broadcastWhatsAppTyping(company.id, remoteJid, isTyping);
+          console.log(`[WhatsApp Webhook] Broadcasting typing: ${remoteJid} isTyping=${isTyping}`);
         }
       }
       res.status(200).send("OK");

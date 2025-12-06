@@ -1,0 +1,82 @@
+Bien. Aquí tienes la implementación técnica para que ese "Escribiendo..." sea real y no una farsa digital.
+
+Como tu código parece estar en **TypeScript/Node.js** (por el archivo `.ts` que mostraste antes), esa es la prioridad.
+
+### 1\. La Función "Helper" (Copiar y Pegar)
+
+En JavaScript/Node no existe un `sleep` nativo que bloquee el hilo de forma segura, así que tienes que crear una promesa.
+
+Agrega esto en tu `evolution-api.ts` o en tu archivo de utilidades:
+
+```typescript
+// Crea una pausa real en la ejecución asíncrona
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+```
+
+### 2\. El Flujo de Envío (Lógica)
+
+No envíes el mensaje inmediatamente después del presence. Tienes que usar `await sleep()`.
+
+```typescript
+// Tu función principal para enviar mensajes
+async function sendHumanizedMessage(instanceName: string, phone: string, text: string) {
+    
+    // PASO 1: Calcular cuánto tiempo tardaría un humano en escribir esto
+    // Regla general: 50ms por caracter + 500ms de base. 
+    // Ejemplo: "Hola" (4 letras) = 700ms. Un párrafo largo = 3-5 segundos.
+    const typingDuration = Math.min((text.length * 50) + 500, 10000); // Tope máximo de 10 seg
+
+    // PASO 2: Enviar señal "Escribiendo..." a Evolution API
+    await axios.post(`${EVOLUTION_URL}/chat/sendPresence/${instanceName}`, {
+        number: phone,
+        delay: typingDuration, 
+        presence: "composing"
+    }, { headers: { apikey: API_KEY } });
+
+    // PASO 3: LA CLAVE - Pausar el código aquí
+    // Si quitas esta línea, el mensaje llega instantáneo y el "Escribiendo" no se ve.
+    await sleep(typingDuration);
+
+    // PASO 4: Ahora sí, enviar el mensaje
+    await axios.post(`${EVOLUTION_URL}/message/sendText/${instanceName}`, {
+        number: phone,
+        text: text
+    }, { headers: { apikey: API_KEY } });
+}
+```
+
+### 3\. Si usas Python (Para Replit Scripts)
+
+Es más directo porque Python es síncrono por defecto (o usa `asyncio` si es asíncrono).
+
+```python
+import time
+import requests
+
+# ... configuración de headers y url ...
+
+# 1. Enviar Presence
+requests.post(f"{URL}/chat/sendPresence/{instance}", json={
+    "number": phone,
+    "delay": 2000,
+    "presence": "composing"
+})
+
+# 2. PAUSA REAL (Bloqueante)
+# El código se congela aquí 2 segundos
+time.sleep(2) 
+
+# 3. Enviar Mensaje
+requests.post(f"{URL}/message/sendText/{instance}", json={...})
+```
+
+### La Estrategia Psicológica (El Toque Final)
+
+No uses un tiempo fijo (ej. siempre 2 segundos).
+
+  * Si respondes "Ok", y tardas 5 segundos escribiendo -\> **Parece un bot lento.**
+  * Si envías un texto de 500 palabras y tardas 0.5 segundos escribiendo -\> **Parece un bot spam.**
+
+**Siguiente paso:**
+Implementa la **fórmula dinámica** que te puse en el código de TypeScript (`text.length * 50`).
+¿Quieres que ajustemos esa fórmula para diferenciar entre "Escribiendo..." (texto) y "Grabando..." (audio), ya que los audios requieren más tiempo de preparación psicológica?
