@@ -255,6 +255,43 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     
     return "text";
   }
+
+  /**
+   * Downloads media from a message and returns it as base64
+   * This is the fallback when webhookBase64 is not available (SaaS Evolution API)
+   */
+  async getBase64FromMediaMessage(
+    instanceName: string, 
+    messageId: string, 
+    remoteJid: string
+  ): Promise<{ base64: string; mimetype: string } | null> {
+    console.log(`[Evolution API] Downloading media for message ${messageId}`);
+    try {
+      const response: any = await this.request("POST", `/chat/getBase64FromMediaMessage/${instanceName}`, {
+        message: {
+          key: {
+            id: messageId,
+            remoteJid: remoteJid
+          }
+        },
+        convertToMp4: false
+      });
+      
+      if (response?.base64 && response?.mimetype) {
+        console.log(`[Evolution API] Media downloaded successfully: ${response.mimetype}`);
+        return {
+          base64: response.base64,
+          mimetype: response.mimetype
+        };
+      }
+      
+      console.log(`[Evolution API] No media found in response`);
+      return null;
+    } catch (error: any) {
+      console.log(`[Evolution API] Failed to download media:`, error.message);
+      return null;
+    }
+  }
 }
 
 export const evolutionApi = new EvolutionApiService();
