@@ -790,19 +790,25 @@ export default function WhatsAppPage() {
   }, [selectedChat, instanceData?.connected, queryClient]);
 
   useEffect(() => {
-    if (!loadingMessages && messages.length > 0 && scrollViewportRef.current) {
+    if (loadingMessages) {
       setChatReady(false);
-      requestAnimationFrame(() => {
-        const viewport = scrollViewportRef.current;
-        if (viewport) {
-          viewport.scrollTop = viewport.scrollHeight;
-        }
-        setChatReady(true);
-      });
-    } else if (loadingMessages) {
-      setChatReady(false);
+      return;
     }
-  }, [loadingMessages, selectedChat]);
+    
+    if (messages.length > 0 && scrollViewportRef.current) {
+      const viewport = scrollViewportRef.current;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+          }
+          setChatReady(true);
+        });
+      });
+    } else {
+      setChatReady(true);
+    }
+  }, [loadingMessages, selectedChat, messages.length]);
 
   const handleSend = () => {
     if (!messageText.trim() || !selectedChat) return;
@@ -1168,8 +1174,7 @@ export default function WhatsAppPage() {
               <div 
                 className="dark:opacity-80"
                 style={{ 
-                  opacity: chatReady ? 1 : 0,
-                  transition: 'none'
+                  visibility: chatReady ? 'visible' : 'hidden'
                 }}
               >
                 {loadingMessages ? (
