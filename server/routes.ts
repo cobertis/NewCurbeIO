@@ -9,7 +9,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent } from "./websocket";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -24280,11 +24280,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   .where(eq(whatsappMessages.id, targetMessage.id));
                 console.log(`[WhatsApp Webhook] Reaction ${newReaction || 'removed'} on message ${reactionData.targetMessageId}`);
                 // Broadcast reaction update via WebSocket
-                broadcastToCompany(company.id, {
+                broadcastWhatsAppEvent(company.id, {
                   type: "whatsapp:reaction",
-                  messageId: targetMessage.messageId,
-                  reaction: newReaction,
-                  remoteJid: targetMessage.remoteJid,
+                  companyId: company.id,
+                  data: {
+                    messageId: targetMessage.messageId,
+                    reaction: newReaction,
+                    remoteJid: targetMessage.remoteJid,
+                  }
                 });
               }
             }
@@ -24986,11 +24989,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[WhatsApp] Reaction ${newReaction || 'removed'} saved for message ${messageId}`);
         
         // Broadcast reaction update via WebSocket
-        broadcastToCompany(user.companyId!, {
+        broadcastWhatsAppEvent(user.companyId!, {
           type: "whatsapp:reaction",
-          messageId: targetMessage.messageId,
-          reaction: newReaction,
-          remoteJid: targetMessage.remoteJid,
+          companyId: user.companyId!,
+          data: {
+            messageId: targetMessage.messageId,
+            reaction: newReaction,
+            remoteJid: targetMessage.remoteJid,
+          }
         });
       }
       

@@ -1012,7 +1012,7 @@ export default function WhatsAppPage() {
           }
           if (data.type === 'whatsapp:reaction') {
             // Reaction received - refresh messages to show the reaction
-            const { remoteJid } = data;
+            const remoteJid = data.data?.remoteJid;
             if (remoteJid === currentChat) {
               queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', currentChat, 'messages'] });
             }
