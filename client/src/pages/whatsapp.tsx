@@ -1432,7 +1432,9 @@ export default function WhatsAppPage() {
                       <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                       <span className="font-semibold">typing...</span>
                     </span>
-                  ) : null}
+                  ) : (
+                    chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName || null
+                  )}
                 </p>
               </div>
               <div className="flex gap-1">
