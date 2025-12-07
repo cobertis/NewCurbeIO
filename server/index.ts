@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import cookieParser from "cookie-parser";
 import connectPgSimple from "connect-pg-simple";
+import crypto from "crypto";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import "./stripe"; // Force Stripe initialization to show which mode we're using
@@ -25,9 +26,30 @@ process.on('uncaughtException', (error: Error) => {
   }
 });
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error('CRITICAL: SESSION_SECRET environment variable must be set for production security');
+// Derive SESSION_SECRET from SECRETS_MASTER_KEY to reduce required env vars
+// This way only DATABASE_URL and SECRETS_MASTER_KEY are needed
+function getSessionSecret(): string {
+  // First check if SESSION_SECRET is explicitly set (for backward compatibility)
+  if (process.env.SESSION_SECRET) {
+    return process.env.SESSION_SECRET;
+  }
+  
+  // Derive from SECRETS_MASTER_KEY using HMAC
+  const masterKey = process.env.SECRETS_MASTER_KEY;
+  if (!masterKey) {
+    throw new Error('CRITICAL: SECRETS_MASTER_KEY environment variable must be set. This is required for encryption and session security.');
+  }
+  
+  // Use HMAC-SHA256 to derive a session secret from the master key
+  const derivedSecret = crypto.createHmac('sha256', masterKey)
+    .update('session-secret-derivation')
+    .digest('hex');
+  
+  console.log('SESSION_SECRET derived from SECRETS_MASTER_KEY');
+  return derivedSecret;
 }
+
+const SESSION_SECRET = getSessionSecret();
 
 const app = express();
 
@@ -73,7 +95,7 @@ const pgStore = new PgStore({
 app.use(
   session({
     store: pgStore,
-    secret: process.env.SESSION_SECRET,
+    secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
