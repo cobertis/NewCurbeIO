@@ -3628,7 +3628,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           name: z.string().min(1, "Company name is required"),
           slug: z.string().min(1, "Company slug is required"),
           phone: z.string().optional().nullable(),
-          website: z.string().url().optional().nullable(),
+          website: z.string().url().optional().or(z.literal("")).nullable(),
           address: z.string().optional().nullable(),
           addressLine2: z.string().optional().nullable(),
           city: z.string().optional().nullable(),
