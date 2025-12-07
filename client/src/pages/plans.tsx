@@ -413,24 +413,34 @@ export function PublicPricingView({
                           {sortedFeatures.filter(f => f.isActive).length > 0 ? (
                             sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
                               const included = displayFeatures.includes(feature.id);
-                              if (!included) return null;
                               return (
                                 <div
                                   key={feature.id}
                                   className="flex items-center gap-2"
                                   data-testid={`feature-${index}-${idx}`}
                                 >
-                                  <Check 
-                                    className="flex-shrink-0"
-                                    style={{ 
-                                      width: '16px', 
-                                      height: '16px', 
-                                      color: '#64748B'
-                                    }} 
-                                  />
+                                  {included ? (
+                                    <Check 
+                                      className="flex-shrink-0"
+                                      style={{ 
+                                        width: '16px', 
+                                        height: '16px', 
+                                        color: '#64748B'
+                                      }} 
+                                    />
+                                  ) : (
+                                    <X 
+                                      className="flex-shrink-0"
+                                      style={{ 
+                                        width: '16px', 
+                                        height: '16px', 
+                                        color: '#EF4444'
+                                      }} 
+                                    />
+                                  )}
                                   <span 
                                     className="text-sm"
-                                    style={{ color: pricingTheme.colors.textSecondary }}
+                                    style={{ color: included ? pricingTheme.colors.textSecondary : '#9CA3AF' }}
                                   >
                                     {feature.name}
                                   </span>
