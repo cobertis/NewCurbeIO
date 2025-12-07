@@ -219,28 +219,27 @@ export function PublicPricingView({
               </button>
             </div>
             {/* Arrow and 2 months free text */}
-            <div className="relative ml-1">
+            <div className="relative" style={{ marginLeft: '8px', marginTop: '-8px' }}>
               <svg 
-                width="90" 
-                height="50" 
-                viewBox="0 0 90 50" 
+                width="32" 
+                height="28" 
+                viewBox="0 0 32 28" 
                 fill="none"
                 style={{ 
                   position: 'absolute',
-                  top: '-35px',
-                  left: '-5px',
-                  transform: 'rotate(-5deg)',
+                  top: '2px',
+                  left: '0',
                 }}
               >
                 <path 
-                  d="M5 45 C 15 35, 25 20, 45 12 C 55 8, 65 6, 75 8" 
+                  d="M28 4 C 20 4, 12 8, 6 18" 
                   stroke="#1C422F" 
                   strokeWidth="2"
                   strokeLinecap="round"
                   fill="none"
                 />
                 <path 
-                  d="M70 3 L 78 8 L 72 14" 
+                  d="M10 14 L 6 18 L 2 15" 
                   stroke="#1C422F" 
                   strokeWidth="2"
                   strokeLinecap="round"
@@ -252,11 +251,8 @@ export function PublicPricingView({
                 style={{ 
                   color: '#1C422F',
                   fontFamily: '"Architects Daughter", cursive',
-                  fontSize: '16px',
-                  letterSpacing: '0.02em',
-                  position: 'relative',
-                  top: '-2px',
-                  marginLeft: '70px',
+                  fontSize: '17px',
+                  marginLeft: '28px',
                   whiteSpace: 'nowrap',
                 }}
               >
