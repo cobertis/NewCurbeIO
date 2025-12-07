@@ -1,4 +1,4 @@
-import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, BarChart3, PieChart, MapPin } from "lucide-react";
+import { Users, Bell, Cake, AlertTriangle, UserPlus, ChevronRight, BarChart3, PieChart, MapPin, Building2, CreditCard, Sparkles, Receipt, LifeBuoy, FileText, Key } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -167,10 +167,46 @@ export default function Dashboard() {
   }
 
   if (isSuperAdmin) {
+    const superadminLinks = [
+      { title: "Companies", path: "/companies", icon: Building2, description: "Manage companies and tenants" },
+      { title: "Users", path: "/users", icon: Users, description: "Manage system users" },
+      { title: "Plans", path: "/plans", icon: CreditCard, description: "Subscription plans" },
+      { title: "Features", path: "/features", icon: Sparkles, description: "Feature flags" },
+      { title: "Invoices", path: "/invoices", icon: Receipt, description: "Billing and invoices" },
+      { title: "Tickets", path: "/tickets", icon: LifeBuoy, description: "Support tickets" },
+      { title: "Audit Logs", path: "/audit-logs", icon: FileText, description: "System audit logs" },
+      { title: "System Alerts", path: "/system-alerts", icon: AlertTriangle, description: "System alerts" },
+      { title: "API Credentials", path: "/system-settings", icon: Key, description: "API keys and secrets" },
+    ];
+
     return (
       <div className="flex flex-col gap-6 p-6 min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Super Admin Dashboard</p>
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Super Admin Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">System administration and management</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {superadminLinks.map((link) => (
+            <Card 
+              key={link.path} 
+              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1"
+              onClick={() => setLocation(link.path)}
+              data-testid={`superadmin-link-${link.title.toLowerCase().replace(/\s/g, '-')}`}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                    <link.icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{link.title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{link.description}</p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );
