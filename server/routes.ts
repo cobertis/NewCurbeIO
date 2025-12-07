@@ -5749,7 +5749,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (representativeEmail !== undefined) updateData.representativeEmail = representativeEmail;
       if (npn !== undefined) updateData.npn = npn;
       if (timezone !== undefined) updateData.timezone = timezone;
-      if (timezone !== undefined) updateData.timezone = timezone;
+      
+      // Actually update the company in the database
+      const updatedCompany = await storage.updateCompany(companyId, updateData);
+      if (!updatedCompany) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
       res.json({ company: updatedCompany });
     } catch (error: any) {
       console.error("[Company Update] Error:", error);
