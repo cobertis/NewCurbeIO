@@ -546,6 +546,7 @@ export default function WhatsAppPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
   const [typingJids, setTypingJids] = useState<Set<string>>(new Set());
+  const draftsRef = useRef<Map<string, string>>(new Map());
   const [pendingAttachment, setPendingAttachment] = useState<{
     file: File;
     preview: string;
@@ -576,6 +577,27 @@ export default function WhatsAppPage() {
     setMessageText(prev => prev + emoji.native);
     setShowEmojiPicker(false);
   };
+
+  // Switch chat with draft preservation
+  const switchChat = useCallback((newChatJid: string | null) => {
+    // Save current draft before switching
+    if (selectedChat && messageText.trim()) {
+      draftsRef.current.set(selectedChat, messageText);
+    } else if (selectedChat) {
+      // Remove empty draft
+      draftsRef.current.delete(selectedChat);
+    }
+    
+    // Restore draft for new chat
+    if (newChatJid) {
+      const savedDraft = draftsRef.current.get(newChatJid) || "";
+      setMessageText(savedDraft);
+    } else {
+      setMessageText("");
+    }
+    
+    setSelectedChat(newChatJid);
+  }, [selectedChat, messageText]);
 
   // Notification sound function using Web Audio API
   const playNotificationSound = useCallback(() => {
@@ -682,6 +704,10 @@ export default function WhatsAppPage() {
       };
       queryClient.setQueryData(["/api/whatsapp/chats", selectedChat, "messages"], (old: any[] = []) => [...old, optimisticMessage]);
       setMessageText("");
+      // Clear draft after sending
+      if (selectedChat) {
+        draftsRef.current.delete(selectedChat);
+      }
       return { previousMessages };
     },
     onSuccess: () => {
@@ -786,7 +812,7 @@ export default function WhatsAppPage() {
       return apiRequest("DELETE", `/api/whatsapp/chats/${chatId}`);
     },
     onSuccess: () => {
-      setSelectedChat(null);
+      switchChat(null);
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats"] });
       toast({ title: "Deleted", description: "Chat deleted successfully" });
     },
@@ -1261,7 +1287,7 @@ export default function WhatsAppPage() {
               size="sm"
               onClick={() => {
                 if (newChatNumber.trim()) {
-                  setSelectedChat(newChatNumber.replace(/\D/g, "") + "@s.whatsapp.net");
+                  switchChat(newChatNumber.replace(/\D/g, "") + "@s.whatsapp.net");
                   setNewChatNumber("");
                 }
               }}
@@ -1289,7 +1315,7 @@ export default function WhatsAppPage() {
             filteredChats.map((chat) => (
               <div
                 key={chat.id}
-                onClick={() => setSelectedChat(chat.remoteJid)}
+                onClick={() => switchChat(chat.remoteJid)}
                 className={cn(
                   "flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800",
                   selectedChat === chat.remoteJid && "bg-gray-100 dark:bg-gray-800"
@@ -1344,7 +1370,7 @@ export default function WhatsAppPage() {
                 variant="ghost"
                 size="icon"
                 className="md:hidden"
-                onClick={() => setSelectedChat(null)}
+                onClick={() => switchChat(null)}
                 data-testid="button-back-to-chats"
               >
                 <ArrowLeft className="w-5 h-5" />
