@@ -343,7 +343,7 @@ export function PublicPricingView({
                             className="text-sm"
                             style={{ color: pricingTheme.colors.textMuted }}
                           >
-                            {enterprise ? 'per year' : 'per month'}
+                            per month
                           </span>
                         </div>
                       </div>
@@ -360,20 +360,20 @@ export function PublicPricingView({
                       <button
                         className="w-full py-3 px-4 rounded-lg text-sm font-semibold transition-all duration-200 mb-6"
                         style={{
-                          backgroundColor: popular ? '#22C55E' : '#FFFFFF',
+                          backgroundColor: popular ? '#0099FF' : '#FFFFFF',
                           color: popular ? '#FFFFFF' : pricingTheme.colors.textPrimary,
                           border: popular ? 'none' : `1px solid ${pricingTheme.colors.cardBorder}`,
                         }}
                         onMouseEnter={(e) => {
                           if (popular) {
-                            e.currentTarget.style.backgroundColor = '#16A34A';
+                            e.currentTarget.style.backgroundColor = '#0086E8';
                           } else {
                             e.currentTarget.style.backgroundColor = '#F8FAFC';
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (popular) {
-                            e.currentTarget.style.backgroundColor = '#22C55E';
+                            e.currentTarget.style.backgroundColor = '#0099FF';
                           } else {
                             e.currentTarget.style.backgroundColor = '#FFFFFF';
                           }
