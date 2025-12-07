@@ -899,6 +899,27 @@ export default function WhatsAppPage() {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
 
+  // Refresh contact profile when selecting a chat without pushName
+  const refreshedContactsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!selectedChat) return;
+    if (refreshedContactsRef.current.has(selectedChat)) return;
+    const chat = chats.find(c => c.remoteJid === selectedChat);
+    if (!chat?.contact?.pushName && !chat?.contact?.businessName) {
+      refreshedContactsRef.current.add(selectedChat);
+      fetch('/api/whatsapp/refresh-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remoteJid: selectedChat }),
+        credentials: 'include'
+      }).then(res => res.json()).then(data => {
+        if (data.pushName || data.businessName) {
+          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
+        }
+      }).catch(() => {});
+    }
+  }, [selectedChat, chats]);
+
   // WebSocket listener for real-time WhatsApp updates - singleton connection
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

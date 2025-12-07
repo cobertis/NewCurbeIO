@@ -400,11 +400,14 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       // Extract business name from multiple sources
       businessName = response?.verifiedName || response?.pushName || response?.name || null;
       
-      console.log(`[Evolution API] Extracted businessPhone: ${businessPhone}, businessName: ${businessName}`);
-      return { businessPhone, businessName };
+      // Extract pushName separately (personal name set by user)
+      const pushName = response?.pushName || response?.name || null;
+      
+      console.log(`[Evolution API] Extracted businessPhone: ${businessPhone}, businessName: ${businessName}, pushName: ${pushName}`);
+      return { businessPhone, businessName, pushName };
     } catch (error: any) {
       console.log(`[Evolution API] Failed to fetch business profile:`, error.message);
-      return { businessPhone: null, businessName: null };
+      return { businessPhone: null, businessName: null, pushName: null };
     }
   }
 

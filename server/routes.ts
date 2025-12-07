@@ -23547,6 +23547,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch profile picture" });
     }
   });
+
+  // POST /api/whatsapp/refresh-contact - Fetch contact name from Evolution API and update DB
+  app.post("/api/whatsapp/refresh-contact", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { remoteJid } = req.body;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+      if (!remoteJid) {
+        return res.status(400).json({ message: "remoteJid required" });
+      }
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+      if (!instance) {
+        return res.status(404).json({ message: "No WhatsApp instance" });
+      }
+      const profile = await evolutionApi.getBusinessProfile(instance.instanceName, remoteJid);
+      console.log(`[WhatsApp] Refresh contact ${remoteJid}:`, profile);
+      const existingContact = await db.query.whatsappContacts.findFirst({
+        where: and(
+          eq(whatsappContacts.instanceId, instance.id),
+          eq(whatsappContacts.remoteJid, remoteJid)
+        ),
+      });
+      const updateData: any = { updatedAt: new Date(), profileFetchedAt: new Date() };
+      if (profile.pushName) updateData.pushName = profile.pushName;
+      if (profile.businessPhone) updateData.businessPhone = profile.businessPhone;
+      if (profile.businessName) updateData.businessName = profile.businessName;
+      let contactId: string;
+      if (existingContact) {
+        await db.update(whatsappContacts)
+          .set(updateData)
+          .where(eq(whatsappContacts.id, existingContact.id));
+        contactId = existingContact.id;
+      } else {
+        const [newContact] = await db.insert(whatsappContacts).values({
+          instanceId: instance.id,
+          companyId: user.companyId,
+          remoteJid,
+          pushName: profile.pushName,
+          businessPhone: profile.businessPhone,
+          businessName: profile.businessName,
+          profileFetchedAt: new Date(),
+          isGroup: remoteJid.includes("@g.us"),
+        }).returning();
+        contactId = newContact.id;
+      }
+      await db.update(whatsappConversations)
+        .set({ contactId, updatedAt: new Date() })
+        .where(and(
+          eq(whatsappConversations.instanceId, instance.id),
+          eq(whatsappConversations.remoteJid, remoteJid)
+        ));
+      res.json({ 
+        contactId, 
+        pushName: profile.pushName,
+        businessPhone: profile.businessPhone,
+        businessName: profile.businessName 
+      });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error refreshing contact:", error);
+      res.status(500).json({ message: "Failed to refresh contact" });
+    }
+  });
   // GET /api/whatsapp/chats/:remoteJid/messages - Get messages for a chat
   app.get("/api/whatsapp/chats/:remoteJid/messages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
