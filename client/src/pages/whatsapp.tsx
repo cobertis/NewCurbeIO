@@ -832,7 +832,13 @@ export default function WhatsAppPage() {
     }
   }, [instanceData?.connected, loadingChats, chats.length]);
 
-  // WebSocket listener for real-time WhatsApp updates
+  // Ref to track selectedChat without causing WebSocket reconnection
+  const selectedChatRef = useRef<string | null>(selectedChat);
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  // WebSocket listener for real-time WhatsApp updates - singleton connection
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
@@ -844,11 +850,13 @@ export default function WhatsAppPage() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        const currentChat = selectedChatRef.current;
+        
         if (data.type?.startsWith('whatsapp:')) {
           console.log('[WhatsApp] WebSocket event:', data.type);
           if (data.type === 'whatsapp:message') {
-            if (data.data?.remoteJid === selectedChat) {
-              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
+            if (data.data?.remoteJid === currentChat) {
+              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', currentChat, 'messages'] });
               if (scrollViewportRef.current) {
                 scrollViewportRef.current.scrollTop = scrollViewportRef.current.scrollHeight;
               }
@@ -857,8 +865,8 @@ export default function WhatsAppPage() {
           }
           if (data.type === 'whatsapp:message_status') {
             const { remoteJid, messageId, status } = data.data || {};
-            if (remoteJid === selectedChat && messageId && status) {
-              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', selectedChat, 'messages'] });
+            if (remoteJid === currentChat && messageId && status) {
+              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', currentChat, 'messages'] });
             }
           }
           if (data.type === 'whatsapp:chat_update') {
@@ -872,10 +880,10 @@ export default function WhatsAppPage() {
         if (data.type === 'whatsapp_typing') {
           if (data.isTyping) {
             setTypingJid(data.remoteJid);
-            // Clear typing indicator after 5 seconds
-            setTimeout(() => setTypingJid(null), 5000);
+            // Clear typing indicator after 5 seconds if no "stop typing" received
+            setTimeout(() => setTypingJid((prev) => prev === data.remoteJid ? null : prev), 5000);
           } else {
-            setTypingJid(null);
+            setTypingJid((prev) => prev === data.remoteJid ? null : prev);
           }
         }
       } catch (e) {
@@ -894,7 +902,7 @@ export default function WhatsAppPage() {
     return () => {
       ws.close();
     };
-  }, [selectedChat, queryClient]);
+  }, [queryClient]); // Only depends on queryClient, not selectedChat
 
   // Initial sync when chat is selected (one-time, not polling)
   useEffect(() => {
