@@ -10,6 +10,78 @@ interface EmailOptions {
   text?: string;
   companyId?: string;
   skipBlacklistCheck?: boolean;
+  retryAttempts?: number;
+}
+
+interface RetryOptions {
+  maxAttempts: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+}
+
+const DEFAULT_RETRY_OPTIONS: RetryOptions = {
+  maxAttempts: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 10000,
+};
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withExponentialBackoff<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions = DEFAULT_RETRY_OPTIONS,
+  context: string = "operation"
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= options.maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      const errorCode = (error.code || '').toUpperCase();
+      const errorMessage = (error.message || '').toLowerCase();
+      
+      const retryableCodes = [
+        'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ESOCKET', 
+        'EAI_AGAIN', 'ETEMP', 'ENOTFOUND', 'EHOSTUNREACH'
+      ];
+      
+      const retryablePatterns = [
+        'greeting never received',
+        'timeout',
+        'etimedout',
+        'connection',
+        'socket',
+        'network',
+        'temporarily unavailable',
+        'try again',
+        'closed'
+      ];
+      
+      const isRetryable = 
+        retryableCodes.includes(errorCode) ||
+        retryablePatterns.some(pattern => errorMessage.includes(pattern));
+      
+      if (!isRetryable || attempt === options.maxAttempts) {
+        console.error(`[EMAIL RETRY] ${context} failed after ${attempt} attempt(s):`, error.message);
+        throw error;
+      }
+      
+      const delay = Math.min(
+        options.baseDelayMs * Math.pow(2, attempt - 1),
+        options.maxDelayMs
+      );
+      
+      console.log(`[EMAIL RETRY] ${context} attempt ${attempt}/${options.maxAttempts} failed: ${error.message}. Retrying in ${delay}ms...`);
+      await sleep(delay);
+    }
+  }
+  
+  throw lastError || new Error(`${context} failed after ${options.maxAttempts} attempts`);
 }
 
 let emailTransporter: Transporter | null = null;
@@ -127,17 +199,29 @@ class EmailService {
       console.log('[EMAIL DEBUG] To:', options.to);
       console.log('[EMAIL DEBUG] Subject:', options.subject);
 
-      const result = await transporter.sendMail({
-        from: fromAddress,
-        to: recipients,
-        subject: options.subject,
-        text: options.text || options.html.replace(/<[^>]*>/g, ""),
-        html: options.html,
-        envelope: {
-          from: bounceAddress,
-          to: Array.isArray(options.to) ? options.to : [options.to],
+      const retryOptions: RetryOptions = {
+        maxAttempts: options.retryAttempts ?? 3,
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
+      };
+
+      const result = await withExponentialBackoff(
+        async () => {
+          return await transporter.sendMail({
+            from: fromAddress,
+            to: recipients,
+            subject: options.subject,
+            text: options.text || options.html.replace(/<[^>]*>/g, ""),
+            html: options.html,
+            envelope: {
+              from: bounceAddress,
+              to: Array.isArray(options.to) ? options.to : [options.to],
+            },
+          });
         },
-      });
+        retryOptions,
+        `Send email to ${recipients}`
+      );
 
       console.log('[EMAIL DEBUG] Nodemailer result:', JSON.stringify(result, null, 2));
       console.log(`Email sent successfully to ${options.to}`);
@@ -147,7 +231,7 @@ class EmailService {
         const emails = Array.isArray(options.to) ? options.to.join(', ') : options.to;
         console.log(`[BLACKLIST] Blocked outbound email to ${emails} on email`);
       } else {
-        console.error("Failed to send email - ERROR DETAILS:");
+        console.error("Failed to send email after all retries - ERROR DETAILS:");
         console.error("Error message:", error.message);
         console.error("Error code:", error.code);
         console.error("Error response:", error.response);
