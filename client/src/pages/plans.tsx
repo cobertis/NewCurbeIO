@@ -47,6 +47,28 @@ interface PublicPricingViewProps {
   showTrialInfo?: boolean;
 }
 
+const pricingTheme = {
+  colors: {
+    background: '#E9EFFD',
+    gridLines: '#C2D2FF',
+    cardBorder: '#E3EAF8',
+    cardShadow: '0 22px 45px -20px rgba(15, 45, 92, 0.35)',
+    ctaPrimary: '#1FADAE',
+    ctaPrimaryHover: '#179B9C',
+    ctaSecondary: '#D8E0F0',
+    ctaSecondaryHover: '#F3F6FD',
+    textPrimary: '#0F172A',
+    textSecondary: '#475569',
+    textMuted: '#5B718E',
+    checkmark: '#5B718E',
+  },
+  spacing: {
+    section: '32px',
+    block: '20px',
+    feature: '12px',
+  },
+};
+
 export function PublicPricingView({ 
   planFeatures, 
   publicPlans, 
@@ -109,256 +131,365 @@ export function PublicPricingView({
   };
   
   return (
-    <div className="min-h-screen relative overflow-hidden py-16 px-4 sm:px-6">
-      {/* Grid background pattern */}
+    <div 
+      className="min-h-screen relative overflow-hidden"
+      style={{ backgroundColor: pricingTheme.colors.background }}
+    >
+      {/* Blueprint grid background */}
       <div 
-        className="absolute inset-0 opacity-40"
+        className="absolute inset-0"
         style={{
           backgroundImage: `
-            linear-gradient(to right, #e0e7ff 1px, transparent 1px),
-            linear-gradient(to bottom, #e0e7ff 1px, transparent 1px)
+            linear-gradient(to right, ${pricingTheme.colors.gridLines} 1px, transparent 1px),
+            linear-gradient(to bottom, ${pricingTheme.colors.gridLines} 1px, transparent 1px)
           `,
-          backgroundSize: '40px 40px',
+          backgroundSize: '48px 48px',
+          opacity: 0.6,
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-slate-50/80" />
       
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-12">
-          <div className="lg:max-w-md">
-            <h1 
-              className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight"
-              data-testid="text-pricing-header"
+      {/* Gradient overlay for depth */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.7) 0%, transparent 70%)',
+        }}
+      />
+      
+      <div className="relative z-10 py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header Section */}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8 mb-16">
+            <div className="lg:max-w-lg">
+              <h1 
+                className="text-4xl lg:text-[40px] font-semibold leading-tight tracking-tight"
+                style={{ color: pricingTheme.colors.textPrimary }}
+                data-testid="text-pricing-header"
+              >
+                Simple pricing based<br />on your needs
+              </h1>
+            </div>
+            <div className="lg:max-w-sm lg:text-right lg:pt-2">
+              <p 
+                className="text-base leading-relaxed"
+                style={{ color: pricingTheme.colors.textSecondary }}
+                data-testid="text-pricing-subtitle"
+              >
+                Discover a variety of our advanced features. Unlimited and free for individuals.
+              </p>
+            </div>
+          </div>
+
+          {/* Billing Toggle */}
+          <div className="flex items-center justify-center gap-2 mb-16">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+              style={{
+                backgroundColor: billingCycle === 'monthly' ? pricingTheme.colors.textPrimary : '#FFFFFF',
+                color: billingCycle === 'monthly' ? '#FFFFFF' : pricingTheme.colors.textSecondary,
+                border: billingCycle === 'monthly' ? 'none' : `1px solid ${pricingTheme.colors.cardBorder}`,
+              }}
+              data-testid="button-billing-monthly"
             >
-              Simple pricing based on your needs
-            </h1>
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle('yearly')}
+              className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+              style={{
+                backgroundColor: billingCycle === 'yearly' ? pricingTheme.colors.textPrimary : '#FFFFFF',
+                color: billingCycle === 'yearly' ? '#FFFFFF' : pricingTheme.colors.textSecondary,
+                border: billingCycle === 'yearly' ? 'none' : `1px solid ${pricingTheme.colors.cardBorder}`,
+              }}
+              data-testid="button-billing-yearly"
+            >
+              Yearly
+            </button>
+            <span 
+              className="ml-2 px-3 py-1.5 rounded text-xs font-semibold tracking-wide"
+              style={{
+                backgroundColor: '#D1FAE5',
+                color: '#059669',
+                letterSpacing: '0.04em',
+              }}
+              data-testid="badge-save-percentage"
+            >
+              Save 20%
+            </span>
           </div>
-          <div className="lg:max-w-sm lg:text-right">
-            <p className="text-slate-600 text-base" data-testid="text-pricing-subtitle">
-              Discover a variety of our advanced features. Unlimited and free for individuals.
-            </p>
-          </div>
-        </div>
 
-        {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-3 mb-12">
-          <button
-            onClick={() => setBillingCycle('monthly')}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-              billingCycle === 'monthly'
-                ? 'bg-slate-900 text-white'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
-            data-testid="button-billing-monthly"
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingCycle('yearly')}
-            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-              billingCycle === 'yearly'
-                ? 'bg-slate-900 text-white'
-                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-            }`}
-            data-testid="button-billing-yearly"
-          >
-            Yearly
-          </button>
-          <span 
-            className="bg-teal-100 text-teal-700 px-2.5 py-1 rounded text-xs font-medium"
-            data-testid="badge-save-percentage"
-          >
-            Save 20%
-          </span>
-        </div>
-
-        {/* Plans Grid */}
-        {isLoading ? (
-          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse bg-white rounded-2xl h-[500px] shadow-sm" />
-            ))}
-          </div>
-        ) : sortedPlans.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 max-w-md mx-auto text-center shadow-sm">
-            <p className="text-slate-500" data-testid="text-no-plans">No plans available</p>
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto items-start">
-            {sortedPlans.map((plan, index) => {
-              const popular = isPopularPlan(plan.name, index, sortedPlans.length);
-              const enterprise = isEnterprisePlan(plan.name, index, sortedPlans.length);
-              const displayFeatures = (plan.displayFeatures as string[]) || [];
-              const displayPrice = getDisplayPrice(plan);
-              const yearlyTotal = getYearlyTotal(plan);
-
-              return (
+          {/* Plans Grid */}
+          {isLoading ? (
+            <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
+              {[1, 2, 3].map((i) => (
                 <div 
-                  key={plan.id} 
-                  className="relative"
-                  data-testid={`card-public-plan-${index}`}
-                >
-                  {/* Trial Badge */}
-                  {popular && plan.trialDays > 0 && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                      <span 
-                        className="bg-slate-800 text-white px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap"
-                        data-testid={`badge-trial-${index}`}
-                      >
-                        {plan.trialDays} days free trial
-                      </span>
-                    </div>
-                  )}
-                  
-                  {/* Card */}
-                  <div className={`bg-white rounded-2xl p-6 h-full transition-shadow duration-200 ${
-                    popular 
-                      ? 'shadow-lg ring-1 ring-slate-200' 
-                      : 'shadow-sm hover:shadow-md'
-                  }`}>
-                    {/* Plan Name */}
-                    <h3 
-                      className="text-lg font-semibold text-slate-900 mb-4"
-                      data-testid={`text-plan-name-${index}`}
-                    >
-                      {plan.name}
-                    </h3>
-                    
-                    {/* Price */}
-                    <div className="mb-4">
-                      <p className="text-xs text-slate-500 mb-1">Starts at</p>
-                      <div className="flex items-baseline gap-1.5">
+                  key={i} 
+                  className="animate-pulse h-[520px]"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '24px',
+                    boxShadow: pricingTheme.colors.cardShadow,
+                  }}
+                />
+              ))}
+            </div>
+          ) : sortedPlans.length === 0 ? (
+            <div 
+              className="p-12 max-w-md mx-auto text-center"
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '24px',
+                boxShadow: pricingTheme.colors.cardShadow,
+              }}
+            >
+              <p style={{ color: pricingTheme.colors.textMuted }} data-testid="text-no-plans">
+                No plans available
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
+              {sortedPlans.map((plan, index) => {
+                const popular = isPopularPlan(plan.name, index, sortedPlans.length);
+                const enterprise = isEnterprisePlan(plan.name, index, sortedPlans.length);
+                const displayFeatures = (plan.displayFeatures as string[]) || [];
+                const displayPrice = getDisplayPrice(plan);
+                const yearlyTotal = getYearlyTotal(plan);
+
+                return (
+                  <div 
+                    key={plan.id} 
+                    className="relative flex flex-col"
+                    data-testid={`card-public-plan-${index}`}
+                  >
+                    {/* Trial Badge */}
+                    {popular && plan.trialDays > 0 && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                         <span 
-                          className="text-3xl font-bold text-slate-900"
-                          data-testid={`text-plan-price-${index}`}
+                          className="px-5 py-2 rounded-full text-xs font-medium whitespace-nowrap"
+                          style={{
+                            backgroundColor: '#1E293B',
+                            color: '#FFFFFF',
+                          }}
+                          data-testid={`badge-trial-${index}`}
                         >
-                          {enterprise && billingCycle === 'yearly' 
-                            ? `$${Math.round(yearlyTotal / 100 / 1000)}k`
-                            : formatPrice(displayPrice, plan.currency)
-                          }
-                        </span>
-                        <span className="text-slate-500 text-sm">
-                          {enterprise && billingCycle === 'yearly' ? 'per year' : 'per month/user'}
+                          {plan.trialDays} days free trial
                         </span>
                       </div>
-                    </div>
+                    )}
                     
-                    {/* Description */}
-                    <p 
-                      className="text-sm text-slate-600 mb-6 leading-relaxed"
-                      data-testid={`text-plan-description-${index}`}
+                    {/* Card */}
+                    <div 
+                      className="flex-1 flex flex-col p-8"
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: '24px',
+                        border: `1px solid ${pricingTheme.colors.cardBorder}`,
+                        boxShadow: popular ? pricingTheme.colors.cardShadow : '0 4px 20px -8px rgba(15, 45, 92, 0.15)',
+                      }}
                     >
-                      {getPlanDescription(plan.name, plan.description || undefined)}
-                    </p>
-                    
-                    {/* CTA Button */}
-                    <button
-                      className={`w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-colors duration-200 mb-6 ${
-                        popular 
-                          ? 'bg-teal-500 hover:bg-teal-600 text-white' 
-                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
-                      }`}
-                      onClick={() => !enterprise && onSelectPlan?.(plan.id, billingCycle)}
-                      disabled={isSelecting}
-                      data-testid={`button-select-plan-${index}`}
-                    >
-                      {isSelecting ? 'Selecting...' : enterprise ? 'Contact us' : 'Get started'}
-                    </button>
-                    
-                    {/* Features */}
-                    <div className="border-t border-slate-100 pt-5">
-                      <p 
-                        className="text-xs font-semibold text-slate-900 mb-3"
-                        data-testid={`text-feature-header-${index}`}
+                      {/* Plan Name */}
+                      <h3 
+                        className="text-lg font-semibold mb-6"
+                        style={{ color: pricingTheme.colors.textPrimary }}
+                        data-testid={`text-plan-name-${index}`}
                       >
-                        {getPlanFeatureHeader(plan.name, index)}
+                        {plan.name}
+                      </h3>
+                      
+                      {/* Price */}
+                      <div className="mb-5">
+                        <p 
+                          className="text-xs mb-1"
+                          style={{ color: pricingTheme.colors.textMuted }}
+                        >
+                          Starts at
+                        </p>
+                        <div className="flex items-baseline gap-2">
+                          <span 
+                            className="text-4xl font-bold"
+                            style={{ color: pricingTheme.colors.textPrimary }}
+                            data-testid={`text-plan-price-${index}`}
+                          >
+                            {enterprise && billingCycle === 'yearly' 
+                              ? `$${Math.round(yearlyTotal / 100 / 1000)}k`
+                              : formatPrice(displayPrice, plan.currency)
+                            }
+                          </span>
+                          <span 
+                            className="text-sm"
+                            style={{ color: pricingTheme.colors.textMuted }}
+                          >
+                            {enterprise && billingCycle === 'yearly' ? 'per year' : 'per month/user'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Description */}
+                      <p 
+                        className="text-sm leading-relaxed mb-8"
+                        style={{ color: pricingTheme.colors.textSecondary }}
+                        data-testid={`text-plan-description-${index}`}
+                      >
+                        {getPlanDescription(plan.name, plan.description || undefined)}
                       </p>
                       
-                      <div className="space-y-2.5">
-                        {sortedFeatures.filter(f => f.isActive).length > 0 ? (
-                          sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
-                            const included = displayFeatures.includes(feature.id);
-                            if (!included) return null;
-                            return (
-                              <div
-                                key={feature.id}
-                                className="flex items-start gap-2.5"
-                                data-testid={`feature-${index}-${idx}`}
-                              >
-                                <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-slate-600">
-                                  {feature.name}
+                      {/* CTA Button */}
+                      <button
+                        className="w-full py-3 px-5 rounded-xl text-sm font-medium transition-all duration-200 mb-8"
+                        style={{
+                          backgroundColor: popular ? pricingTheme.colors.ctaPrimary : '#FFFFFF',
+                          color: popular ? '#FFFFFF' : pricingTheme.colors.textPrimary,
+                          border: popular ? 'none' : `1px solid ${pricingTheme.colors.ctaSecondary}`,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (popular) {
+                            e.currentTarget.style.backgroundColor = pricingTheme.colors.ctaPrimaryHover;
+                          } else {
+                            e.currentTarget.style.backgroundColor = pricingTheme.colors.ctaSecondaryHover;
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (popular) {
+                            e.currentTarget.style.backgroundColor = pricingTheme.colors.ctaPrimary;
+                          } else {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          }
+                        }}
+                        onClick={() => !enterprise && onSelectPlan?.(plan.id, billingCycle)}
+                        disabled={isSelecting}
+                        data-testid={`button-select-plan-${index}`}
+                      >
+                        {isSelecting ? 'Selecting...' : enterprise ? 'Contact us' : 'Get started'}
+                      </button>
+                      
+                      {/* Features */}
+                      <div 
+                        className="flex-1 pt-6"
+                        style={{ borderTop: `1px solid ${pricingTheme.colors.cardBorder}` }}
+                      >
+                        <p 
+                          className="text-xs font-semibold mb-4"
+                          style={{ color: pricingTheme.colors.textPrimary }}
+                          data-testid={`text-feature-header-${index}`}
+                        >
+                          {getPlanFeatureHeader(plan.name, index)}
+                        </p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: pricingTheme.spacing.feature }}>
+                          {sortedFeatures.filter(f => f.isActive).length > 0 ? (
+                            sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
+                              const included = displayFeatures.includes(feature.id);
+                              if (!included) return null;
+                              return (
+                                <div
+                                  key={feature.id}
+                                  className="flex items-start gap-3"
+                                  data-testid={`feature-${index}-${idx}`}
+                                >
+                                  <Check 
+                                    className="flex-shrink-0 mt-0.5" 
+                                    style={{ 
+                                      width: '16px', 
+                                      height: '16px', 
+                                      color: pricingTheme.colors.checkmark 
+                                    }} 
+                                  />
+                                  <span 
+                                    className="text-[15px] leading-relaxed"
+                                    style={{ color: pricingTheme.colors.textSecondary }}
+                                  >
+                                    {feature.name}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <>
+                              <div className="flex items-start gap-3">
+                                <Check 
+                                  className="flex-shrink-0 mt-0.5" 
+                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
+                                />
+                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? '1 user' : index === 1 ? '1 team' : '1 parent team and unlimited sub-teams'}
                                 </span>
                               </div>
-                            );
-                          })
-                        ) : (
-                          <>
-                            <div className="flex items-start gap-2.5">
-                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-slate-600">
-                                {index === 0 ? '1 user' : index === 1 ? '1 team' : '1 parent team and unlimited sub-teams'}
-                              </span>
-                            </div>
-                            <div className="flex items-start gap-2.5">
-                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-slate-600">
-                                {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Schedule meetings as a team' : 'Organization workflows'}
-                              </span>
-                            </div>
-                            <div className="flex items-start gap-2.5">
-                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-slate-600">
-                                {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin, Fixed Round-Robin' : 'Insights - analyze your booking data'}
-                              </span>
-                            </div>
-                            <div className="flex items-start gap-2.5">
-                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-slate-600">
-                                {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'Active directory sync'}
-                              </span>
-                            </div>
-                            <div className="flex items-start gap-2.5">
-                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-slate-600">
-                                {index === 0 ? 'Integrate with your favorite apps' : index === 1 ? 'Advanced Routing Forms' : '24/7 Email, Chat and Phone support'}
-                              </span>
-                            </div>
-                            <div className="flex items-start gap-2.5">
-                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-slate-600">
-                                {index === 0 ? 'Accept payments via Stripe' : index === 1 ? 'Team Workflows' : 'Sync your HRIS tools'}
-                              </span>
-                            </div>
-                          </>
-                        )}
+                              <div className="flex items-start gap-3">
+                                <Check 
+                                  className="flex-shrink-0 mt-0.5" 
+                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
+                                />
+                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Schedule meetings as a team' : 'Organization workflows'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check 
+                                  className="flex-shrink-0 mt-0.5" 
+                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
+                                />
+                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin, Fixed Round-Robin' : 'Insights - analyze your booking data'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check 
+                                  className="flex-shrink-0 mt-0.5" 
+                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
+                                />
+                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'Active directory sync'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check 
+                                  className="flex-shrink-0 mt-0.5" 
+                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
+                                />
+                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Integrate with your favorite apps' : index === 1 ? 'Advanced Routing Forms' : '24/7 Email, Chat and Phone support'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check 
+                                  className="flex-shrink-0 mt-0.5" 
+                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
+                                />
+                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Accept payments via Stripe' : index === 1 ? 'Team Workflows' : 'Sync your HRIS tools'}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
 
-        {showTrialInfo && (
-          <div className="text-center mt-12 space-y-2">
-            <p className="text-sm text-slate-500">
-              All plans include a free trial. No credit card required.
-            </p>
-            <p className="text-sm text-slate-500">
-              Need help choosing?{' '}
-              <a 
-                href="mailto:hello@curbe.io" 
-                className="text-slate-700 hover:underline font-medium"
-                data-testid="link-contact-sales"
-              >
-                Contact our sales team
-              </a>
-            </p>
-          </div>
-        )}
+          {showTrialInfo && (
+            <div className="text-center mt-16 space-y-3">
+              <p className="text-sm" style={{ color: pricingTheme.colors.textMuted }}>
+                All plans include a free trial. No credit card required.
+              </p>
+              <p className="text-sm" style={{ color: pricingTheme.colors.textMuted }}>
+                Need help choosing?{' '}
+                <a 
+                  href="mailto:hello@curbe.io" 
+                  className="hover:underline font-medium"
+                  style={{ color: pricingTheme.colors.textPrimary }}
+                  data-testid="link-contact-sales"
+                >
+                  Contact our sales team
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
