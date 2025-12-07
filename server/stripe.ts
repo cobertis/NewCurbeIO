@@ -964,8 +964,8 @@ export async function getSubscriptionDetails(stripeSubscriptionId: string) {
 /**
  * Sync a local plan with Stripe
  * Creates a Product and recurring Price in Stripe
- * Optionally creates a one-time setup fee Price
- * Returns the Stripe Product ID, Price ID, and Setup Fee Price ID
+ * Optionally creates a one-time setup fee Price and annual Price
+ * Returns the Stripe Product ID, Price ID, Annual Price ID, and Setup Fee Price ID
  */
 export async function syncPlanWithStripe(plan: {
   id: string;
@@ -975,8 +975,10 @@ export async function syncPlanWithStripe(plan: {
   currency: string;
   billingCycle: string;
   setupFee: number;
+  annualPrice?: number | null;
   stripeProductId?: string | null;
   stripePriceId?: string | null;
+  stripeAnnualPriceId?: string | null;
   stripeSetupFeePriceId?: string | null;
 }) {
   try {
@@ -1176,9 +1178,78 @@ export async function syncPlanWithStripe(plan: {
       }
     }
 
+    // Step 4: Create or update annual Price if annualPrice is set
+    let annualRecurringPrice: Stripe.Price | null = null;
+    
+    if (plan.annualPrice && plan.annualPrice > 0) {
+      if (plan.stripeAnnualPriceId) {
+        console.log('[STRIPE SYNC] Checking existing annual price:', plan.stripeAnnualPriceId);
+        try {
+          const existingAnnualPrice = await stripeClient.prices.retrieve(plan.stripeAnnualPriceId);
+          
+          if (existingAnnualPrice.unit_amount !== plan.annualPrice) {
+            console.log('[STRIPE SYNC] Annual price changed, creating new price');
+            await stripeClient.prices.update(plan.stripeAnnualPriceId, { active: false });
+            
+            annualRecurringPrice = await stripeClient.prices.create({
+              product: product.id,
+              unit_amount: plan.annualPrice,
+              currency: plan.currency,
+              recurring: {
+                interval: 'year',
+              },
+              metadata: {
+                localPlanId: plan.id,
+                type: 'annual',
+              },
+            });
+            console.log('[STRIPE SYNC] Created new annual price:', annualRecurringPrice.id);
+          } else {
+            console.log('[STRIPE SYNC] Annual price unchanged, using existing:', existingAnnualPrice.id);
+            annualRecurringPrice = existingAnnualPrice;
+          }
+        } catch (error: any) {
+          if (error.code === 'resource_missing') {
+            console.log('[STRIPE SYNC] Annual price not found in Stripe, creating new one');
+            annualRecurringPrice = await stripeClient.prices.create({
+              product: product.id,
+              unit_amount: plan.annualPrice,
+              currency: plan.currency,
+              recurring: {
+                interval: 'year',
+              },
+              metadata: {
+                localPlanId: plan.id,
+                type: 'annual',
+              },
+            });
+            console.log('[STRIPE SYNC] Created new annual price:', annualRecurringPrice.id);
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        console.log('[STRIPE SYNC] Creating new annual price');
+        annualRecurringPrice = await stripeClient.prices.create({
+          product: product.id,
+          unit_amount: plan.annualPrice,
+          currency: plan.currency,
+          recurring: {
+            interval: 'year',
+          },
+          metadata: {
+            localPlanId: plan.id,
+            type: 'annual',
+          },
+        });
+        console.log('[STRIPE SYNC] Created new annual price:', annualRecurringPrice.id);
+      }
+    }
+
     return {
       stripeProductId: product.id,
       stripePriceId: recurringPrice.id,
+      stripeAnnualPriceId: annualRecurringPrice?.id || null,
       stripeSetupFeePriceId: setupFeePrice?.id || null,
     };
   } catch (error) {

@@ -6046,6 +6046,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const updatedPlan = await storage.updatePlan(plan.id, {
         stripeProductId: stripeIds.stripeProductId,
         stripePriceId: stripeIds.stripePriceId,
+        stripeAnnualPriceId: stripeIds.stripeAnnualPriceId,
         stripeSetupFeePriceId: stripeIds.stripeSetupFeePriceId,
       });
       res.json({ 
