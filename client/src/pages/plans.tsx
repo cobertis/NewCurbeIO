@@ -60,7 +60,10 @@ const pricingTheme = {
     textPrimary: '#0F172A',
     textSecondary: '#475569',
     textMuted: '#5B718E',
-    checkmark: '#5B718E',
+    checkmark: '#10B981',
+    excluded: '#EF4444',
+    excludedText: '#9CA3AF',
+    excludedBg: '#FEF2F2',
   },
   spacing: {
     section: '32px',
@@ -373,89 +376,137 @@ export function PublicPricingView({
                           style={{ color: pricingTheme.colors.textPrimary }}
                           data-testid={`text-feature-header-${index}`}
                         >
-                          {getPlanFeatureHeader(plan.name, index)}
+                          What's included
                         </p>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: pricingTheme.spacing.feature }}>
                           {sortedFeatures.filter(f => f.isActive).length > 0 ? (
-                            sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
-                              const included = displayFeatures.includes(feature.id);
-                              if (!included) return null;
-                              return (
-                                <div
-                                  key={feature.id}
-                                  className="flex items-start gap-3"
-                                  data-testid={`feature-${index}-${idx}`}
-                                >
-                                  <Check 
-                                    className="flex-shrink-0 mt-0.5" 
-                                    style={{ 
-                                      width: '16px', 
-                                      height: '16px', 
-                                      color: pricingTheme.colors.checkmark 
-                                    }} 
-                                  />
-                                  <span 
-                                    className="text-[15px] leading-relaxed"
-                                    style={{ color: pricingTheme.colors.textSecondary }}
+                            <>
+                              {/* Included features */}
+                              {sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
+                                const included = displayFeatures.includes(feature.id);
+                                if (!included) return null;
+                                return (
+                                  <div
+                                    key={feature.id}
+                                    className="flex items-start gap-3"
+                                    data-testid={`feature-included-${index}-${idx}`}
                                   >
-                                    {feature.name}
-                                  </span>
-                                </div>
-                              );
-                            })
+                                    <div 
+                                      className="flex-shrink-0 mt-0.5 rounded-full p-0.5"
+                                      style={{ backgroundColor: '#ECFDF5' }}
+                                    >
+                                      <Check 
+                                        style={{ 
+                                          width: '14px', 
+                                          height: '14px', 
+                                          color: pricingTheme.colors.checkmark 
+                                        }} 
+                                      />
+                                    </div>
+                                    <span 
+                                      className="text-[15px] leading-relaxed"
+                                      style={{ color: pricingTheme.colors.textSecondary }}
+                                    >
+                                      {feature.name}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                              
+                              {/* Excluded features - only show if there are any */}
+                              {sortedFeatures.filter(f => f.isActive && !displayFeatures.includes(f.id)).length > 0 && (
+                                <>
+                                  <div 
+                                    className="mt-4 pt-4"
+                                    style={{ borderTop: `1px dashed ${pricingTheme.colors.cardBorder}` }}
+                                  >
+                                    <p 
+                                      className="text-xs font-semibold mb-3"
+                                      style={{ color: pricingTheme.colors.excludedText }}
+                                    >
+                                      Not included
+                                    </p>
+                                  </div>
+                                  {sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
+                                    const included = displayFeatures.includes(feature.id);
+                                    if (included) return null;
+                                    return (
+                                      <div
+                                        key={feature.id}
+                                        className="flex items-start gap-3 opacity-60"
+                                        data-testid={`feature-excluded-${index}-${idx}`}
+                                      >
+                                        <div 
+                                          className="flex-shrink-0 mt-0.5 rounded-full p-0.5"
+                                          style={{ backgroundColor: pricingTheme.colors.excludedBg }}
+                                        >
+                                          <X 
+                                            style={{ 
+                                              width: '14px', 
+                                              height: '14px', 
+                                              color: pricingTheme.colors.excluded 
+                                            }} 
+                                          />
+                                        </div>
+                                        <span 
+                                          className="text-[15px] leading-relaxed line-through"
+                                          style={{ color: pricingTheme.colors.excludedText }}
+                                        >
+                                          {feature.name}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </>
                           ) : (
                             <>
                               <div className="flex items-start gap-3">
-                                <Check 
-                                  className="flex-shrink-0 mt-0.5" 
-                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
-                                />
+                                <div className="flex-shrink-0 mt-0.5 rounded-full p-0.5" style={{ backgroundColor: '#ECFDF5' }}>
+                                  <Check style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                </div>
                                 <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
                                   {index === 0 ? '1 user' : index === 1 ? '1 team' : '1 parent team and unlimited sub-teams'}
                                 </span>
                               </div>
                               <div className="flex items-start gap-3">
-                                <Check 
-                                  className="flex-shrink-0 mt-0.5" 
-                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
-                                />
+                                <div className="flex-shrink-0 mt-0.5 rounded-full p-0.5" style={{ backgroundColor: '#ECFDF5' }}>
+                                  <Check style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                </div>
                                 <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
                                   {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Schedule meetings as a team' : 'Organization workflows'}
                                 </span>
                               </div>
                               <div className="flex items-start gap-3">
-                                <Check 
-                                  className="flex-shrink-0 mt-0.5" 
-                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
-                                />
+                                <div className="flex-shrink-0 mt-0.5 rounded-full p-0.5" style={{ backgroundColor: '#ECFDF5' }}>
+                                  <Check style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                </div>
                                 <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
                                   {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin, Fixed Round-Robin' : 'Insights - analyze your booking data'}
                                 </span>
                               </div>
                               <div className="flex items-start gap-3">
-                                <Check 
-                                  className="flex-shrink-0 mt-0.5" 
-                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
-                                />
+                                <div className="flex-shrink-0 mt-0.5 rounded-full p-0.5" style={{ backgroundColor: '#ECFDF5' }}>
+                                  <Check style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                </div>
                                 <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
                                   {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'Active directory sync'}
                                 </span>
                               </div>
                               <div className="flex items-start gap-3">
-                                <Check 
-                                  className="flex-shrink-0 mt-0.5" 
-                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
-                                />
+                                <div className="flex-shrink-0 mt-0.5 rounded-full p-0.5" style={{ backgroundColor: '#ECFDF5' }}>
+                                  <Check style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                </div>
                                 <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
                                   {index === 0 ? 'Integrate with your favorite apps' : index === 1 ? 'Advanced Routing Forms' : '24/7 Email, Chat and Phone support'}
                                 </span>
                               </div>
                               <div className="flex items-start gap-3">
-                                <Check 
-                                  className="flex-shrink-0 mt-0.5" 
-                                  style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} 
-                                />
+                                <div className="flex-shrink-0 mt-0.5 rounded-full p-0.5" style={{ backgroundColor: '#ECFDF5' }}>
+                                  <Check style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                </div>
                                 <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
                                   {index === 0 ? 'Accept payments via Stripe' : index === 1 ? 'Team Workflows' : 'Sync your HRIS tools'}
                                 </span>
