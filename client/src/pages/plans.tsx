@@ -179,42 +179,45 @@ export function PublicPricingView({
             </p>
           </div>
 
-          {/* Billing Toggle - Compact */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-              style={{
-                backgroundColor: billingCycle === 'monthly' ? pricingTheme.colors.textPrimary : '#FFFFFF',
-                color: billingCycle === 'monthly' ? '#FFFFFF' : pricingTheme.colors.textSecondary,
-                border: billingCycle === 'monthly' ? 'none' : `1px solid ${pricingTheme.colors.cardBorder}`,
-              }}
-              data-testid="button-billing-monthly"
+          {/* Billing Toggle */}
+          <div className="flex items-center justify-center mb-6">
+            <div 
+              className="inline-flex items-center rounded-full p-1"
+              style={{ backgroundColor: '#D8E4DA' }}
             >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-              style={{
-                backgroundColor: billingCycle === 'yearly' ? pricingTheme.colors.textPrimary : '#FFFFFF',
-                color: billingCycle === 'yearly' ? '#FFFFFF' : pricingTheme.colors.textSecondary,
-                border: billingCycle === 'yearly' ? 'none' : `1px solid ${pricingTheme.colors.cardBorder}`,
-              }}
-              data-testid="button-billing-yearly"
-            >
-              Yearly
-            </button>
-            <span 
-              className="ml-1 px-2 py-1 rounded text-xs font-semibold"
-              style={{
-                backgroundColor: '#D1FAE5',
-                color: '#059669',
-              }}
-              data-testid="badge-save-percentage"
-            >
-              Save 20%
-            </span>
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className="px-5 py-2 rounded-full text-sm font-medium transition-all duration-200"
+                style={{
+                  backgroundColor: billingCycle === 'monthly' ? '#292D32' : 'transparent',
+                  color: billingCycle === 'monthly' ? '#FFFFFF' : '#4B5E52',
+                }}
+                data-testid="button-billing-monthly"
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingCycle('yearly')}
+                className="px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 inline-flex items-center gap-2"
+                style={{
+                  backgroundColor: billingCycle === 'yearly' ? '#292D32' : 'transparent',
+                  color: billingCycle === 'yearly' ? '#FFFFFF' : '#4B5E52',
+                }}
+                data-testid="button-billing-yearly"
+              >
+                Yearly
+                <span 
+                  className="px-2 py-0.5 rounded text-[10px] font-semibold"
+                  style={{
+                    backgroundColor: '#C6E7D0',
+                    color: '#2D5A3D',
+                  }}
+                  data-testid="badge-save-percentage"
+                >
+                  Save 20%
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Plans Grid */}
