@@ -183,14 +183,14 @@ export function PublicPricingView({
           <div className="flex items-center justify-center mb-6">
             <div 
               className="inline-flex items-center rounded-full p-1"
-              style={{ backgroundColor: '#D8E4DA' }}
+              style={{ backgroundColor: '#E0E7F1' }}
             >
               <button
                 onClick={() => setBillingCycle('monthly')}
                 className="px-5 py-2 rounded-full text-sm font-medium transition-all duration-200"
                 style={{
-                  backgroundColor: billingCycle === 'monthly' ? '#292D32' : 'transparent',
-                  color: billingCycle === 'monthly' ? '#FFFFFF' : '#4B5E52',
+                  backgroundColor: billingCycle === 'monthly' ? '#1E3A5F' : 'transparent',
+                  color: billingCycle === 'monthly' ? '#FFFFFF' : '#4A5568',
                 }}
                 data-testid="button-billing-monthly"
               >
@@ -200,8 +200,8 @@ export function PublicPricingView({
                 onClick={() => setBillingCycle('yearly')}
                 className="px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 inline-flex items-center gap-2"
                 style={{
-                  backgroundColor: billingCycle === 'yearly' ? '#292D32' : 'transparent',
-                  color: billingCycle === 'yearly' ? '#FFFFFF' : '#4B5E52',
+                  backgroundColor: billingCycle === 'yearly' ? '#1E3A5F' : 'transparent',
+                  color: billingCycle === 'yearly' ? '#FFFFFF' : '#4A5568',
                 }}
                 data-testid="button-billing-yearly"
               >
@@ -209,8 +209,8 @@ export function PublicPricingView({
                 <span 
                   className="px-2 py-0.5 rounded text-[10px] font-semibold"
                   style={{
-                    backgroundColor: '#C6E7D0',
-                    color: '#2D5A3D',
+                    backgroundColor: '#BFDBFE',
+                    color: '#1E40AF',
                   }}
                   data-testid="badge-save-percentage"
                 >
@@ -228,14 +228,14 @@ export function PublicPricingView({
               >
                 <path 
                   d="M20 2 C 12 2, 6 6, 4 14" 
-                  stroke="#1C422F" 
+                  stroke="#1E3A5F" 
                   strokeWidth="2"
                   strokeLinecap="round"
                   fill="none"
                 />
                 <path 
                   d="M7 10 L 4 14 L 0 12" 
-                  stroke="#1C422F" 
+                  stroke="#1E3A5F" 
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -244,7 +244,7 @@ export function PublicPricingView({
               </svg>
               <span 
                 style={{ 
-                  color: '#1C422F',
+                  color: '#1E3A5F',
                   fontFamily: '"Architects Daughter", cursive',
                   fontSize: '18px',
                   marginLeft: '6px',
