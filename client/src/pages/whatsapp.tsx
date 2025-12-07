@@ -1428,10 +1428,11 @@ export default function WhatsAppPage() {
                 <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat, chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessPhone, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessName)}</p>
                 <p className="text-xs text-gray-500">
                   {typingJids.has(selectedChat) ? (
-                    <span className="text-green-600 dark:text-green-400 animate-pulse font-semibold">typing...</span>
-                  ) : (
-                    "Online"
-                  )}
+                    <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      <span className="font-semibold">typing...</span>
+                    </span>
+                  ) : null}
                 </p>
               </div>
               <div className="flex gap-1">
