@@ -130,14 +130,12 @@ export class SecretsService {
 
   async getCredential(
     provider: ApiProvider,
-    keyName: string,
-    environment: string = "production"
+    keyName: string
   ): Promise<string | null> {
     const credential = await db.query.systemApiCredentials.findFirst({
       where: and(
         eq(systemApiCredentials.provider, provider),
         eq(systemApiCredentials.keyName, keyName),
-        eq(systemApiCredentials.environment, environment),
         eq(systemApiCredentials.isActive, true)
       ),
     });
