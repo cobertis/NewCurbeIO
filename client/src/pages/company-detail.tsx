@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send } from "lucide-react";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +42,7 @@ export default function CompanyDetail() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useTabsState(["details", "users", "billing", "features", "settings", "calendar"], "details");
+  const [activeTab, setActiveTab] = useTabsState(["details", "users", "billing", "features", "settings", "calendar", "logs"], "details");
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [assignPlanOpen, setAssignPlanOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
@@ -113,6 +113,20 @@ export default function CompanyDetail() {
     },
     enabled: !!companyId,
   });
+
+  const { data: activityLogsData, isLoading: isLoadingLogs } = useQuery<{ logs: any[] }>({
+    queryKey: ["/api/activity-logs", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/activity-logs?companyId=${companyId}&limit=500`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch activity logs");
+      return res.json();
+    },
+    enabled: !!companyId && activeTab === "logs",
+  });
+
+  const activityLogs = activityLogsData?.logs || [];
 
   const company = companyData?.company;
   const allUsers = usersData?.users || [];
@@ -350,7 +364,7 @@ export default function CompanyDetail() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6" data-testid="tabs-company-details">
+        <TabsList className="grid w-full grid-cols-7" data-testid="tabs-company-details">
           <TabsTrigger value="details" data-testid="tab-details">
             <Building2 className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Details</span>
@@ -375,6 +389,10 @@ export default function CompanyDetail() {
           <TabsTrigger value="calendar" data-testid="tab-calendar">
             <Calendar className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Calendar</span>
+          </TabsTrigger>
+          <TabsTrigger value="logs" data-testid="tab-logs">
+            <History className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Logs</span>
           </TabsTrigger>
         </TabsList>
 
@@ -898,6 +916,126 @@ export default function CompanyDetail() {
                   Holidays are automatically applied to scheduling and availability features.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Activity Logs Tab */}
+        <TabsContent value="logs" className="space-y-4 mt-4">
+          <Card data-testid="card-activity-logs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Activity Logs
+              </CardTitle>
+              <CardDescription>View all authentication, email, and communication activity for this company</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingLogs ? (
+                <LoadingSpinner fullScreen={false} />
+              ) : activityLogs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No activity logs found for this company</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {activityLogs.map((log: any, index: number) => {
+                    const isAuthLog = log.action?.startsWith('auth_');
+                    const isEmailLog = log.action?.startsWith('email_');
+                    const metadata = log.metadata || {};
+                    
+                    const getActionIcon = () => {
+                      if (isAuthLog) return <LogIn className="h-4 w-4" />;
+                      if (isEmailLog) return <Send className="h-4 w-4" />;
+                      return <FileText className="h-4 w-4" />;
+                    };
+                    
+                    const getActionBadgeVariant = () => {
+                      if (log.action?.includes('failed')) return 'destructive';
+                      if (log.action?.includes('login') || log.action?.includes('success')) return 'default';
+                      if (isEmailLog) return 'secondary';
+                      return 'outline';
+                    };
+                    
+                    const formatAction = (action: string) => {
+                      return action
+                        .replace('auth_', '')
+                        .replace('email_', 'Email: ')
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, l => l.toUpperCase());
+                    };
+                    
+                    const formatDate = (dateStr: string) => {
+                      const date = new Date(dateStr);
+                      return date.toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      });
+                    };
+
+                    const user = allUsers.find(u => u.id === log.userId);
+                    const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown User';
+
+                    return (
+                      <div 
+                        key={log.id || index} 
+                        className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                        data-testid={`log-entry-${index}`}
+                      >
+                        <div className="flex-shrink-0 mt-0.5">
+                          {getActionIcon()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={getActionBadgeVariant()} className="text-xs">
+                              {formatAction(log.action || 'unknown')}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(log.createdAt)}
+                            </span>
+                          </div>
+                          <div className="mt-1 space-y-0.5">
+                            {log.userId && (
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">User:</span>{' '}
+                                <span className="font-medium">{userName}</span>
+                              </p>
+                            )}
+                            {metadata.email && (
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Email:</span>{' '}
+                                <span className="font-medium">{metadata.email}</span>
+                              </p>
+                            )}
+                            {metadata.recipient && (
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Recipient:</span>{' '}
+                                <span className="font-medium">{metadata.recipient}</span>
+                              </p>
+                            )}
+                            {metadata.templateSlug && (
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Template:</span>{' '}
+                                <span className="font-medium">{metadata.templateSlug}</span>
+                              </p>
+                            )}
+                            {log.ipAddress && (
+                              <p className="text-xs text-muted-foreground">
+                                IP: {log.ipAddress}
+                                {metadata.city && metadata.country && ` (${metadata.city}, ${metadata.country})`}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
