@@ -26010,6 +26010,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ]
         },
         { 
+          provider: "imap_bounce", 
+          label: "Bounce Email (IMAP)",
+          helpText: "IMAP credentials to process bounced emails. Configure a dedicated mailbox for receiving bounce notifications.",
+          helpUrl: null,
+          keys: [
+            { keyName: "host", label: "IMAP Host", required: true, hint: "e.g., mail.yourdomain.com" },
+            { keyName: "port", label: "IMAP Port", required: true, hint: "Usually 993 (SSL) or 143" },
+            { keyName: "user", label: "Username", required: true, hint: "e.g., rebotes@auth.curbe.io" },
+            { keyName: "password", label: "Password", required: true, hint: "Mailbox password" },
+            { keyName: "tls", label: "Use TLS/SSL", required: false, hint: "true or false (default: true)" },
+          ]
+        },
+        { 
           provider: "openai", 
           label: "OpenAI",
           helpText: "Create an API key in OpenAI Platform > API keys",
