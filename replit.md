@@ -41,6 +41,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Tasks & Reminders Management System:** Unified task management with assignment, priority, and status tracking.
 - **Birthday Automation System:** Automated birthday greetings via Twilio SMS/MMS.
 - **Dashboard Analytics System:** SugarCRM-style "Policy Journeys" design with agent avatars, workflow board, recent policies, and policy status donut charts. Features all-time analytics with unique people counting and company-scoped caching.
+- **Plan Features Management System:** Database-driven plan features for public pricing page. Master `plan_features` table with sortable, active/inactive features. Plans have `displayFeatures` jsonb field for feature assignment. Superadmin can manage features via /plans page with "Features" tab.
 - **Policy Data Architecture:** Hybrid data sharing for Notes, Documents, Consents, Payment Methods (shared) and Reminders (per policy year).
 - **Tab Auto-Save System:** Intelligent tab navigation with automatic data persistence.
 - **Duplicate Message Prevention System:** Robust transactional claim system for campaign messages.

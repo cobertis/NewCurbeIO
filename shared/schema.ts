@@ -332,6 +332,9 @@ export const plans = pgTable("plans", {
     prioritySupport: false,
   }),
   
+  // Display features for public pricing page (array of feature names with included status)
+  displayFeatures: jsonb("display_features").default([]),
+  
   // Status
   isActive: boolean("is_active").notNull().default(true),
   
@@ -343,6 +346,21 @@ export const plans = pgTable("plans", {
 // =====================================================
 // SUBSCRIPTIONS & BILLING
 // =====================================================
+
+
+// =====================================================
+// PLAN FEATURES (Master list of features for public display)
+// =====================================================
+
+export const planFeatures = pgTable("plan_features", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // "CMS API (CRM Integration)"
+  description: text("description"), // Optional longer description
+  sortOrder: integer("sort_order").notNull().default(0), // Display order
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -908,6 +926,14 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Plan = typeof plans.$inferSelect;
 export type InsertPlan = z.infer<typeof insertPlanSchema>;
+
+export const insertPlanFeatureSchema = createInsertSchema(planFeatures).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type PlanFeature = typeof planFeatures.$inferSelect;
+export type InsertPlanFeature = z.infer<typeof insertPlanFeatureSchema>;
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;

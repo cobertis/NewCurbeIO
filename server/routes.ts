@@ -25,6 +25,7 @@ import {
   updateCompanySchema,
   createCompanyWithAdminSchema,
   insertPlanSchema,
+  insertPlanFeatureSchema,
   updateCompanySettingsSchema,
   insertEmailTemplateSchema,
   insertFeatureSchema,
@@ -5995,6 +5996,69 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   // ===================================================================
+
+  // ===================================================================
+  // PLAN FEATURES MANAGEMENT (Superadmin only)
+  // ===================================================================
+  // Get all plan features
+  app.get("/api/plan-features", async (req: Request, res: Response) => {
+    // Public endpoint - no auth required for pricing page display
+    const features = await storage.getAllPlanFeatures();
+    res.json({ features });
+  });
+
+
+  // Get active plans for public pricing page (no auth required)
+  app.get("/api/public/plans", async (req: Request, res: Response) => {
+    // Public endpoint - returns only active plans for pricing page
+    const plans = await storage.getActivePlans();
+    res.json({ plans });
+  });
+  // Create plan feature (superadmin only)
+  app.post("/api/plan-features", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const validatedData = insertPlanFeatureSchema.parse(req.body);
+      const feature = await storage.createPlanFeature(validatedData);
+      res.json({ feature });
+    } catch (error) {
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // Update plan feature (superadmin only)
+  app.patch("/api/plan-features/:id", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const validatedData = insertPlanFeatureSchema.partial().parse(req.body);
+      const updatedFeature = await storage.updatePlanFeature(req.params.id, validatedData);
+      if (!updatedFeature) {
+        return res.status(404).json({ message: "Feature not found" });
+      }
+      res.json({ feature: updatedFeature });
+    } catch (error) {
+      res.status(400).json({ message: "Invalid request" });
+    }
+  });
+
+  // Delete plan feature (superadmin only)
+  app.delete("/api/plan-features/:id", requireAuth, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const success = await storage.deletePlanFeature(req.params.id);
+    if (!success) {
+      return res.status(404).json({ message: "Feature not found" });
+    }
+    res.json({ success: true });
+  });
   // INVOICES & PAYMENTS
   // ===================================================================
   // Get invoices (scoped by company for non-superadmins, all invoices for superadmin without companyId)

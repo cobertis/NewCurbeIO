@@ -7,6 +7,8 @@ import {
   type InsertCompanySettings,
   type Plan,
   type InsertPlan,
+  type PlanFeature,
+  type InsertPlanFeature,
   type Subscription,
   type InsertSubscription,
   type Invoice,
@@ -207,6 +209,7 @@ import {
   companies, 
   companySettings,
   plans,
+  planFeatures,
   subscriptions,
   invoices,
   invoiceItems,
@@ -335,6 +338,13 @@ export interface IStorage {
   createPlan(plan: InsertPlan): Promise<Plan>;
   updatePlan(id: string, data: Partial<InsertPlan>): Promise<Plan | undefined>;
   deletePlan(id: string): Promise<boolean>;
+  
+  // Plan Features (for public display on pricing page)
+  getAllPlanFeatures(): Promise<PlanFeature[]>;
+  getPlanFeature(id: string): Promise<PlanFeature | undefined>;
+  createPlanFeature(data: InsertPlanFeature): Promise<PlanFeature>;
+  updatePlanFeature(id: string, data: Partial<InsertPlanFeature>): Promise<PlanFeature | undefined>;
+  deletePlanFeature(id: string): Promise<boolean>;
   
   // Subscriptions
   getSubscription(id: string): Promise<Subscription | undefined>;
@@ -1437,6 +1447,32 @@ export class DbStorage implements IStorage {
 
   async deletePlan(id: string): Promise<boolean> {
     const result = await db.delete(plans).where(eq(plans.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // ==================== PLAN FEATURES ====================
+
+  async getAllPlanFeatures(): Promise<PlanFeature[]> {
+    return db.select().from(planFeatures).orderBy(planFeatures.sortOrder);
+  }
+
+  async getPlanFeature(id: string): Promise<PlanFeature | undefined> {
+    const result = await db.select().from(planFeatures).where(eq(planFeatures.id, id));
+    return result[0];
+  }
+
+  async createPlanFeature(data: InsertPlanFeature): Promise<PlanFeature> {
+    const result = await db.insert(planFeatures).values(data).returning();
+    return result[0];
+  }
+
+  async updatePlanFeature(id: string, data: Partial<InsertPlanFeature>): Promise<PlanFeature | undefined> {
+    const result = await db.update(planFeatures).set({ ...data, updatedAt: new Date() }).where(eq(planFeatures.id, id)).returning();
+    return result[0];
+  }
+
+  async deletePlanFeature(id: string): Promise<boolean> {
+    const result = await db.delete(planFeatures).where(eq(planFeatures.id, id)).returning();
     return result.length > 0;
   }
 

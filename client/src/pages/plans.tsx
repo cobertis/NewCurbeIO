@@ -12,56 +12,40 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPlanSchema, type Plan, type InsertPlan } from "@shared/schema";
-import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw, X, Users, Zap, Star } from "lucide-react";
+import { insertPlanSchema, insertPlanFeatureSchema, type Plan, type InsertPlan, type PlanFeature, type InsertPlanFeature } from "@shared/schema";
+import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw, X, Users, Zap, Star, List, CreditCard, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const PLAN_FEATURES = [
-  { name: "CMS API (CRM Integration)", shared: true, dedicated: true, unlimited: true },
-  { name: "Custom Landing Page", shared: true, dedicated: true, unlimited: true },
-  { name: "Birthday Reminders", shared: true, dedicated: true, unlimited: true },
-  { name: "Email Campaigns", shared: true, dedicated: true, unlimited: true },
-  { name: "Automated SMS", shared: true, dedicated: true, unlimited: true },
-  { name: "Referral System", shared: false, dedicated: true, unlimited: true },
-  { name: "iMessage Bridge", shared: false, dedicated: false, unlimited: true },
-  { name: "Priority Support / Multi-user", shared: false, dedicated: false, unlimited: true },
-];
-
-interface PublicPlan {
-  name: string;
-  price: number;
-  accounts: string;
-  popular?: boolean;
-  icon: typeof Users;
-  features: boolean[];
+function getIconForPlan(planName: string): typeof Users {
+  const nameLower = planName.toLowerCase();
+  if (nameLower.includes('unlimited')) return Star;
+  if (nameLower.includes('dedicated')) return Zap;
+  return Users;
 }
 
-const PUBLIC_PLANS: PublicPlan[] = [
-  {
-    name: "Shared Plan",
-    price: 97,
-    accounts: "1 account included",
-    icon: Users,
-    features: [true, true, true, true, true, false, false, false],
-  },
-  {
-    name: "Dedicated Plan",
-    price: 297,
-    accounts: "5 accounts included",
-    popular: true,
-    icon: Zap,
-    features: [true, true, true, true, true, true, false, false],
-  },
-  {
-    name: "Unlimited Plan",
-    price: 497,
-    accounts: "Unlimited accounts",
-    icon: Star,
-    features: [true, true, true, true, true, true, true, true],
-  },
-];
+function getAccountsText(plan: Plan): string {
+  const nameLower = plan.name.toLowerCase();
+  if (nameLower.includes('unlimited')) return 'Unlimited accounts';
+  if (nameLower.includes('dedicated')) return '5 accounts included';
+  return '1 account included';
+}
 
-function PublicPricingView() {
+function isPopularPlan(planName: string): boolean {
+  return planName.toLowerCase().includes('dedicated');
+}
+
+interface PublicPricingViewProps {
+  planFeatures: PlanFeature[];
+  publicPlans: Plan[];
+  isLoading?: boolean;
+}
+
+function PublicPricingView({ planFeatures, publicPlans, isLoading }: PublicPricingViewProps) {
+  const sortedFeatures = [...planFeatures].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sortedPlans = [...publicPlans].sort((a, b) => a.price - b.price);
+  
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
       <div className="flex flex-col gap-8 w-full max-w-7xl">
@@ -77,70 +61,99 @@ function PublicPricingView() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-        {PUBLIC_PLANS.map((plan, index) => {
-          const Icon = plan.icon;
-          return (
-            <div key={plan.name} className="relative" data-testid={`card-public-plan-${index}`}>
-              {plan.popular && (
-                <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
-                  <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1">
-                    MOST POPULAR
-                  </Badge>
-                </div>
-              )}
-              <Card className={`h-full ${plan.popular ? 'border-blue-600 shadow-lg scale-105' : 'bg-gray-50'}`}>
-                <CardHeader className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${plan.popular ? 'bg-blue-100' : 'bg-gray-200'}`}>
-                      <Icon className={`h-6 w-6 ${plan.popular ? 'text-blue-600' : 'text-gray-600'}`} />
-                    </div>
-                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  </div>
-                  <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">${plan.price}</span>
-                      <span className="text-muted-foreground">/month</span>
-                    </div>
-                    <p className="text-sm text-green-600 font-medium mt-1">14 days free trial</p>
-                    <p className="text-sm text-muted-foreground mt-1">{plan.accounts}</p>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {PLAN_FEATURES.map((feature, idx) => {
-                    const included = plan.features[idx];
-                    return (
-                      <div
-                        key={feature.name}
-                        className="flex items-start gap-3"
-                        data-testid={`feature-${index}-${idx}`}
-                      >
-                        {included ? (
-                          <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        ) : (
-                          <X className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                        )}
-                        <span className={`text-sm ${included ? 'text-foreground' : 'text-muted-foreground'}`}>
-                          {feature.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    className={`w-full ${plan.popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                    variant={plan.popular ? 'default' : 'outline'}
-                    data-testid={`button-select-plan-${index}`}
-                  >
-                    {plan.popular ? 'Get Started' : 'Choose Plan'}
-                  </Button>
-                </CardFooter>
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader className="h-32 bg-muted rounded-t-lg" />
+                <CardContent className="h-40" />
               </Card>
-            </div>
-          );
-        })}
-        </div>
+            ))}
+          </div>
+        ) : sortedPlans.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <p className="text-muted-foreground">No plans available</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-3">
+            {sortedPlans.map((plan, index) => {
+              const Icon = getIconForPlan(plan.name);
+              const popular = isPopularPlan(plan.name);
+              const displayFeatures = (plan.displayFeatures as string[]) || [];
+              return (
+                <div key={plan.id} className="relative" data-testid={`card-public-plan-${index}`}>
+                  {popular && (
+                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
+                      <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1">
+                        MOST POPULAR
+                      </Badge>
+                    </div>
+                  )}
+                  <Card className={`h-full ${popular ? 'border-blue-600 shadow-lg scale-105' : 'bg-gray-50'}`}>
+                    <CardHeader className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${popular ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                          <Icon className={`h-6 w-6 ${popular ? 'text-blue-600' : 'text-gray-600'}`} />
+                        </div>
+                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                      </div>
+                      <div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-4xl font-bold">${(plan.price / 100).toFixed(0)}</span>
+                          <span className="text-muted-foreground">/month</span>
+                        </div>
+                        {plan.trialDays > 0 && (
+                          <p className="text-sm text-green-600 font-medium mt-1">{plan.trialDays} days free trial</p>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {plan.description || getAccountsText(plan)}
+                        </p>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {sortedFeatures.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No features configured
+                        </p>
+                      ) : (
+                        sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
+                          const included = displayFeatures.includes(feature.id);
+                          return (
+                            <div
+                              key={feature.id}
+                              className="flex items-start gap-3"
+                              data-testid={`feature-${index}-${idx}`}
+                            >
+                              {included ? (
+                                <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                              ) : (
+                                <X className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                              )}
+                              <span className={`text-sm ${included ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                {feature.name}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        className={`w-full ${popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                        variant={popular ? 'default' : 'outline'}
+                        data-testid={`button-select-plan-${index}`}
+                      >
+                        {popular ? 'Get Started' : 'Choose Plan'}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
@@ -157,6 +170,9 @@ export default function PlansPage() {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"public" | "admin">("admin");
+  const [activeTab, setActiveTab] = useState<"plans" | "features">("plans");
+  const [editingFeature, setEditingFeature] = useState<PlanFeature | null>(null);
+  const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
 
   const { data: sessionData } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
     queryKey: ["/api/session"],
@@ -169,6 +185,16 @@ export default function PlansPage() {
   });
 
   const plans = data?.plans || [];
+
+  const { data: featuresData, isLoading: featuresLoading } = useQuery<{ features: PlanFeature[] }>({
+    queryKey: ['/api/plan-features'],
+  });
+  const planFeatures = featuresData?.features || [];
+
+  const { data: publicPlansData, isLoading: publicPlansLoading } = useQuery<{ plans: Plan[] }>({
+    queryKey: ['/api/public/plans'],
+  });
+  const publicPlans = publicPlansData?.plans || [];
 
   const createMutation = useMutation({
     mutationFn: async (values: InsertPlan) => {
@@ -300,6 +326,76 @@ export default function PlansPage() {
     },
   });
 
+  const createFeatureMutation = useMutation({
+    mutationFn: async (values: InsertPlanFeature) => {
+      const response = await fetch("/api/plan-features", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(values),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create feature");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-features"] });
+      toast({ title: "Feature created successfully" });
+      setIsFeatureDialogOpen(false);
+    },
+    onError: () => {
+      toast({ title: "Failed to create feature", variant: "destructive" });
+    },
+  });
+
+  const updateFeatureMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: string; values: Partial<InsertPlanFeature> }) => {
+      const response = await fetch(`/api/plan-features/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(values),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update feature");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-features"] });
+      toast({ title: "Feature updated successfully" });
+      setIsFeatureDialogOpen(false);
+      setEditingFeature(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to update feature", variant: "destructive" });
+    },
+  });
+
+  const deleteFeatureMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/plan-features/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete feature");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-features"] });
+      toast({ title: "Feature deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete feature", variant: "destructive" });
+    },
+  });
+
   const form = useForm<InsertPlan>({
     resolver: zodResolver(insertPlanSchema),
     defaultValues: {
@@ -314,11 +410,29 @@ export default function PlansPage() {
     },
   });
 
+  const featureForm = useForm<InsertPlanFeature>({
+    resolver: zodResolver(insertPlanFeatureSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      sortOrder: 0,
+      isActive: true,
+    },
+  });
+
   function onSubmit(values: InsertPlan) {
     if (editingPlan) {
       updateMutation.mutate({ id: editingPlan.id, values });
     } else {
       createMutation.mutate(values);
+    }
+  }
+
+  function onFeatureSubmit(values: InsertPlanFeature) {
+    if (editingFeature) {
+      updateFeatureMutation.mutate({ id: editingFeature.id, values });
+    } else {
+      createFeatureMutation.mutate(values);
     }
   }
 
@@ -353,8 +467,30 @@ export default function PlansPage() {
     setIsDialogOpen(true);
   }
 
+  function handleEditFeature(feature: PlanFeature) {
+    setEditingFeature(feature);
+    featureForm.reset({
+      name: feature.name,
+      description: feature.description || "",
+      sortOrder: feature.sortOrder,
+      isActive: feature.isActive,
+    });
+    setIsFeatureDialogOpen(true);
+  }
+
+  function handleCreateFeature() {
+    setEditingFeature(null);
+    featureForm.reset({
+      name: "",
+      description: "",
+      sortOrder: planFeatures.length,
+      isActive: true,
+    });
+    setIsFeatureDialogOpen(true);
+  }
+
   if (user?.role !== "superadmin") {
-    return <PublicPricingView />;
+    return <PublicPricingView planFeatures={planFeatures} publicPlans={publicPlans} isLoading={featuresLoading || publicPlansLoading} />;
   }
 
   if (viewMode === "public") {
@@ -369,10 +505,12 @@ export default function PlansPage() {
             Switch to Admin View
           </Button>
         </div>
-        <PublicPricingView />
+        <PublicPricingView planFeatures={planFeatures} publicPlans={publicPlans} isLoading={featuresLoading || publicPlansLoading} />
       </div>
     );
   }
+
+  const sortedPlanFeatures = [...planFeatures].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
@@ -402,135 +540,238 @@ export default function PlansPage() {
         </CardHeader>
       </Card>
 
-      {isLoading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="h-32 bg-muted rounded-t-lg" />
-              <CardContent className="h-40" />
-            </Card>
-          ))}
-        </div>
-      ) : plans.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No plans found</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Click "Sync from Stripe" above to import your plans from Stripe
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <Card key={plan.id} data-testid={`card-plan-${plan.id}`} className="hover-elevate">
-              <CardHeader className="gap-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center gap-2">
-                      {plan.name}
-                      {!plan.isActive && <Badge variant="secondary">Inactive</Badge>}
-                    </CardTitle>
-                    <CardDescription className="mt-1">{plan.description}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-baseline gap-1">
-                    <DollarSign className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-3xl font-bold">${(plan.price / 100).toFixed(2)}</span>
-                    <span className="text-muted-foreground">/{plan.billingCycle === "monthly" ? "mo" : "yr"}</span>
-                  </div>
-                  {plan.setupFee > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      + ${(plan.setupFee / 100).toFixed(2)} setup fee
-                    </p>
-                  )}
-                </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "plans" | "features")} className="w-full">
+        <TabsList className="mb-4" data-testid="tabs-plans-features">
+          <TabsTrigger value="plans" data-testid="tab-plans">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Plans
+          </TabsTrigger>
+          <TabsTrigger value="features" data-testid="tab-features">
+            <List className="h-4 w-4 mr-2" />
+            Features
+          </TabsTrigger>
+        </TabsList>
 
-                {plan.trialDays > 0 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{plan.trialDays} days free trial</span>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Features:</p>
-                  <div className="space-y-1">
-                    {PLAN_FEATURES.map((feature, idx) => {
-                      const planNameLower = plan.name.toLowerCase();
-                      const included = planNameLower.includes('unlimited') ? feature.unlimited :
-                                       planNameLower.includes('dedicated') ? feature.dedicated :
-                                       feature.shared;
-                      return (
-                        <div key={idx} className="flex items-center gap-2 text-sm">
-                          {included ? (
-                            <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-                          ) : (
-                            <X className="h-4 w-4 text-red-500 flex-shrink-0" />
-                          )}
-                          <span className={included ? 'text-foreground' : 'text-muted-foreground'}>
-                            {feature.name}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {(plan.stripeProductId || plan.stripePriceId) && (
-                  <div className="space-y-1 pt-2 border-t">
-                    <p className="text-sm font-medium">Stripe IDs:</p>
-                    {plan.stripeProductId && (
-                      <p className="text-xs text-muted-foreground font-mono">
-                        Product: {plan.stripeProductId}
-                      </p>
-                    )}
-                    {plan.stripePriceId && (
-                      <p className="text-xs text-muted-foreground font-mono">
-                        Price: {plan.stripePriceId}
-                      </p>
-                    )}
-                  </div>
-                )}
+        <TabsContent value="plans">
+          {isLoading ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader className="h-32 bg-muted rounded-t-lg" />
+                  <CardContent className="h-40" />
+                </Card>
+              ))}
+            </div>
+          ) : plans.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground mb-4">No plans found</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Click "Sync from Stripe" above to import your plans from Stripe
+                </p>
               </CardContent>
-              <CardFooter className="flex gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(plan)}
-                  data-testid={`button-edit-plan-${plan.id}`}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant={plan.stripePriceId ? "secondary" : "default"}
-                  size="sm"
-                  onClick={() => syncStripeMutation.mutate(plan.id)}
-                  disabled={syncStripeMutation.isPending}
-                  data-testid={`button-sync-stripe-${plan.id}`}
-                >
-                  <RefreshCw className={`h-4 w-4 mr-1 ${syncStripeMutation.isPending ? 'animate-spin' : ''}`} />
-                  {plan.stripePriceId ? 'Re-sync' : 'Sync'} Stripe
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => deleteMutation.mutate(plan.id)}
-                  disabled={deleteMutation.isPending}
-                  data-testid={`button-delete-plan-${plan.id}`}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
-              </CardFooter>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {plans.map((plan) => (
+                <Card key={plan.id} data-testid={`card-plan-${plan.id}`} className="hover-elevate">
+                  <CardHeader className="gap-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="flex items-center gap-2">
+                          {plan.name}
+                          {!plan.isActive && <Badge variant="secondary">Inactive</Badge>}
+                        </CardTitle>
+                        <CardDescription className="mt-1">{plan.description}</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-baseline gap-1">
+                        <DollarSign className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-3xl font-bold">${(plan.price / 100).toFixed(2)}</span>
+                        <span className="text-muted-foreground">/{plan.billingCycle === "monthly" ? "mo" : "yr"}</span>
+                      </div>
+                      {plan.setupFee > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          + ${(plan.setupFee / 100).toFixed(2)} setup fee
+                        </p>
+                      )}
+                    </div>
+
+                    {plan.trialDays > 0 && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>{plan.trialDays} days free trial</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Features:</p>
+                      <div className="space-y-1">
+                        {sortedPlanFeatures.filter(f => f.isActive).map((feature, idx) => {
+                          const planNameLower = plan.name.toLowerCase();
+                          const included = planNameLower.includes('unlimited') ? idx < 8 :
+                                           planNameLower.includes('dedicated') ? idx < 6 :
+                                           idx < 5;
+                          return (
+                            <div key={feature.id} className="flex items-center gap-2 text-sm">
+                              {included ? (
+                                <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                              ) : (
+                                <X className="h-4 w-4 text-red-500 flex-shrink-0" />
+                              )}
+                              <span className={included ? 'text-foreground' : 'text-muted-foreground'}>
+                                {feature.name}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {(plan.stripeProductId || plan.stripePriceId) && (
+                      <div className="space-y-1 pt-2 border-t">
+                        <p className="text-sm font-medium">Stripe IDs:</p>
+                        {plan.stripeProductId && (
+                          <p className="text-xs text-muted-foreground font-mono">
+                            Product: {plan.stripeProductId}
+                          </p>
+                        )}
+                        {plan.stripePriceId && (
+                          <p className="text-xs text-muted-foreground font-mono">
+                            Price: {plan.stripePriceId}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(plan)}
+                      data-testid={`button-edit-plan-${plan.id}`}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant={plan.stripePriceId ? "secondary" : "default"}
+                      size="sm"
+                      onClick={() => syncStripeMutation.mutate(plan.id)}
+                      disabled={syncStripeMutation.isPending}
+                      data-testid={`button-sync-stripe-${plan.id}`}
+                    >
+                      <RefreshCw className={`h-4 w-4 mr-1 ${syncStripeMutation.isPending ? 'animate-spin' : ''}`} />
+                      {plan.stripePriceId ? 'Re-sync' : 'Sync'} Stripe
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate(plan.id)}
+                      disabled={deleteMutation.isPending}
+                      data-testid={`button-delete-plan-${plan.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="features">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Plan Features</CardTitle>
+                  <CardDescription>
+                    Manage the features displayed on the public pricing page
+                  </CardDescription>
+                </div>
+                <Button onClick={handleCreateFeature} data-testid="button-create-feature">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Feature
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {featuresLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : planFeatures.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No features configured yet</p>
+                  <p className="text-sm mt-1">Add features to display on the pricing page</p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="w-[100px]">Sort Order</TableHead>
+                        <TableHead className="w-[80px]">Active</TableHead>
+                        <TableHead className="text-right w-[150px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedPlanFeatures.map((feature) => (
+                        <TableRow key={feature.id} data-testid={`row-feature-${feature.id}`}>
+                          <TableCell className="font-medium" data-testid={`cell-feature-name-${feature.id}`}>
+                            {feature.name}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground" data-testid={`cell-feature-description-${feature.id}`}>
+                            {feature.description || "-"}
+                          </TableCell>
+                          <TableCell data-testid={`cell-feature-order-${feature.id}`}>
+                            {feature.sortOrder}
+                          </TableCell>
+                          <TableCell data-testid={`cell-feature-active-${feature.id}`}>
+                            {feature.isActive ? (
+                              <Badge variant="default" className="bg-green-600">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditFeature(feature)}
+                                data-testid={`button-edit-feature-${feature.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteFeatureMutation.mutate(feature.id)}
+                                disabled={deleteFeatureMutation.isPending}
+                                data-testid={`button-delete-feature-${feature.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -705,6 +946,114 @@ export default function PlansPage() {
                   data-testid="button-submit-plan"
                 >
                   {editingPlan ? "Update Plan" : "Create Plan"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isFeatureDialogOpen} onOpenChange={setIsFeatureDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingFeature ? "Edit Feature" : "Create Feature"}</DialogTitle>
+            <DialogDescription>
+              {editingFeature ? "Update feature details" : "Add a new feature to display on the pricing page"}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...featureForm}>
+            <form onSubmit={featureForm.handleSubmit(onFeatureSubmit)} className="space-y-4">
+              <FormField
+                control={featureForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="CMS API (CRM Integration)" data-testid="input-feature-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={featureForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Optional description for this feature" 
+                        data-testid="input-feature-description" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={featureForm.control}
+                name="sortOrder"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sort Order *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        placeholder="0"
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        data-testid="input-feature-sort-order"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Lower numbers appear first
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={featureForm.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Active</FormLabel>
+                      <FormDescription>
+                        Inactive features won't be displayed
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-feature-active"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsFeatureDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createFeatureMutation.isPending || updateFeatureMutation.isPending}
+                  data-testid="button-submit-feature"
+                >
+                  {createFeatureMutation.isPending || updateFeatureMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
+                  {editingFeature ? "Update Feature" : "Create Feature"}
                 </Button>
               </DialogFooter>
             </form>
