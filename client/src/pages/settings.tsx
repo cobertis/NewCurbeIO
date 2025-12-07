@@ -3067,8 +3067,18 @@ function TeamMembersTable() {
     queryKey: ["/api/users"],
   });
 
+  const { data: limitsData } = useQuery<{ 
+    maxUsers: number | null;
+    currentUsers: number;
+    canAddUsers: boolean;
+    planName: string | null;
+  }>({
+    queryKey: ["/api/users/limits"],
+  });
+
   const currentUser = sessionData?.user;
   const currentUserCompanyId = currentUser?.companyId;
+  const canAddUsers = limitsData?.canAddUsers !== false;
 
   // User creation form schema - matches superadmin form exactly
   const userFormSchema = insertUserSchema.omit({ password: true }).extend({
@@ -3240,14 +3250,28 @@ function TeamMembersTable() {
       {/* Header with Add button */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Team Members</h3>
-        <Button 
-          onClick={() => setCreateOpen(true)} 
-          size="sm"
-          data-testid="button-add-team-member"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Team Member
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button 
+                  onClick={() => setCreateOpen(true)} 
+                  size="sm"
+                  disabled={!canAddUsers}
+                  data-testid="button-add-team-member"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Team Member
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!canAddUsers && (
+              <TooltipContent>
+                <p>You have reached the maximum number of users allowed on your plan ({limitsData?.maxUsers} users). Upgrade your plan to add more team members.</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Search and Filters */}
