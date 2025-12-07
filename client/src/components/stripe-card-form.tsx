@@ -5,11 +5,13 @@ import {
   CardElement,
   Elements,
 } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, Stripe } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CreditCard, Lock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { useStripePublishableKey } from "@/lib/system-config";
 
 // Card element styling options
 const CARD_ELEMENT_OPTIONS = {
@@ -160,17 +162,26 @@ function StripeCardFormInner({ onSuccess, onError, companyId }: StripeCardFormIn
 
 // Wrapper component with Stripe Elements provider
 export function StripeCardForm({ onSuccess, onError, companyId }: StripeCardFormInnerProps) {
-  // Create Stripe instance lazily to ensure environment variable is loaded
+  const { data: keyData, isLoading: isLoadingKey, error: keyError } = useStripePublishableKey();
+  
   const stripePromise = useMemo(() => {
-    const key = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+    const key = keyData?.publishableKey;
     if (!key) {
-      console.error("Stripe public key is not defined");
       return null;
     }
     return loadStripe(key);
-  }, []);
+  }, [keyData?.publishableKey]);
 
-  if (!stripePromise) {
+  if (isLoadingKey) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading payment system...</span>
+      </div>
+    );
+  }
+
+  if (keyError || !keyData?.publishableKey || !stripePromise) {
     return (
       <Alert variant="destructive">
         <AlertDescription>

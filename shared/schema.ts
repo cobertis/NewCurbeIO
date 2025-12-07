@@ -4792,3 +4792,32 @@ export type SystemApiCredential = typeof systemApiCredentials.$inferSelect;
 export type InsertSystemApiCredential = z.infer<typeof insertSystemApiCredentialSchema>;
 export type SystemApiCredentialsAudit = typeof systemApiCredentialsAudit.$inferSelect;
 export type InsertSystemApiCredentialsAudit = z.infer<typeof insertSystemApiCredentialsAuditSchema>;
+
+// =====================================================
+// SYSTEM CONFIGURATION (Non-secret global settings)
+// =====================================================
+
+export const systemConfig = pgTable("system_config", {
+  key: varchar("key", { length: 255 }).primaryKey(),
+  value: text("value").notNull(),
+  description: text("description"),
+  isPublic: boolean("is_public").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertSystemConfigSchema = createInsertSchema(systemConfig).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateSystemConfigSchema = z.object({
+  value: z.string().min(1, "Value is required"),
+  description: z.string().optional(),
+  isPublic: z.boolean().optional(),
+});
+
+export type SystemConfig = typeof systemConfig.$inferSelect;
+export type InsertSystemConfig = z.infer<typeof insertSystemConfigSchema>;
+export type UpdateSystemConfig = z.infer<typeof updateSystemConfigSchema>;

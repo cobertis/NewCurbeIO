@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-
-const APP_URL = process.env.APP_URL || 'http://localhost:5000';
+import { systemConfigService } from './services/system-config';
 
 export class TrackingService {
   private secret: string;
@@ -10,6 +9,10 @@ export class TrackingService {
     if (!this.secret) {
       throw new Error('SESSION_SECRET is required for tracking service');
     }
+  }
+
+  private async getAppUrl(): Promise<string> {
+    return await systemConfigService.getAppUrl();
   }
 
   generateTrackingToken(campaignId: string, userId: string): string {
@@ -32,21 +35,23 @@ export class TrackingService {
     }
   }
 
-  getTrackingPixelUrl(campaignId: string, userId: string): string {
+  async getTrackingPixelUrl(campaignId: string, userId: string): Promise<string> {
     const token = this.generateTrackingToken(campaignId, userId);
-    return `${APP_URL}/api/track/open?c=${campaignId}&u=${userId}&t=${token}`;
+    const appUrl = await this.getAppUrl();
+    return `${appUrl}/api/track/open?c=${campaignId}&u=${userId}&t=${token}`;
   }
 
-  wrapLinkWithTracking(url: string, campaignId: string, userId: string): string {
+  async wrapLinkWithTracking(url: string, campaignId: string, userId: string): Promise<string> {
     const token = this.generateTrackingToken(campaignId, userId);
     const encodedUrl = encodeURIComponent(url);
-    return `${APP_URL}/api/track/click?c=${campaignId}&u=${userId}&url=${encodedUrl}&t=${token}`;
+    const appUrl = await this.getAppUrl();
+    return `${appUrl}/api/track/click?c=${campaignId}&u=${userId}&url=${encodedUrl}&t=${token}`;
   }
 
-  injectTrackingIntoHtml(htmlContent: string, campaignId: string, userId: string): string {
+  async injectTrackingIntoHtml(htmlContent: string, campaignId: string, userId: string): Promise<string> {
     let processedHtml = htmlContent;
 
-    const pixelUrl = this.getTrackingPixelUrl(campaignId, userId);
+    const pixelUrl = await this.getTrackingPixelUrl(campaignId, userId);
     const trackingPixel = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" alt="" />`;
     
     if (processedHtml.includes('</body>')) {
@@ -56,14 +61,19 @@ export class TrackingService {
     }
 
     const linkRegex = /<a\s+([^>]*href=["']([^"']+)["'][^>]*)>/gi;
-    processedHtml = processedHtml.replace(linkRegex, (match, attributes, url) => {
-      if (url.startsWith('#') || url.startsWith('mailto:') || url.includes('/api/track/') || url.includes('/unsubscribe')) {
-        return match;
+    const matches: Array<{ match: string; url: string }> = [];
+    let match;
+    while ((match = linkRegex.exec(processedHtml)) !== null) {
+      const url = match[2];
+      if (!url.startsWith('#') && !url.startsWith('mailto:') && !url.includes('/api/track/') && !url.includes('/unsubscribe')) {
+        matches.push({ match: match[0], url });
       }
-      
-      const trackedUrl = this.wrapLinkWithTracking(url, campaignId, userId);
-      return match.replace(url, trackedUrl);
-    });
+    }
+    
+    for (const { match: fullMatch, url } of matches) {
+      const trackedUrl = await this.wrapLinkWithTracking(url, campaignId, userId);
+      processedHtml = processedHtml.replace(url, trackedUrl);
+    }
 
     return processedHtml;
   }

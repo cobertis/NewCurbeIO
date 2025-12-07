@@ -19,13 +19,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity, ExternalLink, HelpCircle } from "lucide-react";
+import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity, ExternalLink, HelpCircle, Settings2, Check, Save, Globe } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import type { 
   SystemApiCredential, 
   SystemApiCredentialsAudit, 
   ApiProvider, 
   CredentialAuditAction,
-  User 
+  User,
+  SystemConfig
 } from "@shared/schema";
 import { apiProviders } from "@shared/schema";
 
@@ -59,6 +61,10 @@ interface AuditResponse {
 
 interface RevealResponse {
   value: string;
+}
+
+interface SystemConfigResponse {
+  configs: SystemConfig[];
 }
 
 const credentialFormSchema = z.object({
@@ -119,6 +125,87 @@ export default function SystemSettings() {
   const { data: auditData, isLoading: isLoadingAudit } = useQuery<AuditResponse>({
     queryKey: ["/api/system/credentials/audit"],
     enabled: sessionData?.user?.role === "superadmin" && activeTab === "audit",
+  });
+
+  const { data: systemConfigData, isLoading: isLoadingConfig } = useQuery<SystemConfigResponse>({
+    queryKey: ["/api/system-config"],
+    enabled: sessionData?.user?.role === "superadmin" && activeTab === "config",
+  });
+
+  const [editingConfig, setEditingConfig] = useState<string | null>(null);
+  const [editConfigValue, setEditConfigValue] = useState("");
+  const [editConfigDescription, setEditConfigDescription] = useState("");
+  const [editConfigIsPublic, setEditConfigIsPublic] = useState(false);
+  const [addConfigDialogOpen, setAddConfigDialogOpen] = useState(false);
+  const [newConfigKey, setNewConfigKey] = useState("");
+  const [newConfigValue, setNewConfigValue] = useState("");
+  const [newConfigDescription, setNewConfigDescription] = useState("");
+  const [newConfigIsPublic, setNewConfigIsPublic] = useState(false);
+
+  const updateConfigMutation = useMutation({
+    mutationFn: async ({ key, value, description, isPublic }: { key: string; value: string; description?: string; isPublic?: boolean }) => {
+      return apiRequest("PUT", `/api/system-config/${encodeURIComponent(key)}`, { value, description, isPublic });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/system-config"] });
+      setEditingConfig(null);
+      toast({
+        title: "Configuration Updated",
+        description: "The system configuration has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update configuration.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createConfigMutation = useMutation({
+    mutationFn: async ({ key, value, description, isPublic }: { key: string; value: string; description?: string; isPublic?: boolean }) => {
+      return apiRequest("POST", "/api/system-config", { key, value, description, isPublic });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/system-config"] });
+      setAddConfigDialogOpen(false);
+      setNewConfigKey("");
+      setNewConfigValue("");
+      setNewConfigDescription("");
+      setNewConfigIsPublic(false);
+      toast({
+        title: "Configuration Created",
+        description: "The new system configuration has been created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to create configuration.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteConfigMutation = useMutation({
+    mutationFn: async (key: string) => {
+      return apiRequest("DELETE", `/api/system-config/${encodeURIComponent(key)}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/system-config"] });
+      toast({
+        title: "Configuration Deleted",
+        description: "The system configuration has been deleted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete configuration.",
+        variant: "destructive",
+      });
+    },
   });
 
   const addForm = useForm<CredentialFormData>({
@@ -607,10 +694,14 @@ export default function SystemSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md" data-testid="settings-tabs">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg" data-testid="settings-tabs">
           <TabsTrigger value="credentials" data-testid="tab-credentials">
             <Key className="h-4 w-4 mr-2" />
             API Credentials
+          </TabsTrigger>
+          <TabsTrigger value="config" data-testid="tab-config">
+            <Settings2 className="h-4 w-4 mr-2" />
+            System Config
           </TabsTrigger>
           <TabsTrigger value="audit" data-testid="tab-audit">
             <Activity className="h-4 w-4 mr-2" />
@@ -746,6 +837,174 @@ export default function SystemSettings() {
                             </div>
                           );
                         })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="config" className="mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div>
+                <CardTitle className="text-lg">System Configuration</CardTitle>
+                <CardDescription>
+                  Manage global configuration values stored in the database
+                </CardDescription>
+              </div>
+              <Button 
+                onClick={() => setAddConfigDialogOpen(true)}
+                data-testid="button-add-config"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Config
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isLoadingConfig ? (
+                <div className="flex items-center justify-center py-12">
+                  <LoadingSpinner fullScreen={false} className="h-8 w-8" />
+                </div>
+              ) : !systemConfigData?.configs || systemConfigData.configs.length === 0 ? (
+                <div className="text-center py-12">
+                  <Settings2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">No system configuration found</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setAddConfigDialogOpen(true)}
+                    data-testid="button-add-config-empty"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Configuration
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {systemConfigData.configs.map((config) => (
+                    <div 
+                      key={config.key} 
+                      className="flex flex-col sm:flex-row sm:items-start justify-between p-4 border rounded-lg gap-4"
+                      data-testid={`config-${config.key}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium font-mono" data-testid={`config-key-${config.key}`}>
+                            {config.key}
+                          </span>
+                          {config.isPublic && (
+                            <Badge variant="outline" className="text-xs">
+                              <Globe className="h-3 w-3 mr-1" />
+                              Public
+                            </Badge>
+                          )}
+                        </div>
+                        {config.description && (
+                          <p className="text-sm text-muted-foreground mb-2" data-testid={`config-description-${config.key}`}>
+                            {config.description}
+                          </p>
+                        )}
+                        
+                        {editingConfig === config.key ? (
+                          <div className="space-y-3 mt-3">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium">Value</label>
+                              <Input
+                                value={editConfigValue}
+                                onChange={(e) => setEditConfigValue(e.target.value)}
+                                placeholder="Enter value"
+                                data-testid={`input-config-value-${config.key}`}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium">Description</label>
+                              <Input
+                                value={editConfigDescription}
+                                onChange={(e) => setEditConfigDescription(e.target.value)}
+                                placeholder="Enter description (optional)"
+                                data-testid={`input-config-description-${config.key}`}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={editConfigIsPublic}
+                                onCheckedChange={setEditConfigIsPublic}
+                                data-testid={`switch-config-public-${config.key}`}
+                              />
+                              <label className="text-sm">Public (safe for frontend)</label>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="font-mono text-sm bg-muted px-2 py-1 rounded break-all" data-testid={`config-value-${config.key}`}>
+                            {config.value}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span data-testid={`config-updated-${config.key}`}>
+                            Updated {format(new Date(config.updatedAt), "PPp")}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {editingConfig === config.key ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingConfig(null)}
+                              data-testid={`button-cancel-edit-${config.key}`}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => updateConfigMutation.mutate({
+                                key: config.key,
+                                value: editConfigValue,
+                                description: editConfigDescription || undefined,
+                                isPublic: editConfigIsPublic,
+                              })}
+                              disabled={updateConfigMutation.isPending}
+                              data-testid={`button-save-config-${config.key}`}
+                            >
+                              <Save className="h-4 w-4 mr-1" />
+                              Save
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingConfig(config.key);
+                                setEditConfigValue(config.value);
+                                setEditConfigDescription(config.description || "");
+                                setEditConfigIsPublic(config.isPublic);
+                              }}
+                              data-testid={`button-edit-config-${config.key}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to delete "${config.key}"?`)) {
+                                  deleteConfigMutation.mutate(config.key);
+                                }
+                              }}
+                              data-testid={`button-delete-config-${config.key}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1201,6 +1460,95 @@ export default function SystemSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={addConfigDialogOpen} onOpenChange={setAddConfigDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]" data-testid="dialog-add-config">
+          <DialogHeader>
+            <DialogTitle>Add System Configuration</DialogTitle>
+            <DialogDescription>
+              Add a new system configuration value. Public configs can be accessed by the frontend.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Key *</label>
+              <Input
+                value={newConfigKey}
+                onChange={(e) => setNewConfigKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+                placeholder="e.g. APP_NAME, FEATURE_FLAG"
+                className="font-mono"
+                data-testid="input-new-config-key"
+              />
+              <p className="text-xs text-muted-foreground">Use uppercase letters, numbers, and underscores</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Value *</label>
+              <Input
+                value={newConfigValue}
+                onChange={(e) => setNewConfigValue(e.target.value)}
+                placeholder="Enter configuration value"
+                data-testid="input-new-config-value"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Input
+                value={newConfigDescription}
+                onChange={(e) => setNewConfigDescription(e.target.value)}
+                placeholder="Describe what this configuration is for"
+                data-testid="input-new-config-description"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={newConfigIsPublic}
+                onCheckedChange={setNewConfigIsPublic}
+                data-testid="switch-new-config-public"
+              />
+              <label className="text-sm">
+                Public (can be accessed by frontend without authentication)
+              </label>
+            </div>
+          </div>
+          
+          <DialogFooter className="pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddConfigDialogOpen(false);
+                setNewConfigKey("");
+                setNewConfigValue("");
+                setNewConfigDescription("");
+                setNewConfigIsPublic(false);
+              }}
+              data-testid="button-cancel-add-config"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (newConfigKey && newConfigValue) {
+                  createConfigMutation.mutate({
+                    key: newConfigKey,
+                    value: newConfigValue,
+                    description: newConfigDescription || undefined,
+                    isPublic: newConfigIsPublic,
+                  });
+                }
+              }}
+              disabled={createConfigMutation.isPending || !newConfigKey || !newConfigValue}
+              data-testid="button-submit-add-config"
+            >
+              {createConfigMutation.isPending && <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />}
+              Add Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

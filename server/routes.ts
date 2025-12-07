@@ -25974,5 +25974,135 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   setupWebSocket(httpServer, sessionStore);
+  // =====================================================
+  // SYSTEM CONFIGURATION ENDPOINTS
+  // =====================================================
+  
+  // GET /api/system-config/public - Get public config (no auth required)
+  app.get("/api/system-config/public", async (req: Request, res: Response) => {
+    try {
+      const { systemConfigService } = await import("./services/system-config");
+      await systemConfigService.initialize();
+      const config = await systemConfigService.getPublicConfig();
+      res.json({ config });
+    } catch (error: any) {
+      console.error("[System Config] Error getting public config:", error);
+      res.status(500).json({ message: "Failed to get public config" });
+    }
+  });
+  
+  // GET /api/system-config/stripe-publishable-key - Get Stripe publishable key (no auth required)
+  app.get("/api/system-config/stripe-publishable-key", async (req: Request, res: Response) => {
+    try {
+      const { credentialProvider } = await import("./services/credential-provider");
+      const stripeCredentials = await credentialProvider.getStripe();
+      res.json({ publishableKey: stripeCredentials.publishableKey || null });
+    } catch (error: any) {
+      console.error("[System Config] Error getting Stripe publishable key:", error);
+      res.json({ publishableKey: null });
+    }
+  });
+
+  // GET /api/system-config - List all config (superadmin only)
+  app.get("/api/system-config", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { systemConfigService } = await import("./services/system-config");
+      await systemConfigService.initialize();
+      const configs = await systemConfigService.getAll();
+      res.json({ configs });
+    } catch (error: any) {
+      console.error("[System Config] Error listing configs:", error);
+      res.status(500).json({ message: "Failed to list configs" });
+    }
+  });
+
+  // PUT /api/system-config/:key - Update a config value (superadmin only)
+  app.put("/api/system-config/:key", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { key } = req.params;
+      const { value, description, isPublic } = req.body;
+      
+      if (!value || typeof value !== "string") {
+        return res.status(400).json({ message: "Value is required and must be a string" });
+      }
+      
+      const { systemConfigService } = await import("./services/system-config");
+      await systemConfigService.set(key, value, {
+        description,
+        isPublic,
+        updatedBy: user.id,
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[System Config] Error updating config:", error);
+      res.status(500).json({ message: "Failed to update config" });
+    }
+  });
+
+  // POST /api/system-config - Create a new config (superadmin only)
+  app.post("/api/system-config", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { key, value, description, isPublic } = req.body;
+      
+      if (!key || typeof key !== "string") {
+        return res.status(400).json({ message: "Key is required and must be a string" });
+      }
+      if (!value || typeof value !== "string") {
+        return res.status(400).json({ message: "Value is required and must be a string" });
+      }
+      
+      const { systemConfigService } = await import("./services/system-config");
+      await systemConfigService.set(key, value, {
+        description,
+        isPublic: isPublic ?? false,
+        updatedBy: user.id,
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[System Config] Error creating config:", error);
+      res.status(500).json({ message: "Failed to create config" });
+    }
+  });
+
+  // DELETE /api/system-config/:key - Delete a config (superadmin only)
+  app.delete("/api/system-config/:key", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { key } = req.params;
+      const { systemConfigService } = await import("./services/system-config");
+      const deleted = await systemConfigService.delete(key);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Config not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[System Config] Error deleting config:", error);
+      res.status(500).json({ message: "Failed to delete config" });
+    }
+  });
+
   return httpServer;
 }
