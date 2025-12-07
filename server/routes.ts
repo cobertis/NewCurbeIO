@@ -24915,6 +24915,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /api/whatsapp/send-reaction - Send a reaction to a message
+  app.post("/api/whatsapp/send-reaction", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+      const { remoteJid, messageId, emoji, fromMe } = req.body;
+      if (!remoteJid || !messageId || emoji === undefined || fromMe === undefined) {
+        return res.status(400).json({ message: "remoteJid, messageId, emoji, and fromMe are required" });
+      }
+      const instance = await db.query.whatsappInstances.findFirst({
+        where: eq(whatsappInstances.companyId, user.companyId),
+      });
+      if (!instance || instance.status !== "open") {
+        return res.status(400).json({ message: "WhatsApp not connected" });
+      }
+      await evolutionApi.sendReaction(instance.instanceName, remoteJid, messageId, emoji, fromMe);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[WhatsApp] Error sending reaction:", error);
+      res.status(500).json({ message: "Failed to send reaction" });
+    }
+  });
   const httpServer = createServer(app);
   // Setup WebSocket for real-time chat updates with session validation
   setupWebSocket(httpServer, sessionStore);

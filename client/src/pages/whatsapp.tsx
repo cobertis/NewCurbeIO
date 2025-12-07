@@ -832,6 +832,45 @@ export default function WhatsAppPage() {
     },
   });
 
+  // Local reactions state for optimistic UI
+  const [localReactions, setLocalReactions] = useState<Record<string, string>>({});
+
+  const sendReactionMutation = useMutation({
+    mutationFn: async ({ remoteJid, messageId, emoji, fromMe }: { remoteJid: string; messageId: string; emoji: string; fromMe: boolean }) => {
+      return apiRequest("POST", "/api/whatsapp/send-reaction", { remoteJid, messageId, emoji, fromMe });
+    },
+    onMutate: async ({ messageId, emoji }) => {
+      const previousReaction = localReactions[messageId];
+      setLocalReactions(prev => {
+        if (emoji === "" || prev[messageId] === emoji) {
+          const { [messageId]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [messageId]: emoji };
+      });
+      return { previousReaction };
+    },
+    onError: (error: any, { messageId }, context) => {
+      if (context?.previousReaction !== undefined) {
+        setLocalReactions(prev => ({ ...prev, [messageId]: context.previousReaction }));
+      } else {
+        setLocalReactions(prev => {
+          const { [messageId]: _, ...rest } = prev;
+          return rest;
+        });
+      }
+      toast({ title: "Reaction Failed", description: error.message || "Failed to send reaction", variant: "destructive" });
+    },
+  });
+
+  const handleReaction = (messageId: string, remoteJid: string, emoji: string, fromMe: boolean) => {
+    const currentReaction = localReactions[messageId];
+    const newEmoji = currentReaction === emoji ? "" : emoji;
+    sendReactionMutation.mutate({ remoteJid, messageId, emoji: newEmoji, fromMe });
+  };
+
+  const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
   const syncChatsMutation = useMutation({
     mutationFn: async () => {
       return apiRequest("POST", "/api/whatsapp/sync-chats");
@@ -1500,51 +1539,79 @@ export default function WhatsAppPage() {
                         <div
                           key={msg.id}
                           className={cn(
-                            "flex",
+                            "flex group",
                             msg.fromMe ? "justify-end" : "justify-start"
                           )}
                           data-testid={`message-${msg.id}`}
                         >
-                          <div
-                            className={cn(
-                              "max-w-[65%] rounded-lg px-3 py-2 shadow-sm",
-                              msg.fromMe
-                                ? "bg-primary/10 dark:bg-primary/20"
-                                : "bg-white dark:bg-gray-800"
-                            )}
-                          >
-                            {["image", "video", "audio", "document"].includes(msg.messageType) ? (
-                              <div className="mb-1">
-                                <MediaMessage message={msg} remoteJid={msg.remoteJid} />
-                                {msg.messageType !== "document" && msg.content && 
-                                 msg.content !== msg.messageType && 
-                                 msg.content !== `[${msg.messageType}]` &&
-                                 !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
-                                  <p className="text-sm dark:text-white break-words mt-1">
-                                    {msg.content}
-                                  </p>
+                          <div className={cn("flex items-end gap-1", msg.fromMe ? "flex-row-reverse" : "flex-row")}>
+                            <div
+                              className={cn(
+                                "max-w-[65%] rounded-lg px-3 py-2 shadow-sm relative",
+                                msg.fromMe
+                                  ? "bg-primary/10 dark:bg-primary/20"
+                                  : "bg-white dark:bg-gray-800"
+                              )}
+                            >
+                              {["image", "video", "audio", "document"].includes(msg.messageType) ? (
+                                <div className="mb-1">
+                                  <MediaMessage message={msg} remoteJid={msg.remoteJid} />
+                                  {msg.messageType !== "document" && msg.content && 
+                                   msg.content !== msg.messageType && 
+                                   msg.content !== `[${msg.messageType}]` &&
+                                   !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
+                                    <p className="text-sm dark:text-white break-words mt-1">
+                                      {msg.content}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm dark:text-white break-words">
+                                  {msg.content || `[${msg.messageType}]`}
+                                </p>
+                              )}
+                              <div className="flex items-center justify-end gap-1 mt-1">
+                                <span className="text-[10px] text-gray-500">
+                                  {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
+                                    ? format(new Date(msg.timestamp), "HH:mm") 
+                                    : ""}
+                                </span>
+                                {msg.fromMe && (
+                                  msg.status === "read" ? (
+                                    <CheckCheck className="w-3 h-3 text-blue-500" />
+                                  ) : msg.status === "delivered" ? (
+                                    <CheckCheck className="w-3 h-3 text-gray-400" />
+                                  ) : (
+                                    <Check className="w-3 h-3 text-gray-400" />
+                                  )
                                 )}
                               </div>
-                            ) : (
-                              <p className="text-sm dark:text-white break-words">
-                                {msg.content || `[${msg.messageType}]`}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-end gap-1 mt-1">
-                              <span className="text-[10px] text-gray-500">
-                                {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
-                                  ? format(new Date(msg.timestamp), "HH:mm") 
-                                  : ""}
-                              </span>
-                              {msg.fromMe && (
-                                msg.status === "read" ? (
-                                  <CheckCheck className="w-3 h-3 text-blue-500" />
-                                ) : msg.status === "delivered" ? (
-                                  <CheckCheck className="w-3 h-3 text-gray-400" />
-                                ) : (
-                                  <Check className="w-3 h-3 text-gray-400" />
-                                )
+                              {localReactions[msg.messageId] && (
+                                <div className={cn(
+                                  "absolute -bottom-3 text-base bg-white dark:bg-gray-700 rounded-full px-1 shadow-sm border dark:border-gray-600",
+                                  msg.fromMe ? "right-1" : "left-1"
+                                )}>
+                                  {localReactions[msg.messageId]}
+                                </div>
                               )}
+                            </div>
+                            <div className={cn(
+                              "opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 bg-white dark:bg-gray-800 rounded-full shadow-md border dark:border-gray-700 px-1 py-0.5",
+                              msg.fromMe ? "order-first" : ""
+                            )}>
+                              {REACTION_EMOJIS.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => handleReaction(msg.messageId, msg.remoteJid, emoji, msg.fromMe)}
+                                  className={cn(
+                                    "text-sm hover:scale-125 transition-transform p-0.5 rounded",
+                                    localReactions[msg.messageId] === emoji && "bg-primary/20"
+                                  )}
+                                  data-testid={`button-reaction-${emoji}-${msg.id}`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
                             </div>
                           </div>
                         </div>

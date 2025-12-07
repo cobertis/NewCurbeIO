@@ -356,7 +356,7 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
   async getBusinessProfile(
     instanceName: string,
     jid: string
-  ): Promise<{ businessPhone: string | null; businessName: string | null }> {
+  ): Promise<{ businessPhone: string | null; businessName: string | null; pushName: string | null }> {
     console.log(`[Evolution API] Fetching business profile for ${jid}`);
     try {
       const response: any = await this.request("POST", `/chat/fetchProfile/${instanceName}`, {
@@ -496,6 +496,39 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       console.log(`[Evolution API] Global presence set to ${presence}`);
     } catch (error: any) {
       console.error(`[Evolution API] Failed to set global presence:`, error.message);
+    }
+  }
+
+  /**
+   * Sends a reaction to a specific message.
+   * @param instanceName - The Evolution API instance name
+   * @param remoteJid - JID of the chat (number@s.whatsapp.net or @lid)
+   * @param messageId - Unique ID of the message to react to
+   * @param reactionEmoji - The emoji (e.g., "👍", "❤️", "😂"). Pass empty string "" to remove reaction.
+   * @param messageFromMe - true if the target message is ours, false if from the contact
+   */
+  async sendReaction(
+    instanceName: string,
+    remoteJid: string,
+    messageId: string,
+    reactionEmoji: string,
+    messageFromMe: boolean
+  ): Promise<any> {
+    try {
+      console.log(`[Evolution API] Sending reaction "${reactionEmoji}" to message ${messageId} in ${remoteJid}`);
+      const response = await this.request("POST", `/message/sendReaction/${instanceName}`, {
+        reaction: reactionEmoji,
+        key: {
+          remoteJid: remoteJid,
+          fromMe: messageFromMe,
+          id: messageId
+        }
+      });
+      console.log(`[Evolution API] Reaction sent successfully`);
+      return response;
+    } catch (error: any) {
+      console.error(`[Evolution API] Failed to send reaction:`, error.message);
+      throw error;
     }
   }
 }
