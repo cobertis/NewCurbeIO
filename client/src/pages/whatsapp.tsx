@@ -1553,15 +1553,14 @@ export default function WhatsAppPage() {
                           key={msg.id}
                           className={cn(
                             "flex group",
-                            msg.fromMe ? "justify-end" : "justify-start",
-                            (msg.reaction || localReactions[msg.messageId]) && "mb-6"
+                            msg.fromMe ? "justify-end" : "justify-start"
                           )}
                           data-testid={`message-${msg.id}`}
                         >
                           <div className={cn("flex items-end gap-1", msg.fromMe ? "flex-row-reverse" : "flex-row")}>
                             <div
                               className={cn(
-                                "max-w-[65%] rounded-lg px-3 py-2 shadow-sm relative",
+                                "max-w-[65%] rounded-lg px-3 py-2 shadow-sm",
                                 msg.fromMe
                                   ? "bg-primary/10 dark:bg-primary/20"
                                   : "bg-white dark:bg-gray-800"
@@ -1599,20 +1598,14 @@ export default function WhatsAppPage() {
                                     <Check className="w-3 h-3 text-gray-400" />
                                   )
                                 )}
+                                {(msg.reaction || localReactions[msg.messageId]) && (
+                                  <span className="text-sm ml-0.5">
+                                    {localReactions[msg.messageId] || msg.reaction}
+                                  </span>
+                                )}
                               </div>
-                              {(msg.reaction || localReactions[msg.messageId]) && (
-                                <div className={cn(
-                                  "absolute -bottom-3 text-base bg-white dark:bg-gray-700 rounded-full px-1 shadow-sm border dark:border-gray-600",
-                                  msg.fromMe ? "right-1" : "left-1"
-                                )}>
-                                  {localReactions[msg.messageId] || msg.reaction}
-                                </div>
-                              )}
                             </div>
-                            <div className={cn(
-                              "opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 bg-white dark:bg-gray-800 rounded-full shadow-md border dark:border-gray-700 px-1 py-0.5",
-                              msg.fromMe ? "order-first" : ""
-                            )}>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 bg-white dark:bg-gray-800 rounded-full shadow-md border dark:border-gray-700 px-1 py-0.5">
                               {REACTION_EMOJIS.map((emoji) => (
                                 <button
                                   key={emoji}
