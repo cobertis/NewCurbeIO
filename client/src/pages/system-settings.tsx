@@ -1480,12 +1480,25 @@ export default function SystemSettings() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder="Enter your password"
-                        data-testid="input-reveal-password"
-                      />
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          type={showValue ? "text" : "password"}
+                          placeholder="Enter your password"
+                          className="pr-10"
+                          data-testid="input-reveal-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                          onClick={() => setShowValue(!showValue)}
+                          data-testid="button-toggle-reveal-password"
+                        >
+                          {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1495,7 +1508,10 @@ export default function SystemSettings() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setRevealDialogOpen(false)}
+                  onClick={() => {
+                    setRevealDialogOpen(false);
+                    setShowValue(false);
+                  }}
                   data-testid="button-cancel-reveal"
                 >
                   Cancel
@@ -1537,12 +1553,25 @@ export default function SystemSettings() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        type="password"
-                        placeholder="Enter your password"
-                        data-testid="input-edit-provider-password"
-                      />
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          type={showValue ? "text" : "password"}
+                          placeholder="Enter your password"
+                          className="pr-10"
+                          data-testid="input-edit-provider-password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                          onClick={() => setShowValue(!showValue)}
+                          data-testid="button-toggle-edit-provider-password"
+                        >
+                          {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1552,7 +1581,10 @@ export default function SystemSettings() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setEditProviderPasswordDialogOpen(false)}
+                  onClick={() => {
+                    setEditProviderPasswordDialogOpen(false);
+                    setShowValue(false);
+                  }}
                   data-testid="button-cancel-edit-provider"
                 >
                   Cancel
