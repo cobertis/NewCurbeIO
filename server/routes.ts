@@ -23968,7 +23968,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to send typing" });
     }
   });
-  // POST /api/whatsapp/send-presence - Set online/offline presence status
+  // POST /api/whatsapp/send-presence - Set GLOBAL online/offline presence status for the instance
   app.post("/api/whatsapp/send-presence", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23976,13 +23976,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated" });
       }
       
-      let { presence, remoteJid } = req.body;
+      const { presence } = req.body;
       if (!presence || !["available", "unavailable"].includes(presence)) {
         return res.status(400).json({ message: "presence must be 'available' or 'unavailable'" });
-      }
-      
-      if (!remoteJid) {
-        return res.status(400).json({ message: "remoteJid is required" });
       }
       
       const instance = await db.query.whatsappInstances.findFirst({
@@ -23993,36 +23989,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
       
-      // For @lid contacts, resolve to phone-based JID first
-      if (remoteJid.endsWith('@lid')) {
-        const contactWithLid = await db.query.whatsappContacts.findFirst({
-          where: and(
-            eq(whatsappContacts.instanceId, instance.id),
-            eq(whatsappContacts.lid, remoteJid)
-          ),
-        });
-        
-        if (contactWithLid) {
-          remoteJid = contactWithLid.remoteJid;
-        } else {
-          const contactByRemoteJid = await db.query.whatsappContacts.findFirst({
-            where: and(
-              eq(whatsappContacts.instanceId, instance.id),
-              eq(whatsappContacts.remoteJid, remoteJid)
-            ),
-          });
-          
-          if (contactByRemoteJid?.businessPhone) {
-            const phoneNumber = contactByRemoteJid.businessPhone.replace(/\D/g, '');
-            remoteJid = `${phoneNumber}@s.whatsapp.net`;
-          } else {
-            // Cannot send presence to @lid without phone mapping - skip silently
-            return res.json({ success: true, skipped: true });
-          }
-        }
-      }
-      
-      await evolutionApi.sendPresenceStatus(instance.instanceName, remoteJid, presence);
+      // Use global presence endpoint - sets online status for the entire instance
+      await evolutionApi.setGlobalPresence(instance.instanceName, presence);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to set presence" });

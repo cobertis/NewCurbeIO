@@ -1,0 +1,104 @@
+Aquí tienes la especificación técnica **exacta y a prueba de errores** para que se la pases a tu agente de Replit.
+
+Para que funcione como WhatsApp Web, la clave no es solo enviar el emoji, es **identificar correctamente el mensaje al que reaccionas**. Si el agente se equivoca en el `id` o en el `fromMe`, la reacción fallará silenciosamente.
+
+Copia y pega las siguientes instrucciones en tu chat con el agente de Replit:
+
+-----
+
+### **Instrucciones para el Agente (Implementation Spec: WhatsApp Reactions)**
+
+**Objetivo:** Implementar la función de reaccionar a mensajes (Like, Corazón, Risa, etc.) usando Evolution API v2.
+**Requisito UX:** Debe sentirse instantáneo, igual que en WhatsApp Web.
+
+#### 1\. La Lógica Técnica (The "Key" Object)
+
+Para reaccionar, no basta con el número de teléfono. Necesitamos reconstruir la `key` (llave única) del mensaje objetivo.
+
+  * **`remoteJid`**: El número del chat (ej: `521555...@s.whatsapp.net`).
+  * **`id`**: El ID único del mensaje al que vamos a reaccionar (ej: `BAE5F...`).
+  * **`fromMe`**: **CRÍTICO.**
+      * Es `false` si reaccionamos a un mensaje que envió el **cliente**.
+      * Es `true` si reaccionamos a un mensaje que enviamos **nosotros** (el bot/agente).
+
+#### 2\. El Endpoint de la API
+
+  * **Método:** `POST`
+  * **Endpoint:** `/message/sendReaction/{instance_name}`
+  * **Payload JSON:**
+
+<!-- end list -->
+
+```json
+{
+  "reaction": "❤️",  // El emoji literal (o string vacío "" para quitar la reacción)
+  "key": {
+    "remoteJid": "5215555555555@s.whatsapp.net",
+    "fromMe": false, // Cambiar dinámicamente según quién envió el mensaje original
+    "id": "ID_DEL_MENSAJE_ORIGINAL"
+  }
+}
+```
+
+#### 3\. Código de Implementación (TypeScript / Node.js)
+
+Implementa esta función en `evolution-api.ts` para manejar la lógica automáticamente:
+
+```typescript
+/**
+ * Envía una reacción a un mensaje específico.
+ * @param instance Nombre de la instancia
+ * @param remoteJid JID del chat (número@s.whatsapp.net)
+ * @param messageId ID único del mensaje a reaccionar
+ * @param reactionEmoji El emoji (ej: "👍", "❤️", "😂"). Pasar cadena vacía "" para quitar reacción.
+ * @param messageFromMe true si el mensaje objetivo es nuestro, false si es del cliente.
+ */
+export async function sendReaction(
+  instance: string, 
+  remoteJid: string, 
+  messageId: string, 
+  reactionEmoji: string, 
+  messageFromMe: boolean
+) {
+  try {
+    const response = await axios.post(
+      `${process.env.EVOLUTION_URL}/message/sendReaction/${instance}`,
+      {
+        reaction: reactionEmoji,
+        key: {
+          remoteJid: remoteJid,
+          fromMe: messageFromMe,
+          id: messageId
+        }
+      },
+      {
+        headers: { apikey: process.env.EVOLUTION_API_KEY }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error enviando reacción:", error);
+    throw error;
+  }
+}
+```
+
+#### 4\. Instrucciones para el Frontend (UI/UX)
+
+Para que se sienta como WhatsApp Web ("Optimistic UI"):
+
+1.  **Feedback Instantáneo:** Cuando el usuario haga clic en el emoji, **agrégalo visualmente al chat inmediatamente**, NO esperes a que la API responda.
+      * *Si la API falla después:* Muestra un error y quita el emoji (rollback).
+2.  **Toggle (Quitar reacción):**
+      * Si el usuario hace clic en el **mismo** emoji que ya puso, la función debe enviar una cadena vacía `""` como `reactionEmoji` para eliminarla.
+3.  **Menú de Emojis:**
+      * Implementa los 6 clásicos: 👍 ❤️ 😂 😮 😢 🙏
+
+-----
+
+### **Nota Estratégica para ti (Humano):**
+
+El error más común aquí es que tu base de datos no tenga guardado si el mensaje fue `fromMe` o no.
+
+  * Si tu tabla de mensajes no tiene una columna `is_from_me` (booleano), **el agente no podrá saber qué poner en el payload**.
+  * **Verifica ahora:** Asegúrate de que al guardar los mensajes entrantes y salientes, estás guardando ese dato. Si no, las reacciones fallarán en el 50% de los casos (cuando intentes reaccionar a tus propios mensajes).

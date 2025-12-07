@@ -646,39 +646,39 @@ export default function WhatsAppPage() {
     }).catch(() => {});
   }, [selectedChat, instanceData?.connected]);
 
-  // Send presence status (available/unavailable) to specific contact
-  const sendPresence = useCallback((remoteJid: string, presence: "available" | "unavailable") => {
-    if (!instanceData?.connected || !remoteJid) return;
+  // Send GLOBAL presence status (available/unavailable) for the entire instance
+  const sendGlobalPresence = useCallback((presence: "available" | "unavailable") => {
+    if (!instanceData?.connected) return;
     
     fetch('/api/whatsapp/send-presence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ remoteJid, presence }),
+      body: JSON.stringify({ presence }),
     }).catch(() => {});
   }, [instanceData?.connected]);
 
-  // Manage presence when chat is open/closed
+  // Manage GLOBAL presence when WhatsApp page is open
   useEffect(() => {
-    if (selectedChat && instanceData?.connected) {
-      // Set online when chat is opened
-      sendPresence(selectedChat, "available");
+    if (instanceData?.connected) {
+      // Set online when WhatsApp page is open and connected
+      sendGlobalPresence("available");
       
-      // Keep-alive every 45 seconds while chat is open
+      // Keep-alive every 25 seconds to maintain online status
       presenceIntervalRef.current = setInterval(() => {
-        sendPresence(selectedChat, "available");
-      }, 45000);
+        sendGlobalPresence("available");
+      }, 25000);
       
       return () => {
-        // Set offline when chat is closed
-        sendPresence(selectedChat, "unavailable");
+        // Set offline when leaving WhatsApp page
+        sendGlobalPresence("unavailable");
         if (presenceIntervalRef.current) {
           clearInterval(presenceIntervalRef.current);
           presenceIntervalRef.current = null;
         }
       };
     }
-  }, [selectedChat, instanceData?.connected, sendPresence]);
+  }, [instanceData?.connected, sendGlobalPresence]);
 
   const { data: chats = [], isLoading: loadingChats } = useQuery<WhatsappConversation[]>({
     queryKey: ["/api/whatsapp/chats"],

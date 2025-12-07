@@ -483,6 +483,18 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       console.error(`[Evolution API] Failed to set presence:`, error.message);
     }
   }
+
+  async setGlobalPresence(instanceName: string, presence: "available" | "unavailable"): Promise<void> {
+    try {
+      console.log(`[Evolution API] Setting GLOBAL presence to ${presence} via ${instanceName}`);
+      await this.request("POST", `/instance/setPresence/${instanceName}`, {
+        presence
+      });
+      console.log(`[Evolution API] Global presence set to ${presence}`);
+    } catch (error: any) {
+      console.error(`[Evolution API] Failed to set global presence:`, error.message);
+    }
+  }
 }
 
 export const evolutionApi = new EvolutionApiService();
