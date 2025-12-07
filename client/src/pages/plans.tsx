@@ -273,7 +273,7 @@ export function PublicPricingView({
               </p>
             </div>
           ) : (
-            <div className="flex-1 grid gap-6 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
+            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto" style={{ alignItems: 'start' }}>
               {sortedPlans.map((plan, index) => {
                 const popular = isPopularPlan(plan.name, index, sortedPlans.length);
                 const enterprise = isEnterprisePlan(plan.name, index, sortedPlans.length);
