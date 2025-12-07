@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,7 @@ function formatPrice(amount: number, currency: string = 'usd'): string {
 export default function PlanSelection() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [selectingPlanId, setSelectingPlanId] = useState<string | null>(null);
   
   const { data: sessionData } = useQuery<{ user: User }>({
     queryKey: ['/api/session'],
@@ -75,11 +77,13 @@ export default function PlanSelection() {
         description: `Your ${trialDays}-day free trial of the ${planName} plan has begun! You'll be charged ${monthlyPrice}/${billingLabel} starting on ${formattedDate}. You can cancel anytime before then.`,
         duration: 8000,
       });
+      setSelectingPlanId(null);
       queryClient.invalidateQueries({ queryKey: ['/api/session'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/subscription'] });
       setLocation("/");
     },
     onError: (error: Error) => {
+      setSelectingPlanId(null);
       toast({
         title: "Error",
         description: error.message || "Failed to activate plan",
@@ -89,6 +93,7 @@ export default function PlanSelection() {
   });
 
   const handleSelectPlan = (planId: string, billingCycle: 'monthly' | 'yearly') => {
+    setSelectingPlanId(planId);
     selectPlanMutation.mutate({ planId, billingPeriod: billingCycle });
   };
 
@@ -107,6 +112,7 @@ export default function PlanSelection() {
       isLoading={plansLoading}
       onSelectPlan={handleSelectPlan}
       isSelecting={selectPlanMutation.isPending}
+      selectingPlanId={selectingPlanId}
       showTrialInfo={true}
     />
   );

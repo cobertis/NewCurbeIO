@@ -44,6 +44,7 @@ interface PublicPricingViewProps {
   isLoading?: boolean;
   onSelectPlan?: (planId: string, billingCycle: 'monthly' | 'yearly') => void;
   isSelecting?: boolean;
+  selectingPlanId?: string | null;
   showTrialInfo?: boolean;
 }
 
@@ -78,6 +79,7 @@ export function PublicPricingView({
   isLoading,
   onSelectPlan,
   isSelecting,
+  selectingPlanId,
   showTrialInfo = false
 }: PublicPricingViewProps) {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
@@ -398,11 +400,16 @@ export function PublicPricingView({
                             e.currentTarget.style.backgroundColor = '#FFFFFF';
                           }
                         }}
-                        onClick={() => !enterprise && onSelectPlan?.(plan.id, billingCycle)}
+                        onClick={() => !enterprise && !isSelecting && onSelectPlan?.(plan.id, billingCycle)}
                         disabled={isSelecting}
                         data-testid={`button-select-plan-${index}`}
                       >
-                        {isSelecting ? 'Selecting...' : 'Get started'}
+                        {isSelecting && selectingPlanId === plan.id ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Selecting...
+                          </span>
+                        ) : 'Get started'}
                       </button>
                       
                       {/* Features Section */}
