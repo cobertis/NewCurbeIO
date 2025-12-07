@@ -219,22 +219,22 @@ export function PublicPricingView({
               </button>
             </div>
             {/* Arrow and 2 months free text */}
-            <div className="flex items-center" style={{ marginLeft: '12px' }}>
+            <div className="flex items-center" style={{ marginLeft: '16px' }}>
               <svg 
-                width="28" 
-                height="24" 
-                viewBox="0 0 28 24" 
+                width="24" 
+                height="20" 
+                viewBox="0 0 24 20" 
                 fill="none"
               >
                 <path 
-                  d="M4 4 Q 14 2, 20 12 Q 22 16, 18 20" 
+                  d="M20 2 C 12 2, 6 6, 4 14" 
                   stroke="#1C422F" 
                   strokeWidth="2"
                   strokeLinecap="round"
                   fill="none"
                 />
                 <path 
-                  d="M14 18 L 18 20 L 16 24" 
+                  d="M7 10 L 4 14 L 0 12" 
                   stroke="#1C422F" 
                   strokeWidth="2"
                   strokeLinecap="round"
@@ -247,7 +247,7 @@ export function PublicPricingView({
                   color: '#1C422F',
                   fontFamily: '"Architects Daughter", cursive',
                   fontSize: '18px',
-                  marginLeft: '4px',
+                  marginLeft: '6px',
                   whiteSpace: 'nowrap',
                 }}
               >
