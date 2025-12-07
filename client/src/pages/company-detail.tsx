@@ -115,9 +115,9 @@ export default function CompanyDetail() {
   });
 
   const { data: activityLogsData, isLoading: isLoadingLogs } = useQuery<{ logs: any[] }>({
-    queryKey: ["/api/activity-logs", companyId],
+    queryKey: ["/api/audit-logs", companyId],
     queryFn: async () => {
-      const res = await fetch(`/api/activity-logs?companyId=${companyId}&limit=500`, {
+      const res = await fetch(`/api/audit-logs?companyId=${companyId}&limit=500`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to fetch activity logs");
