@@ -107,6 +107,10 @@ export default function SystemSettings() {
   const [bulkFormEnvironment, setBulkFormEnvironment] = useState<"production" | "development" | "staging">("production");
   const [bulkFormValues, setBulkFormValues] = useState<Record<string, string>>({});
   const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
+  const [viewProviderDialogOpen, setViewProviderDialogOpen] = useState(false);
+  const [selectedProviderForView, setSelectedProviderForView] = useState<string | null>(null);
+  const [deleteProviderDialogOpen, setDeleteProviderDialogOpen] = useState(false);
+  const [selectedProviderForDelete, setSelectedProviderForDelete] = useState<string | null>(null);
 
   const { data: sessionData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -352,6 +356,29 @@ export default function SystemSettings() {
       toast({
         title: "Error",
         description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (provider: string) => {
+      return apiRequest("DELETE", `/api/system/credentials/provider/${encodeURIComponent(provider)}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/system/credentials"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/system/credentials/audit"] });
+      setDeleteProviderDialogOpen(false);
+      setSelectedProviderForDelete(null);
+      toast({
+        title: "Credentials Deleted",
+        description: "All credentials for this provider have been deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete credentials.",
         variant: "destructive",
       });
     },
@@ -749,97 +776,74 @@ export default function SystemSettings() {
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {Object.entries(groupedCredentials).map(([provider, providerCredentials]) => (
-                    <div key={provider} className="space-y-3">
-                      <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
-                        {getProviderDisplayName(provider)}
-                      </h3>
-                      <div className="space-y-2">
-                        {providerCredentials.map((credential) => {
-                          const revealed = revealedValues[credential.id];
-                          const timeRemaining = revealed ? Math.ceil((revealed.expiresAt - Date.now()) / 1000) : 0;
-                          
-                          return (
-                            <div 
-                              key={credential.id} 
-                              className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4"
-                              data-testid={`credential-${credential.id}`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium" data-testid={`credential-keyname-${credential.id}`}>
-                                    {credential.keyName}
-                                  </span>
-                                  <Badge 
-                                    variant={credential.isActive ? "default" : "secondary"}
-                                    data-testid={`credential-status-${credential.id}`}
-                                  >
-                                    {credential.isActive ? "Active" : "Inactive"}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    {credential.environment}
-                                  </Badge>
-                                </div>
-                                {credential.description && (
-                                  <p className="text-sm text-muted-foreground mb-2" data-testid={`credential-description-${credential.id}`}>
-                                    {credential.description}
-                                  </p>
-                                )}
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span className="font-mono" data-testid={`credential-value-${credential.id}`}>
-                                    {revealed ? revealed.value : "••••••••••••••••"}
-                                  </span>
-                                  {revealed && (
-                                    <span className="text-yellow-600 dark:text-yellow-400">
-                                      Hiding in {timeRemaining}s
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                                  <Clock className="h-3 w-3" />
-                                  <span data-testid={`credential-updated-${credential.id}`}>
-                                    Updated {format(new Date(credential.updatedAt), "PPp")}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRevealClick(credential)}
-                                  disabled={!!revealed}
-                                  data-testid={`button-reveal-${credential.id}`}
-                                >
-                                  {revealed ? (
-                                    <EyeOff className="h-4 w-4" />
-                                  ) : (
-                                    <Eye className="h-4 w-4" />
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditClick(credential)}
-                                  data-testid={`button-edit-${credential.id}`}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteClick(credential)}
-                                  data-testid={`button-delete-${credential.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                <div className="space-y-4">
+                  {Object.entries(groupedCredentials).map(([provider, providerCredentials]) => {
+                    const latestUpdate = providerCredentials.reduce((latest, cred) => 
+                      new Date(cred.updatedAt) > new Date(latest.updatedAt) ? cred : latest
+                    );
+                    const environment = providerCredentials[0]?.environment || "production";
+                    
+                    return (
+                      <div 
+                        key={provider} 
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg gap-4"
+                        data-testid={`provider-card-${provider}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Key className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{getProviderDisplayName(provider)}</span>
+                            <Badge variant="outline" className="text-xs">{environment}</Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                            <span>{providerCredentials.length} credential(s) configured</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Updated {format(new Date(latestUpdate.updatedAt), "PPp")}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProviderForView(provider);
+                              setViewProviderDialogOpen(true);
+                            }}
+                            data-testid={`button-view-provider-${provider}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setBulkFormProvider(provider);
+                              setBulkFormEnvironment(environment as any);
+                              setBulkFormValues({});
+                              setShowFieldValues({});
+                              setAddDialogOpen(true);
+                            }}
+                            data-testid={`button-edit-provider-${provider}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProviderForDelete(provider);
+                              setDeleteProviderDialogOpen(true);
+                            }}
+                            data-testid={`button-delete-provider-${provider}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -1549,6 +1553,92 @@ export default function SystemSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={viewProviderDialogOpen} onOpenChange={setViewProviderDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]" data-testid="dialog-view-provider">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedProviderForView && getProviderDisplayName(selectedProviderForView)} Credentials
+            </DialogTitle>
+            <DialogDescription>
+              View configured credentials for this provider.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+            {selectedProviderForView && groupedCredentials[selectedProviderForView]?.map((credential) => {
+              const revealed = revealedValues[credential.id];
+              const timeRemaining = revealed ? Math.ceil((revealed.expiresAt - Date.now()) / 1000) : 0;
+              
+              return (
+                <div 
+                  key={credential.id} 
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                  data-testid={`view-credential-${credential.id}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-sm" data-testid={`view-credential-keyname-${credential.id}`}>
+                      {credential.keyName}
+                    </div>
+                    <div className="font-mono text-xs text-muted-foreground break-all">
+                      <span data-testid={`view-credential-value-${credential.id}`}>
+                        {revealed ? revealed.value : "••••••••••••••••"}
+                      </span>
+                      {revealed && (
+                        <span className="ml-2 text-yellow-600 dark:text-yellow-400">
+                          ({timeRemaining}s)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRevealClick(credential)}
+                    disabled={!!revealed}
+                    data-testid={`button-reveal-view-${credential.id}`}
+                  >
+                    {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setViewProviderDialogOpen(false)}
+              data-testid="button-close-view-provider"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteProviderDialogOpen} onOpenChange={setDeleteProviderDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-provider">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Credentials</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all credentials for{" "}
+              {selectedProviderForDelete && getProviderDisplayName(selectedProviderForDelete)}?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-provider">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedProviderForDelete && bulkDeleteMutation.mutate(selectedProviderForDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkDeleteMutation.isPending}
+              data-testid="button-confirm-delete-provider"
+            >
+              {bulkDeleteMutation.isPending && <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />}
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
