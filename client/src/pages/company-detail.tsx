@@ -1116,6 +1116,12 @@ export default function CompanyDetail() {
                                         <span className="font-medium">{metadata.maxUsers || 'Unlimited'}</span>
                                       </div>
                                     )}
+                                    {metadata.trialEndDate && (
+                                      <div>
+                                        <span className="text-muted-foreground">Trial Ends:</span>{' '}
+                                        <span className="font-medium">{new Date(metadata.trialEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                      </div>
+                                    )}
                                     {metadata.stripeSubscriptionId && (
                                       <div className="col-span-2 md:col-span-3">
                                         <span className="text-muted-foreground">Subscription ID:</span>{' '}

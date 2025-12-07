@@ -8962,11 +8962,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         logs = await storage.getActivityLogsByCompany(currentUser.companyId, limit);
       }
-      // Enrich plan_selected logs with current plan data
+      // Enrich plan_selected logs with current plan data and subscription info
       const enrichedLogs = await Promise.all(logs.map(async (log: any) => {
         if (log.action === 'plan_selected' && log.metadata?.planId) {
           try {
             const plan = await storage.getPlan(log.metadata.planId);
+            let trialEnd = null;
+            if (log.companyId) {
+              const subscription = await storage.getSubscriptionByCompany(log.companyId);
+              if (subscription?.trialEnd) {
+                trialEnd = subscription.trialEnd;
+              }
+            }
             if (plan) {
               return {
                 ...log,
@@ -8978,11 +8985,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   trialDays: plan.trialDays,
                   maxUsers: plan.maxUsers,
                   billingPeriod: log.metadata.billingPeriod || 'monthly',
+                  trialEndDate: trialEnd,
                 }
               };
             }
           } catch (e) {
-            // Plan might not exist anymore, return original log
+            // Plan might not exist anymore
           }
         }
         return log;
