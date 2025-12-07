@@ -111,6 +111,10 @@ export default function SystemSettings() {
   const [selectedProviderForView, setSelectedProviderForView] = useState<string | null>(null);
   const [deleteProviderDialogOpen, setDeleteProviderDialogOpen] = useState(false);
   const [selectedProviderForDelete, setSelectedProviderForDelete] = useState<string | null>(null);
+  const [editProviderPasswordDialogOpen, setEditProviderPasswordDialogOpen] = useState(false);
+  const [selectedProviderForEdit, setSelectedProviderForEdit] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoadingEditValues, setIsLoadingEditValues] = useState(false);
 
   const { data: sessionData, isLoading: isLoadingSession } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -612,6 +616,72 @@ export default function SystemSettings() {
     }
   };
 
+  const handleEditProviderClick = (provider: string, environment: string) => {
+    setSelectedProviderForEdit(provider);
+    setBulkFormProvider(provider);
+    setBulkFormEnvironment(environment as "production" | "development" | "staging");
+    setBulkFormValues({});
+    setShowFieldValues({});
+    setIsEditMode(true);
+    revealForm.reset();
+    setEditProviderPasswordDialogOpen(true);
+  };
+
+  const handleEditProviderPasswordSubmit = async (data: RevealPasswordData) => {
+    if (!selectedProviderForEdit) return;
+    
+    setIsLoadingEditValues(true);
+    const providerCredentials = groupedCredentials[selectedProviderForEdit] || [];
+    
+    try {
+      const revealPromises = providerCredentials.map(async (credential) => {
+        const response = await apiRequest("POST", `/api/system/credentials/${credential.id}/reveal`, { 
+          password: data.password 
+        }) as RevealResponse;
+        return { keyName: credential.keyName, value: response.value };
+      });
+      
+      const results = await Promise.all(revealPromises);
+      const values: Record<string, string> = {};
+      results.forEach(r => {
+        values[r.keyName] = r.value;
+      });
+      
+      setBulkFormValues(values);
+      setEditProviderPasswordDialogOpen(false);
+      revealForm.reset();
+      setAddDialogOpen(true);
+      
+      toast({
+        title: "Credentials Loaded",
+        description: "Existing values have been loaded for editing.",
+      });
+    } catch (error: any) {
+      let errorMessage = "Failed to load credentials.";
+      try {
+        if (error?.message) {
+          const colonIndex = error.message.indexOf(': ');
+          if (colonIndex !== -1) {
+            const jsonPart = error.message.substring(colonIndex + 2);
+            const errorData = JSON.parse(jsonPart);
+            errorMessage = errorData.message || error.message;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+      } catch {
+        errorMessage = error?.message || "Failed to load credentials.";
+      }
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingEditValues(false);
+    }
+  };
+
   const getProviderConfig = (provider: string): ProviderConfig | undefined => {
     return providersData?.providers?.find(p => p.provider === provider);
   };
@@ -822,13 +892,7 @@ export default function SystemSettings() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              setBulkFormProvider(provider);
-                              setBulkFormEnvironment(environment as any);
-                              setBulkFormValues({});
-                              setShowFieldValues({});
-                              setAddDialogOpen(true);
-                            }}
+                            onClick={() => handleEditProviderClick(provider, environment)}
                             data-testid={`button-edit-provider-${provider}`}
                           >
                             <Pencil className="h-4 w-4" />
@@ -1096,13 +1160,16 @@ export default function SystemSettings() {
           setBulkFormProvider("");
           setBulkFormValues({});
           setShowFieldValues({});
+          setIsEditMode(false);
         }
       }}>
         <DialogContent className="sm:max-w-[550px]" data-testid="dialog-add-credential">
           <DialogHeader>
-            <DialogTitle>Add API Credentials</DialogTitle>
+            <DialogTitle>{isEditMode ? "Edit API Credentials" : "Add API Credentials"}</DialogTitle>
             <DialogDescription>
-              Configure credentials for an integrated service. Required fields are marked with *.
+              {isEditMode 
+                ? "Update credentials for this service. Modified fields will be saved."
+                : "Configure credentials for an integrated service. Required fields are marked with *."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1115,6 +1182,7 @@ export default function SystemSettings() {
                   setShowFieldValues({});
                 }} 
                 value={bulkFormProvider}
+                disabled={isEditMode}
               >
                 <SelectTrigger data-testid="select-provider">
                   <SelectValue placeholder="Select a provider" />
@@ -1439,6 +1507,63 @@ export default function SystemSettings() {
                 >
                   {revealMutation.isPending && <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />}
                   Reveal Value
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editProviderPasswordDialogOpen} onOpenChange={(open) => {
+        setEditProviderPasswordDialogOpen(open);
+        if (!open) {
+          setSelectedProviderForEdit(null);
+          setIsEditMode(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[400px]" data-testid="dialog-edit-provider-password">
+          <DialogHeader>
+            <DialogTitle>Confirm Password</DialogTitle>
+            <DialogDescription>
+              Enter your password to load and edit credentials for {selectedProviderForEdit && getProviderDisplayName(selectedProviderForEdit)}.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...revealForm}>
+            <form onSubmit={revealForm.handleSubmit(handleEditProviderPasswordSubmit)} className="space-y-4">
+              <FormField
+                control={revealForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="password"
+                        placeholder="Enter your password"
+                        data-testid="input-edit-provider-password"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditProviderPasswordDialogOpen(false)}
+                  data-testid="button-cancel-edit-provider"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isLoadingEditValues}
+                  data-testid="button-submit-edit-provider"
+                >
+                  {isLoadingEditValues && <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />}
+                  Load Credentials
                 </Button>
               </DialogFooter>
             </form>
