@@ -166,8 +166,8 @@ export function PublicPricingView({
         }}
       />
       
-      <div className="relative z-10 flex-1 flex flex-col py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto w-full flex flex-col">
           {/* Header Section - Two Column Layout */}
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-8">
             <h1 
