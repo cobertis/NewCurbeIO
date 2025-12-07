@@ -24375,7 +24375,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
 
         }
-
       } else if (event === "PRESENCE_UPDATE") {
         const presenceData = payload.data;
         console.log(`[WhatsApp Webhook] PRESENCE_UPDATE payload:`, JSON.stringify(presenceData, null, 2));
@@ -24383,48 +24382,55 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           let remoteJid = presenceData.id;
           const isTyping = presenceData.presences?.[remoteJid]?.lastKnownPresence === "composing";
           
-          // If it's a @lid JID, try to find the corresponding conversation
+          // If it's a @lid JID, look up the mapping in our contacts table via lid column
           if (remoteJid.endsWith('@lid')) {
-            // First check if there's a contact with this @lid that has a businessPhone
-            const lidContact = await db.query.whatsappContacts.findFirst({
+            // Find contact with this LID stored in the lid column
+            const contactWithLid = await db.query.whatsappContacts.findFirst({
               where: and(
                 eq(whatsappContacts.instanceId, instance.id),
-                eq(whatsappContacts.remoteJid, remoteJid)
+                eq(whatsappContacts.lid, remoteJid)
               ),
             });
             
-            if (lidContact?.businessPhone) {
-              // Find conversation with a contact that has this phone number in their remoteJid
-              const phoneNumber = lidContact.businessPhone.replace(/\D/g, '');
-              const conversation = await db.query.whatsappConversations.findFirst({
-                where: and(
-                  eq(whatsappConversations.instanceId, instance.id),
-                  sql`${whatsappConversations.remoteJid} LIKE ${phoneNumber + '%'}`
-                ),
-              });
-              if (conversation) {
-                remoteJid = conversation.remoteJid;
-                console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid} via businessPhone`);
-              }
+            if (contactWithLid) {
+              // Found the contact, use their remoteJid (phone-based)
+              remoteJid = contactWithLid.remoteJid;
+              console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid} via lid column`);
             } else {
-              // Try to get businessPhone from Evolution API
+              // LID not in database yet - try to fetch from Evolution API whatsappNumbers endpoint
               try {
-                const profile = await evolutionApi.getBusinessProfile(instance.instanceName, remoteJid);
-                if (profile?.businessPhone) {
-                  const phoneNumber = profile.businessPhone.replace(/\D/g, '');
-                  const conversation = await db.query.whatsappConversations.findFirst({
-                    where: and(
-                      eq(whatsappConversations.instanceId, instance.id),
-                      sql`${whatsappConversations.remoteJid} LIKE ${phoneNumber + '%'}`
-                    ),
-                  });
-                  if (conversation) {
-                    remoteJid = conversation.remoteJid;
-                    console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid} via API`);
+                console.log(`[WhatsApp Webhook] LID ${presenceData.id} not found in DB, querying Evolution API...`);
+                
+                // The whatsappNumbers endpoint returns both jid and lid
+                const response = await fetch(`${process.env.EVOLUTION_API_URL}/chat/whatsappNumbers/${instance.instanceName}`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': process.env.EVOLUTION_API_KEY || '',
+                  },
+                  body: JSON.stringify({ numbers: [remoteJid.replace('@lid', '')] }),
+                });
+                
+                if (response.ok) {
+                  const results = await response.json();
+                  if (results?.[0]?.jid && results?.[0]?.lid) {
+                    const phoneJid = results[0].jid;
+                    const lidValue = results[0].lid;
+                    
+                    // Update the contact with the LID mapping
+                    await db.update(whatsappContacts)
+                      .set({ lid: lidValue, updatedAt: new Date() })
+                      .where(and(
+                        eq(whatsappContacts.instanceId, instance.id),
+                        eq(whatsappContacts.remoteJid, phoneJid)
+                      ));
+                    
+                    remoteJid = phoneJid;
+                    console.log(`[WhatsApp Webhook] Fetched and stored LID mapping: ${lidValue} -> ${phoneJid}`);
                   }
                 }
               } catch (e) {
-                // Silently fail - typing indicator is not critical
+                console.log(`[WhatsApp Webhook] Could not resolve LID ${remoteJid}`);
               }
             }
           }

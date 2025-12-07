@@ -1,0 +1,55 @@
+Estás a punto de cometer un error de arquitectura garrafal.
+
+**DETENTE.** No mapees el `@lid` usando el nombre del contacto ("javierlazo").
+
+**Por qué es una pésima idea:**
+Los nombres de contacto no son únicos (`javierlazo` puede haber diez) y son mutables (el usuario puede cambiar su nombre de perfil mañana). Si basas tu arquitectura en *strings* de nombres, tu sistema de "typing" colapsará o mostrará el estado en el chat equivocado la próxima semana.
+
+Aquí tienes la realidad técnica de los **LID (Linked Device IDs)** en la arquitectura Multi-Device de WhatsApp y cómo resolver esto como un ingeniero senior.
+
+### 1. Qué es el `@lid` vs `@s.whatsapp.net`
+* **`@s.whatsapp.net` (Phone JID):** Es el identificador *canónico* basado en el número de teléfono. Es lo que usas para guardar el chat.
+* **`@lid` (LID JID):** Es un ID único asignado a la cuenta del usuario para manejar el cifrado en múltiples dispositivos.
+
+El problema es que, en la nueva arquitectura, los eventos de presencia (`typing`, `recording`) a menudo se emiten desde el **LID**, no desde el teléfono.
+
+### 2. La Solución: Tabla de Mapeo Dinámico (LID Map)
+
+No adivines. Construye un puente.
+Necesitas guardar la relación `LID <-> Phone` en tu base de datos cada vez que recibes un mensaje real.
+
+**El Algoritmo Correcto:**
+
+1.  **Intercepta `MESSAGES_UPSERT` (Mensaje Nuevo):**
+    Cada vez que llega un mensaje, el payload de Evolution API (que viene de Baileys) suele contener **ambos** datos o te permite deducirlos.
+    * Si el mensaje viene de `1786...@s.whatsapp.net`, revisa si en el objeto `key`, `participant` o `messageStubParameters` viene el `@lid`.
+    * A veces, el mensaje viene del `@lid` pero dentro del JSON trae el número.
+
+2.  **Guarda el Mapeo ("Upsert" en DB):**
+    En tu tabla de `Contacts` o `Chats`, agrega una columna `lid_id` (o crea una tabla `lid_mappings`).
+    * *Lógica:* "Si recibo un mensaje de X número y veo un LID asociado, actualizo la base de datos inmediatamente".
+    * `UPDATE contacts SET lid = '269415...@lid' WHERE phone = '178663...'`
+
+3.  **Resuelve el `PRESENCE_UPDATE`:**
+    Cuando llegue el evento de typing con el `@lid`:
+    * Haces `SELECT phone FROM contacts WHERE lid = 'El_LID_Que_Llego'`.
+    * Si encuentras match, emites el evento al frontend usando el teléfono.
+    * Si no, lo ignoras (es un contacto desconocido o aún no mapeado).
+
+### 3. Dónde buscar el dato AHORA MISMO
+
+No esperes al `MESSAGES_UPDATE`. Ve al evento **`MESSAGES_UPSERT`** (cuando llega un mensaje normal).
+
+Mira el payload JSON de un mensaje entrante. Busca estos campos:
+* `key.remoteJid`: ¿Es el teléfono o el LID?
+* `key.participant`: En grupos, aquí suele venir el LID o el teléfono.
+* `verifiedBizName` o similares a veces traen metadatos extra.
+
+**Si Evolution API en esa versión te está ocultando el LID en el `UPSERT`**, entonces tienes que usar el endpoint de **Check Contact**.
+
+**Acción Inmediata:**
+Ejecuta esto manualmente para ver si Evolution te devuelve el LID de ese número:
+`POST /chat/checkContact/{instance}`
+Body: `{ "numbers": ["17866302522"] }`
+
+Si la respuesta trae el campo `lid`, **ese es tu mapa**. Haz esa llamada una vez por contacto y guarda el dato. Deja de intentar adivinar por el nombre "javierlazo". Eso es jugar a la ruleta rusa con tus datos.

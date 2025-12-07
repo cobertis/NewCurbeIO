@@ -4492,6 +4492,7 @@ export const whatsappContacts = pgTable("whatsapp_contacts", {
   instanceId: varchar("instance_id").notNull().references(() => whatsappInstances.id, { onDelete: "cascade" }),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   remoteJid: text("remote_jid").notNull(),
+  lid: text("lid"),
   pushName: text("push_name"),
   profilePicUrl: text("profile_pic_url"),
   businessPhone: text("business_phone"),
@@ -4505,6 +4506,7 @@ export const whatsappContacts = pgTable("whatsapp_contacts", {
   instanceContactUnique: unique().on(table.instanceId, table.remoteJid),
   instanceIdIdx: index("whatsapp_contacts_instance_id_idx").on(table.instanceId),
   companyIdIdx: index("whatsapp_contacts_company_id_idx").on(table.companyId),
+  lidIdx: index("whatsapp_contacts_lid_idx").on(table.lid),
 }));
 
 export const whatsappConversations = pgTable("whatsapp_conversations", {

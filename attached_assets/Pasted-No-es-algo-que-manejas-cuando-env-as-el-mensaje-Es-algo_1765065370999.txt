@@ -1,0 +1,72 @@
+No es algo que "manejas" cuando envías el mensaje. **Es algo que esperas.**
+
+El error común es pensar que la función `sendMessage` te va a devolver "Leído" en el futuro. No es así. `sendMessage` solo te dice "Se envió a la API".
+
+Para tener las palomitas (ticks), necesitas **escuchar** un evento separado. Aquí tienes la arquitectura exacta para que funcione como WhatsApp real.
+
+### 1\. El Evento Clave: `MESSAGES_UPDATE`
+
+Tienes que ir a tu panel de Evolution API y asegurarte de que el evento **`MESSAGES_UPDATE`** esté encendido (verde).
+
+Este evento se dispara cada vez que cambia el estado de un mensaje (incluso de los que enviaste hace horas).
+
+### 2\. Los Estados (El Diccionario de Palomitas)
+
+Evolution (usando la librería Baileys por debajo) te va a mandar estos estados en el webhook. Mapealos en tu base de datos así:
+
+  * **`PENDING`**: El relojito. (Tu servidor lo tiene, pero no ha salido a WhatsApp).
+  * **`SERVER_ACK`**: **Un check gris (✓)**. Llegó al servidor de WhatsApp.
+  * **`DELIVERY_ACK`**: **Dos checks grises (✓✓)**. Llegó al teléfono del destinatario (Entregado).
+  * **`READ`**: **Dos checks azules (✓✓)**. El usuario abrió el chat.
+  * **`PLAYED`**: El micrófono azul (solo para audios). El usuario reprodujo la nota de voz.
+
+### 3\. La Lógica de Implementación (Backend)
+
+Tu sistema debe funcionar en este ciclo estricto. Si te saltas un paso, perderás el rastro de los mensajes.
+
+**Fase A: Al Enviar (Tu `POST` de envío)**
+Cuando tu código hace el `sendMessage`, Evolution te responde inmediatamente con un JSON que contiene el `key.id` (el ID del mensaje).
+
+  * **ACCIÓN:** Guarda ese mensaje en tu base de datos con `status = 'PENDING'` y guarda el `message_id` (Ej: `BAE5F...`). **Sin ese ID, estás ciego.**
+
+**Fase B: Al Recibir la Actualización (El Webhook)**
+Tu endpoint de webhook recibirá un payload bajo el evento `MESSAGES_UPDATE`.
+
+*Estructura simplificada del JSON que recibirás:*
+
+```json
+{
+  "event": "MESSAGES_UPDATE",
+  "data": [
+    {
+      "key": {
+        "remoteJid": "521555...@s.whatsapp.net",
+        "id": "BAE5F...",  <-- ESTA ES TU LLAVE MAESTRA
+        "fromMe": true     <-- Confirma que es un mensaje tuyo
+      },
+      "update": {
+        "status": "READ"   <-- EL NUEVO ESTADO
+      }
+    }
+  ]
+}
+```
+
+**Tu Código (Lógica):**
+
+1.  Busca en tu base de datos el mensaje donde `message_id == "BAE5F..."`.
+2.  Actualiza la columna `status` a `"READ"`.
+3.  (Opcional pero recomendado) Emite un evento por WebSocket a tu frontend para que el usuario vea cómo el check cambia de gris a azul en tiempo real sin recargar la página.
+
+### 4\. Advertencia de "Doble Disparo"
+
+A veces, WhatsApp es caótico y te envía los eventos en desorden o duplicados.
+
+  * Puede que recibas `READ` antes que `DELIVERY_ACK` si la red es rápida.
+  * **Regla de Oro:** Tu código debe respetar la jerarquía.
+      * Si el mensaje ya está en `READ`, ignora un evento `DELIVERY_ACK` que llegue tarde. No querrás que una palomita azul se vuelva gris otra vez.
+
+**Resumen:**
+No busques el estado en la respuesta del envío. Guarda el ID del mensaje y siéntate a esperar a que el webhook `MESSAGES_UPDATE` toque tu puerta con las novedades.
+
+¿Tienes la tabla de mensajes en tu base de datos con una columna `message_id` indexada? Si no, empieza por ahí o las consultas serán lentísimas.
