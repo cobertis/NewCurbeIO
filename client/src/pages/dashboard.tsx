@@ -64,6 +64,13 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [hoveredState, setHoveredState] = useState<{ name: string; count: number; percentage: number } | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  const { data: sessionData } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
+    queryKey: ["/api/session"],
+  });
+
+  const user = sessionData?.user;
+  const isSuperAdmin = user?.role === "superadmin";
   
   const handleWebSocketMessage = useCallback((message: any) => {
     if (message.type === 'notification_update' || message.type === 'dashboard_update' || message.type === 'data_invalidation') {
@@ -76,29 +83,34 @@ export default function Dashboard() {
   const { data: statsData, isLoading: isLoadingStats } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard-stats"],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !isSuperAdmin,
   });
 
   const { data: analyticsData, isLoading: isLoadingAnalytics } = useQuery<PoliciesAnalytics>({
     queryKey: ["/api/policies-analytics"],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !isSuperAdmin,
   });
 
   const { data: monthlyData, isLoading: isLoadingMonthly } = useQuery<{ data: MonthlyData[] }>({
     queryKey: ["/api/dashboard-monthly"],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !isSuperAdmin,
   });
 
   const { data: agentsData, isLoading: isLoadingAgents } = useQuery<AgentLeaderboard>({
     queryKey: ["/api/dashboard-agents"],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !isSuperAdmin,
   });
 
   const { data: carriersData, isLoading: isLoadingCarriers } = useQuery<{ carriers: { carrier: string; policies: number; applicants: number }[] }>({
     queryKey: ["/api/dashboard-carriers"],
     refetchInterval: 5 * 60 * 1000,
+    enabled: !isSuperAdmin,
   });
 
-  const isLoading = isLoadingStats || isLoadingAnalytics || isLoadingMonthly || isLoadingAgents || isLoadingCarriers;
+  const isLoading = !isSuperAdmin && (isLoadingStats || isLoadingAnalytics || isLoadingMonthly || isLoadingAgents || isLoadingCarriers);
 
   const pendingTasks = statsData?.pendingTasks || 0;
   const birthdaysThisWeek = statsData?.birthdaysThisWeek || 0;
@@ -152,6 +164,16 @@ export default function Dashboard() {
 
   if (isLoading) {
     return <LoadingSpinner />;
+  }
+
+  if (isSuperAdmin) {
+    return (
+      <div className="flex flex-col gap-6 p-6 min-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-muted-foreground">Super Admin Dashboard</p>
+        </div>
+      </div>
+    );
   }
 
   return (
