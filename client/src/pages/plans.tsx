@@ -174,7 +174,7 @@ export default function PlansPage() {
   const [editingFeature, setEditingFeature] = useState<PlanFeature | null>(null);
   const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
 
-  const { data: sessionData } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
+  const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
     queryKey: ["/api/session"],
   });
 
@@ -487,6 +487,14 @@ export default function PlansPage() {
       isActive: true,
     });
     setIsFeatureDialogOpen(true);
+  }
+
+  if (sessionLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   if (user?.role !== "superadmin") {
