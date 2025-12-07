@@ -5490,6 +5490,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     });
     res.json({ company: updatedCompany });
   });
+
+  app.delete("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+    
+    const companyId = req.params.id;
+    const company = await storage.getCompany(companyId);
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+    
+    try {
+      // First invalidate all sessions for users of this company
+      await storage.invalidateCompanySessions(companyId);
+      
+      // Delete the company - cascade delete will remove all related records
+      // (users, quotes, policies, conversations, etc.) due to foreign key constraints
+      const deleted = await storage.deleteCompany(companyId);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete company" });
+      }
+      
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "company",
+        entityId: companyId,
+        companyId: companyId,
+        metadata: {
+          name: company.name,
+          deletedBy: currentUser.email,
+        },
+      });
+      
+      res.json({ success: true, message: `Company "${company.name}" and all associated data deleted` });
+    } catch (error: any) {
+      console.error("[Company Delete] Error:", error);
+      res.status(500).json({ message: "Failed to delete company: " + (error.message || "Unknown error") });
+    }
+  });
   // ===================================================================
   // COMPANY SETTINGS ENDPOINTS
   // ===================================================================
