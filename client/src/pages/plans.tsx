@@ -17,14 +17,14 @@ import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw, X, Users, Zap,
 import { Switch } from "@/components/ui/switch";
 
 const PLAN_FEATURES = [
-  { name: "CMS API (integración CRM)", shared: true, dedicated: true, unlimited: true },
-  { name: "Landing Page Personalizada", shared: true, dedicated: true, unlimited: true },
-  { name: "Recordatorios de Cumpleaños", shared: true, dedicated: true, unlimited: true },
-  { name: "Campañas por Email", shared: true, dedicated: true, unlimited: true },
-  { name: "SMS Automáticos", shared: true, dedicated: true, unlimited: true },
-  { name: "Sistema de Referidos", shared: false, dedicated: true, unlimited: true },
+  { name: "CMS API (CRM Integration)", shared: true, dedicated: true, unlimited: true },
+  { name: "Custom Landing Page", shared: true, dedicated: true, unlimited: true },
+  { name: "Birthday Reminders", shared: true, dedicated: true, unlimited: true },
+  { name: "Email Campaigns", shared: true, dedicated: true, unlimited: true },
+  { name: "Automated SMS", shared: true, dedicated: true, unlimited: true },
+  { name: "Referral System", shared: false, dedicated: true, unlimited: true },
   { name: "iMessage Bridge", shared: false, dedicated: false, unlimited: true },
-  { name: "Soporte Prioritario / Multiusuario", shared: false, dedicated: false, unlimited: true },
+  { name: "Priority Support / Multi-user", shared: false, dedicated: false, unlimited: true },
 ];
 
 interface PublicPlan {
@@ -40,14 +40,14 @@ const PUBLIC_PLANS: PublicPlan[] = [
   {
     name: "Shared Plan",
     price: 97,
-    accounts: "1 cuenta incluida",
+    accounts: "1 account included",
     icon: Users,
     features: [true, true, true, true, true, false, false, false],
   },
   {
     name: "Dedicated Plan",
     price: 297,
-    accounts: "5 cuentas incluidas",
+    accounts: "5 accounts included",
     popular: true,
     icon: Zap,
     features: [true, true, true, true, true, true, false, false],
@@ -55,7 +55,7 @@ const PUBLIC_PLANS: PublicPlan[] = [
   {
     name: "Unlimited Plan",
     price: 497,
-    accounts: "Cuentas ilimitadas",
+    accounts: "Unlimited accounts",
     icon: Star,
     features: [true, true, true, true, true, true, true, true],
   },
@@ -67,13 +67,13 @@ function PublicPricingView() {
       <div className="flex flex-col gap-8 w-full max-w-7xl">
         <div className="text-center space-y-4">
           <Badge className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="badge-planes">
-            PLANES Y PRECIOS
+            PLANS & PRICING
           </Badge>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
-            Elige el plan <span className="text-blue-600">perfecto para ti</span>
+            Choose the <span className="text-blue-600">perfect plan for you</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Comienza con 14 días gratis. Cancela cuando quieras. Sin sorpresas.
+            Start with 14 days free. Cancel anytime. No surprises.
           </p>
         </div>
 
@@ -85,7 +85,7 @@ function PublicPricingView() {
               {plan.popular && (
                 <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
                   <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1">
-                    MÁS POPULAR
+                    MOST POPULAR
                   </Badge>
                 </div>
               )}
@@ -100,9 +100,9 @@ function PublicPricingView() {
                   <div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold">${plan.price}</span>
-                      <span className="text-muted-foreground">/mes</span>
+                      <span className="text-muted-foreground">/month</span>
                     </div>
-                    <p className="text-sm text-green-600 font-medium mt-1">14 días free trial</p>
+                    <p className="text-sm text-green-600 font-medium mt-1">14 days free trial</p>
                     <p className="text-sm text-muted-foreground mt-1">{plan.accounts}</p>
                   </div>
                 </CardHeader>
@@ -133,7 +133,7 @@ function PublicPricingView() {
                     variant={plan.popular ? 'default' : 'outline'}
                     data-testid={`button-select-plan-${index}`}
                   >
-                    {plan.popular ? 'Comenzar ahora' : 'Elegir plan'}
+                    {plan.popular ? 'Get Started' : 'Choose Plan'}
                   </Button>
                 </CardFooter>
               </Card>
@@ -144,7 +144,7 @@ function PublicPricingView() {
 
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
-            Todos los planes incluyen las características principales del CRM
+            All plans include the core CRM features
           </p>
         </div>
       </div>
