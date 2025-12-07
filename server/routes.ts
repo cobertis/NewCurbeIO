@@ -5037,7 +5037,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const result = await storage.canCompanyAddUsers(companyId, 1);
-      res.json(result);
+      
+      // Get plan name from company's subscription
+      const company = await storage.getCompany(companyId);
+      let planName = null;
+      if (company?.stripeSubscriptionId) {
+        const subscription = await storage.getSubscriptionByStripeId(company.stripeSubscriptionId);
+        if (subscription?.planId) {
+          const plan = await storage.getPlan(subscription.planId);
+          planName = plan?.name || null;
+        }
+      }
+      
+      // Transform response to match frontend expectations
+      res.json({
+        canAddUsers: result.allowed,
+        maxUsers: result.limit,
+        currentUsers: result.currentCount,
+        planName
+      });
     } catch (error) {
       console.error("Error fetching user limits:", error);
       res.status(500).json({ message: "Failed to fetch user limits" });
