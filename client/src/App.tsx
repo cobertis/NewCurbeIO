@@ -445,10 +445,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigationItems = user?.role === 'superadmin' 
     ? [
         { title: "Dashboard", url: "/dashboard" },
-        { title: "Users", url: "/users" },
         { title: "Companies", url: "/companies" },
+        { title: "Users", url: "/users" },
         { title: "Plans", url: "/plans" },
+        { title: "Features", url: "/features" },
+        { title: "Invoices", url: "/invoices" },
         { title: "Tickets", url: "/tickets" },
+        { title: "Audit Logs", url: "/audit-logs" },
+        { title: "Alerts", url: "/system-alerts" },
         { title: "Settings", url: "/settings" },
       ]
     : [
