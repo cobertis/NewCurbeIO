@@ -869,11 +869,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           {/* Bottom Icons */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button data-testid="sidebar-button-history" className={circularButtonClass}>
+              <button
+                onClick={() => setLocation("/settings/notifications")}
+                data-testid="sidebar-button-history"
+                className={circularButtonClass}
+              >
                 <Clock className="h-[18px] w-[18px]" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">History</TooltipContent>
+            <TooltipContent side="right" className="font-medium">Notifications</TooltipContent>
           </Tooltip>
 
           <Tooltip>
