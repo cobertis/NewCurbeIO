@@ -200,12 +200,17 @@ class CredentialProvider {
     return { host, port, user, password, fromEmail };
   }
 
-  clearCache(): void {
-    this.cache.clear();
+  clearCache(credentialKey?: string): void {
+    if (credentialKey) {
+      this.cache.delete(credentialKey);
+    } else {
+      this.cache.clear();
+    }
   }
 
   invalidate(provider: ApiProvider, keyName: string): void {
-    this.cache.delete(this.getCacheKey(provider, keyName));
+    const cacheKey = this.getCacheKey(provider, keyName);
+    this.cache.delete(cacheKey);
   }
 
   invalidateProvider(provider: ApiProvider): void {

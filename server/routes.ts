@@ -25610,34 +25610,64 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // POST /api/system/credentials/:id/reveal - Reveal a credential value (requires re-auth)
   app.post("/api/system/credentials/:id/reveal", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user!;
+    const { id } = req.params;
+    const { password } = req.body;
+    const ipAddress = req.ip || undefined;
+    const userAgent = req.headers["user-agent"] || undefined;
+    
+    const { secretsService } = await import("./services/secrets-service");
+    const { db } = await import("./db");
+    const { systemApiCredentials, systemApiCredentialsAudit } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    
+    const logRevealAttempt = async (success: boolean, reason?: string) => {
+      try {
+        const credential = await db.query.systemApiCredentials.findFirst({
+          where: eq(systemApiCredentials.id, id),
+        });
+        
+        if (credential) {
+          await db.insert(systemApiCredentialsAudit).values({
+            credentialId: id,
+            provider: credential.provider,
+            keyName: credential.keyName,
+            action: success ? "viewed" : "reveal_failed",
+            actorId: user.id,
+            ipAddress,
+            userAgent,
+            metadata: success ? null : { reason },
+          });
+        }
+      } catch (logError) {
+        console.error("[System Credentials] Failed to log reveal attempt:", logError);
+      }
+    };
+    
     try {
-      const user = req.user!;
       if (user.role !== "superadmin") {
+        await logRevealAttempt(false, "forbidden_role");
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const { id } = req.params;
-      const { password } = req.body;
-
       if (!password) {
+        await logRevealAttempt(false, "password_not_provided");
         return res.status(400).json({ message: "Password required for credential reveal" });
       }
 
       const bcrypt = await import("bcrypt");
       const fullUser = await storage.getUser(user.id);
       if (!fullUser || !fullUser.password) {
+        await logRevealAttempt(false, "user_authentication_failed");
         return res.status(401).json({ message: "Authentication failed" });
       }
 
       const isValid = await bcrypt.compare(password, fullUser.password);
       if (!isValid) {
+        await logRevealAttempt(false, "invalid_password");
         return res.status(401).json({ message: "Invalid password" });
       }
 
-      const { db } = await import("./db");
-      const { systemApiCredentials } = await import("@shared/schema");
-      const { eq } = await import("drizzle-orm");
-      
       const credential = await db.query.systemApiCredentials.findFirst({
         where: eq(systemApiCredentials.id, id),
       });
@@ -25646,23 +25676,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Credential not found" });
       }
 
-      const { secretsService } = await import("./services/secrets-service");
       const decryptedValue = secretsService.decrypt(credential.encryptedValue, credential.iv);
 
-      await secretsService.logCredentialView(
-        id, 
-        user.id, 
-        req.ip || undefined,
-        req.headers["user-agent"] || undefined
-      );
+      await logRevealAttempt(true);
 
       res.json({ value: decryptedValue });
     } catch (error: any) {
       console.error("[System Credentials] Error revealing:", error);
+      await logRevealAttempt(false, "internal_error");
       res.status(500).json({ message: "Failed to reveal credential" });
     }
   });
-
   // POST /api/system/credentials - Create or update a credential
   app.post("/api/system/credentials", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -25786,38 +25810,92 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // POST /api/system/credentials/:id/rotate - Rotate a credential
   app.post("/api/system/credentials/:id/rotate", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user!;
+    const { id } = req.params;
+    const { newValue, password } = req.body;
+    const ipAddress = req.ip || undefined;
+    const userAgent = req.headers["user-agent"] || undefined;
+    
+    const { secretsService } = await import("./services/secrets-service");
+    const { db } = await import("./db");
+    const { systemApiCredentials, systemApiCredentialsAudit } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const { credentialProvider } = await import("./services/credential-provider");
+    
+    const logRotateAttempt = async (success: boolean, credentialInfo?: { provider: string; keyName: string }, reason?: string) => {
+      try {
+        if (credentialInfo) {
+          await db.insert(systemApiCredentialsAudit).values({
+            credentialId: id,
+            provider: credentialInfo.provider,
+            keyName: credentialInfo.keyName,
+            action: success ? "rotated" : "credential_rotate_failed",
+            actorId: user.id,
+            ipAddress,
+            userAgent,
+            metadata: success ? null : { reason },
+          });
+        } else {
+          const credential = await db.query.systemApiCredentials.findFirst({
+            where: eq(systemApiCredentials.id, id),
+          });
+          if (credential) {
+            await db.insert(systemApiCredentialsAudit).values({
+              credentialId: id,
+              provider: credential.provider,
+              keyName: credential.keyName,
+              action: success ? "rotated" : "credential_rotate_failed",
+              actorId: user.id,
+              ipAddress,
+              userAgent,
+              metadata: success ? null : { reason },
+            });
+          }
+        }
+      } catch (logError) {
+        console.error("[System Credentials] Failed to log rotate attempt:", logError);
+      }
+    };
+    
     try {
-      const user = req.user!;
       if (user.role !== "superadmin") {
+        await logRotateAttempt(false, undefined, "forbidden_role");
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      const { id } = req.params;
-      const { newValue, password } = req.body;
-
       if (!newValue || !password) {
+        await logRotateAttempt(false, undefined, "missing_required_fields");
         return res.status(400).json({ message: "New value and password are required" });
       }
 
       const bcrypt = await import("bcrypt");
       const fullUser = await storage.getUser(user.id);
       if (!fullUser || !fullUser.password) {
+        await logRotateAttempt(false, undefined, "user_authentication_failed");
         return res.status(401).json({ message: "Authentication failed" });
       }
 
       const isValid = await bcrypt.compare(password, fullUser.password);
       if (!isValid) {
+        await logRotateAttempt(false, undefined, "invalid_password");
         return res.status(401).json({ message: "Invalid password" });
       }
 
-      const { secretsService } = await import("./services/secrets-service");
-      const rotated = await secretsService.rotateCredential(id, newValue, user.id);
+      const credential = await db.query.systemApiCredentials.findFirst({
+        where: eq(systemApiCredentials.id, id),
+      });
 
-      if (!rotated) {
+      if (!credential) {
         return res.status(404).json({ message: "Credential not found" });
       }
 
-      const { credentialProvider } = await import("./services/credential-provider");
+      const rotated = await secretsService.rotateCredential(id, newValue, user.id);
+
+      if (!rotated) {
+        await logRotateAttempt(false, { provider: credential.provider, keyName: credential.keyName }, "rotation_failed");
+        return res.status(500).json({ message: "Failed to rotate credential" });
+      }
+
       credentialProvider.invalidate(rotated.provider as any, rotated.keyName);
 
       res.json({ 
@@ -25832,10 +25910,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
     } catch (error: any) {
       console.error("[System Credentials] Error rotating:", error);
+      await logRotateAttempt(false, undefined, `internal_error: ${error.message}`);
       res.status(500).json({ message: "Failed to rotate credential" });
     }
   });
-  // Setup WebSocket for real-time chat updates with session validation
   setupWebSocket(httpServer, sessionStore);
   return httpServer;
 }

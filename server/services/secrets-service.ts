@@ -17,9 +17,14 @@ const AUTH_TAG_LENGTH = 16;
 function getMasterKey(): Buffer {
   const masterKey = process.env.SECRETS_MASTER_KEY;
   if (!masterKey) {
-    console.warn("SECRETS_MASTER_KEY not set, using derived key from SESSION_SECRET");
-    const fallbackKey = process.env.SESSION_SECRET || "default-dev-key";
-    return crypto.scryptSync(fallbackKey, "salt", KEY_LENGTH);
+    const errorMessage = "CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY environment variable is required for AES-256-GCM encryption but is not set. Please set SECRETS_MASTER_KEY to a 64-character hex string (32 bytes) before starting the application.";
+    console.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+  if (masterKey.length !== 64) {
+    const errorMessage = `CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY must be exactly 64 hex characters (32 bytes) for AES-256-GCM encryption. Current length: ${masterKey.length}`;
+    console.error(errorMessage);
+    throw new Error(errorMessage);
   }
   return Buffer.from(masterKey, "hex");
 }
