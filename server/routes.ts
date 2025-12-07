@@ -8962,7 +8962,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         logs = await storage.getActivityLogsByCompany(currentUser.companyId, limit);
       }
-      res.json({ logs });
+      // Enrich plan_selected logs with current plan data
+      const enrichedLogs = await Promise.all(logs.map(async (log: any) => {
+        if (log.action === 'plan_selected' && log.metadata?.planId) {
+          try {
+            const plan = await storage.getPlan(log.metadata.planId);
+            if (plan) {
+              return {
+                ...log,
+                metadata: {
+                  ...log.metadata,
+                  planName: plan.name,
+                  monthlyPrice: plan.monthlyPrice,
+                  annualPrice: plan.annualPrice,
+                  trialDays: plan.trialDays,
+                  maxUsers: plan.maxUsers,
+                  billingPeriod: log.metadata.billingPeriod || 'monthly',
+                }
+              };
+            }
+          } catch (e) {
+            // Plan might not exist anymore, return original log
+          }
+        }
+        return log;
+      }));
+
+      res.json({ logs: enrichedLogs });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
     }
