@@ -44,6 +44,7 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Policy Data Architecture:** Hybrid data sharing for Notes, Documents, Consents, Payment Methods (shared) and Reminders (per policy year).
 - **Tab Auto-Save System:** Intelligent tab navigation with automatic data persistence.
 - **Duplicate Message Prevention System:** Robust transactional claim system for campaign messages.
+- **Company Detail Page (Superadmin):** Comprehensive 6-tab view for managing all aspects of a company - Basic Details, Users, Billing, Features & Limits, Advanced Settings, and Calendar Settings.
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings to prevent timezone issues. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized using centralized phone utilities. All message timestamps are normalized to UTC. Policies are ordered by most recently edited first with cursor-based pagination. Performance is optimized with database indexes and aggressive caching.
