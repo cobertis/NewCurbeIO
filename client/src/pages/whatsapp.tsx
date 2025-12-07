@@ -1554,7 +1554,7 @@ export default function WhatsAppPage() {
                           className={cn(
                             "flex group",
                             msg.fromMe ? "justify-end" : "justify-start",
-                            (msg.reaction || localReactions[msg.messageId]) && "mb-4"
+                            (msg.reaction || localReactions[msg.messageId]) && "mb-6"
                           )}
                           data-testid={`message-${msg.id}`}
                         >
