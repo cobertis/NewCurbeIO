@@ -41,7 +41,10 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Tasks & Reminders Management System:** Unified task management with assignment, priority, and status tracking.
 - **Birthday Automation System:** Automated birthday greetings via Twilio SMS/MMS.
 - **Dashboard Analytics System:** SugarCRM-style "Policy Journeys" design with agent avatars, workflow board, recent policies, and policy status donut charts. Features all-time analytics with unique people counting and company-scoped caching.
-- **Plan Features Management System:** Database-driven plan features for public pricing page. Master `plan_features` table with sortable, active/inactive features. Plans have `displayFeatures` jsonb field for feature assignment. Superadmin can manage features via /plans page with "Features" tab.
+- **Plan Features Management System:** Database-driven plan features for public pricing page. Master `plan_features` table with sortable, active/inactive features. `plan_feature_assignments` table for per-plan feature toggles with green/red status indicators. Superadmin can manage features via /plans page with tabbed form (Basic Info | Pricing | Features).
+- **User Seat Limits System:** Plans have `maxUsers` field (null=unlimited). Backend enforces limits via `canCompanyAddUsers()` utility. Frontend shows SeatLimitCard with progress bar, warning states, and invite button gating. API endpoint `/api/users/limits` returns seat availability.
+- **Email Bounce Processing System:** IMAP-based bounce email processor runs every 5 minutes via `node-cron`. Monitors `rebotes@auth.curbe.io` mailbox, extracts bounced recipient emails, marks contacts as `email_bounced=true`, and auto-deletes processed emails. Credentials stored encrypted in `system_api_credentials` table.
+- **Stripe Annual Billing:** Plans support both monthly and annual pricing. `syncPlanWithStripe()` creates both monthly and annual Stripe prices automatically. Pricing pages show Monthly/Yearly toggle with "Save 20%" badge.
 - **Policy Data Architecture:** Hybrid data sharing for Notes, Documents, Consents, Payment Methods (shared) and Reminders (per policy year).
 - **Tab Auto-Save System:** Intelligent tab navigation with automatic data persistence.
 - **Duplicate Message Prevention System:** Robust transactional claim system for campaign messages.
