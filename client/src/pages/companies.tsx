@@ -3,7 +3,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2, Plus, Trash2, Search, Package, Power, Settings2, Eye, EyeOff, Copy, CheckCircle, AlertCircle, AlertTriangle, Zap } from "lucide-react";
+import { Building2, Plus, Trash2, Search, Package, Power, Settings2, Eye, EyeOff, Copy, CheckCircle, AlertCircle, AlertTriangle, Zap, Calendar } from "lucide-react";
+import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -574,7 +575,7 @@ export default function Companies() {
                       <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
                         <Building2 className="h-6 w-6 text-primary" />
                       </div>
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                           <h3 className="font-semibold text-gray-900 dark:text-white" data-testid={`text-company-name-${company.id}`}>
                             {company.name}
@@ -598,6 +599,15 @@ export default function Companies() {
                           )}
                           <p className="text-gray-500 dark:text-gray-400 text-xs">
                             {[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                        <div className="text-sm" data-testid={`text-company-created-${company.id}`}>
+                          <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                            <Calendar className="h-3 w-3" />
+                            <span>Created</span>
+                          </div>
+                          <p className="text-gray-500 dark:text-gray-400">
+                            {company.createdAt ? format(new Date(company.createdAt), 'MMM dd, yyyy') : '-'}
                           </p>
                         </div>
                         <div className="flex items-center">
