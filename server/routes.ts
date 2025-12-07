@@ -25815,6 +25815,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         resetStripeInitialization();
       }
 
+      // Reinitialize email service if nodemailer credentials are updated
+      if (provider === "nodemailer") {
+        const { reinitializeEmailService } = await import("./email");
+        await reinitializeEmailService();
+      }
+
       res.json({ 
         success: true,
         credential: {

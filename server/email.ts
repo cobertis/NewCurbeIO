@@ -77,6 +77,16 @@ export async function getEmailTransporter(): Promise<Transporter | null> {
   return initEmail();
 }
 
+export async function reinitializeEmailService(): Promise<void> {
+  console.log("[EMAIL] Reinitializing email service with new credentials...");
+  emailTransporter = null;
+  emailInitialized = false;
+  emailInitPromise = null;
+  smtpFromEmail = "";
+  await initEmail();
+  console.log("[EMAIL] Email service reinitialized");
+}
+
 async function ensureEmailConfigured(): Promise<Transporter> {
   const transporter = await initEmail();
   if (!transporter) {
