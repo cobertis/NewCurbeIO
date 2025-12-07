@@ -25770,6 +25770,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { credentialProvider } = await import("./services/credential-provider");
       credentialProvider.invalidate(provider, keyName);
 
+      // Reset Stripe initialization if Stripe credentials are updated
+      if (provider === "stripe") {
+        const { resetStripeInitialization } = await import("./stripe");
+        resetStripeInitialization();
+      }
+
       res.json({ 
         success: true,
         credential: {

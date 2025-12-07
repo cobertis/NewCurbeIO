@@ -9,8 +9,19 @@ let stripeClient: Stripe | null = null;
 let stripeInitialized = false;
 let stripeInitPromise: Promise<Stripe | null> | null = null;
 
+/**
+ * Reset Stripe initialization state - call this when credentials are updated
+ * This forces a re-initialization on the next Stripe API call
+ */
+export function resetStripeInitialization(): void {
+  console.log('[STRIPE] Resetting initialization state - will re-initialize on next call');
+  stripeClient = null;
+  stripeInitialized = false;
+  stripeInitPromise = null;
+}
+
 async function initStripe(): Promise<Stripe | null> {
-  if (stripeInitialized) {
+  if (stripeInitialized && stripeClient) {
     return stripeClient;
   }
 
@@ -24,7 +35,6 @@ async function initStripe(): Promise<Stripe | null> {
       
       if (!secretKey) {
         console.log('⚠️  Stripe credentials not configured. Billing features will not be available.');
-        stripeInitialized = true;
         return null;
       }
 
@@ -43,12 +53,13 @@ async function initStripe(): Promise<Stripe | null> {
       return stripeClient;
     } catch (error) {
       console.error('Failed to initialize Stripe:', error);
-      stripeInitialized = true;
       return null;
     }
   })();
 
-  return stripeInitPromise;
+  const result = await stripeInitPromise;
+  stripeInitPromise = null;
+  return result;
 }
 
 export async function getStripeClient(): Promise<Stripe | null> {
@@ -1232,8 +1243,10 @@ export async function changePlan(
     console.log('[STRIPE] Customer ID:', stripeCustomerId);
     console.log('[STRIPE] New price ID:', newStripePriceId);
     
+    const stripeClient = await ensureStripeConfigured();
+    
     // Retrieve current subscription with all items
-    const currentSubscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
+    const currentSubscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId, {
       expand: ['items.data', 'discounts', 'schedule'],
     });
     
@@ -1319,7 +1332,7 @@ export async function changePlan(
         }
       }
       
-      const updatedSubscription = await ensureStripeConfigured().subscriptions.update(
+      const updatedSubscription = await stripeClient.subscriptions.update(
         stripeSubscriptionId,
         updateData
       );
@@ -1329,7 +1342,7 @@ export async function changePlan(
       // CRITICAL: Create and pay invoice immediately for immediate upgrades
       // Without this, prorated items are added to the next regular invoice
       console.log('[STRIPE] Creating immediate invoice for upgrade...');
-      const invoice = await ensureStripeConfigured().invoices.create({
+      const invoice = await stripeClient.invoices.create({
         customer: stripeCustomerId,
         subscription: stripeSubscriptionId,
         auto_advance: true, // Automatically finalize and attempt payment
@@ -1338,13 +1351,13 @@ export async function changePlan(
       console.log('[STRIPE] Invoice created:', invoice.id);
       
       // Finalize and pay the invoice immediately
-      const finalizedInvoice = await ensureStripeConfigured().invoices.finalizeInvoice(invoice.id);
+      const finalizedInvoice = await stripeClient.invoices.finalizeInvoice(invoice.id);
       console.log('[STRIPE] Invoice finalized:', finalizedInvoice.id);
       
       // Pay the invoice if it's not already paid
       if (finalizedInvoice.status === 'open') {
         console.log('[STRIPE] Paying invoice immediately...');
-        const paidInvoice = await ensureStripeConfigured().invoices.pay(invoice.id);
+        const paidInvoice = await stripeClient.invoices.pay(invoice.id);
         console.log('[STRIPE] Invoice paid successfully:', paidInvoice.id);
       }
       
@@ -1379,14 +1392,14 @@ export async function changePlan(
       const scheduleId = typeof currentSubscription.schedule === 'string'
         ? currentSubscription.schedule
         : currentSubscription.schedule.id;
-      await ensureStripeConfigured().subscriptionSchedules.release(scheduleId);
+      await stripeClient.subscriptionSchedules.release(scheduleId);
     }
     
     // Step 1: Create subscription schedule FROM the existing subscription
     // Note: When using from_subscription, Stripe creates the first phase automatically
     // Cannot set end_behavior when using from_subscription
     console.log('[STRIPE] Step 1: Creating subscription schedule from existing subscription...');
-    const schedule = await ensureStripeConfigured().subscriptionSchedules.create({
+    const schedule = await stripeClient.subscriptionSchedules.create({
       from_subscription: stripeSubscriptionId,
     });
     
@@ -1438,7 +1451,7 @@ export async function changePlan(
     
     // Update the schedule with both phases
     // Set end_behavior to 'release' so after phases complete, subscription continues normally
-    const updatedSchedule = await ensureStripeConfigured().subscriptionSchedules.update(
+    const updatedSchedule = await stripeClient.subscriptionSchedules.update(
       schedule.id,
       { 
         phases: phases,
@@ -1450,7 +1463,7 @@ export async function changePlan(
     console.log('[STRIPE] Plan will change on:', new Date(periodEndTimestamp * 1000).toISOString());
     
     // Retrieve the updated subscription
-    const updatedSubscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId);
+    const updatedSubscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
     
     return updatedSubscription;
   } catch (error) {
@@ -1464,8 +1477,10 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
     console.log('[STRIPE] Applying promo code to subscription:', stripeSubscriptionId);
     console.log('[STRIPE] Promo code:', promoCode);
     
+    const stripeClient = await ensureStripeConfigured();
+    
     // First, try to find the promotion code in Stripe
-    const promotionCodes = await ensureStripeConfigured().promotionCodes.list({
+    const promotionCodes = await stripeClient.promotionCodes.list({
       code: promoCode,
       limit: 1,
       expand: ['data.coupon'],
@@ -1483,7 +1498,7 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
       // No promotion code found, assume it's a direct coupon ID
       // Verify the coupon exists
       try {
-        const coupon = await ensureStripeConfigured().coupons.retrieve(promoCode);
+        const coupon = await stripeClient.coupons.retrieve(promoCode);
         couponId = coupon.id;
         console.log('[STRIPE] Using direct coupon ID:', couponId);
       } catch (error: any) {
@@ -1494,7 +1509,7 @@ export async function applyCoupon(stripeSubscriptionId: string, promoCode: strin
       }
     }
     
-    const subscription = await ensureStripeConfigured().subscriptions.update(stripeSubscriptionId, {
+    const subscription = await stripeClient.subscriptions.update(stripeSubscriptionId, {
       discounts: [{ coupon: couponId }],
     });
     
@@ -1510,7 +1525,8 @@ export async function getPaymentMethods(customerId: string) {
   try {
     console.log('[STRIPE] Retrieving payment methods for customer:', customerId);
     
-    const paymentMethods = await ensureStripeConfigured().paymentMethods.list({
+    const stripeClient = await ensureStripeConfigured();
+    const paymentMethods = await stripeClient.paymentMethods.list({
       customer: customerId,
       type: 'card',
     });
@@ -1537,9 +1553,10 @@ export async function createTemporaryDiscountCoupon(
     console.log('[STRIPE] Percent off:', percentOff);
     console.log('[STRIPE] Duration:', durationInMonths, 'months');
     
+    const stripeClient = await ensureStripeConfigured();
     const couponId = `DISCOUNT_${percentOff}_${durationInMonths}M_${Date.now()}`;
     
-    const coupon = await ensureStripeConfigured().coupons.create({
+    const coupon = await stripeClient.coupons.create({
       id: couponId,
       percent_off: percentOff,
       duration: 'repeating',
@@ -1567,7 +1584,8 @@ export async function applyTemporaryDiscount(
     console.log('[STRIPE] Applying temporary discount to subscription:', stripeSubscriptionId);
     console.log('[STRIPE] Coupon ID:', couponId);
     
-    const subscription = await ensureStripeConfigured().subscriptions.update(stripeSubscriptionId, {
+    const stripeClient = await ensureStripeConfigured();
+    const subscription = await stripeClient.subscriptions.update(stripeSubscriptionId, {
       discounts: [{ coupon: couponId }],
     });
     
@@ -1583,11 +1601,13 @@ export async function removeDiscount(stripeSubscriptionId: string): Promise<Stri
   try {
     console.log('[STRIPE] Removing discount from subscription:', stripeSubscriptionId);
     
+    const stripeClient = await ensureStripeConfigured();
+    
     // First, delete the discount using the proper Stripe method
-    await ensureStripeConfigured().subscriptions.deleteDiscount(stripeSubscriptionId);
+    await stripeClient.subscriptions.deleteDiscount(stripeSubscriptionId);
     
     // Then retrieve the updated subscription
-    const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId);
+    const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
     
     console.log('[STRIPE] Discount removed successfully');
     return subscription;
@@ -1603,7 +1623,9 @@ export async function getSubscriptionDiscount(
   try {
     console.log('[STRIPE] Getting discount for subscription:', stripeSubscriptionId);
     
-    const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
+    const stripeClient = await ensureStripeConfigured();
+    
+    const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId, {
       expand: ['discounts'],
     });
     
@@ -1634,7 +1656,7 @@ export async function getSubscriptionDiscount(
         // Fetch and attach the full coupon object
         if (couponId) {
           console.log('[STRIPE] Fetching coupon details for:', couponId);
-          const coupon = await ensureStripeConfigured().coupons.retrieve(couponId);
+          const coupon = await stripeClient.coupons.retrieve(couponId);
           expandedDiscount.coupon = coupon;
           return expandedDiscount as Stripe.Discount;
         }
