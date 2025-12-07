@@ -25456,6 +25456,385 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get balance" });
     }
   });
+
+  // =====================================================
+  // SYSTEM API CREDENTIALS MANAGEMENT (Superadmin Only)
+  // =====================================================
+  
+  // GET /api/system/credentials - List all credentials (masked)
+  app.get("/api/system/credentials", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { secretsService } = await import("./services/secrets-service");
+      const credentials = await secretsService.listCredentials();
+      
+      res.json({ credentials });
+    } catch (error: any) {
+      console.error("[System Credentials] Error listing:", error);
+      res.status(500).json({ message: "Failed to list credentials" });
+    }
+  });
+
+  // GET /api/system/credentials/providers - Get available providers list
+  app.get("/api/system/credentials/providers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { apiProviders } = await import("@shared/schema");
+      
+      const providerConfigs = [
+        { 
+          provider: "stripe", 
+          label: "Stripe",
+          keys: [
+            { keyName: "secret_key", label: "Secret Key", required: true },
+            { keyName: "publishable_key", label: "Publishable Key", required: true },
+            { keyName: "webhook_secret", label: "Webhook Secret", required: false },
+          ]
+        },
+        { 
+          provider: "telnyx", 
+          label: "Telnyx",
+          keys: [
+            { keyName: "api_key", label: "API Key", required: true },
+            { keyName: "public_key", label: "Public Key", required: false },
+            { keyName: "app_id", label: "Application ID", required: false },
+            { keyName: "messaging_profile_id", label: "Messaging Profile ID", required: false },
+          ]
+        },
+        { 
+          provider: "twilio", 
+          label: "Twilio",
+          keys: [
+            { keyName: "account_sid", label: "Account SID", required: true },
+            { keyName: "auth_token", label: "Auth Token", required: true },
+            { keyName: "phone_number", label: "Phone Number", required: false },
+          ]
+        },
+        { 
+          provider: "bulkvs", 
+          label: "BulkVS",
+          keys: [
+            { keyName: "api_key", label: "API Key", required: true },
+            { keyName: "api_secret", label: "API Secret", required: true },
+            { keyName: "webhook_secret", label: "Webhook Secret", required: false },
+          ]
+        },
+        { 
+          provider: "bluebubbles", 
+          label: "BlueBubbles",
+          keys: [
+            { keyName: "server_url", label: "Server URL", required: true },
+            { keyName: "password", label: "Password", required: true },
+          ]
+        },
+        { 
+          provider: "evolution_api", 
+          label: "Evolution API",
+          keys: [
+            { keyName: "base_url", label: "Base URL", required: true },
+            { keyName: "global_api_key", label: "Global API Key", required: true },
+          ]
+        },
+        { 
+          provider: "google_places", 
+          label: "Google Places",
+          keys: [
+            { keyName: "api_key", label: "API Key", required: true },
+          ]
+        },
+        { 
+          provider: "nodemailer", 
+          label: "Email (SMTP)",
+          keys: [
+            { keyName: "host", label: "SMTP Host", required: true },
+            { keyName: "port", label: "SMTP Port", required: true },
+            { keyName: "user", label: "Username", required: true },
+            { keyName: "password", label: "Password", required: true },
+            { keyName: "from_email", label: "From Email", required: false },
+          ]
+        },
+        { 
+          provider: "openai", 
+          label: "OpenAI",
+          keys: [
+            { keyName: "api_key", label: "API Key", required: true },
+          ]
+        },
+        { 
+          provider: "cms_api", 
+          label: "CMS API",
+          keys: [
+            { keyName: "api_key", label: "API Key", required: true },
+            { keyName: "base_url", label: "Base URL", required: false },
+          ]
+        },
+      ];
+
+      res.json({ providers: providerConfigs, apiProviders });
+    } catch (error: any) {
+      console.error("[System Credentials] Error getting providers:", error);
+      res.status(500).json({ message: "Failed to get providers" });
+    }
+  });
+
+  // GET /api/system/credentials/audit - Get audit log
+  app.get("/api/system/credentials/audit", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { credentialId, limit } = req.query;
+
+      const { secretsService } = await import("./services/secrets-service");
+      const auditLog = await secretsService.getAuditLog(
+        credentialId as string | undefined,
+        limit ? parseInt(limit as string) : 50
+      );
+
+      res.json({ auditLog });
+    } catch (error: any) {
+      console.error("[System Credentials] Error getting audit:", error);
+      res.status(500).json({ message: "Failed to get audit log" });
+    }
+  });
+
+  // POST /api/system/credentials/:id/reveal - Reveal a credential value (requires re-auth)
+  app.post("/api/system/credentials/:id/reveal", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { id } = req.params;
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({ message: "Password required for credential reveal" });
+      }
+
+      const bcrypt = await import("bcrypt");
+      const fullUser = await storage.getUser(user.id);
+      if (!fullUser || !fullUser.password) {
+        return res.status(401).json({ message: "Authentication failed" });
+      }
+
+      const isValid = await bcrypt.compare(password, fullUser.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid password" });
+      }
+
+      const { db } = await import("./db");
+      const { systemApiCredentials } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const credential = await db.query.systemApiCredentials.findFirst({
+        where: eq(systemApiCredentials.id, id),
+      });
+
+      if (!credential) {
+        return res.status(404).json({ message: "Credential not found" });
+      }
+
+      const { secretsService } = await import("./services/secrets-service");
+      const decryptedValue = secretsService.decrypt(credential.encryptedValue, credential.iv);
+
+      await secretsService.logCredentialView(
+        id, 
+        user.id, 
+        req.ip || undefined,
+        req.headers["user-agent"] || undefined
+      );
+
+      res.json({ value: decryptedValue });
+    } catch (error: any) {
+      console.error("[System Credentials] Error revealing:", error);
+      res.status(500).json({ message: "Failed to reveal credential" });
+    }
+  });
+
+  // POST /api/system/credentials - Create or update a credential
+  app.post("/api/system/credentials", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { provider, keyName, value, environment, description } = req.body;
+
+      if (!provider || !keyName || !value) {
+        return res.status(400).json({ message: "Provider, keyName, and value are required" });
+      }
+
+      const { secretsService } = await import("./services/secrets-service");
+      const credential = await secretsService.storeCredential(provider, keyName, value, {
+        environment: environment || "production",
+        description,
+        createdBy: user.id,
+      });
+
+      const { credentialProvider } = await import("./services/credential-provider");
+      credentialProvider.invalidate(provider, keyName);
+
+      res.json({ 
+        success: true,
+        credential: {
+          id: credential.id,
+          provider: credential.provider,
+          keyName: credential.keyName,
+          environment: credential.environment,
+          description: credential.description,
+          isActive: credential.isActive,
+          createdAt: credential.createdAt,
+          updatedAt: credential.updatedAt,
+        }
+      });
+    } catch (error: any) {
+      console.error("[System Credentials] Error storing:", error);
+      res.status(500).json({ message: "Failed to store credential" });
+    }
+  });
+
+  // PATCH /api/system/credentials/:id - Update credential metadata
+  app.patch("/api/system/credentials/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { id } = req.params;
+      const { description, isActive } = req.body;
+
+      const { db } = await import("./db");
+      const { systemApiCredentials } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const credential = await db.query.systemApiCredentials.findFirst({
+        where: eq(systemApiCredentials.id, id),
+      });
+
+      if (!credential) {
+        return res.status(404).json({ message: "Credential not found" });
+      }
+
+      const updates: any = { updatedAt: new Date(), updatedBy: user.id };
+      if (description !== undefined) updates.description = description;
+      if (isActive !== undefined) updates.isActive = isActive;
+
+      const [updated] = await db
+        .update(systemApiCredentials)
+        .set(updates)
+        .where(eq(systemApiCredentials.id, id))
+        .returning();
+
+      const { credentialProvider } = await import("./services/credential-provider");
+      credentialProvider.invalidate(updated.provider as any, updated.keyName);
+
+      res.json({ success: true, credential: updated });
+    } catch (error: any) {
+      console.error("[System Credentials] Error updating:", error);
+      res.status(500).json({ message: "Failed to update credential" });
+    }
+  });
+
+  // DELETE /api/system/credentials/:id - Delete a credential
+  app.delete("/api/system/credentials/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { id } = req.params;
+
+      const { db } = await import("./db");
+      const { systemApiCredentials } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const credential = await db.query.systemApiCredentials.findFirst({
+        where: eq(systemApiCredentials.id, id),
+      });
+
+      if (!credential) {
+        return res.status(404).json({ message: "Credential not found" });
+      }
+
+      const { secretsService } = await import("./services/secrets-service");
+      await secretsService.deleteCredential(id, user.id);
+
+      const { credentialProvider } = await import("./services/credential-provider");
+      credentialProvider.invalidate(credential.provider as any, credential.keyName);
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[System Credentials] Error deleting:", error);
+      res.status(500).json({ message: "Failed to delete credential" });
+    }
+  });
+
+  // POST /api/system/credentials/:id/rotate - Rotate a credential
+  app.post("/api/system/credentials/:id/rotate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { id } = req.params;
+      const { newValue, password } = req.body;
+
+      if (!newValue || !password) {
+        return res.status(400).json({ message: "New value and password are required" });
+      }
+
+      const bcrypt = await import("bcrypt");
+      const fullUser = await storage.getUser(user.id);
+      if (!fullUser || !fullUser.password) {
+        return res.status(401).json({ message: "Authentication failed" });
+      }
+
+      const isValid = await bcrypt.compare(password, fullUser.password);
+      if (!isValid) {
+        return res.status(401).json({ message: "Invalid password" });
+      }
+
+      const { secretsService } = await import("./services/secrets-service");
+      const rotated = await secretsService.rotateCredential(id, newValue, user.id);
+
+      if (!rotated) {
+        return res.status(404).json({ message: "Credential not found" });
+      }
+
+      const { credentialProvider } = await import("./services/credential-provider");
+      credentialProvider.invalidate(rotated.provider as any, rotated.keyName);
+
+      res.json({ 
+        success: true,
+        credential: {
+          id: rotated.id,
+          provider: rotated.provider,
+          keyName: rotated.keyName,
+          keyVersion: rotated.keyVersion,
+          lastRotatedAt: rotated.lastRotatedAt,
+        }
+      });
+    } catch (error: any) {
+      console.error("[System Credentials] Error rotating:", error);
+      res.status(500).json({ message: "Failed to rotate credential" });
+    }
+  });
   // Setup WebSocket for real-time chat updates with session validation
   setupWebSocket(httpServer, sessionStore);
   return httpServer;
