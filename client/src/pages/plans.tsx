@@ -218,6 +218,33 @@ export function PublicPricingView({
                 </span>
               </button>
             </div>
+            {/* Arrow and 2 months free text */}
+            <div className="ml-2 flex items-center">
+              <svg 
+                width="24" 
+                height="20" 
+                viewBox="0 0 24 20" 
+                fill="none" 
+                style={{ color: '#2D5A3D' }}
+              >
+                <path 
+                  d="M2 18C4 14 8 8 16 6M16 6L12 4M16 6L14 10" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span 
+                className="text-sm italic"
+                style={{ 
+                  color: '#2D5A3D',
+                  fontFamily: 'cursive',
+                }}
+              >
+                2 months free
+              </span>
+            </div>
           </div>
 
           {/* Plans Grid */}
