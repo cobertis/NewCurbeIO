@@ -24255,6 +24255,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const messageText = evolutionApi.extractMessageText(msg);
           const messageType = evolutionApi.extractMessageType(msg);
           const timestamp = new Date(msg.messageTimestamp * 1000);
+          
+          // Log all incoming messages for debugging
+          if (msg.message) {
+            console.log(`[WhatsApp Webhook] Message structure: type=${messageType}, keys=${Object.keys(msg.message).join(',')}`);
+          }
+          
+          // Handle reactions - update the original message instead of creating a new one
+          if (messageType === "reaction") {
+            const reactionData = evolutionApi.extractReactionData(msg);
+            if (reactionData && reactionData.targetMessageId) {
+              // Find the original message by messageId
+              const targetMessage = await db.query.whatsappMessages.findFirst({
+                where: and(
+                  eq(whatsappMessages.instanceId, instance.id),
+                  eq(whatsappMessages.messageId, reactionData.targetMessageId)
+                ),
+              });
+              if (targetMessage) {
+                // Update the reaction on the original message (empty emoji = remove reaction)
+                const newReaction = reactionData.emoji || null;
+                await db.update(whatsappMessages)
+                  .set({ reaction: newReaction })
+                  .where(eq(whatsappMessages.id, targetMessage.id));
+                console.log(`[WhatsApp Webhook] Reaction ${newReaction || 'removed'} on message ${reactionData.targetMessageId}`);
+                // Broadcast reaction update via WebSocket
+                broadcastToCompany(company.id, {
+                  type: "whatsapp:reaction",
+                  messageId: targetMessage.messageId,
+                  reaction: newReaction,
+                  remoteJid: targetMessage.remoteJid,
+                });
+              }
+            }
+            continue; // Don't create a message for reactions
+          }
+          
           // Skip if already exists
           const existing = await db.query.whatsappMessages.findFirst({
             where: and(

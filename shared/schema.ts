@@ -4545,6 +4545,7 @@ export const whatsappMessages = pgTable("whatsapp_messages", {
   mediaUrl: text("media_url"),
   mediaType: text("media_type"),
   quotedMessageId: text("quoted_message_id"),
+  reaction: text("reaction"),
   status: text("status").notNull().default("sent"),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

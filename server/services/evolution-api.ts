@@ -23,6 +23,7 @@ interface EvolutionMessage {
     remoteJid: string;
     fromMe: boolean;
     id: string;
+    senderPn?: string;
   };
   pushName?: string;
   message?: {
@@ -32,6 +33,15 @@ interface EvolutionMessage {
     videoMessage?: { caption?: string; url?: string };
     audioMessage?: { url?: string };
     documentMessage?: { fileName?: string; url?: string };
+    reactionMessage?: {
+      key: {
+        remoteJid: string;
+        fromMe: boolean;
+        id: string;
+      };
+      text: string;
+      senderTimestampMs?: string;
+    };
   };
   messageTimestamp: number;
   status?: string;
@@ -301,12 +311,23 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     const msg = message.message;
     if (!msg) return "text";
     
+    if (msg.reactionMessage) return "reaction";
     if (msg.imageMessage) return "image";
     if (msg.videoMessage) return "video";
     if (msg.audioMessage) return "audio";
     if (msg.documentMessage) return "document";
     
     return "text";
+  }
+
+  extractReactionData(message: EvolutionMessage): { emoji: string; targetMessageId: string } | null {
+    const reactionMsg = message.message?.reactionMessage;
+    if (!reactionMsg) return null;
+    
+    return {
+      emoji: reactionMsg.text || "",
+      targetMessageId: reactionMsg.key?.id || ""
+    };
   }
 
   /**

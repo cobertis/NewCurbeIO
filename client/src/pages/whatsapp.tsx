@@ -1005,6 +1005,13 @@ export default function WhatsAppPage() {
           if (data.type === 'whatsapp:connection' || data.type === 'whatsapp:qr_code') {
             queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/instance'] });
           }
+          if (data.type === 'whatsapp:reaction') {
+            // Reaction received - refresh messages to show the reaction
+            const { remoteJid } = data;
+            if (remoteJid === currentChat) {
+              queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats', currentChat, 'messages'] });
+            }
+          }
         }
         // Handle typing indicator - supports multiple contacts typing simultaneously
         if (data.type === 'whatsapp_typing') {
@@ -1540,8 +1547,7 @@ export default function WhatsAppPage() {
                           key={msg.id}
                           className={cn(
                             "flex group",
-                            msg.fromMe ? "justify-end" : "justify-start",
-                            localReactions[msg.messageId] && "mb-4"
+                            msg.fromMe ? "justify-end" : "justify-start"
                           )}
                           data-testid={`message-${msg.id}`}
                         >
@@ -1587,12 +1593,12 @@ export default function WhatsAppPage() {
                                   )
                                 )}
                               </div>
-                              {localReactions[msg.messageId] && (
+                              {msg.reaction && (
                                 <div className={cn(
                                   "absolute -bottom-3 text-base bg-white dark:bg-gray-700 rounded-full px-1 shadow-sm border dark:border-gray-600",
                                   msg.fromMe ? "right-1" : "left-1"
                                 )}>
-                                  {localReactions[msg.messageId]}
+                                  {msg.reaction}
                                 </div>
                               )}
                             </div>
