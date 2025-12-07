@@ -96,6 +96,7 @@ interface WhatsappMessage {
   mediaUrl?: string;
   status: string;
   timestamp: string;
+  reaction?: string | null;
 }
 
 function formatPhoneNumber(phone: string): string {

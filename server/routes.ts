@@ -24259,6 +24259,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Log all incoming messages for debugging
           if (msg.message) {
             console.log(`[WhatsApp Webhook] Message structure: type=${messageType}, keys=${Object.keys(msg.message).join(',')}`);
+            // Log reaction messages for debugging
+            if (msg.message.reactionMessage) {
+              console.log(`[WhatsApp Webhook] REACTION DETECTED: emoji=${msg.message.reactionMessage.text}, targetId=${msg.message.reactionMessage.key?.id}`);
+            }
           }
           
           // Handle reactions - update the original message instead of creating a new one
