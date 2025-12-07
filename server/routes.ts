@@ -23976,9 +23976,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated" });
       }
       
-      const { presence } = req.body;
+      let { presence, remoteJid } = req.body;
       if (!presence || !["available", "unavailable"].includes(presence)) {
         return res.status(400).json({ message: "presence must be 'available' or 'unavailable'" });
+      }
+      
+      if (!remoteJid) {
+        return res.status(400).json({ message: "remoteJid is required" });
       }
       
       const instance = await db.query.whatsappInstances.findFirst({
@@ -23989,7 +23993,36 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
       
-      await evolutionApi.sendPresenceStatus(instance.instanceName, presence);
+      // For @lid contacts, resolve to phone-based JID first
+      if (remoteJid.endsWith('@lid')) {
+        const contactWithLid = await db.query.whatsappContacts.findFirst({
+          where: and(
+            eq(whatsappContacts.instanceId, instance.id),
+            eq(whatsappContacts.lid, remoteJid)
+          ),
+        });
+        
+        if (contactWithLid) {
+          remoteJid = contactWithLid.remoteJid;
+        } else {
+          const contactByRemoteJid = await db.query.whatsappContacts.findFirst({
+            where: and(
+              eq(whatsappContacts.instanceId, instance.id),
+              eq(whatsappContacts.remoteJid, remoteJid)
+            ),
+          });
+          
+          if (contactByRemoteJid?.businessPhone) {
+            const phoneNumber = contactByRemoteJid.businessPhone.replace(/\D/g, '');
+            remoteJid = `${phoneNumber}@s.whatsapp.net`;
+          } else {
+            // Cannot send presence to @lid without phone mapping - skip silently
+            return res.json({ success: true, skipped: true });
+          }
+        }
+      }
+      
+      await evolutionApi.sendPresenceStatus(instance.instanceName, remoteJid, presence);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to set presence" });
@@ -24800,8 +24833,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ marked: 0 });
       }
 
+      // For @lid contacts, resolve to phone-based JID for Evolution API
+      let evolutionJid = remoteJid;
+      if (remoteJid.endsWith('@lid')) {
+        const contact = await db.query.whatsappContacts.findFirst({
+          where: and(
+            eq(whatsappContacts.instanceId, instance.id),
+            eq(whatsappContacts.remoteJid, remoteJid)
+          ),
+        });
+        if (contact?.businessPhone) {
+          const phoneNumber = contact.businessPhone.replace(/\D/g, '');
+          evolutionJid = `${phoneNumber}@s.whatsapp.net`;
+          console.log(`[WhatsApp] Resolved @lid ${remoteJid} to ${evolutionJid} for mark-read`);
+        }
+      }
+
       const readMessages = unreadMessages.map(msg => ({
-        remoteJid: msg.remoteJid,
+        remoteJid: evolutionJid,
         fromMe: false,
         id: msg.messageId,
       }));

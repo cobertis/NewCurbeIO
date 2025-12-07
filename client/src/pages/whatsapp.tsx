@@ -646,15 +646,15 @@ export default function WhatsAppPage() {
     }).catch(() => {});
   }, [selectedChat, instanceData?.connected]);
 
-  // Send presence status (available/unavailable)
-  const sendPresence = useCallback((presence: "available" | "unavailable") => {
-    if (!instanceData?.connected) return;
+  // Send presence status (available/unavailable) to specific contact
+  const sendPresence = useCallback((remoteJid: string, presence: "available" | "unavailable") => {
+    if (!instanceData?.connected || !remoteJid) return;
     
     fetch('/api/whatsapp/send-presence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ presence }),
+      body: JSON.stringify({ remoteJid, presence }),
     }).catch(() => {});
   }, [instanceData?.connected]);
 
@@ -662,16 +662,16 @@ export default function WhatsAppPage() {
   useEffect(() => {
     if (selectedChat && instanceData?.connected) {
       // Set online when chat is opened
-      sendPresence("available");
+      sendPresence(selectedChat, "available");
       
       // Keep-alive every 45 seconds while chat is open
       presenceIntervalRef.current = setInterval(() => {
-        sendPresence("available");
+        sendPresence(selectedChat, "available");
       }, 45000);
       
       return () => {
         // Set offline when chat is closed
-        sendPresence("unavailable");
+        sendPresence(selectedChat, "unavailable");
         if (presenceIntervalRef.current) {
           clearInterval(presenceIntervalRef.current);
           presenceIntervalRef.current = null;

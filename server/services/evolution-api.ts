@@ -469,13 +469,16 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     }
   }
 
-  async sendPresenceStatus(instanceName: string, presence: "available" | "unavailable"): Promise<void> {
+  async sendPresenceStatus(instanceName: string, remoteJid: string, presence: "available" | "unavailable"): Promise<void> {
     try {
-      console.log(`[Evolution API] Setting presence to ${presence} for ${instanceName}`);
+      const phoneNumber = remoteJid.replace('@s.whatsapp.net', '').replace('@lid', '');
+      console.log(`[Evolution API] Setting presence to ${presence} for ${phoneNumber} via ${instanceName}`);
       await this.request("POST", `/chat/sendPresence/${instanceName}`, {
+        number: phoneNumber,
+        delay: 30000,
         presence
       });
-      console.log(`[Evolution API] Presence set to ${presence}`);
+      console.log(`[Evolution API] Presence ${presence} sent to ${phoneNumber}`);
     } catch (error: any) {
       console.error(`[Evolution API] Failed to set presence:`, error.message);
     }
