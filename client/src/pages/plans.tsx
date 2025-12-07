@@ -221,12 +221,12 @@ export function PublicPricingView({
             {/* Arrow and 2 months free text */}
             <div className="flex items-center" style={{ marginLeft: '8px' }}>
               <img 
-                src="/attached_assets/Arrow2_1765137467315.png" 
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200'%3E%3Cpath d='M50 10 Q70 40 60 80 Q50 120 30 150' stroke='%231E3A5F' stroke-width='12' fill='none' stroke-linecap='round'/%3E%3Cpath d='M30 150 L40 135 L25 130' stroke='%231E3A5F' stroke-width='12' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" 
                 alt=""
                 style={{ 
                   width: '32px', 
                   height: '32px',
-                  filter: 'brightness(0) saturate(100%) invert(14%) sepia(47%) saturate(680%) hue-rotate(174deg) brightness(96%) contrast(95%)',
+                  transform: 'rotate(-90deg)',
                 }}
               />
               <span 
