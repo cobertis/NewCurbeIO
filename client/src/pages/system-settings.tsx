@@ -112,7 +112,7 @@ export default function SystemSettings() {
   const [deleteProviderDialogOpen, setDeleteProviderDialogOpen] = useState(false);
   const [selectedProviderForDelete, setSelectedProviderForDelete] = useState<string | null>(null);
 
-  const { data: sessionData } = useQuery<{ user: User }>({
+  const { data: sessionData, isLoading: isLoadingSession } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
   });
 
@@ -684,6 +684,10 @@ export default function SystemSettings() {
     }
     return grouped;
   };
+
+  if (isLoadingSession) {
+    return <LoadingSpinner fullScreen={true} message="Loading system settings..." />;
+  }
 
   if (sessionData?.user?.role !== "superadmin") {
     return (
