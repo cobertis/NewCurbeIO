@@ -1,4 +1,5 @@
 import type { WhatsappInstance, InsertWhatsappInstance, WhatsappMessage, InsertWhatsappMessage, WhatsappConversation } from "@shared/schema";
+import { credentialProvider } from "./credential-provider";
 
 interface EvolutionInstanceResponse {
   instance: {
@@ -47,13 +48,17 @@ interface EvolutionMessage {
   status?: string;
 }
 
+let evolutionApiInstance: EvolutionApiService | null = null;
+let evolutionInitialized = false;
+let evolutionInitPromise: Promise<EvolutionApiService | null> | null = null;
+
 class EvolutionApiService {
   private baseUrl: string;
   private apiKey: string;
 
-  constructor() {
-    this.baseUrl = process.env.EVOLUTION_API_URL || "https://evolution.curbe.io";
-    this.apiKey = process.env.EVOLUTION_API_KEY || "";
+  constructor(baseUrl: string, apiKey: string) {
+    this.baseUrl = baseUrl;
+    this.apiKey = apiKey;
   }
 
   private async request<T>(method: string, endpoint: string, body?: any): Promise<T> {
@@ -116,7 +121,7 @@ class EvolutionApiService {
     return this.request("GET", `/webhook/find/${instanceName}`);
   }
 
-async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
+  async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     console.log(`[Evolution API] Setting webhook for ${instanceName}: ${webhookUrl}`);
     const payload = {
       webhook: {
@@ -232,13 +237,11 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       limit,
     });
     
-    // Evolution API v2 returns {messages: {records: [...], total, pages}}
     if (response?.messages?.records) {
       console.log(`[Evolution API] Found ${response.messages.records.length} messages`);
       return response.messages.records;
     }
     
-    // Fallback if format is different
     if (Array.isArray(response)) {
       return response;
     }
@@ -330,50 +333,30 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     };
   }
 
-  /**
-   * Validates a phone number from Evolution API responses
-   * Preserves the exact digit sequence - only validates, does not modify
-   * @param candidate - The string to validate
-   * @returns Original digits if valid, or null if clearly invalid
-   */
   private normalizeToE164(candidate: string | null | undefined): string | null {
     if (!candidate) return null;
     
-    // Extract digits only - preserve EXACTLY as received
     const digits = candidate.replace(/\D/g, '');
     
-    // Reject empty or too short (less than 10 digits)
     if (digits.length < 10) {
       console.log(`[Evolution API] normalizeToE164: rejected "${digits}" (too short: ${digits.length} < 10)`);
       return null;
     }
     
-    // Accept any number up to 25 digits (Evolution returns various formats)
-    // Store the full number exactly as received
     if (digits.length > 25) {
       console.log(`[Evolution API] normalizeToE164: rejected "${digits}" (too long: ${digits.length} > 25)`);
       return null;
     }
     
-    // Reject if it's all zeros (invalid)
     if (/^0+$/.test(digits)) {
       console.log(`[Evolution API] normalizeToE164: rejected "${digits}" (all zeros)`);
       return null;
     }
     
-    // Store exactly as received - frontend will handle display formatting
     console.log(`[Evolution API] normalizeToE164: accepted "${digits}" (length ${digits.length})`);
     return digits;
   }
 
-  /**
-   * Fetches the business profile for a WhatsApp Business ID (@lid)
-   * Returns the real phone number (E.164 normalized) and business name if available
-   * 
-   * @param instanceName - The Evolution API instance name
-   * @param jid - The @lid JID to look up (e.g., "12345678901234567@lid")
-   * @returns Object with businessPhone (E.164 digits) and businessName, or null if not found
-   */
   async getBusinessProfile(
     instanceName: string,
     jid: string
@@ -389,10 +372,6 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       let businessPhone: string | null = null;
       let businessName: string | null = null;
       
-      // Try multiple sources for the phone number, in order of preference:
-      // 1. response.number.user (most reliable)
-      // 2. response.wid (can be JID or object)
-      // 3. response.id
       const phoneCandidates: string[] = [];
       
       if (response?.number?.user) {
@@ -409,7 +388,6 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
         phoneCandidates.push(response.id.split('@')[0]);
       }
       
-      // Validate each candidate until we find a valid E.164 number
       for (const candidate of phoneCandidates) {
         const normalized = this.normalizeToE164(candidate);
         if (normalized) {
@@ -418,10 +396,8 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
         }
       }
       
-      // Extract business name from multiple sources
       businessName = response?.verifiedName || response?.pushName || response?.name || null;
       
-      // Extract pushName separately (personal name set by user)
       const pushName = response?.pushName || response?.name || null;
       
       console.log(`[Evolution API] Extracted businessPhone: ${businessPhone}, businessName: ${businessName}, pushName: ${pushName}`);
@@ -432,10 +408,6 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     }
   }
 
-  /**
-   * Downloads media from a message and returns it as base64
-   * This is the fallback when webhookBase64 is not available (SaaS Evolution API)
-   */
   async getBase64FromMediaMessage(
     instanceName: string, 
     messageId: string, 
@@ -520,24 +492,11 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     }
   }
 
-  /**
-   * Normalizes emoji by removing variation selectors (FE0E, FE0F)
-   * These are invisible modifiers that can cause API rejection
-   */
   private normalizeEmoji(emoji: string): string {
     if (!emoji) return emoji;
-    // Remove variation selectors U+FE0E (text style) and U+FE0F (emoji style)
     return emoji.replace(/[\uFE0E\uFE0F]/g, '');
   }
 
-  /**
-   * Sends a reaction to a specific message.
-   * @param instanceName - The Evolution API instance name
-   * @param remoteJid - JID of the chat (number@s.whatsapp.net or @lid)
-   * @param messageId - Unique ID of the message to react to
-   * @param reactionEmoji - The emoji (e.g., "👍", "❤️", "😂"). Pass empty string "" to remove reaction.
-   * @param messageFromMe - true if the target message is ours, false if from the contact
-   */
   async sendReaction(
     instanceName: string,
     remoteJid: string,
@@ -565,5 +524,230 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
   }
 }
 
-export const evolutionApi = new EvolutionApiService();
+async function initEvolutionApi(): Promise<EvolutionApiService | null> {
+  if (evolutionInitialized) {
+    return evolutionApiInstance;
+  }
+
+  if (evolutionInitPromise) {
+    return evolutionInitPromise;
+  }
+
+  evolutionInitPromise = (async () => {
+    try {
+      const { baseUrl, globalApiKey } = await credentialProvider.getEvolutionApi();
+
+      if (!baseUrl || !globalApiKey) {
+        console.warn("⚠️  Evolution API credentials not configured. WhatsApp service will not be available.");
+        evolutionInitialized = true;
+        return null;
+      }
+
+      evolutionApiInstance = new EvolutionApiService(baseUrl, globalApiKey);
+      evolutionInitialized = true;
+      console.log("Evolution API service initialized successfully");
+      return evolutionApiInstance;
+    } catch (error) {
+      console.error("Failed to initialize Evolution API service:", error);
+      evolutionInitialized = true;
+      return null;
+    }
+  })();
+
+  return evolutionInitPromise;
+}
+
+export async function getEvolutionApiClient(): Promise<EvolutionApiService | null> {
+  return initEvolutionApi();
+}
+
+async function ensureEvolutionApiConfigured(): Promise<EvolutionApiService> {
+  const client = await initEvolutionApi();
+  if (!client) {
+    throw new Error("Evolution API service not initialized");
+  }
+  return client;
+}
+
+class EvolutionApiProxy {
+  async isInitialized(): Promise<boolean> {
+    const client = await initEvolutionApi();
+    return client !== null;
+  }
+
+  async createInstance(instanceName: string): Promise<EvolutionInstanceResponse> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.createInstance(instanceName);
+  }
+
+  async getConnectionState(instanceName: string): Promise<EvolutionConnectionState> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.getConnectionState(instanceName);
+  }
+
+  async setSettings(instanceName: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.setSettings(instanceName);
+  }
+
+  async getWebhook(instanceName: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.getWebhook(instanceName);
+  }
+
+  async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.setWebhook(instanceName, webhookUrl);
+  }
+
+  async fetchQrCode(instanceName: string): Promise<{ base64: string }> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.fetchQrCode(instanceName);
+  }
+
+  async sendTextMessage(instanceName: string, number: string, text: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.sendTextMessage(instanceName, number, text);
+  }
+
+  async sendMediaMessage(
+    instanceName: string,
+    number: string,
+    mediaType: "image" | "video" | "audio" | "document",
+    base64: string,
+    mimetype: string,
+    caption?: string,
+    fileName?: string
+  ): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.sendMediaMessage(instanceName, number, mediaType, base64, mimetype, caption, fileName);
+  }
+
+  async fetchChats(instanceName: string): Promise<any[]> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.fetchChats(instanceName);
+  }
+
+  async fetchMessages(instanceName: string, remoteJid: string, limit: number = 50): Promise<EvolutionMessage[]> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.fetchMessages(instanceName, remoteJid, limit);
+  }
+
+  async deleteInstance(instanceName: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.deleteInstance(instanceName);
+  }
+
+  async logoutInstance(instanceName: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.logoutInstance(instanceName);
+  }
+
+  async getInstanceInfo(instanceName: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.getInstanceInfo(instanceName);
+  }
+
+  async fetchProfilePicture(instanceName: string, number: string): Promise<{ profilePictureUrl?: string }> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.fetchProfilePicture(instanceName, number);
+  }
+
+  async sendWhatsAppAudio(instanceName: string, number: string, base64: string): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.sendWhatsAppAudio(instanceName, number, base64);
+  }
+
+  async fetchContacts(instanceName: string): Promise<any[]> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.fetchContacts(instanceName);
+  }
+
+  extractMessageText(message: EvolutionMessage): string {
+    const msg = message.message;
+    if (!msg) return "";
+    
+    if (msg.conversation) return msg.conversation;
+    if (msg.extendedTextMessage?.text) return msg.extendedTextMessage.text;
+    if (msg.imageMessage?.caption) return msg.imageMessage.caption;
+    if (msg.videoMessage?.caption) return msg.videoMessage.caption;
+    if (msg.documentMessage?.fileName) return `Document: ${msg.documentMessage.fileName}`;
+    if (msg.audioMessage) return "🎤 Voice message";
+    
+    return "";
+  }
+
+  extractMessageType(message: EvolutionMessage): string {
+    const msg = message.message;
+    if (!msg) return "text";
+    
+    if (msg.reactionMessage) return "reaction";
+    if (msg.imageMessage) return "image";
+    if (msg.videoMessage) return "video";
+    if (msg.audioMessage) return "audio";
+    if (msg.documentMessage) return "document";
+    
+    return "text";
+  }
+
+  extractReactionData(message: EvolutionMessage): { emoji: string; targetMessageId: string } | null {
+    const reactionMsg = message.message?.reactionMessage;
+    if (!reactionMsg) return null;
+    
+    return {
+      emoji: reactionMsg.text || "",
+      targetMessageId: reactionMsg.key?.id || ""
+    };
+  }
+
+  async getBusinessProfile(
+    instanceName: string,
+    jid: string
+  ): Promise<{ businessPhone: string | null; businessName: string | null; pushName: string | null }> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.getBusinessProfile(instanceName, jid);
+  }
+
+  async getBase64FromMediaMessage(
+    instanceName: string,
+    messageId: string,
+    remoteJid: string
+  ): Promise<{ base64: string; mimetype: string } | null> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.getBase64FromMediaMessage(instanceName, messageId, remoteJid);
+  }
+
+  async markMessagesAsRead(instanceName: string, readMessages: Array<{ remoteJid: string; fromMe: boolean; id: string }>): Promise<void> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.markMessagesAsRead(instanceName, readMessages);
+  }
+
+  async sendTyping(instanceName: string, remoteJid: string): Promise<void> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.sendTyping(instanceName, remoteJid);
+  }
+
+  async sendPresenceStatus(instanceName: string, remoteJid: string, presence: "available" | "unavailable"): Promise<void> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.sendPresenceStatus(instanceName, remoteJid, presence);
+  }
+
+  async setGlobalPresence(instanceName: string, presence: "available" | "unavailable"): Promise<void> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.setGlobalPresence(instanceName, presence);
+  }
+
+  async sendReaction(
+    instanceName: string,
+    remoteJid: string,
+    messageId: string,
+    reactionEmoji: string,
+    messageFromMe: boolean
+  ): Promise<any> {
+    const client = await ensureEvolutionApiConfigured();
+    return client.sendReaction(instanceName, remoteJid, messageId, reactionEmoji, messageFromMe);
+  }
+}
+
+export const evolutionApi = new EvolutionApiProxy();
 export type { EvolutionInstanceResponse, EvolutionConnectionState, EvolutionMessage };

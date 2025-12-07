@@ -3811,7 +3811,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ==================== GOOGLE PLACES API ====================
   // Google Maps JavaScript API loader endpoint
   app.get("/api/google-maps-js-loader", async (req: Request, res: Response) => {
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    const { credentialProvider } = await import("./services/credential-provider");
+    const { apiKey } = await credentialProvider.getGooglePlaces();
     if (!apiKey) {
       console.error("[GOOGLE_MAPS] API KEY not configured");
       return res.status(500).send('console.error("Google Maps API key not configured");');
@@ -3846,7 +3847,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!lat || !lng) {
         return res.status(400).json({ message: "lat and lng are required" });
       }
-      const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+      const { credentialProvider } = await import("./services/credential-provider");
+      const { apiKey } = await credentialProvider.getGooglePlaces();
       if (!apiKey) {
         return res.status(500).json({ message: "Google Maps API not configured" });
       }
@@ -3873,14 +3875,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log("[GOOGLE_PLACES] Missing or invalid query parameter");
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
-      if (!process.env.GOOGLE_PLACES_API_KEY) {
+      const { credentialProvider } = await import("./services/credential-provider");
+      const { apiKey } = await credentialProvider.getGooglePlaces();
+      if (!apiKey) {
         console.error("[GOOGLE_PLACES] API KEY not configured");
         return res.status(500).json({ message: "Google Places service not configured" });
       }
       const url = "https://places.googleapis.com/v1/places:autocomplete";
       const headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY
+        "X-Goog-Api-Key": apiKey
       };
       const body = {
         input: q,
@@ -3934,14 +3938,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!placeId || typeof placeId !== 'string') {
         return res.status(400).json({ message: "placeId parameter is required" });
       }
-      if (!process.env.GOOGLE_PLACES_API_KEY) {
+      const { credentialProvider } = await import("./services/credential-provider");
+      const { apiKey } = await credentialProvider.getGooglePlaces();
+      if (!apiKey) {
         console.error("[GOOGLE_PLACES] API KEY not configured");
         return res.status(500).json({ message: "Google Places service not configured" });
       }
       const url = `https://places.googleapis.com/v1/places/${placeId}`;
       const headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
+        "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "id,formattedAddress,addressComponents,location"
       };
       console.log("[GOOGLE_PLACES] Fetching place details");
@@ -4036,14 +4042,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log("[GOOGLE_PLACES] Missing or invalid query parameter");
         return res.status(400).json({ message: "Query parameter 'q' is required" });
       }
-      if (!process.env.GOOGLE_PLACES_API_KEY) {
+      const { credentialProvider } = await import("./services/credential-provider");
+      const { apiKey } = await credentialProvider.getGooglePlaces();
+      if (!apiKey) {
         console.error("[GOOGLE_PLACES] API KEY not configured");
         return res.status(500).json({ message: "Google Places service not configured" });
       }
       const url = "https://places.googleapis.com/v1/places:searchText";
       const headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": process.env.GOOGLE_PLACES_API_KEY,
+        "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.primaryTypeDisplayName,places.shortFormattedAddress,places.addressComponents"
       };
       const body = {

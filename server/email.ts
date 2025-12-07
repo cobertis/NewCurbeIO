@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import { blacklistService } from "./services/blacklist-service";
+import { credentialProvider } from "./services/credential-provider";
 
 interface EmailOptions {
   to: string | string[];
@@ -11,72 +12,92 @@ interface EmailOptions {
   skipBlacklistCheck?: boolean;
 }
 
-class EmailService {
-  private transporter: Transporter | null = null;
-  private initialized: boolean = false;
+let emailTransporter: Transporter | null = null;
+let emailInitialized = false;
+let emailInitPromise: Promise<Transporter | null> | null = null;
+let smtpFromEmail: string = "";
+let smtpFromName: string = "Curbe.io";
 
-  constructor() {
-    this.initialize();
+async function initEmail(): Promise<Transporter | null> {
+  if (emailInitialized) {
+    return emailTransporter;
   }
 
-  private initialize() {
+  if (emailInitPromise) {
+    return emailInitPromise;
+  }
+
+  emailInitPromise = (async () => {
     try {
-      const host = process.env.SMTP_HOST;
-      const port = parseInt(process.env.SMTP_PORT || "587");
-      const user = process.env.SMTP_USER;
-      const password = process.env.SMTP_PASSWORD;
+      const { host, port, user, password, fromEmail } = await credentialProvider.getNodemailer();
+      const portNumber = parseInt(port || "587");
 
       if (!host || !user || !password) {
-        console.warn("SMTP credentials not configured. Email service will not be available.");
-        return;
+        console.warn("⚠️  SMTP credentials not configured. Email service will not be available.");
+        emailInitialized = true;
+        return null;
       }
 
-      this.transporter = nodemailer.createTransport({
+      emailTransporter = nodemailer.createTransport({
         host,
-        port,
-        secure: port === 465, // true for 465, false for other ports
+        port: portNumber,
+        secure: portNumber === 465,
         auth: {
-          type: 'login', // Force LOGIN authentication method
+          type: 'login',
           user,
           pass: password,
         },
         tls: {
-          // Do not fail on invalid certs (for self-signed certificates)
           rejectUnauthorized: false,
         },
-        // For port 587, use STARTTLS
-        requireTLS: port === 587,
-        // Connection timeout (10 seconds)
+        requireTLS: portNumber === 587,
         connectionTimeout: 10000,
-        // Socket timeout (15 seconds)
         socketTimeout: 15000,
-        // Greeting timeout (5 seconds)
         greetingTimeout: 5000,
-        // Enable debug to see what's happening
         debug: true,
         logger: true,
       });
 
-      this.initialized = true;
+      smtpFromEmail = fromEmail || user;
+      smtpFromName = process.env.SMTP_FROM_NAME || "Curbe.io";
+      emailInitialized = true;
       console.log("Email service initialized successfully");
+      return emailTransporter;
     } catch (error) {
       console.error("Failed to initialize email service:", error);
-      this.initialized = false;
+      emailInitialized = true;
+      return null;
     }
-  }
+  })();
 
+  return emailInitPromise;
+}
+
+export async function getEmailTransporter(): Promise<Transporter | null> {
+  return initEmail();
+}
+
+async function ensureEmailConfigured(): Promise<Transporter> {
+  const transporter = await initEmail();
+  if (!transporter) {
+    throw new Error("Email service not initialized");
+  }
+  return transporter;
+}
+
+class EmailService {
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    if (!this.initialized || !this.transporter) {
+    const transporter = await initEmail();
+
+    if (!transporter) {
       console.error("Email service not initialized. Cannot send email.");
       return false;
     }
 
     try {
-      // Check blacklist before sending (if companyId provided and not skipping check)
       if (options.companyId && !options.skipBlacklistCheck) {
         const emailsToCheck = Array.isArray(options.to) ? options.to : [options.to];
         
-        // Check each email against blacklist
         for (const email of emailsToCheck) {
           await blacklistService.assertNotBlacklisted({
             companyId: options.companyId,
@@ -85,24 +106,14 @@ class EmailService {
           });
         }
       }
-      
-      // Always use SMTP_USER as the from email (it's properly configured)
-      const fromEmail = process.env.SMTP_USER;
-      const fromName = process.env.SMTP_FROM_NAME || "Curbe.io";
 
       console.log('[EMAIL DEBUG] Starting email send...');
-      console.log('[EMAIL DEBUG] From:', `"${fromName}" <${fromEmail}>`);
+      console.log('[EMAIL DEBUG] From:', `"${smtpFromName}" <${smtpFromEmail}>`);
       console.log('[EMAIL DEBUG] To:', options.to);
       console.log('[EMAIL DEBUG] Subject:', options.subject);
-      console.log('[EMAIL DEBUG] SMTP Config:', {
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
-        user: process.env.SMTP_USER,
-        secure: parseInt(process.env.SMTP_PORT || "587") === 465
-      });
 
-      const result = await this.transporter.sendMail({
-        from: `"${fromName}" <${fromEmail}>`,
+      const result = await transporter.sendMail({
+        from: `"${smtpFromName}" <${smtpFromEmail}>`,
         to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
         subject: options.subject,
         text: options.text || options.html.replace(/<[^>]*>/g, ""),
@@ -113,7 +124,6 @@ class EmailService {
       console.log(`Email sent successfully to ${options.to}`);
       return true;
     } catch (error: any) {
-      // Log blacklist rejections distinctly
       if (error.message?.includes('blacklisted')) {
         const emails = Array.isArray(options.to) ? options.to.join(', ') : options.to;
         console.log(`[BLACKLIST] Blocked outbound email to ${emails} on email`);
@@ -129,18 +139,25 @@ class EmailService {
   }
 
   async verifyConnection(): Promise<boolean> {
-    if (!this.initialized || !this.transporter) {
+    const transporter = await initEmail();
+
+    if (!transporter) {
       return false;
     }
 
     try {
-      await this.transporter.verify();
+      await transporter.verify();
       console.log("SMTP connection verified successfully");
       return true;
     } catch (error) {
       console.error("SMTP connection verification failed:", error);
       return false;
     }
+  }
+
+  async isInitialized(): Promise<boolean> {
+    const transporter = await initEmail();
+    return transporter !== null;
   }
 
   async sendWelcomeEmail(userEmail: string, userName: string): Promise<boolean> {
@@ -332,7 +349,6 @@ class EmailService {
       html,
     });
   }
-
 }
 
 export const emailService = new EmailService();

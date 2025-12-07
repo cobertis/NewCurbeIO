@@ -1,45 +1,64 @@
 import twilio from "twilio";
 import type { Twilio } from "twilio";
 import { blacklistService } from "./services/blacklist-service";
+import { credentialProvider } from "./services/credential-provider";
 
-class TwilioService {
-  private client: Twilio | null = null;
-  private initialized: boolean = false;
-  private fromNumber: string = "";
+let twilioClient: Twilio | null = null;
+let twilioInitialized = false;
+let twilioInitPromise: Promise<Twilio | null> | null = null;
+let twilioFromNumber: string = "";
 
-  constructor() {
-    this.initialize();
+async function initTwilio(): Promise<Twilio | null> {
+  if (twilioInitialized) {
+    return twilioClient;
   }
 
-  private initialize() {
-    try {
-      const accountSid = process.env.TWILIO_ACCOUNT_SID;
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
-      const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+  if (twilioInitPromise) {
+    return twilioInitPromise;
+  }
 
-      if (!accountSid || !authToken || !fromNumber) {
-        console.warn("Twilio credentials not configured. SMS service will not be available.");
-        return;
+  twilioInitPromise = (async () => {
+    try {
+      const { accountSid, authToken, phoneNumber } = await credentialProvider.getTwilio();
+
+      if (!accountSid || !authToken || !phoneNumber) {
+        console.warn("⚠️  Twilio credentials not configured. SMS service will not be available.");
+        twilioInitialized = true;
+        return null;
       }
 
-      this.client = twilio(accountSid, authToken);
-      this.fromNumber = fromNumber;
-      this.initialized = true;
+      twilioClient = twilio(accountSid, authToken);
+      twilioFromNumber = phoneNumber;
+      twilioInitialized = true;
       console.log("Twilio service initialized successfully");
+      return twilioClient;
     } catch (error) {
       console.error("Failed to initialize Twilio service:", error);
-      this.initialized = false;
+      twilioInitialized = true;
+      return null;
     }
-  }
+  })();
 
+  return twilioInitPromise;
+}
+
+export async function getTwilioClient(): Promise<Twilio | null> {
+  return initTwilio();
+}
+
+async function ensureTwilioConfigured(): Promise<Twilio> {
+  const client = await initTwilio();
+  if (!client) {
+    throw new Error("Twilio service not initialized");
+  }
+  return client;
+}
+
+class TwilioService {
   async sendSMS(to: string, message: string, companyId?: string): Promise<{ sid: string; status: string } | null> {
-    if (!this.initialized || !this.client) {
-      console.error("Twilio service not initialized. Cannot send SMS.");
-      throw new Error("Twilio service not initialized");
-    }
+    const client = await ensureTwilioConfigured();
 
     try {
-      // Check blacklist before sending (if companyId provided)
       if (companyId) {
         await blacklistService.assertNotBlacklisted({
           companyId,
@@ -48,13 +67,12 @@ class TwilioService {
         });
       }
       
-      // Build status callback URL using APP_URL from environment
       const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const statusCallbackUrl = `${baseUrl}/api/webhooks/twilio/status`;
       
-      const result = await this.client.messages.create({
+      const result = await client.messages.create({
         body: message,
-        from: this.fromNumber,
+        from: twilioFromNumber,
         to: to,
         statusCallback: statusCallbackUrl,
       });
@@ -62,7 +80,6 @@ class TwilioService {
       console.log(`SMS sent successfully to ${to}. SID: ${result.sid}, StatusCallback: ${statusCallbackUrl}`);
       return { sid: result.sid, status: result.status };
     } catch (error: any) {
-      // Log blacklist rejections distinctly
       if (error.message?.includes('blacklisted')) {
         console.log(`[BLACKLIST] Blocked outbound SMS to ${to} on sms`);
       } else {
@@ -73,14 +90,9 @@ class TwilioService {
   }
 
   async sendMMS(to: string, imageUrl: string, pendingMessageId?: string, companyId?: string): Promise<{ sid: string; status: string } | null> {
-    if (!this.initialized || !this.client) {
-      console.error("Twilio service not initialized. Cannot send MMS.");
-      throw new Error("Twilio service not initialized");
-    }
+    const client = await ensureTwilioConfigured();
 
     try {
-      // Check blacklist before sending (if companyId provided)
-      // MMS uses SMS channel for blacklist purposes
       if (companyId) {
         await blacklistService.assertNotBlacklisted({
           companyId,
@@ -89,15 +101,14 @@ class TwilioService {
         });
       }
       
-      // Build status callback URL with correlation ID
       const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       let statusCallbackUrl = `${baseUrl}/api/webhooks/twilio/status`;
       if (pendingMessageId) {
         statusCallbackUrl += `?pendingMessageId=${pendingMessageId}`;
       }
       
-      const result = await this.client.messages.create({
-        from: this.fromNumber,
+      const result = await client.messages.create({
+        from: twilioFromNumber,
         to: to,
         mediaUrl: [imageUrl],
         statusCallback: statusCallbackUrl,
@@ -106,7 +117,6 @@ class TwilioService {
       console.log(`MMS sent successfully to ${to}. SID: ${result.sid}, Image: ${imageUrl}, StatusCallback: ${statusCallbackUrl}`);
       return { sid: result.sid, status: result.status };
     } catch (error: any) {
-      // Log blacklist rejections distinctly
       if (error.message?.includes('blacklisted')) {
         console.log(`[BLACKLIST] Blocked outbound MMS to ${to} on sms`);
       } else {
@@ -146,8 +156,9 @@ class TwilioService {
     }
   }
 
-  isInitialized(): boolean {
-    return this.initialized;
+  async isInitialized(): Promise<boolean> {
+    const client = await initTwilio();
+    return client !== null;
   }
 }
 

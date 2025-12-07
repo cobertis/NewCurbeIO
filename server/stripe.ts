@@ -3,39 +3,66 @@ import Stripe from "stripe";
 import { storage } from "./storage";
 import type { InsertInvoice, InsertInvoiceItem, InsertPayment, InsertSubscription } from "@shared/schema";
 import { formatE164 } from "@shared/phone";
+import { credentialProvider } from "./services/credential-provider";
 
-// Check if Stripe is configured
-const STRIPE_CONFIGURED = !!process.env.STRIPE_SECRET_KEY;
+let stripeClient: Stripe | null = null;
+let stripeInitialized = false;
+let stripeInitPromise: Promise<Stripe | null> | null = null;
 
-if (!STRIPE_CONFIGURED) {
-  console.log('⚠️  Stripe credentials not configured. Billing features will not be available.');
-}
-
-// Initialize Stripe only if configured
-let stripe: Stripe | null = null;
-
-if (STRIPE_CONFIGURED) {
-  const stripeKey = process.env.STRIPE_SECRET_KEY!;
-  const stripeMode = stripeKey.startsWith('sk_test_') ? 'TEST MODE' : 
-                     stripeKey.startsWith('sk_live_') ? 'LIVE/PRODUCTION MODE' : 'UNKNOWN';
-  console.log('==========================================');
-  console.log(`🔑 STRIPE INITIALIZED: ${stripeMode}`);
-  console.log(`🔑 Key prefix: ${stripeKey.substring(0, 12)}...`);
-  console.log('==========================================');
-
-  stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2025-09-30.clover",
-  });
-}
-
-export { stripe };
-
-// Helper to ensure Stripe is configured
-function ensureStripeConfigured(): Stripe {
-  if (!stripe) {
-    throw new Error('Stripe is not configured. Please add STRIPE_SECRET_KEY to your environment variables.');
+async function initStripe(): Promise<Stripe | null> {
+  if (stripeInitialized) {
+    return stripeClient;
   }
-  return stripe;
+
+  if (stripeInitPromise) {
+    return stripeInitPromise;
+  }
+
+  stripeInitPromise = (async () => {
+    try {
+      const { secretKey } = await credentialProvider.getStripe();
+      
+      if (!secretKey) {
+        console.log('⚠️  Stripe credentials not configured. Billing features will not be available.');
+        stripeInitialized = true;
+        return null;
+      }
+
+      const stripeMode = secretKey.startsWith('sk_test_') ? 'TEST MODE' : 
+                         secretKey.startsWith('sk_live_') ? 'LIVE/PRODUCTION MODE' : 'UNKNOWN';
+      console.log('==========================================');
+      console.log(`🔑 STRIPE INITIALIZED: ${stripeMode}`);
+      console.log(`🔑 Key prefix: ${secretKey.substring(0, 12)}...`);
+      console.log('==========================================');
+
+      stripeClient = new Stripe(secretKey, {
+        apiVersion: "2025-09-30.clover",
+      });
+
+      stripeInitialized = true;
+      return stripeClient;
+    } catch (error) {
+      console.error('Failed to initialize Stripe:', error);
+      stripeInitialized = true;
+      return null;
+    }
+  })();
+
+  return stripeInitPromise;
+}
+
+export async function getStripeClient(): Promise<Stripe | null> {
+  return initStripe();
+}
+
+export { stripeClient as stripe };
+
+async function ensureStripeConfigured(): Promise<Stripe> {
+  const client = await initStripe();
+  if (!client) {
+    throw new Error('Stripe is not configured. Please configure STRIPE_SECRET_KEY in credentials.');
+  }
+  return client;
 }
 
 // =====================================================
@@ -46,7 +73,7 @@ function ensureStripeConfigured(): Stripe {
  * List all prices from Stripe (for syncing with database)
  */
 export async function listAllStripePrices() {
-  const stripeClient = ensureStripeConfigured();
+  const stripeClient = await ensureStripeConfigured();
   const prices = await stripeClient.prices.list({
     limit: 100,
     expand: ['data.product'],
@@ -74,7 +101,8 @@ export async function listAllStripePrices() {
  */
 export async function validateStripePrice(priceId: string): Promise<boolean> {
   try {
-    await ensureStripeConfigured().prices.retrieve(priceId);
+    const stripeClient = await ensureStripeConfigured();
+    await stripeClient.prices.retrieve(priceId);
     return true;
   } catch (error) {
     return false;
@@ -104,7 +132,8 @@ export async function syncProductsFromStripe() {
     let startingAfter: string | undefined = undefined;
 
     while (hasMore) {
-      const productsPage: Stripe.ApiList<Stripe.Product> = await ensureStripeConfigured().products.list({
+      const client = await ensureStripeConfigured();
+      const productsPage: Stripe.ApiList<Stripe.Product> = await client.products.list({
         active: true,
         limit: 100,
         starting_after: startingAfter,
@@ -131,7 +160,8 @@ export async function syncProductsFromStripe() {
         let pricesStartingAfter: string | undefined = undefined;
 
         while (pricesHasMore) {
-          const pricesPage: Stripe.ApiList<Stripe.Price> = await ensureStripeConfigured().prices.list({
+          const pricesClient = await ensureStripeConfigured();
+          const pricesPage: Stripe.ApiList<Stripe.Price> = await pricesClient.prices.list({
             product: product.id,
             active: true,
             limit: 100,
@@ -330,7 +360,8 @@ export async function createStripeCustomer(company: {
     hasAddress: !!customerData.address,
   });
 
-  const customer = await ensureStripeConfigured().customers.create(customerData);
+  const stripeClient = await ensureStripeConfigured();
+  const customer = await stripeClient.customers.create(customerData);
   
   console.log('[STRIPE] Customer created successfully:', customer.id);
   
@@ -354,7 +385,8 @@ export async function updateStripeCustomer(customerId: string, data: {
   }
   
   console.log('[STRIPE] Updating customer:', customerId, updateData);
-  const updated = await ensureStripeConfigured().customers.update(customerId, updateData);
+  const stripeClient = await ensureStripeConfigured();
+  const updated = await stripeClient.customers.update(customerId, updateData);
   console.log('[STRIPE] Customer updated successfully');
   return updated;
 }
@@ -362,7 +394,8 @@ export async function updateStripeCustomer(customerId: string, data: {
 export async function deleteStripeCustomer(customerId: string) {
   try {
     console.log('[STRIPE] Deleting customer:', customerId);
-    const deleted = await ensureStripeConfigured().customers.del(customerId);
+    const stripeClient = await ensureStripeConfigured();
+    const deleted = await stripeClient.customers.del(customerId);
     console.log('[STRIPE] Customer deleted successfully:', deleted.id);
     return deleted;
   } catch (error: any) {
@@ -443,7 +476,8 @@ export async function createSubscriptionCheckout(
     };
   }
 
-  const session = await ensureStripeConfigured().checkout.sessions.create(sessionParams);
+  const stripeClient = await ensureStripeConfigured();
+  const session = await stripeClient.checkout.sessions.create(sessionParams);
   return session;
 }
 
@@ -494,7 +528,8 @@ export async function createStripeSubscription(
     subscriptionData.trial_period_days = trialDays;
   }
 
-  const subscription = await ensureStripeConfigured().subscriptions.create(subscriptionData);
+  const stripeClient = await ensureStripeConfigured();
+  const subscription = await stripeClient.subscriptions.create(subscriptionData);
   
   console.log('[STRIPE] Subscription created:', subscription.id);
   console.log('[STRIPE] Status:', subscription.status);
@@ -503,8 +538,10 @@ export async function createStripeSubscription(
 }
 
 export async function cancelStripeSubscription(stripeSubscriptionId: string, cancelAtPeriodEnd: boolean = false) {
+  const stripeClient = await ensureStripeConfigured();
+  
   // First, retrieve the subscription with schedule to check if there's an active schedule
-  const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
+  const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId, {
     expand: ['schedule'],
   });
   
@@ -516,17 +553,17 @@ export async function cancelStripeSubscription(stripeSubscriptionId: string, can
       : subscription.schedule.id;
     
     // Release the schedule (which returns control to the subscription)
-    await ensureStripeConfigured().subscriptionSchedules.release(scheduleId);
+    await stripeClient.subscriptionSchedules.release(scheduleId);
     console.log('[STRIPE] Schedule released:', scheduleId);
   }
   
   // Now cancel the subscription
   if (cancelAtPeriodEnd) {
-    return await ensureStripeConfigured().subscriptions.update(stripeSubscriptionId, {
+    return await stripeClient.subscriptions.update(stripeSubscriptionId, {
       cancel_at_period_end: true,
     });
   } else {
-    return await ensureStripeConfigured().subscriptions.cancel(stripeSubscriptionId);
+    return await stripeClient.subscriptions.cancel(stripeSubscriptionId);
   }
 }
 
@@ -535,7 +572,8 @@ export async function cancelStripeSubscription(stripeSubscriptionId: string, can
 // =====================================================
 
 export async function syncInvoiceFromStripe(stripeInvoiceId: string) {
-  const stripeInvoice = await ensureStripeConfigured().invoices.retrieve(stripeInvoiceId, {
+  const stripeClient = await ensureStripeConfigured();
+  const stripeInvoice = await stripeClient.invoices.retrieve(stripeInvoiceId, {
     expand: ['lines', 'subscription']
   }) as any;
   
@@ -689,9 +727,9 @@ export async function recordPayment(
 // WEBHOOK VERIFICATION
 // =====================================================
 
-export function verifyWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event {
-  const stripeClient = ensureStripeConfigured();
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+export async function verifyWebhookSignature(payload: string | Buffer, signature: string): Promise<Stripe.Event> {
+  const stripeClient = await ensureStripeConfigured();
+  const { webhookSecret } = await credentialProvider.getStripe();
   
   if (!webhookSecret) {
     throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
@@ -879,7 +917,8 @@ function mapStripeSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): 
 // =====================================================
 
 export async function createCustomerPortalSession(customerId: string, returnUrl: string) {
-  const session = await ensureStripeConfigured().billingPortal.sessions.create({
+  const stripeClient = await ensureStripeConfigured();
+  const session = await stripeClient.billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
   });
@@ -891,7 +930,8 @@ export async function createCustomerPortalSession(customerId: string, returnUrl:
 // =====================================================
 
 export async function getInvoicesForCustomer(customerId: string, limit: number = 10) {
-  const invoices = await ensureStripeConfigured().invoices.list({
+  const stripeClient = await ensureStripeConfigured();
+  const invoices = await stripeClient.invoices.list({
     customer: customerId,
     limit,
   });
@@ -899,7 +939,8 @@ export async function getInvoicesForCustomer(customerId: string, limit: number =
 }
 
 export async function getSubscriptionDetails(stripeSubscriptionId: string) {
-  const subscription = await ensureStripeConfigured().subscriptions.retrieve(stripeSubscriptionId, {
+  const stripeClient = await ensureStripeConfigured();
+  const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId, {
     expand: ['default_payment_method', 'latest_invoice']
   });
   return subscription;
@@ -928,7 +969,9 @@ export async function syncPlanWithStripe(plan: {
   stripeSetupFeePriceId?: string | null;
 }) {
   try {
-    const currentKey = process.env.STRIPE_SECRET_KEY || '';
+    const stripeClient = await ensureStripeConfigured();
+    const { secretKey } = await credentialProvider.getStripe();
+    const currentKey = secretKey || '';
     const keyMode = currentKey.startsWith('sk_test_') ? '🟢 TEST' : 
                     currentKey.startsWith('sk_live_') ? '🔴 LIVE' : '❓ UNKNOWN';
     console.log('='.repeat(70));
@@ -950,10 +993,10 @@ export async function syncPlanWithStripe(plan: {
       console.log('[STRIPE SYNC] Updating existing product:', plan.stripeProductId);
       try {
         // Verify product exists before updating
-        product = await ensureStripeConfigured().products.retrieve(plan.stripeProductId);
+        product = await stripeClient.products.retrieve(plan.stripeProductId);
         
         // Update existing product
-        product = await ensureStripeConfigured().products.update(plan.stripeProductId, {
+        product = await stripeClient.products.update(plan.stripeProductId, {
           name: plan.name,
           description: plan.description || undefined,
           active: true,
@@ -966,7 +1009,7 @@ export async function syncPlanWithStripe(plan: {
         if (error.code === 'resource_missing') {
           console.log('[STRIPE SYNC] Product not found in Stripe, creating new one');
           // Product doesn't exist, create new one
-          product = await ensureStripeConfigured().products.create({
+          product = await stripeClient.products.create({
             name: plan.name,
             description: plan.description || undefined,
             metadata: {
@@ -981,7 +1024,7 @@ export async function syncPlanWithStripe(plan: {
     } else {
       console.log('[STRIPE SYNC] Creating new product for:', plan.name);
       // Create new product
-      product = await ensureStripeConfigured().products.create({
+      product = await stripeClient.products.create({
         name: plan.name,
         description: plan.description || undefined,
         metadata: {
@@ -999,14 +1042,14 @@ export async function syncPlanWithStripe(plan: {
       try {
         // Note: Stripe prices are immutable, so we need to create a new one if amount changed
         // First, get the existing price to check if it needs to be replaced
-        const existingPrice = await ensureStripeConfigured().prices.retrieve(plan.stripePriceId);
+        const existingPrice = await stripeClient.prices.retrieve(plan.stripePriceId);
         
         if (existingPrice.unit_amount !== plan.price) {
           console.log('[STRIPE SYNC] Price amount changed, creating new price');
           // Deactivate old price and create new one
-          await ensureStripeConfigured().prices.update(plan.stripePriceId, { active: false });
+          await stripeClient.prices.update(plan.stripePriceId, { active: false });
           
-          recurringPrice = await ensureStripeConfigured().prices.create({
+          recurringPrice = await stripeClient.prices.create({
             product: product.id,
             unit_amount: plan.price,
             currency: plan.currency,
@@ -1026,7 +1069,7 @@ export async function syncPlanWithStripe(plan: {
         if (error.code === 'resource_missing') {
           console.log('[STRIPE SYNC] Price not found in Stripe, creating new one');
           // Price doesn't exist, create new one
-          recurringPrice = await ensureStripeConfigured().prices.create({
+          recurringPrice = await stripeClient.prices.create({
             product: product.id,
             unit_amount: plan.price,
             currency: plan.currency,
@@ -1045,7 +1088,7 @@ export async function syncPlanWithStripe(plan: {
     } else {
       console.log('[STRIPE SYNC] Creating new recurring price');
       // Create new recurring price
-      recurringPrice = await ensureStripeConfigured().prices.create({
+      recurringPrice = await stripeClient.prices.create({
         product: product.id,
         unit_amount: plan.price,
         currency: plan.currency,
@@ -1067,14 +1110,14 @@ export async function syncPlanWithStripe(plan: {
         console.log('[STRIPE SYNC] Checking existing setup fee price:', plan.stripeSetupFeePriceId);
         try {
           // Check if amount changed
-          const existingSetupPrice = await ensureStripeConfigured().prices.retrieve(plan.stripeSetupFeePriceId);
+          const existingSetupPrice = await stripeClient.prices.retrieve(plan.stripeSetupFeePriceId);
           
           if (existingSetupPrice.unit_amount !== plan.setupFee) {
             console.log('[STRIPE SYNC] Setup fee changed, creating new price');
             // Deactivate old price and create new one
-            await ensureStripeConfigured().prices.update(plan.stripeSetupFeePriceId, { active: false });
+            await stripeClient.prices.update(plan.stripeSetupFeePriceId, { active: false });
             
-            setupFeePrice = await ensureStripeConfigured().prices.create({
+            setupFeePrice = await stripeClient.prices.create({
               product: product.id,
               unit_amount: plan.setupFee,
               currency: plan.currency,
@@ -1092,7 +1135,7 @@ export async function syncPlanWithStripe(plan: {
           if (error.code === 'resource_missing') {
             console.log('[STRIPE SYNC] Setup fee price not found, creating new one');
             // Price doesn't exist, create new one
-            setupFeePrice = await ensureStripeConfigured().prices.create({
+            setupFeePrice = await stripeClient.prices.create({
               product: product.id,
               unit_amount: plan.setupFee,
               currency: plan.currency,
@@ -1109,7 +1152,7 @@ export async function syncPlanWithStripe(plan: {
       } else {
         console.log('[STRIPE SYNC] Creating new setup fee price');
         // Create new setup fee price
-        setupFeePrice = await ensureStripeConfigured().prices.create({
+        setupFeePrice = await stripeClient.prices.create({
           product: product.id,
           unit_amount: plan.setupFee,
           currency: plan.currency,

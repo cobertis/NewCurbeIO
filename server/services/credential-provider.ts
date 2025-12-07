@@ -200,6 +200,13 @@ class CredentialProvider {
     return { host, port, user, password, fromEmail };
   }
 
+  async getGooglePlaces(): Promise<{
+    apiKey: string | null;
+  }> {
+    const apiKey = await this.get("google_places", "api_key");
+    return { apiKey };
+  }
+
   clearCache(credentialKey?: string): void {
     if (credentialKey) {
       this.cache.delete(credentialKey);
