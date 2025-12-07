@@ -539,7 +539,7 @@ export default function UserDetail() {
                       <FormControl>
                         <Input
                           type="tel"
-                          placeholder="+1 (415) 555-2671"
+                          placeholder="(415) 555-2671"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) => {

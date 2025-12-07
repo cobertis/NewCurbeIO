@@ -154,7 +154,7 @@ export function AddContactDialog({
                   <FormLabel>Phone</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="+1 (305) 555-0100"
+                      placeholder="(305) 555-0100"
                       {...field}
                       data-testid="input-phone"
                       disabled

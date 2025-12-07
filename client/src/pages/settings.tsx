@@ -1507,7 +1507,7 @@ export default function Settings() {
                           id="phone"
                           name="phone"
                           type="tel"
-                          placeholder="+1 (415) 555-2671"
+                          placeholder="(415) 555-2671"
                           value={profileForm.phone || ""}
                           onChange={(e) => {
                             const formatted = formatPhoneInput(e.target.value);
@@ -3473,7 +3473,7 @@ function TeamMembersTable() {
                         {...field}
                         value={field.value || ""}
                         type="tel"
-                        placeholder="+1 (415) 555-2671"
+                        placeholder="(415) 555-2671"
                         data-testid="input-create-phone"
                         onChange={(e) => {
                           const formatted = formatPhoneInput(e.target.value);

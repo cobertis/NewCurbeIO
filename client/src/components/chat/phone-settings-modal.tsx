@@ -358,7 +358,7 @@ export function PhoneSettingsModal({ open, onOpenChange, phoneNumber }: PhoneSet
                           <Input
                             id="call-forward-number"
                             type="tel"
-                            placeholder="+1 (555) 123-4567"
+                            placeholder="(555) 123-4567"
                             value={callForwardNumber}
                             onChange={(e) => setCallForwardNumber(e.target.value)}
                             data-testid="input-call-forward-number"

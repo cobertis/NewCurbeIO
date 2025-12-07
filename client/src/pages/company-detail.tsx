@@ -939,7 +939,7 @@ export default function CompanyDetail() {
                 <FormItem>
                   <FormLabel className="text-xs">Phone Number</FormLabel>
                   <FormControl>
-                    <Input {...field} value={field.value || ""} type="tel" placeholder="+1 (415) 555-2671" className="h-9" onChange={(e) => { const formatted = formatPhoneInput(e.target.value); field.onChange(formatted); }} data-testid="input-create-phone" />
+                    <Input {...field} value={field.value || ""} type="tel" placeholder="(415) 555-2671" className="h-9" onChange={(e) => { const formatted = formatPhoneInput(e.target.value); field.onChange(formatted); }} data-testid="input-create-phone" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

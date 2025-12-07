@@ -1182,7 +1182,7 @@ export default function Contacts() {
                     <FormControl>
                       <Input 
                         {...field} 
-                        placeholder="+1 (555) 123-4567" 
+                        placeholder="(555) 123-4567" 
                         data-testid="input-add-phone"
                         onChange={(e) => {
                           const formatted = formatPhoneInput(e.target.value);

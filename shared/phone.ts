@@ -240,64 +240,44 @@ export function isValidPhoneNumber(phone: string | null | undefined): boolean {
 
 /**
  * Format phone input for real-time user typing
- * Formats as user types in input field: "+1 (XXX) XXX-XXXX"
+ * Formats as user types in input field: "(XXX) XXX-XXXX"
+ * The +1 country code is assumed (US) and NOT displayed
  * For display only during typing - NEVER throws exceptions
- * Returns original input unchanged for non-US country codes
+ * Stores internally with +1 but displays without it
  * Validation happens at submit time (formatForStorage), not during typing
  * 
  * @param value - Current input value
- * @returns Formatted phone string for display in input field
+ * @returns Formatted phone string for display in input field (without +1)
  * 
  * @example
- * formatPhoneInput("3") // "+1 (3"
- * formatPhoneInput("305") // "+1 (305"
- * formatPhoneInput("3054883848") // "+1 (305) 488-3848"
- * formatPhoneInput("+44123") // "+44123" (returns unchanged, validation happens at submit)
+ * formatPhoneInput("3") // "(3"
+ * formatPhoneInput("305") // "(305"
+ * formatPhoneInput("3054883848") // "(305) 488-3848"
+ * formatPhoneInput("+13054883848") // "(305) 488-3848"
  */
 export function formatPhoneInput(value: string): string {
   if (!value) return "";
   
-  // Remove all non-digits except leading +
-  let cleaned = value.replace(/[^\d+]/g, "");
+  // Remove all non-digits
+  let digits = value.replace(/\D/g, "");
   
-  // Check for non-US country codes
-  if (cleaned.startsWith("+") && !cleaned.startsWith("+1")) {
-    // Extract the country code (first 1-3 digits after +)
-    const countryCodeMatch = cleaned.match(/^\+(\d{1,3})/);
-    if (countryCodeMatch) {
-      const countryCode = countryCodeMatch[1];
-      // Only allow country code 1 (US/Canada)
-      if (countryCode !== "1" && countryCode.length >= 2) {
-        // Return original input unchanged for non-US country codes
-        // Don't throw - validation happens at submit time, not during typing
-        return value;
-      }
-    }
+  // Remove leading 1 (country code) if present
+  if (digits.startsWith("1") && digits.length > 10) {
+    digits = digits.substring(1);
   }
   
-  // Ensure it starts with +1
-  if (!cleaned.startsWith("+")) {
-    cleaned = "+1" + cleaned.replace(/^1/, "");
-  } else if (cleaned.startsWith("+") && !cleaned.startsWith("+1")) {
-    // Force +1 for any other country code attempts
-    cleaned = "+1" + cleaned.substring(1).replace(/^1/, "");
-  }
-  
-  // Extract digits after +1
-  const digits = cleaned.substring(2);
-  
-  // Limit to 10 digits max (US phone number)
+  // Limit to 10 digits max (US phone number without country code)
   const limitedDigits = digits.slice(0, 10);
   
-  // Format as: +1 (XXX) XXX-XXXX
+  // Format as: (XXX) XXX-XXXX (without +1)
   if (limitedDigits.length === 0) {
-    return "+1 ";
+    return "";
   } else if (limitedDigits.length <= 3) {
-    return `+1 (${limitedDigits}`;
+    return `(${limitedDigits}`;
   } else if (limitedDigits.length <= 6) {
-    return `+1 (${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3)}`;
+    return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3)}`;
   } else {
-    return `+1 (${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3, 6)}-${limitedDigits.slice(6, 10)}`;
+    return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3, 6)}-${limitedDigits.slice(6, 10)}`;
   }
 }
 

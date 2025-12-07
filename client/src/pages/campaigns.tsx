@@ -2216,7 +2216,7 @@ export default function Campaigns() {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1 (415) 555-1234" {...field} data-testid="input-contact-phone" />
+                      <Input placeholder="(415) 555-1234" {...field} data-testid="input-contact-phone" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

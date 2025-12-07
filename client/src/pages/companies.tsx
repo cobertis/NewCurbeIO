@@ -796,7 +796,7 @@ export default function Companies() {
                         <FormLabel>Phone</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="+1 (415) 555-2671" 
+                            placeholder="(415) 555-2671" 
                             {...field}
                             onChange={(e) => {
                               const formatted = formatPhoneInput(e.target.value);
@@ -973,7 +973,7 @@ export default function Companies() {
                         <FormLabel>Admin Phone (required for OTP)</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="+1 (415) 555-2671" 
+                            placeholder="(415) 555-2671" 
                             {...field} 
                             value={field.value ?? ""}
                             onChange={(e) => {

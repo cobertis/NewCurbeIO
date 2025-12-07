@@ -602,7 +602,7 @@ export default function Users() {
                           {...field} 
                           value={field.value || ""} 
                           type="tel" 
-                          placeholder="+1 (415) 555-2671" 
+                          placeholder="(415) 555-2671" 
                           data-testid="input-edit-phone"
                           onChange={(e) => {
                             const formatted = formatPhoneInput(e.target.value);
@@ -884,7 +884,7 @@ export default function Users() {
                           {...field} 
                           value={field.value || ""} 
                           type="tel" 
-                          placeholder="+1 (415) 555-2671" 
+                          placeholder="(415) 555-2671" 
                           data-testid="input-create-phone"
                           onChange={(e) => {
                             const formatted = formatPhoneInput(e.target.value);
@@ -1060,7 +1060,7 @@ export default function Users() {
                         {...field} 
                         value={field.value || ""} 
                         type="tel" 
-                        placeholder="+1 (415) 555-2671" 
+                        placeholder="(415) 555-2671" 
                         data-testid="input-edit-phone"
                         onChange={(e) => {
                           const formatted = formatPhoneInput(e.target.value);
