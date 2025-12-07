@@ -77,266 +77,265 @@ export function PublicPricingView({
     return plan.price * 10;
   };
 
-  const getSavingsPercentage = (plan: Plan): number => {
-    if (!plan.annualPrice && !plan.price) return 17;
-    const monthlyTotal = plan.price * 12;
-    const yearlyTotal = plan.annualPrice || (plan.price * 10);
-    const savings = ((monthlyTotal - yearlyTotal) / monthlyTotal) * 100;
-    return Math.round(savings);
+  const isEnterprisePlan = (planName: string, index: number, total: number): boolean => {
+    const nameLower = planName.toLowerCase();
+    return nameLower.includes('enterprise') || nameLower.includes('unlimited') || (total >= 3 && index === total - 1);
+  };
+
+  const getPlanDescription = (planName: string, description?: string): string => {
+    if (description) return description;
+    const nameLower = planName.toLowerCase();
+    if (nameLower.includes('starter') || nameLower.includes('shared') || nameLower.includes('individual')) {
+      return 'Good for individuals who are just starting out and simply want the essentials.';
+    }
+    if (nameLower.includes('team') || nameLower.includes('dedicated') || nameLower.includes('professional')) {
+      return 'Highly recommended for small teams who seek to upgrade their time & perform.';
+    }
+    if (nameLower.includes('enterprise') || nameLower.includes('unlimited')) {
+      return 'Robust scheduling for larger teams looking to have more control, privacy & security.';
+    }
+    return 'All the features you need to grow your business.';
+  };
+
+  const getPlanFeatureHeader = (planName: string, index: number): string => {
+    const nameLower = planName.toLowerCase();
+    if (nameLower.includes('starter') || nameLower.includes('shared') || nameLower.includes('individual') || index === 0) {
+      return 'Free, forever';
+    }
+    if (nameLower.includes('team') || nameLower.includes('dedicated') || nameLower.includes('professional') || index === 1) {
+      return 'Free plan features, plus:';
+    }
+    return 'Organization plan features, plus:';
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-16 px-4 sm:px-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8 mb-12">
-          <div className="lg:max-w-xl">
+    <div className="min-h-screen relative overflow-hidden py-16 px-4 sm:px-6">
+      {/* Grid background pattern */}
+      <div 
+        className="absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #e0e7ff 1px, transparent 1px),
+            linear-gradient(to bottom, #e0e7ff 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-slate-50/80" />
+      
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-12">
+          <div className="lg:max-w-md">
             <h1 
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight"
+              className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight"
               data-testid="text-pricing-header"
             >
               Simple pricing based on your needs
             </h1>
           </div>
-          <div className="lg:max-w-md lg:text-right">
-            <p className="text-gray-600 dark:text-gray-400 text-lg" data-testid="text-pricing-subtitle">
+          <div className="lg:max-w-sm lg:text-right">
+            <p className="text-slate-600 text-base" data-testid="text-pricing-subtitle">
               Discover a variety of our advanced features. Unlimited and free for individuals.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-4 mb-12">
+        {/* Billing Toggle */}
+        <div className="flex items-center justify-center gap-3 mb-12">
           <button
             onClick={() => setBillingCycle('monthly')}
-            className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               billingCycle === 'monthly'
-                ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-lg'
-                : 'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
             }`}
             data-testid="button-billing-monthly"
           >
             Monthly
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                billingCycle === 'yearly'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-lg'
-                  : 'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
-              }`}
-              data-testid="button-billing-yearly"
-            >
-              Yearly
-            </button>
-            <Badge 
-              className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-0 px-2.5 py-1 text-xs font-medium"
-              data-testid="badge-save-percentage"
-            >
-              Save 20%
-            </Badge>
-          </div>
+          <button
+            onClick={() => setBillingCycle('yearly')}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+              billingCycle === 'yearly'
+                ? 'bg-slate-900 text-white'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+            }`}
+            data-testid="button-billing-yearly"
+          >
+            Yearly
+          </button>
+          <span 
+            className="bg-teal-100 text-teal-700 px-2.5 py-1 rounded text-xs font-medium"
+            data-testid="badge-save-percentage"
+          >
+            Save 20%
+          </span>
         </div>
 
-        {billingCycle === 'yearly' && (
-          <div className="text-center mb-8">
-            <span className="text-emerald-600 dark:text-emerald-400 text-sm font-medium" data-testid="text-yearly-savings">
-              🎉 2 months free with yearly billing
-            </span>
-          </div>
-        )}
-
+        {/* Plans Grid */}
         {isLoading ? (
-          <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
+          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse bg-white dark:bg-gray-800">
-                <CardHeader className="h-48 bg-gray-100 dark:bg-gray-700 rounded-t-lg" />
-                <CardContent className="h-64 bg-gray-50 dark:bg-gray-750" />
-              </Card>
+              <div key={i} className="animate-pulse bg-white rounded-2xl h-[500px] shadow-sm" />
             ))}
           </div>
         ) : sortedPlans.length === 0 ? (
-          <Card className="max-w-md mx-auto">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground" data-testid="text-no-plans">No plans available</p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-2xl p-12 max-w-md mx-auto text-center shadow-sm">
+            <p className="text-slate-500" data-testid="text-no-plans">No plans available</p>
+          </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto items-start">
+          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto items-start">
             {sortedPlans.map((plan, index) => {
               const popular = isPopularPlan(plan.name, index, sortedPlans.length);
+              const enterprise = isEnterprisePlan(plan.name, index, sortedPlans.length);
               const displayFeatures = (plan.displayFeatures as string[]) || [];
               const displayPrice = getDisplayPrice(plan);
               const yearlyTotal = getYearlyTotal(plan);
-              
-              const getPlanDescription = (planName: string, description?: string): string => {
-                if (description) return description;
-                const nameLower = planName.toLowerCase();
-                if (nameLower.includes('starter') || nameLower.includes('shared') || nameLower.includes('individual')) {
-                  return 'Good for individuals who are just starting out and simply want the essentials.';
-                }
-                if (nameLower.includes('team') || nameLower.includes('dedicated') || nameLower.includes('professional')) {
-                  return 'Highly recommended for small teams who seek to upgrade their time & perform.';
-                }
-                if (nameLower.includes('enterprise') || nameLower.includes('unlimited')) {
-                  return 'Robust scheduling for larger teams looking to have more control, privacy & security.';
-                }
-                return 'All the features you need to grow your business.';
-              };
-
-              const getPlanFeatureHeader = (planName: string, index: number): string => {
-                const nameLower = planName.toLowerCase();
-                if (nameLower.includes('starter') || nameLower.includes('shared') || nameLower.includes('individual') || index === 0) {
-                  return 'Free, forever';
-                }
-                if (nameLower.includes('team') || nameLower.includes('dedicated') || nameLower.includes('professional') || index === 1) {
-                  return 'Free plan features, plus:';
-                }
-                return 'Organization plan features, plus:';
-              };
 
               return (
                 <div 
                   key={plan.id} 
-                  className={`relative ${popular ? 'md:-mt-4 md:mb-4' : ''}`}
+                  className="relative"
                   data-testid={`card-public-plan-${index}`}
                 >
+                  {/* Trial Badge */}
                   {popular && plan.trialDays > 0 && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                      <Badge 
-                        className="bg-blue-600 hover:bg-blue-600 text-white px-4 py-1.5 text-xs font-medium shadow-md"
+                      <span 
+                        className="bg-slate-800 text-white px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap"
                         data-testid={`badge-trial-${index}`}
                       >
                         {plan.trialDays} days free trial
-                      </Badge>
+                      </span>
                     </div>
                   )}
                   
-                  <Card className={`h-full bg-white dark:bg-gray-800 transition-all duration-300 ${
+                  {/* Card */}
+                  <div className={`bg-white rounded-2xl p-6 h-full transition-shadow duration-200 ${
                     popular 
-                      ? 'border-blue-200 dark:border-blue-800 shadow-xl ring-1 ring-blue-100 dark:ring-blue-900' 
-                      : 'border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg'
+                      ? 'shadow-lg ring-1 ring-slate-200' 
+                      : 'shadow-sm hover:shadow-md'
                   }`}>
-                    <CardHeader className="pb-4 pt-8">
-                      <CardTitle 
-                        className="text-xl font-semibold text-gray-900 dark:text-white"
-                        data-testid={`text-plan-name-${index}`}
+                    {/* Plan Name */}
+                    <h3 
+                      className="text-lg font-semibold text-slate-900 mb-4"
+                      data-testid={`text-plan-name-${index}`}
+                    >
+                      {plan.name}
+                    </h3>
+                    
+                    {/* Price */}
+                    <div className="mb-4">
+                      <p className="text-xs text-slate-500 mb-1">Starts at</p>
+                      <div className="flex items-baseline gap-1.5">
+                        <span 
+                          className="text-3xl font-bold text-slate-900"
+                          data-testid={`text-plan-price-${index}`}
+                        >
+                          {enterprise && billingCycle === 'yearly' 
+                            ? `$${Math.round(yearlyTotal / 100 / 1000)}k`
+                            : formatPrice(displayPrice, plan.currency)
+                          }
+                        </span>
+                        <span className="text-slate-500 text-sm">
+                          {enterprise && billingCycle === 'yearly' ? 'per year' : 'per month/user'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Description */}
+                    <p 
+                      className="text-sm text-slate-600 mb-6 leading-relaxed"
+                      data-testid={`text-plan-description-${index}`}
+                    >
+                      {getPlanDescription(plan.name, plan.description || undefined)}
+                    </p>
+                    
+                    {/* CTA Button */}
+                    <button
+                      className={`w-full py-2.5 px-4 rounded-lg text-sm font-medium transition-colors duration-200 mb-6 ${
+                        popular 
+                          ? 'bg-teal-500 hover:bg-teal-600 text-white' 
+                          : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                      onClick={() => !enterprise && onSelectPlan?.(plan.id, billingCycle)}
+                      disabled={isSelecting}
+                      data-testid={`button-select-plan-${index}`}
+                    >
+                      {isSelecting ? 'Selecting...' : enterprise ? 'Contact us' : 'Get started'}
+                    </button>
+                    
+                    {/* Features */}
+                    <div className="border-t border-slate-100 pt-5">
+                      <p 
+                        className="text-xs font-semibold text-slate-900 mb-3"
+                        data-testid={`text-feature-header-${index}`}
                       >
-                        {plan.name}
-                      </CardTitle>
+                        {getPlanFeatureHeader(plan.name, index)}
+                      </p>
                       
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Starts at</p>
-                        <div className="flex items-baseline gap-2">
-                          <span 
-                            className="text-4xl font-bold text-gray-900 dark:text-white"
-                            data-testid={`text-plan-price-${index}`}
-                          >
-                            {formatPrice(displayPrice, plan.currency)}
-                          </span>
-                          <span className="text-gray-500 dark:text-gray-400 text-sm">
-                            per {billingCycle === 'yearly' ? 'month' : 'month'}/user
-                          </span>
-                        </div>
-                        {billingCycle === 'yearly' && plan.price > 0 && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {formatPrice(yearlyTotal, plan.currency)}/year billed annually
-                          </p>
+                      <div className="space-y-2.5">
+                        {sortedFeatures.filter(f => f.isActive).length > 0 ? (
+                          sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
+                            const included = displayFeatures.includes(feature.id);
+                            if (!included) return null;
+                            return (
+                              <div
+                                key={feature.id}
+                                className="flex items-start gap-2.5"
+                                data-testid={`feature-${index}-${idx}`}
+                              >
+                                <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-slate-600">
+                                  {feature.name}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <>
+                            <div className="flex items-start gap-2.5">
+                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-slate-600">
+                                {index === 0 ? '1 user' : index === 1 ? '1 team' : '1 parent team and unlimited sub-teams'}
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-slate-600">
+                                {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Schedule meetings as a team' : 'Organization workflows'}
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-slate-600">
+                                {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin, Fixed Round-Robin' : 'Insights - analyze your booking data'}
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-slate-600">
+                                {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'Active directory sync'}
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-slate-600">
+                                {index === 0 ? 'Integrate with your favorite apps' : index === 1 ? 'Advanced Routing Forms' : '24/7 Email, Chat and Phone support'}
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                              <Check className="h-4 w-4 text-slate-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-sm text-slate-600">
+                                {index === 0 ? 'Accept payments via Stripe' : index === 1 ? 'Team Workflows' : 'Sync your HRIS tools'}
+                              </span>
+                            </div>
+                          </>
                         )}
                       </div>
-                      
-                      <p 
-                        className="text-sm text-gray-600 dark:text-gray-400 mt-4 leading-relaxed"
-                        data-testid={`text-plan-description-${index}`}
-                      >
-                        {getPlanDescription(plan.name, plan.description || undefined)}
-                      </p>
-                    </CardHeader>
-                    
-                    <CardContent className="pt-0 pb-6">
-                      <Button
-                        className={`w-full mb-6 ${
-                          popular 
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' 
-                            : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600'
-                        }`}
-                        size="lg"
-                        onClick={() => onSelectPlan?.(plan.id, billingCycle)}
-                        disabled={isSelecting}
-                        data-testid={`button-select-plan-${index}`}
-                      >
-                        {isSelecting ? 'Selecting...' : plan.price === 0 ? 'Get started' : 'Get started'}
-                      </Button>
-                      
-                      <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
-                        <p 
-                          className="text-sm font-semibold text-gray-900 dark:text-white mb-4"
-                          data-testid={`text-feature-header-${index}`}
-                        >
-                          {getPlanFeatureHeader(plan.name, index)}
-                        </p>
-                        
-                        <div className="space-y-3">
-                          {sortedFeatures.filter(f => f.isActive).length > 0 ? (
-                            sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
-                              const included = displayFeatures.includes(feature.id);
-                              if (!included) return null;
-                              return (
-                                <div
-                                  key={feature.id}
-                                  className="flex items-start gap-3"
-                                  data-testid={`feature-${index}-${idx}`}
-                                >
-                                  <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-                                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                                    {feature.name}
-                                  </span>
-                                </div>
-                              );
-                            })
-                          ) : (
-                            <>
-                              <div className="flex items-start gap-3">
-                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  {index === 0 ? '1 user' : index === 1 ? '1 team' : '1 parent team and unlimited sub-teams'}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Schedule meetings as a team' : 'Organization workflows'}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin, Fixed Round-Robin' : 'Insights - analyze your booking data'}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'Active directory sync'}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  {index === 0 ? 'Integrate with your favorite apps' : index === 1 ? 'Advanced Routing Forms' : '24/7 Email, Chat and Phone support'}
-                                </span>
-                              </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                  {index === 0 ? 'Accept payments via Stripe' : index === 1 ? 'Team Workflows' : 'Sync your HRIS tools'}
-                                </span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -345,14 +344,14 @@ export function PublicPricingView({
 
         {showTrialInfo && (
           <div className="text-center mt-12 space-y-2">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-slate-500">
               All plans include a free trial. No credit card required.
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-slate-500">
               Need help choosing?{' '}
               <a 
                 href="mailto:hello@curbe.io" 
-                className="text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-slate-700 hover:underline font-medium"
                 data-testid="link-contact-sales"
               >
                 Contact our sales team
