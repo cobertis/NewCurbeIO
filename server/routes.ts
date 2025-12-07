@@ -23734,7 +23734,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: "sent",
         timestamp: new Date(),
       }).returning();
-      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId);
+      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
       res.json({ success: true, message });
     } catch (error: any) {
@@ -23822,7 +23822,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: "sent",
         timestamp: new Date(),
       }).returning();
-      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId);
+      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
       res.json({ success: true, message });
     } catch (error: any) {
@@ -23898,7 +23898,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         timestamp: new Date(),
       }).returning();
       
-      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId);
+      broadcastWhatsAppMessage(user.companyId, remoteJid, message.messageId, true);
       broadcastWhatsAppChatUpdate(user.companyId);
       res.json({ success: true, message });
     } catch (error: any) {
@@ -24418,7 +24418,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             timestamp,
           });
           console.log(`[WhatsApp Webhook] Message saved: ${messageId} from ${remoteJid} (type: ${messageType})`);
-          broadcastWhatsAppMessage(company.id, remoteJid, messageId);
+          broadcastWhatsAppMessage(company.id, remoteJid, messageId, fromMe);
           broadcastWhatsAppChatUpdate(company.id);
         }
 

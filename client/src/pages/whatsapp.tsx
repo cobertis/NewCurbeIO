@@ -921,6 +921,15 @@ export default function WhatsAppPage() {
               if (scrollViewportRef.current) {
                 scrollViewportRef.current.scrollTop = scrollViewportRef.current.scrollHeight;
               }
+              // Auto mark-read when message arrives in currently open chat
+              if (!data.data?.fromMe) {
+                fetch('/api/whatsapp/mark-read', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ remoteJid: currentChat }),
+                  credentials: 'include'
+                }).catch(() => {});
+              }
             }
             queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/chats'] });
           }

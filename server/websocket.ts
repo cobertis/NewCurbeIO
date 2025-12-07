@@ -836,6 +836,7 @@ export function broadcastImessageReadReceipt(companyId: string, conversationId: 
 
 export type WhatsAppEventType = 
   | 'whatsapp:message'
+  | 'whatsapp:message_status'
   | 'whatsapp:chat_update'
   | 'whatsapp:connection'
   | 'whatsapp:qr_code';
@@ -849,6 +850,7 @@ export interface WhatsAppEvent {
     status?: string;
     qrCode?: string;
     connected?: boolean;
+    fromMe?: boolean;
   };
 }
 
@@ -877,11 +879,11 @@ export function broadcastWhatsAppEvent(companyId: string, event: WhatsAppEvent) 
   console.log(`[WebSocket] Broadcast ${event.type} to ${sentCount} client(s) for company ${companyId}`);
 }
 
-export function broadcastWhatsAppMessage(companyId: string, remoteJid: string, messageId?: string) {
+export function broadcastWhatsAppMessage(companyId: string, remoteJid: string, messageId?: string, fromMe?: boolean) {
   broadcastWhatsAppEvent(companyId, {
     type: 'whatsapp:message',
     companyId,
-    data: { remoteJid, messageId }
+    data: { remoteJid, messageId, fromMe }
   });
 }
 
