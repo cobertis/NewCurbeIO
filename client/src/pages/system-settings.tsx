@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity, ExternalLink, HelpCircle, Settings2, Check, Save, Globe } from "lucide-react";
+import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity, ExternalLink, HelpCircle, Settings2, Check, Save, Globe, Lock, Unlock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import type { 
   SystemApiCredential, 
@@ -115,6 +115,11 @@ export default function SystemSettings() {
   const [selectedProviderForEdit, setSelectedProviderForEdit] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoadingEditValues, setIsLoadingEditValues] = useState(false);
+  
+  const [unlockExpiry, setUnlockExpiry] = useState<number | null>(null);
+  const [unlockTimeRemaining, setUnlockTimeRemaining] = useState(0);
+  const [cachedPassword, setCachedPassword] = useState<string | null>(null);
+  const isUnlocked = unlockExpiry !== null && Date.now() < unlockExpiry;
 
   const { data: sessionData, isLoading: isLoadingSession } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -451,6 +456,51 @@ export default function SystemSettings() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!unlockExpiry) {
+      setUnlockTimeRemaining(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((unlockExpiry - now) / 1000));
+      setUnlockTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        setUnlockExpiry(null);
+        setCachedPassword(null);
+        toast({
+          title: "Session Locked",
+          description: "Your credential viewing session has expired. Enter your password to unlock again.",
+        });
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [unlockExpiry, toast]);
+
+  const handleUnlock = (password: string) => {
+    const UNLOCK_DURATION = 5 * 60 * 1000;
+    setUnlockExpiry(Date.now() + UNLOCK_DURATION);
+    setCachedPassword(password);
+    setUnlockTimeRemaining(Math.ceil(UNLOCK_DURATION / 1000));
+    toast({
+      title: "Session Unlocked",
+      description: "You can now view and edit credentials for 5 minutes without re-entering your password.",
+    });
+  };
+
+  const handleLock = () => {
+    setUnlockExpiry(null);
+    setCachedPassword(null);
+    setRevealedValues({});
+    toast({
+      title: "Session Locked",
+      description: "Credential viewing session has been locked.",
+    });
+  };
+
   const handleAddSubmit = (data: CredentialFormData) => {
     createMutation.mutate(data);
   };
@@ -582,7 +632,38 @@ export default function SystemSettings() {
 
   const handleRevealSubmit = (data: RevealPasswordData) => {
     if (selectedCredential) {
+      if (!isUnlocked) {
+        handleUnlock(data.password);
+      }
       revealMutation.mutate({ id: selectedCredential.id, password: data.password });
+    }
+  };
+
+  const revealWithCachedPassword = async (credential: SystemApiCredential) => {
+    if (!cachedPassword) return;
+    
+    try {
+      const response = await apiRequest("POST", `/api/system/credentials/${credential.id}/reveal`, { 
+        password: cachedPassword 
+      }) as RevealResponse;
+      
+      const expiresAt = Date.now() + 30000;
+      setRevealedValues(prev => ({
+        ...prev,
+        [credential.id]: { value: response.value, expiresAt },
+      }));
+      queryClient.invalidateQueries({ queryKey: ["/api/system/credentials/audit"] });
+    } catch (error: any) {
+      setUnlockExpiry(null);
+      setCachedPassword(null);
+      toast({
+        title: "Session Expired",
+        description: "Your password session has expired. Please enter your password again.",
+        variant: "destructive",
+      });
+      setSelectedCredential(credential);
+      revealForm.reset();
+      setRevealDialogOpen(true);
     }
   };
 
@@ -600,9 +681,13 @@ export default function SystemSettings() {
   };
 
   const handleRevealClick = (credential: SystemApiCredential) => {
-    setSelectedCredential(credential);
-    revealForm.reset();
-    setRevealDialogOpen(true);
+    if (isUnlocked && cachedPassword) {
+      revealWithCachedPassword(credential);
+    } else {
+      setSelectedCredential(credential);
+      revealForm.reset();
+      setRevealDialogOpen(true);
+    }
   };
 
   const handleDeleteClick = (credential: SystemApiCredential) => {
@@ -616,27 +701,21 @@ export default function SystemSettings() {
     }
   };
 
-  const handleEditProviderClick = (provider: string, environment: string) => {
+  const loadProviderCredentials = async (provider: string, environment: string, password: string) => {
     setSelectedProviderForEdit(provider);
     setBulkFormProvider(provider);
     setBulkFormEnvironment(environment as "production" | "development" | "staging");
     setBulkFormValues({});
     setShowFieldValues({});
     setIsEditMode(true);
-    revealForm.reset();
-    setEditProviderPasswordDialogOpen(true);
-  };
-
-  const handleEditProviderPasswordSubmit = async (data: RevealPasswordData) => {
-    if (!selectedProviderForEdit) return;
-    
     setIsLoadingEditValues(true);
-    const providerCredentials = groupedCredentials[selectedProviderForEdit] || [];
+    
+    const providerCredentials = groupedCredentials[provider] || [];
     
     try {
       const revealPromises = providerCredentials.map(async (credential) => {
         const response = await apiRequest("POST", `/api/system/credentials/${credential.id}/reveal`, { 
-          password: data.password 
+          password 
         }) as RevealResponse;
         return { keyName: credential.keyName, value: response.value };
       });
@@ -648,8 +727,6 @@ export default function SystemSettings() {
       });
       
       setBulkFormValues(values);
-      setEditProviderPasswordDialogOpen(false);
-      revealForm.reset();
       setAddDialogOpen(true);
       
       toast({
@@ -672,6 +749,12 @@ export default function SystemSettings() {
       } catch {
         errorMessage = error?.message || "Failed to load credentials.";
       }
+      
+      if (errorMessage.toLowerCase().includes("invalid password") || errorMessage.toLowerCase().includes("incorrect")) {
+        setUnlockExpiry(null);
+        setCachedPassword(null);
+      }
+      
       toast({
         title: "Error",
         description: errorMessage,
@@ -680,6 +763,34 @@ export default function SystemSettings() {
     } finally {
       setIsLoadingEditValues(false);
     }
+  };
+
+  const handleEditProviderClick = (provider: string, environment: string) => {
+    if (isUnlocked && cachedPassword) {
+      loadProviderCredentials(provider, environment, cachedPassword);
+    } else {
+      setSelectedProviderForEdit(provider);
+      setBulkFormProvider(provider);
+      setBulkFormEnvironment(environment as "production" | "development" | "staging");
+      setBulkFormValues({});
+      setShowFieldValues({});
+      setIsEditMode(true);
+      revealForm.reset();
+      setEditProviderPasswordDialogOpen(true);
+    }
+  };
+
+  const handleEditProviderPasswordSubmit = async (data: RevealPasswordData) => {
+    if (!selectedProviderForEdit) return;
+    
+    if (!isUnlocked) {
+      handleUnlock(data.password);
+    }
+    
+    setEditProviderPasswordDialogOpen(false);
+    revealForm.reset();
+    
+    await loadProviderCredentials(selectedProviderForEdit, bulkFormEnvironment, data.password);
   };
 
   const getProviderConfig = (provider: string): ProviderConfig | undefined => {
@@ -832,6 +943,27 @@ export default function SystemSettings() {
               </Button>
             </CardHeader>
             <CardContent>
+              {isUnlocked && (
+                <div className="flex items-center justify-between p-3 mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg" data-testid="unlock-banner">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <Unlock className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Session unlocked - {Math.floor(unlockTimeRemaining / 60)}:{String(unlockTimeRemaining % 60).padStart(2, '0')} remaining
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLock}
+                    className="text-green-700 dark:text-green-400 hover:text-green-800 hover:bg-green-100 dark:hover:bg-green-900/40"
+                    data-testid="button-lock-session"
+                  >
+                    <Lock className="h-4 w-4 mr-1" />
+                    Lock Now
+                  </Button>
+                </div>
+              )}
+              
               {credentials.length === 0 ? (
                 <div className="text-center py-12">
                   <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
