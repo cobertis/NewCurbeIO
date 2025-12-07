@@ -1301,7 +1301,7 @@ export default function WhatsAppPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     {typingJid === chat.remoteJid ? (
-                      <p className="text-sm text-green-500 truncate animate-pulse">
+                      <p className="text-sm text-green-600 dark:text-green-400 truncate animate-pulse font-semibold">
                         typing...
                       </p>
                     ) : (
@@ -1347,7 +1347,7 @@ export default function WhatsAppPage() {
                 <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat, chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessPhone, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessName)}</p>
                 <p className="text-xs text-gray-500">
                   {typingJid === selectedChat ? (
-                    <span className="text-green-500 animate-pulse">typing...</span>
+                    <span className="text-green-600 dark:text-green-400 animate-pulse font-semibold">typing...</span>
                   ) : (
                     "Online"
                   )}
