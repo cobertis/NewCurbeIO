@@ -468,6 +468,18 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       console.error(`[Evolution API] Failed to send typing:`, error.message);
     }
   }
+
+  async sendPresenceStatus(instanceName: string, presence: "available" | "unavailable"): Promise<void> {
+    try {
+      console.log(`[Evolution API] Setting presence to ${presence} for ${instanceName}`);
+      await this.request("POST", `/chat/sendPresence/${instanceName}`, {
+        presence
+      });
+      console.log(`[Evolution API] Presence set to ${presence}`);
+    } catch (error: any) {
+      console.error(`[Evolution API] Failed to set presence:`, error.message);
+    }
+  }
 }
 
 export const evolutionApi = new EvolutionApiService();
