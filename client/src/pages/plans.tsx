@@ -135,7 +135,7 @@ export function PublicPricingView({
   
   return (
     <div 
-      className="min-h-screen relative overflow-hidden"
+      className="h-screen relative overflow-hidden flex flex-col"
       style={{ backgroundColor: pricingTheme.colors.background }}
     >
       {/* Blueprint grid background */}
@@ -146,8 +146,8 @@ export function PublicPricingView({
             linear-gradient(to right, ${pricingTheme.colors.gridLines} 1px, transparent 1px),
             linear-gradient(to bottom, ${pricingTheme.colors.gridLines} 1px, transparent 1px)
           `,
-          backgroundSize: '48px 48px',
-          opacity: 0.6,
+          backgroundSize: '40px 40px',
+          opacity: 0.5,
         }}
       />
       
@@ -159,35 +159,31 @@ export function PublicPricingView({
         }}
       />
       
-      <div className="relative z-10 py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header Section */}
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8 mb-16">
-            <div className="lg:max-w-lg">
-              <h1 
-                className="text-4xl lg:text-[40px] font-semibold leading-tight tracking-tight"
-                style={{ color: pricingTheme.colors.textPrimary }}
-                data-testid="text-pricing-header"
-              >
-                Simple pricing based<br />on your needs
-              </h1>
-            </div>
-            <div className="lg:max-w-sm lg:text-right lg:pt-2">
-              <p 
-                className="text-base leading-relaxed"
-                style={{ color: pricingTheme.colors.textSecondary }}
-                data-testid="text-pricing-subtitle"
-              >
-                Discover a variety of our advanced features. Unlimited and free for individuals.
-              </p>
-            </div>
+      <div className="relative z-10 flex-1 flex flex-col py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto w-full flex-1 flex flex-col">
+          {/* Header Section - Compact */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <h1 
+              className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight"
+              style={{ color: pricingTheme.colors.textPrimary }}
+              data-testid="text-pricing-header"
+            >
+              Simple pricing based on your needs
+            </h1>
+            <p 
+              className="text-sm leading-relaxed hidden sm:block"
+              style={{ color: pricingTheme.colors.textSecondary }}
+              data-testid="text-pricing-subtitle"
+            >
+              Unlimited and free for individuals.
+            </p>
           </div>
 
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-2 mb-16">
+          {/* Billing Toggle - Compact */}
+          <div className="flex items-center justify-center gap-2 mb-6">
             <button
               onClick={() => setBillingCycle('monthly')}
-              className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+              className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
               style={{
                 backgroundColor: billingCycle === 'monthly' ? pricingTheme.colors.textPrimary : '#FFFFFF',
                 color: billingCycle === 'monthly' ? '#FFFFFF' : pricingTheme.colors.textSecondary,
@@ -199,7 +195,7 @@ export function PublicPricingView({
             </button>
             <button
               onClick={() => setBillingCycle('yearly')}
-              className="px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200"
+              className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
               style={{
                 backgroundColor: billingCycle === 'yearly' ? pricingTheme.colors.textPrimary : '#FFFFFF',
                 color: billingCycle === 'yearly' ? '#FFFFFF' : pricingTheme.colors.textSecondary,
@@ -210,11 +206,10 @@ export function PublicPricingView({
               Yearly
             </button>
             <span 
-              className="ml-2 px-3 py-1.5 rounded text-xs font-semibold tracking-wide"
+              className="ml-1 px-2 py-1 rounded text-xs font-semibold"
               style={{
                 backgroundColor: '#D1FAE5',
                 color: '#059669',
-                letterSpacing: '0.04em',
               }}
               data-testid="badge-save-percentage"
             >
@@ -224,14 +219,14 @@ export function PublicPricingView({
 
           {/* Plans Grid */}
           {isLoading ? (
-            <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
+            <div className="flex-1 grid gap-4 md:grid-cols-3 max-w-5xl mx-auto">
               {[1, 2, 3].map((i) => (
                 <div 
                   key={i} 
-                  className="animate-pulse h-[520px]"
+                  className="animate-pulse"
                   style={{
                     backgroundColor: '#FFFFFF',
-                    borderRadius: '24px',
+                    borderRadius: '16px',
                     boxShadow: pricingTheme.colors.cardShadow,
                   }}
                 />
@@ -239,10 +234,10 @@ export function PublicPricingView({
             </div>
           ) : sortedPlans.length === 0 ? (
             <div 
-              className="p-12 max-w-md mx-auto text-center"
+              className="p-8 max-w-md mx-auto text-center"
               style={{
                 backgroundColor: '#FFFFFF',
-                borderRadius: '24px',
+                borderRadius: '16px',
                 boxShadow: pricingTheme.colors.cardShadow,
               }}
             >
@@ -251,7 +246,7 @@ export function PublicPricingView({
               </p>
             </div>
           ) : (
-            <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
+            <div className="flex-1 grid gap-4 md:grid-cols-3 max-w-5xl mx-auto items-stretch">
               {sortedPlans.map((plan, index) => {
                 const popular = isPopularPlan(plan.name, index, sortedPlans.length);
                 const enterprise = isEnterprisePlan(plan.name, index, sortedPlans.length);
@@ -267,9 +262,9 @@ export function PublicPricingView({
                   >
                     {/* Trial Badge */}
                     {popular && plan.trialDays > 0 && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                         <span 
-                          className="px-5 py-2 rounded-full text-xs font-medium whitespace-nowrap"
+                          className="px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap"
                           style={{
                             backgroundColor: '#1E293B',
                             color: '#FFFFFF',
@@ -283,17 +278,17 @@ export function PublicPricingView({
                     
                     {/* Card */}
                     <div 
-                      className="flex-1 flex flex-col p-8"
+                      className="flex-1 flex flex-col p-5"
                       style={{
                         backgroundColor: '#FFFFFF',
-                        borderRadius: '24px',
+                        borderRadius: '16px',
                         border: `1px solid ${pricingTheme.colors.cardBorder}`,
                         boxShadow: popular ? pricingTheme.colors.cardShadow : '0 4px 20px -8px rgba(15, 45, 92, 0.15)',
                       }}
                     >
                       {/* Plan Name */}
                       <h3 
-                        className="text-lg font-semibold mb-6"
+                        className="text-base font-semibold mb-3"
                         style={{ color: pricingTheme.colors.textPrimary }}
                         data-testid={`text-plan-name-${index}`}
                       >
@@ -301,16 +296,10 @@ export function PublicPricingView({
                       </h3>
                       
                       {/* Price */}
-                      <div className="mb-5">
-                        <p 
-                          className="text-xs mb-1"
-                          style={{ color: pricingTheme.colors.textMuted }}
-                        >
-                          Starts at
-                        </p>
-                        <div className="flex items-baseline gap-2">
+                      <div className="mb-3">
+                        <div className="flex items-baseline gap-1">
                           <span 
-                            className="text-4xl font-bold"
+                            className="text-3xl font-bold"
                             style={{ color: pricingTheme.colors.textPrimary }}
                             data-testid={`text-plan-price-${index}`}
                           >
@@ -320,26 +309,17 @@ export function PublicPricingView({
                             }
                           </span>
                           <span 
-                            className="text-sm"
+                            className="text-xs"
                             style={{ color: pricingTheme.colors.textMuted }}
                           >
-                            {enterprise && billingCycle === 'yearly' ? 'per year' : 'per month/user'}
+                            {enterprise && billingCycle === 'yearly' ? '/year' : '/mo'}
                           </span>
                         </div>
                       </div>
                       
-                      {/* Description */}
-                      <p 
-                        className="text-sm leading-relaxed mb-8"
-                        style={{ color: pricingTheme.colors.textSecondary }}
-                        data-testid={`text-plan-description-${index}`}
-                      >
-                        {getPlanDescription(plan.name, plan.description || undefined)}
-                      </p>
-                      
                       {/* CTA Button */}
                       <button
-                        className="w-full py-3 px-5 rounded-xl text-sm font-medium transition-all duration-200 mb-8"
+                        className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 mb-4"
                         style={{
                           backgroundColor: popular ? pricingTheme.colors.ctaPrimary : '#FFFFFF',
                           color: popular ? '#FFFFFF' : pricingTheme.colors.textPrimary,
@@ -368,40 +348,43 @@ export function PublicPricingView({
                       
                       {/* Features */}
                       <div 
-                        className="flex-1 pt-6"
-                        style={{ borderTop: `1px solid ${pricingTheme.colors.cardBorder}` }}
+                        className="flex-1 pt-3 overflow-y-auto"
+                        style={{ 
+                          borderTop: `1px solid ${pricingTheme.colors.cardBorder}`,
+                          maxHeight: 'calc(100vh - 380px)',
+                        }}
                       >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: pricingTheme.spacing.feature }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {sortedFeatures.filter(f => f.isActive).length > 0 ? (
                             sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
                               const included = displayFeatures.includes(feature.id);
                               return (
                                 <div
                                   key={feature.id}
-                                  className="flex items-start gap-3"
+                                  className="flex items-center gap-2"
                                   data-testid={`feature-${index}-${idx}`}
                                 >
                                   {included ? (
                                     <Check 
-                                      className="flex-shrink-0 mt-0.5"
+                                      className="flex-shrink-0"
                                       style={{ 
-                                        width: '16px', 
-                                        height: '16px', 
+                                        width: '14px', 
+                                        height: '14px', 
                                         color: pricingTheme.colors.checkmark 
                                       }} 
                                     />
                                   ) : (
                                     <X 
-                                      className="flex-shrink-0 mt-0.5"
+                                      className="flex-shrink-0"
                                       style={{ 
-                                        width: '16px', 
-                                        height: '16px', 
+                                        width: '14px', 
+                                        height: '14px', 
                                         color: pricingTheme.colors.excluded 
                                       }} 
                                     />
                                   )}
                                   <span 
-                                    className="text-[15px] leading-relaxed"
+                                    className="text-xs leading-tight"
                                     style={{ 
                                       color: included ? pricingTheme.colors.textSecondary : pricingTheme.colors.excludedText 
                                     }}
@@ -413,40 +396,40 @@ export function PublicPricingView({
                             })
                           ) : (
                             <>
-                              <div className="flex items-start gap-3">
-                                <Check className="flex-shrink-0 mt-0.5" style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} />
-                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
-                                  {index === 0 ? '1 user' : index === 1 ? '1 team' : '1 parent team and unlimited sub-teams'}
+                              <div className="flex items-center gap-2">
+                                <Check className="flex-shrink-0" style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                <span className="text-xs" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? '1 user' : index === 1 ? '1 team' : 'Unlimited sub-teams'}
                                 </span>
                               </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="flex-shrink-0 mt-0.5" style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} />
-                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
-                                  {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Schedule meetings as a team' : 'Organization workflows'}
+                              <div className="flex items-center gap-2">
+                                <Check className="flex-shrink-0" style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                <span className="text-xs" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Team scheduling' : 'Organization workflows'}
                                 </span>
                               </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="flex-shrink-0 mt-0.5" style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} />
-                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
-                                  {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin, Fixed Round-Robin' : 'Insights - analyze your booking data'}
+                              <div className="flex items-center gap-2">
+                                <Check className="flex-shrink-0" style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                <span className="text-xs" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin' : 'Analytics'}
                                 </span>
                               </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="flex-shrink-0 mt-0.5" style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} />
-                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
-                                  {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'Active directory sync'}
+                              <div className="flex items-center gap-2">
+                                <Check className="flex-shrink-0" style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                <span className="text-xs" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'AD sync'}
                                 </span>
                               </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="flex-shrink-0 mt-0.5" style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} />
-                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
-                                  {index === 0 ? 'Integrate with your favorite apps' : index === 1 ? 'Advanced Routing Forms' : '24/7 Email, Chat and Phone support'}
+                              <div className="flex items-center gap-2">
+                                <Check className="flex-shrink-0" style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                <span className="text-xs" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Integrations' : index === 1 ? 'Routing Forms' : '24/7 Support'}
                                 </span>
                               </div>
-                              <div className="flex items-start gap-3">
-                                <Check className="flex-shrink-0 mt-0.5" style={{ width: '16px', height: '16px', color: pricingTheme.colors.checkmark }} />
-                                <span className="text-[15px] leading-relaxed" style={{ color: pricingTheme.colors.textSecondary }}>
-                                  {index === 0 ? 'Accept payments via Stripe' : index === 1 ? 'Team Workflows' : 'Sync your HRIS tools'}
+                              <div className="flex items-center gap-2">
+                                <Check className="flex-shrink-0" style={{ width: '14px', height: '14px', color: pricingTheme.colors.checkmark }} />
+                                <span className="text-xs" style={{ color: pricingTheme.colors.textSecondary }}>
+                                  {index === 0 ? 'Stripe payments' : index === 1 ? 'Team Workflows' : 'HRIS sync'}
                                 </span>
                               </div>
                             </>
@@ -461,19 +444,16 @@ export function PublicPricingView({
           )}
 
           {showTrialInfo && (
-            <div className="text-center mt-16 space-y-3">
-              <p className="text-sm" style={{ color: pricingTheme.colors.textMuted }}>
-                All plans include a free trial. No credit card required.
-              </p>
-              <p className="text-sm" style={{ color: pricingTheme.colors.textMuted }}>
-                Need help choosing?{' '}
+            <div className="text-center mt-4 py-2">
+              <p className="text-xs" style={{ color: pricingTheme.colors.textMuted }}>
+                All plans include a free trial. No credit card required.{' '}
                 <a 
                   href="mailto:hello@curbe.io" 
                   className="hover:underline font-medium"
                   style={{ color: pricingTheme.colors.textPrimary }}
                   data-testid="link-contact-sales"
                 >
-                  Contact our sales team
+                  Contact sales
                 </a>
               </p>
             </div>
