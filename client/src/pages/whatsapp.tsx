@@ -560,6 +560,7 @@ export default function WhatsAppPage() {
   const connectAttemptedRef = useRef(false);
   const previousUnreadRef = useRef<number>(0);
   const lastTypingSentRef = useRef<number>(0);
+  const presenceIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -644,6 +645,40 @@ export default function WhatsAppPage() {
       body: JSON.stringify({ remoteJid: selectedChat }),
     }).catch(() => {});
   }, [selectedChat, instanceData?.connected]);
+
+  // Send presence status (available/unavailable)
+  const sendPresence = useCallback((presence: "available" | "unavailable") => {
+    if (!instanceData?.connected) return;
+    
+    fetch('/api/whatsapp/send-presence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ presence }),
+    }).catch(() => {});
+  }, [instanceData?.connected]);
+
+  // Manage presence when chat is open/closed
+  useEffect(() => {
+    if (selectedChat && instanceData?.connected) {
+      // Set online when chat is opened
+      sendPresence("available");
+      
+      // Keep-alive every 45 seconds while chat is open
+      presenceIntervalRef.current = setInterval(() => {
+        sendPresence("available");
+      }, 45000);
+      
+      return () => {
+        // Set offline when chat is closed
+        sendPresence("unavailable");
+        if (presenceIntervalRef.current) {
+          clearInterval(presenceIntervalRef.current);
+          presenceIntervalRef.current = null;
+        }
+      };
+    }
+  }, [selectedChat, instanceData?.connected, sendPresence]);
 
   const { data: chats = [], isLoading: loadingChats } = useQuery<WhatsappConversation[]>({
     queryKey: ["/api/whatsapp/chats"],
