@@ -25217,6 +25217,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get phone system status" });
     }
   });
+
+  // POST /webhooks/telnyx - Telnyx webhook for billing automation
+  app.post("/webhooks/telnyx", async (req: Request, res: Response) => {
+    try {
+      const signature = req.headers["telnyx-signature-ed25519"] as string;
+      const timestamp = req.headers["telnyx-timestamp"] as string;
+      const publicKey = process.env.TELNYX_PUBLIC_KEY;
+
+      if (!signature || !timestamp) {
+        console.error("[Telnyx Webhook] Missing signature or timestamp headers");
+        return res.status(400).json({ error: "Missing signature headers" });
+      }
+
+      if (!publicKey) {
+        console.error("[Telnyx Webhook] TELNYX_PUBLIC_KEY not configured");
+        return res.status(500).json({ error: "Webhook verification not configured" });
+      }
+
+      const { verifyWebhookSignature, processWebhookEvent } = await import("./services/telnyx-webhook-service");
+
+      const rawBody = req.body;
+      const isValid = verifyWebhookSignature(rawBody, signature, timestamp, publicKey);
+
+      if (!isValid) {
+        console.error("[Telnyx Webhook] Invalid signature");
+        return res.status(401).json({ error: "Invalid signature" });
+      }
+
+      const event = JSON.parse(rawBody.toString());
+      const result = await processWebhookEvent(event);
+
+      if (!result.success) {
+        console.error("[Telnyx Webhook] Processing failed: ${result.error}");
+      }
+
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("[Telnyx Webhook] Error processing webhook:", error);
+      res.status(500).json({ error: "Webhook processing failed" });
+    }
+  });
   const httpServer = createServer(app);
 
   // ==================== WALLET API ====================

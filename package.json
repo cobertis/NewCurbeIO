@@ -114,6 +114,7 @@
     "stripe": "^19.1.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "telnyx": "^4.5.1",
     "tw-animate-css": "^1.2.5",
     "twilio": "^5.10.3",
     "vaul": "^1.1.2",
