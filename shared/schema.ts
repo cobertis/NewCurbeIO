@@ -4573,6 +4573,64 @@ export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 
 // =====================================================
+// WALLET SYSTEM (Transactional Billing)
+// =====================================================
+
+// Wallet transaction types
+export const walletTransactionTypes = [
+  "DEPOSIT",
+  "CALL_COST",
+  "SMS_COST",
+  "NUMBER_RENTAL",
+  "REFUND",
+  "ADJUSTMENT",
+] as const;
+export type WalletTransactionType = typeof walletTransactionTypes[number];
+
+// Wallets table - One per company
+export const wallets = pgTable("wallets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
+  telnyxAccountId: text("telnyx_account_id"),
+  balance: numeric("balance", { precision: 10, scale: 4 }).notNull().default("0.0000"),
+  currency: text("currency").notNull().default("USD"),
+  autoRecharge: boolean("auto_recharge").notNull().default(false),
+  autoRechargeThreshold: numeric("auto_recharge_threshold", { precision: 10, scale: 4 }),
+  autoRechargeAmount: numeric("auto_recharge_amount", { precision: 10, scale: 4 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("wallets_company_id_idx").on(table.companyId),
+}));
+
+// Wallet Transactions table (Ledger) - Every movement is recorded
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletId: varchar("wallet_id").notNull().references(() => wallets.id, { onDelete: "cascade" }),
+  amount: numeric("amount", { precision: 10, scale: 4 }).notNull(),
+  type: text("type").notNull().$type<WalletTransactionType>(),
+  description: text("description"),
+  externalReferenceId: text("external_reference_id"),
+  balanceAfter: numeric("balance_after", { precision: 10, scale: 4 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  walletIdIdx: index("wallet_transactions_wallet_id_idx").on(table.walletId),
+  typeIdx: index("wallet_transactions_type_idx").on(table.type),
+  createdAtIdx: index("wallet_transactions_created_at_idx").on(table.createdAt),
+  externalRefIdx: index("wallet_transactions_external_ref_idx").on(table.externalReferenceId),
+}));
+
+// Wallet Insert Schemas
+export const insertWalletSchema = createInsertSchema(wallets).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({ id: true, createdAt: true });
+
+// Wallet Types
+export type Wallet = typeof wallets.$inferSelect;
+export type InsertWallet = z.infer<typeof insertWalletSchema>;
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
+
+// =====================================================
 // CAMPAIGN WIZARD COMPREHENSIVE PAYLOAD SCHEMA
 // =====================================================
 

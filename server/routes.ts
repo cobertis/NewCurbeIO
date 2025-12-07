@@ -25010,7 +25010,289 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to send reaction" });
     }
   });
+
+  // ==================== WALLET API ====================
+  
+  // GET /api/wallet - Get company wallet
+  app.get("/api/wallet", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { getOrCreateWallet } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      res.json({ wallet });
+    } catch (error: any) {
+      console.error("[Wallet] Error getting wallet:", error);
+      res.status(500).json({ message: "Failed to get wallet" });
+    }
+  });
+
+  // GET /api/wallet/transactions - Get wallet transactions
+  app.get("/api/wallet/transactions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const { getWalletByCompany, getWalletTransactions } = await import("./services/wallet-service");
+      const wallet = await getWalletByCompany(user.companyId);
+      
+      if (!wallet) {
+        return res.json({ transactions: [], total: 0 });
+      }
+
+      const transactions = await getWalletTransactions(wallet.id, limit, offset);
+      res.json({ transactions });
+    } catch (error: any) {
+      console.error("[Wallet] Error getting transactions:", error);
+      res.status(500).json({ message: "Failed to get transactions" });
+    }
+  });
+
+  // POST /api/wallet/deposit - Add funds to wallet (for testing/admin)
+  app.post("/api/wallet/deposit", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { amount, description, externalReferenceId } = req.body;
+      
+      if (!amount || typeof amount !== "number" || amount <= 0) {
+        return res.status(400).json({ message: "Valid positive amount is required" });
+      }
+
+      const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      const result = await deposit(wallet.id, amount, description, externalReferenceId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({ 
+        success: true, 
+        transaction: result.transaction,
+        newBalance: result.newBalance 
+      });
+    } catch (error: any) {
+      console.error("[Wallet] Error depositing:", error);
+      res.status(500).json({ message: "Failed to deposit" });
+    }
+  });
+
+  // POST /api/wallet/charge - Charge wallet (internal use)
+  app.post("/api/wallet/charge", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { amount, type, description, externalReferenceId } = req.body;
+      
+      if (!amount || typeof amount !== "number" || amount <= 0) {
+        return res.status(400).json({ message: "Valid positive amount is required" });
+      }
+
+      if (!type || !["CALL_COST", "SMS_COST", "NUMBER_RENTAL"].includes(type)) {
+        return res.status(400).json({ message: "Valid type is required (CALL_COST, SMS_COST, NUMBER_RENTAL)" });
+      }
+
+      const { getOrCreateWallet, charge } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      const result = await charge(wallet.id, amount, type, description, externalReferenceId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({ 
+        success: true, 
+        transaction: result.transaction,
+        newBalance: result.newBalance 
+      });
+    } catch (error: any) {
+      console.error("[Wallet] Error charging:", error);
+      res.status(500).json({ message: "Failed to charge wallet" });
+    }
+  });
+
+  // GET /api/wallet/balance - Quick balance check
+  app.get("/api/wallet/balance", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { getWalletByCompany } = await import("./services/wallet-service");
+      const wallet = await getWalletByCompany(user.companyId);
+      
+      if (!wallet) {
+        return res.json({ balance: "0.0000", currency: "USD" });
+      }
+
+      res.json({ 
+        balance: wallet.balance, 
+        currency: wallet.currency,
+        autoRecharge: wallet.autoRecharge
+      });
+    } catch (error: any) {
+      console.error("[Wallet] Error getting balance:", error);
+      res.status(500).json({ message: "Failed to get balance" });
+    }
+  });
   const httpServer = createServer(app);
+
+  // ==================== WALLET API ====================
+  
+  // GET /api/wallet - Get company wallet
+  app.get("/api/wallet", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { getOrCreateWallet } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      res.json({ wallet });
+    } catch (error: any) {
+      console.error("[Wallet] Error getting wallet:", error);
+      res.status(500).json({ message: "Failed to get wallet" });
+    }
+  });
+
+  // GET /api/wallet/transactions - Get wallet transactions
+  app.get("/api/wallet/transactions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const { getWalletByCompany, getWalletTransactions } = await import("./services/wallet-service");
+      const wallet = await getWalletByCompany(user.companyId);
+      
+      if (!wallet) {
+        return res.json({ transactions: [], total: 0 });
+      }
+
+      const transactions = await getWalletTransactions(wallet.id, limit, offset);
+      res.json({ transactions });
+    } catch (error: any) {
+      console.error("[Wallet] Error getting transactions:", error);
+      res.status(500).json({ message: "Failed to get transactions" });
+    }
+  });
+
+  // POST /api/wallet/deposit - Add funds to wallet (for testing/admin)
+  app.post("/api/wallet/deposit", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { amount, description, externalReferenceId } = req.body;
+      
+      if (!amount || typeof amount !== "number" || amount <= 0) {
+        return res.status(400).json({ message: "Valid positive amount is required" });
+      }
+
+      const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      const result = await deposit(wallet.id, amount, description, externalReferenceId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({ 
+        success: true, 
+        transaction: result.transaction,
+        newBalance: result.newBalance 
+      });
+    } catch (error: any) {
+      console.error("[Wallet] Error depositing:", error);
+      res.status(500).json({ message: "Failed to deposit" });
+    }
+  });
+
+  // POST /api/wallet/charge - Charge wallet (internal use)
+  app.post("/api/wallet/charge", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { amount, type, description, externalReferenceId } = req.body;
+      
+      if (!amount || typeof amount !== "number" || amount <= 0) {
+        return res.status(400).json({ message: "Valid positive amount is required" });
+      }
+
+      if (!type || !["CALL_COST", "SMS_COST", "NUMBER_RENTAL"].includes(type)) {
+        return res.status(400).json({ message: "Valid type is required (CALL_COST, SMS_COST, NUMBER_RENTAL)" });
+      }
+
+      const { getOrCreateWallet, charge } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      const result = await charge(wallet.id, amount, type, description, externalReferenceId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({ 
+        success: true, 
+        transaction: result.transaction,
+        newBalance: result.newBalance 
+      });
+    } catch (error: any) {
+      console.error("[Wallet] Error charging:", error);
+      res.status(500).json({ message: "Failed to charge wallet" });
+    }
+  });
+
+  // GET /api/wallet/balance - Quick balance check
+  app.get("/api/wallet/balance", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { getWalletByCompany } = await import("./services/wallet-service");
+      const wallet = await getWalletByCompany(user.companyId);
+      
+      if (!wallet) {
+        return res.json({ balance: "0.0000", currency: "USD" });
+      }
+
+      res.json({ 
+        balance: wallet.balance, 
+        currency: wallet.currency,
+        autoRecharge: wallet.autoRecharge
+      });
+    } catch (error: any) {
+      console.error("[Wallet] Error getting balance:", error);
+      res.status(500).json({ message: "Failed to get balance" });
+    }
+  });
   // Setup WebSocket for real-time chat updates with session validation
   setupWebSocket(httpServer, sessionStore);
   return httpServer;
