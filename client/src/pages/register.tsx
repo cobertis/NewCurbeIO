@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { UserPlus, Building2, Loader2, MapPin, Phone, Globe, Check, ChevronLeft } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import { formatForDisplay, formatPhoneInput } from "@shared/phone";
@@ -47,6 +48,7 @@ const registerSchema = z.object({
       },
       "Valid phone number is required"
     ),
+    smsConsent: z.boolean().refine(val => val === true, "You must agree to receive SMS messages"),
   }),
 });
 
@@ -110,6 +112,7 @@ export default function Register() {
         lastName: "",
         email: "",
         phone: "",
+        smsConsent: false,
       },
     },
   });
@@ -814,6 +817,31 @@ export default function Register() {
                           />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="admin.smsConsent"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-sms-consent"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <label 
+                            className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer"
+                            onClick={() => field.onChange(!field.value)}
+                          >
+                            I agree to receive SMS messages from Curbe for account security and updates. Message frequency varies. Message & Data rates may apply. Reply STOP to cancel.
+                          </label>
+                          <FormMessage />
+                        </div>
                       </FormItem>
                     )}
                   />
