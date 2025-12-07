@@ -260,8 +260,8 @@ export function PublicPricingView({
                     className="relative flex flex-col"
                     data-testid={`card-public-plan-${index}`}
                   >
-                    {/* Trial Badge */}
-                    {popular && plan.trialDays > 0 && (
+                    {/* Popular Badge */}
+                    {popular && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                         <span 
                           className="px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap"
@@ -269,9 +269,9 @@ export function PublicPricingView({
                             backgroundColor: '#1E293B',
                             color: '#FFFFFF',
                           }}
-                          data-testid={`badge-trial-${index}`}
+                          data-testid={`badge-popular-${index}`}
                         >
-                          {plan.trialDays} days free trial
+                          Most Popular
                         </span>
                       </div>
                     )}
