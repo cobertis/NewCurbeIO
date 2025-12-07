@@ -1540,7 +1540,8 @@ export default function WhatsAppPage() {
                           key={msg.id}
                           className={cn(
                             "flex group",
-                            msg.fromMe ? "justify-end" : "justify-start"
+                            msg.fromMe ? "justify-end" : "justify-start",
+                            localReactions[msg.messageId] && "mb-4"
                           )}
                           data-testid={`message-${msg.id}`}
                         >
