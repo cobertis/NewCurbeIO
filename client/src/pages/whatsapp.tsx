@@ -1553,56 +1553,64 @@ export default function WhatsAppPage() {
                           key={msg.id}
                           className={cn(
                             "flex group",
-                            msg.fromMe ? "justify-end" : "justify-start"
+                            msg.fromMe ? "justify-end" : "justify-start",
+                            (msg.reaction || localReactions[msg.messageId]) && "pb-3"
                           )}
                           data-testid={`message-${msg.id}`}
                         >
-                          <div className={cn("flex items-end gap-0.5", msg.fromMe ? "flex-row-reverse" : "flex-row")}>
-                            <div
-                              className={cn(
-                                "max-w-[70%] rounded-lg px-2 py-1 shadow-sm",
-                                msg.fromMe
-                                  ? "bg-primary/10 dark:bg-primary/20"
-                                  : "bg-white dark:bg-gray-800"
-                              )}
-                            >
-                              {["image", "video", "audio", "document"].includes(msg.messageType) ? (
-                                <div>
-                                  <MediaMessage message={msg} remoteJid={msg.remoteJid} />
-                                  {msg.messageType !== "document" && msg.content && 
-                                   msg.content !== msg.messageType && 
-                                   msg.content !== `[${msg.messageType}]` &&
-                                   !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
-                                    <p className="text-sm dark:text-white break-words mt-0.5">
-                                      {msg.content}
-                                    </p>
+                          <div className={cn("flex items-end gap-1", msg.fromMe ? "flex-row-reverse" : "flex-row")}>
+                            <div className="relative">
+                              <div
+                                className={cn(
+                                  "max-w-[280px] rounded-lg px-3 py-1.5 shadow-sm",
+                                  msg.fromMe
+                                    ? "bg-primary/10 dark:bg-primary/20"
+                                    : "bg-white dark:bg-gray-800"
+                                )}
+                              >
+                                {["image", "video", "audio", "document"].includes(msg.messageType) ? (
+                                  <div>
+                                    <MediaMessage message={msg} remoteJid={msg.remoteJid} />
+                                    {msg.messageType !== "document" && msg.content && 
+                                     msg.content !== msg.messageType && 
+                                     msg.content !== `[${msg.messageType}]` &&
+                                     !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
+                                      <p className="text-sm dark:text-white break-words mt-1">
+                                        {msg.content}
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm dark:text-white break-words">
+                                    {msg.content || `[${msg.messageType}]`}
+                                  </p>
+                                )}
+                                <div className="flex items-center justify-end gap-1 mt-0.5">
+                                  <span className="text-[10px] text-gray-500">
+                                    {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
+                                      ? format(new Date(msg.timestamp), "HH:mm") 
+                                      : ""}
+                                  </span>
+                                  {msg.fromMe && (
+                                    msg.status === "read" ? (
+                                      <CheckCheck className="w-3 h-3 text-blue-500" />
+                                    ) : msg.status === "delivered" ? (
+                                      <CheckCheck className="w-3 h-3 text-gray-400" />
+                                    ) : (
+                                      <Check className="w-3 h-3 text-gray-400" />
+                                    )
                                   )}
                                 </div>
-                              ) : (
-                                <span className="text-sm dark:text-white break-words">
-                                  {msg.content || `[${msg.messageType}]`}
-                                </span>
+                              </div>
+                              {(msg.reaction || localReactions[msg.messageId]) && (
+                                <div className={cn(
+                                  "absolute -bottom-2 text-sm bg-white dark:bg-gray-700 rounded-full px-1 shadow border dark:border-gray-600",
+                                  msg.fromMe ? "right-1" : "left-1"
+                                )}>
+                                  {localReactions[msg.messageId] || msg.reaction}
+                                </div>
                               )}
-                              <span className="text-[10px] text-gray-500 ml-2 inline-flex items-center gap-0.5 align-bottom float-right mt-0.5">
-                                {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
-                                  ? format(new Date(msg.timestamp), "HH:mm") 
-                                  : ""}
-                                {msg.fromMe && (
-                                  msg.status === "read" ? (
-                                    <CheckCheck className="w-3 h-3 text-blue-500" />
-                                  ) : msg.status === "delivered" ? (
-                                    <CheckCheck className="w-3 h-3 text-gray-400" />
-                                  ) : (
-                                    <Check className="w-3 h-3 text-gray-400" />
-                                  )
-                                )}
-                              </span>
                             </div>
-                            {(msg.reaction || localReactions[msg.messageId]) && (
-                              <span className="text-sm -ml-3 -mb-1 z-10">
-                                {localReactions[msg.messageId] || msg.reaction}
-                              </span>
-                            )}
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 bg-white dark:bg-gray-800 rounded-full shadow-md border dark:border-gray-700 px-1 py-0.5">
                               {REACTION_EMOJIS.map((emoji) => (
                                 <button
