@@ -535,7 +535,7 @@ async function initEvolutionApi(): Promise<EvolutionApiService | null> {
 
   evolutionInitPromise = (async () => {
     try {
-      const { baseUrl, globalApiKey } = await credentialProvider.getEvolutionApi();
+      const { baseUrl, globalApiKey } = await credentialProvider.getEvolutionAPI();
 
       if (!baseUrl || !globalApiKey) {
         console.warn("⚠️  Evolution API credentials not configured. WhatsApp service will not be available.");
