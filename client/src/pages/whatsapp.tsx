@@ -545,7 +545,7 @@ export default function WhatsAppPage() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
-  const [typingJid, setTypingJid] = useState<string | null>(null);
+  const [typingJids, setTypingJids] = useState<Set<string>>(new Set());
   const [pendingAttachment, setPendingAttachment] = useState<{
     file: File;
     preview: string;
@@ -876,14 +876,25 @@ export default function WhatsAppPage() {
             queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/instance'] });
           }
         }
-        // Handle typing indicator
+        // Handle typing indicator - supports multiple contacts typing simultaneously
         if (data.type === 'whatsapp_typing') {
+          const jid = data.remoteJid;
           if (data.isTyping) {
-            setTypingJid(data.remoteJid);
-            // Clear typing indicator after 5 seconds if no "stop typing" received
-            setTimeout(() => setTypingJid((prev) => prev === data.remoteJid ? null : prev), 5000);
+            setTypingJids(prev => new Set(prev).add(jid));
+            // Clear this contact's typing indicator after 5 seconds if no update received
+            setTimeout(() => {
+              setTypingJids(prev => {
+                const next = new Set(prev);
+                next.delete(jid);
+                return next;
+              });
+            }, 5000);
           } else {
-            setTypingJid((prev) => prev === data.remoteJid ? null : prev);
+            setTypingJids(prev => {
+              const next = new Set(prev);
+              next.delete(jid);
+              return next;
+            });
           }
         }
       } catch (e) {
@@ -1300,7 +1311,7 @@ export default function WhatsAppPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    {typingJid === chat.remoteJid ? (
+                    {typingJids.has(chat.remoteJid) ? (
                       <p className="text-sm text-green-600 dark:text-green-400 truncate animate-pulse font-semibold">
                         typing...
                       </p>
@@ -1346,7 +1357,7 @@ export default function WhatsAppPage() {
               <div className="flex-1">
                 <p className="font-medium dark:text-white">{formatJidToPhone(selectedChat, chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessPhone, chats.find(c => c.remoteJid === selectedChat)?.contact?.businessName)}</p>
                 <p className="text-xs text-gray-500">
-                  {typingJid === selectedChat ? (
+                  {typingJids.has(selectedChat) ? (
                     <span className="text-green-600 dark:text-green-400 animate-pulse font-semibold">typing...</span>
                   ) : (
                     "Online"
