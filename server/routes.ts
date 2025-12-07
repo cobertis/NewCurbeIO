@@ -4776,6 +4776,40 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
+
+  // Get single user by ID
+  app.get("/api/users/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      const targetUserId = req.params.id;
+      
+      // Get the target user
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Superadmins can view any user
+      // Admins can view users in their company
+      // Users can view their own profile
+      if (currentUser.role === "superadmin") {
+        return res.json({ user: targetUser });
+      }
+      
+      if (currentUser.id === targetUserId) {
+        return res.json({ user: targetUser });
+      }
+      
+      if (currentUser.companyId && targetUser.companyId === currentUser.companyId) {
+        return res.json({ user: targetUser });
+      }
+      
+      return res.status(403).json({ message: "Forbidden" });
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
   // Get company agents for dropdowns (policies, quotes, etc.)
   app.get("/api/company/agents", requireActiveCompany, async (req: Request, res: Response) => {
     try {
