@@ -29,14 +29,21 @@ import type {
 } from "@shared/schema";
 import { apiProviders } from "@shared/schema";
 
+interface ProviderKeyConfig {
+  keyName: string;
+  label: string;
+  required: boolean;
+}
+
 interface ProviderConfig {
-  name: string;
-  keys: string[];
-  description: string;
+  provider: string;
+  label: string;
+  keys: ProviderKeyConfig[];
 }
 
 interface ProvidersResponse {
-  providers: Record<ApiProvider, ProviderConfig>;
+  providers: ProviderConfig[];
+  apiProviders: string[];
 }
 
 interface CredentialsResponse {
@@ -62,6 +69,14 @@ const credentialFormSchema = z.object({
 
 type CredentialFormData = z.infer<typeof credentialFormSchema>;
 
+const bulkCredentialFormSchema = z.object({
+  provider: z.string().min(1, "Provider is required"),
+  environment: z.enum(["production", "development", "staging"]),
+  credentials: z.record(z.string()),
+});
+
+type BulkCredentialFormData = z.infer<typeof bulkCredentialFormSchema>;
+
 const revealPasswordSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
@@ -78,6 +93,11 @@ export default function SystemSettings() {
   const [selectedCredential, setSelectedCredential] = useState<SystemApiCredential | null>(null);
   const [revealedValues, setRevealedValues] = useState<Record<string, { value: string; expiresAt: number }>>({});
   const [showValue, setShowValue] = useState(false);
+  const [showFieldValues, setShowFieldValues] = useState<Record<string, boolean>>({});
+  const [bulkFormProvider, setBulkFormProvider] = useState<string>("");
+  const [bulkFormEnvironment, setBulkFormEnvironment] = useState<"production" | "development" | "staging">("production");
+  const [bulkFormValues, setBulkFormValues] = useState<Record<string, string>>({});
+  const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
 
   const { data: sessionData } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -314,6 +334,95 @@ export default function SystemSettings() {
     createMutation.mutate(data);
   };
 
+  const handleBulkSubmit = async () => {
+    if (!bulkFormProvider) {
+      toast({
+        title: "Error",
+        description: "Please select a provider",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const providerConfig = getProviderConfig(bulkFormProvider);
+    if (!providerConfig) return;
+
+    const requiredKeys = providerConfig.keys.filter(k => k.required);
+    const missingRequired = requiredKeys.filter(k => !bulkFormValues[k.keyName]?.trim());
+    
+    if (missingRequired.length > 0) {
+      toast({
+        title: "Error",
+        description: `Missing required fields: ${missingRequired.map(k => k.label).join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const credentialsToCreate = Object.entries(bulkFormValues)
+      .filter(([_, value]) => value?.trim())
+      .map(([keyName, value]) => ({
+        provider: bulkFormProvider,
+        keyName,
+        value: value.trim(),
+        environment: bulkFormEnvironment,
+      }));
+
+    if (credentialsToCreate.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please enter at least one credential value",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBulkSubmitting(true);
+    try {
+      const results = await Promise.all(
+        credentialsToCreate.map(cred => 
+          apiRequest("POST", "/api/system/credentials", cred)
+        )
+      );
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/system/credentials"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/system/credentials/audit"] });
+      
+      setAddDialogOpen(false);
+      setBulkFormProvider("");
+      setBulkFormValues({});
+      setShowFieldValues({});
+      
+      toast({
+        title: "Credentials Created",
+        description: `Successfully created ${results.length} credential(s) for ${getProviderDisplayName(bulkFormProvider)}.`,
+      });
+    } catch (error: any) {
+      let errorMessage = "Failed to create credentials.";
+      try {
+        if (error?.message) {
+          const colonIndex = error.message.indexOf(': ');
+          if (colonIndex !== -1) {
+            const jsonPart = error.message.substring(colonIndex + 2);
+            const errorData = JSON.parse(jsonPart);
+            errorMessage = errorData.message || error.message;
+          } else {
+            errorMessage = error.message;
+          }
+        }
+      } catch {
+        errorMessage = error?.message || "Failed to create credentials.";
+      }
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkSubmitting(false);
+    }
+  };
+
   const handleEditSubmit = (data: CredentialFormData) => {
     if (selectedCredential) {
       updateMutation.mutate({ id: selectedCredential.id, data });
@@ -356,18 +465,33 @@ export default function SystemSettings() {
     }
   };
 
+  const getProviderConfig = (provider: string): ProviderConfig | undefined => {
+    return providersData?.providers?.find(p => p.provider === provider);
+  };
+
   const getProviderDisplayName = (provider: string): string => {
-    if (providersData?.providers && provider in providersData.providers) {
-      return providersData.providers[provider as ApiProvider].name;
+    const config = getProviderConfig(provider);
+    if (config) {
+      return config.label;
     }
     return provider.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   };
 
   const getKeyOptions = (provider: string): string[] => {
-    if (providersData?.providers && provider in providersData.providers) {
-      return providersData.providers[provider as ApiProvider].keys;
+    const config = getProviderConfig(provider);
+    if (config) {
+      return config.keys.map(k => k.keyName);
     }
     return [];
+  };
+
+  const getKeyLabel = (provider: string, keyName: string): string => {
+    const config = getProviderConfig(provider);
+    if (config) {
+      const key = config.keys.find(k => k.keyName === keyName);
+      return key?.label || keyName;
+    }
+    return keyName;
   };
 
   const getActionBadgeVariant = (action: CredentialAuditAction): "default" | "secondary" | "destructive" | "outline" => {
@@ -666,165 +790,126 @@ export default function SystemSettings() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]" data-testid="dialog-add-credential">
+      <Dialog open={addDialogOpen} onOpenChange={(open) => {
+        setAddDialogOpen(open);
+        if (!open) {
+          setBulkFormProvider("");
+          setBulkFormValues({});
+          setShowFieldValues({});
+        }
+      }}>
+        <DialogContent className="sm:max-w-[550px]" data-testid="dialog-add-credential">
           <DialogHeader>
-            <DialogTitle>Add API Credential</DialogTitle>
+            <DialogTitle>Add API Credentials</DialogTitle>
             <DialogDescription>
-              Add a new API credential for an integrated service
+              Configure credentials for an integrated service. Required fields are marked with *.
             </DialogDescription>
           </DialogHeader>
-          <Form {...addForm}>
-            <form onSubmit={addForm.handleSubmit(handleAddSubmit)} className="space-y-4">
-              <FormField
-                control={addForm.control}
-                name="provider"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Provider</FormLabel>
-                    <Select 
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        addForm.setValue("keyName", "");
-                      }} 
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-provider">
-                          <SelectValue placeholder="Select a provider" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {apiProviders.map((provider) => (
-                          <SelectItem key={provider} value={provider} data-testid={`option-provider-${provider}`}>
-                            {getProviderDisplayName(provider)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Provider</label>
+              <Select 
+                onValueChange={(value) => {
+                  setBulkFormProvider(value);
+                  setBulkFormValues({});
+                  setShowFieldValues({});
+                }} 
+                value={bulkFormProvider}
+              >
+                <SelectTrigger data-testid="select-provider">
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {providersData?.providers?.map((provider) => (
+                    <SelectItem key={provider.provider} value={provider.provider} data-testid={`option-provider-${provider.provider}`}>
+                      {provider.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-              <FormField
-                control={addForm.control}
-                name="keyName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Key Name</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedProvider}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-keyname">
-                          <SelectValue placeholder={selectedProvider ? "Select a key" : "Select provider first"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {getKeyOptions(selectedProvider).map((key) => (
-                          <SelectItem key={key} value={key} data-testid={`option-keyname-${key}`}>
-                            {key}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {bulkFormProvider && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Environment</label>
+                  <Select 
+                    onValueChange={(value) => setBulkFormEnvironment(value as "production" | "development" | "staging")} 
+                    value={bulkFormEnvironment}
+                  >
+                    <SelectTrigger data-testid="select-environment">
+                      <SelectValue placeholder="Select environment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="production" data-testid="option-env-production">Production</SelectItem>
+                      <SelectItem value="development" data-testid="option-env-development">Development</SelectItem>
+                      <SelectItem value="staging" data-testid="option-env-staging">Staging</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <FormField
-                control={addForm.control}
-                name="value"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Value</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showValue ? "text" : "password"}
-                          placeholder="Enter the API key or secret"
-                          data-testid="input-value"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3"
-                          onClick={() => setShowValue(!showValue)}
-                          data-testid="button-toggle-value"
-                        >
-                          {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-sm font-medium mb-3">Credentials</h4>
+                  <div className="space-y-3">
+                    {getProviderConfig(bulkFormProvider)?.keys.map((key) => (
+                      <div key={key.keyName} className="space-y-1">
+                        <label className="text-sm font-medium flex items-center gap-1">
+                          {key.label}
+                          {key.required && <span className="text-red-500">*</span>}
+                          {!key.required && <span className="text-xs text-muted-foreground">(Optional)</span>}
+                        </label>
+                        <div className="relative">
+                          <Input
+                            type={showFieldValues[key.keyName] ? "text" : "password"}
+                            placeholder={`Enter ${key.label.toLowerCase()}`}
+                            value={bulkFormValues[key.keyName] || ""}
+                            onChange={(e) => setBulkFormValues(prev => ({
+                              ...prev,
+                              [key.keyName]: e.target.value
+                            }))}
+                            data-testid={`input-${key.keyName}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3"
+                            onClick={() => setShowFieldValues(prev => ({
+                              ...prev,
+                              [key.keyName]: !prev[key.keyName]
+                            }))}
+                            data-testid={`button-toggle-${key.keyName}`}
+                          >
+                            {showFieldValues[key.keyName] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </Button>
+                        </div>
                       </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
-              <FormField
-                control={addForm.control}
-                name="environment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Environment</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-environment">
-                          <SelectValue placeholder="Select environment" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="production" data-testid="option-env-production">Production</SelectItem>
-                        <SelectItem value="development" data-testid="option-env-development">Development</SelectItem>
-                        <SelectItem value="staging" data-testid="option-env-staging">Staging</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={addForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder="Add a description for this credential"
-                        rows={3}
-                        data-testid="input-description"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setAddDialogOpen(false)}
-                  data-testid="button-cancel-add"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending}
-                  data-testid="button-submit-add"
-                >
-                  {createMutation.isPending && <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />}
-                  Add Credential
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+            <DialogFooter className="pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddDialogOpen(false)}
+                data-testid="button-cancel-add"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="button"
+                onClick={handleBulkSubmit}
+                disabled={isBulkSubmitting || !bulkFormProvider}
+                data-testid="button-submit-add"
+              >
+                {isBulkSubmitting && <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />}
+                Save Credentials
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
