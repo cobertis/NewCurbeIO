@@ -842,22 +842,27 @@ export default function WhatsAppPage() {
     onMutate: async ({ messageId, emoji }) => {
       const previousReaction = localReactions[messageId];
       setLocalReactions(prev => {
-        if (emoji === "" || prev[messageId] === emoji) {
+        if (emoji === "") {
           const { [messageId]: _, ...rest } = prev;
           return rest;
         }
         return { ...prev, [messageId]: emoji };
       });
-      return { previousReaction };
+      return { previousReaction, messageId };
     },
-    onError: (error: any, { messageId }, context) => {
-      if (context?.previousReaction !== undefined) {
-        setLocalReactions(prev => ({ ...prev, [messageId]: context.previousReaction }));
-      } else {
-        setLocalReactions(prev => {
-          const { [messageId]: _, ...rest } = prev;
-          return rest;
-        });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/chats", selectedChat, "messages"] });
+    },
+    onError: (error: any, _variables, context) => {
+      if (context?.messageId) {
+        if (context.previousReaction !== undefined) {
+          setLocalReactions(prev => ({ ...prev, [context.messageId]: context.previousReaction }));
+        } else {
+          setLocalReactions(prev => {
+            const { [context.messageId]: _, ...rest } = prev;
+            return rest;
+          });
+        }
       }
       toast({ title: "Reaction Failed", description: error.message || "Failed to send reaction", variant: "destructive" });
     },
@@ -1547,7 +1552,8 @@ export default function WhatsAppPage() {
                           key={msg.id}
                           className={cn(
                             "flex group",
-                            msg.fromMe ? "justify-end" : "justify-start"
+                            msg.fromMe ? "justify-end" : "justify-start",
+                            (msg.reaction || localReactions[msg.messageId]) && "mb-4"
                           )}
                           data-testid={`message-${msg.id}`}
                         >
@@ -1593,12 +1599,12 @@ export default function WhatsAppPage() {
                                   )
                                 )}
                               </div>
-                              {msg.reaction && (
+                              {(msg.reaction || localReactions[msg.messageId]) && (
                                 <div className={cn(
                                   "absolute -bottom-3 text-base bg-white dark:bg-gray-700 rounded-full px-1 shadow-sm border dark:border-gray-600",
                                   msg.fromMe ? "right-1" : "left-1"
                                 )}>
-                                  {msg.reaction}
+                                  {localReactions[msg.messageId] || msg.reaction}
                                 </div>
                               )}
                             </div>

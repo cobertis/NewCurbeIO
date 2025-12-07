@@ -24970,6 +24970,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
       await evolutionApi.sendReaction(instance.instanceName, remoteJid, messageId, emoji, fromMe);
+      
+      // Update the reaction in the database
+      const targetMessage = await db.query.whatsappMessages.findFirst({
+        where: and(
+          eq(whatsappMessages.instanceId, instance.id),
+          eq(whatsappMessages.messageId, messageId)
+        ),
+      });
+      if (targetMessage) {
+        const newReaction = emoji || null;
+        await db.update(whatsappMessages)
+          .set({ reaction: newReaction })
+          .where(eq(whatsappMessages.id, targetMessage.id));
+        console.log(`[WhatsApp] Reaction ${newReaction || 'removed'} saved for message ${messageId}`);
+        
+        // Broadcast reaction update via WebSocket
+        broadcastToCompany(user.companyId!, {
+          type: "whatsapp:reaction",
+          messageId: targetMessage.messageId,
+          reaction: newReaction,
+          remoteJid: targetMessage.remoteJid,
+        });
+      }
+      
       res.json({ success: true });
     } catch (error: any) {
       console.error("[WhatsApp] Error sending reaction:", error);
