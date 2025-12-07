@@ -456,21 +456,29 @@ export default function PlansPage() {
                   </div>
                 )}
 
-                {plan.features && typeof plan.features === 'object' && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Features:</p>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">Features:</p>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      {Object.entries(plan.features as Record<string, unknown>).map(([key, value]) => (
-                        <li key={key} className="flex items-center gap-2">
-                          <Check className="h-3 w-3" />
-                          <span className="capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}: {typeof value === 'string' ? value : String(value)}
+                    {PLAN_FEATURES.map((feature, idx) => {
+                      const planNameLower = plan.name.toLowerCase();
+                      const included = planNameLower.includes('unlimited') ? feature.unlimited :
+                                       planNameLower.includes('dedicated') ? feature.dedicated :
+                                       feature.shared;
+                      return (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                          {included ? (
+                            <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                          ) : (
+                            <X className="h-4 w-4 text-red-500 flex-shrink-0" />
+                          )}
+                          <span className={included ? 'text-foreground' : 'text-muted-foreground'}>
+                            {feature.name}
                           </span>
-                        </li>
-                      ))}
-                    </ul>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
                 {(plan.stripeProductId || plan.stripePriceId) && (
                   <div className="space-y-1 pt-2 border-t">
