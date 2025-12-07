@@ -219,27 +219,45 @@ export function PublicPricingView({
               </button>
             </div>
             {/* Arrow and 2 months free text */}
-            <div className="ml-2 flex items-center">
+            <div className="relative ml-1">
               <svg 
-                width="24" 
-                height="20" 
-                viewBox="0 0 24 20" 
-                fill="none" 
-                style={{ color: '#2D5A3D' }}
+                width="90" 
+                height="50" 
+                viewBox="0 0 90 50" 
+                fill="none"
+                style={{ 
+                  position: 'absolute',
+                  top: '-35px',
+                  left: '-5px',
+                  transform: 'rotate(-5deg)',
+                }}
               >
                 <path 
-                  d="M2 18C4 14 8 8 16 6M16 6L12 4M16 6L14 10" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
+                  d="M5 45 C 15 35, 25 20, 45 12 C 55 8, 65 6, 75 8" 
+                  stroke="#1C422F" 
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <path 
+                  d="M70 3 L 78 8 L 72 14" 
+                  stroke="#1C422F" 
+                  strokeWidth="2"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
+                  fill="none"
                 />
               </svg>
               <span 
-                className="text-sm italic"
                 style={{ 
-                  color: '#2D5A3D',
-                  fontFamily: 'cursive',
+                  color: '#1C422F',
+                  fontFamily: '"Architects Daughter", cursive',
+                  fontSize: '16px',
+                  letterSpacing: '0.02em',
+                  position: 'relative',
+                  top: '-2px',
+                  marginLeft: '70px',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 2 months free
