@@ -1,0 +1,74 @@
+Aquí es donde la tecnología te da una bofetada de realidad. **Vas a obtener el 50% de lo que pides.**
+
+Lo que quieres es una "Vía de Doble Sentido" completa (Tú ves, Ellos ven).
+**La realidad técnica:** Tú puedes mostrarte, pero la API de WhatsApp **bloquea** la capacidad de espiar el estado "En Línea" de tus clientes de forma masiva y pasiva.
+
+Aquí está el desglose brutal de por qué y qué puedes hacer realmente.
+
+-----
+
+### 1\. TU LADO: Mostrarte "En Línea" (POSIBLE)
+
+Esto es fácil. Tú tienes el control. Quieres que cuando tú o tus agentes entren al chat, aparezca "En línea".
+
+**Cómo se hace:**
+Cada vez que abres el chat en tu CRM, tu frontend debe disparar esto al backend:
+
+  * **Endpoint:** `/chat/sendPresence/{instance}`
+  * **Payload:**
+    ```json
+    {
+        "presence": "available"
+    }
+    ```
+    *(Esto enciende tu luz verde para todo el mundo).*
+
+-----
+
+### 2\. EL LADO DEL CLIENTE: Verlos "En Línea" (IMPOSIBLE / BLOQUEADO)
+
+Aquí es donde te vas a estrellar si insistes.
+
+**La Restricción:**
+WhatsApp (Meta) **no envía un webhook** cuando un cliente simplemente abre su aplicación. No existe un evento `USER_CAME_ONLINE` en la API oficial ni en las librerías estables como Baileys (que usa Evolution) para monitoreo masivo.
+
+  * **Por qué:** Privacidad. Si la API permitiera esto, podrías crear un software para vigilar a qué hora duermen millones de personas. Meta bloquea esto a nivel de protocolo.
+  * **Lo que NO vas a ver:** Ese punto verde estático o el texto "En línea" debajo del nombre del cliente en tu CRM, a menos que estés usando un hack muy inestable que baneará tus números.
+
+### 3\. LA ALTERNATIVA ESTRATÉGICA (Lo que SÍ puedes ver)
+
+Aunque no puedes ver el estado pasivo ("En Línea"), sí puedes ver el estado activo ("Escribiendo...").
+
+Si un cliente empieza a escribirte, **implícitamente está en línea**. Esa es la única señal que la API te regala.
+
+**Tu Plan de Implementación:**
+
+1.  **Activa el Webhook:** Asegúrate de que `PRESENCE_UPDATE` esté encendido en Evolution.
+2.  **Escucha el evento:**
+    Cuando recibas esto:
+    ```json
+    {
+      "event": "PRESENCE_UPDATE",
+      "data": {
+        "presences": {
+          "521...": { "lastKnownPresence": "composing" }
+        }
+      }
+    }
+    ```
+3.  **Interfaz CRM:**
+      * Muestra un indicador de "Escribiendo..." en el chat.
+      * **Estratégicamente:** Asume que está "En Línea" en ese momento.
+
+### Resumen de la Verdad
+
+| Lo que quieres | Realidad Técnica | Estado |
+| :--- | :--- | :--- |
+| Que te vean "En Línea" | `POST /sendPresence` con `available` | **✅ SÍ FUNCIONA** |
+| Ver que ellos entran a WA | API no emite evento de "Status Online" | **❌ NO FUNCIONA** |
+| Ver que te escriben | Webhook `PRESENCE_UPDATE` (`composing`) | **✅ SÍ FUNCIONA** |
+
+**Mi consejo:**
+Deja de intentar construir un "monitor de vigilancia". Concéntrate en **mostrarte tú en línea**. Eso genera presión psicológica en el cliente para responder. No necesitas saber si ellos están en línea para venderles; necesitas saber si te están leyendo (doble check azul) y si te están respondiendo (escribiendo).
+
+¿Te ayudo a configurar el código para que tu estado "En Línea" se apague automáticamente después de 5 minutos de inactividad, para que no parezcas un robot insomne?
