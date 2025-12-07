@@ -1178,22 +1178,25 @@ export async function syncPlanWithStripe(plan: {
       }
     }
 
-    // Step 4: Create or update annual Price if annualPrice is set
+    // Step 4: Create or update annual Price (always calculate with 20% discount)
     let annualRecurringPrice: Stripe.Price | null = null;
     
-    if (plan.annualPrice && plan.annualPrice > 0) {
+    // Auto-calculate annual price with 20% discount: monthly * 12 * 0.8
+    const calculatedAnnualPrice = plan.annualPrice || Math.round(plan.price * 12 * 0.8);
+    
+    if (calculatedAnnualPrice && calculatedAnnualPrice > 0) {
       if (plan.stripeAnnualPriceId) {
         console.log('[STRIPE SYNC] Checking existing annual price:', plan.stripeAnnualPriceId);
         try {
           const existingAnnualPrice = await stripeClient.prices.retrieve(plan.stripeAnnualPriceId);
           
-          if (existingAnnualPrice.unit_amount !== plan.annualPrice) {
+          if (existingAnnualPrice.unit_amount !== calculatedAnnualPrice) {
             console.log('[STRIPE SYNC] Annual price changed, creating new price');
             await stripeClient.prices.update(plan.stripeAnnualPriceId, { active: false });
             
             annualRecurringPrice = await stripeClient.prices.create({
               product: product.id,
-              unit_amount: plan.annualPrice,
+              unit_amount: calculatedAnnualPrice,
               currency: plan.currency,
               recurring: {
                 interval: 'year',
@@ -1213,7 +1216,7 @@ export async function syncPlanWithStripe(plan: {
             console.log('[STRIPE SYNC] Annual price not found in Stripe, creating new one');
             annualRecurringPrice = await stripeClient.prices.create({
               product: product.id,
-              unit_amount: plan.annualPrice,
+              unit_amount: calculatedAnnualPrice,
               currency: plan.currency,
               recurring: {
                 interval: 'year',
@@ -1229,10 +1232,10 @@ export async function syncPlanWithStripe(plan: {
           }
         }
       } else {
-        console.log('[STRIPE SYNC] Creating new annual price');
+        console.log('[STRIPE SYNC] Creating new annual price with 20% discount');
         annualRecurringPrice = await stripeClient.prices.create({
           product: product.id,
-          unit_amount: plan.annualPrice,
+          unit_amount: calculatedAnnualPrice,
           currency: plan.currency,
           recurring: {
             interval: 'year',
