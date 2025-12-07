@@ -9,6 +9,8 @@ import {
   type InsertPlan,
   type PlanFeature,
   type InsertPlanFeature,
+  type PlanFeatureAssignment,
+  type InsertPlanFeatureAssignment,
   type Subscription,
   type InsertSubscription,
   type Invoice,
@@ -210,6 +212,7 @@ import {
   companySettings,
   plans,
   planFeatures,
+  planFeatureAssignments,
   subscriptions,
   invoices,
   invoiceItems,
@@ -346,6 +349,12 @@ export interface IStorage {
   updatePlanFeature(id: string, data: Partial<InsertPlanFeature>): Promise<PlanFeature | undefined>;
   deletePlanFeature(id: string): Promise<boolean>;
   
+  // Plan Feature Assignments (linking features to plans)
+  getPlanFeatureAssignments(planId: string): Promise<PlanFeatureAssignment[]>;
+  setPlanFeatureAssignments(planId: string, assignments: InsertPlanFeatureAssignment[]): Promise<PlanFeatureAssignment[]>;
+  updatePlanFeatureAssignment(planId: string, featureId: string, included: boolean): Promise<PlanFeatureAssignment | undefined>;
+  deletePlanFeatureAssignment(planId: string, featureId: string): Promise<boolean>;
+  
   // Subscriptions
   getSubscription(id: string): Promise<Subscription | undefined>;
   getSubscriptionByCompany(companyId: string): Promise<Subscription | undefined>;
@@ -389,7 +398,9 @@ export interface IStorage {
   // Invitations
   createInvitation(invitation: InsertInvitation): Promise<Invitation>;
   getInvitationByToken(token: string): Promise<Invitation | undefined>;
+  getInvitationsByCompany(companyId: string): Promise<Invitation[]>;
   acceptInvitation(token: string): Promise<boolean>;
+  deleteInvitation(token: string): Promise<boolean>;
   
   // API Keys
   createApiKey(apiKey: InsertApiKey): Promise<ApiKey>;
@@ -1236,6 +1247,12 @@ export interface IStorage {
   createCampaignPlaceholder(data: InsertCampaignPlaceholder): Promise<CampaignPlaceholder>;
   updateCampaignPlaceholder(id: string, companyId: string, data: Partial<InsertCampaignPlaceholder>): Promise<CampaignPlaceholder>;
   deleteCampaignPlaceholder(id: string, companyId: string): Promise<void>;
+  
+  // User Limits - Plan Enforcement
+  getActiveUserCountByCompany(companyId: string): Promise<number>;
+  getPendingInvitationCountByCompany(companyId: string): Promise<number>;
+  getPlanLimitForCompany(companyId: string): Promise<number | null>;
+  canCompanyAddUsers(companyId: string, countToAdd?: number): Promise<{ allowed: boolean; currentCount: number; limit: number | null; message?: string }>;
 }
 
 export class DbStorage implements IStorage {
@@ -1476,6 +1493,53 @@ export class DbStorage implements IStorage {
     return result.length > 0;
   }
 
+  // ==================== PLAN FEATURE ASSIGNMENTS ====================
+  
+  async getPlanFeatureAssignments(planId: string): Promise<PlanFeatureAssignment[]> {
+    return db.select()
+      .from(planFeatureAssignments)
+      .where(eq(planFeatureAssignments.planId, planId))
+      .orderBy(planFeatureAssignments.sortOrder);
+  }
+  
+  async setPlanFeatureAssignments(planId: string, assignments: InsertPlanFeatureAssignment[]): Promise<PlanFeatureAssignment[]> {
+    await db.delete(planFeatureAssignments).where(eq(planFeatureAssignments.planId, planId));
+    if (assignments.length === 0) {
+      return [];
+    }
+    const assignmentsWithPlanId = assignments.map(a => ({
+      ...a,
+      planId,
+    }));
+    const result = await db.insert(planFeatureAssignments).values(assignmentsWithPlanId).returning();
+    return result;
+  }
+  
+  async updatePlanFeatureAssignment(planId: string, featureId: string, included: boolean): Promise<PlanFeatureAssignment | undefined> {
+    const result = await db.update(planFeatureAssignments)
+      .set({ included, updatedAt: new Date() })
+      .where(
+        and(
+          eq(planFeatureAssignments.planId, planId),
+          eq(planFeatureAssignments.featureId, featureId)
+        )
+      )
+      .returning();
+    return result[0];
+  }
+  
+  async deletePlanFeatureAssignment(planId: string, featureId: string): Promise<boolean> {
+    const result = await db.delete(planFeatureAssignments)
+      .where(
+        and(
+          eq(planFeatureAssignments.planId, planId),
+          eq(planFeatureAssignments.featureId, featureId)
+        )
+      )
+      .returning();
+    return result.length > 0;
+  }
+
   // ==================== SUBSCRIPTIONS ====================
   
   async getSubscription(id: string): Promise<Subscription | undefined> {
@@ -1670,6 +1734,21 @@ export class DbStorage implements IStorage {
   async acceptInvitation(token: string): Promise<boolean> {
     const result = await db.update(invitations)
       .set({ acceptedAt: new Date() })
+      .where(eq(invitations.token, token))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getInvitationsByCompany(companyId: string): Promise<Invitation[]> {
+    const result = await db.select()
+      .from(invitations)
+      .where(eq(invitations.companyId, companyId))
+      .orderBy(desc(invitations.createdAt));
+    return result;
+  }
+
+  async deleteInvitation(token: string): Promise<boolean> {
+    const result = await db.delete(invitations)
       .where(eq(invitations.token, token))
       .returning();
     return result.length > 0;
@@ -11472,6 +11551,70 @@ export class DbStorage implements IStorage {
           eq(campaignPlaceholders.companyId, companyId)
         )
       );
+  }
+
+  // ==================== USER LIMITS - PLAN ENFORCEMENT ====================
+  
+  async getActiveUserCountByCompany(companyId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(users)
+      .where(
+        and(
+          eq(users.companyId, companyId),
+          eq(users.isActive, true)
+        )
+      );
+    return result[0]?.count ?? 0;
+  }
+
+  async getPendingInvitationCountByCompany(companyId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.companyId, companyId),
+          isNull(invitations.acceptedAt),
+          gte(invitations.expiresAt, new Date())
+        )
+      );
+    return result[0]?.count ?? 0;
+  }
+
+  async getPlanLimitForCompany(companyId: string): Promise<number | null> {
+    const subscription = await this.getSubscriptionByCompany(companyId);
+    if (!subscription || !subscription.planId) {
+      return null;
+    }
+    const plan = await this.getPlan(subscription.planId);
+    if (!plan) {
+      return null;
+    }
+    return plan.maxUsers;
+  }
+
+  async canCompanyAddUsers(companyId: string, countToAdd: number = 1): Promise<{ allowed: boolean; currentCount: number; limit: number | null; message?: string }> {
+    const limit = await this.getPlanLimitForCompany(companyId);
+    
+    if (limit === null) {
+      return { allowed: true, currentCount: 0, limit: null };
+    }
+    
+    const activeUserCount = await this.getActiveUserCountByCompany(companyId);
+    const pendingInvitationCount = await this.getPendingInvitationCountByCompany(companyId);
+    const currentCount = activeUserCount + pendingInvitationCount;
+    
+    if (currentCount + countToAdd > limit) {
+      return {
+        allowed: false,
+        currentCount,
+        limit,
+        message: `Your plan allows a maximum of ${limit} user${limit === 1 ? '' : 's'}. Please upgrade to add more users.`
+      };
+    }
+    
+    return { allowed: true, currentCount, limit };
   }
 }
 

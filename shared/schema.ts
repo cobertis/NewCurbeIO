@@ -335,6 +335,9 @@ export const plans = pgTable("plans", {
   // Display features for public pricing page (array of feature names with included status)
   displayFeatures: jsonb("display_features").default([]),
   
+  // User limits (null = unlimited)
+  maxUsers: integer("max_users"), // Shared=1, Dedicated=5, Unlimited=null
+  
   // Status
   isActive: boolean("is_active").notNull().default(true),
   
@@ -358,6 +361,20 @@ export const planFeatures = pgTable("plan_features", {
   description: text("description"), // Optional longer description
   sortOrder: integer("sort_order").notNull().default(0), // Display order
   isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// =====================================================
+// PLAN FEATURE ASSIGNMENTS (Per-plan feature inclusion toggles)
+// =====================================================
+
+export const planFeatureAssignments = pgTable("plan_feature_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planId: varchar("plan_id").notNull().references(() => plans.id, { onDelete: "cascade" }),
+  featureId: varchar("feature_id").notNull().references(() => planFeatures.id, { onDelete: "cascade" }),
+  included: boolean("included").notNull().default(true), // true = green checkmark, false = red X
+  sortOrder: integer("sort_order").notNull().default(0), // Display order within this plan
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -934,6 +951,14 @@ export const insertPlanFeatureSchema = createInsertSchema(planFeatures).omit({
 });
 export type PlanFeature = typeof planFeatures.$inferSelect;
 export type InsertPlanFeature = z.infer<typeof insertPlanFeatureSchema>;
+
+export const insertPlanFeatureAssignmentSchema = createInsertSchema(planFeatureAssignments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type PlanFeatureAssignment = typeof planFeatureAssignments.$inferSelect;
+export type InsertPlanFeatureAssignment = z.infer<typeof insertPlanFeatureAssignmentSchema>;
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
@@ -3455,6 +3480,11 @@ export const contacts = pgTable("contacts", {
   tags: text("tags").array(), // Array of tags for filtering
   lastContactedAt: timestamp("last_contacted_at"),
   
+  // Email bounce tracking
+  emailBounced: boolean("email_bounced").notNull().default(false), // True if email has bounced
+  emailBouncedAt: timestamp("email_bounced_at"), // When the bounce was detected
+  emailBounceReason: text("email_bounce_reason"), // Reason for bounce if available
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -3465,6 +3495,7 @@ export const contacts = pgTable("contacts", {
   companyIdIndex: index("contacts_company_id_idx").on(table.companyId),
   emailIndex: index("contacts_email_idx").on(table.email),
   phoneIndex: index("contacts_phone_normalized_idx").on(table.phoneNormalized),
+  emailBouncedIndex: index("contacts_email_bounced_idx").on(table.emailBounced),
 }));
 
 // Contact Sources - Track where each contact appears (quote, policy, lead, SMS, etc.)
@@ -4746,6 +4777,7 @@ export const apiProviders = [
   "nodemailer",
   "openai",
   "cms_api",
+  "imap_bounce",
 ] as const;
 export type ApiProvider = typeof apiProviders[number];
 

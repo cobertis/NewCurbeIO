@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,142 +12,330 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPlanSchema, insertPlanFeatureSchema, type Plan, type InsertPlan, type PlanFeature, type InsertPlanFeature } from "@shared/schema";
-import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw, X, Users, Zap, Star, List, CreditCard, Loader2 } from "lucide-react";
+import { insertPlanSchema, insertPlanFeatureSchema, type Plan, type InsertPlan, type PlanFeature, type InsertPlanFeature, type PlanFeatureAssignment } from "@shared/schema";
+import { Plus, Edit, Trash2, DollarSign, Clock, Check, RefreshCw, X, Users, Zap, Star, List, CreditCard, Loader2, Settings } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-function getIconForPlan(planName: string): typeof Users {
+interface FeatureAssignmentState {
+  [featureId: string]: boolean;
+}
+
+function isPopularPlan(planName: string, planIndex: number, totalPlans: number): boolean {
   const nameLower = planName.toLowerCase();
-  if (nameLower.includes('unlimited')) return Star;
-  if (nameLower.includes('dedicated')) return Zap;
-  return Users;
+  if (nameLower.includes('dedicated') || nameLower.includes('team') || nameLower.includes('professional')) return true;
+  if (totalPlans === 3 && planIndex === 1) return true;
+  return false;
 }
 
-function getAccountsText(plan: Plan): string {
-  const nameLower = plan.name.toLowerCase();
-  if (nameLower.includes('unlimited')) return 'Unlimited accounts';
-  if (nameLower.includes('dedicated')) return '5 accounts included';
-  return '1 account included';
-}
-
-function isPopularPlan(planName: string): boolean {
-  return planName.toLowerCase().includes('dedicated');
+function formatPrice(amount: number, currency: string = 'usd'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount / 100);
 }
 
 interface PublicPricingViewProps {
   planFeatures: PlanFeature[];
   publicPlans: Plan[];
   isLoading?: boolean;
+  onSelectPlan?: (planId: string, billingCycle: 'monthly' | 'yearly') => void;
+  isSelecting?: boolean;
+  showTrialInfo?: boolean;
 }
 
-function PublicPricingView({ planFeatures, publicPlans, isLoading }: PublicPricingViewProps) {
+export function PublicPricingView({ 
+  planFeatures, 
+  publicPlans, 
+  isLoading,
+  onSelectPlan,
+  isSelecting,
+  showTrialInfo = false
+}: PublicPricingViewProps) {
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  
   const sortedFeatures = [...planFeatures].sort((a, b) => a.sortOrder - b.sortOrder);
   const sortedPlans = [...publicPlans].sort((a, b) => a.price - b.price);
+
+  const getDisplayPrice = (plan: Plan): number => {
+    if (billingCycle === 'yearly') {
+      if (plan.annualPrice) {
+        return plan.annualPrice / 12;
+      }
+      return plan.price * 10 / 12;
+    }
+    return plan.price;
+  };
+
+  const getYearlyTotal = (plan: Plan): number => {
+    if (plan.annualPrice) {
+      return plan.annualPrice;
+    }
+    return plan.price * 10;
+  };
+
+  const getSavingsPercentage = (plan: Plan): number => {
+    if (!plan.annualPrice && !plan.price) return 17;
+    const monthlyTotal = plan.price * 12;
+    const yearlyTotal = plan.annualPrice || (plan.price * 10);
+    const savings = ((monthlyTotal - yearlyTotal) / monthlyTotal) * 100;
+    return Math.round(savings);
+  };
   
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
-      <div className="flex flex-col gap-8 w-full max-w-7xl">
-        <div className="text-center space-y-4">
-          <Badge className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="badge-planes">
-            PLANS & PRICING
-          </Badge>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
-            Choose the <span className="text-blue-600">perfect plan for you</span>
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Start with 14 days free. Cancel anytime. No surprises.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-16 px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8 mb-12">
+          <div className="lg:max-w-xl">
+            <h1 
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight"
+              data-testid="text-pricing-header"
+            >
+              Simple pricing based on your needs
+            </h1>
+          </div>
+          <div className="lg:max-w-md lg:text-right">
+            <p className="text-gray-600 dark:text-gray-400 text-lg" data-testid="text-pricing-subtitle">
+              Discover a variety of our advanced features. Unlimited and free for individuals.
+            </p>
+          </div>
         </div>
 
+        <div className="flex items-center justify-center gap-4 mb-12">
+          <button
+            onClick={() => setBillingCycle('monthly')}
+            className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+              billingCycle === 'monthly'
+                ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-lg'
+                : 'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+            }`}
+            data-testid="button-billing-monthly"
+          >
+            Monthly
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setBillingCycle('yearly')}
+              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                billingCycle === 'yearly'
+                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-lg'
+                  : 'bg-white text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+              }`}
+              data-testid="button-billing-yearly"
+            >
+              Yearly
+            </button>
+            <Badge 
+              className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 border-0 px-2.5 py-1 text-xs font-medium"
+              data-testid="badge-save-percentage"
+            >
+              Save 20%
+            </Badge>
+          </div>
+        </div>
+
+        {billingCycle === 'yearly' && (
+          <div className="text-center mb-8">
+            <span className="text-emerald-600 dark:text-emerald-400 text-sm font-medium" data-testid="text-yearly-savings">
+              🎉 2 months free with yearly billing
+            </span>
+          </div>
+        )}
+
         {isLoading ? (
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader className="h-32 bg-muted rounded-t-lg" />
-                <CardContent className="h-40" />
+              <Card key={i} className="animate-pulse bg-white dark:bg-gray-800">
+                <CardHeader className="h-48 bg-gray-100 dark:bg-gray-700 rounded-t-lg" />
+                <CardContent className="h-64 bg-gray-50 dark:bg-gray-750" />
               </Card>
             ))}
           </div>
         ) : sortedPlans.length === 0 ? (
-          <Card>
+          <Card className="max-w-md mx-auto">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground">No plans available</p>
+              <p className="text-muted-foreground" data-testid="text-no-plans">No plans available</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto items-start">
             {sortedPlans.map((plan, index) => {
-              const Icon = getIconForPlan(plan.name);
-              const popular = isPopularPlan(plan.name);
+              const popular = isPopularPlan(plan.name, index, sortedPlans.length);
               const displayFeatures = (plan.displayFeatures as string[]) || [];
+              const displayPrice = getDisplayPrice(plan);
+              const yearlyTotal = getYearlyTotal(plan);
+              
+              const getPlanDescription = (planName: string, description?: string): string => {
+                if (description) return description;
+                const nameLower = planName.toLowerCase();
+                if (nameLower.includes('starter') || nameLower.includes('shared') || nameLower.includes('individual')) {
+                  return 'Good for individuals who are just starting out and simply want the essentials.';
+                }
+                if (nameLower.includes('team') || nameLower.includes('dedicated') || nameLower.includes('professional')) {
+                  return 'Highly recommended for small teams who seek to upgrade their time & perform.';
+                }
+                if (nameLower.includes('enterprise') || nameLower.includes('unlimited')) {
+                  return 'Robust scheduling for larger teams looking to have more control, privacy & security.';
+                }
+                return 'All the features you need to grow your business.';
+              };
+
+              const getPlanFeatureHeader = (planName: string, index: number): string => {
+                const nameLower = planName.toLowerCase();
+                if (nameLower.includes('starter') || nameLower.includes('shared') || nameLower.includes('individual') || index === 0) {
+                  return 'Free, forever';
+                }
+                if (nameLower.includes('team') || nameLower.includes('dedicated') || nameLower.includes('professional') || index === 1) {
+                  return 'Free plan features, plus:';
+                }
+                return 'Organization plan features, plus:';
+              };
+
               return (
-                <div key={plan.id} className="relative" data-testid={`card-public-plan-${index}`}>
-                  {popular && (
-                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
-                      <Badge className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1">
-                        MOST POPULAR
+                <div 
+                  key={plan.id} 
+                  className={`relative ${popular ? 'md:-mt-4 md:mb-4' : ''}`}
+                  data-testid={`card-public-plan-${index}`}
+                >
+                  {popular && plan.trialDays > 0 && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                      <Badge 
+                        className="bg-blue-600 hover:bg-blue-600 text-white px-4 py-1.5 text-xs font-medium shadow-md"
+                        data-testid={`badge-trial-${index}`}
+                      >
+                        {plan.trialDays} days free trial
                       </Badge>
                     </div>
                   )}
-                  <Card className={`h-full ${popular ? 'border-blue-600 shadow-lg scale-105' : 'bg-gray-50'}`}>
-                    <CardHeader className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${popular ? 'bg-blue-100' : 'bg-gray-200'}`}>
-                          <Icon className={`h-6 w-6 ${popular ? 'text-blue-600' : 'text-gray-600'}`} />
+                  
+                  <Card className={`h-full bg-white dark:bg-gray-800 transition-all duration-300 ${
+                    popular 
+                      ? 'border-blue-200 dark:border-blue-800 shadow-xl ring-1 ring-blue-100 dark:ring-blue-900' 
+                      : 'border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg'
+                  }`}>
+                    <CardHeader className="pb-4 pt-8">
+                      <CardTitle 
+                        className="text-xl font-semibold text-gray-900 dark:text-white"
+                        data-testid={`text-plan-name-${index}`}
+                      >
+                        {plan.name}
+                      </CardTitle>
+                      
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Starts at</p>
+                        <div className="flex items-baseline gap-2">
+                          <span 
+                            className="text-4xl font-bold text-gray-900 dark:text-white"
+                            data-testid={`text-plan-price-${index}`}
+                          >
+                            {formatPrice(displayPrice, plan.currency)}
+                          </span>
+                          <span className="text-gray-500 dark:text-gray-400 text-sm">
+                            per {billingCycle === 'yearly' ? 'month' : 'month'}/user
+                          </span>
                         </div>
-                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                      </div>
-                      <div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-4xl font-bold">${(plan.price / 100).toFixed(0)}</span>
-                          <span className="text-muted-foreground">/month</span>
-                        </div>
-                        {plan.trialDays > 0 && (
-                          <p className="text-sm text-green-600 font-medium mt-1">{plan.trialDays} days free trial</p>
+                        {billingCycle === 'yearly' && plan.price > 0 && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {formatPrice(yearlyTotal, plan.currency)}/year billed annually
+                          </p>
                         )}
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {plan.description || getAccountsText(plan)}
-                        </p>
                       </div>
+                      
+                      <p 
+                        className="text-sm text-gray-600 dark:text-gray-400 mt-4 leading-relaxed"
+                        data-testid={`text-plan-description-${index}`}
+                      >
+                        {getPlanDescription(plan.name, plan.description || undefined)}
+                      </p>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      {sortedFeatures.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">
-                          No features configured
-                        </p>
-                      ) : (
-                        sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
-                          const included = displayFeatures.includes(feature.id);
-                          return (
-                            <div
-                              key={feature.id}
-                              className="flex items-start gap-3"
-                              data-testid={`feature-${index}-${idx}`}
-                            >
-                              {included ? (
-                                <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                              ) : (
-                                <X className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                              )}
-                              <span className={`text-sm ${included ? 'text-foreground' : 'text-muted-foreground'}`}>
-                                {feature.name}
-                              </span>
-                            </div>
-                          );
-                        })
-                      )}
-                    </CardContent>
-                    <CardFooter>
+                    
+                    <CardContent className="pt-0 pb-6">
                       <Button
-                        className={`w-full ${popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                        variant={popular ? 'default' : 'outline'}
+                        className={`w-full mb-6 ${
+                          popular 
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' 
+                            : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600'
+                        }`}
+                        size="lg"
+                        onClick={() => onSelectPlan?.(plan.id, billingCycle)}
+                        disabled={isSelecting}
                         data-testid={`button-select-plan-${index}`}
                       >
-                        {popular ? 'Get Started' : 'Choose Plan'}
+                        {isSelecting ? 'Selecting...' : plan.price === 0 ? 'Get started' : 'Get started'}
                       </Button>
-                    </CardFooter>
+                      
+                      <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
+                        <p 
+                          className="text-sm font-semibold text-gray-900 dark:text-white mb-4"
+                          data-testid={`text-feature-header-${index}`}
+                        >
+                          {getPlanFeatureHeader(plan.name, index)}
+                        </p>
+                        
+                        <div className="space-y-3">
+                          {sortedFeatures.filter(f => f.isActive).length > 0 ? (
+                            sortedFeatures.filter(f => f.isActive).map((feature, idx) => {
+                              const included = displayFeatures.includes(feature.id);
+                              if (!included) return null;
+                              return (
+                                <div
+                                  key={feature.id}
+                                  className="flex items-start gap-3"
+                                  data-testid={`feature-${index}-${idx}`}
+                                >
+                                  <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                                    {feature.name}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <>
+                              <div className="flex items-start gap-3">
+                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {index === 0 ? '1 user' : index === 1 ? '1 team' : '1 parent team and unlimited sub-teams'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {index === 0 ? 'Unlimited calendars' : index === 1 ? 'Schedule meetings as a team' : 'Organization workflows'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {index === 0 ? 'Unlimited event types' : index === 1 ? 'Round-Robin, Fixed Round-Robin' : 'Insights - analyze your booking data'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {index === 0 ? 'Workflows' : index === 1 ? 'Collective Events' : 'Active directory sync'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {index === 0 ? 'Integrate with your favorite apps' : index === 1 ? 'Advanced Routing Forms' : '24/7 Email, Chat and Phone support'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Check className="h-5 w-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {index === 0 ? 'Accept payments via Stripe' : index === 1 ? 'Team Workflows' : 'Sync your HRIS tools'}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
                   </Card>
                 </div>
               );
@@ -155,11 +343,23 @@ function PublicPricingView({ planFeatures, publicPlans, isLoading }: PublicPrici
           </div>
         )}
 
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            All plans include the core CRM features
-          </p>
-        </div>
+        {showTrialInfo && (
+          <div className="text-center mt-12 space-y-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              All plans include a free trial. No credit card required.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Need help choosing?{' '}
+              <a 
+                href="mailto:hello@curbe.io" 
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+                data-testid="link-contact-sales"
+              >
+                Contact our sales team
+              </a>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -173,6 +373,9 @@ export default function PlansPage() {
   const [activeTab, setActiveTab] = useState<"plans" | "features">("plans");
   const [editingFeature, setEditingFeature] = useState<PlanFeature | null>(null);
   const [isFeatureDialogOpen, setIsFeatureDialogOpen] = useState(false);
+  const [editFormTab, setEditFormTab] = useState<"basic" | "pricing" | "features">("basic");
+  const [featureAssignments, setFeatureAssignments] = useState<FeatureAssignmentState>({});
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
     queryKey: ["/api/session"],
@@ -265,6 +468,50 @@ export default function PlansPage() {
       toast({ title: "Failed to delete plan", variant: "destructive" });
     },
   });
+
+  const saveFeatureAssignmentsMutation = useMutation({
+    mutationFn: async ({ planId, assignments }: { planId: string; assignments: { featureId: string; included: boolean; sortOrder: number }[] }) => {
+      const response = await fetch(`/api/plans/${planId}/features`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(assignments),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save feature assignments");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to save feature assignments", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const loadFeatureAssignments = async (planId: string) => {
+    setIsLoadingAssignments(true);
+    try {
+      const response = await fetch(`/api/plans/${planId}/features`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const assignments: FeatureAssignmentState = {};
+        (data.assignments || []).forEach((a: PlanFeatureAssignment) => {
+          assignments[a.featureId] = a.included;
+        });
+        setFeatureAssignments(assignments);
+      } else {
+        setFeatureAssignments({});
+      }
+    } catch {
+      setFeatureAssignments({});
+    }
+    setIsLoadingAssignments(false);
+  };
 
   const syncFromStripeMutation = useMutation({
     mutationFn: async () => {
@@ -407,6 +654,9 @@ export default function PlansPage() {
       billingCycle: "monthly",
       trialDays: 0,
       isActive: true,
+      maxUsers: undefined,
+      annualPrice: undefined,
+      stripeAnnualPriceId: "",
     },
   });
 
@@ -420,9 +670,19 @@ export default function PlansPage() {
     },
   });
 
-  function onSubmit(values: InsertPlan) {
+  async function onSubmit(values: InsertPlan) {
     if (editingPlan) {
-      updateMutation.mutate({ id: editingPlan.id, values });
+      updateMutation.mutate({ id: editingPlan.id, values }, {
+        onSuccess: async () => {
+          const sortedFeaturesList = [...planFeatures].sort((a, b) => a.sortOrder - b.sortOrder);
+          const assignments = sortedFeaturesList.map((feature, idx) => ({
+            featureId: feature.id,
+            included: featureAssignments[feature.id] ?? false,
+            sortOrder: idx,
+          }));
+          await saveFeatureAssignmentsMutation.mutateAsync({ planId: editingPlan.id, assignments });
+        },
+      });
     } else {
       createMutation.mutate(values);
     }
@@ -438,6 +698,7 @@ export default function PlansPage() {
 
   function handleEdit(plan: Plan) {
     setEditingPlan(plan);
+    setEditFormTab("basic");
     form.reset({
       name: plan.name,
       description: plan.description || "",
@@ -448,12 +709,18 @@ export default function PlansPage() {
       stripePriceId: plan.stripePriceId || "",
       trialDays: plan.trialDays,
       isActive: plan.isActive,
+      maxUsers: plan.maxUsers ?? undefined,
+      annualPrice: plan.annualPrice ?? undefined,
+      stripeAnnualPriceId: plan.stripeAnnualPriceId || "",
     });
+    loadFeatureAssignments(plan.id);
     setIsDialogOpen(true);
   }
 
   function handleCreate() {
     setEditingPlan(null);
+    setEditFormTab("basic");
+    setFeatureAssignments({});
     form.reset({
       name: "",
       description: "",
@@ -463,6 +730,9 @@ export default function PlansPage() {
       billingCycle: "monthly",
       trialDays: 0,
       isActive: true,
+      maxUsers: undefined,
+      annualPrice: undefined,
+      stripeAnnualPriceId: "",
     });
     setIsDialogOpen(true);
   }
@@ -782,177 +1052,369 @@ export default function PlansPage() {
       </Tabs>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingPlan ? "Edit Plan" : "Create Plan"}</DialogTitle>
             <DialogDescription>
-              {editingPlan ? "Update plan details and pricing" : "Create a new subscription plan"}
+              {editingPlan ? "Update plan details, pricing, and feature assignments" : "Create a new subscription plan"}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Pro Plan" data-testid="input-plan-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <Tabs value={editFormTab} onValueChange={(v) => setEditFormTab(v as "basic" | "pricing" | "features")} className="w-full">
+                <TabsList className="grid w-full grid-cols-3" data-testid="tabs-plan-edit">
+                  <TabsTrigger value="basic" data-testid="tab-plan-basic">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Basic Info
+                  </TabsTrigger>
+                  <TabsTrigger value="pricing" data-testid="tab-plan-pricing">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Pricing
+                  </TabsTrigger>
+                  <TabsTrigger value="features" data-testid="tab-plan-features" disabled={!editingPlan}>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Features
+                  </TabsTrigger>
+                </TabsList>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} value={field.value || ""} placeholder="Perfect for growing teams" data-testid="input-plan-description" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price (cents)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="2999"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          data-testid="input-plan-price"
-                        />
-                      </FormControl>
-                      <FormDescription>${((field.value || 0) / 100).toFixed(2)}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="setupFee"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Setup Fee (cents)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="0"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          data-testid="input-plan-setup-fee"
-                        />
-                      </FormControl>
-                      <FormDescription>${((field.value || 0) / 100).toFixed(2)}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="billingCycle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Billing Cycle</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <TabsContent value="basic" className="space-y-4 mt-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name</FormLabel>
                         <FormControl>
-                          <SelectTrigger data-testid="select-billing-cycle">
-                            <SelectValue />
-                          </SelectTrigger>
+                          <Input {...field} placeholder="Pro Plan" data-testid="input-plan-name" />
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                          <SelectItem value="annual">Annual</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="trialDays"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Trial Days</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="0"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          data-testid="input-trial-days"
-                        />
-                      </FormControl>
-                      <FormDescription>0 = No trial</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} value={field.value || ""} placeholder="Perfect for growing teams" data-testid="input-plan-description" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="stripePriceId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Stripe Price ID (optional)</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ""} placeholder="price_xxxxx" data-testid="input-stripe-price-id" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="billingCycle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Billing Cycle</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-billing-cycle">
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="annual">Annual</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Active</FormLabel>
-                      <FormDescription>
-                        Inactive plans won't be visible to customers
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-plan-active"
+                    <FormField
+                      control={form.control}
+                      name="trialDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Trial Days</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="number"
+                              placeholder="0"
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              data-testid="input-trial-days"
+                            />
+                          </FormControl>
+                          <FormDescription>0 = No trial</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="maxUsers"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Maximum Users</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            placeholder="Leave empty for unlimited"
+                            value={field.value ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === "" ? undefined : parseInt(val) || undefined);
+                            }}
+                            data-testid="input-plan-max-users"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Leave empty for unlimited users. Suggested: Shared=1, Dedicated=5, Unlimited=empty
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="isActive"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Active</FormLabel>
+                          <FormDescription>
+                            Inactive plans won't be visible to customers
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-plan-active"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+
+                <TabsContent value="pricing" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Monthly Price (cents)</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="number"
+                              placeholder="2999"
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              data-testid="input-plan-price"
+                            />
+                          </FormControl>
+                          <FormDescription>${((field.value || 0) / 100).toFixed(2)}/month</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="setupFee"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Setup Fee (cents)</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="number"
+                              placeholder="0"
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              data-testid="input-plan-setup-fee"
+                            />
+                          </FormControl>
+                          <FormDescription>${((field.value || 0) / 100).toFixed(2)} one-time</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="stripePriceId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stripe Monthly Price ID (optional)</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} placeholder="price_xxxxx" data-testid="input-stripe-price-id" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="border-t pt-4 mt-4">
+                    <h4 className="text-sm font-medium mb-4 flex items-center gap-2">
+                      <Star className="h-4 w-4" />
+                      Annual Pricing (Optional)
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="annualPrice"
+                        render={({ field }) => {
+                          const monthlyPrice = form.watch("price") || 0;
+                          const annualValue = field.value ?? 0;
+                          const monthlyEquivalent = annualValue ? (annualValue / 12) : 0;
+                          const fullYearlyAtMonthly = monthlyPrice * 12;
+                          const savingsPercent = annualValue && fullYearlyAtMonthly > 0 
+                            ? Math.round(((fullYearlyAtMonthly - annualValue) / fullYearlyAtMonthly) * 100)
+                            : 0;
+                          
+                          return (
+                            <FormItem>
+                              <FormLabel>Annual Price (cents)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  placeholder="Leave empty for default (10x monthly)"
+                                  value={field.value ?? ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    field.onChange(val === "" ? undefined : parseInt(val) || undefined);
+                                  }}
+                                  data-testid="input-plan-annual-price"
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                {annualValue ? (
+                                  <span>
+                                    ${(annualValue / 100).toFixed(2)}/year 
+                                    (${(monthlyEquivalent / 100).toFixed(2)}/mo)
+                                    {savingsPercent > 0 && (
+                                      <Badge className="ml-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" data-testid="badge-annual-savings">
+                                        Save {savingsPercent}%
+                                      </Badge>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span>Default: ${((monthlyPrice * 10) / 100).toFixed(2)}/year (10 months)</span>
+                                )}
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      <FormField
+                        control={form.control}
+                        name="stripeAnnualPriceId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Stripe Annual Price ID</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                value={field.value || ""} 
+                                placeholder="price_xxxxx_annual" 
+                                data-testid="input-stripe-annual-price-id" 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="features" className="space-y-4 mt-4">
+                  {!editingPlan ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Save the plan first to configure features</p>
+                    </div>
+                  ) : isLoadingAssignments ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-muted-foreground">Loading feature assignments...</span>
+                    </div>
+                  ) : planFeatures.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No features configured yet</p>
+                      <p className="text-sm mt-1">Add features in the Features tab first</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Toggle which features are included in this plan. Green check = included, Red X = not included.
+                      </p>
+                      <div className="rounded-md border">
+                        {[...planFeatures].sort((a, b) => a.sortOrder - b.sortOrder).map((feature) => {
+                          const isIncluded = featureAssignments[feature.id] ?? false;
+                          return (
+                            <div 
+                              key={feature.id}
+                              className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-muted/50"
+                              data-testid={`feature-assignment-${feature.id}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                {isIncluded ? (
+                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 dark:bg-green-900" data-testid={`feature-status-included-${feature.id}`}>
+                                    <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900" data-testid={`feature-status-excluded-${feature.id}`}>
+                                    <X className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="font-medium text-sm" data-testid={`feature-name-${feature.id}`}>{feature.name}</p>
+                                  {feature.description && (
+                                    <p className="text-xs text-muted-foreground">{feature.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <Switch
+                                checked={isIncluded}
+                                onCheckedChange={(checked) => {
+                                  setFeatureAssignments(prev => ({
+                                    ...prev,
+                                    [feature.id]: checked,
+                                  }));
+                                }}
+                                data-testid={`switch-feature-${feature.id}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} data-testid="button-cancel-plan">
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending || saveFeatureAssignmentsMutation.isPending}
                   data-testid="button-submit-plan"
                 >
+                  {(createMutation.isPending || updateMutation.isPending || saveFeatureAssignmentsMutation.isPending) && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   {editingPlan ? "Update Plan" : "Create Plan"}
                 </Button>
               </DialogFooter>

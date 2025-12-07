@@ -9,6 +9,7 @@ import "./stripe"; // Force Stripe initialization to show which mode we're using
 import { startReminderScheduler } from "./reminder-scheduler";
 import { startBirthdayScheduler } from "./birthday-scheduler";
 import { startImessageCampaignProcessor } from "./imessage-campaign-processor";
+import { startBounceProcessor } from "./bounce-processor";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 
 // Handle unhandled promise rejections to prevent server crashes
@@ -192,6 +193,9 @@ app.use((req, res, next) => {
     
     // Start the iMessage campaign processor for automated campaign message delivery
     startImessageCampaignProcessor();
+    
+    // Start the bounce email processor for handling bounced emails
+    startBounceProcessor();
     
     // Test email service on startup
     import("./email").then(({ emailService }) => {

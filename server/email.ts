@@ -117,17 +117,26 @@ class EmailService {
         }
       }
 
+      const fromAddress = '"Curbe.io" <no-reply@auth.curbe.io>';
+      const bounceAddress = 'rebotes@auth.curbe.io';
+      const recipients = Array.isArray(options.to) ? options.to.join(", ") : options.to;
+
       console.log('[EMAIL DEBUG] Starting email send...');
-      console.log('[EMAIL DEBUG] From:', `"${smtpFromName}" <${smtpFromEmail}>`);
+      console.log('[EMAIL DEBUG] From:', fromAddress);
+      console.log('[EMAIL DEBUG] Bounce Return-Path:', bounceAddress);
       console.log('[EMAIL DEBUG] To:', options.to);
       console.log('[EMAIL DEBUG] Subject:', options.subject);
 
       const result = await transporter.sendMail({
-        from: `"${smtpFromName}" <${smtpFromEmail}>`,
-        to: Array.isArray(options.to) ? options.to.join(", ") : options.to,
+        from: fromAddress,
+        to: recipients,
         subject: options.subject,
         text: options.text || options.html.replace(/<[^>]*>/g, ""),
         html: options.html,
+        envelope: {
+          from: bounceAddress,
+          to: Array.isArray(options.to) ? options.to : [options.to],
+        },
       });
 
       console.log('[EMAIL DEBUG] Nodemailer result:', JSON.stringify(result, null, 2));

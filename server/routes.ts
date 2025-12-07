@@ -26,6 +26,7 @@ import {
   createCompanyWithAdminSchema,
   insertPlanSchema,
   insertPlanFeatureSchema,
+  insertPlanFeatureAssignmentSchema,
   updateCompanySettingsSchema,
   insertEmailTemplateSchema,
   insertFeatureSchema,
@@ -4806,6 +4807,191 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to reset password" });
     }
   });
+
+  // ==================== INVITATION ENDPOINTS ====================
+
+  // Create invitation (admin only)
+  app.post("/api/invitations", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can create invitations
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
+    }
+    
+    if (!currentUser.companyId) {
+      return res.status(400).json({ message: "Company context required" });
+    }
+    
+    try {
+      // Check user limit before creating invitation
+      const limitCheck = await storage.canCompanyAddUsers(currentUser.companyId);
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          message: limitCheck.message,
+          code: "USER_LIMIT_REACHED"
+        });
+      }
+      
+      const { email, role } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Check if user already exists with this email
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "A user with this email already exists" });
+      }
+      
+      // Generate unique token
+      const token = require("crypto").randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiration
+      
+      const invitation = await storage.createInvitation({
+        email,
+        companyId: currentUser.companyId,
+        role: role || "member",
+        token,
+        expiresAt,
+        invitedBy: currentUser.id,
+      });
+      
+      res.status(201).json({ invitation });
+    } catch (error) {
+      console.error("[CREATE INVITATION] Error:", error);
+      res.status(500).json({ message: "Failed to create invitation" });
+    }
+  });
+
+  // Get pending invitations for company
+  app.get("/api/invitations", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can view invitations
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
+    }
+    
+    if (!currentUser.companyId) {
+      return res.status(400).json({ message: "Company context required" });
+    }
+    
+    try {
+      const invitations = await storage.getInvitationsByCompany(currentUser.companyId);
+      res.json({ invitations });
+    } catch (error) {
+      console.error("[GET INVITATIONS] Error:", error);
+      res.status(500).json({ message: "Failed to fetch invitations" });
+    }
+  });
+
+  // Delete/revoke invitation
+  app.delete("/api/invitations/:token", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admins and superadmins can delete invitations
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Admin access required" });
+    }
+    
+    try {
+      const { token } = req.params;
+      const invitation = await storage.getInvitationByToken(token);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found" });
+      }
+      
+      // Only allow deleting invitations from own company (unless superadmin)
+      if (currentUser.role !== "superadmin" && invitation.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      await storage.deleteInvitation(token);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[DELETE INVITATION] Error:", error);
+      res.status(500).json({ message: "Failed to delete invitation" });
+    }
+  });
+
+  // Accept invitation and create user
+  app.post("/api/invitations/:token/accept", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      const invitation = await storage.getInvitationByToken(token);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Invitation not found or expired" });
+      }
+      
+      // Check if invitation has expired
+      if (new Date() > new Date(invitation.expiresAt)) {
+        return res.status(400).json({ message: "Invitation has expired" });
+      }
+      
+      // Check if already accepted
+      if (invitation.acceptedAt) {
+        return res.status(400).json({ message: "Invitation has already been accepted" });
+      }
+      
+      // Check user limit before accepting invitation
+      const limitCheck = await storage.canCompanyAddUsers(invitation.companyId);
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          message: limitCheck.message,
+          code: "USER_LIMIT_REACHED"
+        });
+      }
+      
+      const { firstName, lastName, password } = req.body;
+      
+      if (!firstName || !lastName || !password) {
+        return res.status(400).json({ message: "First name, last name, and password are required" });
+      }
+      
+      // Check if user already exists with this email
+      const existingUser = await storage.getUserByEmail(invitation.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "A user with this email already exists" });
+      }
+      
+      // Hash password
+      const bcrypt = require("bcrypt");
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
+      const user = await storage.createUser({
+        email: invitation.email,
+        username: invitation.email,
+        firstName,
+        lastName,
+        password: hashedPassword,
+        role: invitation.role as "admin" | "member" | "viewer",
+        companyId: invitation.companyId,
+        isActive: true,
+        emailNotifications: false,
+        invoiceAlerts: false,
+        language: "en" as const,
+      });
+      
+      // Mark invitation as accepted
+      await storage.acceptInvitation(token);
+      
+      res.status(201).json({ 
+        success: true, 
+        message: "Account created successfully",
+        userId: user.id 
+      });
+    } catch (error) {
+      console.error("[ACCEPT INVITATION] Error:", error);
+      res.status(500).json({ message: "Failed to accept invitation" });
+    }
+  });
+
   // ==================== STATS ENDPOINTS ====================
   app.get("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -5887,6 +6073,99 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     res.json({ success: true });
   });
+  // ==================== PLAN FEATURE ASSIGNMENTS ====================
+  
+  // Get all feature assignments for a plan
+  app.get("/api/plans/:planId/features", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { planId } = req.params;
+      const plan = await storage.getPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      const assignments = await storage.getPlanFeatureAssignments(planId);
+      res.json({ assignments });
+    } catch (error: any) {
+      console.error("Error fetching plan feature assignments:", error);
+      res.status(500).json({ message: "Failed to fetch plan feature assignments" });
+    }
+  });
+  
+  // Bulk set feature assignments for a plan (superadmin only)
+  app.post("/api/plans/:planId/features", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const { planId } = req.params;
+      const plan = await storage.getPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      const assignmentsSchema = z.array(insertPlanFeatureAssignmentSchema.omit({ planId: true }));
+      const validatedData = assignmentsSchema.parse(req.body);
+      const assignments = await storage.setPlanFeatureAssignments(planId, validatedData);
+      res.json({ assignments });
+    } catch (error: any) {
+      console.error("Error setting plan feature assignments:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to set plan feature assignments" });
+    }
+  });
+  
+  // Update single feature assignment (superadmin only)
+  app.put("/api/plans/:planId/features/:featureId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const { planId, featureId } = req.params;
+      const { included } = req.body;
+      if (typeof included !== "boolean") {
+        return res.status(400).json({ message: "Invalid request: 'included' must be a boolean" });
+      }
+      const plan = await storage.getPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      const assignment = await storage.updatePlanFeatureAssignment(planId, featureId, included);
+      if (!assignment) {
+        return res.status(404).json({ message: "Feature assignment not found" });
+      }
+      res.json({ assignment });
+    } catch (error: any) {
+      console.error("Error updating plan feature assignment:", error);
+      res.status(500).json({ message: "Failed to update plan feature assignment" });
+    }
+  });
+  
+  // Delete feature assignment (superadmin only)
+  app.delete("/api/plans/:planId/features/:featureId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const { planId, featureId } = req.params;
+      const plan = await storage.getPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      const success = await storage.deletePlanFeatureAssignment(planId, featureId);
+      if (!success) {
+        return res.status(404).json({ message: "Feature assignment not found" });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting plan feature assignment:", error);
+      res.status(500).json({ message: "Failed to delete plan feature assignment" });
+    }
+  });
+  
   // Sync plans from Stripe (superadmin only - RECOMMENDED METHOD)
   app.post("/api/plans/sync-from-stripe", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9349,6 +9628,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       let imported = 0;
       let skipped = 0;
+      const limitErrors: string[] = [];
       for (const contact of contacts) {
         if (!contact.email) {
           skipped++;
@@ -9360,6 +9640,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (existing) {
           skipped++;
           continue;
+        }
+
+        // Check user limit for the target company before creating user
+        if (contact.companyId) {
+          const limitCheck = await storage.canCompanyAddUsers(contact.companyId);
+          if (!limitCheck.allowed) {
+            skipped++;
+            limitErrors.push(`Company ${contact.companyId}: ${limitCheck.message}`);
+            continue;
+          }
         }
 
         // Create new user with default settings
@@ -9381,7 +9671,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await storage.createUser(userData);
         imported++;
       }
-      res.json({ imported, skipped, total: contacts.length });
+      res.json({ imported, skipped, total: contacts.length, limitErrors: limitErrors.length > 0 ? limitErrors : undefined });
     } catch (error) {
       console.error("[IMPORT CONTACTS] Error:", error);
       res.status(500).json({ message: "Failed to import contacts" });

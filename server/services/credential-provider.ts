@@ -40,6 +40,12 @@ const CREDENTIAL_MAPPINGS: CredentialKey[] = [
   
   { provider: "cms_api", keyName: "api_key", envVar: "CMS_API_KEY" },
   { provider: "cms_api", keyName: "base_url", envVar: "CMS_API_BASE_URL" },
+  
+  { provider: "imap_bounce", keyName: "host", envVar: "IMAP_BOUNCE_HOST" },
+  { provider: "imap_bounce", keyName: "port", envVar: "IMAP_BOUNCE_PORT" },
+  { provider: "imap_bounce", keyName: "user", envVar: "IMAP_BOUNCE_USER" },
+  { provider: "imap_bounce", keyName: "password", envVar: "IMAP_BOUNCE_PASSWORD" },
+  { provider: "imap_bounce", keyName: "tls", envVar: "IMAP_BOUNCE_TLS" },
 ];
 
 class CredentialProvider {
@@ -181,6 +187,23 @@ class CredentialProvider {
   }> {
     const apiKey = await this.get("google_places", "api_key");
     return { apiKey };
+  }
+
+  async getImapBounce(): Promise<{
+    host: string | null;
+    port: string | null;
+    user: string | null;
+    password: string | null;
+    tls: string | null;
+  }> {
+    const [host, port, user, password, tls] = await Promise.all([
+      this.get("imap_bounce", "host"),
+      this.get("imap_bounce", "port"),
+      this.get("imap_bounce", "user"),
+      this.get("imap_bounce", "password"),
+      this.get("imap_bounce", "tls"),
+    ]);
+    return { host, port, user, password, tls };
   }
 
   clearCache(credentialKey?: string): void {
