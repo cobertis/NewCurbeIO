@@ -44,11 +44,10 @@ export default function PlanSelection() {
 
   const selectPlanMutation = useMutation({
     mutationFn: async ({ planId, billingPeriod }: { planId: string; billingPeriod: 'monthly' | 'yearly' }) => {
-      const result = await apiRequest("POST", "/api/select-plan", {
+      return await apiRequest("POST", "/api/select-plan", {
         planId,
         billingPeriod,
       });
-      return result.json();
     },
     onSuccess: (data, variables) => {
       const plans = plansData?.plans || [];
