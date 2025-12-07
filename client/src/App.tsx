@@ -79,6 +79,7 @@ import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import WhatsAppPage from "@/pages/whatsapp";
+import NotificationsPage from "@/pages/notifications";
 import NotFound from "@/pages/not-found";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -1447,6 +1448,13 @@ function Router() {
           <PlanSelection />
         </ProtectedRoute>
       </Route>
+      <Route path="/settings/notifications">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <NotificationsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/settings">
         <ProtectedRoute>
           <DashboardLayout>
@@ -1490,13 +1498,6 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/settings/sessions">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/notifications">
         <ProtectedRoute>
           <DashboardLayout>
             <Settings />
