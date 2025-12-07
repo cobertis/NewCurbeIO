@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import { blacklistService } from "./services/blacklist-service";
 import { credentialProvider } from "./services/credential-provider";
+import { storage } from "./storage";
 
 interface EmailOptions {
   to: string | string[];
@@ -11,6 +12,8 @@ interface EmailOptions {
   companyId?: string;
   skipBlacklistCheck?: boolean;
   retryAttempts?: number;
+  templateSlug?: string;
+  skipLogging?: boolean;
 }
 
 interface RetryOptions {
@@ -225,6 +228,29 @@ class EmailService {
 
       console.log('[EMAIL DEBUG] Nodemailer result:', JSON.stringify(result, null, 2));
       console.log(`Email sent successfully to ${options.to}`);
+
+      if (!options.skipLogging) {
+        try {
+          await storage.createActivityLog({
+            companyId: options.companyId || null,
+            userId: null,
+            action: "email_sent",
+            entity: "email",
+            entityId: null,
+            metadata: {
+              recipient: recipients,
+              subject: options.subject,
+              htmlContent: options.html,
+              templateSlug: options.templateSlug || null,
+            },
+            ipAddress: null,
+            userAgent: null,
+          });
+        } catch (logError) {
+          console.error("[EMAIL] Failed to log email activity:", logError);
+        }
+      }
+
       return true;
     } catch (error: any) {
       if (error.message?.includes('blacklisted')) {

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +48,7 @@ export default function CompanyDetail() {
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [assignFeatureOpen, setAssignFeatureOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const companyId = params.id;
 
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: Company }>({
@@ -980,57 +981,87 @@ export default function CompanyDetail() {
                     const user = allUsers.find(u => u.id === log.userId);
                     const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown User';
 
+                    const isExpanded = expandedLogId === log.id;
+                    const hasEmailContent = isEmailLog && metadata.htmlContent;
+
                     return (
                       <div 
                         key={log.id || index} 
-                        className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                        className="border rounded-lg hover:bg-muted/50 transition-colors"
                         data-testid={`log-entry-${index}`}
                       >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {getActionIcon()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={getActionBadgeVariant()} className="text-xs">
-                              {formatAction(log.action || 'unknown')}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDate(log.createdAt)}
-                            </span>
+                        <div className="flex items-start gap-3 p-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {getActionIcon()}
                           </div>
-                          <div className="mt-1 space-y-0.5">
-                            {log.userId && (
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">User:</span>{' '}
-                                <span className="font-medium">{userName}</span>
-                              </p>
-                            )}
-                            {metadata.email && (
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Email:</span>{' '}
-                                <span className="font-medium">{metadata.email}</span>
-                              </p>
-                            )}
-                            {metadata.recipient && (
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Recipient:</span>{' '}
-                                <span className="font-medium">{metadata.recipient}</span>
-                              </p>
-                            )}
-                            {metadata.templateSlug && (
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Template:</span>{' '}
-                                <span className="font-medium">{metadata.templateSlug}</span>
-                              </p>
-                            )}
-                            {log.ipAddress && (
-                              <p className="text-xs text-muted-foreground">
-                                IP: {log.ipAddress}
-                                {metadata.city && metadata.country && ` (${metadata.city}, ${metadata.country})`}
-                              </p>
-                            )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant={getActionBadgeVariant()} className="text-xs">
+                                {formatAction(log.action || 'unknown')}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(log.createdAt)}
+                              </span>
+                            </div>
+                            <div className="mt-1 space-y-0.5">
+                              {log.userId && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">User:</span>{' '}
+                                  <span className="font-medium">{userName}</span>
+                                </p>
+                              )}
+                              {metadata.email && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Email:</span>{' '}
+                                  <span className="font-medium">{metadata.email}</span>
+                                </p>
+                              )}
+                              {metadata.recipient && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Recipient:</span>{' '}
+                                  <span className="font-medium">{metadata.recipient}</span>
+                                </p>
+                              )}
+                              {metadata.subject && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Subject:</span>{' '}
+                                  <span className="font-medium">{metadata.subject}</span>
+                                </p>
+                              )}
+                              {metadata.templateSlug && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Template:</span>{' '}
+                                  <span className="font-medium">{metadata.templateSlug}</span>
+                                </p>
+                              )}
+                              {log.ipAddress && (
+                                <p className="text-xs text-muted-foreground">
+                                  IP: {log.ipAddress}
+                                  {metadata.city && metadata.country && ` (${metadata.city}, ${metadata.country})`}
+                                </p>
+                              )}
+                            </div>
                           </div>
+                          {hasEmailContent && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                              className="flex-shrink-0"
+                              data-testid={`btn-expand-log-${index}`}
+                            >
+                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              <span className="ml-1 text-xs">{isExpanded ? 'Hide' : 'View Email'}</span>
+                            </Button>
+                          )}
                         </div>
+                        {isExpanded && hasEmailContent && (
+                          <div className="border-t px-3 pb-3 pt-2">
+                            <div className="bg-white dark:bg-zinc-900 border rounded-lg p-4 max-h-[400px] overflow-y-auto">
+                              <div dangerouslySetInnerHTML={{ __html: metadata.htmlContent }} />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
