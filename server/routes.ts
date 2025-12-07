@@ -570,7 +570,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // Returns true if email sent successfully, false otherwise
   // NEVER throws - handles all errors internally
   async function sendActivationEmail(
-    user: { id: string; email: string; firstName?: string | null; lastName?: string | null },
+    user: { id: string; email: string; firstName?: string | null; lastName?: string | null; companyId?: string | null },
     companyName: string,
     req: Request
   ): Promise<boolean> {
@@ -609,6 +609,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         html: htmlContent,
         text: textContent || `Please activate your account by clicking this link: ${activationLink}`,
         skipBlacklistCheck: true, // System activation email
+        companyId: user.companyId || undefined,
+        templateSlug: "account-activation",
       });
       return emailSent;
     } catch (error) {
@@ -4289,6 +4291,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           html: htmlContent,
           text: textContent,
           skipBlacklistCheck: true, // System OTP email
+          companyId: user.companyId || undefined,
+          templateSlug: "otp-verification",
         });
       } else if (method === "sms") {
         await twilioService.sendOTPSMS(user.phone!, code);
@@ -4494,6 +4498,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           html: htmlContent,
           text: textContent,
           skipBlacklistCheck: true, // System OTP email
+          companyId: user.companyId || undefined,
+          templateSlug: "otp-verification",
         });
       } else if (method === "sms") {
         await twilioService.sendOTPSMS(user.phone!, code);
