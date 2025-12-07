@@ -1450,11 +1450,9 @@ export default function SystemSettings() {
                             className="pr-10"
                             data-testid={`input-${key.keyName}`}
                           />
-                          <Button
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                             onClick={() => setShowFieldValues(prev => ({
                               ...prev,
                               [key.keyName]: !prev[key.keyName]
@@ -1462,7 +1460,7 @@ export default function SystemSettings() {
                             data-testid={`button-toggle-${key.keyName}`}
                           >
                             {showFieldValues[key.keyName] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
+                          </button>
                         </div>
                         {key.hint && (
                           <p className="text-xs text-muted-foreground">{key.hint}</p>
