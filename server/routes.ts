@@ -5011,6 +5011,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Get user seat limits for current company
+  app.get("/api/users/limits", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      
+      // Allow superadmins to query other companies via query parameter
+      let companyId = currentUser.companyId;
+      if (currentUser.role === "superadmin" && req.query.companyId) {
+        companyId = req.query.companyId as string;
+      }
+      
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID required" });
+      }
+      
+      const result = await storage.canCompanyAddUsers(companyId, 1);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching user limits:", error);
+      res.status(500).json({ message: "Failed to fetch user limits" });
+    }
+  });
+
   // Get single user by ID
   app.get("/api/users/:id", requireAuth, async (req: Request, res: Response) => {
     try {

@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon, Power, Camera } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ArrowLeft, Mail, Phone, Building, Calendar, Shield, User as UserIcon, Power, Camera, Users as UsersIcon, AlertTriangle, Infinity } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -54,6 +55,13 @@ const editUserFormSchema = z.object({
 type UserForm = z.infer<typeof userFormSchema>;
 type EditUserForm = z.infer<typeof editUserFormSchema>;
 
+type SeatLimitsResponse = {
+  allowed: boolean;
+  currentCount: number;
+  limit: number | null;
+  message?: string;
+};
+
 export default function Users() {
   const params = useParams();
   const userId = params.id;
@@ -90,6 +98,28 @@ export default function Users() {
   const companies = companiesData?.companies || [];
   const profileUser = singleUserData?.user;
 
+  // Fetch user seat limits for the current company
+  // Superadmins don't have a companyId, so we skip the limits check for them
+  // Seat limits only apply to company admins within their own company context
+  const shouldCheckLimits = !isSuperAdmin && !!sessionData?.user?.companyId;
+  
+  const { data: seatLimitsData, isLoading: isLoadingLimits } = useQuery<SeatLimitsResponse>({
+    queryKey: ["/api/users/limits"],
+    enabled: shouldCheckLimits,
+  });
+
+  // Calculate seat limit warning state - guard against division by zero
+  const isNearLimit = seatLimitsData && seatLimitsData.limit !== null && seatLimitsData.limit > 0 && (
+    !seatLimitsData.allowed || 
+    (seatLimitsData.limit - seatLimitsData.currentCount <= 1) ||
+    (seatLimitsData.currentCount / seatLimitsData.limit >= 0.8)
+  );
+  // Handle zero-seat plans gracefully (trial plans)
+  const isZeroSeatPlan = seatLimitsData?.limit === 0;
+  // Superadmins can always add users (they manage all companies)
+  // Non-superadmins depend on their company's seat limits
+  const canAddUsers = isSuperAdmin || (!isLoadingLimits && seatLimitsData?.allowed !== false && !isZeroSeatPlan);
+
   const createMutation = useMutation({
     mutationFn: async (data: UserForm) => {
       // Convert phone to E.164 format before sending
@@ -103,6 +133,7 @@ export default function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/limits"] });
       setCreateOpen(false);
       createForm.reset();
       toast({
@@ -114,6 +145,7 @@ export default function Users() {
       console.error("User creation error:", error);
       // The error message is in error.message format: "401: {"message":"Not authenticated"}"
       let errorMessage = "Failed to create user.";
+      let errorCode = "";
       try {
         if (error?.message) {
           // Try to extract the JSON part from the error message
@@ -122,6 +154,7 @@ export default function Users() {
             const jsonPart = error.message.substring(colonIndex + 2);
             const errorData = JSON.parse(jsonPart);
             errorMessage = errorData.message || error.message;
+            errorCode = errorData.code || "";
           } else {
             errorMessage = error.message;
           }
@@ -129,11 +162,22 @@ export default function Users() {
       } catch (e) {
         errorMessage = error?.message || "Failed to create user.";
       }
-      toast({
-        title: "Error", 
-        description: errorMessage,
-        variant: "destructive",
-      });
+      
+      // Handle USER_LIMIT_REACHED specifically
+      if (errorCode === "USER_LIMIT_REACHED") {
+        queryClient.invalidateQueries({ queryKey: ["/api/users/limits"] });
+        toast({
+          title: "User Limit Reached", 
+          description: "Your plan's user limit has been reached. Please upgrade your plan to add more users.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error", 
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -175,6 +219,7 @@ export default function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/limits"] });
       toast({
         title: "User Deleted",
         description: "The user has been deleted successfully.",
@@ -196,6 +241,7 @@ export default function Users() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/limits"] });
       toast({
         title: "Status Updated",
         description: "The user status has been updated successfully.",
@@ -1252,6 +1298,84 @@ export default function Users() {
         </DialogContent>
       </Dialog>
 
+      {/* Seat Limit Card */}
+      {!isSuperAdmin && seatLimitsData && seatLimitsData.limit !== null && (
+        <Card 
+          className={`mb-4 border ${
+            isNearLimit 
+              ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20' 
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+          }`}
+          data-testid="card-seat-limits"
+        >
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isNearLimit ? (
+                  <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+                  </div>
+                ) : (
+                  <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-700">
+                    <UsersIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-seat-count">
+                    {seatLimitsData.currentCount} of {seatLimitsData.limit} users
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400" data-testid="text-seat-message">
+                    {!seatLimitsData.allowed 
+                      ? "User limit reached. Upgrade your plan to add more users."
+                      : isNearLimit 
+                        ? `${seatLimitsData.limit - seatLimitsData.currentCount} seat${seatLimitsData.limit - seatLimitsData.currentCount === 1 ? '' : 's'} remaining`
+                        : "Active users and pending invitations"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-32 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" data-testid="progress-seat-usage">
+                  <div 
+                    className={`h-full rounded-full transition-all ${
+                      !seatLimitsData.allowed 
+                        ? 'bg-red-500' 
+                        : isNearLimit 
+                          ? 'bg-amber-500' 
+                          : 'bg-gray-500 dark:bg-gray-400'
+                    }`}
+                    style={{ width: `${seatLimitsData.limit && seatLimitsData.limit > 0 ? Math.min(100, (seatLimitsData.currentCount / seatLimitsData.limit) * 100) : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unlimited Users Card */}
+      {!isSuperAdmin && seatLimitsData && seatLimitsData.limit === null && (
+        <Card 
+          className="mb-4 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+          data-testid="card-unlimited-seats"
+        >
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-700">
+                <Infinity className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="text-unlimited">
+                  Unlimited users
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Your plan allows unlimited team members
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-4">
@@ -1267,10 +1391,27 @@ export default function Users() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button onClick={() => setCreateOpen(true)} data-testid="button-add-user">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add User
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button 
+                        onClick={() => setCreateOpen(true)} 
+                        disabled={!isSuperAdmin && (isLoadingLimits || !canAddUsers)}
+                        data-testid="button-add-user"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        {!isSuperAdmin && isLoadingLimits ? "Loading..." : "Add User"}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canAddUsers && (
+                    <TooltipContent data-testid="tooltip-seat-limit">
+                      <p>User limit reached. Upgrade your plan to add more users.</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </CardHeader>
