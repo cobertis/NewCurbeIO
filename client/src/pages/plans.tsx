@@ -219,35 +219,23 @@ export function PublicPricingView({
               </button>
             </div>
             {/* Arrow and 2 months free text */}
-            <div className="flex items-center" style={{ marginLeft: '16px' }}>
-              <svg 
-                width="24" 
-                height="20" 
-                viewBox="0 0 24 20" 
-                fill="none"
-              >
-                <path 
-                  d="M20 2 C 12 2, 6 6, 4 14" 
-                  stroke="#1E3A5F" 
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                <path 
-                  d="M7 10 L 4 14 L 0 12" 
-                  stroke="#1E3A5F" 
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              </svg>
+            <div className="flex items-center" style={{ marginLeft: '8px' }}>
+              <img 
+                src="/attached_assets/Arrow2_1765137117700.png" 
+                alt=""
+                style={{ 
+                  width: '24px', 
+                  height: '24px',
+                  transform: 'rotate(90deg) scaleX(-1)',
+                  filter: 'invert(18%) sepia(35%) saturate(746%) hue-rotate(175deg) brightness(95%) contrast(92%)',
+                }}
+              />
               <span 
                 style={{ 
                   color: '#1E3A5F',
                   fontFamily: '"Architects Daughter", cursive',
                   fontSize: '18px',
-                  marginLeft: '6px',
+                  marginLeft: '4px',
                   whiteSpace: 'nowrap',
                 }}
               >
