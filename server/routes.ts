@@ -3702,6 +3702,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!emailSent) {
         console.warn('[REGISTRATION] Failed to send activation email, but continuing with registration');
       }
+
+      // Send notification email to Curbe team about new registration
+      try {
+        const { emailService } = await import("./email");
+        const registrationDate = new Date().toLocaleString('es-ES', {
+          timeZone: 'America/New_York',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+        
+        await emailService.sendNewRegistrationNotification({
+          companyName: newCompany.name,
+          companySlug: newCompany.slug,
+          companyPhone: newCompany.phone,
+          companyEmail: newCompany.email,
+          companyWebsite: newCompany.website,
+          companyAddress: newCompany.address,
+          companyAddressLine2: newCompany.addressLine2,
+          companyCity: newCompany.city,
+          companyState: newCompany.state,
+          companyPostalCode: newCompany.postalCode,
+          companyCountry: newCompany.country,
+          adminFirstName: adminData.firstName,
+          adminLastName: adminData.lastName,
+          adminEmail: adminData.email,
+          adminPhone: adminData.phone ?? null,
+          registrationDate,
+          companyId: newCompany.id,
+          userId: newUser.id,
+        });
+        console.log('[REGISTRATION] Notification email sent to hello@curbe.io');
+      } catch (notificationError) {
+        console.error('[REGISTRATION] Failed to send notification email:', notificationError);
+        // Don't block registration if notification email fails
+      }
       // Log the registration
       await logger.logAuth({
         req,
