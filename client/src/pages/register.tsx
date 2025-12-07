@@ -25,7 +25,7 @@ const registerSchema = z.object({
     phone: z.string().min(1, "Phone number is required").refine(
       (val) => {
         const digits = val.replace(/\D/g, '');
-        return digits.length === 11 && digits.startsWith('1');
+        return digits.length === 10;
       },
       "Valid phone number is required"
     ),
@@ -44,7 +44,7 @@ const registerSchema = z.object({
     phone: z.string().min(1, "Phone number is required").refine(
       (val) => {
         const digits = val.replace(/\D/g, '');
-        return digits.length === 11 && digits.startsWith('1');
+        return digits.length === 10;
       },
       "Valid phone number is required"
     ),
