@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity } from "lucide-react";
+import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity, ExternalLink, HelpCircle } from "lucide-react";
 import type { 
   SystemApiCredential, 
   SystemApiCredentialsAudit, 
@@ -33,11 +33,14 @@ interface ProviderKeyConfig {
   keyName: string;
   label: string;
   required: boolean;
+  hint?: string;
 }
 
 interface ProviderConfig {
   provider: string;
   label: string;
+  helpText?: string;
+  helpUrl?: string | null;
   keys: ProviderKeyConfig[];
 }
 
@@ -861,6 +864,27 @@ export default function SystemSettings() {
 
             {bulkFormProvider && (
               <>
+                {getProviderConfig(bulkFormProvider)?.helpText && (
+                  <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg text-sm">
+                    <HelpCircle className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                    <div>
+                      <p className="text-muted-foreground">{getProviderConfig(bulkFormProvider)?.helpText}</p>
+                      {getProviderConfig(bulkFormProvider)?.helpUrl && (
+                        <a 
+                          href={getProviderConfig(bulkFormProvider)?.helpUrl || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:underline mt-1"
+                          data-testid="link-help-url"
+                        >
+                          Open {getProviderConfig(bulkFormProvider)?.label} Dashboard
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Environment</label>
                   <Select 
@@ -880,9 +904,9 @@ export default function SystemSettings() {
 
                 <div className="border-t pt-4 mt-4">
                   <h4 className="text-sm font-medium mb-3">Credentials</h4>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {getProviderConfig(bulkFormProvider)?.keys.map((key) => (
-                      <div key={key.keyName} className="space-y-1">
+                      <div key={key.keyName} className="space-y-1.5">
                         <label className="text-sm font-medium flex items-center gap-1">
                           {key.label}
                           {key.required && <span className="text-red-500">*</span>}
@@ -891,7 +915,7 @@ export default function SystemSettings() {
                         <div className="relative">
                           <Input
                             type={showFieldValues[key.keyName] ? "text" : "password"}
-                            placeholder={`Enter ${key.label.toLowerCase()}`}
+                            placeholder={key.hint || `Enter ${key.label.toLowerCase()}`}
                             value={bulkFormValues[key.keyName] || ""}
                             onChange={(e) => setBulkFormValues(prev => ({
                               ...prev,
@@ -913,6 +937,9 @@ export default function SystemSettings() {
                             {showFieldValues[key.keyName] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                         </div>
+                        {key.hint && (
+                          <p className="text-xs text-muted-foreground">{key.hint}</p>
+                        )}
                       </div>
                     ))}
                   </div>

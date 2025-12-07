@@ -25535,87 +25535,107 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         { 
           provider: "stripe", 
           label: "Stripe",
+          helpText: "Find your keys in Stripe Dashboard > Developers > API keys",
+          helpUrl: "https://dashboard.stripe.com/apikeys",
           keys: [
-            { keyName: "secret_key", label: "Secret Key", required: true },
-            { keyName: "publishable_key", label: "Publishable Key", required: true },
-            { keyName: "webhook_secret", label: "Webhook Secret", required: false },
+            { keyName: "secret_key", label: "Secret Key", required: true, hint: "Starts with sk_test_ or sk_live_" },
+            { keyName: "publishable_key", label: "Publishable Key", required: true, hint: "Starts with pk_test_ or pk_live_" },
+            { keyName: "webhook_secret", label: "Webhook Secret", required: false, hint: "Starts with whsec_" },
           ]
         },
         { 
           provider: "telnyx", 
           label: "Telnyx",
+          helpText: "Find your keys in Mission Control Portal > Account Settings > Keys & Credentials",
+          helpUrl: "https://portal.telnyx.com/#/app/api-keys",
           keys: [
-            { keyName: "api_key", label: "API Key", required: true },
-            { keyName: "public_key", label: "Public Key", required: false },
-            { keyName: "app_id", label: "Application ID", required: false },
-            { keyName: "messaging_profile_id", label: "Messaging Profile ID", required: false },
+            { keyName: "api_key", label: "API Key", required: true, hint: "Bearer token for API requests" },
+            { keyName: "public_key", label: "Public Key", required: false, hint: "For client-side verification" },
+            { keyName: "app_id", label: "Application ID", required: false, hint: "Your Telnyx Application ID" },
+            { keyName: "messaging_profile_id", label: "Messaging Profile ID", required: false, hint: "For SMS/MMS messaging" },
           ]
         },
         { 
           provider: "twilio", 
           label: "Twilio",
+          helpText: "Find your credentials in Twilio Console > Dashboard > Account Info",
+          helpUrl: "https://console.twilio.com/",
           keys: [
-            { keyName: "account_sid", label: "Account SID", required: true },
-            { keyName: "auth_token", label: "Auth Token", required: true },
-            { keyName: "phone_number", label: "Phone Number", required: false },
+            { keyName: "account_sid", label: "Account SID", required: true, hint: "Starts with AC" },
+            { keyName: "auth_token", label: "Auth Token", required: true, hint: "Click eye icon to reveal" },
+            { keyName: "phone_number", label: "Phone Number", required: false, hint: "E.164 format: +1234567890" },
           ]
         },
         { 
           provider: "bulkvs", 
           label: "BulkVS",
+          helpText: "Find your credentials in BulkVS Portal > API > API Credentials",
+          helpUrl: "https://portal.bulkvs.com/",
           keys: [
-            { keyName: "api_key", label: "API Key", required: true },
-            { keyName: "api_secret", label: "API Secret", required: true },
-            { keyName: "webhook_secret", label: "Webhook Secret", required: false },
+            { keyName: "api_key", label: "API Key", required: true, hint: "Your SOAP API key" },
+            { keyName: "api_secret", label: "API Secret", required: true, hint: "Your API secret" },
+            { keyName: "webhook_secret", label: "Webhook Secret", required: false, hint: "For webhook validation" },
           ]
         },
         { 
           provider: "bluebubbles", 
           label: "BlueBubbles",
+          helpText: "Find your server URL and password in the BlueBubbles app settings",
+          helpUrl: "https://bluebubbles.app/",
           keys: [
-            { keyName: "server_url", label: "Server URL", required: true },
-            { keyName: "password", label: "Password", required: true },
+            { keyName: "server_url", label: "Server URL", required: true, hint: "e.g., https://your-server.ngrok.io" },
+            { keyName: "password", label: "Password", required: true, hint: "Your BlueBubbles password" },
           ]
         },
         { 
           provider: "evolution_api", 
           label: "Evolution API",
+          helpText: "Configure your Evolution API instance settings",
+          helpUrl: "https://doc.evolution-api.com/",
           keys: [
-            { keyName: "base_url", label: "Base URL", required: true },
-            { keyName: "global_api_key", label: "Global API Key", required: true },
+            { keyName: "base_url", label: "Base URL", required: true, hint: "e.g., https://api.example.com" },
+            { keyName: "global_api_key", label: "Global API Key", required: true, hint: "Your Evolution API key" },
           ]
         },
         { 
           provider: "google_places", 
           label: "Google Places",
+          helpText: "Create a key in Google Cloud Console > APIs & Services > Credentials",
+          helpUrl: "https://console.cloud.google.com/google/maps-api/credentials",
           keys: [
-            { keyName: "api_key", label: "API Key", required: true },
+            { keyName: "api_key", label: "API Key", required: true, hint: "Enable Places API in your project" },
           ]
         },
         { 
           provider: "nodemailer", 
           label: "Email (SMTP)",
+          helpText: "Get SMTP settings from your email provider",
+          helpUrl: null,
           keys: [
-            { keyName: "host", label: "SMTP Host", required: true },
-            { keyName: "port", label: "SMTP Port", required: true },
-            { keyName: "user", label: "Username", required: true },
-            { keyName: "password", label: "Password", required: true },
-            { keyName: "from_email", label: "From Email", required: false },
+            { keyName: "host", label: "SMTP Host", required: true, hint: "e.g., smtp.gmail.com" },
+            { keyName: "port", label: "SMTP Port", required: true, hint: "Usually 587 (TLS) or 465 (SSL)" },
+            { keyName: "user", label: "Username", required: true, hint: "Your email address" },
+            { keyName: "password", label: "Password", required: true, hint: "App password recommended" },
+            { keyName: "from_email", label: "From Email", required: false, hint: "Default sender email" },
           ]
         },
         { 
           provider: "openai", 
           label: "OpenAI",
+          helpText: "Create an API key in OpenAI Platform > API keys",
+          helpUrl: "https://platform.openai.com/api-keys",
           keys: [
-            { keyName: "api_key", label: "API Key", required: true },
+            { keyName: "api_key", label: "API Key", required: true, hint: "Starts with sk-" },
           ]
         },
         { 
           provider: "cms_api", 
           label: "CMS API",
+          helpText: "CMS Marketplace API credentials",
+          helpUrl: null,
           keys: [
-            { keyName: "api_key", label: "API Key", required: true },
-            { keyName: "base_url", label: "Base URL", required: false },
+            { keyName: "api_key", label: "API Key", required: true, hint: "Your CMS API key" },
+            { keyName: "base_url", label: "Base URL", required: false, hint: "API endpoint URL" },
           ]
         },
       ];
