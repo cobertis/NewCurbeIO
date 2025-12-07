@@ -1557,38 +1557,36 @@ export default function WhatsAppPage() {
                           )}
                           data-testid={`message-${msg.id}`}
                         >
-                          <div className={cn("flex items-end gap-1", msg.fromMe ? "flex-row-reverse" : "flex-row")}>
+                          <div className={cn("flex items-end gap-0.5", msg.fromMe ? "flex-row-reverse" : "flex-row")}>
                             <div
                               className={cn(
-                                "max-w-[65%] rounded-lg px-3 py-2 shadow-sm",
+                                "max-w-[70%] rounded-lg px-2 py-1 shadow-sm",
                                 msg.fromMe
                                   ? "bg-primary/10 dark:bg-primary/20"
                                   : "bg-white dark:bg-gray-800"
                               )}
                             >
                               {["image", "video", "audio", "document"].includes(msg.messageType) ? (
-                                <div className="mb-1">
+                                <div>
                                   <MediaMessage message={msg} remoteJid={msg.remoteJid} />
                                   {msg.messageType !== "document" && msg.content && 
                                    msg.content !== msg.messageType && 
                                    msg.content !== `[${msg.messageType}]` &&
                                    !["image", "video", "audio", "document", "[image]", "[video]", "[audio]", "[document]"].includes(msg.content) && (
-                                    <p className="text-sm dark:text-white break-words mt-1">
+                                    <p className="text-sm dark:text-white break-words mt-0.5">
                                       {msg.content}
                                     </p>
                                   )}
                                 </div>
                               ) : (
-                                <p className="text-sm dark:text-white break-words">
+                                <span className="text-sm dark:text-white break-words">
                                   {msg.content || `[${msg.messageType}]`}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-end gap-1 mt-1">
-                                <span className="text-[10px] text-gray-500">
-                                  {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
-                                    ? format(new Date(msg.timestamp), "HH:mm") 
-                                    : ""}
                                 </span>
+                              )}
+                              <span className="text-[10px] text-gray-500 ml-2 inline-flex items-center gap-0.5 align-bottom float-right mt-0.5">
+                                {msg.timestamp && !isNaN(new Date(msg.timestamp).getTime()) 
+                                  ? format(new Date(msg.timestamp), "HH:mm") 
+                                  : ""}
                                 {msg.fromMe && (
                                   msg.status === "read" ? (
                                     <CheckCheck className="w-3 h-3 text-blue-500" />
@@ -1598,13 +1596,13 @@ export default function WhatsAppPage() {
                                     <Check className="w-3 h-3 text-gray-400" />
                                   )
                                 )}
-                                {(msg.reaction || localReactions[msg.messageId]) && (
-                                  <span className="text-sm ml-0.5">
-                                    {localReactions[msg.messageId] || msg.reaction}
-                                  </span>
-                                )}
-                              </div>
+                              </span>
                             </div>
+                            {(msg.reaction || localReactions[msg.messageId]) && (
+                              <span className="text-sm -ml-3 -mb-1 z-10">
+                                {localReactions[msg.messageId] || msg.reaction}
+                              </span>
+                            )}
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 bg-white dark:bg-gray-800 rounded-full shadow-md border dark:border-gray-700 px-1 py-0.5">
                               {REACTION_EMOJIS.map((emoji) => (
                                 <button
