@@ -475,7 +475,7 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
       console.log(`[Evolution API] Setting presence to ${presence} for ${phoneNumber} via ${instanceName}`);
       await this.request("POST", `/chat/sendPresence/${instanceName}`, {
         number: phoneNumber,
-        delay: 30000,
+        delay: 3000,
         presence
       });
       console.log(`[Evolution API] Presence ${presence} sent to ${phoneNumber}`);
