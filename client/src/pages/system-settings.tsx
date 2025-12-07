@@ -921,13 +921,14 @@ export default function SystemSettings() {
                               ...prev,
                               [key.keyName]: e.target.value
                             }))}
+                            className="pr-10"
                             data-testid={`input-${key.keyName}`}
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-3"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                             onClick={() => setShowFieldValues(prev => ({
                               ...prev,
                               [key.keyName]: !prev[key.keyName]
@@ -1042,13 +1043,14 @@ export default function SystemSettings() {
                           {...field}
                           type={showValue ? "text" : "password"}
                           placeholder="Enter new value or leave empty"
+                          className="pr-10"
                           data-testid="edit-input-value"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="absolute right-0 top-0 h-full px-3"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                           onClick={() => setShowValue(!showValue)}
                           data-testid="edit-button-toggle-value"
                         >
