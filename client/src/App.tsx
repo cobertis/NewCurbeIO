@@ -53,6 +53,7 @@ import CampaignStats from "@/pages/campaign-stats";
 import SmsCampaignStats from "@/pages/sms-campaign-stats";
 import IncomingSms from "@/pages/incoming-sms";
 import SystemAlerts from "@/pages/system-alerts";
+import SystemSettings from "@/pages/system-settings";
 import Unsubscribe from "@/pages/unsubscribe";
 import Billing from "@/pages/billing";
 import PlanSelection from "@/pages/plan-selection";
@@ -1672,6 +1673,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <SystemAlerts />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/system-settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SystemSettings />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
