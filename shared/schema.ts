@@ -4704,3 +4704,92 @@ export const createCampaignWithDetailsSchema = z.object({
 });
 
 export type CreateCampaignWithDetails = z.infer<typeof createCampaignWithDetailsSchema>;
+
+// =====================================================
+// SYSTEM API CREDENTIALS (Superadmin Managed Keys)
+// =====================================================
+
+// Supported API providers
+export const apiProviders = [
+  "stripe",
+  "telnyx", 
+  "twilio",
+  "bulkvs",
+  "bluebubbles",
+  "evolution_api",
+  "google_places",
+  "nodemailer",
+  "openai",
+  "cms_api",
+] as const;
+export type ApiProvider = typeof apiProviders[number];
+
+// System API Credentials table - Encrypted storage for API keys
+export const systemApiCredentials = pgTable("system_api_credentials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull().$type<ApiProvider>(),
+  keyName: text("key_name").notNull(),
+  encryptedValue: text("encrypted_value").notNull(),
+  iv: text("iv").notNull(),
+  keyVersion: integer("key_version").notNull().default(1),
+  environment: text("environment").notNull().default("production"),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastRotatedAt: timestamp("last_rotated_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdBy: varchar("created_by").references(() => users.id),
+  updatedBy: varchar("updated_by").references(() => users.id),
+}, (table) => ({
+  providerKeyIdx: index("system_api_credentials_provider_key_idx").on(table.provider, table.keyName),
+  providerIdx: index("system_api_credentials_provider_idx").on(table.provider),
+  uniqueProviderKey: unique("unique_provider_key_env").on(table.provider, table.keyName, table.environment),
+}));
+
+// Audit actions for credential changes
+export const credentialAuditActions = [
+  "created",
+  "updated",
+  "deleted",
+  "rotated",
+  "viewed",
+] as const;
+export type CredentialAuditAction = typeof credentialAuditActions[number];
+
+// Audit log for credential changes
+export const systemApiCredentialsAudit = pgTable("system_api_credentials_audit", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  credentialId: varchar("credential_id"),
+  provider: text("provider").notNull(),
+  keyName: text("key_name").notNull(),
+  action: text("action").notNull().$type<CredentialAuditAction>(),
+  actorId: varchar("actor_id").notNull().references(() => users.id),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  previousValue: text("previous_value"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  credentialIdIdx: index("system_api_credentials_audit_credential_idx").on(table.credentialId),
+  actorIdIdx: index("system_api_credentials_audit_actor_idx").on(table.actorId),
+  createdAtIdx: index("system_api_credentials_audit_created_at_idx").on(table.createdAt),
+}));
+
+// Insert Schemas
+export const insertSystemApiCredentialSchema = createInsertSchema(systemApiCredentials).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
+  lastRotatedAt: true,
+});
+
+export const insertSystemApiCredentialsAuditSchema = createInsertSchema(systemApiCredentialsAudit).omit({ 
+  id: true, 
+  createdAt: true,
+});
+
+// Types
+export type SystemApiCredential = typeof systemApiCredentials.$inferSelect;
+export type InsertSystemApiCredential = z.infer<typeof insertSystemApiCredentialSchema>;
+export type SystemApiCredentialsAudit = typeof systemApiCredentialsAudit.$inferSelect;
+export type InsertSystemApiCredentialsAudit = z.infer<typeof insertSystemApiCredentialsAuditSchema>;
