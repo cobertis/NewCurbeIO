@@ -382,7 +382,7 @@ export function PublicPricingView({
                         disabled={isSelecting}
                         data-testid={`button-select-plan-${index}`}
                       >
-                        {isSelecting ? 'Selecting...' : enterprise ? 'Contact us' : 'Get started'}
+                        {isSelecting ? 'Selecting...' : 'Get started'}
                       </button>
                       
                       {/* Features Section */}
