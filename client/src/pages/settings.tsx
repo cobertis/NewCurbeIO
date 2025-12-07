@@ -940,35 +940,19 @@ export default function Settings() {
   const handleSaveCompanyInformation = async () => {
     setSavingSection("companyInfo");
     
-    // Collect all values from refs - always send fields that have values
-    // Use current values from refs or fallback to existing company data
+    // Collect all current values from inputs - send all fields to allow clearing
     const data: any = {
-      name: companyNameRef.current?.value || companyData?.company?.name || "",
-      slug: slugRef.current?.value || companyData?.company?.slug || "",
-      businessCategory: selectedCategory || companyData?.company?.businessCategory || "",
-      businessNiche: selectedNiche || companyData?.company?.businessNiche || "",
-      email: companyEmailRef.current?.value || companyData?.company?.email || "",
-      phone: companyPhoneRef.current?.value || companyData?.company?.phone || "",
-      website: websiteRef.current?.value || companyData?.company?.website || "",
-      platformLanguage: platformLanguageRef.current?.value || companyData?.company?.platformLanguage || "",
+      name: companyNameRef.current?.value ?? "",
+      slug: slugRef.current?.value ?? "",
+      businessCategory: selectedCategory ?? "",
+      businessNiche: selectedNiche ?? "",
+      email: companyEmailRef.current?.value ?? "",
+      phone: companyPhoneRef.current?.value ?? "",
+      website: websiteRef.current?.value ?? "",
+      platformLanguage: platformLanguageRef.current?.value ?? "",
     };
     
-    // Filter out empty strings to only send fields with values
-    const filteredData = Object.fromEntries(
-      Object.entries(data).filter(([_, value]) => value !== "")
-    );
-    
-    if (Object.keys(filteredData).length === 0) {
-      toast({
-        variant: "destructive",
-        title: "No changes",
-        description: "Please fill in at least one field to save.",
-      });
-      setSavingSection(null);
-      return;
-    }
-    
-    updateCompanyMutation.mutate(filteredData);
+    updateCompanyMutation.mutate(data);
   };
 
   // Handler for Timezone Save
@@ -1007,33 +991,17 @@ export default function Settings() {
   const handleSavePhysicalAddress = () => {
     setSavingSection("physicalAddress");
     
-    // Collect all values from refs - use addressValue state for main address
-    // Use current values from refs or fallback to existing company data
+    // Collect all current values - send all fields to allow clearing
     const data: any = {
-      address: addressValue || addressRef.current?.value || companyData?.company?.address || "",
-      addressLine2: addressLine2Ref.current?.value || companyData?.company?.addressLine2 || "",
-      city: cityRef.current?.value || companyData?.company?.city || "",
-      state: stateRef.current?.value || companyData?.company?.state || "",
-      postalCode: postalCodeRef.current?.value || companyData?.company?.postalCode || "",
-      country: countryRef.current?.value || companyData?.company?.country || "United States",
+      address: addressValue || addressRef.current?.value || "",
+      addressLine2: addressLine2Ref.current?.value ?? "",
+      city: cityRef.current?.value ?? "",
+      state: stateRef.current?.value ?? "",
+      postalCode: postalCodeRef.current?.value ?? "",
+      country: countryRef.current?.value || "United States",
     };
     
-    // Filter out empty strings to only send fields with values (keep country always)
-    const filteredData = Object.fromEntries(
-      Object.entries(data).filter(([key, value]) => key === "country" || value !== "")
-    );
-    
-    if (Object.keys(filteredData).length === 0) {
-      toast({
-        variant: "destructive",
-        title: "No changes",
-        description: "Please fill in at least one field to save.",
-      });
-      setSavingSection(null);
-      return;
-    }
-    
-    updateCompanyMutation.mutate(filteredData);
+    updateCompanyMutation.mutate(data);
   };
 
   const handleAvatarClick = () => {
@@ -1772,71 +1740,146 @@ export default function Settings() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Two-Factor Authentication (2FA)</CardTitle>
+                    <CardTitle>Security & Preferences</CardTitle>
                     <CardDescription>
-                      Add an extra layer of security to your account with email or SMS verification.
+                      Manage two-factor authentication and notification preferences.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="twoFactorEmailEnabled" className="text-base">
-                          Email 2FA
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          {user?.twoFactorEmailEnabled 
-                            ? "Email two-factor authentication is enabled on your account"
-                            : "Secure your account with email-based two-factor authentication"}
-                        </p>
+                  <CardContent className="space-y-6">
+                    {/* Two-Factor Authentication Section */}
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Two-Factor Authentication</h4>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="twoFactorEmailEnabled" className="text-base">
+                            Email 2FA
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            {user?.twoFactorEmailEnabled 
+                              ? "Email two-factor authentication is enabled on your account"
+                              : "Secure your account with email-based two-factor authentication"}
+                          </p>
+                        </div>
+                        <Switch
+                          id="twoFactorEmailEnabled"
+                          checked={user?.twoFactorEmailEnabled || false}
+                          onCheckedChange={(checked) => toggleEmailTwoFactorMutation.mutate(checked)}
+                          disabled={toggleEmailTwoFactorMutation.isPending}
+                          data-testid="switch-two-factor-email"
+                        />
                       </div>
-                      <Switch
-                        id="twoFactorEmailEnabled"
-                        checked={user?.twoFactorEmailEnabled || false}
-                        onCheckedChange={(checked) => toggleEmailTwoFactorMutation.mutate(checked)}
-                        disabled={toggleEmailTwoFactorMutation.isPending}
-                        data-testid="switch-two-factor-email"
-                      />
-                    </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="twoFactorSmsEnabled" className="text-base">
-                          SMS 2FA
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          {user?.twoFactorSmsEnabled 
-                            ? "SMS two-factor authentication is enabled on your account"
-                            : "Secure your account with SMS-based two-factor authentication"}
-                        </p>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="twoFactorSmsEnabled" className="text-base">
+                            SMS 2FA
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            {user?.twoFactorSmsEnabled 
+                              ? "SMS two-factor authentication is enabled on your account"
+                              : "Secure your account with SMS-based two-factor authentication"}
+                          </p>
+                        </div>
+                        <Switch
+                          id="twoFactorSmsEnabled"
+                          checked={user?.twoFactorSmsEnabled || false}
+                          onCheckedChange={(checked) => toggleSmsTwoFactorMutation.mutate(checked)}
+                          disabled={!user?.phone || toggleSmsTwoFactorMutation.isPending}
+                          data-testid="switch-two-factor-sms"
+                        />
                       </div>
-                      <Switch
-                        id="twoFactorSmsEnabled"
-                        checked={user?.twoFactorSmsEnabled || false}
-                        onCheckedChange={(checked) => toggleSmsTwoFactorMutation.mutate(checked)}
-                        disabled={!user?.phone || toggleSmsTwoFactorMutation.isPending}
-                        data-testid="switch-two-factor-sms"
-                      />
-                    </div>
-                    
-                    {!user?.phone && (
-                      <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-4 border border-yellow-200 dark:border-yellow-800">
-                        <div className="flex">
-                          <div className="flex-shrink-0">
-                            <Shield className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
-                          </div>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                              Phone number required for SMS 2FA
-                            </h3>
-                            <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                              <p>
-                                Add a phone number to your profile to enable two-factor authentication via SMS.
-                              </p>
+                      
+                      {!user?.phone && (
+                        <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-4 border border-yellow-200 dark:border-yellow-800">
+                          <div className="flex">
+                            <div className="flex-shrink-0">
+                              <Shield className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
+                            </div>
+                            <div className="ml-3">
+                              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                                Phone number required for SMS 2FA
+                              </h3>
+                              <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                                <p>
+                                  Add a phone number to your profile to enable two-factor authentication via SMS.
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
+                      )}
+                    </div>
+
+                    {/* Notification Preferences Section */}
+                    <div className="space-y-4 pt-2 border-t">
+                      <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide pt-4">Notification Preferences</h4>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="emailNotifications" className="text-base">
+                            Email Notifications
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receive email updates about your account activity.
+                          </p>
+                        </div>
+                        <Switch
+                          id="emailNotifications"
+                          checked={preferencesData?.preferences?.emailNotifications ?? true}
+                          onCheckedChange={(checked) => {
+                            updatePreferencesMutation.mutate({
+                              ...preferencesData?.preferences,
+                              emailNotifications: checked,
+                            });
+                          }}
+                          disabled={updatePreferencesMutation.isPending}
+                          data-testid="switch-email-notifications"
+                        />
                       </div>
-                    )}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="marketingEmails" className="text-base">
+                            Marketing Emails
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receive emails about new features and updates.
+                          </p>
+                        </div>
+                        <Switch
+                          id="marketingEmails"
+                          checked={preferencesData?.preferences?.marketingEmails || false}
+                          onCheckedChange={(checked) => {
+                            updatePreferencesMutation.mutate({
+                              ...preferencesData?.preferences,
+                              marketingEmails: checked,
+                            });
+                          }}
+                          disabled={updatePreferencesMutation.isPending}
+                          data-testid="switch-marketing-emails"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="invoiceAlerts" className="text-base">
+                            Invoice Alerts
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            Receive notifications when new invoices are generated.
+                          </p>
+                        </div>
+                        <Switch
+                          id="invoiceAlerts"
+                          checked={preferencesData?.preferences?.invoiceAlerts ?? true}
+                          onCheckedChange={(checked) => {
+                            updatePreferencesMutation.mutate({
+                              ...preferencesData?.preferences,
+                              invoiceAlerts: checked,
+                            });
+                          }}
+                          disabled={updatePreferencesMutation.isPending}
+                          data-testid="switch-invoice-alerts"
+                        />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
