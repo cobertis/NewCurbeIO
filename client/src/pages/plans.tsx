@@ -220,29 +220,15 @@ export function PublicPricingView({
             </div>
             {/* Arrow and 2 months free text */}
             <div className="flex items-center" style={{ marginLeft: '8px' }}>
-              <svg 
-                width="28" 
-                height="28" 
-                viewBox="0 0 100 100" 
-                fill="none"
-                style={{ transform: 'rotate(-90deg) scaleY(-1)' }}
-              >
-                <path 
-                  d="M75 15 C 45 10, 25 25, 20 50 C 15 70, 25 85, 50 90 C 60 92, 70 88, 75 80" 
-                  stroke="#1E3A5F" 
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                <path 
-                  d="M65 12 L 78 18 L 72 30" 
-                  stroke="#1E3A5F" 
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              </svg>
+              <img 
+                src="/attached_assets/Arrow2_1765137467315.png" 
+                alt=""
+                style={{ 
+                  width: '32px', 
+                  height: '32px',
+                  filter: 'brightness(0) saturate(100%) invert(14%) sepia(47%) saturate(680%) hue-rotate(174deg) brightness(96%) contrast(95%)',
+                }}
+              />
               <span 
                 style={{ 
                   color: '#1E3A5F',
@@ -313,7 +299,7 @@ export function PublicPricingView({
                           }}
                           data-testid={`badge-trial-${index}`}
                         >
-                          {plan.trialDays} days free trial
+                          Preferred Plan
                         </span>
                       </div>
                     )}
@@ -357,7 +343,7 @@ export function PublicPricingView({
                             className="text-sm"
                             style={{ color: pricingTheme.colors.textMuted }}
                           >
-                            {enterprise ? 'per year' : 'per month/user'}
+                            {enterprise ? 'per year' : 'per month'}
                           </span>
                         </div>
                       </div>
@@ -921,7 +907,7 @@ export default function PlansPage() {
   }
 
   if (user?.role !== "superadmin") {
-    return <PublicPricingView planFeatures={planFeatures} publicPlans={publicPlans} isLoading={featuresLoading || publicPlansLoading} />;
+    return <PublicPricingView planFeatures={planFeatures} publicPlans={publicPlans} isLoading={featuresLoading || publicPlansLoading} showTrialInfo={true} />;
   }
 
   if (viewMode === "public") {
@@ -936,7 +922,7 @@ export default function PlansPage() {
             Switch to Admin View
           </Button>
         </div>
-        <PublicPricingView planFeatures={planFeatures} publicPlans={publicPlans} isLoading={featuresLoading || publicPlansLoading} />
+        <PublicPricingView planFeatures={planFeatures} publicPlans={publicPlans} isLoading={featuresLoading || publicPlansLoading} showTrialInfo={true} />
       </div>
     );
   }
