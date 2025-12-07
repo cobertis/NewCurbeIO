@@ -1078,58 +1078,26 @@ export default function CompanyDetail() {
                                   {metadata.city && metadata.country && ` (${metadata.city}, ${metadata.country})`}
                                 </p>
                               )}
-                              {/* Plan Details Section */}
+                              {/* Plan Details Section - Single Line */}
                               {isPlanLog && (
-                                <div className="mt-2 p-3 bg-muted/50 rounded-lg border">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <CreditCard className="h-4 w-4 text-primary" />
-                                    <span className="font-semibold">{metadata.planName || 'Unknown Plan'}</span>
-                                  </div>
-                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                                    {metadata.monthlyPrice !== undefined && (
-                                      <div>
-                                        <span className="text-muted-foreground">Monthly:</span>{' '}
-                                        <span className="font-medium">{formatPrice(metadata.monthlyPrice)}</span>
-                                      </div>
-                                    )}
-                                    {metadata.annualPrice !== undefined && (
-                                      <div>
-                                        <span className="text-muted-foreground">Annual:</span>{' '}
-                                        <span className="font-medium">{formatPrice(metadata.annualPrice)}</span>
-                                      </div>
-                                    )}
-                                    {metadata.billingPeriod && (
-                                      <div>
-                                        <span className="text-muted-foreground">Billing:</span>{' '}
-                                        <Badge variant="outline" className="text-xs capitalize ml-1">{metadata.billingPeriod}</Badge>
-                                      </div>
-                                    )}
-                                    {metadata.trialDays !== undefined && metadata.trialDays > 0 && (
-                                      <div>
-                                        <span className="text-muted-foreground">Trial:</span>{' '}
-                                        <span className="font-medium">{metadata.trialDays} days</span>
-                                      </div>
-                                    )}
-                                    {metadata.maxUsers !== undefined && (
-                                      <div>
-                                        <span className="text-muted-foreground">User Limit:</span>{' '}
-                                        <span className="font-medium">{metadata.maxUsers || 'Unlimited'}</span>
-                                      </div>
-                                    )}
-                                    {metadata.trialEndDate && (
-                                      <div>
-                                        <span className="text-muted-foreground">Trial Ends:</span>{' '}
-                                        <span className="font-medium">{new Date(metadata.trialEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                      </div>
-                                    )}
-                                    {metadata.stripeSubscriptionId && (
-                                      <div className="col-span-2 md:col-span-3">
-                                        <span className="text-muted-foreground">Subscription ID:</span>{' '}
-                                        <span className="font-mono text-xs">{metadata.stripeSubscriptionId}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
+                                <p className="text-sm mt-1">
+                                  <span className="font-semibold">{metadata.planName || 'Unknown Plan'}</span>
+                                  {metadata.monthlyPrice !== undefined && (
+                                    <span className="text-muted-foreground"> | {formatPrice(metadata.monthlyPrice)}/mo</span>
+                                  )}
+                                  {metadata.billingPeriod && (
+                                    <span className="text-muted-foreground"> | {metadata.billingPeriod}</span>
+                                  )}
+                                  {metadata.maxUsers !== undefined && (
+                                    <span className="text-muted-foreground"> | {metadata.maxUsers || '∞'} users</span>
+                                  )}
+                                  {metadata.trialEndDate && (
+                                    <span className="text-muted-foreground"> | Trial ends {new Date(metadata.trialEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                  )}
+                                  {metadata.stripeSubscriptionId && (
+                                    <span className="text-muted-foreground font-mono text-xs"> | {metadata.stripeSubscriptionId}</span>
+                                  )}
+                                </p>
                               )}
                             </div>
                           </div>
