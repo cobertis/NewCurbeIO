@@ -500,6 +500,16 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
   }
 
   /**
+   * Normalizes emoji by removing variation selectors (FE0E, FE0F)
+   * These are invisible modifiers that can cause API rejection
+   */
+  private normalizeEmoji(emoji: string): string {
+    if (!emoji) return emoji;
+    // Remove variation selectors U+FE0E (text style) and U+FE0F (emoji style)
+    return emoji.replace(/[\uFE0E\uFE0F]/g, '');
+  }
+
+  /**
    * Sends a reaction to a specific message.
    * @param instanceName - The Evolution API instance name
    * @param remoteJid - JID of the chat (number@s.whatsapp.net or @lid)
@@ -515,9 +525,10 @@ async setWebhook(instanceName: string, webhookUrl: string): Promise<any> {
     messageFromMe: boolean
   ): Promise<any> {
     try {
-      console.log(`[Evolution API] Sending reaction "${reactionEmoji}" to message ${messageId} in ${remoteJid}`);
+      const normalizedEmoji = this.normalizeEmoji(reactionEmoji);
+      console.log(`[Evolution API] Sending reaction "${normalizedEmoji}" (original: "${reactionEmoji}") to message ${messageId} in ${remoteJid}`);
       const response = await this.request("POST", `/message/sendReaction/${instanceName}`, {
-        reaction: reactionEmoji,
+        reaction: normalizedEmoji,
         key: {
           remoteJid: remoteJid,
           fromMe: messageFromMe,
