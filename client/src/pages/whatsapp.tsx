@@ -1454,7 +1454,9 @@ export default function WhatsAppPage() {
                       <span className="font-semibold">typing...</span>
                     </span>
                   ) : (
-                    chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName || null
+                    chats.find(c => c.remoteJid === selectedChat)?.contact?.pushName || 
+                    chats.find(c => c.remoteJid === selectedChat)?.contact?.businessName || 
+                    null
                   )}
                 </p>
               </div>
