@@ -23907,6 +23907,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
   // POST /api/whatsapp/send-typing - Send typing indicator
   app.post("/api/whatsapp/send-typing", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23915,7 +23916,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated" });
       }
       
-      const { remoteJid } = req.body;
+      let { remoteJid } = req.body;
       if (!remoteJid) {
         return res.status(400).json({ message: "remoteJid is required" });
       }
@@ -23928,13 +23929,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
       
+      // For @lid contacts, resolve to phone-based JID first
+      if (remoteJid.endsWith('@lid')) {
+        // Check if this LID is stored in a contact's lid column
+        const contactWithLid = await db.query.whatsappContacts.findFirst({
+          where: and(
+            eq(whatsappContacts.instanceId, instance.id),
+            eq(whatsappContacts.lid, remoteJid)
+          ),
+        });
+        
+        if (contactWithLid) {
+          // Use the phone-based remoteJid
+          remoteJid = contactWithLid.remoteJid;
+        } else {
+          // Check if this @lid is stored as a remoteJid with businessPhone
+          const contactByRemoteJid = await db.query.whatsappContacts.findFirst({
+            where: and(
+              eq(whatsappContacts.instanceId, instance.id),
+              eq(whatsappContacts.remoteJid, remoteJid)
+            ),
+          });
+          
+          // If we have a contact with businessPhone, use that
+          if (contactByRemoteJid?.businessPhone) {
+            const phoneNumber = contactByRemoteJid.businessPhone.replace(/\D/g, '');
+            remoteJid = `${phoneNumber}@s.whatsapp.net`;
+          } else {
+            // Cannot send typing to @lid without phone mapping - skip silently
+            return res.json({ success: true, skipped: true });
+          }
+        }
+      }
+      
       await evolutionApi.sendTyping(instance.instanceName, remoteJid);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to send typing" });
     }
   });
-
   // POST /api/whatsapp/download-media/:messageId - Download media for a message
   app.post("/api/whatsapp/download-media/:messageId", requireActiveCompany, async (req: Request, res: Response) => {
     try {

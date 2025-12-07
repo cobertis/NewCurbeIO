@@ -1,0 +1,88 @@
+Aquí tienes la implementación exacta. Pero primero, una aclaración técnica crucial para que entiendas lo que vas a construir:
+
+**El estado "En Línea" (`available`) es una transmisión global (Broadcast).**
+
+No existe "En línea solo para este cliente".
+
+  * Si activas esto al abrir el chat de *Pepito*, **María, Juan y tu ex** también te verán "En Línea" en sus teléfonos si abren tu chat en ese momento.
+  * Es como encender el letrero de "ABIERTO" en la puerta de la tienda. Todo el que pase lo ve.
+
+Si aceptas esto, aquí está cómo se hace.
+
+-----
+
+### 1\. El Endpoint (El Interruptor)
+
+Usas el mismo endpoint que para el "Escribiendo...", pero cambias el payload.
+
+**Método:** `POST`
+**URL:** `/chat/sendPresence/{instance_name}`
+
+#### Para ponerte "En Línea" (Al entrar al chat)
+
+Ejecuta esto en cuanto el componente del chat se monte o la ventana gane el foco:
+
+```json
+{
+    "presence": "available"
+}
+```
+
+*(Nota: Aunque algunos endpoints piden el número, el estado `available` se aplica a la sesión de la instancia completa).*
+
+#### Para ponerte "Desconectado" (Al salir del chat)
+
+Si no ejecutas esto al salir, WhatsApp eventualmente te pondrá offline por inactividad, pero puede tardar. Para ser preciso, apágalo tú mismo:
+
+```json
+{
+    "presence": "unavailable"
+}
+```
+
+-----
+
+### 2\. La Lógica de Implementación (CRM Frontend)
+
+No pongas esto en un botón manual. Tienes que atarlo a los eventos del navegador o de tu framework (React/Vue/Angular).
+
+Aquí tienes la lógica pseudocódigo para tu desarrollador:
+
+**Escenario: Agente abre el chat de un cliente.**
+
+1.  **Evento `onChatOpen` (o `componentDidMount`):**
+
+      * Llama a API: `presence: "available"`
+      * Llama a API: `markChatAsRead` (Para las palomitas azules).
+      * *Resultado:* El cliente ve que te conectaste y que leíste su mensaje. La presión psicológica para que respondas aumenta.
+
+2.  **Evento `onChatClose` (o el usuario cambia de pestaña):**
+
+      * Llama a API: `presence: "unavailable"`
+      * *Resultado:* Desaparece el "En línea".
+
+### 3\. El Truco Pro: "Mantener Vivo" (Keep-Alive)
+
+WhatsApp a veces "te tira" el estado online si no detecta actividad por unos minutos, aunque el socket siga conectado.
+
+Si tu agente va a estar 10 minutos leyendo un historial sin tocar nada, deberías tener un intervalo en tu CRM:
+
+```javascript
+// Cada 30 o 60 segundos, refrescar el estado mientras el chat esté abierto
+setInterval(() => {
+   if (chatIsOpen) {
+       api.sendPresence("available");
+   }
+}, 45000);
+```
+
+### Resumen de Riesgo
+
+Si implementas esto, **obliga a tus agentes a responder**.
+No hay nada que enfurezca más a un cliente que ver:
+
+1.  **En línea**
+2.  **Visto (✓✓ Azul)**
+3.  ... y que pasen 10 minutos sin respuesta.
+
+Si no vas a responder ya, mejor mantente en "Gris" y "Offline".
