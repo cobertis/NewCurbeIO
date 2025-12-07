@@ -104,6 +104,11 @@ export function PublicPricingView({
     return plan.price * 12 * 0.8;
   };
 
+  const getOriginalYearlyPrice = (plan: Plan): number => {
+    // precio mensual * 12 sin descuento
+    return plan.price * 12;
+  };
+
   const isEnterprisePlan = (planName: string, index: number, total: number): boolean => {
     const nameLower = planName.toLowerCase();
     return nameLower.includes('enterprise') || nameLower.includes('unlimited') || (total >= 3 && index === total - 1);
@@ -330,6 +335,22 @@ export function PublicPricingView({
                         <p className="text-xs mb-1" style={{ color: pricingTheme.colors.textMuted }}>
                           Starts at
                         </p>
+                        {billingCycle === 'yearly' && (
+                          <div className="mb-1 flex items-baseline gap-2">
+                            <span 
+                              className="text-lg"
+                              style={{ 
+                                color: '#EF4444',
+                                textDecoration: 'line-through',
+                                textDecorationColor: '#EF4444',
+                                textDecorationThickness: '2px'
+                              }}
+                              data-testid={`text-plan-original-price-${index}`}
+                            >
+                              {formatPrice(getOriginalYearlyPrice(plan), plan.currency)}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-baseline gap-2">
                           <span 
                             className="text-4xl font-bold"
