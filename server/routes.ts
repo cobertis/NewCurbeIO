@@ -3746,9 +3746,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Log the registration
       await logger.logAuth({
         req,
-        action: "account_activated", // Using existing action type
+        action: "company_registered",
         userId: newUser.id,
         email: adminData.email,
+        companyId: newCompany.id,
         metadata: { 
           companyId: newCompany.id,
           companyName: newCompany.name,
@@ -4297,6 +4298,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         action: "otp_sent",
         userId: user.id,
         email: user.email,
+        companyId: user.companyId || undefined,
         metadata: { method },
       });
       res.json({ 
@@ -4391,6 +4393,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         action: "login_with_otp",
         userId: user.id,
         email: user.email,
+        companyId: user.companyId || undefined,
         metadata: { 
           rememberDevice: !!rememberDevice,
           trustedDeviceCreated: !!deviceToken
@@ -4588,6 +4591,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         action: "account_activated",
         userId: user.id,
         email: user.email,
+        companyId: user.companyId || undefined,
         metadata: { method: "activation_token" },
       });
       // Notify superadmins that user has activated their account
