@@ -25575,17 +25575,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ]
         },
         { 
-          provider: "bulkvs", 
-          label: "BulkVS",
-          helpText: "Find your credentials in BulkVS Portal > API > API Credentials",
-          helpUrl: "https://portal.bulkvs.com/",
-          keys: [
-            { keyName: "api_key", label: "API Key", required: true, hint: "Your SOAP API key" },
-            { keyName: "api_secret", label: "API Secret", required: true, hint: "Your API secret" },
-            { keyName: "webhook_secret", label: "Webhook Secret", required: false, hint: "For webhook validation" },
-          ]
-        },
-        { 
           provider: "bluebubbles", 
           label: "BlueBubbles",
           helpText: "Find your server URL and password in the BlueBubbles app settings",

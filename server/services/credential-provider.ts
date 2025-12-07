@@ -21,9 +21,6 @@ const CREDENTIAL_MAPPINGS: CredentialKey[] = [
   { provider: "twilio", keyName: "auth_token", envVar: "TWILIO_AUTH_TOKEN" },
   { provider: "twilio", keyName: "phone_number", envVar: "TWILIO_PHONE_NUMBER" },
   
-  { provider: "bulkvs", keyName: "api_key", envVar: "BULKVS_API_KEY" },
-  { provider: "bulkvs", keyName: "api_secret", envVar: "BULKVS_API_SECRET" },
-  { provider: "bulkvs", keyName: "webhook_secret", envVar: "BULKVS_WEBHOOK_SECRET" },
   
   { provider: "bluebubbles", keyName: "server_url", envVar: "BLUEBUBBLES_SERVER_URL" },
   { provider: "bluebubbles", keyName: "password", envVar: "BLUEBUBBLES_PASSWORD" },
@@ -71,16 +68,7 @@ class CredentialProvider {
       console.warn(`Failed to get credential from DB: ${provider}/${keyName}`, error);
     }
 
-    const mapping = CREDENTIAL_MAPPINGS.find(
-      (m) => m.provider === provider && m.keyName === keyName
-    );
-    
-    if (mapping && process.env[mapping.envVar]) {
-      const envValue = process.env[mapping.envVar]!;
-      this.cache.set(cacheKey, { value: envValue, timestamp: Date.now() });
-      return envValue;
-    }
-
+    // All credentials must be stored in the database - no env fallback
     return null;
   }
 
@@ -148,18 +136,6 @@ class CredentialProvider {
     return { accountSid, authToken, phoneNumber };
   }
 
-  async getBulkVS(): Promise<{
-    apiKey: string | null;
-    apiSecret: string | null;
-    webhookSecret: string | null;
-  }> {
-    const [apiKey, apiSecret, webhookSecret] = await Promise.all([
-      this.get("bulkvs", "api_key"),
-      this.get("bulkvs", "api_secret"),
-      this.get("bulkvs", "webhook_secret"),
-    ]);
-    return { apiKey, apiSecret, webhookSecret };
-  }
 
   async getBlueBubbles(): Promise<{
     serverUrl: string | null;

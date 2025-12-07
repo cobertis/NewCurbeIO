@@ -511,8 +511,7 @@ async function initBulkVS(): Promise<BulkVSClient | null> {
 
   bulkVSInitPromise = (async () => {
     try {
-      const { apiKey, apiSecret } = await credentialProvider.getBulkvs();
-      const accountId = process.env.BULKVS_ACCOUNT_ID;
+      const { apiKey, apiSecret, accountId } = await credentialProvider.getBulkVS();
 
       if (!apiKey || !apiSecret) {
         console.warn("⚠️  BulkVS credentials not configured. BulkVS features will be disabled.");

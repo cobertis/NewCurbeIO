@@ -4714,7 +4714,6 @@ export const apiProviders = [
   "stripe",
   "telnyx", 
   "twilio",
-  "bulkvs",
   "bluebubbles",
   "evolution_api",
   "google_places",
