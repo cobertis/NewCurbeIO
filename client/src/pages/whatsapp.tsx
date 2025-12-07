@@ -1300,9 +1300,15 @@ export default function WhatsAppPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <p className="text-sm text-gray-500 truncate">
-                      {formatMessagePreview(chat.lastMessagePreview, chat.lastMessageFromMe)}
-                    </p>
+                    {typingJid === chat.remoteJid ? (
+                      <p className="text-sm text-green-500 truncate animate-pulse">
+                        typing...
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500 truncate">
+                        {formatMessagePreview(chat.lastMessagePreview, chat.lastMessageFromMe)}
+                      </p>
+                    )}
                     {chat.unreadCount > 0 && (
                       <Badge className="bg-primary text-primary-foreground rounded-full h-5 min-w-[20px] flex items-center justify-center">
                         {chat.unreadCount}
