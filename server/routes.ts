@@ -25867,6 +25867,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // DELETE /api/system/credentials/provider/:provider - Delete all credentials for a provider
+  app.delete("/api/system/credentials/provider/:provider", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const { provider } = req.params;
+      const { environment } = req.query;
+
+      const { db } = await import("./db");
+      const { systemApiCredentials, systemApiCredentialsAudit } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+
+      const whereConditions = environment 
+        ? and(eq(systemApiCredentials.provider, provider), eq(systemApiCredentials.environment, environment as string))
+        : eq(systemApiCredentials.provider, provider);
+
+      const credentialsToDelete = await db.query.systemApiCredentials.findMany({
+        where: whereConditions,
+      });
+
+      if (credentialsToDelete.length === 0) {
+        return res.status(404).json({ message: "No credentials found for this provider" });
+      }
+
+      const { secretsService } = await import("./services/secrets-service");
+      const { credentialProvider } = await import("./services/credential-provider");
+
+      for (const credential of credentialsToDelete) {
+        await secretsService.deleteCredential(credential.id, user.id);
+        credentialProvider.invalidate(credential.provider as any, credential.keyName);
+      }
+
+      res.json({ success: true, deletedCount: credentialsToDelete.length });
+    } catch (error: any) {
+      console.error("[System Credentials] Error bulk deleting:", error);
+      res.status(500).json({ message: "Failed to delete credentials" });
+    }
+  });
   // POST /api/system/credentials/:id/rotate - Rotate a credential
   app.post("/api/system/credentials/:id/rotate", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
