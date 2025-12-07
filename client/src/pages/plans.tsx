@@ -336,10 +336,7 @@ export function PublicPricingView({
                             style={{ color: pricingTheme.colors.textPrimary }}
                             data-testid={`text-plan-price-${index}`}
                           >
-                            {enterprise && billingCycle === 'yearly' 
-                              ? `$${Math.round(yearlyTotal / 100 / 1000)}k`
-                              : formatPrice(displayPrice, plan.currency)
-                            }
+                            {formatPrice(displayPrice, plan.currency)}
                           </span>
                           <span 
                             className="text-sm"
