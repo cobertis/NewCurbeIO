@@ -88,9 +88,10 @@ export function PublicPricingView({
   const getDisplayPrice = (plan: Plan): number => {
     if (billingCycle === 'yearly') {
       if (plan.annualPrice) {
-        return plan.annualPrice / 12;
+        return plan.annualPrice;
       }
-      return plan.price * 10 / 12;
+      // precio mensual * 12 * 0.8 (20% discount)
+      return plan.price * 12 * 0.8;
     }
     return plan.price;
   };
@@ -99,7 +100,8 @@ export function PublicPricingView({
     if (plan.annualPrice) {
       return plan.annualPrice;
     }
-    return plan.price * 10;
+    // precio mensual * 12 * 0.8 (20% discount)
+    return plan.price * 12 * 0.8;
   };
 
   const isEnterprisePlan = (planName: string, index: number, total: number): boolean => {
@@ -343,7 +345,7 @@ export function PublicPricingView({
                             className="text-sm"
                             style={{ color: pricingTheme.colors.textMuted }}
                           >
-                            per month
+                            {billingCycle === 'yearly' ? 'annual' : 'per month'}
                           </span>
                         </div>
                       </div>
