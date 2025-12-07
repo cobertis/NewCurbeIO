@@ -261,7 +261,7 @@ export default function Register() {
         description: "Check your email for activation instructions.",
       });
       
-      setTimeout(() => setLocation("/login"), 2000);
+      setTimeout(() => setLocation("/plans"), 2000);
     } catch (error: any) {
       console.error("Registration error:", error);
       toast({
