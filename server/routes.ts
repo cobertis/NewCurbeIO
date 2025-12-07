@@ -5302,6 +5302,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
     }
+  });
   // Dashboard recent policies endpoint
   app.get("/api/dashboard-recent-policies", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -5349,7 +5350,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch recent policies" });
     }
   });
+  // Get all companies (superadmin only) or user's company (admin/agent)
+  app.get("/api/companies", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      
+      if (currentUser.role === "superadmin") {
+        const companies = await storage.getAllCompanies();
+        return res.json({ companies });
+      }
+      
+      if (currentUser.companyId) {
+        const company = await storage.getCompany(currentUser.companyId);
+        return res.json({ companies: company ? [company] : [] });
+      }
+      
+      res.json({ companies: [] });
+    } catch (error: any) {
+      console.error("Error fetching companies:", error);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
   });
+
   // Get single company by ID
   app.get("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
