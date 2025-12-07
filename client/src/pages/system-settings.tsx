@@ -120,6 +120,10 @@ export default function SystemSettings() {
   const [unlockTimeRemaining, setUnlockTimeRemaining] = useState(0);
   const [cachedPassword, setCachedPassword] = useState<string | null>(null);
   const isUnlocked = unlockExpiry !== null && Date.now() < unlockExpiry;
+  
+  const [viewDialogPassword, setViewDialogPassword] = useState("");
+  const [showViewDialogPassword, setShowViewDialogPassword] = useState(false);
+  const [viewDialogUnlocking, setViewDialogUnlocking] = useState(false);
 
   const { data: sessionData, isLoading: isLoadingSession } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -499,6 +503,61 @@ export default function SystemSettings() {
       title: "Session Locked",
       description: "Credential viewing session has been locked.",
     });
+  };
+
+  const handleViewDialogUnlock = async () => {
+    if (!viewDialogPassword || !selectedProviderForView) return;
+    
+    setViewDialogUnlocking(true);
+    
+    const providerCredentials = groupedCredentials[selectedProviderForView] || [];
+    if (providerCredentials.length === 0) {
+      setViewDialogUnlocking(false);
+      toast({
+        title: "Error",
+        description: "No credentials found for this provider.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const testCredential = providerCredentials[0];
+      await apiRequest("POST", `/api/system/credentials/${testCredential.id}/reveal`, {
+        password: viewDialogPassword,
+      });
+      
+      const UNLOCK_DURATION = 5 * 60 * 1000;
+      setUnlockExpiry(Date.now() + UNLOCK_DURATION);
+      setCachedPassword(viewDialogPassword);
+      setViewDialogPassword("");
+      setShowViewDialogPassword(false);
+      
+      toast({
+        title: "Session Unlocked",
+        description: "You can now reveal credentials for 5 minutes without re-entering your password.",
+      });
+    } catch (error: any) {
+      let errorMessage = "Failed to unlock session.";
+      try {
+        if (error?.message) {
+          const colonIndex = error.message.indexOf(': ');
+          if (colonIndex !== -1) {
+            const jsonPart = error.message.substring(colonIndex + 2);
+            const errorData = JSON.parse(jsonPart);
+            errorMessage = errorData.message || error.message;
+          }
+        }
+      } catch {}
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setViewDialogUnlocking(false);
+    }
   };
 
   const handleAddSubmit = (data: CredentialFormData) => {
@@ -1620,16 +1679,14 @@ export default function SystemSettings() {
                           className="pr-10"
                           data-testid="input-reveal-password"
                         />
-                        <Button
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                           onClick={() => setShowValue(!showValue)}
                           data-testid="button-toggle-reveal-password"
                         >
                           {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
+                        </button>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -1693,16 +1750,14 @@ export default function SystemSettings() {
                           className="pr-10"
                           data-testid="input-edit-provider-password"
                         />
-                        <Button
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                           onClick={() => setShowValue(!showValue)}
                           data-testid="button-toggle-edit-provider-password"
                         >
                           {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
+                        </button>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -1847,7 +1902,14 @@ export default function SystemSettings() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={viewProviderDialogOpen} onOpenChange={setViewProviderDialogOpen}>
+      <Dialog open={viewProviderDialogOpen} onOpenChange={(open) => {
+        setViewProviderDialogOpen(open);
+        if (!open) {
+          setViewDialogPassword("");
+          setShowViewDialogPassword(false);
+          setViewDialogUnlocking(false);
+        }
+      }}>
         <DialogContent className="sm:max-w-[550px]" data-testid="dialog-view-provider">
           <DialogHeader>
             <DialogTitle>
@@ -1857,6 +1919,69 @@ export default function SystemSettings() {
               View configured credentials for this provider.
             </DialogDescription>
           </DialogHeader>
+          
+          {isUnlocked ? (
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <Unlock className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  Unlocked - {Math.floor(unlockTimeRemaining / 60)}:{String(unlockTimeRemaining % 60).padStart(2, '0')} remaining
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLock}
+                className="text-green-700 dark:text-green-400 hover:text-green-800 hover:bg-green-100 dark:hover:bg-green-900/40"
+                data-testid="button-lock-view-dialog"
+              >
+                <Lock className="h-4 w-4 mr-1" />
+                Lock
+              </Button>
+            </div>
+          ) : (
+            <div className="p-4 bg-muted/50 border rounded-lg space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Shield className="h-4 w-4" />
+                <span>Enter password to reveal credentials</span>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type={showViewDialogPassword ? "text" : "password"}
+                    value={viewDialogPassword}
+                    onChange={(e) => setViewDialogPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="pr-10"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && viewDialogPassword) {
+                        e.preventDefault();
+                        handleViewDialogUnlock();
+                      }
+                    }}
+                    data-testid="input-view-dialog-password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowViewDialogPassword(!showViewDialogPassword)}
+                    data-testid="button-toggle-view-dialog-password"
+                  >
+                    {showViewDialogPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  onClick={handleViewDialogUnlock}
+                  disabled={viewDialogUnlocking || !viewDialogPassword}
+                  data-testid="button-unlock-view-dialog"
+                >
+                  {viewDialogUnlocking && <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />}
+                  Unlock
+                </Button>
+              </div>
+            </div>
+          )}
+          
           <div className="space-y-4 max-h-[400px] overflow-y-auto">
             {selectedProviderForView && groupedCredentials[selectedProviderForView]?.map((credential) => {
               const revealed = revealedValues[credential.id];
@@ -1886,8 +2011,12 @@ export default function SystemSettings() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleRevealClick(credential)}
-                    disabled={!!revealed}
+                    onClick={() => {
+                      if (isUnlocked && cachedPassword) {
+                        revealWithCachedPassword(credential);
+                      }
+                    }}
+                    disabled={!!revealed || !isUnlocked}
                     data-testid={`button-reveal-view-${credential.id}`}
                   >
                     {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
