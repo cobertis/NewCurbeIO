@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,7 @@ export default function CompanyDetail() {
   const [assignFeatureOpen, setAssignFeatureOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [resendingLogId, setResendingLogId] = useState<string | null>(null);
   const companyId = params.id;
 
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: Company }>({
@@ -301,6 +302,34 @@ export default function CompanyDetail() {
       });
     },
     onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resendEmailMutation = useMutation({
+    mutationFn: async (data: { logId: string; recipient: string; subject: string; htmlContent: string }) => {
+      setResendingLogId(data.logId);
+      return apiRequest("POST", `/api/email/resend`, {
+        recipient: data.recipient,
+        subject: data.subject,
+        htmlContent: data.htmlContent,
+        companyId,
+      });
+    },
+    onSuccess: () => {
+      setResendingLogId(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/audit-logs", companyId] });
+      toast({
+        title: "Email Resent",
+        description: "The email has been resent successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      setResendingLogId(null);
       toast({
         title: "Error",
         description: error.message,
@@ -1043,16 +1072,32 @@ export default function CompanyDetail() {
                             </div>
                           </div>
                           {hasEmailContent && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                              className="flex-shrink-0"
-                              data-testid={`btn-expand-log-${index}`}
-                            >
-                              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              <span className="ml-1 text-xs">{isExpanded ? 'Hide' : 'View Email'}</span>
-                            </Button>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                                data-testid={`btn-expand-log-${index}`}
+                              >
+                                {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                <span className="ml-1 text-xs">{isExpanded ? 'Hide' : 'View'}</span>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => resendEmailMutation.mutate({
+                                  logId: log.id,
+                                  recipient: metadata.recipient,
+                                  subject: metadata.subject,
+                                  htmlContent: metadata.htmlContent,
+                                })}
+                                disabled={resendingLogId === log.id}
+                                data-testid={`btn-resend-log-${index}`}
+                              >
+                                <RefreshCw className={`h-3 w-3 ${resendingLogId === log.id ? 'animate-spin' : ''}`} />
+                                <span className="ml-1 text-xs">{resendingLogId === log.id ? 'Sending...' : 'Resend'}</span>
+                              </Button>
+                            </div>
                           )}
                         </div>
                         {isExpanded && hasEmailContent && (

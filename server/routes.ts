@@ -8949,6 +8949,39 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
+
+  // Resend email from activity log (superadmin only)
+  app.post("/api/email/resend", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    if (currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Superadmin only" });
+    }
+
+    try {
+      const { recipient, subject, htmlContent, companyId } = req.body;
+
+      if (!recipient || !subject || !htmlContent) {
+        return res.status(400).json({ message: "Recipient, subject, and HTML content are required" });
+      }
+
+      const success = await emailService.sendEmail({
+        to: recipient,
+        subject,
+        html: htmlContent,
+        companyId: companyId || undefined,
+        templateSlug: "resend",
+      });
+
+      if (success) {
+        res.json({ success: true, message: "Email resent successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to resend email" });
+      }
+    } catch (error: any) {
+      console.error("Failed to resend email:", error);
+      res.status(500).json({ message: error.message || "Failed to resend email" });
+    }
+  });
   // ==================== EMAIL CAMPAIGNS ENDPOINTS ====================
   // Get all campaigns (superadmin only)
   app.get("/api/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
