@@ -192,5 +192,20 @@ app.use((req, res, next) => {
     
     // Start the iMessage campaign processor for automated campaign message delivery
     startImessageCampaignProcessor();
+    
+    // Test email service on startup
+    import("./email").then(({ emailService }) => {
+      emailService.verifyConnection().then((connected) => {
+        if (connected) {
+          console.log("[EMAIL] Email service connected successfully on startup");
+        } else {
+          console.warn("[EMAIL] Email service NOT configured or connection failed - emails will not be sent");
+        }
+      }).catch((error) => {
+        console.error("[EMAIL] Error testing email connection:", error);
+      });
+    }).catch((error) => {
+      console.error("[EMAIL] Error importing email service:", error);
+    });
   });
 })();
