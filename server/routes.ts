@@ -25151,6 +25151,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get balance" });
     }
   });
+
+  // ==================== TELNYX PHONE SYSTEM API ====================
+  
+  // POST /api/setup-phone-system - Setup Telnyx sub-account for company
+  app.post("/api/setup-phone-system", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      // Only admins can setup phone system
+      if (user.role !== "admin" && user.role !== "super_admin") {
+        return res.status(403).json({ message: "Only admins can setup phone system" });
+      }
+
+      const { setupPhoneSystemForCompany } = await import("./services/telnyx-manager-service");
+      const result = await setupPhoneSystemForCompany(user.companyId);
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({
+        success: true,
+        alreadySetup: result.alreadySetup || false,
+        wallet: result.wallet,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx] Error setting up phone system:", error);
+      res.status(500).json({ message: "Failed to setup phone system" });
+    }
+  });
+
+  // GET /api/phone-system/status - Get phone system status
+  app.get("/api/phone-system/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { getWalletByCompany } = await import("./services/wallet-service");
+      const wallet = await getWalletByCompany(user.companyId);
+
+      if (!wallet) {
+        return res.json({
+          isSetup: false,
+          hasWallet: false,
+          hasTelnyxAccount: false,
+        });
+      }
+
+      res.json({
+        isSetup: !!wallet.telnyxAccountId,
+        hasWallet: true,
+        hasTelnyxAccount: !!wallet.telnyxAccountId,
+        telnyxAccountId: wallet.telnyxAccountId || null,
+        balance: wallet.balance,
+        currency: wallet.currency,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx] Error getting phone system status:", error);
+      res.status(500).json({ message: "Failed to get phone system status" });
+    }
+  });
   const httpServer = createServer(app);
 
   // ==================== WALLET API ====================

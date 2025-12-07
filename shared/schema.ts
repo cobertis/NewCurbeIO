@@ -4592,6 +4592,7 @@ export const wallets = pgTable("wallets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
   telnyxAccountId: text("telnyx_account_id"),
+  telnyxApiToken: text("telnyx_api_token"),
   balance: numeric("balance", { precision: 10, scale: 4 }).notNull().default("0.0000"),
   currency: text("currency").notNull().default("USD"),
   autoRecharge: boolean("auto_recharge").notNull().default(false),
