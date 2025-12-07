@@ -379,43 +379,73 @@ export default function SystemSettings() {
 
     setIsBulkSubmitting(true);
     try {
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         credentialsToCreate.map(cred => 
           apiRequest("POST", "/api/system/credentials", cred)
         )
       );
       
+      const succeeded = results.filter(r => r.status === "fulfilled");
+      const failed = results.filter(r => r.status === "rejected");
+      
       queryClient.invalidateQueries({ queryKey: ["/api/system/credentials"] });
       queryClient.invalidateQueries({ queryKey: ["/api/system/credentials/audit"] });
       
-      setAddDialogOpen(false);
-      setBulkFormProvider("");
-      setBulkFormValues({});
-      setShowFieldValues({});
-      
-      toast({
-        title: "Credentials Created",
-        description: `Successfully created ${results.length} credential(s) for ${getProviderDisplayName(bulkFormProvider)}.`,
-      });
-    } catch (error: any) {
-      let errorMessage = "Failed to create credentials.";
-      try {
-        if (error?.message) {
-          const colonIndex = error.message.indexOf(': ');
-          if (colonIndex !== -1) {
-            const jsonPart = error.message.substring(colonIndex + 2);
-            const errorData = JSON.parse(jsonPart);
-            errorMessage = errorData.message || error.message;
-          } else {
-            errorMessage = error.message;
+      if (failed.length === 0) {
+        setAddDialogOpen(false);
+        setBulkFormProvider("");
+        setBulkFormValues({});
+        setShowFieldValues({});
+        
+        toast({
+          title: "Credentials Created",
+          description: `Successfully created ${succeeded.length} credential(s) for ${getProviderDisplayName(bulkFormProvider)}.`,
+        });
+      } else if (succeeded.length > 0) {
+        const failedKeys = credentialsToCreate
+          .filter((_, idx) => results[idx].status === "rejected")
+          .map(c => getKeyLabel(c.provider, c.keyName));
+        
+        const newValues = { ...bulkFormValues };
+        credentialsToCreate.forEach((cred, idx) => {
+          if (results[idx].status === "fulfilled") {
+            delete newValues[cred.keyName];
+          }
+        });
+        setBulkFormValues(newValues);
+        
+        toast({
+          title: "Partial Success",
+          description: `Created ${succeeded.length} credential(s). Failed: ${failedKeys.join(", ")}. Please retry the failed ones.`,
+          variant: "destructive",
+        });
+      } else {
+        let errorMessage = "Failed to create credentials.";
+        const firstRejection = failed[0] as PromiseRejectedResult;
+        if (firstRejection?.reason?.message) {
+          try {
+            const colonIndex = firstRejection.reason.message.indexOf(': ');
+            if (colonIndex !== -1) {
+              const jsonPart = firstRejection.reason.message.substring(colonIndex + 2);
+              const errorData = JSON.parse(jsonPart);
+              errorMessage = errorData.message || firstRejection.reason.message;
+            } else {
+              errorMessage = firstRejection.reason.message;
+            }
+          } catch {
+            errorMessage = firstRejection.reason.message || "Failed to create credentials.";
           }
         }
-      } catch {
-        errorMessage = error?.message || "Failed to create credentials.";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error?.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
