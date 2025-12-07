@@ -1548,7 +1548,7 @@ export default function WhatsAppPage() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                      {messages.map((msg) => (
+                      {messages.filter(msg => msg.messageType !== "reaction").map((msg) => (
                         <div
                           key={msg.id}
                           className={cn(
