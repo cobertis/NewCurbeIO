@@ -156,7 +156,7 @@ export default function PlansPage() {
   const { toast } = useToast();
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"public" | "admin">("public");
+  const [viewMode, setViewMode] = useState<"public" | "admin">("admin");
 
   const { data: sessionData } = useQuery<{ user: { id: string; email: string; role: string; companyId: string | null } }>({
     queryKey: ["/api/session"],
