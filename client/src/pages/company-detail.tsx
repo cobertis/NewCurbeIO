@@ -972,20 +972,29 @@ export default function CompanyDetail() {
                 <div className="space-y-2 max-h-[600px] overflow-y-auto">
                   {activityLogs.map((log: any, index: number) => {
                     const isAuthLog = log.action?.startsWith('auth_');
-                    const isEmailLog = log.action?.startsWith('email_');
+                    const isEmailLog = log.action?.startsWith('email_') || log.action === 'email_sent';
+                    const isPlanLog = log.action === 'plan_selected';
+                    const isOtpLog = log.action === 'otp_sent';
                     const metadata = log.metadata || {};
                     
                     const getActionIcon = () => {
+                      if (isPlanLog) return <CreditCard className="h-4 w-4" />;
                       if (isAuthLog) return <LogIn className="h-4 w-4" />;
-                      if (isEmailLog) return <Send className="h-4 w-4" />;
+                      if (isEmailLog || isOtpLog) return <Send className="h-4 w-4" />;
                       return <FileText className="h-4 w-4" />;
                     };
                     
                     const getActionBadgeVariant = () => {
                       if (log.action?.includes('failed')) return 'destructive';
                       if (log.action?.includes('login') || log.action?.includes('success')) return 'default';
+                      if (isPlanLog) return 'default';
                       if (isEmailLog) return 'secondary';
                       return 'outline';
+                    };
+                    
+                    const formatPrice = (cents: number | null | undefined) => {
+                      if (cents === null || cents === undefined) return 'N/A';
+                      return `$${(cents / 100).toFixed(2)}`;
                     };
                     
                     const formatAction = (action: string) => {
@@ -1068,6 +1077,53 @@ export default function CompanyDetail() {
                                   IP: {log.ipAddress}
                                   {metadata.city && metadata.country && ` (${metadata.city}, ${metadata.country})`}
                                 </p>
+                              )}
+                              {/* Plan Details Section */}
+                              {isPlanLog && (
+                                <div className="mt-2 p-3 bg-muted/50 rounded-lg border">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <CreditCard className="h-4 w-4 text-primary" />
+                                    <span className="font-semibold">{metadata.planName || 'Unknown Plan'}</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                                    {metadata.monthlyPrice !== undefined && (
+                                      <div>
+                                        <span className="text-muted-foreground">Monthly:</span>{' '}
+                                        <span className="font-medium">{formatPrice(metadata.monthlyPrice)}</span>
+                                      </div>
+                                    )}
+                                    {metadata.annualPrice !== undefined && (
+                                      <div>
+                                        <span className="text-muted-foreground">Annual:</span>{' '}
+                                        <span className="font-medium">{formatPrice(metadata.annualPrice)}</span>
+                                      </div>
+                                    )}
+                                    {metadata.billingPeriod && (
+                                      <div>
+                                        <span className="text-muted-foreground">Billing:</span>{' '}
+                                        <Badge variant="outline" className="text-xs capitalize ml-1">{metadata.billingPeriod}</Badge>
+                                      </div>
+                                    )}
+                                    {metadata.trialDays !== undefined && metadata.trialDays > 0 && (
+                                      <div>
+                                        <span className="text-muted-foreground">Trial:</span>{' '}
+                                        <span className="font-medium">{metadata.trialDays} days</span>
+                                      </div>
+                                    )}
+                                    {metadata.maxUsers !== undefined && (
+                                      <div>
+                                        <span className="text-muted-foreground">User Limit:</span>{' '}
+                                        <span className="font-medium">{metadata.maxUsers || 'Unlimited'}</span>
+                                      </div>
+                                    )}
+                                    {metadata.stripeSubscriptionId && (
+                                      <div className="col-span-2 md:col-span-3">
+                                        <span className="text-muted-foreground">Subscription ID:</span>{' '}
+                                        <span className="font-mono text-xs">{metadata.stripeSubscriptionId}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           </div>
