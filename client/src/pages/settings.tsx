@@ -4387,11 +4387,16 @@ function AutomationsTab() {
     if (settings) {
       setFormData({
         isEnabled: settings.isEnabled,
-        selectedImageId: settings.selectedImageId,
+        selectedImageId: settings.selectedImageId || (images.length > 0 ? images[0].id : null),
         customMessage: settings.customMessage,
       });
+    } else if (images.length > 0 && !formData.selectedImageId) {
+      setFormData(prev => ({
+        ...prev,
+        selectedImageId: images[0].id,
+      }));
     }
-  }, [settings]);
+  }, [settings, images]);
 
   // Save settings mutation
   const saveSettingsMutation = useMutation({

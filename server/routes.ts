@@ -5698,14 +5698,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Company not found" });
       }
       // Allow updating company fields including logo
-      const { name, logo, phone, address, city, state, zipCode, country, representativeName, representativePhone, representativeEmail, npn, timezone } = req.body;
+      const { 
+        name, slug, logo, phone, email, website, platformLanguage, businessCategory, businessNiche,
+        address, addressLine2, city, state, postalCode, zipCode, country, 
+        representativeName, representativePhone, representativeEmail, npn, timezone 
+      } = req.body;
       const updateData: any = {};
       if (name !== undefined) updateData.name = name;
+      if (slug !== undefined) updateData.slug = slug;
       if (logo !== undefined) updateData.logo = logo;
       if (phone !== undefined) updateData.phone = phone;
+      if (email !== undefined) updateData.email = email;
+      if (website !== undefined) updateData.website = website;
+      if (platformLanguage !== undefined) updateData.platformLanguage = platformLanguage;
+      if (businessCategory !== undefined) updateData.businessCategory = businessCategory;
+      if (businessNiche !== undefined) updateData.businessNiche = businessNiche;
       if (address !== undefined) updateData.address = address;
+      if (addressLine2 !== undefined) updateData.addressLine2 = addressLine2;
       if (city !== undefined) updateData.city = city;
       if (state !== undefined) updateData.state = state;
+      if (postalCode !== undefined) updateData.postalCode = postalCode;
       if (zipCode !== undefined) updateData.zipCode = zipCode;
       if (country !== undefined) updateData.country = country;
       if (representativeName !== undefined) updateData.representativeName = representativeName;
@@ -5713,7 +5725,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (representativeEmail !== undefined) updateData.representativeEmail = representativeEmail;
       if (npn !== undefined) updateData.npn = npn;
       if (timezone !== undefined) updateData.timezone = timezone;
-      const updatedCompany = await storage.updateCompany(companyId, updateData);
+      if (timezone !== undefined) updateData.timezone = timezone;
       res.json({ company: updatedCompany });
     } catch (error: any) {
       console.error("[Company Update] Error:", error);
