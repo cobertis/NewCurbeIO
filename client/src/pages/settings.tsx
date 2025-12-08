@@ -533,6 +533,18 @@ export default function Settings() {
     },
   });
 
+  // Auto-refresh domain status every 5 seconds while pending validation
+  useEffect(() => {
+    if (!customDomainData?.configured) return;
+    if (customDomainData.status === "active") return;
+    
+    const intervalId = setInterval(() => {
+      refetchCustomDomain();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [customDomainData?.configured, customDomainData?.status, refetchCustomDomain]);
+
   // Determine active tab from URL (must be defined before use)
   const getCurrentTab = () => {
     if (location === "/settings/automations") return "automations";
@@ -1973,12 +1985,15 @@ export default function Settings() {
                           <div className="space-y-1">
                             <p className="font-medium">{customDomainData.domain}</p>
                             <div className="flex items-center gap-2">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                                 customDomainData.status === "active" 
                                   ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                                   : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                               }`}>
-                                {customDomainData.status === "active" ? "Active" : "Pending Validation"}
+                                {customDomainData.status !== "active" && (
+                                  <RefreshCw className="h-3 w-3 animate-spin" />
+                                )}
+                                {customDomainData.status === "active" ? "Active" : "Verifying..."}
                               </span>
                               {customDomainData.sslStatus && (
                                 <span className="text-xs text-muted-foreground">
@@ -1992,11 +2007,11 @@ export default function Settings() {
                               variant="outline"
                               size="sm"
                               onClick={() => refreshDomainMutation.mutate()}
-                              disabled={refreshDomainMutation.isPending}
+                              disabled={refreshDomainMutation.isPending || customDomainData.status !== "active"}
                               data-testid="button-refresh-domain"
                             >
-                              <RefreshCw className={`h-4 w-4 mr-1 ${refreshDomainMutation.isPending ? 'animate-spin' : ''}`} />
-                              Refresh
+                              <RefreshCw className={`h-4 w-4 mr-1 ${(refreshDomainMutation.isPending || customDomainData.status !== "active") ? 'animate-spin' : ''}`} />
+                              {customDomainData.status !== "active" ? "Auto-checking..." : "Refresh"}
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
