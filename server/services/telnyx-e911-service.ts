@@ -383,12 +383,25 @@ async function ensurePhoneNumberHasConnection(
     return { success: false, error: ovpResult.error };
   }
 
-  const connResult = await getOrCreateCredentialConnection(config, companyId, ovpResult.profileId);
-  if (!connResult.success || !connResult.connectionId) {
-    return { success: false, error: connResult.error };
+  const [settings] = await db
+    .select({ texmlAppId: telephonySettings.texmlAppId })
+    .from(telephonySettings)
+    .where(eq(telephonySettings.companyId, companyId));
+
+  let texmlAppId = settings?.texmlAppId;
+
+  if (!texmlAppId) {
+    console.log(`[E911] Creating TeXML Application for phone number routing...`);
+    const texmlResult = await createTexmlApplication(config, companyId, ovpResult.profileId);
+    if (!texmlResult.success || !texmlResult.appId) {
+      return { success: false, error: texmlResult.error };
+    }
+    texmlAppId = texmlResult.appId;
+  } else {
+    console.log(`[E911] Using existing TeXML Application: ${texmlAppId}`);
   }
 
-  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, connResult.connectionId);
+  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, texmlAppId);
   if (!assignResult.success) {
     return { success: false, error: assignResult.error };
   }
