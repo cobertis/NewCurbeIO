@@ -6058,19 +6058,39 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ message: "Company not found" });
       }
       
-      if (!company.cloudflareHostnameId) {
+      if (!company.customDomain) {
         return res.status(400).json({ message: "No custom domain configured" });
       }
       
-      // Delete from Cloudflare
-      const result = await cloudflareService.deleteCustomHostname(company.cloudflareHostnameId);
+      const previousDomain = company.customDomain;
+      let hostnameIdToDelete = company.cloudflareHostnameId;
       
-      if (!result.success) {
-        console.warn("[Custom Domain] Failed to delete from Cloudflare:", result.error);
-        // Continue anyway to clean up DB
+      // STEP 1: If we don't have the hostname ID, search for it by domain name
+      if (!hostnameIdToDelete && previousDomain) {
+        console.log(`[Custom Domain] No hostname ID stored, searching Cloudflare for: ${previousDomain}`);
+        const findResult = await cloudflareService.findCustomHostnameByDomain(previousDomain);
+        
+        if (findResult.success && findResult.hostnameId) {
+          hostnameIdToDelete = findResult.hostnameId;
+          console.log(`[Custom Domain] Found hostname ID: ${hostnameIdToDelete}`);
+        } else if (!findResult.success) {
+          console.warn(`[Custom Domain] Failed to search Cloudflare: ${findResult.error}`);
+        } else {
+          console.log(`[Custom Domain] Hostname not found in Cloudflare, may already be deleted`);
+        }
       }
       
-      const previousDomain = company.customDomain;
+      // STEP 2: Delete from Cloudflare if we have an ID
+      if (hostnameIdToDelete) {
+        const result = await cloudflareService.deleteCustomHostname(hostnameIdToDelete);
+        
+        if (!result.success) {
+          console.warn("[Custom Domain] Failed to delete from Cloudflare:", result.error);
+          // Continue anyway to clean up DB
+        } else {
+          console.log(`[Custom Domain] Successfully deleted from Cloudflare: ${hostnameIdToDelete}`);
+        }
+      }
       
       // Clear custom domain from company
       await storage.updateCompany(companyId, {
@@ -6084,7 +6104,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         req,
         operation: "delete",
         entity: "custom_domain",
-        entityId: company.cloudflareHostnameId,
+        entityId: hostnameIdToDelete || "unknown",
         companyId,
         metadata: {
           hostname: previousDomain,

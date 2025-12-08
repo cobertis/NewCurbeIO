@@ -227,6 +227,52 @@ class CloudflareService {
     }
   }
 
+  async findCustomHostnameByDomain(hostname: string): Promise<{ success: boolean; hostnameId?: string; error?: string }> {
+    try {
+      const { apiToken, zoneId } = await this.getCredentials();
+
+      const response = await fetch(
+        `${this.BASE_URL}/zones/${zoneId}/custom_hostnames?hostname=${encodeURIComponent(hostname)}`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data: CloudflareApiResponse<CloudflareCustomHostnameResponse[]> = await response.json();
+
+      if (!data.success) {
+        const errorMessage = data.errors.map(e => e.message).join(", ");
+        console.error("[Cloudflare] Find hostname failed:", errorMessage);
+        return {
+          success: false,
+          error: errorMessage || "Failed to find custom hostname",
+        };
+      }
+
+      const results = data.result;
+      
+      if (!results || results.length === 0) {
+        console.log(`[Cloudflare] No hostname found for: ${hostname}`);
+        return { success: true, hostnameId: undefined };
+      }
+
+      const hostnameId = results[0].id;
+      console.log(`[Cloudflare] Found hostname ${hostname} with ID: ${hostnameId}`);
+      
+      return { success: true, hostnameId };
+    } catch (error) {
+      console.error("[Cloudflare] Error finding custom hostname:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+      };
+    }
+  }
+
   async deleteCustomHostname(hostnameId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const { apiToken, zoneId } = await this.getCredentials();
