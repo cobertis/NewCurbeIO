@@ -1,7 +1,9 @@
 import { db } from "../db";
-import { wallets, telnyxPhoneNumbers, telephonySettings, companies } from "@shared/schema";
+import { wallets, telnyxPhoneNumbers, telephonySettings, companies, telephonyCredentials } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { secretsService } from "../services/secrets-service";
+
+const TELNYX_WSS_SERVER = "wss://sip.telnyx.com:443";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 
@@ -250,7 +252,17 @@ async function getOrCreateCredentialConnection(
       })
       .where(eq(telephonySettings.companyId, companyId));
 
-    return { success: true, connectionId };
+    await db.insert(telephonyCredentials).values({
+      companyId,
+      telnyxCredentialId: connectionId,
+      sipUsername,
+      sipPassword,
+      isActive: true,
+    });
+
+    console.log(`[E911] SIP credentials saved: ${sipUsername}@sip.telnyx.com`);
+
+    return { success: true, connectionId, sipUsername, sipPassword };
   } catch (error) {
     console.error("[E911] Create credential connection error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to create connection" };
@@ -633,4 +645,133 @@ export async function enableE911OnNumber(
   emergencyAddressId: string
 ): Promise<{ success: boolean; error?: string }> {
   return { success: true };
+}
+
+// =====================================================
+// WEBRTC CREDENTIALS & TOKEN MANAGEMENT
+// =====================================================
+
+export async function createWebRTCCredential(
+  companyId: string,
+  userId: string,
+  userName: string
+): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; error?: string }> {
+  console.log(`[WebRTC] Creating credential for user ${userId} in company ${companyId}...`);
+
+  try {
+    const config = await getManagedAccountConfig(companyId);
+
+    const [settings] = await db
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (!settings?.credentialConnectionId) {
+      return { success: false, error: "Phone system not configured. Please complete E911 setup first." };
+    }
+
+    const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        connection_id: settings.credentialConnectionId,
+        name: userName || `User ${userId.slice(0, 8)}`,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[WebRTC] Failed to create credential: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to create WebRTC credential: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const credentialId = data.data?.id;
+    const sipUsername = data.data?.sip_username;
+
+    console.log(`[WebRTC] Credential created: ${credentialId}, SIP: ${sipUsername}`);
+
+    await db.insert(telephonyCredentials).values({
+      companyId,
+      userId,
+      telnyxCredentialId: credentialId,
+      sipUsername: sipUsername,
+      sipPassword: "", // Not used with token-based auth
+      isActive: true,
+    }).onConflictDoUpdate({
+      target: [telephonyCredentials.userId],
+      set: {
+        telnyxCredentialId: credentialId,
+        sipUsername: sipUsername,
+        isActive: true,
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true, credentialId, sipUsername };
+  } catch (error) {
+    console.error("[WebRTC] Create credential error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to create credential" };
+  }
+}
+
+export async function getOrCreateWebRTCCredential(
+  companyId: string,
+  userId: string,
+  userName: string
+): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; error?: string }> {
+  const [existing] = await db
+    .select()
+    .from(telephonyCredentials)
+    .where(eq(telephonyCredentials.userId, userId));
+
+  if (existing?.telnyxCredentialId && existing.isActive) {
+    console.log(`[WebRTC] Using existing credential for user ${userId}: ${existing.telnyxCredentialId}`);
+    return { success: true, credentialId: existing.telnyxCredentialId, sipUsername: existing.sipUsername };
+  }
+
+  return createWebRTCCredential(companyId, userId, userName);
+}
+
+export async function generateWebRTCToken(
+  companyId: string,
+  userId: string,
+  userName: string
+): Promise<{ success: boolean; token?: string; sipUsername?: string; error?: string }> {
+  console.log(`[WebRTC] Generating token for user ${userId}...`);
+
+  try {
+    const config = await getManagedAccountConfig(companyId);
+
+    const credResult = await getOrCreateWebRTCCredential(companyId, userId, userName);
+    if (!credResult.success || !credResult.credentialId) {
+      return { success: false, error: credResult.error || "Failed to get credential" };
+    }
+
+    const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials/${credResult.credentialId}/token`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[WebRTC] Failed to generate token: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to generate token: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const token = data.data;
+
+    console.log(`[WebRTC] Token generated successfully for ${credResult.sipUsername}`);
+
+    await db.update(telephonyCredentials)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(telephonyCredentials.userId, userId));
+
+    return { success: true, token, sipUsername: credResult.sipUsername };
+  } catch (error) {
+    console.error("[WebRTC] Generate token error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to generate token" };
+  }
 }
