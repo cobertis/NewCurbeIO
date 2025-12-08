@@ -1570,7 +1570,6 @@ export default function Settings() {
                           }}
                           data-testid="input-phone-settings"
                         />
-                        <p className="text-xs text-muted-foreground">Format: +1 (415) 555-2671. Required for SMS two-factor authentication</p>
                       </div>
                     </div>
 
@@ -1602,12 +1601,9 @@ export default function Settings() {
                 </CardContent>
               </Card>
 
-            </div>
-
               {/* Company Information - Admin Only */}
               {isAdmin && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card>
+                <Card className="lg:col-span-1">
                   <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
                     <div className="space-y-1">
                       <CardTitle>Company Information</CardTitle>
@@ -1905,7 +1901,11 @@ export default function Settings() {
                     </div>
                   </CardContent>
                 </Card>
+              )}
 
+              {/* Physical Address and Custom Domain - Admin Only */}
+              {isAdmin && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Physical Address */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
@@ -1924,8 +1924,8 @@ export default function Settings() {
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2 md:col-span-2">
                         <GooglePlacesAddressAutocomplete
                           value={addressValue}
                           onChange={(value) => {
@@ -1952,12 +1952,12 @@ export default function Settings() {
                           value={addressValue}
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 md:col-span-1">
                         <Label htmlFor="addressLine2">Address Line 2</Label>
                         <Input
                           id="addressLine2"
                           ref={addressLine2Ref}
-                          placeholder="Suite, Apt, Unit, etc."
+                          placeholder="Apt, Suite, etc."
                           defaultValue={companyData?.company?.addressLine2 || ""}
                           data-testid="input-address-line-2"
                         />
@@ -2139,6 +2139,7 @@ export default function Settings() {
                 </Card>
                 </div>
               )}
+              </div>
           </TabsContent>
 
             {/* Security Tab */}
