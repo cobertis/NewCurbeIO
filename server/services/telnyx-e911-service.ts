@@ -392,7 +392,7 @@ async function ensurePhoneNumberHasConnection(
 
   if (!texmlAppId) {
     console.log(`[E911] Creating TeXML Application for phone number routing...`);
-    const texmlResult = await createTexmlApplication(config, companyId, ovpResult.profileId);
+    const texmlResult = await getOrCreateTexmlApplication(config, companyId, ovpResult.profileId);
     if (!texmlResult.success || !texmlResult.appId) {
       return { success: false, error: texmlResult.error };
     }
