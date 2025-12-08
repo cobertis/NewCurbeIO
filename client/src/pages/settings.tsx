@@ -19,9 +19,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight, Zap, Smile, MessageCircle, Copy, Phone, Wifi, WifiOff } from "lucide-react";
+import { User as UserIcon, Building2, Bell, Shield, Mail, Pencil, Phone as PhoneIcon, AtSign, Briefcase, MapPin, Globe, ChevronsUpDown, Check, Search, Filter, Trash2, Eye, EyeOff, MessageSquare, LogIn, CheckCircle, AlertTriangle, AlertCircle, Info, X, Upload, Power, Calendar, Users, Settings as SettingsIcon, Plus, Activity, ChevronLeft, ChevronRight, Zap, Smile, MessageCircle, Copy, Phone, Wifi, WifiOff, RefreshCw } from "lucide-react";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { insertUserSchema, type User, type CompanySettings } from "@shared/schema";
@@ -441,9 +442,103 @@ export default function Settings() {
     queryKey: ['/api/billing/subscription'],
     enabled: !!user?.companyId,
   });
-  
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+  
+
+  // Fetch custom domain status - Admin only
+  const { data: customDomainData, isLoading: isLoadingCustomDomain, refetch: refetchCustomDomain } = useQuery<{
+    configured: boolean;
+    domain: string | null;
+    status: string | null;
+    sslStatus?: string;
+    error?: string;
+    cnameInstructions?: {
+      host: string;
+      value: string;
+      type: string;
+    };
+  }>({
+    queryKey: ['/api/organization/domain'],
+    enabled: isAdmin && !!user?.companyId,
+  });
+
+  // Custom domain state
+  const [customDomainInput, setCustomDomainInput] = useState("");
+  const [showDomainInstructions, setShowDomainInstructions] = useState(false);
+
+  // Connect custom domain mutation
+  const connectDomainMutation = useMutation({
+    mutationFn: async (hostname: string) => {
+      return await apiRequest('/api/organization/domain', {
+        method: 'POST',
+        body: JSON.stringify({ hostname }),
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Domain Connected",
+        description: data.message || "Please add the CNAME record to your DNS.",
+      });
+      setCustomDomainInput("");
+      setShowDomainInstructions(true);
+      queryClient.invalidateQueries({ queryKey: ['/api/organization/domain'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Disconnect custom domain mutation
+  const disconnectDomainMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/organization/domain', {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Domain Disconnected",
+        description: "Custom domain has been removed.",
+      });
+      setShowDomainInstructions(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/organization/domain'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Refresh domain status mutation
+  const refreshDomainMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/organization/domain/refresh', {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Status Refreshed",
+        description: "Domain validation status has been updated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/organization/domain'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Determine active tab from URL (must be defined before use)
   const getCurrentTab = () => {
@@ -2063,6 +2158,142 @@ export default function Settings() {
                       type="hidden"
                       defaultValue={companyData?.company?.country || "United States"}
                     />
+                  </CardContent>
+                </Card>
+
+                {/* Custom Domain (White Label) - Admin Only */}
+                <Card className="lg:col-span-2">
+                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                    <div className="space-y-1">
+                      <CardTitle className="flex items-center gap-2">
+                        <Globe className="h-5 w-5" />
+                        Custom Domain
+                      </CardTitle>
+                      <CardDescription>
+                        Connect your own domain to access the platform with your brand (White Label)
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {isLoadingCustomDomain ? (
+                      <div className="flex items-center justify-center py-4">
+                        <LoadingSpinner fullScreen={false} />
+                      </div>
+                    ) : customDomainData?.configured ? (
+                      <>
+                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                          <div className="space-y-1">
+                            <p className="font-medium">{customDomainData.domain}</p>
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                customDomainData.status === "active" 
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                              }`}>
+                                {customDomainData.status === "active" ? "Active" : "Pending Validation"}
+                              </span>
+                              {customDomainData.sslStatus && (
+                                <span className="text-xs text-muted-foreground">
+                                  SSL: {customDomainData.sslStatus}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => refreshDomainMutation.mutate()}
+                              disabled={refreshDomainMutation.isPending}
+                              data-testid="button-refresh-domain"
+                            >
+                              <RefreshCw className={`h-4 w-4 mr-1 ${refreshDomainMutation.isPending ? 'animate-spin' : ''}`} />
+                              Refresh
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={disconnectDomainMutation.isPending}
+                                  data-testid="button-disconnect-domain"
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Disconnect
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Disconnect Custom Domain?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will remove the custom domain "{customDomainData.domain}" from your organization. 
+                                    Users will no longer be able to access the platform via this domain.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => disconnectDomainMutation.mutate()}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Disconnect
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+
+                        {customDomainData.status !== "active" && (
+                          <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">DNS Configuration Required</h4>
+                            <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                              Add the following CNAME record to your domain's DNS settings:
+                            </p>
+                            <div className="bg-white dark:bg-blue-900 p-3 rounded border font-mono text-sm">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <span className="text-muted-foreground">Host:</span>
+                                  <span className="ml-2 font-semibold">@</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Points to:</span>
+                                  <span className="ml-2 font-semibold">app.curbe.io</span>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-blue-600 dark:text-blue-300 mt-2">
+                              DNS changes may take up to 48 hours to propagate. Click "Refresh" to check the status.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="customDomain">Domain Name</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="customDomain"
+                              placeholder="crm.yourdomain.com"
+                              value={customDomainInput}
+                              onChange={(e) => setCustomDomainInput(e.target.value)}
+                              data-testid="input-custom-domain"
+                            />
+                            <Button
+                              onClick={() => connectDomainMutation.mutate(customDomainInput)}
+                              disabled={connectDomainMutation.isPending || !customDomainInput.trim()}
+                              data-testid="button-connect-domain"
+                            >
+                              {connectDomainMutation.isPending ? "Connecting..." : "Connect"}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Enter the domain you want to use to access this platform (e.g., crm.yourbusiness.com)
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
                 </div>

@@ -100,6 +100,7 @@ import multer from "multer";
 import ffmpeg from "fluent-ffmpeg";
 import "./types";
 import { initializeStripe, getStripeClient, type AuditAction } from "./types";
+import { cloudflareService } from "./services/cloudflare";
 import type Stripe from "stripe";
 import { stripe } from "./stripe";
 import { fetchMarketplacePlans, buildCMSPayloadFromPolicy } from "./cms-marketplace";
@@ -5836,6 +5837,270 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   // ===================================================================
+
+  // ===================================================================
+  // CUSTOM DOMAIN (WHITE LABEL) ENDPOINTS
+  // ===================================================================
+
+  // Connect custom domain - Admin/Owner only
+  app.post("/api/organization/domain", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    // Only admin or superadmin can connect custom domains
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Only administrators can manage custom domains" });
+    }
+    
+    const companyId = currentUser.companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+    
+    const { hostname } = req.body;
+    if (!hostname || typeof hostname !== "string") {
+      return res.status(400).json({ message: "Hostname is required" });
+    }
+    
+    // Validate hostname format
+    const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+    if (!hostnameRegex.test(hostname)) {
+      return res.status(400).json({ message: "Invalid hostname format" });
+    }
+    
+    try {
+      // Get current company
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Check if company already has a custom domain
+      if (company.customDomain && company.cloudflareHostnameId) {
+        return res.status(400).json({ 
+          message: "Company already has a custom domain configured. Please disconnect it first." 
+        });
+      }
+      
+      // Create custom hostname in Cloudflare
+      const result = await cloudflareService.createCustomHostname(hostname);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error || "Failed to create custom hostname" });
+      }
+      
+      // Update company with custom domain info
+      await storage.updateCompany(companyId, {
+        customDomain: hostname,
+        customDomainStatus: result.status || "pending",
+        cloudflareHostnameId: result.hostnameId,
+      });
+      
+      // Log the action
+      await logger.logCrud({
+        req,
+        operation: "create",
+        entity: "custom_domain",
+        entityId: result.hostnameId || "",
+        companyId,
+        metadata: {
+          hostname,
+          status: result.status,
+          sslStatus: result.sslStatus,
+        },
+      });
+      
+      res.json({
+        success: true,
+        domain: hostname,
+        status: result.status,
+        sslStatus: result.sslStatus,
+        cnameInstructions: {
+          host: "@",
+          value: result.cnameTarget || "app.curbe.io",
+          type: "CNAME",
+        },
+        validationRecords: result.validationRecords,
+        message: "Custom domain connected successfully. Please add the CNAME record to your DNS.",
+      });
+    } catch (error: any) {
+      console.error("[Custom Domain] Error connecting domain:", error);
+      res.status(500).json({ message: error.message || "Failed to connect custom domain" });
+    }
+  });
+
+  // Get custom domain status
+  app.get("/api/organization/domain", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Only administrators can view custom domain settings" });
+    }
+    
+    const companyId = currentUser.companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+    
+    try {
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // If no custom domain configured
+      if (!company.customDomain || !company.cloudflareHostnameId) {
+        return res.json({
+          configured: false,
+          domain: null,
+          status: null,
+        });
+      }
+      
+      // Get current status from Cloudflare
+      const result = await cloudflareService.getCustomHostname(company.cloudflareHostnameId);
+      
+      if (!result.success) {
+        // If Cloudflare returns error, return what we have in DB
+        return res.json({
+          configured: true,
+          domain: company.customDomain,
+          status: company.customDomainStatus,
+          error: result.error,
+        });
+      }
+      
+      // Update status in DB if changed
+      if (result.status !== company.customDomainStatus) {
+        await storage.updateCompany(companyId, {
+          customDomainStatus: result.status,
+        });
+      }
+      
+      res.json({
+        configured: true,
+        domain: company.customDomain,
+        status: result.status,
+        sslStatus: result.sslStatus,
+        cnameInstructions: {
+          host: "@",
+          value: result.cnameTarget || "app.curbe.io",
+          type: "CNAME",
+        },
+      });
+    } catch (error: any) {
+      console.error("[Custom Domain] Error getting domain status:", error);
+      res.status(500).json({ message: error.message || "Failed to get custom domain status" });
+    }
+  });
+
+  // Refresh/retry custom domain validation
+  app.post("/api/organization/domain/refresh", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Only administrators can manage custom domains" });
+    }
+    
+    const companyId = currentUser.companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+    
+    try {
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      if (!company.cloudflareHostnameId) {
+        return res.status(400).json({ message: "No custom domain configured" });
+      }
+      
+      const result = await cloudflareService.refreshCustomHostname(company.cloudflareHostnameId);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error || "Failed to refresh custom hostname" });
+      }
+      
+      // Update status in DB
+      await storage.updateCompany(companyId, {
+        customDomainStatus: result.status,
+      });
+      
+      res.json({
+        success: true,
+        domain: company.customDomain,
+        status: result.status,
+        sslStatus: result.sslStatus,
+      });
+    } catch (error: any) {
+      console.error("[Custom Domain] Error refreshing domain:", error);
+      res.status(500).json({ message: error.message || "Failed to refresh custom domain" });
+    }
+  });
+
+  // Disconnect custom domain
+  app.delete("/api/organization/domain", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    
+    if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
+      return res.status(403).json({ message: "Forbidden - Only administrators can manage custom domains" });
+    }
+    
+    const companyId = currentUser.companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID required" });
+    }
+    
+    try {
+      const company = await storage.getCompany(companyId);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      if (!company.cloudflareHostnameId) {
+        return res.status(400).json({ message: "No custom domain configured" });
+      }
+      
+      // Delete from Cloudflare
+      const result = await cloudflareService.deleteCustomHostname(company.cloudflareHostnameId);
+      
+      if (!result.success) {
+        console.warn("[Custom Domain] Failed to delete from Cloudflare:", result.error);
+        // Continue anyway to clean up DB
+      }
+      
+      const previousDomain = company.customDomain;
+      
+      // Clear custom domain from company
+      await storage.updateCompany(companyId, {
+        customDomain: null,
+        customDomainStatus: null,
+        cloudflareHostnameId: null,
+      });
+      
+      // Log the action
+      await logger.logCrud({
+        req,
+        operation: "delete",
+        entity: "custom_domain",
+        entityId: company.cloudflareHostnameId,
+        companyId,
+        metadata: {
+          hostname: previousDomain,
+        },
+      });
+      
+      res.json({
+        success: true,
+        message: "Custom domain disconnected successfully",
+      });
+    } catch (error: any) {
+      console.error("[Custom Domain] Error disconnecting domain:", error);
+      res.status(500).json({ message: error.message || "Failed to disconnect custom domain" });
+    }
+  });
+
   // COMPANY SETTINGS ENDPOINTS
   // ===================================================================
   // Get company settings (admin or superadmin)
