@@ -1356,30 +1356,6 @@ export default function Settings() {
                           </div>
                         )}
 
-                        {/* Address */}
-                        {companyData?.company?.address && (
-                          <div className="flex items-start gap-3">
-                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-muted-foreground">Address</p>
-                              <div className="text-sm font-medium space-y-0.5">
-                                <p>{companyData.company.address}</p>
-                                {companyData.company.addressLine2 && (
-                                  <p>{companyData.company.addressLine2}</p>
-                                )}
-                                <p>
-                                  {companyData.company.city}
-                                  {companyData.company.state && `, ${companyData.company.state}`}
-                                  {companyData.company.postalCode && ` ${companyData.company.postalCode}`}
-                                </p>
-                                {companyData.company.country && (
-                                  <p>{companyData.company.country}</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
                         {/* Custom Domain */}
                         {companyData?.company?.domain && (
                           <div className="flex items-start gap-3">
@@ -1600,36 +1576,6 @@ export default function Settings() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                        <Input
-                          id="dateOfBirth"
-                          name="dateOfBirth"
-                          type="date"
-                          value={profileForm.dateOfBirth}
-                          onChange={(e) => setProfileForm({ ...profileForm, dateOfBirth: e.target.value })}
-                          data-testid="input-date-of-birth"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="preferredLanguage">Preferred Language</Label>
-                        <select
-                          id="preferredLanguage"
-                          name="preferredLanguage"
-                          value={profileForm.preferredLanguage}
-                          onChange={(e) => setProfileForm({ ...profileForm, preferredLanguage: e.target.value })}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          data-testid="select-preferred-language"
-                        >
-                          <option value="en">English</option>
-                          <option value="es">Spanish</option>
-                          <option value="fr">French</option>
-                          <option value="de">German</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
                         <Label htmlFor="company">Company</Label>
                         <Input
                           id="company"
@@ -1656,113 +1602,6 @@ export default function Settings() {
                 </CardContent>
               </Card>
 
-              {/* Insurance Profile Information Card */}
-              <Card>
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                  <div className="space-y-1.5">
-                    <CardTitle>Insurance Profile Information</CardTitle>
-                    <CardDescription>
-                      This is a code assigned by your agency
-                    </CardDescription>
-                  </div>
-                  <Button
-                    type="submit"
-                    form="insurance-profile-form"
-                    disabled={updateInsuranceProfileMutation.isPending}
-                    data-testid="button-save-insurance"
-                  >
-                    {updateInsuranceProfileMutation.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <form id="insurance-profile-form" onSubmit={handleInsuranceProfileSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="agentInternalCode">
-                          Agent internal code
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="ml-2 text-muted-foreground cursor-help">ⓘ</span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>This is a code assigned by your agency</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </Label>
-                        <Input
-                          id="agentInternalCode"
-                          name="agentInternalCode"
-                          placeholder="Enter an internal code"
-                          value={insuranceForm.agentInternalCode || ""}
-                          onChange={(e) => setInsuranceForm({ ...insuranceForm, agentInternalCode: e.target.value })}
-                          data-testid="input-agent-internal-code"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="instructionLevel">Instruction level</Label>
-                        <select
-                          id="instructionLevel"
-                          name="instructionLevel"
-                          value={insuranceForm.instructionLevel || ""}
-                          onChange={(e) => setInsuranceForm({ ...insuranceForm, instructionLevel: e.target.value })}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          data-testid="select-instruction-level"
-                        >
-                          <option value="">Select instruction level</option>
-                          <option value="Licensed insurance agent">Licensed insurance agent</option>
-                          <option value="Broker">Broker</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="nationalProducerNumber">National Producer Number (NPN)</Label>
-                        <Input
-                          id="nationalProducerNumber"
-                          name="nationalProducerNumber"
-                          type="text"
-                          placeholder="17925766"
-                          value={insuranceForm.nationalProducerNumber || ""}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '');
-                            if (value.length <= 10) {
-                              setInsuranceForm({ ...insuranceForm, nationalProducerNumber: value });
-                            }
-                          }}
-                          maxLength={10}
-                          data-testid="input-national-producer-number"
-                        />
-                        <p className="text-xs text-muted-foreground">6-10 digits only</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="federallyFacilitatedMarketplace">Federally Facilitated Marketplace (FFM)</Label>
-                        <Input
-                          id="federallyFacilitatedMarketplace"
-                          name="federallyFacilitatedMarketplace"
-                          placeholder="Enter an FFM"
-                          value={insuranceForm.federallyFacilitatedMarketplace || ""}
-                          onChange={(e) => setInsuranceForm({ ...insuranceForm, federallyFacilitatedMarketplace: e.target.value })}
-                          data-testid="input-ffm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="referredBy">Referred by</Label>
-                      <Input
-                        id="referredBy"
-                        name="referredBy"
-                        placeholder="Enter a referred"
-                        value={insuranceForm.referredBy || ""}
-                        onChange={(e) => setInsuranceForm({ ...insuranceForm, referredBy: e.target.value })}
-                        data-testid="input-referred-by"
-                      />
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
             </div>
 
               {/* Company Information - Admin Only */}
@@ -2085,42 +1924,44 @@ export default function Settings() {
                     </Button>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <GooglePlacesAddressAutocomplete
-                      value={addressValue}
-                      onChange={(value) => {
-                        setAddressValue(value);
-                        if (addressRef.current) {
-                          addressRef.current.value = value;
-                        }
-                      }}
-                      onAddressSelect={(address) => {
-                        setAddressValue(address.street);
-                        if (addressRef.current) addressRef.current.value = address.street;
-                        if (cityRef.current) cityRef.current.value = address.city;
-                        if (stateRef.current) stateRef.current.value = address.state;
-                        if (postalCodeRef.current) postalCodeRef.current.value = address.postalCode;
-                        if (countryRef.current) countryRef.current.value = address.country;
-                      }}
-                      label="Street Address"
-                      placeholder="Start typing your address..."
-                      testId="input-address"
-                    />
-                    
-                    <input
-                      ref={addressRef}
-                      type="hidden"
-                      value={addressValue}
-                    />
-
-                    <div className="space-y-2">
-                      <Label htmlFor="addressLine2">Address Line 2</Label>
-                      <Input
-                        id="addressLine2"
-                        ref={addressLine2Ref}
-                        placeholder="Suite, Apt, Unit, etc."
-                        defaultValue={companyData?.company?.addressLine2 || ""}
-                        data-testid="input-address-line-2"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <GooglePlacesAddressAutocomplete
+                          value={addressValue}
+                          onChange={(value) => {
+                            setAddressValue(value);
+                            if (addressRef.current) {
+                              addressRef.current.value = value;
+                            }
+                          }}
+                          onAddressSelect={(address) => {
+                            setAddressValue(address.street);
+                            if (addressRef.current) addressRef.current.value = address.street;
+                            if (cityRef.current) cityRef.current.value = address.city;
+                            if (stateRef.current) stateRef.current.value = address.state;
+                            if (postalCodeRef.current) postalCodeRef.current.value = address.postalCode;
+                            if (countryRef.current) countryRef.current.value = address.country;
+                          }}
+                          label="Street Address"
+                          placeholder="Start typing your address..."
+                          testId="input-address"
+                        />
+                        <input
+                          ref={addressRef}
+                          type="hidden"
+                          value={addressValue}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="addressLine2">Address Line 2</Label>
+                        <Input
+                          id="addressLine2"
+                          ref={addressLine2Ref}
+                          placeholder="Suite, Apt, Unit, etc."
+                          defaultValue={companyData?.company?.addressLine2 || ""}
+                          data-testid="input-address-line-2"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

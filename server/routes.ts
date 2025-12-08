@@ -26443,6 +26443,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             { keyName: "base_url", label: "Base URL", required: false, hint: "API endpoint URL" },
           ]
         },
+        { 
+          provider: "cloudflare", 
+          label: "Cloudflare (Custom Domains)",
+          helpText: "Get your API Token and Zone ID from Cloudflare dashboard > Your Domain > Overview",
+          helpUrl: "https://dash.cloudflare.com/",
+          keys: [
+            { keyName: "api_token", label: "API Token", required: true, hint: "Create a token with SSL/TLS and Cloudflare for SaaS permissions" },
+            { keyName: "zone_id", label: "Zone ID", required: true, hint: "Found in your domain Overview page" },
+          ]
+        },
       ];
 
       res.json({ providers: providerConfigs, apiProviders });
