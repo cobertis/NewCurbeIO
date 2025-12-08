@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, Search, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, Search, ShoppingBag, ExternalLink, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -536,17 +536,20 @@ export function WebPhoneFloatingWindow() {
           className="bg-background px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between cursor-grab active:cursor-grabbing h-[44px] sm:h-[52px] flex-shrink-0"
           onMouseDown={handleMouseDown}
         >
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex flex-col">
             {sipExtension ? (
-              <>
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-foreground font-medium text-xs sm:text-sm">Ext: {sipExtension}</span>
                 <div className={cn(
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
                   connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500"
                 )} />
-              </>
+              </div>
             ) : (
-              <span className="text-foreground font-medium text-xs sm:text-sm">Not configured</span>
+              <>
+                <span className="text-foreground font-semibold text-xs sm:text-sm">Calling From</span>
+                <span className="text-muted-foreground text-[10px] sm:text-xs">Purchase Phone number to select</span>
+              </>
             )}
           </div>
           
@@ -563,7 +566,53 @@ export function WebPhoneFloatingWindow() {
         </div>
         
         <div className="flex-1 flex flex-col overflow-hidden no-drag">
-          {currentCall ? (
+          {/* No Phone Account Screen */}
+          {!sipExtension ? (
+            <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center">
+              {/* Shopping Bag Icon */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                <ShoppingBag className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
+              </div>
+              
+              {/* Title */}
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+                Purchase Phone numbers to Call
+              </h2>
+              
+              {/* Purchase Button */}
+              <Button
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full flex items-center gap-2"
+                onClick={() => window.open('https://telnyx.com/pricing', '_blank')}
+                data-testid="button-purchase-phone"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Purchase Now
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+              
+              {/* Divider */}
+              <div className="flex items-center w-full my-6">
+                <div className="flex-1 border-t border-border" />
+                <span className="px-4 text-sm text-muted-foreground">Or</span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+              
+              {/* Transfer Option */}
+              <p className="text-sm text-muted-foreground mb-3">
+                Do you want transfer your number ?
+              </p>
+              
+              <Button
+                variant="outline"
+                className="rounded-full flex items-center gap-2"
+                onClick={() => window.open('https://telnyx.com/number-porting', '_blank')}
+                data-testid="button-learn-more-transfer"
+              >
+                Learn More
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : currentCall ? (
               /* Active Call Screen - No bottom navigation */
               <div className="flex-1 overflow-y-auto">
                 <div className="flex flex-col justify-between p-3 sm:p-6 min-h-full">
