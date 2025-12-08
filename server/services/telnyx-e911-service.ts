@@ -394,11 +394,58 @@ async function getPhoneNumberFromTelnyx(
 }
 
 /**
+ * Enable E911 on a phone number using Telnyx enable_emergency action
+ * This is the CRITICAL step that actually enables E911 on the number
+ */
+async function enableE911OnPhoneNumber(
+  config: ManagedAccountConfig,
+  phoneNumberId: string,
+  emergencyAddressId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`[E911] Enabling E911 on phone number ${phoneNumberId} with address ${emergencyAddressId}`);
+
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/actions/enable_emergency`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        emergency_address_id: emergencyAddressId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[E911] Enable emergency error: ${response.status} - ${errorText}`);
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        const errorMessages = errorData.errors?.map((e: any) => e.detail || e.title).join(', ');
+        return { success: false, error: errorMessages || `Failed to enable E911: ${response.status}` };
+      } catch {
+        return { success: false, error: `Failed to enable E911: ${response.status}` };
+      }
+    }
+
+    const result = await response.json();
+    console.log(`[E911] E911 enabled on phone number. Emergency settings:`, result.data?.emergency);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[E911] Enable E911 error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to enable E911",
+    };
+  }
+}
+
+/**
  * Full E911 registration flow:
  * 1. Create Dynamic Emergency Address
  * 2. Wait for activation
  * 3. Create Dynamic Emergency Endpoint
- * 4. Update local database
+ * 4. Enable E911 on the phone number (CRITICAL)
+ * 5. Update local database
  */
 export async function registerE911ForNumber(
   companyId: string,
@@ -424,12 +471,14 @@ export async function registerE911ForNumber(
 
   console.log(`[E911] Registering E911 for phone: ${phoneResult.phoneNumber}`);
 
+  // Step 1: Create Dynamic Emergency Address
   const addressResult = await createDynamicEmergencyAddress(companyId, addressData);
   
   if (!addressResult.success || !addressResult.addressId) {
     return { success: false, error: addressResult.error || "Failed to create emergency address" };
   }
 
+  // Step 2: Create Dynamic Emergency Endpoint
   const endpointResult = await createDynamicEmergencyEndpoint(
     companyId,
     phoneResult.phoneNumber,
@@ -439,6 +488,13 @@ export async function registerE911ForNumber(
   
   if (!endpointResult.success) {
     return { success: false, error: endpointResult.error || "Failed to create emergency endpoint" };
+  }
+
+  // Step 3: Enable E911 on the phone number (CRITICAL - this is what enables the checkbox in Telnyx portal)
+  const enableResult = await enableE911OnPhoneNumber(config, phoneNumberId, addressResult.addressId);
+  
+  if (!enableResult.success) {
+    return { success: false, error: enableResult.error || "Failed to enable E911 on phone number" };
   }
 
   // Try to update local database if record exists
