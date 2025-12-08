@@ -125,13 +125,16 @@ class CloudflareService {
       );
 
       const data: CloudflareApiResponse<CloudflareCustomHostnameResponse> = await response.json();
+      
+      console.log("[Cloudflare] Full API response:", JSON.stringify(data, null, 2));
 
       if (!data.success) {
-        const errorMessage = data.errors.map(e => e.message).join(", ");
-        console.error("[Cloudflare] Create hostname failed:", errorMessage);
+        const errorDetails = data.errors.map(e => `[${e.code}] ${e.message}`).join(", ");
+        console.error("[Cloudflare] Create hostname failed:", errorDetails);
+        console.error("[Cloudflare] Error codes:", data.errors.map(e => e.code));
         return {
           success: false,
-          error: errorMessage || "Failed to create custom hostname",
+          error: errorDetails || "Failed to create custom hostname",
         };
       }
 
