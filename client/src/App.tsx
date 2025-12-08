@@ -524,40 +524,38 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <TooltipContent>New Policy</TooltipContent>
               </Tooltip>
 
-              {/* WebPhone Button */}
-              {user?.sipEnabled && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={toggleDialpad}
-                      data-testid="button-phone"
-                      className={cn(
-                        "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative",
-                        currentCall 
-                          ? "bg-green-500 hover:bg-green-600 text-white ring-2 ring-green-300 ring-offset-1" 
-                          : connectionStatus === 'connected'
-                            ? "bg-blue-500 hover:bg-blue-600 text-white"
-                            : "bg-gray-400 hover:bg-gray-500 text-white"
-                      )}
-                    >
-                      <Phone className="h-[18px] w-[18px]" />
-                      {/* Connection status indicator */}
-                      <span className={cn(
-                        "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
-                        connectionStatus === 'connected' ? "bg-green-300" : 
-                        connectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
-                        "bg-red-400"
-                      )} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {currentCall ? "In Call" : 
-                     connectionStatus === 'connected' ? "Phone Ready" : 
-                     connectionStatus === 'connecting' ? "Connecting..." : 
-                     "Phone Offline"}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              {/* WebPhone Button - Always visible */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={toggleDialpad}
+                    data-testid="button-phone"
+                    className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative",
+                      currentCall 
+                        ? "bg-green-500 hover:bg-green-600 text-white ring-2 ring-green-300 ring-offset-1" 
+                        : connectionStatus === 'connected'
+                          ? "bg-blue-500 hover:bg-blue-600 text-white"
+                          : "bg-gray-400 hover:bg-gray-500 text-white"
+                    )}
+                  >
+                    <Phone className="h-[18px] w-[18px]" />
+                    {/* Connection status indicator */}
+                    <span className={cn(
+                      "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
+                      connectionStatus === 'connected' ? "bg-green-300" : 
+                      connectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
+                      "bg-red-400"
+                    )} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {currentCall ? "In Call" : 
+                   connectionStatus === 'connected' ? "Phone Ready" : 
+                   connectionStatus === 'connecting' ? "Connecting..." : 
+                   "Phone Offline"}
+                </TooltipContent>
+              </Tooltip>
 
               {/* Search Icon */}
               <button data-testid="button-search" className={circularButtonClass}>
