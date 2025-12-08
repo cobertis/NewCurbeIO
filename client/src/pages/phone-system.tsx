@@ -242,7 +242,7 @@ export default function PhoneSystem() {
                   </div>
                   <div>
                     <CardTitle className="text-lg">Phone System Active</CardTitle>
-                    <CardDescription>Telnyx Managed Account</CardDescription>
+                    <CardDescription>Business Phone Account</CardDescription>
                   </div>
                 </div>
                 <Badge variant="default" className="bg-green-600">
@@ -509,11 +509,9 @@ export default function PhoneSystem() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
-                  <a href="https://portal.telnyx.com" target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-5 w-5" />
-                    <span className="text-xs">Telnyx Portal</span>
-                  </a>
+                <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setShowBuyNumber(true)}>
+                  <Phone className="h-5 w-5" />
+                  <span className="text-xs">Manage Numbers</span>
                 </Button>
                 <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setShowBuyNumber(true)}>
                   <Plus className="h-5 w-5" />
@@ -523,11 +521,9 @@ export default function PhoneSystem() {
                   <RefreshCw className="h-5 w-5" />
                   <span className="text-xs">Sync Account</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" asChild>
-                  <a href="https://developers.telnyx.com" target="_blank" rel="noopener noreferrer">
-                    <Globe className="h-5 w-5" />
-                    <span className="text-xs">API Docs</span>
-                  </a>
+                <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => refetchNumbers()}>
+                  <Settings2 className="h-5 w-5" />
+                  <span className="text-xs">Settings</span>
                 </Button>
               </div>
             </CardContent>

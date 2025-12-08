@@ -269,7 +269,7 @@ export async function enableManagedAccount(accountId: string): Promise<{
   }
 }
 
-export async function setupCompanyManagedAccount(companyId: string): Promise<{
+export async function setupCompanyManagedAccount(companyId: string, customEmail?: string): Promise<{
   success: boolean;
   managedAccountId?: string;
   error?: string;
@@ -299,8 +299,11 @@ export async function setupCompanyManagedAccount(companyId: string): Promise<{
       };
     }
 
+    // Use custom email if provided, otherwise use company email
+    const accountEmail = customEmail || company.email;
+    
     // Create managed account using company name and email
-    const result = await createManagedAccount(company.name, company.email);
+    const result = await createManagedAccount(company.name, accountEmail);
 
     if (!result.success || !result.managedAccount) {
       return { success: false, error: result.error || "Failed to create managed account" };
@@ -351,4 +354,88 @@ export async function getCompanyManagedAccountId(companyId: string): Promise<str
     .where(eq(wallets.companyId, companyId));
 
   return wallet?.telnyxAccountId || null;
+}
+
+export async function recreateCompanyManagedAccount(companyId: string, newEmail: string): Promise<{
+  success: boolean;
+  managedAccountId?: string;
+  error?: string;
+}> {
+  try {
+    // Get company details
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId));
+
+    if (!company) {
+      return { success: false, error: "Company not found" };
+    }
+
+    // Get existing wallet
+    const [existingWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+
+    // If there's an existing account, disable it first
+    if (existingWallet?.telnyxAccountId) {
+      console.log(`[Telnyx Managed] Disabling old managed account: ${existingWallet.telnyxAccountId}`);
+      await disableManagedAccount(existingWallet.telnyxAccountId);
+      
+      // Clear the wallet record
+      await db
+        .update(wallets)
+        .set({
+          telnyxAccountId: null,
+          telnyxApiToken: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.id, existingWallet.id));
+    }
+
+    // Create new managed account with the new email
+    console.log(`[Telnyx Managed] Creating new managed account with email: ${newEmail}`);
+    const result = await createManagedAccount(company.name, newEmail);
+
+    if (!result.success || !result.managedAccount) {
+      return { success: false, error: result.error || "Failed to create managed account" };
+    }
+
+    const managedAccountId = result.managedAccount.id;
+    const apiKey = result.managedAccount.api_key;
+
+    // Update wallet with new Telnyx account info
+    if (existingWallet) {
+      await db
+        .update(wallets)
+        .set({
+          telnyxAccountId: managedAccountId,
+          telnyxApiToken: apiKey || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.id, existingWallet.id));
+    } else {
+      await db.insert(wallets).values({
+        companyId: companyId,
+        telnyxAccountId: managedAccountId,
+        telnyxApiToken: apiKey || null,
+        balance: "0.0000",
+        currency: "USD",
+      });
+    }
+
+    console.log(`[Telnyx Managed] Company ${companyId} now has new managed account: ${managedAccountId} with email: ${newEmail}`);
+
+    return {
+      success: true,
+      managedAccountId: managedAccountId,
+    };
+  } catch (error) {
+    console.error("[Telnyx Managed] Recreate error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to recreate managed account",
+    };
+  }
 }

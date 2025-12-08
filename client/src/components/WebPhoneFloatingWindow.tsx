@@ -377,7 +377,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col p-0 gap-0">
         <DialogTitle className="sr-only">Buy Phone Number</DialogTitle>
-        <DialogDescription className="sr-only">Search and purchase a phone number from Telnyx</DialogDescription>
+        <DialogDescription className="sr-only">Search and purchase a phone number</DialogDescription>
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
@@ -387,9 +387,9 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
             <h2 className="text-lg font-semibold text-foreground">Buy your Number</h2>
             <p className="text-sm text-muted-foreground">
               You need to complete few easy steps to get started with new number.{' '}
-              <a href="https://telnyx.com/pricing" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                Learn More
-              </a>
+              <span className="text-muted-foreground">
+                Pricing varies by number type and location.
+              </span>
             </p>
           </div>
         </div>
@@ -1091,27 +1091,10 @@ export function WebPhoneFloatingWindow() {
                 Purchase Now
               </Button>
               
-              {/* Divider */}
-              <div className="flex items-center w-full my-6">
-                <div className="flex-1 border-t border-border" />
-                <span className="px-4 text-sm text-muted-foreground">Or</span>
-                <div className="flex-1 border-t border-border" />
-              </div>
-              
-              {/* Transfer Option */}
-              <p className="text-sm text-muted-foreground mb-3">
-                Do you want transfer your number ?
+              {/* Additional Info */}
+              <p className="text-xs text-muted-foreground mt-6">
+                Need to transfer an existing number? Contact support for assistance.
               </p>
-              
-              <Button
-                variant="outline"
-                className="rounded-full flex items-center gap-2"
-                onClick={() => window.open('https://telnyx.com/number-porting', '_blank')}
-                data-testid="button-learn-more-transfer"
-              >
-                Learn More
-                <ExternalLink className="h-4 w-4" />
-              </Button>
             </div>
           ) : currentCall ? (
               /* Active Call Screen - No bottom navigation */
