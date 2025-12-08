@@ -33,7 +33,8 @@ import {
   TrendingUp,
   AlertTriangle,
   Zap,
-  MapPin
+  MapPin,
+  ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
@@ -159,15 +160,6 @@ export default function PhoneSystem() {
   const accountDetails = statusData?.accountDetails;
   const accountId = statusData?.managedAccountId;
 
-  const formatCurrency = (amount: string, currency: string = "USD") => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(parseFloat(amount || "0"));
-  };
-
-  const balance = accountDetails?.balance;
-  const currentBalance = balance ? parseFloat(balance.balance) : 0;
   const numbersCount = numbersData?.numbers?.length || 0;
   const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || false;
 
@@ -275,48 +267,37 @@ export default function PhoneSystem() {
           <div className="space-y-6">
             {/* KPI Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Wallet Card */}
+              {/* Billing Card */}
               <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm text-slate-500 dark:text-muted-foreground flex items-center gap-2">
                         <Wallet className="h-4 w-4" />
-                        Account Balance
+                        Billing Model
                       </p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-foreground mt-2" data-testid="text-balance">
-                        {formatCurrency(balance?.balance || "0", balance?.currency || "USD")}
+                      <p className="text-xl font-semibold text-slate-900 dark:text-foreground mt-2" data-testid="text-billing-model">
+                        Roll-up Billing
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
-                        Credit: {formatCurrency(balance?.available_credit || "0", balance?.currency || "USD")}
+                        Charges billed to main account
                       </p>
                     </div>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentBalance > 10 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-                      {currentBalance > 10 ? (
-                        <TrendingUp className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <AlertTriangle className="h-5 w-5 text-amber-600" />
-                      )}
+                    <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-border">
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-border">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 rounded-lg bg-white dark:bg-background"
-                      onClick={() => toast({ title: "Add Funds", description: "Balance management will be available in a future update." })}
+                      className="w-full rounded-lg bg-white dark:bg-background"
+                      onClick={() => window.open("https://portal.telnyx.com/#/app/billing", "_blank")}
                       data-testid="button-add-funds"
                     >
-                      Add Funds
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Manage Billing
                     </Button>
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="auto-reload" 
-                        onCheckedChange={(checked) => toast({ title: checked ? "Auto-Reload Enabled" : "Auto-Reload Disabled", description: "Auto-reload settings will be available in a future update." })}
-                        data-testid="switch-auto-reload"
-                      />
-                      <label htmlFor="auto-reload" className="text-xs text-slate-500 dark:text-muted-foreground">Auto</label>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
