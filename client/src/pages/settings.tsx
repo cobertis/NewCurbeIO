@@ -449,7 +449,6 @@ export default function Settings() {
   const getCurrentTab = () => {
     if (location === "/settings/automations") return "automations";
     if (location === "/settings" || location === "/settings/profile") return "profile";
-    if (location === "/settings/preferences") return "preferences";
     if (location === "/settings/company") return "company";
     if (location === "/settings/security") return "security";
     if (location === "/settings/sessions") return "sessions";
@@ -474,9 +473,9 @@ export default function Settings() {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["profile", "security", "sessions", "preferences", "notifications", "automations", "webphone"];
+    const baseTabs = ["profile", "security", "sessions", "notifications", "automations", "webphone"];
     if (isAdmin) {
-      return ["profile", "company", "team", "security", "sessions", "preferences", "notifications", "automations", "webphone"];
+      return ["profile", "company", "team", "security", "sessions", "notifications", "automations", "webphone"];
     }
     return baseTabs;
   }, [isAdmin]);
@@ -1430,10 +1429,6 @@ export default function Settings() {
                 <Activity className="h-4 w-4" />
                 Sessions
               </TabsTrigger>
-              <TabsTrigger value="preferences" className="gap-2" data-testid="tab-preferences">
-                <SettingsIcon className="h-4 w-4" />
-                Preferences
-              </TabsTrigger>
               
               <TabsTrigger value="webphone" className="gap-2" data-testid="tab-webphone">
                 <Phone className="h-4 w-4" />
@@ -1954,86 +1949,6 @@ export default function Settings() {
             {/* Session Activity Tab */}
             <TabsContent value="sessions" className="space-y-4">
               <SessionActivityTab />
-            </TabsContent>
-
-            {/* Preferences Tab */}
-            <TabsContent value="preferences" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notification Preferences</CardTitle>
-                  <CardDescription>
-                    Choose which notifications you want to receive.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="emailNotifications" className="text-base">
-                        Email Notifications
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive email updates about your account activity.
-                      </p>
-                    </div>
-                    <Switch
-                      id="emailNotifications"
-                      checked={preferencesData?.preferences?.emailNotifications ?? true}
-                      onCheckedChange={(checked) => {
-                        updatePreferencesMutation.mutate({
-                          ...preferencesData?.preferences,
-                          emailNotifications: checked,
-                        });
-                      }}
-                      disabled={updatePreferencesMutation.isPending}
-                      data-testid="switch-email-notifications"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="marketingEmails" className="text-base">
-                        Marketing Emails
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive emails about new features and updates.
-                      </p>
-                    </div>
-                    <Switch
-                      id="marketingEmails"
-                      checked={preferencesData?.preferences?.marketingEmails || false}
-                      onCheckedChange={(checked) => {
-                        updatePreferencesMutation.mutate({
-                          ...preferencesData?.preferences,
-                          marketingEmails: checked,
-                        });
-                      }}
-                      disabled={updatePreferencesMutation.isPending}
-                      data-testid="switch-marketing-emails"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="invoiceAlerts" className="text-base">
-                        Invoice Alerts
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Receive notifications when new invoices are generated.
-                      </p>
-                    </div>
-                    <Switch
-                      id="invoiceAlerts"
-                      checked={preferencesData?.preferences?.invoiceAlerts ?? true}
-                      onCheckedChange={(checked) => {
-                        updatePreferencesMutation.mutate({
-                          ...preferencesData?.preferences,
-                          invoiceAlerts: checked,
-                        });
-                      }}
-                      disabled={updatePreferencesMutation.isPending}
-                      data-testid="switch-invoice-alerts"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             {/* Company Settings Tab */}
