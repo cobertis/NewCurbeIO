@@ -196,28 +196,33 @@ export default function PhoneSystem() {
             </p>
           </div>
           {hasAccount && (
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-                parseFloat(walletBalance) > 5 
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                  : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-              }`}>
-                <Wallet className={`h-4 w-4 ${parseFloat(walletBalance) > 5 ? 'text-green-600' : 'text-amber-600'}`} />
-                <span className="text-sm font-semibold text-slate-900 dark:text-foreground" data-testid="text-balance">
-                  {formatCurrency(walletBalance, walletCurrency)}
-                </span>
+            <Button 
+              variant="ghost"
+              size="sm" 
+              className="h-auto py-2 px-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+              onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
+              data-testid="button-add-funds"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground leading-none mb-0.5">Balance</p>
+                  <p className="text-base font-semibold text-slate-900 dark:text-foreground leading-none" data-testid="text-balance">
+                    {formatCurrency(walletBalance, walletCurrency)}
+                  </p>
+                </div>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  parseFloat(walletBalance) > 5 
+                    ? 'bg-green-100 dark:bg-green-900/30' 
+                    : 'bg-slate-100 dark:bg-slate-800'
+                }`}>
+                  <Plus className={`h-4 w-4 ${
+                    parseFloat(walletBalance) > 5 
+                      ? 'text-green-600' 
+                      : 'text-slate-500'
+                  }`} />
+                </div>
               </div>
-              <Button 
-                variant="outline"
-                size="sm" 
-                className="h-9 px-3 text-sm"
-                onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
-                data-testid="button-add-funds"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Funds
-              </Button>
-            </div>
+            </Button>
           )}
         </div>
 
