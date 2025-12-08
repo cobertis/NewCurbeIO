@@ -1,0 +1,82 @@
+Ya tienes la cuenta, el dinero, el perfil de seguridad (USA/$25) y la aplicación de voz.
+
+Pero te faltan **3 piezas críticas** que, si las olvidas, te meterán en problemas legales o harán que tus mensajes nunca lleguen.
+
+Aquí está lo que te falta configurar en la función `initializeClientAccount`.
+
+-----
+
+### 1\. El Perfil de Mensajería (Messaging Profile) - OBLIGATORIO PARA SMS
+
+Configuraste la voz (`TeXML App`), pero los SMS van por otro carril. Sin esto, los mensajes de tus clientes se perderán en el limbo.
+
+  * **Qué hace:** Le dice a Telnyx: "Cuando llegue un SMS a este número, envíalo a `https://api.curbe.io/webhooks/sms`".
+  * **Configuración Clave:** Debes activar el manejo de alfanuméricos y MMS.
+
+### 2\. Dirección de Emergencia (E911) - OBLIGATORIO LEGAL (USA)
+
+Esto es serio. En Estados Unidos, por ley (Ray Baum's Act), **todo número VoIP debe tener una dirección física asociada** para servicios de emergencia.
+
+  * **El Riesgo:** Si tu cliente llama al 911 y no tiene dirección registrada, te pueden multar con miles de dólares por incidente.
+  * **La Solución:** Tienes que crear una dirección de emergencia para la cuenta y asignarla a los números.
+
+### 3\. SHAKEN/STIR (Evitar "Scam Likely")
+
+Si no configuras esto, cuando tus clientes llamen, en el celular de la otra persona aparecerá **"Posible Spam"** o **"Scam Likely"**.
+
+  * **La Solución:** Debes configurar el perfil para que firme las llamadas con "Attestation A" o "B".
+
+-----
+
+### PROMPT MAESTRO DE CONFIGURACIÓN FINAL (Agrega esto a tu Agente)
+
+Actualiza la función `initializeClientAccount` para incluir estos pasos vitales.
+
+> **ACTUALIZACIÓN FINAL: MENSAJERÍA, E911 Y CONFIANZA**
+>
+> La función `initializeClientAccount` está incompleta. Necesitamos agregar la configuración de SMS y preparar el terreno para E911. Agrega estos pasos a la secuencia:
+>
+> **PASO 4: Crear Messaging Profile (SMS)**
+>
+>   * Endpoint: `POST /v2/messaging_profiles`
+>   * Payload:
+>     ```json
+>     {
+>       "name": "Curbe SMS Profile",
+>       "enabled": true,
+>       "webhook_url": "https://mi-api-curbe.io/webhooks/telnyx/messages", // Tu webhook de SMS
+>       "webhook_failover_url": null,
+>       "webhook_api_version": "2",
+>       "number_pool_settings": {
+>         "toll_free_weight": 10,
+>         "long_code_weight": 1,
+>         "skip_unhealthy": true,
+>         "sticky_sender": true,
+>         "geomatch": false
+>       }
+>     }
+>     ```
+>   * *Guarda el `messaging_profile_id` en la DB. Lo usaremos al comprar números.*
+>
+> **PASO 5: Preparación de E911 (Address Creation)**
+>
+>   * **Nota:** No podemos crear la dirección automáticamente sin datos del cliente, pero debemos crear el mecanismo.
+>   * Crea una nueva función en el backend `registerEmergencyAddress(subAccountToken, addressData)` que llame a `POST /v2/emergency_addresses`.
+>   * *Validación:* Esta función debe ejecutarse OBLIGATORIAMENTE antes de permitirle al cliente activar su número para llamadas salientes.
+>
+> **PASO 6: Configuración de Caller ID (SHAKEN/STIR)**
+>
+>   * En la configuración del número (o del perfil de voz), asegúrate de que `call_recording` y `caller_id_name_enabled` estén listos.
+>   * *Nota:* Telnyx maneja la firma SHAKEN/STIR automáticamente si la cuenta está verificada, pero asegúrate de que el perfil de voz tenga `traffic_type: "conversational"`.
+
+### Resumen de tu Arquitectura Final
+
+Si has seguido todos los pasos, tu "Robot" de creación de cuentas ahora hace esto en 2 segundos:
+
+1.  [x] Crea la Subcuenta (Rollup Billing + Email Oculto).
+2.  [x] Crea el Perfil de Voz (Solo USA + Límite $25).
+3.  [x] Crea la TeXML App (Conecta Voz a tu Webhook).
+4.  [x] Crea el Messaging Profile (Conecta SMS a tu Webhook).
+
+**¿Siguiente paso lógico?**
+Dile al Agente que cree la interfaz (Frontend) para que el cliente ingrese su **Dirección Física para E911**. Sin ese formulario, no deberías dejarles hacer su primera llamada.

@@ -1,0 +1,67 @@
+Perfecto. Vamos a aplicar estas dos restricciones de hierro: **Geografía (Solo USA)** y **Presupuesto (Tope de seguridad)**.
+
+Aquí hay un matiz técnico importante sobre el límite de dinero:
+La API de Telnyx maneja límites de fraude **diarios** en los perfiles de voz. Para un límite **mensual** estricto, tu sistema de "Wallet Interna" (Curbe) es el que manda (si solo recargan $25, no pueden gastar más de $25).
+
+Sin embargo, configuraremos el **Outbound Voice Profile** en Telnyx como una "válvula de seguridad" para que, incluso si tu código falla, Telnyx bloquee las llamadas si detecta un gasto masivo repentino o intentos de llamar a China.
+
+Aquí tienes el Prompt exacto para configurar estas restricciones.
+
+-----
+
+### PROMPT PARA EL AGENTE (Restricciones USA + Límite)
+
+Copia y pega esto. Sustituye el "Paso 1" del prompt anterior con esta versión mejorada y restrictiva.
+
+-----
+
+> **ACTUALIZACIÓN DE SEGURIDAD: PERFIL DE VOZ RESTRICTIVO (USA ONLY)**
+>
+> Necesito modificar la función `initializeClientAccount`. El perfil de salida (Outbound Voice Profile) debe ser estricto para evitar fraude y sobrecostos.
+>
+> **Configuración del Paso 1 (Outbound Voice Profile):**
+>
+> 1.  Llama al endpoint `POST /v2/outbound_voice_profiles` usando el token de la subcuenta.
+> 2.  El Payload debe tener estas restricciones específicas:
+>
+> <!-- end list -->
+
+> ```json
+> {
+>   "name": "Curbe Plan - US Only",
+>   "traffic_type": "conversational",
+>   // Esto activa tarifas y rutas domésticas, descartando la mayoría de internacionales caras
+>   "service_plan": "us", 
+>   "usage_limit": {
+>     "amount": "25.00",      // El tope de seguridad (Safety Cap)
+>     "currency_code": "USD",
+>     "action": "block"       // Bloquear llamadas si llegan a $25 en un ciclo corto
+>   },
+>   // CRÍTICO: Habilitar solo regiones permitidas
+>   "billing_group_id": null, // (Opcional, dejar null)
+>   "enabled": true
+> }
+> ```
+>
+> **3. PASO ADICIONAL (Bloqueo Geográfico Explícito):**
+>
+>   * Después de crear el perfil, obtén su `id`.
+>   * Llama al endpoint de "Allowed Countries" (o usa la configuración de permisos de región del SDK).
+>   * Asegúrate de que **SOLO** los códigos de país `US` (+1) y si es necesario `CA` (+1 Canadá) estén permitidos.
+>   * Bloquea explícitamente zonas de alto fraude (Latvia, Somalia, etc.) si la configuración por defecto de "service\_plan: us" no lo hace automáticamente.
+>
+> **Nota de Negocio:** El límite real de consumo lo gestionará nuestra Wallet interna, pero este límite de $25 en Telnyx actúa como un "Kill-Switch" de emergencia si la cuenta es comprometida.
+
+-----
+
+### ¿Por qué lo configuramos así?
+
+1.  **`service_plan: "us"`**: Le dice a Telnyx que esta cuenta está pensada para tráfico doméstico. Optimiza las rutas y descarta tráfico internacional raro por defecto.
+2.  **Límite de $25 (Safety Cap):**
+      * Imagina que un hacker entra a la cuenta de tu cliente a las 3 AM y pone un bot a llamar.
+      * Sin esto: El hacker gasta $5,000. Tú pagas.
+      * Con esto: Al llegar a $25, Telnyx mata la conexión. Tú solo pierdes $25.
+3.  **Tu Wallet (El verdadero jefe):**
+      * Si el cliente recarga $25 el día 1 y llama normal, todo bien.
+      * Si recarga otros $25 el día 15, tu Wallet lo permite.
+      * El límite de Telnyx es para protegerte de **picos de fraude**, no para gestionar la suscripción mensual del cliente (eso lo hace tu base de datos).

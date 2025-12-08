@@ -1,0 +1,56 @@
+Exacto. Esa es la estrategia ganadora. Al usar `hello+clientID@curbe.io`, todos los correos de Telnyx llegarán a tu bandeja de entrada de `hello@curbe.io`, pero para Telnyx serán usuarios únicos y distintos.
+
+Aquí tienes el **Prompt Maestro Final** detallado para dárselo a tu Agente de Replit. Copia y pega esto tal cual.
+
+-----
+
+### PROMPT PARA EL AGENTE DE REPLIT
+
+> **TAREA CRÍTICA: REESCRIBIR LA CREACIÓN DE CUENTAS (MANAGED ACCOUNTS)**
+>
+> Actúa como Senior Backend Developer. Necesito reescribir la función `createSubAccount` para asegurar la privacidad del cliente (Marca Blanca) y la facturación centralizada.
+>
+> **1. Lógica de Enmascaramiento de Email (Email Masking):**
+>
+>   * Definamos mi email administrativo base como una constante: `const ADMIN_EMAIL_BASE = "hello";` y el dominio `const ADMIN_DOMAIN = "curbe.io";`.
+>   * Al crear la cuenta, **NO** uses el email real del cliente.
+>   * Genera un email alias único usando el ID del usuario en mi base de datos.
+>   * **Fórmula:** `${ADMIN_EMAIL_BASE}+${userId}@${ADMIN_DOMAIN}`
+>   * *Ejemplo:* Si el usuario tiene ID 505, el email enviado a Telnyx será `hello+505@curbe.io`.
+>
+> **2. Construcción del Payload (JSON):**
+>
+>   * El cuerpo de la petición `POST` a `https://api.telnyx.com/v2/managed_accounts` debe ser **exactamente** así:
+>
+> <!-- end list -->
+
+> ```javascript
+> {
+>   "business_name": user.companyName,       // Nombre real de la empresa del cliente
+>   "organization_name": user.companyName,   // Nombre real de la empresa del cliente
+>   "email": generatedAliasEmail,            // El email enmascarado (hello+...@curbe.io)
+>   "rollup_billing": true                   // OBLIGATORIO: true (boolean). Sin esto, el sistema falla.
+> }
+> ```
+>
+> **3. Manejo de Respuesta y Almacenamiento:**
+>
+>   * Telnyx responderá con un objeto que contiene `id` (account\_id) y `api_token`.
+>   * **Acción Inmediata:** Actualiza el registro de la organización o wallet del cliente en nuestra base de datos:
+>       * `telnyx_account_id`: Guarda el `id` recibido.
+>       * `telnyx_api_token`: Guarda el `api_token` (Idealmente encriptado).
+>       * `telnyx_email_alias`: Guarda el email generado `hello+...@curbe.io` por si necesitamos referencia futura.
+>
+> **4. Manejo de Errores:**
+>
+>   * Si la API de Telnyx devuelve error (ej. 422 Unprocessable Entity), lanza una excepción clara para que el frontend sepa que falló la creación de la cuenta.
+
+-----
+
+### Por qué esto funcionará perfecto para ti:
+
+1.  **Cero Confusión:** Tu cliente nunca recibe un email de Telnyx.
+2.  **Control Total:** Si alguna vez necesitas recuperar la contraseña de esa subcuenta en el portal de Telnyx, el email de recuperación te llega a TI (`hello@curbe.io`).
+3.  **Facturación:** Con `rollup_billing: true`, el saldo sale de tu cuenta maestra y tú controlas el margen.
+
+Dale esto al agente y tu sistema de onboarding estará listo para producción.

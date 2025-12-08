@@ -6,6 +6,10 @@ import { SecretsService } from "./secrets-service";
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
 
+// Email masking configuration for white-label
+const ADMIN_EMAIL_BASE = "hello";
+const ADMIN_DOMAIN = "curbe.io";
+
 async function getTelnyxMasterApiKey(): Promise<string> {
   let apiKey = await secretsService.getCredential("telnyx", "api_key");
   if (!apiKey) {
@@ -41,20 +45,22 @@ export interface GetManagedAccountResult {
 
 export async function createManagedAccount(
   businessName: string,
-  email?: string
+  companyId: string
 ): Promise<CreateManagedAccountResult> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
 
-    const requestBody: any = {
+    // Generate masked email using company ID for white-label privacy
+    const maskedEmail = `${ADMIN_EMAIL_BASE}+${companyId}@${ADMIN_DOMAIN}`;
+
+    const requestBody = {
       business_name: businessName,
+      organization_name: businessName,
+      email: maskedEmail,
+      rollup_billing: true, // CRITICAL: Consolidate billing to master account
     };
 
-    if (email) {
-      requestBody.email = email;
-    }
-
-    console.log(`[Telnyx Managed] Creating managed account for: ${businessName}`);
+    console.log(`[Telnyx Managed] Creating managed account for: ${businessName} with email: ${maskedEmail}`);
 
     const response = await fetch(`${TELNYX_API_BASE}/managed_accounts`, {
       method: "POST",
