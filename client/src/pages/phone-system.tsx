@@ -183,53 +183,78 @@ export default function PhoneSystem() {
       </div>
 
       {!hasAccount ? (
-        <Card className="border-2 border-dashed">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Phone className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <CardTitle>Setup Phone System</CardTitle>
-            <CardDescription>
-              Activate your business phone system to make calls, send SMS, and manage phone numbers.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center space-y-6">
-            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
-              <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/50">
-                <PhoneCall className="h-6 w-6 text-blue-500" />
-                <span className="text-xs text-muted-foreground text-center">Voice Calls</span>
+        <div className="flex-1 flex items-center justify-center py-12">
+          <Card className="max-w-2xl w-full border-0 shadow-lg bg-gradient-to-br from-card via-card to-muted/20">
+            <CardHeader className="text-center pb-6 pt-10">
+              <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-6 shadow-inner">
+                <Phone className="h-10 w-10 text-primary" />
               </div>
-              <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/50">
-                <MessageSquare className="h-6 w-6 text-green-500" />
-                <span className="text-xs text-muted-foreground text-center">SMS & MMS</span>
+              <CardTitle className="text-2xl font-bold">Setup Your Phone System</CardTitle>
+              <CardDescription className="text-base mt-2 max-w-md mx-auto">
+                Get a dedicated business phone number with voice, SMS, and emergency calling capabilities.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8 pb-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="group relative overflow-hidden rounded-xl border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
+                      <PhoneCall className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="font-semibold text-foreground mb-1">Voice Calls</h3>
+                    <p className="text-sm text-muted-foreground">Make and receive HD quality business calls</p>
+                  </div>
+                </div>
+                <div className="group relative overflow-hidden rounded-xl border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
+                      <MessageSquare className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <h3 className="font-semibold text-foreground mb-1">SMS & MMS</h3>
+                    <p className="text-sm text-muted-foreground">Send text messages and media to customers</p>
+                  </div>
+                </div>
+                <div className="group relative overflow-hidden rounded-xl border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4">
+                      <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <h3 className="font-semibold text-foreground mb-1">E911 Ready</h3>
+                    <p className="text-sm text-muted-foreground">Emergency services with location dispatch</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/50">
-                <Shield className="h-6 w-6 text-purple-500" />
-                <span className="text-xs text-muted-foreground text-center">E911 Ready</span>
-              </div>
-            </div>
 
-            <Button 
-              size="lg"
-              onClick={() => setupMutation.mutate()}
-              disabled={isSettingUp}
-              className="gap-2"
-              data-testid="button-setup-phone"
-            >
-              {isSettingUp ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Setting up...
-                </>
-              ) : (
-                <>
-                  <Settings2 className="h-4 w-4" />
-                  Activate Phone System
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+              <div className="flex flex-col items-center gap-4 pt-4">
+                <Button 
+                  size="lg"
+                  onClick={() => setupMutation.mutate()}
+                  disabled={isSettingUp}
+                  className="gap-2 px-8 h-12 text-base shadow-lg hover:shadow-xl transition-shadow"
+                  data-testid="button-setup-phone"
+                >
+                  {isSettingUp ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Activating...
+                    </>
+                  ) : (
+                    <>
+                      <Settings2 className="h-5 w-5" />
+                      Activate Phone System
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center max-w-sm">
+                  Your phone system will be ready in seconds. No additional configuration required.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="space-y-6">
           {/* Account Overview Card */}
