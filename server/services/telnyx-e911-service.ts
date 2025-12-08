@@ -204,23 +204,72 @@ export async function createEmergencyAddress(
 
     console.log(`[E911] Creating emergency address for company ${companyId}`);
 
-    // First create/verify the address
-    const addressResponse = await fetch(`${TELNYX_API_BASE}/addresses`, {
-      method: "POST",
-      headers: buildHeaders(config),
-      body: JSON.stringify({
-        street_address: addressData.streetAddress,
-        extended_address: addressData.extendedAddress || "",
-        locality: addressData.locality,
-        administrative_area: addressData.administrativeArea,
-        postal_code: addressData.postalCode,
-        country_code: addressData.countryCode || "US",
-        first_name: addressData.callerName.split(" ")[0] || "Business",
-        last_name: addressData.callerName.split(" ").slice(1).join(" ") || "Line",
-        business_name: addressData.callerName,
-        address_book: true, // Save to address book
-      }),
+    // Helper function to make address creation request
+    const makeAddressRequest = async (data: {
+      street_address: string;
+      extended_address?: string;
+      locality: string;
+      administrative_area: string;
+      postal_code: string;
+      country_code: string;
+    }) => {
+      return fetch(`${TELNYX_API_BASE}/addresses`, {
+        method: "POST",
+        headers: buildHeaders(config),
+        body: JSON.stringify({
+          ...data,
+          first_name: addressData.callerName.split(" ")[0] || "Business",
+          last_name: addressData.callerName.split(" ").slice(1).join(" ") || "Line",
+          business_name: addressData.callerName,
+          address_book: true,
+        }),
+      });
+    };
+
+    // First attempt with user-provided address
+    let addressResponse = await makeAddressRequest({
+      street_address: addressData.streetAddress,
+      extended_address: addressData.extendedAddress || "",
+      locality: addressData.locality,
+      administrative_area: addressData.administrativeArea,
+      postal_code: addressData.postalCode,
+      country_code: addressData.countryCode || "US",
     });
+
+    // Handle 422 with suggestions - auto-retry with normalized address
+    if (addressResponse.status === 422) {
+      const errorData = await addressResponse.json().catch(() => ({}));
+      
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        // Check if all errors are Suggestion type (code 10015)
+        const allAreSuggestions = errorData.errors.every((e: any) => e.code === "10015");
+        
+        if (allAreSuggestions) {
+          console.log(`[E911] Received address suggestions from Telnyx, applying corrections...`);
+          
+          // Extract normalized values from suggestions
+          const suggestions: Record<string, string> = {};
+          for (const err of errorData.errors) {
+            const field = err.source?.pointer?.replace("/", "") || "";
+            if (field && err.detail !== undefined) {
+              suggestions[field] = err.detail;
+            }
+          }
+          
+          console.log(`[E911] Normalized address:`, suggestions);
+          
+          // Retry with normalized address
+          addressResponse = await makeAddressRequest({
+            street_address: suggestions.street_address || addressData.streetAddress,
+            extended_address: suggestions.extended_address || addressData.extendedAddress || "",
+            locality: suggestions.locality || addressData.locality,
+            administrative_area: suggestions.administrative_area || addressData.administrativeArea,
+            postal_code: suggestions.postal_code || addressData.postalCode,
+            country_code: suggestions.country_code || addressData.countryCode || "US",
+          });
+        }
+      }
+    }
 
     if (!addressResponse.ok) {
       const errorText = await addressResponse.text();
