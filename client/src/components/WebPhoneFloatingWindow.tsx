@@ -39,7 +39,7 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Fetch unified contacts (only those with phone numbers)
-  const { data: contactsData } = useQuery({
+  const { data: contactsData } = useQuery<{ contacts: any[] }>({
     queryKey: ['/api/contacts/list'],
   });
   
@@ -170,9 +170,10 @@ interface AvailablePhoneNumber {
 interface BuyNumbersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onNumberPurchased?: () => void;
 }
 
-function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
+export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyNumbersDialogProps) {
   const { toast } = useToast();
   const [countryCode, setCountryCode] = useState("US");
   const [numberType, setNumberType] = useState<string>("all");
@@ -251,7 +252,9 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
     onSuccess: () => {
       toast({ title: "Success", description: "Phone number purchased successfully!" });
       queryClient.invalidateQueries({ queryKey: ['/api/telnyx/my-numbers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/telnyx/numbers'] });
       setSelectedNumbers(new Set());
+      onNumberPurchased?.();
       onOpenChange(false);
     },
     onError: (error: any) => {
