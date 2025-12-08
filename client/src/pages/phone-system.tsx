@@ -196,33 +196,33 @@ export default function PhoneSystem() {
             </p>
           </div>
           {hasAccount && (
-            <Button 
-              variant="ghost"
-              size="sm" 
-              className="h-auto py-2 px-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-              onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
-              data-testid="button-add-funds"
-            >
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground leading-none mb-0.5">Balance</p>
-                  <p className="text-base font-semibold text-slate-900 dark:text-foreground leading-none" data-testid="text-balance">
-                    {formatCurrency(walletBalance, walletCurrency)}
-                  </p>
-                </div>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  parseFloat(walletBalance) > 5 
-                    ? 'bg-green-100 dark:bg-green-900/30' 
-                    : 'bg-slate-100 dark:bg-slate-800'
-                }`}>
-                  <Plus className={`h-4 w-4 ${
-                    parseFloat(walletBalance) > 5 
-                      ? 'text-green-600' 
-                      : 'text-slate-500'
-                  }`} />
+            <div className="flex items-center gap-3">
+              {/* Balance Card */}
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 px-5 py-3 shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent" />
+                <div className="relative flex items-center gap-4">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 backdrop-blur-sm">
+                    <Wallet className="h-5 w-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Balance</p>
+                    <p className="text-xl font-bold text-white tracking-tight" data-testid="text-balance">
+                      {formatCurrency(walletBalance, walletCurrency)}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </Button>
+              {/* Add Funds Button - Subtle */}
+              <Button 
+                variant="outline"
+                size="sm" 
+                className="h-10 px-3 rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
+                onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
+                data-testid="button-add-funds"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
 
