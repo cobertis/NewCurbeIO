@@ -2003,16 +2003,17 @@ export default function Settings() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => refreshDomainMutation.mutate()}
-                              disabled={refreshDomainMutation.isPending || customDomainData.status !== "active"}
-                              data-testid="button-refresh-domain"
-                            >
-                              <RefreshCw className={`h-4 w-4 mr-1 ${(refreshDomainMutation.isPending || customDomainData.status !== "active") ? 'animate-spin' : ''}`} />
-                              {customDomainData.status !== "active" ? "Auto-checking..." : "Refresh"}
-                            </Button>
+                            {customDomainData.status !== "active" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                data-testid="button-refresh-domain"
+                              >
+                                <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                                Auto-checking...
+                              </Button>
+                            )}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
