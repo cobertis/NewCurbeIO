@@ -27092,7 +27092,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ 
         success: true, 
         orderId: result.orderId,
-        phoneNumber: result.phoneNumber 
+        phoneNumber: result.phoneNumber,
+        phoneNumberId: result.phoneNumberId
       });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Purchase error:", error);

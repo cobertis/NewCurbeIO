@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, type LucideIcon } from 'lucide-react';
+import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -173,6 +174,14 @@ interface BuyNumbersDialogProps {
   onNumberPurchased?: () => void;
 }
 
+type PurchaseStep = "search" | "provisioning" | "e911" | "complete";
+
+interface PurchasedNumberInfo {
+  phoneNumber: string;
+  phoneNumberId: string;
+  isProvisioning: boolean;
+}
+
 export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyNumbersDialogProps) {
   const { toast } = useToast();
   const [countryCode, setCountryCode] = useState("US");
@@ -184,6 +193,8 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
   const [searchTriggered, setSearchTriggered] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const NUMBERS_PER_PAGE = 50;
+  const [purchaseStep, setPurchaseStep] = useState<PurchaseStep>("search");
+  const [purchasedNumber, setPurchasedNumber] = useState<PurchasedNumberInfo | null>(null);
 
   const availableFeatures = [
     { value: "sms", label: "SMS" },
@@ -258,18 +269,68 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
     mutationFn: async (phoneNumber: string) => {
       return apiRequest("POST", "/api/telnyx/purchase-number", { phoneNumber });
     },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Phone number purchased successfully!" });
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/telnyx/my-numbers'] });
       queryClient.invalidateQueries({ queryKey: ['/api/telnyx/numbers'] });
-      setSelectedNumber(null);
-      onNumberPurchased?.();
-      onOpenChange(false);
+      
+      const phoneNumberId = data.phoneNumberId;
+      const hasValidId = phoneNumberId && phoneNumberId.length > 10;
+      
+      if (hasValidId) {
+        toast({ title: "Number Purchased", description: "Now let's set up your emergency address (E911)." });
+        setPurchasedNumber({
+          phoneNumber: selectedNumber!,
+          phoneNumberId: phoneNumberId,
+          isProvisioning: false,
+        });
+        setPurchaseStep("e911");
+      } else {
+        // Number is still being provisioned
+        toast({ title: "Number Purchased", description: "Your number is being provisioned. Please wait..." });
+        setPurchasedNumber({
+          phoneNumber: selectedNumber!,
+          phoneNumberId: "",
+          isProvisioning: true,
+        });
+        setPurchaseStep("provisioning");
+      }
     },
     onError: (error: any) => {
       toast({ 
         title: "Error", 
         description: error.message || "Failed to purchase number",
+        variant: "destructive" 
+      });
+    },
+  });
+  
+  // Mutation to check if number is ready
+  const checkNumberReadyMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      const res = await fetch(`/api/telnyx/my-numbers`);
+      if (!res.ok) throw new Error("Failed to fetch numbers");
+      const data = await res.json();
+      const foundNumber = data.numbers?.find((n: any) => n.phone_number === phoneNumber);
+      if (foundNumber?.id) {
+        return { phoneNumberId: foundNumber.id };
+      }
+      throw new Error("Number not ready yet");
+    },
+    onSuccess: (data: any) => {
+      if (data.phoneNumberId && purchasedNumber) {
+        toast({ title: "Ready!", description: "Your number is now ready. Let's set up the emergency address." });
+        setPurchasedNumber({
+          ...purchasedNumber,
+          phoneNumberId: data.phoneNumberId,
+          isProvisioning: false,
+        });
+        setPurchaseStep("e911");
+      }
+    },
+    onError: () => {
+      toast({ 
+        title: "Still Provisioning", 
+        description: "Your number is still being set up. Please wait a few seconds and try again.",
         variant: "destructive" 
       });
     },
@@ -288,6 +349,40 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
   const handlePurchase = () => {
     if (!selectedNumber) return;
     purchaseMutation.mutate(selectedNumber);
+  };
+
+  const resetDialogState = () => {
+    setPurchaseStep("search");
+    setPurchasedNumber(null);
+    setSelectedNumber(null);
+    setSearchTriggered(false);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      resetDialogState();
+    }
+    onOpenChange(open);
+  };
+
+  const handleE911Success = () => {
+    toast({ title: "Setup Complete", description: "Your phone number is now fully configured with E911." });
+    queryClient.invalidateQueries({ queryKey: ['/api/telnyx/my-numbers'] });
+    onNumberPurchased?.();
+    resetDialogState();
+    onOpenChange(false);
+  };
+
+  const handleE911Cancel = () => {
+    // User cancelled E911 setup - number is purchased but without E911
+    toast({ 
+      title: "E911 Setup Skipped", 
+      description: "Warning: Your number doesn't have emergency services configured. You can set this up later.",
+      variant: "destructive"
+    });
+    onNumberPurchased?.();
+    resetDialogState();
+    onOpenChange(false);
   };
 
   const getCapabilityBadges = (features: Array<{ name: string }>) => {
@@ -377,10 +472,89 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogClose}>
       <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col p-0 gap-0">
         <DialogTitle className="sr-only">Buy Phone Number</DialogTitle>
         <DialogDescription className="sr-only">Search and purchase a phone number</DialogDescription>
+        
+        {/* Provisioning Step - Wait for number to be ready */}
+        {purchaseStep === "provisioning" && purchasedNumber && (
+          <div className="p-6">
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+                <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Provisioning Your Number</h2>
+              <p className="text-sm text-muted-foreground text-center max-w-md mb-6">
+                Your number <span className="font-medium">{purchasedNumber.phoneNumber}</span> has been purchased and is being set up. This usually takes a few seconds.
+              </p>
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => checkNumberReadyMutation.mutate(purchasedNumber.phoneNumber)}
+                  disabled={checkNumberReadyMutation.isPending}
+                  data-testid="button-check-number-ready"
+                >
+                  {checkNumberReadyMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Check if Ready
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleE911Cancel}
+                  data-testid="button-skip-e911"
+                >
+                  Skip E911 Setup
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                You can also set up E911 later from your phone settings.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* E911 Step - Show EmergencyAddressForm */}
+        {purchaseStep === "e911" && purchasedNumber && (
+          <div className="p-6">
+            <div className="mb-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                  <Shield className="h-5 w-5 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold text-foreground">Emergency Address (E911)</h2>
+                  <p className="text-sm text-muted-foreground">
+                    For {purchasedNumber.phoneNumber} - This address will be sent to emergency services if you call 911.
+                  </p>
+                </div>
+              </div>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 flex-shrink-0" />
+                  <span><strong>Important:</strong> Enter the physical address where this phone will be used. This information is critical for emergency responders.</span>
+                </p>
+              </div>
+            </div>
+            <EmergencyAddressForm
+              phoneNumberId={purchasedNumber.phoneNumberId}
+              phoneNumber={purchasedNumber.phoneNumber}
+              onSuccess={handleE911Success}
+              onCancel={handleE911Cancel}
+            />
+          </div>
+        )}
+        
+        {/* Search Step - Original content */}
+        {purchaseStep === "search" && (
+          <>
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
@@ -688,6 +862,8 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
             </Button>
           </div>
         </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

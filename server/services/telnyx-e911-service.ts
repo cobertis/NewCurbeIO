@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { wallets, telnyxPhoneNumbers, telnyxE911Addresses } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { secretsService } from "../services/secrets-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 
@@ -48,13 +49,44 @@ interface E911EnableResult {
   error?: string;
 }
 
-async function getSubAccountApiToken(companyId: string): Promise<string | null> {
+interface ManagedAccountConfig {
+  apiKey: string;
+  managedAccountId: string;
+}
+
+async function getTelnyxMasterApiKey(): Promise<string> {
+  let apiKey = await secretsService.getCredential("telnyx", "api_key");
+  if (!apiKey) {
+    throw new Error("Telnyx API key not configured. Please add it in Settings > API Keys.");
+  }
+  apiKey = apiKey.trim().replace(/[\r\n\t]/g, '');
+  return apiKey;
+}
+
+async function getManagedAccountConfig(companyId: string): Promise<ManagedAccountConfig | null> {
   const [wallet] = await db
-    .select({ telnyxApiToken: wallets.telnyxApiToken })
+    .select({ telnyxAccountId: wallets.telnyxAccountId })
     .from(wallets)
     .where(eq(wallets.companyId, companyId));
 
-  return wallet?.telnyxApiToken || null;
+  if (!wallet?.telnyxAccountId) {
+    return null;
+  }
+  
+  const apiKey = await getTelnyxMasterApiKey();
+  
+  return {
+    apiKey,
+    managedAccountId: wallet.telnyxAccountId,
+  };
+}
+
+function buildHeaders(config: ManagedAccountConfig): Record<string, string> {
+  return {
+    "Authorization": `Bearer ${config.apiKey}`,
+    "Content-Type": "application/json",
+    "x-managed-account-id": config.managedAccountId,
+  };
 }
 
 /**
@@ -66,9 +98,9 @@ export async function validateEmergencyAddress(
   addressData: E911AddressData
 ): Promise<E911ValidationResult> {
   try {
-    const apiToken = await getSubAccountApiToken(companyId);
+    const config = await getManagedAccountConfig(companyId);
     
-    if (!apiToken) {
+    if (!config) {
       return { success: false, valid: false, error: "Phone system not configured for this company" };
     }
 
@@ -76,10 +108,7 @@ export async function validateEmergencyAddress(
 
     const response = await fetch(`${TELNYX_API_BASE}/addresses`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(config),
       body: JSON.stringify({
         street_address: addressData.streetAddress,
         extended_address: addressData.extendedAddress || "",
@@ -167,9 +196,9 @@ export async function createEmergencyAddress(
   addressData: E911AddressData
 ): Promise<E911CreateResult> {
   try {
-    const apiToken = await getSubAccountApiToken(companyId);
+    const config = await getManagedAccountConfig(companyId);
     
-    if (!apiToken) {
+    if (!config) {
       return { success: false, error: "Phone system not configured for this company" };
     }
 
@@ -178,10 +207,7 @@ export async function createEmergencyAddress(
     // First create/verify the address
     const addressResponse = await fetch(`${TELNYX_API_BASE}/addresses`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(config),
       body: JSON.stringify({
         street_address: addressData.streetAddress,
         extended_address: addressData.extendedAddress || "",
@@ -210,10 +236,7 @@ export async function createEmergencyAddress(
     // Now create the emergency address linked to this address
     const e911Response = await fetch(`${TELNYX_API_BASE}/emergency_addresses`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(config),
       body: JSON.stringify({
         address_id: addressId,
       }),
@@ -259,9 +282,9 @@ export async function enableE911OnNumber(
   emergencyAddressId: string
 ): Promise<E911EnableResult> {
   try {
-    const apiToken = await getSubAccountApiToken(companyId);
+    const config = await getManagedAccountConfig(companyId);
     
-    if (!apiToken) {
+    if (!config) {
       return { success: false, error: "Phone system not configured for this company" };
     }
 
@@ -269,10 +292,7 @@ export async function enableE911OnNumber(
 
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/actions/enable_emergency`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(config),
       body: JSON.stringify({
         emergency_address_id: emergencyAddressId,
         emergency_enabled: true,
@@ -324,18 +344,15 @@ export async function getEmergencyAddresses(companyId: string): Promise<{
   error?: string;
 }> {
   try {
-    const apiToken = await getSubAccountApiToken(companyId);
+    const config = await getManagedAccountConfig(companyId);
     
-    if (!apiToken) {
+    if (!config) {
       return { success: false, error: "Phone system not configured for this company" };
     }
 
     const response = await fetch(`${TELNYX_API_BASE}/addresses`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${apiToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: buildHeaders(config),
     });
 
     if (!response.ok) {

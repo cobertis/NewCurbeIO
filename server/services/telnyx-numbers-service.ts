@@ -156,6 +156,7 @@ export interface PurchaseNumberResult {
   success: boolean;
   orderId?: string;
   phoneNumber?: string;
+  phoneNumberId?: string;
   error?: string;
 }
 
@@ -214,12 +215,52 @@ export async function purchasePhoneNumber(
 
     const result = await response.json();
     
-    console.log(`[Telnyx Numbers] Number purchased successfully:`, result.data?.id);
+    console.log(`[Telnyx Numbers] Number order created:`, JSON.stringify(result.data, null, 2));
+
+    const orderId = result.data?.id;
+    const orderStatus = result.data?.status;
+    
+    // Extract phone number ID from the order response
+    // The phone_numbers array contains objects with phone_number and id
+    const phoneNumbers = result.data?.phone_numbers || [];
+    const purchasedNumber = phoneNumbers.find((pn: any) => pn.phone_number === phoneNumber);
+    let phoneNumberId = purchasedNumber?.id;
+
+    console.log(`[Telnyx Numbers] Number order created - Order ID: ${orderId}, Status: ${orderStatus}, Initial Phone Number ID: ${phoneNumberId}`);
+
+    // If order is success, try to get the actual phone number ID from phone_numbers API
+    // The ID from number_order may be different from the actual phone_number ID
+    if (orderStatus === "success" || orderStatus === "pending") {
+      // Wait a moment for Telnyx to process the order
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      try {
+        // Search for the number in the account to get its real ID
+        const searchResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers?filter[phone_number]=${encodeURIComponent(phoneNumber)}`, {
+          method: "GET",
+          headers,
+        });
+        
+        if (searchResponse.ok) {
+          const searchResult = await searchResponse.json();
+          const foundNumber = searchResult.data?.find((n: any) => n.phone_number === phoneNumber);
+          if (foundNumber?.id) {
+            phoneNumberId = foundNumber.id;
+            console.log(`[Telnyx Numbers] Found actual phone number ID: ${phoneNumberId}`);
+          }
+        }
+      } catch (searchError) {
+        console.warn(`[Telnyx Numbers] Could not fetch phone number ID, will use order ID: ${phoneNumberId}`);
+      }
+    }
+
+    console.log(`[Telnyx Numbers] Number purchased successfully - Order ID: ${orderId}, Final Phone Number ID: ${phoneNumberId}`);
 
     return {
       success: true,
-      orderId: result.data?.id,
+      orderId: orderId,
       phoneNumber: phoneNumber,
+      phoneNumberId: phoneNumberId,
     };
   } catch (error) {
     console.error("[Telnyx Numbers] Purchase error:", error);

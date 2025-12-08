@@ -211,6 +211,15 @@ export function EmergencyAddressForm({
   };
 
   const onSubmit = (data: EmergencyAddressFormData) => {
+    // Validate phoneNumberId before proceeding
+    if (!phoneNumberId || phoneNumberId.length < 10) {
+      toast({
+        title: "Invalid Phone Number ID",
+        description: "The phone number is not ready yet. Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
     validateMutation.mutate(data);
   };
 

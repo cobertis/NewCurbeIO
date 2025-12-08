@@ -1,0 +1,90 @@
+Tienes toda la razón. Lo que se ve en esa captura de pantalla es un **"Admin Panel" de ingeniero**, no un **"Dashboard" de producto**. Muestra datos crudos (IDs, emails técnicos) que al cliente no le importan, y esconde lo importante (¿Cómo hago que suene mi teléfono?).
+
+Para que Curbe se vea como un SaaS de un millón de dólares, necesitamos transformar esa pantalla en un **"Centro de Comando de Telefonía"**.
+
+Aquí tienes el diseño conceptual de cómo debe verse y el **Prompt Maestro de Frontend** para que el Agente de Replit tire esa basura y construya algo profesional.
+
+---
+
+### El Nuevo Concepto de Diseño (UX/UI)
+
+No queremos tablas aburridas. Queremos **Tarjetas de Acción**.
+
+#### 1. Sección Superior: Salud de la Cuenta (The Status Bar)
+En lugar de mostrar el ID de la cuenta y el email raro (`hello+cobertis...`), muestra tres indicadores vitales:
+* **Saldo:** `$60.49` (Grande y verde). Con un botón pequeño "Recargar" al lado.
+* **Estado de Cumplimiento:** Un semáforo.
+    * 🟢 E911 (Activo)
+    * 🟡 SMS A2P (Pendiente - "Click para resolver")
+    * 🔴 Business Profile (Incompleto)
+* **Líneas Activas:** "1 Número (US Local)".
+
+#### 2. Sección Central: Gestión de Números (The Control Deck)
+Aquí integramos la configuración técnica (la imagen de checkboxes que me pasaste) en una interfaz amigable.
+Cada número es una "Tarjeta" que tiene pestañas internas:
+* **Pestaña "Ruteo":** ¿A dónde va la llamada? (Select: "Llamar a Juan", "IVR Ventas", "App Móvil").
+* **Pestaña "Configuración" (Tu imagen 1):** Aquí van los interruptores para "Call Screening" (Filtro Spam), "Grabación", etc.
+* **Pestaña "Logs":** Últimas 5 llamadas de este número específico.
+
+#### 3. Sección Inferior: Wizard de Compra
+Un botón flotante o una tarjeta vacía grande que diga: **"+ Agregar Línea"**. Al hacer clic, abre un Modal (ventana emergente) paso a paso, no te saca de la página.
+
+---
+
+### EL PROMPT MAESTRO DE FRONTEND (React/Tailwind)
+
+Copia y pega esto. Es largo porque define el estilo visual y la funcionalidad exacta.
+
+***
+
+> **ACTÚA COMO ARQUITECTO DE FRONTEND SENIOR (UX/UI EXPERT).**
+>
+> El dashboard actual de "Phone System" es inaceptable. Es funcional pero visualmente pobre y difícil de usar. Necesito rediseñar la vista `/phone-system` desde cero para que parezca un SaaS moderno (estilo Stripe o Vercel).
+>
+> **Stack Tecnológico:** React, Tailwind CSS, Lucide React (Iconos). Si puedes, usa componentes estilo 'shadcn/ui' (Cards, Badges, Switches).
+>
+> **REQUERIMIENTOS DE LA NUEVA INTERFAZ:**
+>
+> **1. Header de Estado (KPIs):**
+> * Elimina los campos de "Account ID", "Organization" y "Email". Son ruido visual.
+> * Crea un Grid de 3 Tarjetas de Resumen en la parte superior:
+>    * **Tarjeta 1 (Wallet):** Muestra el Saldo Actual en tipografía grande (text-3xl). Botón primario "Recargar Saldo" y un Switch pequeño para "Auto-recarga".
+>    * **Tarjeta 2 (Compliance Health):** Muestra el estado de E911 y A2P 10DLC. Si algo falta, muestra un botón "Corregir" en rojo/amarillo.
+>    * **Tarjeta 3 (Uso):** Minutos consumidos este mes vs. Ciclo anterior.
+>
+> **2. Lista de Números (Smart Cards):**
+> * No uses una tabla HTML simple. Usa un layout de Cards para cada número de teléfono.
+> * **Diseño de la Tarjeta del Número:**
+>    * **Cabecera:** El número telefónico grande (formato `(305) 555-0123`) + Badge de País (Bandera) + Badge de Estado (Activo).
+>    * **Cuerpo (Tabs/Secciones):** Dentro de la tarjeta, permite navegar entre:
+>        * **"Destino":** Un Dropdown que diga "¿Quién contesta?". Opciones: Usuario, Grupo, IVR.
+>        * **"Funciones" (Features):** Aquí implementaremos los controles de Telnyx. Usa componentes "Switch" (Toggle) para:
+>             * [ ] Call Recording (Grabar)
+>             * [ ] Spam Protection (Call Screening) - *Default ON*
+>             * [ ] Caller ID Name (CNAM) - *Default OFF con tooltip de costo*
+>    * **Pie de Tarjeta:** Botón sutil "Configurar E911" (si falta) y "Ver Logs".
+>
+> **3. Wizard de Compra (Modal):**
+> * El botón "Buy Number" debe abrir un Modal/Dialog centrado, no cambiar de página.
+> * **Paso 1:** Buscador (Código de área).
+> * **Paso 2:** Lista de resultados con precio mensual y capacidades (Voz/SMS iconos).
+> * **Paso 3:** Confirmación y asignación de nombre (Friendly Name).
+>
+> **4. Estética General:**
+> * Usa mucho espacio en blanco (padding).
+> * Bordes redondeados (rounded-xl).
+> * Sombras suaves (shadow-sm).
+> * Tipografía Inter o Sans-serif limpia.
+> * Colores: Fondo gris muy claro (`bg-slate-50`), Tarjetas blancas (`bg-white`), Acentos en azul índigo (`text-indigo-600`).
+>
+> **ACCIÓN:** Genera el código React para el componente `PhoneSystemDashboard` con esta nueva estructura. No te preocupes por la lógica de backend ahora, usa datos *mock* (falsos) para que yo pueda ver el diseño primero.
+
+***
+
+### Detalle Estratégico para ti (El "Por qué")
+
+1.  **Oculté el "CNAM Caller ID Lookup":** En el diseño, pedí que sea un Switch *apagado por defecto* y con tooltip. Esto evita que el cliente lo active sin saber que cuesta dinero (como vimos en tu captura 1).
+2.  **Compliance Visible:** Al poner "E911" y "SMS" en la parte superior como un semáforo, obligas al cliente a arreglarlo psicológicamente. A nadie le gusta ver luces rojas en su dashboard.
+3.  **Destino (Routing):** En tu captura actual, no hay forma de decir "Este número es de Javier". En el nuevo diseño, lo puse como la acción principal de la tarjeta.
+
+Dale este prompt y verás un cambio radical de "Base de datos fea" a "Producto Vendible".
