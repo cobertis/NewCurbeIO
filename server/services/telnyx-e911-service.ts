@@ -335,15 +335,23 @@ async function getOrCreateCredentialConnection(
 async function assignConnectionToPhoneNumber(
   config: ManagedAccountConfig,
   phoneNumberId: string,
-  connectionId: string
+  connectionId: string,
+  outboundVoiceProfileId?: string
 ): Promise<{ success: boolean; error?: string }> {
   console.log(`[E911] Assigning connection ${connectionId} to phone number ${phoneNumberId}...`);
 
   try {
+    const patchBody: Record<string, string> = { connection_id: connectionId };
+    
+    if (outboundVoiceProfileId) {
+      patchBody.external_pin = "";
+      console.log(`[E911] Also assigning outbound voice profile: ${outboundVoiceProfileId}`);
+    }
+
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "PATCH",
       headers: buildHeaders(config),
-      body: JSON.stringify({ connection_id: connectionId }),
+      body: JSON.stringify(patchBody),
     });
 
     if (!response.ok) {
@@ -401,7 +409,7 @@ async function ensurePhoneNumberHasConnection(
     console.log(`[E911] Using existing TeXML Application: ${texmlAppId}`);
   }
 
-  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, texmlAppId);
+  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, texmlAppId, ovpResult.profileId);
   if (!assignResult.success) {
     return { success: false, error: assignResult.error };
   }
