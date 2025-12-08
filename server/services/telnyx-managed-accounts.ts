@@ -45,13 +45,13 @@ export interface GetManagedAccountResult {
 
 export async function createManagedAccount(
   businessName: string,
-  companyId: string
+  companySlug: string
 ): Promise<CreateManagedAccountResult> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
 
-    // Generate masked email using company ID for white-label privacy
-    const maskedEmail = `${ADMIN_EMAIL_BASE}+${companyId}@${ADMIN_DOMAIN}`;
+    // Generate masked email using company slug for white-label privacy
+    const maskedEmail = `${ADMIN_EMAIL_BASE}+${companySlug}@${ADMIN_DOMAIN}`;
 
     const requestBody = {
       business_name: businessName,
@@ -305,8 +305,8 @@ export async function setupCompanyManagedAccount(companyId: string): Promise<{
       };
     }
     
-    // Create managed account using company name and company ID (for masked email)
-    const result = await createManagedAccount(company.name, companyId);
+    // Create managed account using company name and slug (for masked email)
+    const result = await createManagedAccount(company.name, company.slug);
 
     if (!result.success || !result.managedAccount) {
       return { success: false, error: result.error || "Failed to create managed account" };
