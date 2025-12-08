@@ -342,25 +342,29 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
       return countryCode || '-';
     }
     
-    const country = regionInfo.find(r => r.region_type === 'country_code' || r.region_type === 'country')?.region_name;
-    const state = regionInfo.find(r => r.region_type === 'state' || r.region_type === 'administrative_area')?.region_name;
-    const city = regionInfo.find(r => r.region_type === 'locality' || r.region_type === 'city')?.region_name;
-    const rateCenter = regionInfo.find(r => r.region_type === 'rate_center')?.region_name;
+    const typeOrder = ['rate_center', 'locality', 'city', 'administrative_area', 'state', 'country_code', 'country'];
+    
+    const sortedRegions = [...regionInfo].sort((a, b) => {
+      const aIdx = typeOrder.indexOf(a.region_type);
+      const bIdx = typeOrder.indexOf(b.region_type);
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    });
     
     const parts: string[] = [];
+    const seenNames = new Set<string>();
     
-    if (rateCenter) {
-      parts.push(rateCenter);
-    } else if (city) {
-      parts.push(city);
-    }
-    
-    if (state) {
-      parts.push(state);
-    }
-    
-    if (country && country !== 'US' && country !== 'USA') {
-      parts.push(country);
+    for (const region of sortedRegions) {
+      if (!region.region_name) continue;
+      
+      const name = region.region_name.trim();
+      const nameLower = name.toLowerCase();
+      
+      if (seenNames.has(nameLower)) continue;
+      if (region.region_type === 'country_code' && (name === 'US' || name === 'USA' || name === countryCode)) continue;
+      if (region.region_type === 'country' && (name === 'United States' || name === 'USA')) continue;
+      
+      seenNames.add(nameLower);
+      parts.push(name);
     }
     
     return parts.length > 0 ? parts.join(', ') : (countryCode || '-');
