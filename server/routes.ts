@@ -27082,5 +27082,140 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // =====================================================
+  // TELNYX MANAGED ACCOUNTS ENDPOINTS
+  // =====================================================
+
+  // POST /api/telnyx/managed-accounts/setup - Setup managed account for company
+  app.post("/api/telnyx/managed-accounts/setup", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { setupCompanyManagedAccount } = await import("./services/telnyx-managed-accounts");
+      const result = await setupCompanyManagedAccount(user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ 
+        success: true, 
+        managedAccountId: result.managedAccountId,
+        message: "Managed account setup successfully" 
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Managed] Setup error:", error);
+      res.status(500).json({ message: "Failed to setup managed account" });
+    }
+  });
+
+  // GET /api/telnyx/managed-accounts/status - Get managed account status for company
+  app.get("/api/telnyx/managed-accounts/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { getCompanyManagedAccountId, getManagedAccount } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+
+      if (!managedAccountId) {
+        return res.json({ 
+          configured: false, 
+          message: "No managed account configured for this company" 
+        });
+      }
+
+      // Get account details from Telnyx
+      const accountDetails = await getManagedAccount(managedAccountId);
+
+      res.json({ 
+        configured: true, 
+        managedAccountId,
+        accountDetails: accountDetails.success ? accountDetails.managedAccount : null
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Managed] Status error:", error);
+      res.status(500).json({ message: "Failed to get managed account status" });
+    }
+  });
+
+  // GET /api/telnyx/managed-accounts - List all managed accounts (superadmin only)
+  app.get("/api/telnyx/managed-accounts", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { listManagedAccounts } = await import("./services/telnyx-managed-accounts");
+      const result = await listManagedAccounts();
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ accounts: result.accounts });
+    } catch (error: any) {
+      console.error("[Telnyx Managed] List error:", error);
+      res.status(500).json({ message: "Failed to list managed accounts" });
+    }
+  });
+
+  // POST /api/telnyx/managed-accounts/:id/disable - Disable a managed account (superadmin only)
+  app.post("/api/telnyx/managed-accounts/:id/disable", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { id } = req.params;
+      const { disableManagedAccount } = await import("./services/telnyx-managed-accounts");
+      const result = await disableManagedAccount(id);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true, message: "Managed account disabled" });
+    } catch (error: any) {
+      console.error("[Telnyx Managed] Disable error:", error);
+      res.status(500).json({ message: "Failed to disable managed account" });
+    }
+  });
+
+  // POST /api/telnyx/managed-accounts/:id/enable - Enable a managed account (superadmin only)
+  app.post("/api/telnyx/managed-accounts/:id/enable", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const { id } = req.params;
+      const { enableManagedAccount } = await import("./services/telnyx-managed-accounts");
+      const result = await enableManagedAccount(id);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true, message: "Managed account enabled" });
+    } catch (error: any) {
+      console.error("[Telnyx Managed] Enable error:", error);
+      res.status(500).json({ message: "Failed to enable managed account" });
+    }
+  });
+
   return httpServer;
 }

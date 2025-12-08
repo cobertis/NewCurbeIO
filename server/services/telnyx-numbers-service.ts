@@ -163,14 +163,24 @@ export async function purchasePhoneNumber(
       };
     }
 
-    console.log(`[Telnyx Numbers] Purchasing ${phoneNumber} for company ${companyId}`);
+    // Check if company has a managed account
+    const managedAccountId = wallet.telnyxAccountId;
+    
+    console.log(`[Telnyx Numbers] Purchasing ${phoneNumber} for company ${companyId}${managedAccountId ? ` (managed account: ${managedAccountId})` : ''}`);
+
+    // Build headers - include managed account header if available
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    if (managedAccountId) {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
 
     const response = await fetch(`${TELNYX_API_BASE}/number_orders`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         phone_numbers: [
           { phone_number: phoneNumber }
@@ -225,12 +235,19 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
       };
     }
 
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers?filter[connection_id]=${wallet.telnyxAccountId}`, {
+    // Use managed account header to get numbers for this company's account
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+    };
+    
+    if (wallet.telnyxAccountId) {
+      headers["x-managed-account-id"] = wallet.telnyxAccountId;
+    }
+
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Accept": "application/json",
-      },
+      headers,
     });
 
     if (!response.ok) {
