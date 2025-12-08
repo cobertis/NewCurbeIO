@@ -4754,6 +4754,87 @@ export type TelnyxE911Address = typeof telnyxE911Addresses.$inferSelect;
 export type InsertTelnyxE911Address = z.infer<typeof insertTelnyxE911AddressSchema>;
 
 // =====================================================
+// TELEPHONY SETTINGS (WebRTC Infrastructure)
+// =====================================================
+
+// Provisioning status for tracking infrastructure setup
+export const telephonyProvisioningStatuses = [
+  "pending",
+  "provisioning",
+  "completed",
+  "failed",
+  "needs_retry",
+] as const;
+export type TelephonyProvisioningStatus = typeof telephonyProvisioningStatuses[number];
+
+// Telephony Settings - One per company (WebRTC infrastructure)
+export const telephonySettings = pgTable("telephony_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
+  
+  // Telnyx Resource IDs
+  outboundVoiceProfileId: text("outbound_voice_profile_id"),
+  texmlAppId: text("texml_app_id"),
+  credentialConnectionId: text("credential_connection_id"),
+  messagingProfileId: text("messaging_profile_id"),
+  
+  // Provisioning Status
+  provisioningStatus: text("provisioning_status").notNull().default("pending").$type<TelephonyProvisioningStatus>(),
+  provisioningError: text("provisioning_error"),
+  provisionedAt: timestamp("provisioned_at", { withTimezone: true }),
+  
+  // Webhook Configuration
+  webhookBaseUrl: text("webhook_base_url"),
+  
+  // Usage Limits
+  monthlyUsageLimit: numeric("monthly_usage_limit", { precision: 10, scale: 2 }).default("25.00"),
+  usageLimitAction: text("usage_limit_action").default("block").$type<"block" | "notify">(),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("telephony_settings_company_id_idx").on(table.companyId),
+  statusIdx: index("telephony_settings_status_idx").on(table.provisioningStatus),
+}));
+
+// Telephony Credentials - Per user SIP credentials for WebRTC
+export const telephonyCredentials = pgTable("telephony_credentials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  
+  // Telnyx Credential
+  telnyxCredentialId: text("telnyx_credential_id"),
+  sipUsername: text("sip_username").notNull(),
+  sipPassword: text("sip_password").notNull(), // Encrypted in application layer
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("telephony_credentials_company_id_idx").on(table.companyId),
+  userIdIdx: index("telephony_credentials_user_id_idx").on(table.userId),
+  sipUsernameIdx: index("telephony_credentials_sip_username_idx").on(table.sipUsername),
+}));
+
+// Telephony Insert Schemas
+export const insertTelephonySettingsSchema = createInsertSchema(telephonySettings).omit({ 
+  id: true, createdAt: true, updatedAt: true 
+});
+export const insertTelephonyCredentialsSchema = createInsertSchema(telephonyCredentials).omit({ 
+  id: true, createdAt: true, updatedAt: true 
+});
+
+// Telephony Types
+export type TelephonySettings = typeof telephonySettings.$inferSelect;
+export type InsertTelephonySettings = z.infer<typeof insertTelephonySettingsSchema>;
+export type TelephonyCredentials = typeof telephonyCredentials.$inferSelect;
+export type InsertTelephonyCredentials = z.infer<typeof insertTelephonyCredentialsSchema>;
+
+// =====================================================
 // CAMPAIGN WIZARD COMPREHENSIVE PAYLOAD SCHEMA
 // =====================================================
 

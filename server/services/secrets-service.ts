@@ -65,6 +65,19 @@ export class SecretsService {
     return decrypted;
   }
 
+  encryptValue(plaintext: string): string {
+    const { encryptedValue, iv } = this.encrypt(plaintext);
+    return `${iv}:${encryptedValue}`;
+  }
+
+  decryptValue(encryptedBlob: string): string {
+    const [iv, encryptedValue] = encryptedBlob.split(":");
+    if (!iv || !encryptedValue) {
+      throw new Error("Invalid encrypted value format");
+    }
+    return this.decrypt(encryptedValue, iv);
+  }
+
   async storeCredential(
     provider: ApiProvider,
     keyName: string,

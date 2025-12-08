@@ -26214,6 +26214,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ error: "Webhook processing failed" });
     }
   });
+
+  // POST /webhooks/telnyx/voice/inbound - Handle inbound voice calls (TeXML)
+  app.post("/webhooks/telnyx/voice/inbound", async (req: Request, res: Response) => {
+    try {
+      console.log("[Telnyx Voice Inbound] Received call:", {
+        callControlId: req.body.call_control_id,
+        from: req.body.from,
+        to: req.body.to,
+        direction: req.body.direction,
+      });
+
+      // Basic TeXML response - reject with message since WebRTC browser client handles calls
+      const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Joanna">Thank you for calling. This number only accepts outbound calls. Please contact us through our website.</Say>
+  <Hangup />
+</Response>`;
+
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(texmlResponse);
+    } catch (error: any) {
+      console.error("[Telnyx Voice Inbound] Error:", error);
+      res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
+    }
+  });
+
+  // POST /webhooks/telnyx/voice/status - Handle voice call status callbacks
+  app.post("/webhooks/telnyx/voice/status", async (req: Request, res: Response) => {
+    try {
+      const { call_control_id, event_type, call_leg_id, from, to, direction, state } = req.body;
+      
+      console.log("[Telnyx Voice Status] Event:", {
+        eventType: event_type,
+        callControlId: call_control_id,
+        callLegId: call_leg_id,
+        from,
+        to,
+        direction,
+        state,
+      });
+
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("[Telnyx Voice Status] Error:", error);
+      res.status(500).json({ error: "Status callback processing failed" });
+    }
+  });
+
+  // POST /webhooks/telnyx/voice/fallback - Fallback handler for voice errors
+  app.post("/webhooks/telnyx/voice/fallback", async (req: Request, res: Response) => {
+    try {
+      console.error("[Telnyx Voice Fallback] Fallback triggered:", req.body);
+
+      const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Joanna">We're sorry, we are experiencing technical difficulties. Please try again later.</Say>
+  <Hangup />
+</Response>`;
+
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(texmlResponse);
+    } catch (error: any) {
+      console.error("[Telnyx Voice Fallback] Error:", error);
+      res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
+    }
+  });
   const httpServer = createServer(app);
 
   // ==================== WALLET API ====================
@@ -27271,6 +27337,174 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Forbidden" });
       }
+
+  // POST /api/telnyx/provisioning/trigger - Trigger WebRTC infrastructure provisioning
+  app.post("/api/telnyx/provisioning/trigger", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      // Get managed account ID from wallet
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+
+      if (!managedAccountId) {
+        return res.status(400).json({ 
+          message: "No phone system account configured. Please set up your phone system first." 
+        });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      
+      // Check if already provisioned
+      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      if (existingStatus?.status === "completed") {
+        return res.json({ 
+          success: true, 
+          message: "WebRTC infrastructure already provisioned",
+          status: existingStatus 
+        });
+      }
+
+      // Trigger provisioning (async - don't wait)
+      telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId)
+        .then(result => {
+          if (result.success) {
+            console.log("[Provisioning] WebRTC infrastructure provisioned for company:", user.companyId);
+          } else {
+            console.error("[Provisioning] Failed for company:", user.companyId, result.error);
+          }
+        })
+        .catch(err => {
+          console.error("[Provisioning] Error for company:", user.companyId, err);
+        });
+
+      res.json({ 
+        success: true, 
+        message: "WebRTC provisioning started. This may take a few seconds." 
+      });
+    } catch (error: any) {
+      console.error("[Provisioning] Trigger error:", error);
+      res.status(500).json({ message: "Failed to trigger provisioning" });
+    }
+  });
+
+  // GET /api/telnyx/provisioning/status - Get WebRTC provisioning status
+  app.get("/api/telnyx/provisioning/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const status = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+
+      if (!status) {
+        return res.json({ 
+          provisioned: false,
+          status: "not_started",
+          message: "WebRTC infrastructure not yet provisioned" 
+        });
+      }
+
+      res.json({
+        provisioned: status.status === "completed",
+        status: status.status,
+        error: status.error,
+        texmlAppId: status.texmlAppId,
+        provisionedAt: status.provisionedAt,
+      });
+    } catch (error: any) {
+      console.error("[Provisioning] Status error:", error);
+      res.status(500).json({ message: "Failed to get provisioning status" });
+    }
+  });
+
+  // POST /api/telnyx/provisioning/retry - Retry failed provisioning
+  app.post("/api/telnyx/provisioning/retry", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+
+      if (!managedAccountId) {
+        return res.status(400).json({ 
+          message: "No phone system account configured. Please set up your phone system first." 
+        });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      
+      // Check current status
+      const currentStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      if (currentStatus?.status === "provisioning") {
+        return res.status(409).json({ 
+          message: "Provisioning is already in progress. Please wait." 
+        });
+      }
+
+      // Trigger provisioning
+      const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: "WebRTC infrastructure provisioned successfully",
+          texmlAppId: result.texmlAppId,
+          sipCredentials: {
+            username: result.sipCredentials?.username,
+          }
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Provisioning failed" 
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] Retry error:", error);
+      res.status(500).json({ message: "Failed to retry provisioning" });
+    }
+  });
+
+  // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
+  app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId);
+
+      if (!credentials) {
+        return res.status(404).json({ 
+          message: "No SIP credentials found. Please provision WebRTC infrastructure first." 
+        });
+      }
+
+      res.json({
+        username: credentials.username,
+        password: credentials.password,
+        domain: "sip.telnyx.com",
+      });
+    } catch (error: any) {
+      console.error("[SIP Credentials] Error:", error);
+      res.status(500).json({ message: "Failed to get SIP credentials" });
+    }
+  });
       
       const { id } = req.params;
       const { enableManagedAccount } = await import("./services/telnyx-managed-accounts");
