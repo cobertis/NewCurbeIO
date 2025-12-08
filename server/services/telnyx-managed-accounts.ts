@@ -299,8 +299,8 @@ export async function setupCompanyManagedAccount(companyId: string): Promise<{
       };
     }
 
-    // Create managed account using company name
-    const result = await createManagedAccount(company.name);
+    // Create managed account using company name and email
+    const result = await createManagedAccount(company.name, company.email);
 
     if (!result.success || !result.managedAccount) {
       return { success: false, error: result.error || "Failed to create managed account" };
