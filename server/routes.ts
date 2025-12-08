@@ -6968,9 +6968,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log('[SELECT-PLAN] Using Stripe price:', stripePriceId, 'for billing period:', billingPeriod);
       // Create or get Stripe customer with complete company information
       let stripeCustomerId = company.stripeCustomerId;
-      if (!stripeCustomerId) {
+      
+      // Helper function to create a new Stripe customer
+      const createNewStripeCustomer = async () => {
         console.log('[SELECT-PLAN] Creating Stripe customer for company:', company.name);
-        // Get company admin for representative information
         const companyUsers = await storage.getUsersByCompany(companyId);
         const admin = companyUsers.find(u => u.role === 'admin');
         const { createStripeCustomer } = await import("./stripe");
@@ -6981,12 +6982,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           representativeEmail: admin?.email || company.email,
           representativePhone: admin?.phone || company.phone,
         });
-        stripeCustomerId = stripeCustomer.id;
-        // Update company with Stripe customer ID
-        await storage.updateCompany(companyId, { stripeCustomerId });
-        console.log('[SELECT-PLAN] Stripe customer created:', stripeCustomerId);
+        await storage.updateCompany(companyId, { stripeCustomerId: stripeCustomer.id });
+        console.log('[SELECT-PLAN] Stripe customer created:', stripeCustomer.id);
+        return stripeCustomer.id;
+      };
+      
+      if (!stripeCustomerId) {
+        stripeCustomerId = await createNewStripeCustomer();
       } else {
-        console.log('[SELECT-PLAN] Using existing Stripe customer:', stripeCustomerId);
+        // Verify the Stripe customer still exists
+        try {
+          const { default: Stripe } = await import("stripe");
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          await stripe.customers.retrieve(stripeCustomerId);
+          console.log('[SELECT-PLAN] Using existing Stripe customer:', stripeCustomerId);
+        } catch (stripeError) {
+          if (stripeError.code === 'resource_missing') {
+            console.log('[SELECT-PLAN] Stripe customer not found, creating new one');
+            stripeCustomerId = await createNewStripeCustomer();
+          } else {
+            throw stripeError;
+          }
+        }
       }
       // Check if company already has a subscription
       const existingSubscription = await storage.getSubscriptionByCompany(companyId);
