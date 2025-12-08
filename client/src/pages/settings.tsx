@@ -451,7 +451,6 @@ export default function Settings() {
     if (location === "/settings" || location === "/settings/profile") return "profile";
     if (location === "/settings/company") return "company";
     if (location === "/settings/security") return "security";
-    if (location === "/settings/sessions") return "sessions";
     if (location === "/settings/notifications") return "notifications";
     if (location === "/settings/team") return "team";
     if (location === "/settings/webphone") return "webphone";
@@ -473,9 +472,9 @@ export default function Settings() {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["profile", "security", "sessions", "notifications", "automations", "webphone"];
+    const baseTabs = ["profile", "security", "notifications", "automations", "webphone"];
     if (isAdmin) {
-      return ["profile", "company", "team", "security", "sessions", "notifications", "automations", "webphone"];
+      return ["profile", "company", "team", "security", "notifications", "automations", "webphone"];
     }
     return baseTabs;
   }, [isAdmin]);
@@ -1425,10 +1424,6 @@ export default function Settings() {
                 <Shield className="h-4 w-4" />
                 Security
               </TabsTrigger>
-              <TabsTrigger value="sessions" className="gap-2" data-testid="tab-sessions">
-                <Activity className="h-4 w-4" />
-                Sessions
-              </TabsTrigger>
               
               <TabsTrigger value="webphone" className="gap-2" data-testid="tab-webphone">
                 <Phone className="h-4 w-4" />
@@ -1922,10 +1917,8 @@ export default function Settings() {
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            {/* Session Activity Tab */}
-            <TabsContent value="sessions" className="space-y-4">
+              {/* Session Activity - moved from separate tab */}
               <SessionActivityTab />
             </TabsContent>
 
