@@ -1832,46 +1832,24 @@ export default function Settings() {
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label htmlFor="marketingEmails" className="text-base">
-                            Marketing Emails
+                          <Label htmlFor="smsNotifications" className="text-base">
+                            SMS Notifications
                           </Label>
                           <p className="text-sm text-muted-foreground">
-                            Receive emails about new features and updates.
+                            Receive SMS updates about your account activity.
                           </p>
                         </div>
                         <Switch
-                          id="marketingEmails"
-                          checked={preferencesData?.preferences?.marketingEmails || false}
+                          id="smsNotifications"
+                          checked={preferencesData?.preferences?.smsNotifications ?? true}
                           onCheckedChange={(checked) => {
                             updatePreferencesMutation.mutate({
                               ...preferencesData?.preferences,
-                              marketingEmails: checked,
+                              smsNotifications: checked,
                             });
                           }}
                           disabled={updatePreferencesMutation.isPending}
-                          data-testid="switch-marketing-emails"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="invoiceAlerts" className="text-base">
-                            Invoice Alerts
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Receive notifications when new invoices are generated.
-                          </p>
-                        </div>
-                        <Switch
-                          id="invoiceAlerts"
-                          checked={preferencesData?.preferences?.invoiceAlerts ?? true}
-                          onCheckedChange={(checked) => {
-                            updatePreferencesMutation.mutate({
-                              ...preferencesData?.preferences,
-                              invoiceAlerts: checked,
-                            });
-                          }}
-                          disabled={updatePreferencesMutation.isPending}
-                          data-testid="switch-invoice-alerts"
+                          data-testid="switch-sms-notifications"
                         />
                       </div>
                     </div>
