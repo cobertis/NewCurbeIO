@@ -27104,8 +27104,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/telnyx/my-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      
+      // Superadmin can query any company by passing companyId param
+      let targetCompanyId = user.companyId;
+      if (user.role === "superadmin" && req.query.companyId) {
+        targetCompanyId = req.query.companyId as string;
+      }
+      
       const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
-      const result = await getCompanyPhoneNumbers(user.companyId);
+      const result = await getCompanyPhoneNumbers(targetCompanyId);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
@@ -27154,12 +27161,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const user = req.user!;
       
-      if (!user.companyId) {
+      // Superadmin can query any company by passing companyId param
+      let targetCompanyId = user.companyId;
+      if (user.role === "superadmin" && req.query.companyId) {
+        targetCompanyId = req.query.companyId as string;
+      }
+      
+      if (!targetCompanyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
       
       const { getCompanyManagedAccountId, getManagedAccount, clearCompanyTelnyxConfig } = await import("./services/telnyx-managed-accounts");
-      const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+      const managedAccountId = await getCompanyManagedAccountId(targetCompanyId);
 
       if (!managedAccountId) {
         return res.json({ 
@@ -27172,8 +27185,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // If account doesn't exist in Telnyx (disabled/deleted), clear local config and reset
       if (!accountDetails.success || !accountDetails.managedAccount) {
-        console.log(`[Telnyx Managed] Account ${managedAccountId} not found in Telnyx, clearing local config for company ${user.companyId}`);
-        await clearCompanyTelnyxConfig(user.companyId);
+        console.log(`[Telnyx Managed] Account ${managedAccountId} not found in Telnyx, clearing local config for company ${targetCompanyId}`);
+        await clearCompanyTelnyxConfig(targetCompanyId);
         return res.json({ 
           configured: false, 
           message: "Phone system account was disabled. Please set up again." 
@@ -27183,8 +27196,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Check if account is disabled in Telnyx (only check explicit status)
       const account = accountDetails.managedAccount as any;
       if (account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
-        console.log(`[Telnyx Managed] Account ${managedAccountId} is disabled (status: ${account.status}), clearing local config for company ${user.companyId}`);
-        await clearCompanyTelnyxConfig(user.companyId);
+        console.log(`[Telnyx Managed] Account ${managedAccountId} is disabled (status: ${account.status}), clearing local config for company ${targetCompanyId}`);
+        await clearCompanyTelnyxConfig(targetCompanyId);
         return res.json({ 
           configured: false, 
           message: "Phone system account was disabled. Please set up again." 

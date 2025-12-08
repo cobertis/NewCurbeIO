@@ -82,7 +82,7 @@ export default function PhoneSystem() {
     success: boolean;
     numbers?: NumberInfo[];
   }>({
-    queryKey: ["/api/telnyx/numbers"],
+    queryKey: ["/api/telnyx/my-numbers"],
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 

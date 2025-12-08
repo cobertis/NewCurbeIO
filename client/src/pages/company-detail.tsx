@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send, ChevronDown, ChevronUp, RefreshCw, PhoneCall, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +42,7 @@ export default function CompanyDetail() {
   const params = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useTabsState(["details", "users", "billing", "features", "settings", "calendar", "logs"], "details");
+  const [activeTab, setActiveTab] = useTabsState(["details", "users", "billing", "features", "settings", "calendar", "phone", "logs"], "details");
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [assignPlanOpen, setAssignPlanOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
@@ -129,6 +129,38 @@ export default function CompanyDetail() {
   });
 
   const activityLogs = activityLogsData?.logs || [];
+
+  const { data: phoneStatusData, isLoading: isLoadingPhoneStatus, refetch: refetchPhoneStatus } = useQuery<{
+    configured: boolean;
+    managedAccountId?: string;
+    accountDetails?: any;
+    message?: string;
+  }>({
+    queryKey: ["/api/telnyx/managed-accounts/status", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/telnyx/managed-accounts/status?companyId=${companyId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch phone status");
+      return res.json();
+    },
+    enabled: !!companyId && activeTab === "phone",
+  });
+
+  const { data: phoneNumbersData, isLoading: isLoadingPhoneNumbers, refetch: refetchPhoneNumbers } = useQuery<{
+    success: boolean;
+    numbers?: any[];
+  }>({
+    queryKey: ["/api/telnyx/my-numbers", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/telnyx/my-numbers?companyId=${companyId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch phone numbers");
+      return res.json();
+    },
+    enabled: !!companyId && activeTab === "phone" && phoneStatusData?.configured === true,
+  });
 
   const company = companyData?.company;
   const allUsers = usersData?.users || [];
@@ -394,7 +426,7 @@ export default function CompanyDetail() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7" data-testid="tabs-company-details">
+        <TabsList className="grid w-full grid-cols-8" data-testid="tabs-company-details">
           <TabsTrigger value="details" data-testid="tab-details">
             <Building2 className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Details</span>
@@ -419,6 +451,10 @@ export default function CompanyDetail() {
           <TabsTrigger value="calendar" data-testid="tab-calendar">
             <Calendar className="h-4 w-4 mr-1.5" />
             <span className="hidden sm:inline">Calendar</span>
+          </TabsTrigger>
+          <TabsTrigger value="phone" data-testid="tab-phone">
+            <PhoneCall className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Phone</span>
           </TabsTrigger>
           <TabsTrigger value="logs" data-testid="tab-logs">
             <History className="h-4 w-4 mr-1.5" />
@@ -946,6 +982,104 @@ export default function CompanyDetail() {
                   Holidays are automatically applied to scheduling and availability features.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Phone System Tab */}
+        <TabsContent value="phone" className="space-y-4 mt-4">
+          <Card data-testid="card-phone-system">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <PhoneCall className="h-5 w-5" />
+                    Phone System
+                  </CardTitle>
+                  <CardDescription>Manage phone numbers and voice/SMS capabilities</CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    refetchPhoneStatus();
+                    refetchPhoneNumbers();
+                  }}
+                  data-testid="button-refresh-phone"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingPhoneStatus ? (
+                <LoadingSpinner fullScreen={false} />
+              ) : phoneStatusData?.configured ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="text-sm font-medium text-green-800 dark:text-green-200">Phone System Active</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <Label className="text-xs text-muted-foreground">Managed Account ID</Label>
+                      <p className="text-sm font-mono mt-1 break-all">{phoneStatusData.managedAccountId}</p>
+                    </div>
+                    {phoneStatusData.accountDetails?.email && (
+                      <div className="p-4 border rounded-lg">
+                        <Label className="text-xs text-muted-foreground">Account Email</Label>
+                        <p className="text-sm mt-1">{phoneStatusData.accountDetails.email}</p>
+                      </div>
+                    )}
+                    {phoneStatusData.accountDetails?.business_name && (
+                      <div className="p-4 border rounded-lg">
+                        <Label className="text-xs text-muted-foreground">Business Name</Label>
+                        <p className="text-sm mt-1">{phoneStatusData.accountDetails.business_name}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Phone Numbers ({phoneNumbersData?.numbers?.length || 0})
+                    </h4>
+                    {isLoadingPhoneNumbers ? (
+                      <LoadingSpinner fullScreen={false} />
+                    ) : phoneNumbersData?.numbers && phoneNumbersData.numbers.length > 0 ? (
+                      <div className="space-y-2">
+                        {phoneNumbersData.numbers.map((number: any) => (
+                          <div key={number.id || number.phone_number} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium">{formatForDisplay(number.phone_number)}</p>
+                                <p className="text-xs text-muted-foreground">{number.connection_name || "Default Connection"}</p>
+                              </div>
+                            </div>
+                            <Badge variant={number.status === "active" ? "default" : "secondary"}>
+                              {number.status || "Active"}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-muted-foreground">
+                        <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No phone numbers purchased yet</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">Phone system not configured for this company</p>
+                  <p className="text-xs text-muted-foreground mt-1">{phoneStatusData?.message || "Company needs to activate their phone system"}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
