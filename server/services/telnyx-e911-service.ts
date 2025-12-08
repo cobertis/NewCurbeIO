@@ -122,8 +122,9 @@ async function getOrCreateOutboundVoiceProfile(
       headers: buildHeaders(config),
       body: JSON.stringify({
         name: `${companyName} - Outbound Profile`,
-        service_plan: "us",
+        service_plan: "global",
         traffic_type: "conversational",
+        usage_payment_method: "rate-deck",
         concurrent_call_limit: 10,
         daily_spend_limit: "25.00",
         daily_spend_limit_enabled: true,
