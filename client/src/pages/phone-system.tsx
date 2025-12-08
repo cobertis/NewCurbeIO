@@ -183,23 +183,21 @@ export default function PhoneSystem() {
             </p>
           </div>
           {hasAccount && (
-            <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-                <Wallet className="h-4 w-4 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Balance</span>
-                <span className="text-lg font-bold text-slate-900 dark:text-foreground leading-tight" data-testid="text-balance">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-card border border-slate-200 dark:border-border">
+                <Wallet className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-semibold text-slate-900 dark:text-foreground" data-testid="text-balance">
                   {formatCurrency("0", "USD")}
                 </span>
               </div>
               <Button 
+                variant="outline"
                 size="sm" 
-                className="ml-2 h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg"
+                className="h-9 px-3 text-sm"
                 onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
                 data-testid="button-add-funds"
               >
-                <Plus className="h-3 w-3 mr-1" />
+                <Plus className="h-4 w-4 mr-1" />
                 Add Funds
               </Button>
             </div>
