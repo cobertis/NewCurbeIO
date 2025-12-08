@@ -174,25 +174,72 @@ interface BuyNumbersDialogProps {
 function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
   const { toast } = useToast();
   const [countryCode, setCountryCode] = useState("US");
-  const [areaCode, setAreaCode] = useState("");
+  const [numberType, setNumberType] = useState<string>("all");
+  const [searchBy, setSearchBy] = useState<string>("area_code");
+  const [searchValue, setSearchValue] = useState("");
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [selectedNumbers, setSelectedNumbers] = useState<Set<string>>(new Set());
   const [searchTriggered, setSearchTriggered] = useState(false);
 
+  const availableFeatures = [
+    { value: "sms", label: "SMS" },
+    { value: "mms", label: "MMS" },
+    { value: "voice", label: "Voice" },
+    { value: "fax", label: "Fax" },
+  ];
+
   const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: AvailablePhoneNumber[] }>({
-    queryKey: ['/api/telnyx/available-numbers', countryCode, areaCode],
+    queryKey: ['/api/telnyx/available-numbers', countryCode, numberType, searchBy, searchValue, selectedFeatures],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('country_code', countryCode);
       params.append('limit', '20');
-      if (areaCode) {
-        params.append('area_code', areaCode);
+      
+      if (numberType && numberType !== "all") {
+        params.append('phone_number_type', numberType);
       }
+      
+      if (searchValue) {
+        switch (searchBy) {
+          case "area_code":
+            params.append('area_code', searchValue);
+            break;
+          case "starts_with":
+            params.append('starts_with', searchValue);
+            break;
+          case "ends_with":
+            params.append('ends_with', searchValue);
+            break;
+          case "contains":
+            params.append('contains', searchValue);
+            break;
+          case "city":
+            params.append('locality', searchValue);
+            break;
+          case "state":
+            params.append('administrative_area', searchValue);
+            break;
+        }
+      }
+      
+      if (selectedFeatures.length > 0) {
+        params.append('features', selectedFeatures.join(','));
+      }
+      
       const res = await fetch(`/api/telnyx/available-numbers?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch numbers');
       return res.json();
     },
     enabled: searchTriggered && open,
   });
+
+  const toggleFeature = (feature: string) => {
+    setSelectedFeatures(prev => 
+      prev.includes(feature) 
+        ? prev.filter(f => f !== feature)
+        : [...prev, feature]
+    );
+  };
 
   const purchaseMutation = useMutation({
     mutationFn: async (phoneNumber: string) => {
@@ -279,43 +326,119 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
         </div>
 
         {/* Filters Section */}
-        <div className="px-6 py-4 border-b border-border bg-muted/30">
-          <p className="text-sm font-medium mb-3">Select Country And Choose Number</p>
-          <div className="flex items-center gap-3">
-            <Select value={countryCode} onValueChange={setCountryCode}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Country" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="US">United States</SelectItem>
-                <SelectItem value="CA">Canada</SelectItem>
-                <SelectItem value="GB">United Kingdom</SelectItem>
-                <SelectItem value="MX">Mexico</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <div className="flex-1" />
-            
+        <div className="px-6 py-4 border-b border-border bg-muted/30 space-y-4">
+          {/* Row 1: Country, Features, Type */}
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-3">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Country</label>
+              <Select value={countryCode} onValueChange={setCountryCode}>
+                <SelectTrigger className="w-full" data-testid="select-country">
+                  <SelectValue placeholder="Country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="US">United States +1</SelectItem>
+                  <SelectItem value="CA">Canada +1</SelectItem>
+                  <SelectItem value="GB">United Kingdom +44</SelectItem>
+                  <SelectItem value="MX">Mexico +52</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-3">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Features</label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between" data-testid="select-features">
+                    {selectedFeatures.length === 0 ? "Any feature" : `${selectedFeatures.length} selected`}
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48">
+                  {availableFeatures.map((feature) => (
+                    <DropdownMenuItem
+                      key={feature.value}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleFeature(feature.value);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <div className={cn(
+                        "w-4 h-4 border rounded mr-2 flex items-center justify-center",
+                        selectedFeatures.includes(feature.value) ? "bg-primary border-primary" : "border-input"
+                      )}>
+                        {selectedFeatures.includes(feature.value) && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
+                      {feature.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+              <Select value={numberType} onValueChange={setNumberType}>
+                <SelectTrigger className="w-full" data-testid="select-type">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="local">Local</SelectItem>
+                  <SelectItem value="toll_free">Toll-free</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search By</label>
+              <Select value={searchBy} onValueChange={setSearchBy}>
+                <SelectTrigger className="w-full" data-testid="select-search-by">
+                  <SelectValue placeholder="Area code" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="area_code">Area code</SelectItem>
+                  <SelectItem value="starts_with">Starts with</SelectItem>
+                  <SelectItem value="ends_with">Ends with</SelectItem>
+                  <SelectItem value="contains">Contains</SelectItem>
+                  <SelectItem value="city">City/Region</SelectItem>
+                  <SelectItem value="state">State/Province</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {searchBy === "area_code" ? "Area Code" : 
+                 searchBy === "city" ? "City" : 
+                 searchBy === "state" ? "State" : "Value"}
+              </label>
+              <Input
+                placeholder={searchBy === "area_code" ? "e.g. 305" : 
+                            searchBy === "city" ? "e.g. Miami" :
+                            searchBy === "state" ? "e.g. FL" : "Enter value"}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="w-full"
+                data-testid="input-search-value"
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Search Button */}
+          <div className="flex justify-end">
             <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              data-testid="button-filter"
-            >
-              <Search className="h-4 w-4" />
-              Filter
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
               onClick={handleSearch}
               disabled={isLoading}
-              className="gap-2"
+              className="gap-2 bg-primary"
               data-testid="button-search-numbers"
             >
-              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-              Refresh Results
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              Search Numbers
             </Button>
           </div>
         </div>
@@ -376,7 +499,7 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
                         {getCapabilityIcon(number.features)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm">Local</span>
+                        <span className="text-sm capitalize">{number.record_type?.replace('_', ' ') || 'Local'}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-muted-foreground">None</span>

@@ -41,6 +41,8 @@ export interface SearchNumbersParams {
   administrative_area?: string;
   national_destination_code?: string;
   starts_with?: string;
+  ends_with?: string;
+  contains?: string;
   features?: string[];
   limit?: number;
 }
@@ -81,6 +83,14 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     
     if (params.starts_with) {
       queryParams.append("filter[phone_number][starts_with]", params.starts_with);
+    }
+    
+    if (params.ends_with) {
+      queryParams.append("filter[phone_number][ends_with]", params.ends_with);
+    }
+    
+    if (params.contains) {
+      queryParams.append("filter[phone_number][contains]", params.contains);
     }
     
     if (params.features && params.features.length > 0) {

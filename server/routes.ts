@@ -26995,13 +26995,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to delete config" });
     }
   });
-
-
-
   // GET /api/telnyx/available-numbers - Search available phone numbers
   app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
       const { searchAvailableNumbers } = await import("./services/telnyx-numbers-service");
+      
+      // Parse features array from query string
+      let features: string[] | undefined;
+      if (req.query.features) {
+        if (Array.isArray(req.query.features)) {
+          features = req.query.features as string[];
+        } else if (typeof req.query.features === 'string') {
+          features = (req.query.features as string).split(',').filter(f => f.trim());
+        }
+      }
       
       const params = {
         country_code: (req.query.country_code as string) || "US",
@@ -27010,6 +27017,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         administrative_area: req.query.administrative_area as string | undefined,
         national_destination_code: req.query.area_code as string | undefined,
         starts_with: req.query.starts_with as string | undefined,
+        ends_with: req.query.ends_with as string | undefined,
+        contains: req.query.contains as string | undefined,
+        features: features,
         limit: parseInt(req.query.limit as string) || 20,
       };
 
