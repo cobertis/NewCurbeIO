@@ -470,10 +470,7 @@ export default function Settings() {
   // Connect custom domain mutation
   const connectDomainMutation = useMutation({
     mutationFn: async (hostname: string) => {
-      return await apiRequest('/api/organization/domain', {
-        method: 'POST',
-        body: JSON.stringify({ hostname }),
-      });
+      return await apiRequest('POST', '/api/organization/domain', { hostname });
     },
     onSuccess: (data: any) => {
       toast({
@@ -496,9 +493,7 @@ export default function Settings() {
   // Disconnect custom domain mutation
   const disconnectDomainMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/organization/domain', {
-        method: 'DELETE',
-      });
+      return await apiRequest('DELETE', '/api/organization/domain');
     },
     onSuccess: () => {
       toast({
@@ -520,9 +515,7 @@ export default function Settings() {
   // Refresh domain status mutation
   const refreshDomainMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/organization/domain/refresh', {
-        method: 'POST',
-      });
+      return await apiRequest('POST', '/api/organization/domain/refresh');
     },
     onSuccess: () => {
       toast({
