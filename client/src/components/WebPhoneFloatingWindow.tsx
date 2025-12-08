@@ -166,11 +166,12 @@ interface AvailablePhoneNumber {
   }>;
 }
 
-interface BuyNumbersViewProps {
-  onClose: () => void;
+interface BuyNumbersDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-function BuyNumbersView({ onClose }: BuyNumbersViewProps) {
+function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
   const { toast } = useToast();
   const [countryCode, setCountryCode] = useState("US");
   const [areaCode, setAreaCode] = useState("");
@@ -190,7 +191,7 @@ function BuyNumbersView({ onClose }: BuyNumbersViewProps) {
       if (!res.ok) throw new Error('Failed to fetch numbers');
       return res.json();
     },
-    enabled: searchTriggered,
+    enabled: searchTriggered && open,
   });
 
   const purchaseMutation = useMutation({
@@ -201,7 +202,7 @@ function BuyNumbersView({ onClose }: BuyNumbersViewProps) {
       toast({ title: "Success", description: "Phone number purchased successfully!" });
       queryClient.invalidateQueries({ queryKey: ['/api/telnyx/my-numbers'] });
       setSelectedNumbers(new Set());
-      onClose();
+      onOpenChange(false);
     },
     onError: (error: any) => {
       toast({ 
@@ -239,10 +240,10 @@ function BuyNumbersView({ onClose }: BuyNumbersViewProps) {
     const hasMms = features.some(f => f.name === 'mms');
     
     return (
-      <div className="flex items-center gap-1">
-        {hasVoice && <Phone className="h-3.5 w-3.5 text-muted-foreground" />}
-        {hasSms && <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />}
-        {hasMms && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
+      <div className="flex items-center gap-2">
+        {hasVoice && <Phone className="h-4 w-4 text-muted-foreground" />}
+        {hasSms && <MessageSquare className="h-4 w-4 text-muted-foreground" />}
+        {hasMms && <MessageSquare className="h-4 w-4 text-blue-500" />}
       </div>
     );
   };
@@ -257,14 +258,16 @@ function BuyNumbersView({ onClose }: BuyNumbersViewProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-3 mb-1">
-          <ShoppingBag className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <h2 className="text-base font-semibold text-foreground">Buy your Number</h2>
-            <p className="text-xs text-muted-foreground">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col p-0 gap-0">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-border flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+            <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-foreground">Buy your Number</h2>
+            <p className="text-sm text-muted-foreground">
               You need to complete few easy steps to get started with new number.{' '}
               <a href="https://telnyx.com/pricing" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
                 Learn More
@@ -272,147 +275,152 @@ function BuyNumbersView({ onClose }: BuyNumbersViewProps) {
             </p>
           </div>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="px-4 py-3 border-b border-border">
-        <p className="text-sm font-medium mb-2">Select Country And Choose Number</p>
-        <div className="flex items-center gap-2">
-          <Select value={countryCode} onValueChange={setCountryCode}>
-            <SelectTrigger className="w-[140px] h-8">
-              <SelectValue placeholder="Country" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="US">United States</SelectItem>
-              <SelectItem value="CA">Canada</SelectItem>
-              <SelectItem value="GB">United Kingdom</SelectItem>
-              <SelectItem value="MX">Mexico</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Input
-            placeholder="Area Code"
-            value={areaCode}
-            onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, '').slice(0, 3))}
-            className="w-[100px] h-8"
-            data-testid="input-area-code"
-          />
-          
+        {/* Filters Section */}
+        <div className="px-6 py-4 border-b border-border bg-muted/30">
+          <p className="text-sm font-medium mb-3">Select Country And Choose Number</p>
+          <div className="flex items-center gap-3">
+            <Select value={countryCode} onValueChange={setCountryCode}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="US">United States</SelectItem>
+                <SelectItem value="CA">Canada</SelectItem>
+                <SelectItem value="GB">United Kingdom</SelectItem>
+                <SelectItem value="MX">Mexico</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <div className="flex-1" />
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              data-testid="button-filter"
+            >
+              <Search className="h-4 w-4" />
+              Filter
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSearch}
+              disabled={isLoading}
+              className="gap-2"
+              data-testid="button-search-numbers"
+            >
+              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+              Refresh Results
+            </Button>
+          </div>
+        </div>
+
+        {/* Results Table */}
+        <div className="flex-1 overflow-y-auto min-h-[300px]">
+          {!searchTriggered ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+              <Search className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                Click "Refresh Results" to search for available numbers
+              </p>
+            </div>
+          ) : isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <Loader2 className="h-10 w-10 animate-spin text-blue-500 mb-3" />
+              <p className="text-muted-foreground">Searching numbers...</p>
+            </div>
+          ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
+            <table className="w-full">
+              <thead className="bg-muted/50 sticky top-0">
+                <tr className="text-left text-sm text-muted-foreground">
+                  <th className="px-6 py-3 font-medium">Numbers</th>
+                  <th className="px-4 py-3 font-medium">Capabilities</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">Address Requirement</th>
+                  <th className="px-4 py-3 font-medium text-right">Monthly Price</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {numbersData.numbers.map((number) => {
+                  const isSelected = selectedNumbers.has(number.phone_number);
+                  return (
+                    <tr
+                      key={number.phone_number}
+                      onClick={() => toggleNumberSelection(number.phone_number)}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        isSelected ? "bg-blue-50 dark:bg-blue-950/50" : "hover:bg-muted/30"
+                      )}
+                      data-testid={`number-row-${number.phone_number}`}
+                    >
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                            isSelected ? "bg-blue-500 border-blue-500" : "border-muted-foreground"
+                          )}>
+                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                          </div>
+                          <div>
+                            <p className="font-medium">{formatPhoneInput(number.phone_number)}</p>
+                            <p className="text-xs text-muted-foreground">{getRegionInfo(number.region_information)}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {getCapabilityIcon(number.features)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm">Local</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-muted-foreground">None</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-medium">${number.cost_information.monthly_cost}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+              <Phone className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No numbers found for this area code</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-background">
+          <span className="text-sm text-muted-foreground">
+            {selectedNumbers.size} Number selected
+          </span>
           <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSearch}
-            disabled={isLoading}
-            className="h-8"
-            data-testid="button-search-numbers"
+            onClick={handlePurchase}
+            disabled={selectedNumbers.size === 0 || purchaseMutation.isPending}
+            className="bg-blue-500 hover:bg-blue-600 gap-2"
+            data-testid="button-proceed-to-buy"
           >
-            <RefreshCw className={cn("h-4 w-4 mr-1", isLoading && "animate-spin")} />
-            {isLoading ? "Searching..." : "Refresh Results"}
+            {purchaseMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Purchasing...
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-4 w-4" />
+                Proceed to Buy
+              </>
+            )}
           </Button>
         </div>
-      </div>
-
-      {/* Results Table */}
-      <div className="flex-1 overflow-y-auto">
-        {!searchTriggered ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <Search className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">
-              Click "Refresh Results" to search for available numbers
-            </p>
-          </div>
-        ) : isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
-            <p className="text-sm text-muted-foreground">Searching numbers...</p>
-          </div>
-        ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
-          <div className="divide-y divide-border">
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
-              <div className="col-span-4">Numbers</div>
-              <div className="col-span-2">Capabilities</div>
-              <div className="col-span-2">Type</div>
-              <div className="col-span-2">Requirements</div>
-              <div className="col-span-2 text-right">Monthly Price</div>
-            </div>
-            
-            {/* Numbers List */}
-            {numbersData.numbers.map((number) => {
-              const isSelected = selectedNumbers.has(number.phone_number);
-              return (
-                <div
-                  key={number.phone_number}
-                  onClick={() => toggleNumberSelection(number.phone_number)}
-                  className={cn(
-                    "grid grid-cols-12 gap-2 px-4 py-2.5 cursor-pointer transition-colors",
-                    isSelected ? "bg-blue-50 dark:bg-blue-950" : "hover:bg-muted/30"
-                  )}
-                  data-testid={`number-row-${number.phone_number}`}
-                >
-                  <div className="col-span-4">
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
-                        isSelected ? "bg-blue-500 border-blue-500" : "border-muted-foreground"
-                      )}>
-                        {isSelected && <Check className="h-2.5 w-2.5 text-white" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{formatPhoneInput(number.phone_number)}</p>
-                        <p className="text-[10px] text-muted-foreground">{getRegionInfo(number.region_information)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-span-2 flex items-center">
-                    {getCapabilityIcon(number.features)}
-                  </div>
-                  <div className="col-span-2 flex items-center">
-                    <span className="text-xs">Local</span>
-                  </div>
-                  <div className="col-span-2 flex items-center">
-                    <span className="text-xs text-muted-foreground">None</span>
-                  </div>
-                  <div className="col-span-2 flex items-center justify-end">
-                    <span className="text-sm font-medium">${number.cost_information.monthly_cost}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center px-6">
-            <Phone className="h-10 w-10 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">No numbers found for this area code</p>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          {selectedNumbers.size} Number selected
-        </span>
-        <Button
-          onClick={handlePurchase}
-          disabled={selectedNumbers.size === 0 || purchaseMutation.isPending}
-          className="bg-blue-500 hover:bg-blue-600"
-          data-testid="button-proceed-to-buy"
-        >
-          {purchaseMutation.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Purchasing...
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              Proceed to Buy
-            </>
-          )}
-        </Button>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -834,58 +842,54 @@ export function WebPhoneFloatingWindow() {
         </div>
         
         <div className="flex-1 flex flex-col overflow-hidden no-drag">
-          {/* No Phone Account Screen - Buy Numbers View or Initial Prompt */}
+          {/* No Phone Account Screen */}
           {!sipExtension ? (
-            showBuyNumbers ? (
-              <BuyNumbersView onClose={() => setShowBuyNumbers(false)} />
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center">
-                {/* Shopping Bag Icon */}
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-6">
-                  <ShoppingBag className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
-                </div>
-                
-                {/* Title */}
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
-                  Get Started
-                </h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Purchase a phone number to start making calls
-                </p>
-                
-                {/* Purchase Button - Opens In-App Buy View */}
-                <Button
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full flex items-center gap-2"
-                  onClick={() => setShowBuyNumbers(true)}
-                  data-testid="button-purchase-phone"
-                >
-                  <ShoppingBag className="h-4 w-4" />
-                  Purchase Now
-                </Button>
-                
-                {/* Divider */}
-                <div className="flex items-center w-full my-6">
-                  <div className="flex-1 border-t border-border" />
-                  <span className="px-4 text-sm text-muted-foreground">Or</span>
-                  <div className="flex-1 border-t border-border" />
-                </div>
-                
-                {/* Transfer Option */}
-                <p className="text-sm text-muted-foreground mb-3">
-                  Do you want transfer your number ?
-                </p>
-                
-                <Button
-                  variant="outline"
-                  className="rounded-full flex items-center gap-2"
-                  onClick={() => window.open('https://telnyx.com/number-porting', '_blank')}
-                  data-testid="button-learn-more-transfer"
-                >
-                  Learn More
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
+            <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center">
+              {/* Shopping Bag Icon */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                <ShoppingBag className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
               </div>
-            )
+              
+              {/* Title */}
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
+                Get Started
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                Purchase a phone number to start making calls
+              </p>
+              
+              {/* Purchase Button - Opens Dialog */}
+              <Button
+                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full flex items-center gap-2"
+                onClick={() => setShowBuyNumbers(true)}
+                data-testid="button-purchase-phone"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Purchase Now
+              </Button>
+              
+              {/* Divider */}
+              <div className="flex items-center w-full my-6">
+                <div className="flex-1 border-t border-border" />
+                <span className="px-4 text-sm text-muted-foreground">Or</span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+              
+              {/* Transfer Option */}
+              <p className="text-sm text-muted-foreground mb-3">
+                Do you want transfer your number ?
+              </p>
+              
+              <Button
+                variant="outline"
+                className="rounded-full flex items-center gap-2"
+                onClick={() => window.open('https://telnyx.com/number-porting', '_blank')}
+                data-testid="button-learn-more-transfer"
+              >
+                Learn More
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
           ) : currentCall ? (
               /* Active Call Screen - No bottom navigation */
               <div className="flex-1 overflow-y-auto">
@@ -1477,6 +1481,12 @@ export function WebPhoneFloatingWindow() {
             )}
         </div>
       </div>
+      
+      {/* Buy Numbers Dialog - Full Screen Modal */}
+      <BuyNumbersDialog 
+        open={showBuyNumbers} 
+        onOpenChange={setShowBuyNumbers} 
+      />
     </>
   );
 }
