@@ -361,6 +361,39 @@ export async function createDynamicEmergencyEndpoint(
 }
 
 /**
+ * Get phone number from Telnyx API using phone number ID
+ */
+async function getPhoneNumberFromTelnyx(
+  config: ManagedAccountConfig,
+  phoneNumberId: string
+): Promise<{ success: boolean; phoneNumber?: string; error?: string }> {
+  try {
+    const response = await fetch(`https://api.telnyx.com/v2/phone_numbers/${phoneNumberId}`, {
+      method: "GET",
+      headers: buildHeaders(config),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[E911] Failed to get phone number: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to get phone number: ${response.status}` };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      phoneNumber: result.data?.phone_number,
+    };
+  } catch (error) {
+    console.error("[E911] Get phone number error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get phone number",
+    };
+  }
+}
+
+/**
  * Full E911 registration flow:
  * 1. Create Dynamic Emergency Address
  * 2. Wait for activation
@@ -376,14 +409,20 @@ export async function registerE911ForNumber(
   addressId?: string;
   error?: string;
 }> {
-  const [phoneRecord] = await db
-    .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
-    .from(telnyxPhoneNumbers)
-    .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
-
-  if (!phoneRecord) {
-    return { success: false, error: "Phone number not found" };
+  const config = await getManagedAccountConfig(companyId);
+  
+  if (!config) {
+    return { success: false, error: "Phone system not configured for this company" };
   }
+
+  // Get phone number from Telnyx API
+  const phoneResult = await getPhoneNumberFromTelnyx(config, phoneNumberId);
+  
+  if (!phoneResult.success || !phoneResult.phoneNumber) {
+    return { success: false, error: phoneResult.error || "Phone number not found" };
+  }
+
+  console.log(`[E911] Registering E911 for phone: ${phoneResult.phoneNumber}`);
 
   const addressResult = await createDynamicEmergencyAddress(companyId, addressData);
   
@@ -393,7 +432,7 @@ export async function registerE911ForNumber(
 
   const endpointResult = await createDynamicEmergencyEndpoint(
     companyId,
-    phoneRecord.phoneNumber,
+    phoneResult.phoneNumber,
     addressData.callerName,
     addressResult.addressId
   );
@@ -402,16 +441,21 @@ export async function registerE911ForNumber(
     return { success: false, error: endpointResult.error || "Failed to create emergency endpoint" };
   }
 
-  await db
-    .update(telnyxPhoneNumbers)
-    .set({
-      e911Enabled: true,
-      e911AddressId: addressResult.addressId,
-      updatedAt: new Date(),
-    })
-    .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+  // Try to update local database if record exists
+  try {
+    await db
+      .update(telnyxPhoneNumbers)
+      .set({
+        e911Enabled: true,
+        e911AddressId: addressResult.addressId,
+        updatedAt: new Date(),
+      })
+      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+  } catch (dbError) {
+    console.log(`[E911] Note: Could not update local DB record (may not exist)`);
+  }
 
-  console.log(`[E911] E911 fully configured for phone ${phoneRecord.phoneNumber}`);
+  console.log(`[E911] E911 fully configured for phone ${phoneResult.phoneNumber}`);
 
   return {
     success: true,
