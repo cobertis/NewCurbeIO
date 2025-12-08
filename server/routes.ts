@@ -27167,7 +27167,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "No managed account configured for this company" 
         });
       }
-
       // Get account details from Telnyx
       const accountDetails = await getManagedAccount(managedAccountId);
 
@@ -27181,14 +27180,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
 
-      // Check if account is disabled in Telnyx
+      // Check if account is disabled in Telnyx (no api_key means disabled)
       const account = accountDetails.managedAccount as any;
-      if (account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
-        console.log(`[Telnyx Managed] Account ${managedAccountId} is ${account.status}, clearing local config for company ${user.companyId}`);
+      if (!account.api_key || account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
+        console.log(`[Telnyx Managed] Account ${managedAccountId} is disabled (api_key: ${!!account.api_key}, status: ${account.status}), clearing local config for company ${user.companyId}`);
         await clearCompanyTelnyxConfig(user.companyId);
         return res.json({ 
           configured: false, 
-          message: `Phone system account was ${account.status}. Please set up again.` 
+          message: "Phone system account was disabled. Please set up again." 
         });
       }
 
