@@ -62,9 +62,6 @@ function buildHeaders(config: ManagedAccountConfig): Record<string, string> {
   };
 }
 
-/**
- * Get phone number from Telnyx API using phone number ID
- */
 async function getPhoneNumberFromTelnyx(
   config: ManagedAccountConfig,
   phoneNumberId: string
@@ -95,10 +92,39 @@ async function getPhoneNumberFromTelnyx(
   }
 }
 
-/**
- * Creates an Emergency Address in Telnyx using the correct API: POST /v2/addresses
- * This creates a static E911 address that can be assigned to phone numbers
- */
+interface TelnyxSuggestion {
+  field: string;
+  value: string;
+}
+
+function parseTelnyxSuggestions(errors: any[]): TelnyxSuggestion[] {
+  const suggestions: TelnyxSuggestion[] = [];
+  
+  for (const error of errors) {
+    if (error.title === "Suggestion" && error.source?.pointer) {
+      const field = error.source.pointer.replace(/^\//, '');
+      suggestions.push({
+        field,
+        value: error.detail || '',
+      });
+    }
+  }
+  
+  return suggestions;
+}
+
+function applySuggestions(requestBody: Record<string, any>, suggestions: TelnyxSuggestion[]): Record<string, any> {
+  const correctedBody = { ...requestBody };
+  
+  for (const suggestion of suggestions) {
+    if (suggestion.value !== undefined) {
+      correctedBody[suggestion.field] = suggestion.value;
+    }
+  }
+  
+  return correctedBody;
+}
+
 export async function createEmergencyAddress(
   companyId: string,
   addressData: E911AddressData,
@@ -112,17 +138,11 @@ export async function createEmergencyAddress(
     }
 
     console.log(`[E911] Creating emergency address for company ${companyId}`);
-    console.log(`[E911] Address data:`, {
-      streetAddress: addressData.streetAddress,
-      locality: addressData.locality,
-      administrativeArea: addressData.administrativeArea,
-      postalCode: addressData.postalCode,
-    });
 
     const requestBody: Record<string, any> = {
-      street_address: addressData.streetAddress,
-      locality: addressData.locality,
-      administrative_area: addressData.administrativeArea,
+      street_address: addressData.streetAddress.toUpperCase(),
+      locality: addressData.locality.toUpperCase(),
+      administrative_area: addressData.administrativeArea.toUpperCase(),
       postal_code: addressData.postalCode,
       country_code: addressData.countryCode || "US",
       phone_number: phoneNumber,
@@ -132,29 +152,59 @@ export async function createEmergencyAddress(
 
     if (addressData.callerName.includes(' ')) {
       const nameParts = addressData.callerName.split(' ');
-      requestBody.first_name = nameParts[0];
-      requestBody.last_name = nameParts.slice(1).join(' ');
+      requestBody.first_name = nameParts[0].toUpperCase();
+      requestBody.last_name = nameParts.slice(1).join(' ').toUpperCase();
     } else {
-      requestBody.business_name = addressData.callerName;
+      requestBody.business_name = addressData.callerName.toUpperCase();
     }
 
     if (addressData.extendedAddress) {
-      requestBody.extended_address = addressData.extendedAddress;
+      requestBody.extended_address = addressData.extendedAddress.toUpperCase();
     }
 
-    console.log(`[E911] Request body:`, requestBody);
+    console.log(`[E911] Initial request body:`, requestBody);
 
-    const response = await fetch(`${TELNYX_API_BASE}/addresses`, {
+    let response = await fetch(`${TELNYX_API_BASE}/addresses`, {
       method: "POST",
       headers: buildHeaders(config),
       body: JSON.stringify(requestBody),
     });
 
-    const responseText = await response.text();
+    let responseText = await response.text();
     console.log(`[E911] Response status: ${response.status}`);
-    console.log(`[E911] Response body: ${responseText}`);
+
+    if (response.status === 422) {
+      try {
+        const errorData = JSON.parse(responseText);
+        
+        if (errorData.errors && errorData.errors.some((e: any) => e.title === "Suggestion")) {
+          console.log(`[E911] Received address suggestions from Telnyx, applying corrections...`);
+          
+          const suggestions = parseTelnyxSuggestions(errorData.errors);
+          console.log(`[E911] Suggestions:`, suggestions);
+          
+          const correctedBody = applySuggestions(requestBody, suggestions);
+          correctedBody.validate_address = false;
+          
+          console.log(`[E911] Corrected request body:`, correctedBody);
+          
+          response = await fetch(`${TELNYX_API_BASE}/addresses`, {
+            method: "POST",
+            headers: buildHeaders(config),
+            body: JSON.stringify(correctedBody),
+          });
+          
+          responseText = await response.text();
+          console.log(`[E911] Retry response status: ${response.status}`);
+          console.log(`[E911] Retry response body: ${responseText}`);
+        }
+      } catch (parseError) {
+        console.error(`[E911] Failed to parse 422 response:`, parseError);
+      }
+    }
 
     if (!response.ok) {
+      console.log(`[E911] Error response body: ${responseText}`);
       try {
         const errorData = JSON.parse(responseText);
         const errorMessages = errorData.errors?.map((e: any) => e.detail || e.title).join(', ');
@@ -182,10 +232,6 @@ export async function createEmergencyAddress(
   }
 }
 
-/**
- * Enable E911 on a phone number using Telnyx enable_emergency action
- * Uses POST /v2/phone_numbers/{id}/actions/enable_emergency
- */
 async function enableE911OnPhoneNumber(
   config: ManagedAccountConfig,
   phoneNumberId: string,
@@ -230,12 +276,6 @@ async function enableE911OnPhoneNumber(
   }
 }
 
-/**
- * Full E911 registration flow:
- * 1. Create Emergency Address using POST /v2/addresses
- * 2. Enable E911 on the phone number using POST /v2/phone_numbers/{id}/actions/enable_emergency
- * 3. Update local database
- */
 export async function registerE911ForNumber(
   companyId: string,
   phoneNumberId: string,
@@ -292,9 +332,6 @@ export async function registerE911ForNumber(
   };
 }
 
-/**
- * Gets existing emergency addresses for a company
- */
 export async function getEmergencyAddresses(companyId: string): Promise<{
   success: boolean;
   addresses?: Array<{
