@@ -281,67 +281,66 @@ export default function PhoneSystem() {
           </div>
         ) : (
           <div className="space-y-5">
-            {/* Compact Status Cards - E911 & A2P */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* E911 Card - Compact */}
+            {/* 3 Status Cards - Same Style */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* E911 Card */}
               <div 
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-sm ${
-                  hasE911Issues 
-                    ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800' 
-                    : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800'
-                }`}
+                className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card cursor-pointer transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
                 onClick={() => toast({ title: "E911 Configuration", description: "E911 configuration will be available in a future update." })}
                 data-testid="button-configure-e911-compliance"
               >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                   hasE911Issues ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'
                 }`}>
-                  <MapPin className={`h-4 w-4 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 dark:text-foreground">E911 Emergency</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911</p>
                   <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">
-                    {hasE911Issues ? 'Configure emergency address' : 'Properly configured'}
+                    {hasE911Issues ? 'Not configured' : 'Configured'}
                   </p>
                 </div>
                 {hasE911Issues ? (
-                  <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full shrink-0">
-                    <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
-                    Action
-                  </span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
                 ) : (
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                 )}
               </div>
 
-              {/* A2P Card - Compact */}
-              <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 opacity-60">
-                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                  <MessageSquare className="h-4 w-4 text-slate-400" />
+              {/* A2P 10DLC Card */}
+              <div className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card opacity-50 cursor-not-allowed">
+                <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                  <MessageSquare className="h-5 w-5 text-slate-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">A2P 10DLC</p>
-                  <p className="text-xs text-slate-400 dark:text-muted-foreground truncate">Brand registration</p>
+                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">A2P 10DLC</p>
+                  <p className="text-xs text-slate-400 dark:text-muted-foreground truncate">Coming soon</p>
                 </div>
-                <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full shrink-0">
-                  Soon
-                </span>
+                <Clock className="h-4 w-4 text-slate-300 shrink-0" />
+              </div>
+
+              {/* My Numbers Card */}
+              <div 
+                className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card cursor-pointer transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
+                onClick={() => setShowBuyNumber(true)}
+                data-testid="button-add-line"
+              >
+                <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                  <Phone className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">My Numbers</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">{numbersCount} active</p>
+                </div>
+                <Plus className="h-4 w-4 text-indigo-500 shrink-0" />
               </div>
             </div>
 
-            {/* Phone Lines Card - Full Width with Numbers */}
-            <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                    <Phone className="h-4 w-4 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Phone Lines</p>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground">{numbersCount} active</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
+            {/* Phone Numbers List */}
+            {(numbersData?.numbers && numbersData.numbers.length > 0) || isLoadingNumbers ? (
+              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Phone Lines</p>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -352,79 +351,53 @@ export default function PhoneSystem() {
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 text-xs px-2.5 rounded-lg"
-                    onClick={() => setShowBuyNumber(true)}
-                    data-testid="button-add-line"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add
-                  </Button>
                 </div>
-              </div>
 
-              {isLoadingNumbers ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                </div>
-              ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
-                <div className="divide-y divide-slate-100 dark:divide-border">
-                  {numbersData.numbers.map((number) => (
-                    <div 
-                      key={number.phone_number}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => toast({ title: formatPhoneDisplay(number.phone_number), description: "Phone number details coming soon." })}
-                      data-testid={`row-number-${number.phone_number}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                          <Phone className="h-3.5 w-3.5 text-slate-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-900 dark:text-foreground">
-                            {formatPhoneDisplay(number.phone_number)}
-                          </p>
-                          <p className="text-[11px] text-slate-400 dark:text-muted-foreground">
-                            {number.phone_number_type ? number.phone_number_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Local'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {!number.emergency_enabled && (
-                          <span className="text-[9px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">E911</span>
-                        )}
-                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
-                          number.status === 'active' 
-                            ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
-                            : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
-                        }`}>
-                          {number.status === 'active' ? 'Active' : number.status}
-                        </span>
-                        <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-1" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-muted flex items-center justify-center mx-auto mb-3">
-                    <Phone className="h-5 w-5 text-slate-400" />
+                {isLoadingNumbers ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-muted-foreground mb-1">No phone lines yet</p>
-                  <p className="text-xs text-slate-400 mb-4">Get your first number to start calling</p>
-                  <Button 
-                    size="sm"
-                    onClick={() => setShowBuyNumber(true)} 
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg h-8 px-4 text-xs"
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1" />
-                    Get Number
-                  </Button>
-                </div>
-              )}
-            </Card>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-border">
+                    {numbersData?.numbers?.map((number) => (
+                      <div 
+                        key={number.phone_number}
+                        className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => toast({ title: formatPhoneDisplay(number.phone_number), description: "Phone number details coming soon." })}
+                        data-testid={`row-number-${number.phone_number}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                            <Phone className="h-3.5 w-3.5 text-slate-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 dark:text-foreground">
+                              {formatPhoneDisplay(number.phone_number)}
+                            </p>
+                            <p className="text-[11px] text-slate-400 dark:text-muted-foreground">
+                              {number.phone_number_type ? number.phone_number_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Local'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {!number.emergency_enabled && (
+                            <span className="text-[9px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">E911</span>
+                          )}
+                          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
+                            number.status === 'active' 
+                              ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
+                              : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
+                          }`}>
+                            {number.status === 'active' ? 'Active' : number.status}
+                          </span>
+                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-1" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            ) : null}
 
             {/* Advanced Settings Collapsible */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
