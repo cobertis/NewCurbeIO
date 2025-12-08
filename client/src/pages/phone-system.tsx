@@ -296,12 +296,12 @@ export default function PhoneSystem() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911</p>
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">
-                    {hasE911Issues ? 'Not configured' : 'Configured'}
-                  </p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">Emergency address</p>
                 </div>
                 {hasE911Issues ? (
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  <span className="text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full shrink-0">
+                    Pending
+                  </span>
                 ) : (
                   <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                 )}
