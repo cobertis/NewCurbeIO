@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, Search, ShoppingBag, ExternalLink, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -7,9 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatPhoneInput } from '@shared/phone';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 function formatCallerNumber(phoneNumber: string): string {
   const digits = phoneNumber.replace(/\D/g, '');
@@ -146,6 +149,273 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
   );
 }
 
+interface AvailablePhoneNumber {
+  phone_number: string;
+  record_type: string;
+  best_effort: boolean;
+  reservable: boolean;
+  cost_information: {
+    currency: string;
+    monthly_cost: string;
+    upfront_cost: string;
+  };
+  features: Array<{ name: string }>;
+  region_information: Array<{
+    region_name: string;
+    region_type: string;
+  }>;
+}
+
+interface BuyNumbersViewProps {
+  onClose: () => void;
+}
+
+function BuyNumbersView({ onClose }: BuyNumbersViewProps) {
+  const { toast } = useToast();
+  const [countryCode, setCountryCode] = useState("US");
+  const [areaCode, setAreaCode] = useState("");
+  const [selectedNumbers, setSelectedNumbers] = useState<Set<string>>(new Set());
+  const [searchTriggered, setSearchTriggered] = useState(false);
+
+  const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: AvailablePhoneNumber[] }>({
+    queryKey: ['/api/telnyx/available-numbers', countryCode, areaCode],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append('country_code', countryCode);
+      params.append('limit', '20');
+      if (areaCode) {
+        params.append('area_code', areaCode);
+      }
+      const res = await fetch(`/api/telnyx/available-numbers?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch numbers');
+      return res.json();
+    },
+    enabled: searchTriggered,
+  });
+
+  const purchaseMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      return apiRequest("POST", "/api/telnyx/purchase-number", { phoneNumber });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Phone number purchased successfully!" });
+      queryClient.invalidateQueries({ queryKey: ['/api/telnyx/my-numbers'] });
+      setSelectedNumbers(new Set());
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to purchase number",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const handleSearch = () => {
+    setSearchTriggered(true);
+    refetch();
+  };
+
+  const toggleNumberSelection = (phoneNumber: string) => {
+    const newSelection = new Set(selectedNumbers);
+    if (newSelection.has(phoneNumber)) {
+      newSelection.delete(phoneNumber);
+    } else {
+      newSelection.add(phoneNumber);
+    }
+    setSelectedNumbers(newSelection);
+  };
+
+  const handlePurchase = () => {
+    if (selectedNumbers.size === 0) return;
+    const firstNumber = Array.from(selectedNumbers)[0];
+    purchaseMutation.mutate(firstNumber);
+  };
+
+  const getCapabilityIcon = (features: Array<{ name: string }>) => {
+    const hasVoice = features.some(f => f.name === 'voice');
+    const hasSms = features.some(f => f.name === 'sms');
+    const hasMms = features.some(f => f.name === 'mms');
+    
+    return (
+      <div className="flex items-center gap-1">
+        {hasVoice && <Phone className="h-3.5 w-3.5 text-muted-foreground" />}
+        {hasSms && <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />}
+        {hasMms && <MessageSquare className="h-3.5 w-3.5 text-blue-500" />}
+      </div>
+    );
+  };
+
+  const getRegionInfo = (regionInfo: Array<{ region_name: string; region_type: string }>) => {
+    const state = regionInfo.find(r => r.region_type === 'state')?.region_name;
+    const rateCenter = regionInfo.find(r => r.region_type === 'rate_center')?.region_name;
+    if (rateCenter && state) {
+      return `${rateCenter}, ${state}`;
+    }
+    return state || 'US';
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-3 mb-1">
+          <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Buy your Number</h2>
+            <p className="text-xs text-muted-foreground">
+              You need to complete few easy steps to get started with new number.{' '}
+              <a href="https://telnyx.com/pricing" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                Learn More
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="px-4 py-3 border-b border-border">
+        <p className="text-sm font-medium mb-2">Select Country And Choose Number</p>
+        <div className="flex items-center gap-2">
+          <Select value={countryCode} onValueChange={setCountryCode}>
+            <SelectTrigger className="w-[140px] h-8">
+              <SelectValue placeholder="Country" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="US">United States</SelectItem>
+              <SelectItem value="CA">Canada</SelectItem>
+              <SelectItem value="GB">United Kingdom</SelectItem>
+              <SelectItem value="MX">Mexico</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Input
+            placeholder="Area Code"
+            value={areaCode}
+            onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, '').slice(0, 3))}
+            className="w-[100px] h-8"
+            data-testid="input-area-code"
+          />
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSearch}
+            disabled={isLoading}
+            className="h-8"
+            data-testid="button-search-numbers"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-1", isLoading && "animate-spin")} />
+            {isLoading ? "Searching..." : "Refresh Results"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Results Table */}
+      <div className="flex-1 overflow-y-auto">
+        {!searchTriggered ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <Search className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">
+              Click "Refresh Results" to search for available numbers
+            </p>
+          </div>
+        ) : isLoading ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
+            <p className="text-sm text-muted-foreground">Searching numbers...</p>
+          </div>
+        ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
+          <div className="divide-y divide-border">
+            {/* Table Header */}
+            <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+              <div className="col-span-4">Numbers</div>
+              <div className="col-span-2">Capabilities</div>
+              <div className="col-span-2">Type</div>
+              <div className="col-span-2">Requirements</div>
+              <div className="col-span-2 text-right">Monthly Price</div>
+            </div>
+            
+            {/* Numbers List */}
+            {numbersData.numbers.map((number) => {
+              const isSelected = selectedNumbers.has(number.phone_number);
+              return (
+                <div
+                  key={number.phone_number}
+                  onClick={() => toggleNumberSelection(number.phone_number)}
+                  className={cn(
+                    "grid grid-cols-12 gap-2 px-4 py-2.5 cursor-pointer transition-colors",
+                    isSelected ? "bg-blue-50 dark:bg-blue-950" : "hover:bg-muted/30"
+                  )}
+                  data-testid={`number-row-${number.phone_number}`}
+                >
+                  <div className="col-span-4">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                        isSelected ? "bg-blue-500 border-blue-500" : "border-muted-foreground"
+                      )}>
+                        {isSelected && <Check className="h-2.5 w-2.5 text-white" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{formatPhoneInput(number.phone_number)}</p>
+                        <p className="text-[10px] text-muted-foreground">{getRegionInfo(number.region_information)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    {getCapabilityIcon(number.features)}
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <span className="text-xs">Local</span>
+                  </div>
+                  <div className="col-span-2 flex items-center">
+                    <span className="text-xs text-muted-foreground">None</span>
+                  </div>
+                  <div className="col-span-2 flex items-center justify-end">
+                    <span className="text-sm font-medium">${number.cost_information.monthly_cost}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <Phone className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">No numbers found for this area code</p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">
+          {selectedNumbers.size} Number selected
+        </span>
+        <Button
+          onClick={handlePurchase}
+          disabled={selectedNumbers.size === 0 || purchaseMutation.isPending}
+          className="bg-blue-500 hover:bg-blue-600"
+          data-testid="button-proceed-to-buy"
+        >
+          {purchaseMutation.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Purchasing...
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Proceed to Buy
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 interface BottomNavigationProps {
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -242,6 +512,7 @@ export function WebPhoneFloatingWindow() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
   const [callFilter, setCallFilter] = useState<'all' | 'missed' | 'answered'>('all');
+  const [showBuyNumbers, setShowBuyNumbers] = useState(false);
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -566,52 +837,55 @@ export function WebPhoneFloatingWindow() {
         </div>
         
         <div className="flex-1 flex flex-col overflow-hidden no-drag">
-          {/* No Phone Account Screen */}
+          {/* No Phone Account Screen - Buy Numbers View or Initial Prompt */}
           {!sipExtension ? (
-            <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center">
-              {/* Shopping Bag Icon */}
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-6">
-                <ShoppingBag className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
+            showBuyNumbers ? (
+              <BuyNumbersView onClose={() => setShowBuyNumbers(false)} />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center">
+                {/* Shopping Bag Icon */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                  <ShoppingBag className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
+                </div>
+                
+                {/* Title */}
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
+                  Purchase Phone numbers to Call
+                </h2>
+                
+                {/* Purchase Button - Opens In-App Buy View */}
+                <Button
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full flex items-center gap-2"
+                  onClick={() => setShowBuyNumbers(true)}
+                  data-testid="button-purchase-phone"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  Purchase Now
+                </Button>
+                
+                {/* Divider */}
+                <div className="flex items-center w-full my-6">
+                  <div className="flex-1 border-t border-border" />
+                  <span className="px-4 text-sm text-muted-foreground">Or</span>
+                  <div className="flex-1 border-t border-border" />
+                </div>
+                
+                {/* Transfer Option */}
+                <p className="text-sm text-muted-foreground mb-3">
+                  Do you want transfer your number ?
+                </p>
+                
+                <Button
+                  variant="outline"
+                  className="rounded-full flex items-center gap-2"
+                  onClick={() => window.open('https://telnyx.com/number-porting', '_blank')}
+                  data-testid="button-learn-more-transfer"
+                >
+                  Learn More
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
               </div>
-              
-              {/* Title */}
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
-                Purchase Phone numbers to Call
-              </h2>
-              
-              {/* Purchase Button */}
-              <Button
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full flex items-center gap-2"
-                onClick={() => window.open('https://telnyx.com/pricing', '_blank')}
-                data-testid="button-purchase-phone"
-              >
-                <ShoppingBag className="h-4 w-4" />
-                Purchase Now
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-              
-              {/* Divider */}
-              <div className="flex items-center w-full my-6">
-                <div className="flex-1 border-t border-border" />
-                <span className="px-4 text-sm text-muted-foreground">Or</span>
-                <div className="flex-1 border-t border-border" />
-              </div>
-              
-              {/* Transfer Option */}
-              <p className="text-sm text-muted-foreground mb-3">
-                Do you want transfer your number ?
-              </p>
-              
-              <Button
-                variant="outline"
-                className="rounded-full flex items-center gap-2"
-                onClick={() => window.open('https://telnyx.com/number-porting', '_blank')}
-                data-testid="button-learn-more-transfer"
-              >
-                Learn More
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </div>
+            )
           ) : currentCall ? (
               /* Active Call Screen - No bottom navigation */
               <div className="flex-1 overflow-y-auto">

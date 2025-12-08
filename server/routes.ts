@@ -26996,5 +26996,81 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+
+  // GET /api/telnyx/available-numbers - Search available phone numbers
+  app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { searchAvailableNumbers } = await import("./services/telnyx-numbers-service");
+      
+      const params = {
+        country_code: (req.query.country_code as string) || "US",
+        phone_number_type: req.query.phone_number_type as "local" | "toll_free" | "national" | "mobile" | undefined,
+        locality: req.query.locality as string | undefined,
+        administrative_area: req.query.administrative_area as string | undefined,
+        national_destination_code: req.query.area_code as string | undefined,
+        starts_with: req.query.starts_with as string | undefined,
+        limit: parseInt(req.query.limit as string) || 20,
+      };
+
+      const result = await searchAvailableNumbers(params);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ numbers: result.numbers });
+    } catch (error: any) {
+      console.error("[Telnyx Numbers] Search error:", error);
+      res.status(500).json({ message: "Failed to search phone numbers" });
+    }
+  });
+
+  // POST /api/telnyx/purchase-number - Purchase a phone number
+  app.post("/api/telnyx/purchase-number", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumber } = req.body;
+
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+
+      const { purchasePhoneNumber } = await import("./services/telnyx-numbers-service");
+      const result = await purchasePhoneNumber(phoneNumber, user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ 
+        success: true, 
+        orderId: result.orderId,
+        phoneNumber: result.phoneNumber 
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Numbers] Purchase error:", error);
+      res.status(500).json({ message: "Failed to purchase phone number" });
+    }
+  });
+
+  // GET /api/telnyx/my-numbers - Get company's purchased phone numbers
+  app.get("/api/telnyx/my-numbers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
+      const result = await getCompanyPhoneNumbers(user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ numbers: result.numbers });
+    } catch (error: any) {
+      console.error("[Telnyx Numbers] Get numbers error:", error);
+      res.status(500).json({ message: "Failed to get phone numbers" });
+    }
+  });
+
   return httpServer;
 }

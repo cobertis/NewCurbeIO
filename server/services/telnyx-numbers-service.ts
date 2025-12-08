@@ -131,7 +131,7 @@ export interface PurchaseNumberResult {
 
 export async function purchasePhoneNumber(
   phoneNumber: string, 
-  companyId: number
+  companyId: string
 ): Promise<PurchaseNumberResult> {
   try {
     const apiKey = getTelnyxMasterApiKey();
@@ -190,7 +190,7 @@ export async function purchasePhoneNumber(
   }
 }
 
-export async function getCompanyPhoneNumbers(companyId: number): Promise<{
+export async function getCompanyPhoneNumbers(companyId: string): Promise<{
   success: boolean;
   numbers?: any[];
   error?: string;
