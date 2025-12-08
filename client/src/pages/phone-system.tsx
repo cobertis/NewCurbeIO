@@ -313,122 +313,131 @@ export default function PhoneSystem() {
                         </div>
                       </div>
                     </div>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasE911Issues ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
-                      {hasE911Issues ? (
-                        <AlertCircle className="h-5 w-5 text-amber-600" />
-                      ) : (
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <div className="flex items-center gap-2">
+                      {hasE911Issues && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs px-3 py-1.5 h-auto rounded-lg text-amber-600 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                          onClick={() => toast({ title: "E911 Configuration", description: "E911 configuration will be available in a future update." })}
+                          data-testid="button-configure-e911-compliance"
+                        >
+                          Configure
+                        </Button>
                       )}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasE911Issues ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+                        {hasE911Issues ? (
+                          <AlertCircle className="h-5 w-5 text-amber-600" />
+                        ) : (
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        )}
+                      </div>
                     </div>
                   </div>
-                  {hasE911Issues && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-border">
+                </CardContent>
+              </Card>
+
+              {/* Phone Lines Card - All-in-one */}
+              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                        <Phone className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 dark:text-foreground">Phone Lines</p>
+                        <p className="text-xs text-slate-500 dark:text-muted-foreground">
+                          {numbersCount} {numbersCount === 1 ? 'number' : 'numbers'} active
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => refetchNumbers()}
+                        disabled={isLoadingNumbers}
+                        className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600"
+                        data-testid="button-refresh-numbers"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
+                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="w-full rounded-lg text-amber-600 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                        onClick={() => toast({ title: "E911 Configuration", description: "E911 configuration will be available in a future update." })}
-                        data-testid="button-configure-e911-compliance"
+                        className="h-8 text-xs rounded-lg"
+                        onClick={() => setShowBuyNumber(true)}
+                        data-testid="button-add-line"
                       >
-                        Configure E911
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isLoadingNumbers ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                    </div>
+                  ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
+                    <div className="space-y-2">
+                      {numbersData.numbers.map((number, index) => (
+                        <div 
+                          key={number.phone_number}
+                          className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted/70 transition-colors cursor-pointer"
+                          onClick={() => toast({ title: formatPhoneDisplay(number.phone_number), description: "Phone number details coming soon." })}
+                          data-testid={`row-number-${number.phone_number}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-background flex items-center justify-center shadow-sm">
+                              <Phone className="h-4 w-4 text-indigo-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 dark:text-foreground">
+                                {formatPhoneDisplay(number.phone_number)}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-muted-foreground">
+                                {number.phone_number_type ? number.phone_number_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Local'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!number.emergency_enabled && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+                                E911
+                              </Badge>
+                            )}
+                            <Badge 
+                              variant="outline"
+                              className={`text-[10px] px-1.5 py-0.5 ${number.status === 'active' ? 'text-green-600 border-green-200 bg-green-50 dark:bg-green-900/20' : ''}`}
+                            >
+                              {number.status === 'active' ? 'Active' : number.status}
+                            </Badge>
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-muted flex items-center justify-center mx-auto mb-3">
+                        <Phone className="h-6 w-6 text-slate-400" />
+                      </div>
+                      <p className="text-sm text-slate-500 dark:text-muted-foreground mb-1">No phone lines yet</p>
+                      <p className="text-xs text-slate-400 mb-4">Get your first number to start calling</p>
+                      <Button 
+                        size="sm"
+                        onClick={() => setShowBuyNumber(true)} 
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Get Number
                       </Button>
                     </div>
                   )}
                 </CardContent>
               </Card>
-
-              {/* Lines Active Card */}
-              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-muted-foreground flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        Active Lines
-                      </p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-foreground mt-2" data-testid="text-lines-count">
-                        {numbersCount}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {numbersCount === 1 ? 'Phone number' : 'Phone numbers'} active
-                      </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                      <Phone className="h-5 w-5 text-indigo-600" />
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-border">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full rounded-lg bg-white dark:bg-background"
-                      onClick={() => setShowBuyNumber(true)}
-                      data-testid="button-add-line"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add New Line
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Phone Numbers Section */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-foreground">Your Phone Lines</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => refetchNumbers()}
-                  disabled={isLoadingNumbers}
-                  className="gap-2 text-slate-500"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </div>
-
-              {isLoadingNumbers ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-                </div>
-              ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
-                <div className="space-y-4">
-                  {numbersData.numbers.map((number, index) => (
-                    <PhoneNumberCard 
-                      key={number.phone_number} 
-                      number={number} 
-                      index={index}
-                      onConfigureE911={(phone, id) => {
-                        toast({ 
-                          title: "E911 Configuration", 
-                          description: `E911 configuration for ${formatPhoneDisplay(phone)} will be available in a future update.` 
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
-                  <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-muted flex items-center justify-center mb-4">
-                      <Phone className="h-8 w-8 text-slate-400" />
-                    </div>
-                    <h3 className="font-semibold text-lg text-slate-900 dark:text-foreground mb-1">No Phone Lines Yet</h3>
-                    <p className="text-slate-500 dark:text-muted-foreground text-sm mb-6 max-w-sm">
-                      Get your first business phone number to start making calls and sending messages.
-                    </p>
-                    <Button 
-                      onClick={() => setShowBuyNumber(true)} 
-                      className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Get Your First Number
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
             </div>
 
             {/* Advanced Settings Collapsible */}
