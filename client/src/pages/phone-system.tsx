@@ -320,84 +320,45 @@ export default function PhoneSystem() {
               </div>
 
               {/* My Numbers Card */}
-              <div 
-                className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card cursor-pointer transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
-                onClick={() => setShowBuyNumber(true)}
-                data-testid="button-add-line"
-              >
-                <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                  <Phone className="h-5 w-5 text-indigo-600" />
+              {numbersCount > 0 && numbersData?.numbers?.[0] ? (
+                <div 
+                  className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card"
+                  data-testid="card-my-number"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                    <Phone className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-foreground">
+                      {formatPhoneDisplay(numbersData.numbers[0].phone_number)}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">My Number</p>
+                  </div>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                    numbersData.numbers[0].status === 'active' 
+                      ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
+                      : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
+                  }`}>
+                    {numbersData.numbers[0].status === 'active' ? 'Active' : numbersData.numbers[0].status}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">My Numbers</p>
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">{numbersCount} active</p>
+              ) : (
+                <div 
+                  className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card cursor-pointer transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
+                  onClick={() => setShowBuyNumber(true)}
+                  data-testid="button-add-line"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                    <Phone className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-foreground">My Numbers</p>
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">Get a number</p>
+                  </div>
+                  <Plus className="h-4 w-4 text-indigo-500 shrink-0" />
                 </div>
-                <Plus className="h-4 w-4 text-indigo-500 shrink-0" />
-              </div>
+              )}
             </div>
-
-            {/* Phone Numbers List */}
-            {(numbersData?.numbers && numbersData.numbers.length > 0) || isLoadingNumbers ? (
-              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Phone Lines</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => refetchNumbers()}
-                    disabled={isLoadingNumbers}
-                    className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600"
-                    data-testid="button-refresh-numbers"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
-                  </Button>
-                </div>
-
-                {isLoadingNumbers ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-border">
-                    {numbersData?.numbers?.map((number) => (
-                      <div 
-                        key={number.phone_number}
-                        className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => toast({ title: formatPhoneDisplay(number.phone_number), description: "Phone number details coming soon." })}
-                        data-testid={`row-number-${number.phone_number}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <Phone className="h-3.5 w-3.5 text-slate-500" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-foreground">
-                              {formatPhoneDisplay(number.phone_number)}
-                            </p>
-                            <p className="text-[11px] text-slate-400 dark:text-muted-foreground">
-                              {number.phone_number_type ? number.phone_number_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Local'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {!number.emergency_enabled && (
-                            <span className="text-[9px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">E911</span>
-                          )}
-                          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
-                            number.status === 'active' 
-                              ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
-                              : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
-                          }`}>
-                            {number.status === 'active' ? 'Active' : number.status}
-                          </span>
-                          <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-1" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            ) : null}
 
             {/* Advanced Settings Collapsible */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
