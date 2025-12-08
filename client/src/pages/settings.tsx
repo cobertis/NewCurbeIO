@@ -1573,30 +1573,82 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="company">Company</Label>
-                        <Input
-                          id="company"
-                          name="company"
-                          value={companyData?.company?.name || ""}
-                          disabled
-                          className="bg-muted"
-                          data-testid="input-company"
+                    {/* Physical Address Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2 md:col-span-2">
+                        <GooglePlacesAddressAutocomplete
+                          value={addressValue}
+                          onChange={(value) => {
+                            setAddressValue(value);
+                            if (addressRef.current) {
+                              addressRef.current.value = value;
+                            }
+                          }}
+                          onAddressSelect={(address) => {
+                            setAddressValue(address.street);
+                            if (addressRef.current) addressRef.current.value = address.street;
+                            if (cityRef.current) cityRef.current.value = address.city;
+                            if (stateRef.current) stateRef.current.value = address.state;
+                            if (postalCodeRef.current) postalCodeRef.current.value = address.postalCode;
+                            if (countryRef.current) countryRef.current.value = address.country;
+                          }}
+                          label="Street Address"
+                          placeholder="Start typing your address..."
+                          testId="input-address"
+                        />
+                        <input
+                          ref={addressRef}
+                          type="hidden"
+                          value={addressValue}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="role">Role</Label>
+                      <div className="space-y-2 md:col-span-1">
+                        <Label htmlFor="addressLine2">Address Line 2</Label>
                         <Input
-                          id="role"
-                          name="role"
-                          value={getRoleDisplay()}
-                          disabled
-                          className="bg-muted"
-                          data-testid="input-role"
+                          id="addressLine2"
+                          ref={addressLine2Ref}
+                          placeholder="Apt, Suite, etc."
+                          defaultValue={companyData?.company?.addressLine2 || ""}
+                          data-testid="input-address-line-2"
                         />
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          ref={cityRef}
+                          defaultValue={companyData?.company?.city || ""}
+                          data-testid="input-city"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="state">State / Province</Label>
+                        <Input
+                          id="state"
+                          ref={stateRef}
+                          defaultValue={companyData?.company?.state || ""}
+                          data-testid="input-state"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Input
+                          id="postalCode"
+                          ref={postalCodeRef}
+                          defaultValue={companyData?.company?.postalCode || ""}
+                          data-testid="input-postal-code"
+                        />
+                      </div>
+                    </div>
+
+                    <input
+                      ref={countryRef}
+                      type="hidden"
+                      defaultValue={companyData?.company?.country || "United States"}
+                    />
                   </form>
                 </CardContent>
               </Card>
@@ -1903,106 +1955,8 @@ export default function Settings() {
                 </Card>
               )}
 
-              {/* Physical Address and Custom Domain - Admin Only */}
+              {/* Custom Domain (White Label) - Admin Only */}
               {isAdmin && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Physical Address */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Physical Address</CardTitle>
-                      <CardDescription>
-                        Company address and location details
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSavePhysicalAddress}
-                      disabled={updateCompanyMutation.isPending && savingSection === "physicalAddress"}
-                      data-testid="button-save-physical-address"
-                    >
-                      {updateCompanyMutation.isPending && savingSection === "physicalAddress" ? "Saving..." : "Save"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2 md:col-span-2">
-                        <GooglePlacesAddressAutocomplete
-                          value={addressValue}
-                          onChange={(value) => {
-                            setAddressValue(value);
-                            if (addressRef.current) {
-                              addressRef.current.value = value;
-                            }
-                          }}
-                          onAddressSelect={(address) => {
-                            setAddressValue(address.street);
-                            if (addressRef.current) addressRef.current.value = address.street;
-                            if (cityRef.current) cityRef.current.value = address.city;
-                            if (stateRef.current) stateRef.current.value = address.state;
-                            if (postalCodeRef.current) postalCodeRef.current.value = address.postalCode;
-                            if (countryRef.current) countryRef.current.value = address.country;
-                          }}
-                          label="Street Address"
-                          placeholder="Start typing your address..."
-                          testId="input-address"
-                        />
-                        <input
-                          ref={addressRef}
-                          type="hidden"
-                          value={addressValue}
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-1">
-                        <Label htmlFor="addressLine2">Address Line 2</Label>
-                        <Input
-                          id="addressLine2"
-                          ref={addressLine2Ref}
-                          placeholder="Apt, Suite, etc."
-                          defaultValue={companyData?.company?.addressLine2 || ""}
-                          data-testid="input-address-line-2"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
-                        <Input
-                          id="city"
-                          ref={cityRef}
-                          defaultValue={companyData?.company?.city || ""}
-                          data-testid="input-city"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="state">State / Province</Label>
-                        <Input
-                          id="state"
-                          ref={stateRef}
-                          defaultValue={companyData?.company?.state || ""}
-                          data-testid="input-state"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="postalCode">Postal Code</Label>
-                        <Input
-                          id="postalCode"
-                          ref={postalCodeRef}
-                          defaultValue={companyData?.company?.postalCode || ""}
-                          data-testid="input-postal-code"
-                        />
-                      </div>
-                    </div>
-
-                    <input
-                      ref={countryRef}
-                      type="hidden"
-                      defaultValue={companyData?.company?.country || "United States"}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Custom Domain (White Label) - Admin Only */}
                 <Card className="lg:col-span-2">
                   <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
                     <div className="space-y-1">
@@ -2137,7 +2091,6 @@ export default function Settings() {
                     )}
                   </CardContent>
                 </Card>
-                </div>
               )}
               </div>
           </TabsContent>
