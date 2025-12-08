@@ -6992,8 +6992,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         // Verify the Stripe customer still exists
         try {
-          const { ensureStripeConfigured } = await import("./stripe");
-          const stripeClient = await ensureStripeConfigured();
+          const { getStripeClient } = await import("./stripe");
+          const stripeClient = await getStripeClient();
+          if (!stripeClient) {
+            throw new Error("Stripe not configured");
+          }
           await stripeClient.customers.retrieve(stripeCustomerId);
           console.log('[SELECT-PLAN] Using existing Stripe customer:', stripeCustomerId);
         } catch (stripeError: any) {
