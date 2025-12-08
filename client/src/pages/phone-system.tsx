@@ -172,8 +172,7 @@ export default function PhoneSystem() {
   const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || false;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-background">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -537,7 +536,6 @@ export default function PhoneSystem() {
             refetchNumbers();
           }}
         />
-      </div>
     </div>
   );
 }
