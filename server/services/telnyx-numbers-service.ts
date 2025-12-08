@@ -7,11 +7,13 @@ const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
 
 async function getTelnyxMasterApiKey(): Promise<string> {
-  const apiKey = await secretsService.getCredential("telnyx", "api_key");
+  let apiKey = await secretsService.getCredential("telnyx", "api_key");
   if (!apiKey) {
     throw new Error("Telnyx API key not configured. Please add it in Settings > API Keys.");
   }
-  console.log(`[Telnyx] API key loaded, prefix: ${apiKey.substring(0, 10)}..., length: ${apiKey.length}`);
+  // Trim whitespace and remove any invisible characters
+  apiKey = apiKey.trim().replace(/[\r\n\t]/g, '');
+  console.log(`[Telnyx] API key loaded, prefix: ${apiKey.substring(0, 10)}..., length: ${apiKey.length}, last char code: ${apiKey.charCodeAt(apiKey.length - 1)}`);
   return apiKey;
 }
 
