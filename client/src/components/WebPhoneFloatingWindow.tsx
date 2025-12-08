@@ -1004,9 +1004,116 @@ export function WebPhoneFloatingWindow() {
   const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
   const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
+  const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
+  const telnyxTimerRef = useRef<NodeJS.Timeout>();
   
   // Check if phone is available (either SIP extension or Telnyx number)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber;
+  
+  // Unified call state - prioritize Telnyx when using Telnyx numbers
+  const isTelnyxCall = hasTelnyxNumber && (telnyxCurrentCall || telnyxIncomingCall);
+  
+  // Build effective call object for UI rendering
+  const effectiveCall = useMemo(() => {
+    if (telnyxCurrentCall) {
+      const callState = (telnyxCurrentCall as any).state;
+      return {
+        phoneNumber: (telnyxCurrentCall as any).options?.destinationNumber || 
+                     (telnyxCurrentCall as any).options?.remoteCallerNumber || 'Unknown',
+        displayName: (telnyxCurrentCall as any).options?.callerName || 'Unknown',
+        status: callState === 'active' ? 'answered' : callState === 'ringing' ? 'ringing' : callState,
+        direction: (telnyxCurrentCall as any).direction || 'outbound',
+        isTelnyx: true,
+      };
+    }
+    if (telnyxIncomingCall) {
+      return {
+        phoneNumber: (telnyxIncomingCall as any).options?.remoteCallerNumber || 'Unknown',
+        displayName: (telnyxIncomingCall as any).options?.callerName || 'Unknown',
+        status: 'ringing',
+        direction: 'inbound',
+        isTelnyx: true,
+      };
+    }
+    if (currentCall) {
+      return { ...currentCall, isTelnyx: false };
+    }
+    return null;
+  }, [telnyxCurrentCall, telnyxIncomingCall, currentCall]);
+  
+  // Effective mute/hold state
+  const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;
+  const effectiveOnHold = isTelnyxCall ? telnyxIsOnHold : isOnHold;
+  
+  // Timer for Telnyx calls
+  useEffect(() => {
+    if (telnyxCurrentCall && (telnyxCurrentCall as any).state === 'active') {
+      setTelnyxCallDuration(0);
+      telnyxTimerRef.current = setInterval(() => {
+        setTelnyxCallDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (telnyxTimerRef.current) {
+        clearInterval(telnyxTimerRef.current);
+        setTelnyxCallDuration(0);
+      }
+    }
+    return () => {
+      if (telnyxTimerRef.current) clearInterval(telnyxTimerRef.current);
+    };
+  }, [telnyxCurrentCall]);
+  
+  // Unified call handlers
+  const handleMuteToggle = useCallback(() => {
+    if (isTelnyxCall) {
+      telnyxWebRTC.toggleMute();
+    } else {
+      isMuted ? webPhone.unmuteCall() : webPhone.muteCall();
+    }
+  }, [isTelnyxCall, isMuted]);
+  
+  const handleHoldToggle = useCallback(() => {
+    if (isTelnyxCall) {
+      telnyxWebRTC.toggleHold();
+    } else {
+      isOnHold ? webPhone.unholdCall() : webPhone.holdCall();
+    }
+  }, [isTelnyxCall, isOnHold]);
+  
+  const handleHangup = useCallback(() => {
+    if (isTelnyxCall) {
+      telnyxWebRTC.hangup();
+    } else {
+      webPhone.hangupCall();
+    }
+  }, [isTelnyxCall]);
+  
+  const handleAnswerCall = useCallback(() => {
+    if (telnyxIncomingCall) {
+      telnyxWebRTC.answerCall();
+    } else {
+      webPhone.answerCall();
+    }
+  }, [telnyxIncomingCall]);
+  
+  const handleRejectCall = useCallback(() => {
+    if (telnyxIncomingCall) {
+      telnyxWebRTC.rejectCall();
+    } else {
+      webPhone.rejectCall();
+    }
+  }, [telnyxIncomingCall]);
+  
+  const handleSendDTMF = useCallback((digit: string) => {
+    if (isTelnyxCall) {
+      telnyxWebRTC.sendDTMF(digit);
+    } else {
+      webPhone.sendDTMF(digit);
+    }
+  }, [isTelnyxCall]);
+  
+  // Get effective call duration
+  const effectiveCallDuration = isTelnyxCall ? telnyxCallDuration : callDuration;
 
   // Initialize Telnyx WebRTC when phone number is available
   const telnyxInitRef = useRef(false);
@@ -1135,11 +1242,11 @@ export function WebPhoneFloatingWindow() {
   
   // Return to keypad when call ends and clear dial number
   useEffect(() => {
-    if (!currentCall) {
+    if (!effectiveCall) {
       setViewMode('keypad');
       setDialNumber('');
     }
-  }, [currentCall]);
+  }, [effectiveCall]);
   
   // Auto-focus input when switching to keypad and clear when leaving
   useEffect(() => {
@@ -1220,8 +1327,8 @@ export function WebPhoneFloatingWindow() {
       setDialNumber(formatDialerInput(newDigits));
     }
     
-    if (currentCall?.status === 'answered') {
-      webPhone.sendDTMF(digit);
+    if (effectiveCall?.status === 'answered') {
+      handleSendDTMF(digit);
     }
   };
   
@@ -1411,7 +1518,7 @@ export function WebPhoneFloatingWindow() {
                 Need to transfer an existing number? Contact support for assistance.
               </p>
             </div>
-          ) : currentCall ? (
+          ) : effectiveCall ? (
               /* Active Call Screen - No bottom navigation */
               <div className="flex-1 overflow-y-auto">
                 <div className="flex flex-col justify-between p-3 sm:p-6 min-h-full">
@@ -1421,15 +1528,15 @@ export function WebPhoneFloatingWindow() {
                       <User className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
                     </div>
                     <h2 className="text-lg sm:text-xl font-medium text-foreground mb-1.5 sm:mb-2">
-                      {currentCall.displayName || "Unknown Caller"}
+                      {effectiveCall.displayName || "Unknown Caller"}
                     </h2>
                     <p className="text-sm sm:text-base text-muted-foreground mb-1">
-                      {formatCallerNumber(currentCall.phoneNumber)}
+                      {formatCallerNumber(effectiveCall.phoneNumber)}
                     </p>
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      {currentCall.status === 'ringing' && currentCall.direction === 'inbound' && 'Incoming call...'}
-                      {currentCall.status === 'ringing' && currentCall.direction === 'outbound' && 'Calling...'}
-                      {currentCall.status === 'answered' && formatDuration(callDuration)}
+                      {effectiveCall.status === 'ringing' && effectiveCall.direction === 'inbound' && 'Incoming call...'}
+                      {effectiveCall.status === 'ringing' && effectiveCall.direction === 'outbound' && 'Calling...'}
+                      {effectiveCall.status === 'answered' && formatDuration(effectiveCallDuration)}
                     </p>
                   </div>
                   
@@ -1454,11 +1561,11 @@ export function WebPhoneFloatingWindow() {
                   
                   {/* Call Controls */}
                   <div className="space-y-3 sm:space-y-4 pb-4 sm:pb-8">
-                    {currentCall.status === 'ringing' && currentCall.direction === 'inbound' ? (
+                    {effectiveCall.status === 'ringing' && effectiveCall.direction === 'inbound' ? (
                       /* Incoming Call - Show Accept/Reject Buttons */
                       <div className="grid grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-8">
                         <button
-                          onClick={() => webPhone.answerCall()}
+                          onClick={handleAnswerCall}
                           className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
                           data-testid="button-accept-call"
                         >
@@ -1469,7 +1576,7 @@ export function WebPhoneFloatingWindow() {
                         </button>
                         
                         <button
-                          onClick={() => webPhone.rejectCall()}
+                          onClick={handleRejectCall}
                           className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
                           data-testid="button-reject-call"
                         >
@@ -1515,8 +1622,8 @@ export function WebPhoneFloatingWindow() {
                           </Button>
                         </div>
                       </>
-                    ) : waitingCall ? (
-                      /* Call Waiting Active - Show Swap/Answer Buttons */
+                    ) : waitingCall && !effectiveCall.isTelnyx ? (
+                      /* Call Waiting Active - Show Swap/Answer Buttons (SIP.js only) */
                       <>
                         {/* Waiting Call Action Buttons */}
                         <div className="grid grid-cols-2 gap-3 px-2 sm:px-4">
@@ -1542,15 +1649,15 @@ export function WebPhoneFloatingWindow() {
                         {/* Basic Controls Row */}
                         <div className="grid grid-cols-3 gap-3 sm:gap-6 px-2 sm:px-4">
                           <button
-                            onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
+                            onClick={handleMuteToggle}
                             className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
                             data-testid="button-mute-call"
                           >
                             <div className={cn(
                               "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
-                              isMuted ? "bg-foreground" : "bg-muted/80"
+                              effectiveMuted ? "bg-foreground" : "bg-muted/80"
                             )}>
-                              {isMuted ? (
+                              {effectiveMuted ? (
                                 <MicOff className="h-5 w-5 sm:h-7 sm:w-7 text-background" />
                               ) : (
                                 <Mic className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
@@ -1571,15 +1678,15 @@ export function WebPhoneFloatingWindow() {
                           </button>
                           
                           <button
-                            onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
+                            onClick={handleHoldToggle}
                             className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
                             data-testid="button-hold-call"
                           >
                             <div className={cn(
                               "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
-                              isOnHold ? "bg-foreground" : "bg-muted/80"
+                              effectiveOnHold ? "bg-foreground" : "bg-muted/80"
                             )}>
-                              <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", isOnHold ? "text-background" : "text-foreground")} />
+                              <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", effectiveOnHold ? "text-background" : "text-foreground")} />
                             </div>
                             <span className="text-[10px] sm:text-xs text-muted-foreground">hold</span>
                           </button>
@@ -1589,15 +1696,15 @@ export function WebPhoneFloatingWindow() {
                       /* Normal Call Controls - 3 buttons */
                       <div className="grid grid-cols-3 gap-3 sm:gap-6 px-2 sm:px-4">
                         <button
-                          onClick={() => isMuted ? webPhone.unmuteCall() : webPhone.muteCall()}
+                          onClick={handleMuteToggle}
                           className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
                           data-testid="button-mute-call"
                         >
                           <div className={cn(
                             "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
-                            isMuted ? "bg-foreground" : "bg-muted/80"
+                            effectiveMuted ? "bg-foreground" : "bg-muted/80"
                           )}>
-                            {isMuted ? (
+                            {effectiveMuted ? (
                               <MicOff className="h-5 w-5 sm:h-7 sm:w-7 text-background" />
                             ) : (
                               <Mic className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
@@ -1607,9 +1714,13 @@ export function WebPhoneFloatingWindow() {
                         </button>
                         
                         <button
-                          onClick={() => setShowTransferDialog(true)}
-                          className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                          onClick={() => !effectiveCall.isTelnyx && setShowTransferDialog(true)}
+                          className={cn(
+                            "flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity",
+                            effectiveCall.isTelnyx ? "opacity-30 cursor-not-allowed" : "hover:opacity-80"
+                          )}
                           data-testid="button-transfer"
+                          disabled={effectiveCall.isTelnyx}
                         >
                           <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
                             <PhoneForwarded className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
@@ -1618,15 +1729,15 @@ export function WebPhoneFloatingWindow() {
                         </button>
                         
                         <button
-                          onClick={() => isOnHold ? webPhone.unholdCall() : webPhone.holdCall()}
+                          onClick={handleHoldToggle}
                           className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
                           data-testid="button-hold-call"
                         >
                           <div className={cn(
                             "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
-                            isOnHold ? "bg-foreground" : "bg-muted/80"
+                            effectiveOnHold ? "bg-foreground" : "bg-muted/80"
                           )}>
-                            <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", isOnHold ? "text-background" : "text-foreground")} />
+                            <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", effectiveOnHold ? "text-background" : "text-foreground")} />
                           </div>
                           <span className="text-[10px] sm:text-xs text-muted-foreground">hold</span>
                         </button>
@@ -1634,11 +1745,12 @@ export function WebPhoneFloatingWindow() {
                     )}
                     
                     {/* End Call Button - Only show when call is answered or outbound ringing */}
-                    {!(currentCall.status === 'ringing' && currentCall.direction === 'inbound') && (
+                    {!(effectiveCall.status === 'ringing' && effectiveCall.direction === 'inbound') && (
                       <div className="flex justify-center pt-3 sm:pt-6">
                         <button
-                          onClick={() => webPhone.hangupCall()}
+                          onClick={handleHangup}
                           className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg transition-all active:scale-95"
+                          data-testid="button-hangup-call"
                         >
                           <PhoneOff className="h-7 w-7 sm:h-9 sm:w-9 text-white" />
                         </button>
@@ -1647,7 +1759,7 @@ export function WebPhoneFloatingWindow() {
                   </div>
                   
                   {/* Transfer Dialog */}
-                  {showTransferDialog && currentCall && (
+                  {showTransferDialog && effectiveCall && !effectiveCall.isTelnyx && (
                     <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
                       <DialogContent className="sm:max-w-md">
                         <div className="space-y-4">
