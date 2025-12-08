@@ -988,6 +988,17 @@ export function WebPhoneFloatingWindow() {
   const clearCallHistory = useWebPhoneStore(state => state.clearCallHistory);
   const deleteCallsFromHistory = useWebPhoneStore(state => state.deleteCallsFromHistory);
 
+  // Query for Telnyx phone numbers
+  const { data: telnyxNumbersData } = useQuery<{ numbers: any[] }>({
+    queryKey: ['/api/telnyx/my-numbers'],
+  });
+  
+  const hasTelnyxNumber = (telnyxNumbersData?.numbers?.length || 0) > 0;
+  const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
+  
+  // Check if phone is available (either SIP extension or Telnyx number)
+  const hasPhoneCapability = !!sipExtension || hasTelnyxNumber;
+
   // Handle window resize - recalculate dimensions and clamp position
   useEffect(() => {
     const handleResize = () => {
@@ -1261,12 +1272,14 @@ export function WebPhoneFloatingWindow() {
           onMouseDown={handleMouseDown}
         >
           <div className="flex flex-col">
-            {sipExtension ? (
+            {hasPhoneCapability ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-foreground font-medium text-xs sm:text-sm">Ext: {sipExtension}</span>
+                <span className="text-foreground font-medium text-xs sm:text-sm">
+                  {sipExtension ? `Ext: ${sipExtension}` : telnyxCallerIdNumber ? formatCallerNumber(telnyxCallerIdNumber) : 'WebPhone'}
+                </span>
                 <div className={cn(
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
-                  connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500"
+                  hasTelnyxNumber ? "bg-green-500" : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
                 )} />
               </div>
             ) : (
@@ -1288,7 +1301,7 @@ export function WebPhoneFloatingWindow() {
         
         <div className="flex-1 flex flex-col overflow-hidden no-drag">
           {/* No Phone Account Screen */}
-          {!sipExtension ? (
+          {!hasPhoneCapability ? (
             <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center">
               {/* Shopping Bag Icon */}
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-6">
