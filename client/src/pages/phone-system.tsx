@@ -166,8 +166,7 @@ export default function PhoneSystem() {
     }).format(parseFloat(amount || "0"));
   };
 
-  const balance = accountDetails?.balance;
-  const currentBalance = balance ? parseFloat(balance.balance) : 0;
+  const currentBalance = 0;
   const numbersCount = numbersData?.numbers?.length || 0;
   const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || false;
 
@@ -285,10 +284,10 @@ export default function PhoneSystem() {
                         Account Balance
                       </p>
                       <p className="text-3xl font-bold text-slate-900 dark:text-foreground mt-2" data-testid="text-balance">
-                        {formatCurrency(balance?.balance || "0", balance?.currency || "USD")}
+                        {formatCurrency("0", "USD")}
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
-                        Credit: {formatCurrency(balance?.available_credit || "0", balance?.currency || "USD")}
+                        Available Credit: {formatCurrency("0", "USD")}
                       </p>
                     </div>
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentBalance > 10 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
