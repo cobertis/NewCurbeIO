@@ -337,8 +337,82 @@ export async function setupCompanyManagedAccount(companyId: string): Promise<{
         managedAccountId: existingWallet.telnyxAccountId,
       };
     }
+
+    // Generate the expected email for this company
+    const expectedEmail = `${ADMIN_EMAIL_BASE}+${company.slug}@${ADMIN_DOMAIN}`;
+    console.log(`[Telnyx Managed] Looking for existing account with email: ${expectedEmail}`);
+
+    // Check if there's already a managed account with this email in Telnyx
+    const existingAccounts = await listManagedAccounts();
+    if (existingAccounts.success && existingAccounts.accounts) {
+      const matchingAccount = existingAccounts.accounts.find(
+        (acc) => acc.email === expectedEmail
+      );
+
+      if (matchingAccount) {
+        console.log(`[Telnyx Managed] Found existing account ${matchingAccount.id} with email ${expectedEmail}`);
+        
+        // Enable the account if it's disabled (no api_key means disabled)
+        if (!matchingAccount.api_key) {
+          console.log(`[Telnyx Managed] Account appears disabled, enabling...`);
+          await enableManagedAccount(matchingAccount.id);
+          
+          // Poll for API key after enabling
+          let apiKey: string | undefined;
+          for (let attempt = 1; attempt <= 5; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const accountDetails = await getManagedAccount(matchingAccount.id);
+            if (accountDetails.success && accountDetails.managedAccount?.api_key) {
+              apiKey = accountDetails.managedAccount.api_key;
+              console.log(`[Telnyx Managed] API key obtained after enabling`);
+              break;
+            }
+          }
+          
+          // Save to wallet
+          if (existingWallet) {
+            await db.update(wallets).set({
+              telnyxAccountId: matchingAccount.id,
+              telnyxApiToken: apiKey || null,
+              updatedAt: new Date(),
+            }).where(eq(wallets.id, existingWallet.id));
+          } else {
+            await db.insert(wallets).values({
+              companyId: companyId,
+              telnyxAccountId: matchingAccount.id,
+              telnyxApiToken: apiKey || null,
+              balance: "0.0000",
+              currency: "USD",
+            });
+          }
+
+          return { success: true, managedAccountId: matchingAccount.id };
+        }
+
+        // Account already enabled, just link it
+        if (existingWallet) {
+          await db.update(wallets).set({
+            telnyxAccountId: matchingAccount.id,
+            telnyxApiToken: matchingAccount.api_key || null,
+            updatedAt: new Date(),
+          }).where(eq(wallets.id, existingWallet.id));
+        } else {
+          await db.insert(wallets).values({
+            companyId: companyId,
+            telnyxAccountId: matchingAccount.id,
+            telnyxApiToken: matchingAccount.api_key || null,
+            balance: "0.0000",
+            currency: "USD",
+          });
+        }
+
+        console.log(`[Telnyx Managed] Linked existing account ${matchingAccount.id} to company ${companyId}`);
+        return { success: true, managedAccountId: matchingAccount.id };
+      }
+    }
     
-    // Create managed account using company name and slug (for masked email)
+    // No existing account found, create a new one
+    console.log(`[Telnyx Managed] No existing account found, creating new one...`);
     const result = await createManagedAccount(company.name, company.slug);
 
     if (!result.success || !result.managedAccount) {
