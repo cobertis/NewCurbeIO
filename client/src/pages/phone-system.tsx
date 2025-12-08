@@ -151,8 +151,8 @@ export default function PhoneSystem() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="flex flex-col gap-6 p-6 min-h-screen">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">Phone System</h1>
           <p className="text-muted-foreground">Manage your business phone numbers and calling features</p>

@@ -630,33 +630,43 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
 
         {/* Footer with Pagination */}
         <div className="px-6 py-4 border-t border-border bg-background">
-          {/* Pagination Controls */}
-          {numbersData?.totalPages && numbersData.totalPages > 1 && (
+          {/* Results info and Pagination Controls */}
+          {numbersData?.numbers && numbersData.numbers.length > 0 && (
             <div className="flex items-center justify-center gap-2 mb-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1 || isLoading}
-                data-testid="button-prev-page"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground px-3">
-                Page {numbersData.currentPage || currentPage} of {numbersData.totalPages}
-                {numbersData.totalCount && ` (${numbersData.totalCount.toLocaleString()} numbers)`}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(numbersData.totalPages || prev, prev + 1))}
-                disabled={currentPage >= (numbersData.totalPages || 1) || isLoading}
-                data-testid="button-next-page"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              {numbersData.totalPages && numbersData.totalPages > 1 ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || isLoading}
+                    data-testid="button-prev-page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-3">
+                    Page {numbersData.currentPage || currentPage} of {numbersData.totalPages}
+                    {numbersData.totalCount && ` (${numbersData.totalCount.toLocaleString()} total)`}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(numbersData.totalPages || prev, prev + 1))}
+                    disabled={currentPage >= (numbersData.totalPages || 1) || isLoading}
+                    data-testid="button-next-page"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Showing {numbersData.numbers.length} numbers
+                  {numbersData.totalCount && numbersData.totalCount > numbersData.numbers.length && 
+                    ` of ${numbersData.totalCount.toLocaleString()} total`}
+                </span>
+              )}
             </div>
           )}
           
