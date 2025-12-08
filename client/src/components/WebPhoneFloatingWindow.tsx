@@ -189,7 +189,7 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
   ];
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: AvailablePhoneNumber[] }>({
-    queryKey: ['/api/telnyx/available-numbers', countryCode, numberType, searchBy, searchValue, selectedFeatures],
+    queryKey: ['/api/telnyx/available-numbers'],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('country_code', countryCode);
@@ -306,7 +306,7 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col p-0 gap-0">
         <DialogTitle className="sr-only">Buy Phone Number</DialogTitle>
         <DialogDescription className="sr-only">Search and purchase a phone number from Telnyx</DialogDescription>
         {/* Header */}
