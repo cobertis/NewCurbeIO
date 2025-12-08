@@ -89,8 +89,8 @@ export default function PhoneSystem() {
   const setupMutation = useMutation({
     mutationFn: async () => {
       setIsSettingUp(true);
-      const response = await apiRequest("POST", "/api/telnyx/managed-accounts/setup");
-      return response.json();
+      const data = await apiRequest("POST", "/api/telnyx/managed-accounts/setup");
+      return data;
     },
     onSuccess: (data) => {
       setIsSettingUp(false);

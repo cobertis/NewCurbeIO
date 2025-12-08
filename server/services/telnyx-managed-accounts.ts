@@ -82,17 +82,48 @@ export async function createManagedAccount(
     }
 
     const result = await response.json();
-    console.log(`[Telnyx Managed] Managed account created:`, result.data?.id);
-
-    // The API key is not returned immediately, we need to fetch the account to get it
     const accountId = result.data?.id;
-    if (accountId) {
-      // Wait a moment for the API key to be generated
+    console.log(`[Telnyx Managed] Managed account created:`, accountId);
+
+    if (!accountId) {
+      return {
+        success: false,
+        error: "Account created but no ID returned",
+      };
+    }
+
+    // Step 2: Enable the managed account (required for API key generation)
+    console.log(`[Telnyx Managed] Enabling managed account: ${accountId}`);
+    const enableResponse = await fetch(`${TELNYX_API_BASE}/managed_accounts/${accountId}/actions/enable`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!enableResponse.ok) {
+      const errorText = await enableResponse.text();
+      console.error(`[Telnyx Managed] Enable error: ${enableResponse.status} - ${errorText}`);
+      // Account created but not enabled - still return success with the account
+      return {
+        success: true,
+        managedAccount: result.data,
+      };
+    }
+    console.log(`[Telnyx Managed] Managed account enabled successfully`);
+
+    // Step 3: Wait and poll for API key (Telnyx generates it async after enable)
+    let accountDetails: GetManagedAccountResult | null = null;
+    for (let attempt = 1; attempt <= 5; attempt++) {
       await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`[Telnyx Managed] Polling for API key (attempt ${attempt}/5)...`);
       
-      // Fetch the managed account to get the API key
-      const accountDetails = await getManagedAccount(accountId);
-      if (accountDetails.success && accountDetails.managedAccount) {
+      accountDetails = await getManagedAccount(accountId);
+      if (accountDetails.success && accountDetails.managedAccount?.api_key) {
+        console.log(`[Telnyx Managed] API key obtained successfully`);
         return {
           success: true,
           managedAccount: accountDetails.managedAccount,
@@ -100,9 +131,11 @@ export async function createManagedAccount(
       }
     }
 
+    // Return whatever we have, even without API key
+    console.log(`[Telnyx Managed] API key not available after polling, returning account without key`);
     return {
       success: true,
-      managedAccount: result.data,
+      managedAccount: accountDetails?.managedAccount || result.data,
     };
   } catch (error) {
     console.error("[Telnyx Managed] Create error:", error);
