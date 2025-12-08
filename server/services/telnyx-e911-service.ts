@@ -338,15 +338,10 @@ async function assignConnectionToPhoneNumber(
   connectionId: string,
   outboundVoiceProfileId?: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[E911] Assigning connection ${connectionId} to phone number ${phoneNumberId}...`);
+  console.log(`[E911] Assigning connection ${connectionId} and OVP ${outboundVoiceProfileId} to phone number ${phoneNumberId}...`);
 
   try {
-    const patchBody: Record<string, string> = { connection_id: connectionId };
-    
-    if (outboundVoiceProfileId) {
-      patchBody.external_pin = "";
-      console.log(`[E911] Also assigning outbound voice profile: ${outboundVoiceProfileId}`);
-    }
+    const patchBody: Record<string, any> = { connection_id: connectionId };
 
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "PATCH",
@@ -361,6 +356,26 @@ async function assignConnectionToPhoneNumber(
     }
 
     console.log(`[E911] Connection assigned successfully`);
+
+    if (outboundVoiceProfileId) {
+      console.log(`[E911] Also updating voice settings with connection_id...`);
+      const voiceResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+        method: "PATCH",
+        headers: buildHeaders(config),
+        body: JSON.stringify({ 
+          connection_id: connectionId,
+          tech_prefix_enabled: false,
+        }),
+      });
+
+      if (!voiceResponse.ok) {
+        const errorText = await voiceResponse.text();
+        console.log(`[E911] Voice settings update: ${voiceResponse.status} - ${errorText}`);
+      } else {
+        console.log(`[E911] Voice settings updated successfully`);
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error("[E911] Assign connection error:", error);
