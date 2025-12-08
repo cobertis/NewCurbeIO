@@ -113,7 +113,7 @@ export function PublicPricingView({
 
   const isEnterprisePlan = (planName: string, index: number, total: number): boolean => {
     const nameLower = planName.toLowerCase();
-    return nameLower.includes('enterprise') || nameLower.includes('unlimited') || (total >= 3 && index === total - 1);
+    return nameLower.includes('enterprise') || (total >= 4 && index === total - 1);
   };
 
   const getPlanDescription = (planName: string, description?: string): string => {
