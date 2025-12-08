@@ -320,13 +320,33 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
     );
   };
 
-  const getRegionInfo = (regionInfo: Array<{ region_name: string; region_type: string }>) => {
-    const state = regionInfo.find(r => r.region_type === 'state')?.region_name;
-    const rateCenter = regionInfo.find(r => r.region_type === 'rate_center')?.region_name;
-    if (rateCenter && state) {
-      return `${rateCenter}, ${state}`;
+  const getRegionInfo = (regionInfo: Array<{ region_name: string; region_type: string }>, countryCode: string) => {
+    if (!regionInfo || regionInfo.length === 0) {
+      return countryCode || '-';
     }
-    return state || 'US';
+    
+    const country = regionInfo.find(r => r.region_type === 'country_code' || r.region_type === 'country')?.region_name;
+    const state = regionInfo.find(r => r.region_type === 'state' || r.region_type === 'administrative_area')?.region_name;
+    const city = regionInfo.find(r => r.region_type === 'locality' || r.region_type === 'city')?.region_name;
+    const rateCenter = regionInfo.find(r => r.region_type === 'rate_center')?.region_name;
+    
+    const parts: string[] = [];
+    
+    if (rateCenter) {
+      parts.push(rateCenter);
+    } else if (city) {
+      parts.push(city);
+    }
+    
+    if (state) {
+      parts.push(state);
+    }
+    
+    if (country && country !== 'US' && country !== 'USA') {
+      parts.push(country);
+    }
+    
+    return parts.length > 0 ? parts.join(', ') : (countryCode || '-');
   };
 
   return (
@@ -550,7 +570,7 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-muted-foreground">{getRegionInfo(number.region_information)}</span>
+                        <span className="text-sm text-muted-foreground">{getRegionInfo(number.region_information, countryCode)}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm capitalize">{number.record_type?.replace('_', ' ') || 'Local'}</span>
