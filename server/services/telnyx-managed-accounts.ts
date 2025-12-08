@@ -275,7 +275,7 @@ export async function enableManagedAccount(accountId: string): Promise<{
   }
 }
 
-export async function setupCompanyManagedAccount(companyId: string, customEmail?: string): Promise<{
+export async function setupCompanyManagedAccount(companyId: string): Promise<{
   success: boolean;
   managedAccountId?: string;
   error?: string;
@@ -304,12 +304,9 @@ export async function setupCompanyManagedAccount(companyId: string, customEmail?
         managedAccountId: existingWallet.telnyxAccountId,
       };
     }
-
-    // Use custom email if provided, otherwise use company email
-    const accountEmail = customEmail || company.email;
     
-    // Create managed account using company name and email
-    const result = await createManagedAccount(company.name, accountEmail);
+    // Create managed account using company name and company ID (for masked email)
+    const result = await createManagedAccount(company.name, companyId);
 
     if (!result.success || !result.managedAccount) {
       return { success: false, error: result.error || "Failed to create managed account" };
