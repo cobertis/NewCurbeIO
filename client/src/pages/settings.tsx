@@ -2034,25 +2034,87 @@ export default function Settings() {
 
                         {customDomainData.status !== "active" && (
                           <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">DNS Configuration Required</h4>
-                            <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
-                              Add the following CNAME record to your domain's DNS settings:
+                            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                              Step 2: Configure Your DNS
+                            </h4>
+                            <p className="text-sm text-blue-800 dark:text-blue-200 mb-4">
+                              Go to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.) and add a <strong>CNAME record</strong> with these values:
                             </p>
-                            <div className="bg-white dark:bg-blue-900 p-3 rounded border font-mono text-sm">
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <span className="text-muted-foreground">Host:</span>
-                                  <span className="ml-2 font-semibold">@</span>
+                            
+                            <div className="space-y-3">
+                              <div className="bg-white dark:bg-blue-900 p-3 rounded border">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Record Type</span>
+                                    <p className="font-mono font-semibold">CNAME</p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText("CNAME");
+                                      toast({ title: "Copied!", description: "Record type copied to clipboard" });
+                                    }}
+                                    data-testid="button-copy-record-type"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">Points to:</span>
-                                  <span className="ml-2 font-semibold">app.curbe.io</span>
+                              </div>
+                              
+                              <div className="bg-white dark:bg-blue-900 p-3 rounded border">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Host / Name</span>
+                                    <p className="font-mono font-semibold">{customDomainData.domain?.split('.')[0] || '@'}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      This is the subdomain part (e.g., "crm" for crm.yourdomain.com)
+                                    </p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const host = customDomainData.domain?.split('.')[0] || '@';
+                                      navigator.clipboard.writeText(host);
+                                      toast({ title: "Copied!", description: "Host value copied to clipboard" });
+                                    }}
+                                    data-testid="button-copy-host"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white dark:bg-blue-900 p-3 rounded border">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Value / Target / Points to</span>
+                                    <p className="font-mono font-semibold">app.curbe.io</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      This is where your domain will redirect to
+                                    </p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText("app.curbe.io");
+                                      toast({ title: "Copied!", description: "Target value copied to clipboard" });
+                                    }}
+                                    data-testid="button-copy-target"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
                                 </div>
                               </div>
                             </div>
-                            <p className="text-xs text-blue-600 dark:text-blue-300 mt-2">
-                              DNS changes may take up to 48 hours to propagate. Click "Refresh" to check the status.
-                            </p>
+                            
+                            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded text-sm">
+                              <p className="text-amber-800 dark:text-amber-200">
+                                <strong>Note:</strong> DNS changes can take up to 48 hours to propagate. After adding the record, click "Refresh" to check the status.
+                              </p>
+                            </div>
                           </div>
                         )}
                       </>
