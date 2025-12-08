@@ -152,6 +152,7 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
 interface AvailablePhoneNumber {
   phone_number: string;
   record_type: string;
+  phone_number_type?: string;
   best_effort: boolean;
   reservable: boolean;
   cost_information: {
@@ -180,6 +181,8 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [selectedNumbers, setSelectedNumbers] = useState<Set<string>>(new Set());
   const [searchTriggered, setSearchTriggered] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const NUMBERS_PER_PAGE = 50;
 
   const availableFeatures = [
     { value: "sms", label: "SMS" },
@@ -189,11 +192,11 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
   ];
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: AvailablePhoneNumber[] }>({
-    queryKey: ['/api/telnyx/available-numbers'],
+    queryKey: ['/api/telnyx/available-numbers', currentPage],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('country_code', countryCode);
-      params.append('limit', '20');
+      params.append('limit', String(NUMBERS_PER_PAGE));
       
       if (numberType && numberType !== "all") {
         params.append('phone_number_type', numberType);
@@ -318,6 +321,20 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
         })}
       </div>
     );
+  };
+
+  const formatNumberType = (type: string | undefined): string => {
+    if (!type) return 'Local';
+    const typeMap: Record<string, string> = {
+      'local': 'Local',
+      'toll_free': 'Toll-Free',
+      'tollfree': 'Toll-Free',
+      'national': 'National',
+      'mobile': 'Mobile',
+      'shared_cost': 'Shared Cost',
+      'available_phone_number': 'Local',
+    };
+    return typeMap[type.toLowerCase()] || type.replace(/_/g, ' ');
   };
 
   const getRegionInfo = (regionInfo: Array<{ region_name: string; region_type: string }>, countryCode: string) => {
@@ -573,7 +590,7 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
                         <span className="text-sm text-muted-foreground">{getRegionInfo(number.region_information, countryCode)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm capitalize">{number.record_type?.replace('_', ' ') || 'Local'}</span>
+                        <span className="text-sm capitalize">{formatNumberType(number.phone_number_type || number.record_type)}</span>
                       </td>
                       <td className="px-4 py-3">
                         {getCapabilityBadges(number.features)}

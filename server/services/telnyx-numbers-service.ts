@@ -20,6 +20,7 @@ async function getTelnyxMasterApiKey(): Promise<string> {
 export interface AvailablePhoneNumber {
   phone_number: string;
   record_type: string;
+  phone_number_type?: string;
   best_effort: boolean;
   reservable: boolean;
   cost_information: {
@@ -50,6 +51,7 @@ export interface SearchNumbersParams {
 export interface SearchNumbersResult {
   success: boolean;
   numbers?: AvailablePhoneNumber[];
+  totalCount?: number;
   error?: string;
 }
 
