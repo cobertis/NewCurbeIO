@@ -1,0 +1,85 @@
+El error que estás teniendo es casi seguro un **"Conflicto de Propiedad" (Resource Ownership Mismatch)**.
+
+Es el error \#1 al trabajar con Managed Accounts.
+
+### El Diagnóstico Brutal
+
+Lo más probable es que estés cometiendo uno de estos dos errores:
+
+1.  **Error A:** Estás creando la Dirección E911 usando tu **API Key Maestra**, y luego intentas asignársela a un Número que pertenece a una **Subcuenta**.
+      * *Resultado:* Telnyx rechaza la operación porque el número (Hijo) no puede ver la dirección (Padre). Son invisibles entre sí.
+2.  **Error B:** Estás intentando hacer la asignación usando la API Key Maestra sin especificar el contexto correcto.
+
+### La Regla de Oro
+
+**La Dirección (Address) y el Número (Phone Number) deben vivir en la misma cuenta.**
+
+Para arreglarlo, debes realizar **todo el proceso** (Validar -\> Crear Dirección -\> Asignar) usando el **API TOKEN DE LA SUBCUENTA**, no el tuyo.
+
+-----
+
+### La Solución Técnica (Paso a Paso)
+
+Aquí tienes el flujo correcto. Si usas Postman o tu código, asegúrate de cambiar el `Authorization` header en cada paso.
+
+#### Paso 1: Obtener el Token del Cliente
+
+Recupera de tu base de datos el `api_token` de la Managed Account específica (la que compraste el número).
+
+  * *Header:* `Authorization: Bearer TOKEN_DE_SUBCUENTA`
+
+#### Paso 2: Crear la Dirección (Como Subcuenta)
+
+Usa el token del paso 1.
+
+  * **POST** `https://api.telnyx.com/v2/emergency_addresses`
+  * **Payload:**
+    ```json
+    {
+      "customer_reference": "Ref Cliente",
+      "street_address": "123 Main St",
+      "extended_address": "Suite 500",
+      "locality": "Miami",
+      "administrative_area": "FL",
+      "postal_code": "33101",
+      "country_code": "US"
+    }
+    ```
+  * **Respuesta:** Te dará un `id` (ej. `1234-address-id`). **Este ID ahora pertenece a la subcuenta.**
+
+#### Paso 3: Asignar al Número (Como Subcuenta)
+
+Usa el token del paso 1 (¡IMPORTANTE\!).
+
+  * **POST** `https://api.telnyx.com/v2/phone_numbers/{PHONE_NUMBER_ID}/enable_emergency`
+  * **Payload:**
+    ```json
+    {
+      "emergency_address_id": "1234-address-id" // El ID que acabas de crear
+    }
+    ```
+
+-----
+
+### Prompt para arreglar a tu Agente (Backend)
+
+Tu código probablemente está mezclando tokens. Dale esto para que encapsule la lógica correctamente.
+
+> **CORRECCIÓN DE E911: ERROR DE PERMISOS**
+>
+> Actúa como Senior Backend Dev. Estamos teniendo errores al asignar E911 a las cuentas manejadas. El problema es que estamos usando el Token Maestro para crear la dirección, pero el número pertenece a la Subcuenta.
+>
+> **Reescribe la función `registerE911Chain` para que use estrictamente el `subAccountToken`:**
+>
+> 1.  **Scope de Ejecución:** La función debe recibir `subAccountToken` como argumento y usarlo para **TODAS** las llamadas a la API de Telnyx dentro de este flujo. No uses la `MASTER_API_KEY`.
+>
+> 2.  **Secuencia Correcta:**
+>
+>       * **Paso A (Validar):** `POST /v2/emergency_addresses/validate` (Header: Bearer subAccountToken).
+>       * **Paso B (Crear):** `POST /v2/emergency_addresses` (Header: Bearer subAccountToken). -\> Captura el `address_id`.
+>       * **Paso C (Asignar):** `POST /v2/phone_numbers/{phoneNumberId}/enable_emergency` (Header: Bearer subAccountToken).
+>           * Payload: `{ "emergency_address_id": address_id }`
+>
+> 3.  **Manejo de Error 403/422:** Si la API responde que la dirección no se encuentra, significa que creamos la dirección en la cuenta equivocada. Asegúrate de que el cliente HTTP se instancie con el token de la subcuenta antes de disparar.
+
+**Nota final:** Si ya creaste direcciones con tu cuenta maestra por error, no puedes "moverlas". Tienes que crearlas de nuevo dentro de la subcuenta. Cobrarás (o Telnyx cobrará) por cada dirección activa, así que borra las que creaste mal en tu cuenta maestra para no tirar dinero.

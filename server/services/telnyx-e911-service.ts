@@ -167,6 +167,22 @@ async function getOrCreateOutboundVoiceProfile(
   }
 }
 
+function generateSipUsername(companyId: string): string {
+  const prefix = "curbe";
+  const companyPart = companyId.replace(/-/g, '').slice(0, 8);
+  const randomPart = Math.random().toString(36).substring(2, 6);
+  return `${prefix}${companyPart}${randomPart}`.toLowerCase();
+}
+
+function generateSipPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let password = '';
+  for (let i = 0; i < 20; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
 async function getOrCreateCredentialConnection(
   config: ManagedAccountConfig,
   companyId: string,
@@ -191,12 +207,19 @@ async function getOrCreateCredentialConnection(
 
   console.log(`[E911] Creating credential connection for ${companyName}...`);
 
+  const sipUsername = generateSipUsername(companyId);
+  const sipPassword = generateSipPassword();
+
+  console.log(`[E911] Generated SIP username: ${sipUsername}`);
+
   try {
     const response = await fetch(`${TELNYX_API_BASE}/credential_connections`, {
       method: "POST",
       headers: buildHeaders(config),
       body: JSON.stringify({
         connection_name: `${companyName} - WebRTC`,
+        user_name: sipUsername,
+        password: sipPassword,
         active: true,
         anchorsite_override: "Latency",
         outbound: {
@@ -223,8 +246,6 @@ async function getOrCreateCredentialConnection(
     await db.update(telephonySettings)
       .set({ 
         credentialConnectionId: connectionId, 
-        provisioningStatus: "completed",
-        provisionedAt: new Date(),
         updatedAt: new Date() 
       })
       .where(eq(telephonySettings.companyId, companyId));
