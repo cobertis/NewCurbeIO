@@ -1672,7 +1672,7 @@ export default function Settings() {
 
               {/* Company Information - Admin Only */}
               {isAdmin && (
-                <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
                     <div className="space-y-1">
@@ -2065,7 +2065,7 @@ export default function Settings() {
                     />
                   </CardContent>
                 </Card>
-                </>
+                </div>
               )}
           </TabsContent>
 
