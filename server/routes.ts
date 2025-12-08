@@ -6992,11 +6992,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         // Verify the Stripe customer still exists
         try {
-          const { default: Stripe } = await import("stripe");
-          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-          await stripe.customers.retrieve(stripeCustomerId);
+          const { ensureStripeConfigured } = await import("./stripe");
+          const stripeClient = await ensureStripeConfigured();
+          await stripeClient.customers.retrieve(stripeCustomerId);
           console.log('[SELECT-PLAN] Using existing Stripe customer:', stripeCustomerId);
-        } catch (stripeError) {
+        } catch (stripeError: any) {
           if (stripeError.code === 'resource_missing') {
             console.log('[SELECT-PLAN] Stripe customer not found, creating new one');
             stripeCustomerId = await createNewStripeCustomer();
