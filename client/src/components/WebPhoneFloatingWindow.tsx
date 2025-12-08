@@ -291,12 +291,21 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
       'e911': 'E911',
       'local_calling': 'Local',
       'hd_voice': 'HD Voice',
-      'international_sms': 'Intl SMS',
     };
+    
+    const featureOrder = ['sms', 'mms', 'voice', 'fax', 'emergency', 'e911', 'local_calling', 'hd_voice'];
+    
+    const sortedFeatures = [...features]
+      .filter(f => f.name !== 'international_sms')
+      .sort((a, b) => {
+        const aIdx = featureOrder.indexOf(a.name);
+        const bIdx = featureOrder.indexOf(b.name);
+        return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+      });
     
     return (
       <div className="flex flex-wrap gap-1">
-        {features.map((feature, idx) => {
+        {sortedFeatures.map((feature, idx) => {
           const label = featureLabels[feature.name] || feature.name.replace(/_/g, ' ');
           return (
             <span
