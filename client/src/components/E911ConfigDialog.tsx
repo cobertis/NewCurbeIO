@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   Dialog,
@@ -28,9 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, AlertTriangle, Loader2, CheckCircle } from "lucide-react";
+import { MapPin, AlertTriangle, Loader2, CheckCircle, Building2, User } from "lucide-react";
 
 const US_STATES = [
   { value: "AL", label: "Alabama" },
@@ -97,6 +98,21 @@ const e911FormSchema = z.object({
 
 type E911FormValues = z.infer<typeof e911FormSchema>;
 
+interface BusinessResult {
+  id: string;
+  name: string;
+  formattedAddress: string;
+  shortFormattedAddress: string;
+  address: {
+    street: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+}
+
 interface E911ConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -115,6 +131,17 @@ export function E911ConfigDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<"form" | "success">("form");
+  const [usePersonalName, setUsePersonalName] = useState(false);
+  const [businessSuggestions, setBusinessSuggestions] = useState<BusinessResult[]>([]);
+  const [showBusinessSuggestions, setShowBusinessSuggestions] = useState(false);
+  const [isSearchingBusiness, setIsSearchingBusiness] = useState(false);
+  const [hasPrefilledFromCompany, setHasPrefilledFromCompany] = useState(false);
+  const debounceTimer = { current: null as NodeJS.Timeout | null };
+
+  const { data: companyData } = useQuery<{ company: any }>({
+    queryKey: ["/api/settings/company"],
+    enabled: open,
+  });
 
   const form = useForm<E911FormValues>({
     resolver: zodResolver(e911FormSchema),
@@ -127,6 +154,32 @@ export function E911ConfigDialog({
       postalCode: "",
     },
   });
+
+  useEffect(() => {
+    if (open && companyData?.company && !hasPrefilledFromCompany) {
+      const company = companyData.company;
+      if (company.address && company.city && company.state && company.postalCode) {
+        form.setValue("callerName", company.name || "");
+        form.setValue("streetAddress", company.address || "");
+        form.setValue("extendedAddress", company.addressLine2 || "");
+        form.setValue("locality", company.city || "");
+        form.setValue("administrativeArea", company.state || "");
+        form.setValue("postalCode", company.postalCode || "");
+        setHasPrefilledFromCompany(true);
+      }
+    }
+  }, [open, companyData, form, hasPrefilledFromCompany]);
+
+  useEffect(() => {
+    if (!open) {
+      setHasPrefilledFromCompany(false);
+      setUsePersonalName(false);
+      setBusinessSuggestions([]);
+      setShowBusinessSuggestions(false);
+      setStep("form");
+      form.reset();
+    }
+  }, [open, form]);
 
   const registerMutation = useMutation({
     mutationFn: async (data: E911FormValues) => {
@@ -181,6 +234,72 @@ export function E911ConfigDialog({
     form.setValue("postalCode", address.postalCode);
   };
 
+  const searchBusinesses = async (query: string) => {
+    if (query.length < 3 || usePersonalName) {
+      setBusinessSuggestions([]);
+      setShowBusinessSuggestions(false);
+      return;
+    }
+
+    setIsSearchingBusiness(true);
+    try {
+      const response = await fetch(
+        `/api/google-places/search-business?q=${encodeURIComponent(query)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setBusinessSuggestions(data.results || []);
+        setShowBusinessSuggestions((data.results || []).length > 0);
+      }
+    } catch (error) {
+      console.error("Business search error:", error);
+    } finally {
+      setIsSearchingBusiness(false);
+    }
+  };
+
+  const handleCallerNameChange = (value: string) => {
+    form.setValue("callerName", value);
+    
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    if (!usePersonalName && value.length >= 3) {
+      debounceTimer.current = setTimeout(() => {
+        searchBusinesses(value);
+      }, 400);
+    } else {
+      setBusinessSuggestions([]);
+      setShowBusinessSuggestions(false);
+    }
+  };
+
+  const handleBusinessSelect = (business: BusinessResult) => {
+    form.setValue("callerName", business.name);
+    form.setValue("streetAddress", business.address.street);
+    form.setValue("extendedAddress", business.address.addressLine2 || "");
+    form.setValue("locality", business.address.city);
+    form.setValue("administrativeArea", business.address.state);
+    form.setValue("postalCode", business.address.postalCode);
+    setBusinessSuggestions([]);
+    setShowBusinessSuggestions(false);
+  };
+
+  const handleUsePersonalNameChange = (checked: boolean) => {
+    setUsePersonalName(checked);
+    setBusinessSuggestions([]);
+    setShowBusinessSuggestions(false);
+    if (checked) {
+      form.setValue("callerName", "");
+      form.setValue("streetAddress", "");
+      form.setValue("extendedAddress", "");
+      form.setValue("locality", "");
+      form.setValue("administrativeArea", "");
+      form.setValue("postalCode", "");
+    }
+  };
+
   const formatPhoneDisplay = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
     if (cleaned.length === 11 && cleaned.startsWith("1")) {
@@ -194,7 +313,7 @@ export function E911ConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-amber-500" />
@@ -229,25 +348,87 @@ export function E911ConfigDialog({
               </div>
             </div>
 
+            {hasPrefilledFromCompany && !usePersonalName && (
+              <div className="flex items-center gap-2 p-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 mb-4 text-sm">
+                <Building2 className="h-4 w-4 text-blue-600" />
+                <span className="text-blue-700 dark:text-blue-300">Pre-filled with your company address</span>
+              </div>
+            )}
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="callerName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Caller Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="John Doe or Business Name" 
-                          {...field}
-                          data-testid="input-e911-caller-name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <div className="relative">
+                  <FormField
+                    control={form.control}
+                    name="callerName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          {usePersonalName ? (
+                            <><User className="h-4 w-4" /> Personal Name</>
+                          ) : (
+                            <><Building2 className="h-4 w-4" /> Business Name</>
+                          )}
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              placeholder={usePersonalName ? "John Doe" : "Search for your business..."}
+                              value={field.value}
+                              onChange={(e) => handleCallerNameChange(e.target.value)}
+                              data-testid="input-e911-caller-name"
+                              autoComplete="off"
+                            />
+                            {isSearchingBusiness && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {showBusinessSuggestions && businessSuggestions.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      {businessSuggestions.map((business) => (
+                        <button
+                          key={business.id}
+                          type="button"
+                          onClick={() => handleBusinessSelect(business)}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                          data-testid={`business-suggestion-${business.id}`}
+                        >
+                          <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-primary" />
+                            {business.name}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {business.shortFormattedAddress || business.formattedAddress}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   )}
-                />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="use-personal-name" 
+                    checked={usePersonalName}
+                    onCheckedChange={handleUsePersonalNameChange}
+                    data-testid="checkbox-use-personal-name"
+                  />
+                  <label 
+                    htmlFor="use-personal-name" 
+                    className="text-sm text-muted-foreground cursor-pointer"
+                  >
+                    Use personal name instead of business
+                  </label>
+                </div>
 
                 <FormField
                   control={form.control}
