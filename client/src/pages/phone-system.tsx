@@ -277,45 +277,27 @@ export default function PhoneSystem() {
               {/* Wallet Card */}
               <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
                 <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-muted-foreground flex items-center gap-2">
-                        <Wallet className="h-4 w-4" />
-                        Account Balance
-                      </p>
-                      <p className="text-3xl font-bold text-slate-900 dark:text-foreground mt-2" data-testid="text-balance">
-                        {formatCurrency("0", "USD")}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Available Credit: {formatCurrency("0", "USD")}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentBalance > 10 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
+                        <Wallet className="h-5 w-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500 dark:text-muted-foreground">Account Balance</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground" data-testid="text-balance">
+                          {formatCurrency("0", "USD")}
+                        </p>
+                      </div>
                     </div>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentBalance > 10 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-                      {currentBalance > 10 ? (
-                        <TrendingUp className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <AlertTriangle className="h-5 w-5 text-amber-600" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-border">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 rounded-lg bg-white dark:bg-background"
+                      className="rounded-lg bg-white dark:bg-background"
                       onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
                       data-testid="button-add-funds"
                     >
                       Add Funds
                     </Button>
-                    <div className="flex items-center gap-2">
-                      <Switch 
-                        id="auto-reload" 
-                        onCheckedChange={(checked) => toast({ title: checked ? "Auto-Reload Enabled" : "Auto-Reload Disabled", description: "Auto-reload settings coming soon." })}
-                        data-testid="switch-auto-reload"
-                      />
-                      <label htmlFor="auto-reload" className="text-xs text-slate-500 dark:text-muted-foreground">Auto</label>
-                    </div>
                   </div>
                 </CardContent>
               </Card>

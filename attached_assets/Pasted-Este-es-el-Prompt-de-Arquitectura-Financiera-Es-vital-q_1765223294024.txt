@@ -1,0 +1,47 @@
+Este es el **Prompt de Arquitectura Financiera**. Es vital que el Agente entienda que **Curbe actúa como el Banco** y Telnyx es solo la tubería.
+
+Copia y pega esto para que el Agente construya la lógica de dinero correctamente.
+
+***
+
+### PROMPT MAESTRO: SISTEMA DE WALLET Y CONTROL DE CRÉDITO
+
+> **ACTÚA COMO ARQUITECTO DE SOFTWARE SENIOR.**
+>
+> Vamos a implementar el núcleo financiero de la aplicación. **Es imperativo que entiendas el modelo de facturación:**
+>
+> 1.  **Telnyx (Proveedor):** Usamos "Rollup Billing". Todas las subcuentas gastan del saldo de mi cuenta maestra. Las subcuentas en Telnyx SIEMPRE tienen saldo $0 o infinito. No gestionamos dinero allí.
+> 2.  **Curbe (Nosotros):** Nosotros gestionamos el "Saldo Virtual" del cliente en nuestra base de datos.
+>
+> **REQUERIMIENTOS DE IMPLEMENTACIÓN:**
+>
+> **1. Base de Datos (Source of Truth):**
+> * Asegúrate de tener la tabla `wallets` vinculada a la `organization`.
+> * Campo crítico: `balance` (Decimal/Float). **Este es el único lugar donde existe el dinero del cliente.**
+> * Campo crítico: `auto_recharge_enabled` (Boolean) y `auto_recharge_threshold` (Monto).
+>
+> **2. El patrón "Portero" (Gatekeeper Logic):**
+> * **ANTES** de ejecutar cualquier acción que genere costo en Telnyx (Comprar número, Iniciar llamada, Enviar SMS), debes ejecutar una verificación local:
+>     * `function hasSufficientFunds(orgId, estimatedCost)`
+>     * Si `wallet.balance < estimatedCost`: **BLOQUEA LA ACCIÓN.** Lanza un error "Insufficient Funds" al frontend. No llames a la API de Telnyx.
+>     * Si `wallet.balance >= estimatedCost`: Permite proceder.
+>
+> **3. El Flujo de Cobro (Billing Flow):**
+> * **Costos Fijos (Números, Setup):** Se descuentan inmediatamente de la `wallet` al momento de la compra exitosa.
+> * **Costos Variables (Llamadas):**
+>     * Al recibir el webhook `call.hangup`, calcula el costo: `(duracion_minutos * PRECIO_VENTA)`.
+>     * Resta ese monto de la `wallet`.
+>     * Registra la transacción en `wallet_transactions`.
+>
+> **4. Sincronización de Seguridad (Safety Net):**
+> * Aunque nosotros controlamos el saldo, por seguridad, cuando el saldo de un cliente llegue a $0 en nuestra DB, dispara una llamada a la API de Telnyx para actualizar el `connection_status` o bloquear el perfil de salida, asegurando que no puedan generar gastos si nuestro código falla.
+>
+> **RESUMEN:** Tú eres el banco. Telnyx no sabe cuánto dinero tiene el cliente. Tu código es la única barrera entre el cliente y mi tarjeta de crédito.
+
+***
+
+### Por qué esto protege tu negocio
+Con estas instrucciones, el Agente construirá un sistema donde:
+1.  Si el cliente tiene $0.00, el botón "Llamar" en el frontend dará error antes de intentar conectar.
+2.  Si el cliente intenta comprar un número de $2.00 pero tiene $1.00, el sistema lo rechazará localmente.
+3.  Tu tarjeta maestra en Telnyx solo se usará cuando tus clientes ya te hayan pagado (y el sistema haya verificado que tienen saldo).
