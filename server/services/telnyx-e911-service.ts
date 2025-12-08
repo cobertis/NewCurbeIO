@@ -409,6 +409,7 @@ async function enableE911OnPhoneNumber(
       method: "POST",
       headers: buildHeaders(config),
       body: JSON.stringify({
+        emergency_enabled: true,
         emergency_address_id: emergencyAddressId,
       }),
     });
