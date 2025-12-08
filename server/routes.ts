@@ -26282,6 +26282,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   const httpServer = createServer(app);
 
+  // POST /webhooks/telnyx/voice/:companyId - Handle voice calls per company (TeXML)
+  app.post("/webhooks/telnyx/voice/:companyId", async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      const { from, to, direction, call_control_id } = req.body;
+      
+      console.log("[Telnyx Voice] Company webhook:", { companyId, from, to, direction, call_control_id });
+      
+      const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Record action="https://${process.env.REPL_SLUG}.${(process.env.REPL_OWNER || "").toLowerCase()}.repl.co/webhooks/telnyx/recordings/${companyId}" channels="dual" format="mp3" playBeep="true" />
+  <Dial timeout="30">
+    <Client>${companyId}</Client>
+  </Dial>
+</Response>`;
+      
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(texmlResponse);
+    } catch (error: any) {
+      console.error("[Telnyx Voice] Company webhook error:", error);
+      res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
+    }
+  });
+
+  // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
+  app.post("/webhooks/telnyx/status/:companyId", async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      console.log("[Telnyx Status] Company:", companyId, "Event:", req.body.event_type);
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("[Telnyx Status] Error:", error);
+      res.status(500).json({ error: "Status processing failed" });
+    }
+  });
+
   // ==================== WALLET API ====================
   
   // GET /api/wallet - Get company wallet
@@ -27690,6 +27726,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         success: true,
         token: result.token,
         sipUsername: result.sipUsername,
+        sipPassword: result.sipPassword,
+        callerIdNumber: result.callerIdNumber,
       });
     } catch (error: any) {
       console.error("[WebRTC] Token generation error:", error);

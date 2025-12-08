@@ -169,6 +169,69 @@ async function getOrCreateOutboundVoiceProfile(
   }
 }
 
+async function getOrCreateTexmlApplication(
+  config: ManagedAccountConfig,
+  companyId: string,
+  outboundVoiceProfileId: string
+): Promise<{ success: boolean; appId?: string; error?: string }> {
+  const [settings] = await db
+    .select({ texmlAppId: telephonySettings.texmlAppId })
+    .from(telephonySettings)
+    .where(eq(telephonySettings.companyId, companyId));
+
+  if (settings?.texmlAppId) {
+    console.log(`[Telephony] Using existing TeXML app: ${settings.texmlAppId}`);
+    return { success: true, appId: settings.texmlAppId };
+  }
+
+  const [company] = await db
+    .select({ name: companies.name })
+    .from(companies)
+    .where(eq(companies.id, companyId));
+
+  const companyName = company?.name || "Company";
+  const webhookBaseUrl = process.env.REPL_SLUG 
+    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER?.toLowerCase()}.repl.co`
+    : "https://curbe.io";
+
+  console.log(`[Telephony] Creating TeXML application for ${companyName}...`);
+
+  try {
+    const response = await fetch(`${TELNYX_API_BASE}/texml_applications`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        friendly_name: `${companyName} - Voice App`,
+        voice_url: `${webhookBaseUrl}/webhooks/telnyx/voice/${companyId}`,
+        voice_method: "POST",
+        status_callback: `${webhookBaseUrl}/webhooks/telnyx/status/${companyId}`,
+        status_callback_method: "POST",
+        outbound_voice_profile_id: outboundVoiceProfileId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telephony] Failed to create TeXML app: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to create TeXML app: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const appId = data.data?.id;
+
+    console.log(`[Telephony] TeXML application created: ${appId}`);
+
+    await db.update(telephonySettings)
+      .set({ texmlAppId: appId, updatedAt: new Date() })
+      .where(eq(telephonySettings.companyId, companyId));
+
+    return { success: true, appId };
+  } catch (error) {
+    console.error("[Telephony] Create TeXML app error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to create TeXML app" };
+  }
+}
+
 function generateSipUsername(companyId: string): string {
   const prefix = "curbe";
   const companyPart = companyId.replace(/-/g, '').slice(0, 8);
@@ -655,27 +718,53 @@ export async function createWebRTCCredential(
   companyId: string,
   userId: string,
   userName: string
-): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; error?: string }> {
+): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; sipPassword?: string; error?: string }> {
   console.log(`[WebRTC] Creating credential for user ${userId} in company ${companyId}...`);
 
   try {
     const config = await getManagedAccountConfig(companyId);
 
     const [settings] = await db
-      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .select({ 
+        texmlAppId: telephonySettings.texmlAppId,
+        outboundVoiceProfileId: telephonySettings.outboundVoiceProfileId,
+      })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
 
-    if (!settings?.credentialConnectionId) {
-      return { success: false, error: "Phone system not configured. Please complete E911 setup first." };
+    let texmlAppId = settings?.texmlAppId;
+
+    if (!texmlAppId) {
+      if (!settings?.outboundVoiceProfileId) {
+        const profileResult = await getOrCreateOutboundVoiceProfile(config, companyId);
+        if (!profileResult.success || !profileResult.profileId) {
+          return { success: false, error: "Failed to create voice profile" };
+        }
+        const appResult = await getOrCreateTexmlApplication(config, companyId, profileResult.profileId);
+        if (!appResult.success || !appResult.appId) {
+          return { success: false, error: "Failed to create TeXML application" };
+        }
+        texmlAppId = appResult.appId;
+      } else {
+        const appResult = await getOrCreateTexmlApplication(config, companyId, settings.outboundVoiceProfileId);
+        if (!appResult.success || !appResult.appId) {
+          return { success: false, error: "Failed to create TeXML application" };
+        }
+        texmlAppId = appResult.appId;
+      }
     }
+
+    const sipUsername = generateSipUsername(companyId);
+    const sipPassword = generateSipPassword();
 
     const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials`, {
       method: "POST",
       headers: buildHeaders(config),
       body: JSON.stringify({
-        connection_id: settings.credentialConnectionId,
+        connection_id: texmlAppId,
         name: userName || `User ${userId.slice(0, 8)}`,
+        sip_username: sipUsername,
+        sip_password: sipPassword,
       }),
     });
 
@@ -687,28 +776,29 @@ export async function createWebRTCCredential(
 
     const data = await response.json();
     const credentialId = data.data?.id;
-    const sipUsername = data.data?.sip_username;
+    const returnedSipUsername = data.data?.sip_username || sipUsername;
 
-    console.log(`[WebRTC] Credential created: ${credentialId}, SIP: ${sipUsername}`);
+    console.log(`[WebRTC] Credential created: ${credentialId}, SIP: ${returnedSipUsername}`);
 
     await db.insert(telephonyCredentials).values({
       companyId,
       userId,
       telnyxCredentialId: credentialId,
-      sipUsername: sipUsername,
-      sipPassword: "", // Not used with token-based auth
+      sipUsername: returnedSipUsername,
+      sipPassword: sipPassword,
       isActive: true,
     }).onConflictDoUpdate({
       target: [telephonyCredentials.userId],
       set: {
         telnyxCredentialId: credentialId,
-        sipUsername: sipUsername,
+        sipUsername: returnedSipUsername,
+        sipPassword: sipPassword,
         isActive: true,
         updatedAt: new Date(),
       },
     });
 
-    return { success: true, credentialId, sipUsername };
+    return { success: true, credentialId, sipUsername: returnedSipUsername, sipPassword };
   } catch (error) {
     console.error("[WebRTC] Create credential error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to create credential" };
@@ -719,15 +809,20 @@ export async function getOrCreateWebRTCCredential(
   companyId: string,
   userId: string,
   userName: string
-): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; error?: string }> {
+): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; sipPassword?: string; error?: string }> {
   const [existing] = await db
     .select()
     .from(telephonyCredentials)
     .where(eq(telephonyCredentials.userId, userId));
 
-  if (existing?.telnyxCredentialId && existing.isActive) {
+  if (existing?.telnyxCredentialId && existing.isActive && existing.sipPassword) {
     console.log(`[WebRTC] Using existing credential for user ${userId}: ${existing.telnyxCredentialId}`);
-    return { success: true, credentialId: existing.telnyxCredentialId, sipUsername: existing.sipUsername };
+    return { 
+      success: true, 
+      credentialId: existing.telnyxCredentialId, 
+      sipUsername: existing.sipUsername,
+      sipPassword: existing.sipPassword,
+    };
   }
 
   return createWebRTCCredential(companyId, userId, userName);
@@ -737,7 +832,7 @@ export async function generateWebRTCToken(
   companyId: string,
   userId: string,
   userName: string
-): Promise<{ success: boolean; token?: string; sipUsername?: string; error?: string }> {
+): Promise<{ success: boolean; token?: string; sipUsername?: string; sipPassword?: string; callerIdNumber?: string; error?: string }> {
   console.log(`[WebRTC] Generating token for user ${userId}...`);
 
   try {
@@ -748,6 +843,12 @@ export async function generateWebRTCToken(
       return { success: false, error: credResult.error || "Failed to get credential" };
     }
 
+    const [phoneNumber] = await db
+      .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId))
+      .limit(1);
+
     const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials/${credResult.credentialId}/token`, {
       method: "POST",
       headers: buildHeaders(config),
@@ -757,7 +858,12 @@ export async function generateWebRTCToken(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[WebRTC] Failed to generate token: ${response.status} - ${errorText}`);
-      return { success: false, error: `Failed to generate token: ${response.status}` };
+      return { 
+        success: true, 
+        sipUsername: credResult.sipUsername,
+        sipPassword: credResult.sipPassword,
+        callerIdNumber: phoneNumber?.phoneNumber,
+      };
     }
 
     const data = await response.json();
@@ -769,7 +875,13 @@ export async function generateWebRTCToken(
       .set({ lastUsedAt: new Date() })
       .where(eq(telephonyCredentials.userId, userId));
 
-    return { success: true, token, sipUsername: credResult.sipUsername };
+    return { 
+      success: true, 
+      token, 
+      sipUsername: credResult.sipUsername,
+      sipPassword: credResult.sipPassword,
+      callerIdNumber: phoneNumber?.phoneNumber,
+    };
   } catch (error) {
     console.error("[WebRTC] Generate token error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to generate token" };

@@ -1,0 +1,158 @@
+Aquí tienes la **Guía Maestra de Implementación** para tu Agente.
+
+Esto conecta todos los puntos: desde que el usuario hace clic en "Activar Teléfono" hasta que tiene tono de llamada en el navegador, incluyendo grabaciones y seguridad.
+
+Copia y pega estos bloques de instrucciones (Prompts) en orden. Están diseñados para que el Agente no olvide ningún paso crítico.
+
+-----
+
+### PROMPT 1: EL MOTOR DE PROVISIONAMIENTO (BACKEND)
+
+Este es el script que configura la cuenta "tras bambalinas". Debe ejecutarse cuando el usuario activa el servicio o compra su primer número.
+
+> **ACTÚA COMO BACKEND ARCHITECT (Node.js/Python).**
+>
+> Necesito crear el servicio `TelephonySetupService`. Su trabajo es configurar la infraestructura de voz para una Subcuenta (Managed Account) existente.
+>
+> Crea una función principal: `setupClientInfrastructure(user, subAccountToken)`.
+>
+> **Lógica de Ejecución (Secuencial):**
+>
+> **PASO 1: Crear el Perfil de Seguridad (Outbound Voice Profile)**
+>
+>   * **Objetivo:** Definir reglas de llamadas salientes.
+>   * **Endpoint:** `POST /v2/outbound_voice_profiles` (Usa el `subAccountToken`).
+>   * **Payload:**
+>       * `name`: `Curbe Profile - ${user.companyName}`
+>       * `traffic_type`: `conversational`
+>       * `service_plan`: `us` (Para limitar a doméstico por defecto).
+>       * `usage_limit`: `{ amount: 25.00, currency_code: "USD", action: "block" }` (Safety Cap).
+>   * **Acción:** Guarda el `id` retornado como `outbound_profile_id` en la DB del usuario.
+>
+> **PASO 2: Crear la Aplicación Lógica (TeXML Application)**
+>
+>   * **Objetivo:** Conectar las llamadas a mi API.
+>   * **Endpoint:** `POST /v2/texml_applications`
+>   * **Payload:**
+>       * `friendly_name`: `Curbe App - ${user.id}`
+>       * `voice_url`: `https://[TU_DOMINIO]/webhooks/telnyx/inbound` (Donde decidiremos qué hacer).
+>       * `status_callback`: `https://[TU_DOMINIO]/webhooks/telnyx/status` (Para logs).
+>       * `outbound_voice_profile_id`: (El ID del Paso 1). **CRÍTICO:** Esto autoriza a la app a hacer llamadas.
+>   * **Acción:** Guarda el `id` retornado como `texml_app_id` en la DB.
+>
+> **PASO 3: Crear Credencial SIP (Para WebRTC)**
+>
+>   * **Objetivo:** Darle identidad al agente en el navegador.
+>   * **Endpoint:** `POST /v2/telephony_credentials`
+>   * **Payload:**
+>       * `connection_id`: (El ID de la TeXML App del Paso 2).
+>       * `sip_username`: Genera uno único (ej: `user_${user.id}_${random}`).
+>       * `sip_password`: Genera una contraseña segura (alfanumérica 20 chars).
+>   * **Acción:** Guarda `sip_username` y `sip_password` encriptado en la tabla `users`.
+>
+> **PASO 4: Auto-Configurar Números Existentes**
+>
+>   * Busca si el usuario ya compró números en la DB.
+>   * Si existen, actualízalos en Telnyx (`PATCH /v2/phone_numbers/{id}`) asignando el `connection_id` (TeXML App ID) del Paso 2.
+
+-----
+
+### PROMPT 2: EL CEREBRO DE LA LLAMADA (WEBHOOKS)
+
+Aquí defines cómo se comportan las llamadas (Grabar, Conectar).
+
+> **ACTÚA COMO LOGIC DEVELOPER.**
+>
+> Necesito manejar la lógica de llamadas entrantes y salientes en `/webhooks/telnyx/inbound`.
+>
+> **Escenario 1: Llamada Entrante (Cliente llama a Curbe)**
+>
+>   * Telnyx envía `POST` a mi webhook.
+>   * **Tu Respuesta (TeXML):**
+>     ```xml
+>     <Response>
+>       >       <Record action="https://[DOMINIO]/webhooks/recordings" channels="dual" format="mp3" play_beep="true" />
+>       
+>       <Dial timeout="30">
+>         >         <Client>sip_username_del_agente</Client> 
+>       </Dial>
+>     </Response>
+>     ```
+>   * *Nota:* Debes buscar en la DB qué agente es dueño del número llamado para poner su `sip_username` correcto.
+>
+> **Escenario 2: Llamada Saliente (Agente llama desde Curbe)**
+>
+>   * El frontend inicia la llamada enviando el número destino.
+>   * Telnyx envía `POST` a mi webhook.
+>   * **Tu Respuesta (TeXML):**
+>     ```xml
+>     <Response>
+>        >        <Record action="..." channels="dual" play_beep="false" />
+>        
+>        <Dial callerId="NUMERO_TELEFONO_DEL_USUARIO">
+>           <Number>NUMERO_DESTINO</Number>
+>        </Dial>
+>     </Response>
+>     ```
+
+-----
+
+### PROMPT 3: EL PASE DE ACCESO (TOKEN ENDPOINT)
+
+Para que el frontend se conecte sin exponer la contraseña SIP.
+
+> **ACTÚA COMO SECURITY DEV.**
+>
+> Crea un endpoint `GET /api/voice/credentials` para el frontend.
+>
+> 1.  Verifica la sesión del usuario en Curbe.
+> 2.  Recupera su `sip_username` y `sip_password` desencriptada.
+> 3.  Genera un **JWT Token** usando el SDK de Telnyx (`telnyx.tokens.createOnDemandCredential`).
+>       * *Nota:* Si usamos la librería oficial `@telnyx/webrtc`, necesitamos este token de acceso temporal para no exponer la password SIP en el JSON del navegador.
+> 4.  Devuelve: `{ token: "...", sip_username: "..." }`.
+
+-----
+
+### PROMPT 4: EL TELÉFONO EN EL NAVEGADOR (FRONTEND)
+
+Finalmente, la interfaz visual.
+
+> **ACTÚA COMO FRONTEND DEV (React).**
+>
+> Implementa el componente `WebPhone` usando el paquete oficial `@telnyx/webrtc`.
+>
+> **Inicialización:**
+>
+> 1.  Al cargar, llama a `/api/voice/credentials`.
+> 2.  Conecta el cliente:
+>     ```javascript
+>     const client = new TelnyxRTC({
+>       login: credentials.sip_username,
+>       password: credentials.sip_password, // O usa el Token si el SDK lo soporta
+>       // Configura ringtone y notificaciones
+>     });
+>     client.connect();
+>     ```
+>
+> **Funciones UI:**
+>
+>   * **Hacer Llamada:** `client.newCall({ destinationNumber: '+1...', callerName: 'Agente Curbe', callerNumber: 'MI_NUMERO' })`.
+>   * **Colgar:** `call.hangup()`.
+>   * **Mute:** `call.toggleMute()`.
+>   * **Hold:** `call.hold()` / `call.unhold()`.
+>
+> **Manejo de Eventos:**
+>
+>   * Escucha `telnyx.notification` para llamadas entrantes (`callUpdate`).
+>   * Si entra llamada -\> Muestra Modal con botones "Contestar" (`call.answer()`) y "Rechazar".
+
+-----
+
+### Resumen de Features Habilitados con esto:
+
+1.  **Llamadas Entrantes/Salientes:** Gestionadas por la `TeXML App` y conectadas vía `Client` (WebRTC).
+2.  **Grabación:** El verbo `<Record>` en el XML asegura que TODO se grabe automáticamente.
+3.  **Seguridad:** El `Outbound Profile` impide que te roben saldo llamando a países raros.
+4.  **Identidad:** El `callerId` en el XML asegura que el cliente vea tu número de negocio, no "Desconocido".
+
+Dale esto al Agente y tendrás un softphone profesional integrado.
