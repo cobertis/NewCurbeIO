@@ -817,10 +817,7 @@ export function WebPhoneFloatingWindow() {
                 )} />
               </div>
             ) : (
-              <>
-                <span className="text-foreground font-semibold text-xs sm:text-sm">Calling From</span>
-                <span className="text-muted-foreground text-[10px] sm:text-xs">Purchase Phone number to select</span>
-              </>
+              <span className="text-foreground font-semibold text-xs sm:text-sm">WebPhone</span>
             )}
           </div>
           
@@ -849,9 +846,12 @@ export function WebPhoneFloatingWindow() {
                 </div>
                 
                 {/* Title */}
-                <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-4">
-                  Purchase Phone numbers to Call
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
+                  Get Started
                 </h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Purchase a phone number to start making calls
+                </p>
                 
                 {/* Purchase Button - Opens In-App Buy View */}
                 <Button
