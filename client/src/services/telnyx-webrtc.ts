@@ -82,6 +82,8 @@ class TelnyxWebRTCManager {
       this.client = new TelnyxRTC({
         login: sipUsername,
         password: sipPassword,
+        ringtoneFile: undefined,
+        ringbackFile: undefined,
       });
       
       this.client.on('telnyx.ready', () => {

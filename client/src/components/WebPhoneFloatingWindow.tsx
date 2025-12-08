@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, type LucideIcon } from 'lucide-react';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
+import { telnyxWebRTC, useTelnyxStore } from '@/services/telnyx-webrtc';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -996,8 +997,77 @@ export function WebPhoneFloatingWindow() {
   const hasTelnyxNumber = (telnyxNumbersData?.numbers?.length || 0) > 0;
   const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   
+  // Telnyx WebRTC state
+  const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
+  const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
+  const telnyxIncomingCall = useTelnyxStore(state => state.incomingCall);
+  const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
+  const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
+  const [telnyxInitialized, setTelnyxInitialized] = useState(false);
+  
   // Check if phone is available (either SIP extension or Telnyx number)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber;
+
+  // Initialize Telnyx WebRTC when phone number is available
+  const telnyxInitRef = useRef(false);
+  
+  useEffect(() => {
+    const initializeTelnyx = async () => {
+      // Prevent multiple initializations
+      if (!hasTelnyxNumber || telnyxInitRef.current) {
+        return;
+      }
+      
+      telnyxInitRef.current = true;
+      console.log('[WebPhone] Initializing Telnyx WebRTC...');
+      
+      try {
+        // Fetch WebRTC credentials
+        const response = await fetch('/api/webrtc/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch WebRTC credentials: ${response.status} ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success || !data.sipUsername || !data.sipPassword) {
+          throw new Error(data.error || 'Invalid WebRTC credentials');
+        }
+        
+        console.log('[WebPhone] Got Telnyx credentials:', { 
+          sipUsername: data.sipUsername,
+          callerIdNumber: data.callerIdNumber 
+        });
+        
+        // Register audio element for Telnyx
+        if (remoteAudioRef.current) {
+          telnyxWebRTC.setAudioElement(remoteAudioRef.current);
+        }
+        
+        // Initialize Telnyx WebRTC
+        await telnyxWebRTC.initialize(
+          data.sipUsername,
+          data.sipPassword,
+          data.callerIdNumber || telnyxCallerIdNumber
+        );
+        
+        setTelnyxInitialized(true);
+        console.log('[WebPhone] Telnyx WebRTC initialized successfully');
+        
+      } catch (error: any) {
+        console.error('[WebPhone] Failed to initialize Telnyx:', error?.message || error);
+        telnyxInitRef.current = false; // Allow retry on failure
+      }
+    };
+    
+    initializeTelnyx();
+  }, [hasTelnyxNumber, telnyxCallerIdNumber]);
 
   // Handle window resize - recalculate dimensions and clamp position
   useEffect(() => {
@@ -1164,7 +1234,15 @@ export function WebPhoneFloatingWindow() {
     if (!dialNumber) return;
     try {
       const digits = dialNumber.replace(/\D/g, '');
-      await webPhone.makeCall(digits);
+      
+      // Use Telnyx WebRTC if available, otherwise fallback to SIP.js
+      if (hasTelnyxNumber) {
+        console.log('[WebPhone] Making call via Telnyx WebRTC to:', digits);
+        const formattedNumber = digits.startsWith('+') ? digits : `+1${digits}`;
+        await telnyxWebRTC.makeCall(formattedNumber);
+      } else {
+        await webPhone.makeCall(digits);
+      }
       setDialNumber('');
     } catch (error) {
       console.error('Failed to make call:', error);
@@ -1279,7 +1357,9 @@ export function WebPhoneFloatingWindow() {
                 </span>
                 <div className={cn(
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
-                  hasTelnyxNumber ? "bg-green-500" : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
+                  hasTelnyxNumber 
+                    ? (telnyxConnectionStatus === 'connected' ? "bg-green-500" : telnyxConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500")
+                    : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
                 )} />
               </div>
             ) : (
@@ -1875,10 +1955,10 @@ export function WebPhoneFloatingWindow() {
                         <div></div>
                         <button
                           onClick={handleCall}
-                          disabled={!dialNumber || connectionStatus !== 'connected'}
+                          disabled={!dialNumber || (hasTelnyxNumber ? telnyxConnectionStatus !== 'connected' : connectionStatus !== 'connected')}
                           className={cn(
                             "w-14 h-14 sm:w-20 sm:h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
-                            dialNumber && connectionStatus === 'connected'
+                            dialNumber && (hasTelnyxNumber ? telnyxConnectionStatus === 'connected' : connectionStatus === 'connected')
                               ? "bg-green-500 hover:bg-green-600" 
                               : "bg-green-500/40 cursor-not-allowed"
                           )}

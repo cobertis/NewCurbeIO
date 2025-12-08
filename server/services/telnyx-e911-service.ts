@@ -811,18 +811,43 @@ export async function getOrCreateWebRTCCredential(
   userId: string,
   userName: string
 ): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; sipPassword?: string; error?: string }> {
-  const [existing] = await db
+  // First, try to find by userId
+  const [existingByUser] = await db
     .select()
     .from(telephonyCredentials)
     .where(eq(telephonyCredentials.userId, userId));
 
-  if (existing?.telnyxCredentialId && existing.isActive && existing.sipPassword) {
-    console.log(`[WebRTC] Using existing credential for user ${userId}: ${existing.telnyxCredentialId}`);
+  if (existingByUser?.telnyxCredentialId && existingByUser.isActive && existingByUser.sipPassword) {
+    console.log(`[WebRTC] Using existing credential for user ${userId}: ${existingByUser.telnyxCredentialId}`);
     return { 
       success: true, 
-      credentialId: existing.telnyxCredentialId, 
-      sipUsername: existing.sipUsername,
-      sipPassword: existing.sipPassword,
+      credentialId: existingByUser.telnyxCredentialId, 
+      sipUsername: existingByUser.sipUsername,
+      sipPassword: existingByUser.sipPassword,
+    };
+  }
+
+  // If no credential for this user, check if there's a company-wide credential we can use
+  const [existingByCompany] = await db
+    .select()
+    .from(telephonyCredentials)
+    .where(eq(telephonyCredentials.companyId, companyId));
+
+  if (existingByCompany?.telnyxCredentialId && existingByCompany.isActive && existingByCompany.sipPassword) {
+    console.log(`[WebRTC] Using company credential for ${companyId}: ${existingByCompany.telnyxCredentialId}`);
+    
+    // Optionally update with userId if missing
+    if (!existingByCompany.userId) {
+      await db.update(telephonyCredentials)
+        .set({ userId, updatedAt: new Date() })
+        .where(eq(telephonyCredentials.id, existingByCompany.id));
+    }
+    
+    return { 
+      success: true, 
+      credentialId: existingByCompany.telnyxCredentialId, 
+      sipUsername: existingByCompany.sipUsername,
+      sipPassword: existingByCompany.sipPassword,
     };
   }
 
@@ -844,11 +869,38 @@ export async function generateWebRTCToken(
       return { success: false, error: credResult.error || "Failed to get credential" };
     }
 
-    const [phoneNumber] = await db
+    // First try local DB
+    let callerIdNumber: string | undefined;
+    const [localPhoneNumber] = await db
       .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
       .from(telnyxPhoneNumbers)
       .where(eq(telnyxPhoneNumbers.companyId, companyId))
       .limit(1);
+    
+    callerIdNumber = localPhoneNumber?.phoneNumber;
+    
+    // If not in local DB, fetch from Telnyx API
+    if (!callerIdNumber) {
+      console.log(`[WebRTC] No local phone number, fetching from Telnyx API...`);
+      try {
+        const response = await fetch(`${TELNYX_API_BASE}/phone_numbers?page[size]=1`, {
+          method: "GET",
+          headers: buildHeaders(config),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.data && data.data.length > 0) {
+            callerIdNumber = data.data[0].phone_number;
+            console.log(`[WebRTC] Got phone number from Telnyx API: ${callerIdNumber}`);
+          }
+        }
+      } catch (apiError) {
+        console.error(`[WebRTC] Failed to fetch phone number from API:`, apiError);
+      }
+    }
+    
+    console.log(`[WebRTC] Final callerIdNumber: ${callerIdNumber}`);
 
     const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials/${credResult.credentialId}/token`, {
       method: "POST",
@@ -859,18 +911,19 @@ export async function generateWebRTCToken(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[WebRTC] Failed to generate token: ${response.status} - ${errorText}`);
+      // Still return credentials even if token generation fails
       return { 
         success: true, 
         sipUsername: credResult.sipUsername,
         sipPassword: credResult.sipPassword,
-        callerIdNumber: phoneNumber?.phoneNumber,
+        callerIdNumber,
       };
     }
 
     const data = await response.json();
     const token = data.data;
 
-    console.log(`[WebRTC] Token generated successfully for ${credResult.sipUsername}`);
+    console.log(`[WebRTC] Token generated successfully for ${credResult.sipUsername}, callerIdNumber: ${callerIdNumber}`);
 
     await db.update(telephonyCredentials)
       .set({ lastUsedAt: new Date() })
@@ -881,7 +934,7 @@ export async function generateWebRTCToken(
       token, 
       sipUsername: credResult.sipUsername,
       sipPassword: credResult.sipPassword,
-      callerIdNumber: phoneNumber?.phoneNumber,
+      callerIdNumber,
     };
   } catch (error) {
     console.error("[WebRTC] Generate token error:", error);
