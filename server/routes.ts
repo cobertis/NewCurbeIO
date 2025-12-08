@@ -27055,7 +27055,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         ends_with: req.query.ends_with as string | undefined,
         contains: req.query.contains as string | undefined,
         features: features,
-        limit: parseInt(req.query.limit as string) || 20,
+        limit: parseInt(req.query.limit as string) || 50,
+        page: parseInt(req.query.page as string) || 1,
       };
 
       const result = await searchAvailableNumbers(params);
@@ -27064,7 +27065,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(500).json({ message: result.error });
       }
 
-      res.json({ numbers: result.numbers });
+      res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Search error:", error);
       res.status(500).json({ message: "Failed to search phone numbers" });
@@ -27110,7 +27111,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(500).json({ message: result.error });
       }
 
-      res.json({ numbers: result.numbers });
+      res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Get numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });

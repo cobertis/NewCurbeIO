@@ -46,12 +46,16 @@ export interface SearchNumbersParams {
   contains?: string;
   features?: string[];
   limit?: number;
+  page?: number;
 }
 
 export interface SearchNumbersResult {
   success: boolean;
   numbers?: AvailablePhoneNumber[];
   totalCount?: number;
+  currentPage?: number;
+  totalPages?: number;
+  pageSize?: number;
   error?: string;
 }
 
@@ -101,9 +105,13 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       });
     }
     
-    queryParams.append("filter[limit]", String(params.limit || 10));
+    // Use page[size] and page[number] for proper pagination
+    const pageSize = params.limit || 50;
+    const pageNumber = params.page || 1;
+    queryParams.append("page[size]", String(pageSize));
+    queryParams.append("page[number]", String(pageNumber));
 
-    console.log(`[Telnyx Numbers] Searching with params: ${queryParams.toString()}`);
+    console.log(`[Telnyx Numbers] Searching page ${pageNumber} with params: ${queryParams.toString()}`);
 
     const response = await fetch(`${TELNYX_API_BASE}/available_phone_numbers?${queryParams.toString()}`, {
       method: "GET",
@@ -124,11 +132,16 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
 
     const result = await response.json();
     
-    console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers`);
+    const meta = result.meta || {};
+    console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers on page ${meta.page_number || pageNumber} of ${meta.total_pages || 1}`);
 
     return {
       success: true,
       numbers: result.data || [],
+      totalCount: meta.total_results,
+      currentPage: meta.page_number || pageNumber,
+      totalPages: meta.total_pages || 1,
+      pageSize: meta.page_size || pageSize,
     };
   } catch (error) {
     console.error("[Telnyx Numbers] Search error:", error);

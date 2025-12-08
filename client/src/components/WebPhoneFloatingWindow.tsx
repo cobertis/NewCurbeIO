@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
@@ -192,7 +192,13 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
     { value: "fax", label: "Fax" },
   ];
 
-  const { data: numbersData, isLoading, refetch } = useQuery<{ numbers: AvailablePhoneNumber[] }>({
+  const { data: numbersData, isLoading, refetch } = useQuery<{ 
+    numbers: AvailablePhoneNumber[]; 
+    totalCount?: number;
+    currentPage?: number;
+    totalPages?: number;
+    pageSize?: number;
+  }>({
     queryKey: ['/api/telnyx/available-numbers', currentPage],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -229,6 +235,9 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
       if (selectedFeatures.length > 0) {
         params.append('features', selectedFeatures.join(','));
       }
+      
+      // Add pagination parameter
+      params.append('page', String(currentPage));
       
       const res = await fetch(`/api/telnyx/available-numbers?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch numbers');
@@ -267,6 +276,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
   });
 
   const handleSearch = () => {
+    setCurrentPage(1);
     setSearchTriggered(true);
     refetch();
   };
@@ -618,29 +628,62 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-background">
-          <span className="text-sm text-muted-foreground">
-            {selectedNumbers.size} Number selected
-          </span>
-          <Button
-            onClick={handlePurchase}
-            disabled={selectedNumbers.size === 0 || purchaseMutation.isPending}
-            className="bg-blue-500 hover:bg-blue-600 gap-2"
-            data-testid="button-proceed-to-buy"
-          >
-            {purchaseMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Purchasing...
-              </>
-            ) : (
-              <>
-                <ShoppingBag className="h-4 w-4" />
-                Proceed to Buy
-              </>
-            )}
-          </Button>
+        {/* Footer with Pagination */}
+        <div className="px-6 py-4 border-t border-border bg-background">
+          {/* Pagination Controls */}
+          {numbersData?.totalPages && numbersData.totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1 || isLoading}
+                data-testid="button-prev-page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground px-3">
+                Page {numbersData.currentPage || currentPage} of {numbersData.totalPages}
+                {numbersData.totalCount && ` (${numbersData.totalCount.toLocaleString()} numbers)`}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(numbersData.totalPages || prev, prev + 1))}
+                disabled={currentPage >= (numbersData.totalPages || 1) || isLoading}
+                data-testid="button-next-page"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          
+          {/* Purchase Controls */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {selectedNumbers.size} Number selected
+            </span>
+            <Button
+              onClick={handlePurchase}
+              disabled={selectedNumbers.size === 0 || purchaseMutation.isPending}
+              className="bg-blue-500 hover:bg-blue-600 gap-2"
+              data-testid="button-proceed-to-buy"
+            >
+              {purchaseMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Purchasing...
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="h-4 w-4" />
+                  Proceed to Buy
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
