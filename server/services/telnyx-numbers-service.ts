@@ -11,6 +11,7 @@ async function getTelnyxMasterApiKey(): Promise<string> {
   if (!apiKey) {
     throw new Error("Telnyx API key not configured. Please add it in Settings > API Keys.");
   }
+  console.log(`[Telnyx] API key loaded, prefix: ${apiKey.substring(0, 10)}..., length: ${apiKey.length}`);
   return apiKey;
 }
 
