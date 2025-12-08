@@ -27148,11 +27148,53 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Phone number is required" });
       }
 
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
       const { purchasePhoneNumber } = await import("./services/telnyx-numbers-service");
       const result = await purchasePhoneNumber(phoneNumber, user.companyId);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
+      }
+
+      // Auto-trigger WebRTC provisioning if not already completed
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      
+      // Only trigger provisioning for new or failed states
+      // Skip if: completed (already done), pending (job dispatched), in_progress (actively running)
+      const shouldProvision = !existingStatus || 
+        existingStatus.status === "not_started" ||
+        existingStatus.status === "failed";
+      
+      if (shouldProvision) {
+        // Get managed account ID for this company
+        const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+        const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+        
+        if (managedAccountId) {
+          console.log("[Provisioning] Auto-triggering WebRTC provisioning for company:", user.companyId, "current status:", existingStatus?.status || "none");
+          // Trigger provisioning in background (don't wait)
+          telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId)
+            .then(provResult => {
+              if (provResult.success) {
+                console.log("[Provisioning] WebRTC infrastructure auto-provisioned for company:", user.companyId);
+              } else {
+                console.error("[Provisioning] Auto-provision failed for company:", user.companyId, "error:", provResult.error);
+              }
+            })
+            .catch(err => {
+              console.error("[Provisioning] Auto-provision error for company:", user.companyId, err);
+            });
+        } else {
+          console.warn("[Provisioning] Cannot auto-provision - no managed account ID found for company:", user.companyId, "- phone system setup may be incomplete");
+        }
+      } else if (existingStatus?.status === "pending" || existingStatus?.status === "in_progress") {
+        console.log("[Provisioning] Skipping auto-provision for company:", user.companyId, "- provisioning job already running (status:", existingStatus.status, ")");
+      } else {
+        console.log("[Provisioning] Skipping auto-provision for company:", user.companyId, "- already completed");
       }
 
       res.json({ 
@@ -27338,6 +27380,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden" });
       }
 
+      const { id } = req.params;
+      const { enableManagedAccount } = await import("./services/telnyx-managed-accounts");
+      const result = await enableManagedAccount(id);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true, message: "Managed account enabled" });
+    } catch (error: any) {
+      console.error("[Telnyx Managed] Enable error:", error);
+      res.status(500).json({ message: "Failed to enable managed account" });
+    }
+  });
+
   // POST /api/telnyx/provisioning/trigger - Trigger WebRTC infrastructure provisioning
   app.post("/api/telnyx/provisioning/trigger", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -27505,23 +27562,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get SIP credentials" });
     }
   });
-      
-      const { id } = req.params;
-      const { enableManagedAccount } = await import("./services/telnyx-managed-accounts");
-      const result = await enableManagedAccount(id);
-
-      if (!result.success) {
-        return res.status(500).json({ message: result.error });
-      }
-
-      res.json({ success: true, message: "Managed account enabled" });
-    } catch (error: any) {
-      console.error("[Telnyx Managed] Enable error:", error);
-      res.status(500).json({ message: "Failed to enable managed account" });
-    }
-  });
-
-  return httpServer;
 
   // =====================================================
   // E911 EMERGENCY ADDRESS ENDPOINTS
@@ -27645,4 +27685,5 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  return httpServer;
 }

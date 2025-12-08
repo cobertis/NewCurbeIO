@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
+import { E911ConfigDialog } from "@/components/E911ConfigDialog";
 
 interface ManagedAccountDetails {
   id: string;
@@ -96,6 +97,8 @@ export default function PhoneSystem() {
   const { toast } = useToast();
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showBuyNumber, setShowBuyNumber] = useState(false);
+  const [showE911Dialog, setShowE911Dialog] = useState(false);
+  const [selectedNumberForE911, setSelectedNumberForE911] = useState<{ phoneNumber: string; phoneNumberId: string } | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
@@ -287,7 +290,17 @@ export default function PhoneSystem() {
               {/* E911 Card */}
               <div 
                 className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card cursor-pointer transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
-                onClick={() => toast({ title: "E911 Configuration", description: "E911 configuration will be available in a future update." })}
+                onClick={() => {
+                  if (numbersData?.numbers?.[0]) {
+                    setSelectedNumberForE911({
+                      phoneNumber: numbersData.numbers[0].phone_number,
+                      phoneNumberId: numbersData.numbers[0].id || "",
+                    });
+                    setShowE911Dialog(true);
+                  } else {
+                    toast({ title: "No Phone Number", description: "Please purchase a phone number first before configuring E911." });
+                  }
+                }}
                 data-testid="button-configure-e911-compliance"
               >
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
@@ -437,6 +450,19 @@ export default function PhoneSystem() {
             refetchNumbers();
           }}
         />
+
+        {selectedNumberForE911 && (
+          <E911ConfigDialog
+            open={showE911Dialog}
+            onOpenChange={setShowE911Dialog}
+            phoneNumber={selectedNumberForE911.phoneNumber}
+            phoneNumberId={selectedNumberForE911.phoneNumberId}
+            onSuccess={() => {
+              refetchNumbers();
+              setSelectedNumberForE911(null);
+            }}
+          />
+        )}
     </div>
   );
 }
