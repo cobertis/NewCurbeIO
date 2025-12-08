@@ -360,11 +360,43 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
                 <SelectTrigger className="w-full" data-testid="select-country">
                   <SelectValue placeholder="Country" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="US">United States +1</SelectItem>
                   <SelectItem value="CA">Canada +1</SelectItem>
                   <SelectItem value="GB">United Kingdom +44</SelectItem>
                   <SelectItem value="MX">Mexico +52</SelectItem>
+                  <SelectItem value="AU">Australia +61</SelectItem>
+                  <SelectItem value="DE">Germany +49</SelectItem>
+                  <SelectItem value="FR">France +33</SelectItem>
+                  <SelectItem value="ES">Spain +34</SelectItem>
+                  <SelectItem value="IT">Italy +39</SelectItem>
+                  <SelectItem value="NL">Netherlands +31</SelectItem>
+                  <SelectItem value="BE">Belgium +32</SelectItem>
+                  <SelectItem value="AT">Austria +43</SelectItem>
+                  <SelectItem value="CH">Switzerland +41</SelectItem>
+                  <SelectItem value="SE">Sweden +46</SelectItem>
+                  <SelectItem value="NO">Norway +47</SelectItem>
+                  <SelectItem value="DK">Denmark +45</SelectItem>
+                  <SelectItem value="FI">Finland +358</SelectItem>
+                  <SelectItem value="IE">Ireland +353</SelectItem>
+                  <SelectItem value="PT">Portugal +351</SelectItem>
+                  <SelectItem value="PL">Poland +48</SelectItem>
+                  <SelectItem value="CZ">Czech Republic +420</SelectItem>
+                  <SelectItem value="BR">Brazil +55</SelectItem>
+                  <SelectItem value="AR">Argentina +54</SelectItem>
+                  <SelectItem value="CL">Chile +56</SelectItem>
+                  <SelectItem value="CO">Colombia +57</SelectItem>
+                  <SelectItem value="PE">Peru +51</SelectItem>
+                  <SelectItem value="JP">Japan +81</SelectItem>
+                  <SelectItem value="KR">South Korea +82</SelectItem>
+                  <SelectItem value="SG">Singapore +65</SelectItem>
+                  <SelectItem value="HK">Hong Kong +852</SelectItem>
+                  <SelectItem value="IN">India +91</SelectItem>
+                  <SelectItem value="PH">Philippines +63</SelectItem>
+                  <SelectItem value="NZ">New Zealand +64</SelectItem>
+                  <SelectItem value="ZA">South Africa +27</SelectItem>
+                  <SelectItem value="IL">Israel +972</SelectItem>
+                  <SelectItem value="AE">UAE +971</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -486,10 +518,10 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
             <table className="w-full">
               <thead className="bg-muted/50 sticky top-0">
                 <tr className="text-left text-sm text-muted-foreground">
-                  <th className="px-6 py-3 font-medium">Numbers</th>
-                  <th className="px-4 py-3 font-medium">Capabilities</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Address Requirement</th>
+                  <th className="px-4 py-3 font-medium">Number</th>
+                  <th className="px-4 py-3 font-medium">Location/Rate Center</th>
+                  <th className="px-4 py-3 font-medium">Number Type</th>
+                  <th className="px-4 py-3 font-medium">Features</th>
                   <th className="px-4 py-3 font-medium text-right">Monthly Price</th>
                 </tr>
               </thead>
@@ -506,7 +538,7 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
                       )}
                       data-testid={`number-row-${number.phone_number}`}
                     >
-                      <td className="px-6 py-3">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0",
@@ -514,20 +546,17 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
                           )}>
                             {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
-                          <div>
-                            <p className="font-medium">{formatPhoneInput(number.phone_number)}</p>
-                            <p className="text-xs text-muted-foreground">{getRegionInfo(number.region_information)}</p>
-                          </div>
+                          <span className="font-medium font-mono text-sm">{number.phone_number}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {getCapabilityBadges(number.features)}
+                        <span className="text-sm text-muted-foreground">{getRegionInfo(number.region_information)}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm capitalize">{number.record_type?.replace('_', ' ') || 'Local'}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-muted-foreground">None</span>
+                        {getCapabilityBadges(number.features)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-medium">${number.cost_information.monthly_cost}</span>
