@@ -280,199 +280,151 @@ export default function PhoneSystem() {
             </Card>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Modern KPI Cards Row - 3 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* E911 Emergency Card */}
-              <Card className="group relative overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl bg-white dark:bg-card">
-                <div className={`absolute inset-0 opacity-[0.03] ${hasE911Issues ? 'bg-gradient-to-br from-amber-500 to-orange-500' : 'bg-gradient-to-br from-emerald-500 to-green-500'}`} />
-                <CardContent className="relative p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${hasE911Issues ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
-                      <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
-                    </div>
-                    {hasE911Issues ? (
-                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        Action Required
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Configured
-                      </span>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-foreground">E911 Emergency</h3>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground leading-relaxed">
-                      {hasE911Issues ? 'Configure emergency address for your numbers' : 'Emergency services are properly configured'}
-                    </p>
-                  </div>
-                  {hasE911Issues && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full mt-4 h-9 text-xs font-medium text-amber-700 hover:text-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800"
-                      onClick={() => toast({ title: "E911 Configuration", description: "E911 configuration will be available in a future update." })}
-                      data-testid="button-configure-e911-compliance"
-                    >
-                      Configure Now
-                      <ChevronRight className="h-3.5 w-3.5 ml-1" />
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+          <div className="space-y-5">
+            {/* Compact Status Cards - E911 & A2P */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* E911 Card - Compact */}
+              <div 
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:shadow-sm ${
+                  hasE911Issues 
+                    ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800' 
+                    : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800'
+                }`}
+                onClick={() => toast({ title: "E911 Configuration", description: "E911 configuration will be available in a future update." })}
+                data-testid="button-configure-e911-compliance"
+              >
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                  hasE911Issues ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'
+                }`}>
+                  <MapPin className={`h-4 w-4 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 dark:text-foreground">E911 Emergency</p>
+                  <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">
+                    {hasE911Issues ? 'Configure emergency address' : 'Properly configured'}
+                  </p>
+                </div>
+                {hasE911Issues ? (
+                  <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full shrink-0">
+                    <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                    Action
+                  </span>
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                )}
+              </div>
 
-              {/* A2P 10DLC Card */}
-              <Card className="group relative overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl bg-white dark:bg-card">
-                <div className="absolute inset-0 opacity-[0.03] bg-gradient-to-br from-slate-400 to-slate-500" />
-                <CardContent className="relative p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                      <MessageSquare className="h-5 w-5 text-slate-500" />
-                    </div>
-                    <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-                      <Clock className="h-3 w-3" />
-                      Coming Soon
-                    </span>
+              {/* A2P Card - Compact */}
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 opacity-60">
+                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                  <MessageSquare className="h-4 w-4 text-slate-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">A2P 10DLC</p>
+                  <p className="text-xs text-slate-400 dark:text-muted-foreground truncate">Brand registration</p>
+                </div>
+                <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full shrink-0">
+                  Soon
+                </span>
+              </div>
+            </div>
+
+            {/* Phone Lines Card - Full Width with Numbers */}
+            <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                    <Phone className="h-4 w-4 text-indigo-600" />
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-foreground">A2P 10DLC</h3>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground leading-relaxed">
-                      Register your brand for business messaging compliance
-                    </p>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-foreground">Phone Lines</p>
+                    <p className="text-xs text-slate-500 dark:text-muted-foreground">{numbersCount} active</p>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    disabled
-                    className="w-full mt-4 h-9 text-xs font-medium text-slate-400 rounded-lg border border-slate-200 dark:border-slate-700 cursor-not-allowed"
-                    data-testid="button-configure-a2p"
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => refetchNumbers()}
+                    disabled={isLoadingNumbers}
+                    className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600"
+                    data-testid="button-refresh-numbers"
                   >
-                    Register Brand
-                    <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                    <RefreshCw className={`h-3.5 w-3.5 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
                   </Button>
-                </CardContent>
-              </Card>
-
-              {/* Active Lines Card */}
-              <Card className="group relative overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl bg-white dark:bg-card">
-                <div className="absolute inset-0 opacity-[0.03] bg-gradient-to-br from-indigo-500 to-blue-500" />
-                <CardContent className="relative p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-11 h-11 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                      <Phone className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => refetchNumbers()}
-                        disabled={isLoadingNumbers}
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600 rounded-lg"
-                        data-testid="button-refresh-numbers"
-                      >
-                        <RefreshCw className={`h-3.5 w-3.5 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-bold text-slate-900 dark:text-foreground" data-testid="text-lines-count">{numbersCount}</span>
-                      <span className="text-xs text-slate-500 dark:text-muted-foreground">active {numbersCount === 1 ? 'line' : 'lines'}</span>
-                    </div>
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-foreground">Phone Lines</h3>
-                  </div>
                   <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm" 
-                    className="w-full mt-4 h-9 text-xs font-medium text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800"
+                    className="h-7 text-xs px-2.5 rounded-lg"
                     onClick={() => setShowBuyNumber(true)}
                     data-testid="button-add-line"
                   >
-                    <Plus className="h-3.5 w-3.5 mr-1" />
-                    Add New Line
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add
                   </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Phone Numbers List */}
-            {numbersData?.numbers && numbersData.numbers.length > 0 && (
-              <Card className="border-0 shadow-sm rounded-2xl bg-white dark:bg-card overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100 dark:border-border flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-foreground">Your Numbers</h3>
                 </div>
+              </div>
+
+              {isLoadingNumbers ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                </div>
+              ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
                 <div className="divide-y divide-slate-100 dark:divide-border">
-                  {numbersData.numbers.map((number, index) => (
+                  {numbersData.numbers.map((number) => (
                     <div 
                       key={number.phone_number}
-                      className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => toast({ title: formatPhoneDisplay(number.phone_number), description: "Phone number details coming soon." })}
                       data-testid={`row-number-${number.phone_number}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                          <Phone className="h-4 w-4 text-indigo-600" />
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                          <Phone className="h-3.5 w-3.5 text-slate-500" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-slate-900 dark:text-foreground">
                             {formatPhoneDisplay(number.phone_number)}
                           </p>
-                          <p className="text-xs text-slate-500 dark:text-muted-foreground">
+                          <p className="text-[11px] text-slate-400 dark:text-muted-foreground">
                             {number.phone_number_type ? number.phone_number_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Local'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         {!number.emergency_enabled && (
-                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-900/20">
-                            E911
-                          </Badge>
+                          <span className="text-[9px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded">E911</span>
                         )}
-                        <Badge 
-                          variant="outline"
-                          className={`text-[10px] px-2 py-0.5 ${number.status === 'active' ? 'text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20' : ''}`}
-                        >
+                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
+                          number.status === 'active' 
+                            ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
+                            : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
+                        }`}>
                           {number.status === 'active' ? 'Active' : number.status}
-                        </Badge>
-                        <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-1" />
                       </div>
                     </div>
                   ))}
                 </div>
-              </Card>
-            )}
-
-            {/* Empty state when no numbers */}
-            {(!numbersData?.numbers || numbersData.numbers.length === 0) && !isLoadingNumbers && (
-              <Card className="border-0 shadow-sm rounded-2xl bg-white dark:bg-card">
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-muted flex items-center justify-center mb-4">
-                    <Phone className="h-7 w-7 text-slate-400" />
+              ) : (
+                <div className="text-center py-10">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-muted flex items-center justify-center mx-auto mb-3">
+                    <Phone className="h-5 w-5 text-slate-400" />
                   </div>
-                  <h3 className="font-semibold text-slate-900 dark:text-foreground mb-1">No Phone Lines Yet</h3>
-                  <p className="text-sm text-slate-500 dark:text-muted-foreground mb-5 max-w-xs">
-                    Get your first business phone number to start making calls
-                  </p>
+                  <p className="text-sm text-slate-500 dark:text-muted-foreground mb-1">No phone lines yet</p>
+                  <p className="text-xs text-slate-400 mb-4">Get your first number to start calling</p>
                   <Button 
+                    size="sm"
                     onClick={() => setShowBuyNumber(true)} 
-                    className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-10 px-5"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg h-8 px-4 text-xs"
                   >
-                    <Plus className="h-4 w-4" />
-                    Get Your First Number
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Get Number
                   </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {isLoadingNumbers && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            )}
+                </div>
+              )}
+            </Card>
 
             {/* Advanced Settings Collapsible */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
