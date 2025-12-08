@@ -335,18 +335,15 @@ async function getOrCreateCredentialConnection(
 async function assignConnectionToPhoneNumber(
   config: ManagedAccountConfig,
   phoneNumberId: string,
-  connectionId: string,
-  outboundVoiceProfileId?: string
+  connectionId: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[E911] Assigning connection ${connectionId} and OVP ${outboundVoiceProfileId} to phone number ${phoneNumberId}...`);
+  console.log(`[E911] Assigning credential connection ${connectionId} to phone number ${phoneNumberId}...`);
 
   try {
-    const patchBody: Record<string, any> = { connection_id: connectionId };
-
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "PATCH",
       headers: buildHeaders(config),
-      body: JSON.stringify(patchBody),
+      body: JSON.stringify({ connection_id: connectionId }),
     });
 
     if (!response.ok) {
@@ -355,27 +352,7 @@ async function assignConnectionToPhoneNumber(
       return { success: false, error: `Failed to assign connection: ${response.status}` };
     }
 
-    console.log(`[E911] Connection assigned successfully`);
-
-    if (outboundVoiceProfileId) {
-      console.log(`[E911] Also updating voice settings with connection_id...`);
-      const voiceResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
-        method: "PATCH",
-        headers: buildHeaders(config),
-        body: JSON.stringify({ 
-          connection_id: connectionId,
-          tech_prefix_enabled: false,
-        }),
-      });
-
-      if (!voiceResponse.ok) {
-        const errorText = await voiceResponse.text();
-        console.log(`[E911] Voice settings update: ${voiceResponse.status} - ${errorText}`);
-      } else {
-        console.log(`[E911] Voice settings updated successfully`);
-      }
-    }
-
+    console.log(`[E911] Credential connection assigned successfully`);
     return { success: true };
   } catch (error) {
     console.error("[E911] Assign connection error:", error);
@@ -406,25 +383,12 @@ async function ensurePhoneNumberHasConnection(
     return { success: false, error: ovpResult.error };
   }
 
-  const [settings] = await db
-    .select({ texmlAppId: telephonySettings.texmlAppId })
-    .from(telephonySettings)
-    .where(eq(telephonySettings.companyId, companyId));
-
-  let texmlAppId = settings?.texmlAppId;
-
-  if (!texmlAppId) {
-    console.log(`[E911] Creating TeXML Application for phone number routing...`);
-    const texmlResult = await getOrCreateTexmlApplication(config, companyId, ovpResult.profileId);
-    if (!texmlResult.success || !texmlResult.appId) {
-      return { success: false, error: texmlResult.error };
-    }
-    texmlAppId = texmlResult.appId;
-  } else {
-    console.log(`[E911] Using existing TeXML Application: ${texmlAppId}`);
+  const connResult = await getOrCreateCredentialConnection(config, companyId, ovpResult.profileId);
+  if (!connResult.success || !connResult.connectionId) {
+    return { success: false, error: connResult.error };
   }
 
-  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, texmlAppId, ovpResult.profileId);
+  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, connResult.connectionId);
   if (!assignResult.success) {
     return { success: false, error: assignResult.error };
   }
