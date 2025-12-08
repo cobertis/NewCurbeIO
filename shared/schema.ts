@@ -17,6 +17,9 @@ export const companies = pgTable("companies", {
   address: text("address").notNull(), // Company address (street address)
   addressLine2: text("address_line_2"), // Suite, Apt, Unit, etc.
   domain: text("domain"), // Custom domain
+  customDomain: text("custom_domain"), // White-label custom domain (verified via Cloudflare)
+  customDomainStatus: text("custom_domain_status"), // Status: pending, active, pending_validation, deleted
+  cloudflareHostnameId: text("cloudflare_hostname_id"), // Cloudflare custom hostname ID
   logo: text("logo"), // Logo URL
   website: text("website"),
   industry: text("industry"),
@@ -4778,6 +4781,7 @@ export const apiProviders = [
   "openai",
   "cms_api",
   "imap_bounce",
+  "cloudflare",
 ] as const;
 export type ApiProvider = typeof apiProviders[number];
 

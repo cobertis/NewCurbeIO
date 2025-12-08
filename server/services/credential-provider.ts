@@ -46,6 +46,9 @@ const CREDENTIAL_MAPPINGS: CredentialKey[] = [
   { provider: "imap_bounce", keyName: "user", envVar: "IMAP_BOUNCE_USER" },
   { provider: "imap_bounce", keyName: "password", envVar: "IMAP_BOUNCE_PASSWORD" },
   { provider: "imap_bounce", keyName: "tls", envVar: "IMAP_BOUNCE_TLS" },
+  
+  { provider: "cloudflare", keyName: "api_token", envVar: "CLOUDFLARE_API_TOKEN" },
+  { provider: "cloudflare", keyName: "zone_id", envVar: "CLOUDFLARE_ZONE_ID" },
 ];
 
 class CredentialProvider {
@@ -204,6 +207,17 @@ class CredentialProvider {
       this.get("imap_bounce", "tls"),
     ]);
     return { host, port, user, password, tls };
+  }
+
+  async getCloudflare(): Promise<{
+    apiToken: string | null;
+    zoneId: string | null;
+  }> {
+    const [apiToken, zoneId] = await Promise.all([
+      this.get("cloudflare", "api_token"),
+      this.get("cloudflare", "zone_id"),
+    ]);
+    return { apiToken, zoneId };
   }
 
   clearCache(credentialKey?: string): void {
