@@ -180,7 +180,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
   const [searchBy, setSearchBy] = useState<string>("area_code");
   const [searchValue, setSearchValue] = useState("");
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-  const [selectedNumbers, setSelectedNumbers] = useState<Set<string>>(new Set());
+  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [searchTriggered, setSearchTriggered] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const NUMBERS_PER_PAGE = 50;
@@ -262,7 +262,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
       toast({ title: "Success", description: "Phone number purchased successfully!" });
       queryClient.invalidateQueries({ queryKey: ['/api/telnyx/my-numbers'] });
       queryClient.invalidateQueries({ queryKey: ['/api/telnyx/numbers'] });
-      setSelectedNumbers(new Set());
+      setSelectedNumber(null);
       onNumberPurchased?.();
       onOpenChange(false);
     },
@@ -281,20 +281,13 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
     refetch();
   };
 
-  const toggleNumberSelection = (phoneNumber: string) => {
-    const newSelection = new Set(selectedNumbers);
-    if (newSelection.has(phoneNumber)) {
-      newSelection.delete(phoneNumber);
-    } else {
-      newSelection.add(phoneNumber);
-    }
-    setSelectedNumbers(newSelection);
+  const selectNumber = (phoneNumber: string) => {
+    setSelectedNumber(prev => prev === phoneNumber ? null : phoneNumber);
   };
 
   const handlePurchase = () => {
-    if (selectedNumbers.size === 0) return;
-    const firstNumber = Array.from(selectedNumbers)[0];
-    purchaseMutation.mutate(firstNumber);
+    if (!selectedNumber) return;
+    purchaseMutation.mutate(selectedNumber);
   };
 
   const getCapabilityBadges = (features: Array<{ name: string }>) => {
@@ -581,11 +574,11 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </thead>
               <tbody className="divide-y divide-border">
                 {numbersData.numbers.map((number) => {
-                  const isSelected = selectedNumbers.has(number.phone_number);
+                  const isSelected = selectedNumber === number.phone_number;
                   return (
                     <tr
                       key={number.phone_number}
-                      onClick={() => toggleNumberSelection(number.phone_number)}
+                      onClick={() => selectNumber(number.phone_number)}
                       className={cn(
                         "cursor-pointer transition-colors",
                         isSelected ? "bg-blue-50 dark:bg-blue-950/50" : "hover:bg-muted/30"
@@ -673,11 +666,11 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
           {/* Purchase Controls */}
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">
-              {selectedNumbers.size} Number selected
+              {selectedNumber ? "1 Number selected" : "No number selected"}
             </span>
             <Button
               onClick={handlePurchase}
-              disabled={selectedNumbers.size === 0 || purchaseMutation.isPending}
+              disabled={!selectedNumber || purchaseMutation.isPending}
               className="bg-blue-500 hover:bg-blue-600 gap-2"
               data-testid="button-proceed-to-buy"
             >
