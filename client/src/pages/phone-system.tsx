@@ -183,28 +183,24 @@ export default function PhoneSystem() {
             </p>
           </div>
           {hasAccount && (
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  refetch();
-                  refetchNumbers();
-                }}
-                className="gap-2 bg-white dark:bg-card"
-                data-testid="button-refresh-status"
+            <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">Balance</span>
+                <span className="text-lg font-bold text-slate-900 dark:text-foreground leading-tight" data-testid="text-balance">
+                  {formatCurrency("0", "USD")}
+                </span>
+              </div>
+              <Button 
+                size="sm" 
+                className="ml-2 h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg"
+                onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
+                data-testid="button-add-funds"
               >
-                <RefreshCw className="h-4 w-4" />
-                Sync
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setShowBuyNumber(true)}
-                className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-                data-testid="button-buy-number"
-              >
-                <Plus className="h-4 w-4" />
-                Add Line
+                <Plus className="h-3 w-3 mr-1" />
+                Add Funds
               </Button>
             </div>
           )}
@@ -273,35 +269,7 @@ export default function PhoneSystem() {
         ) : (
           <div className="space-y-6">
             {/* KPI Cards Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Wallet Card */}
-              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentBalance > 10 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-                        <Wallet className="h-5 w-5 text-amber-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-500 dark:text-muted-foreground">Account Balance</p>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground" data-testid="text-balance">
-                          {formatCurrency("0", "USD")}
-                        </p>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="rounded-lg bg-white dark:bg-background"
-                      onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
-                      data-testid="button-add-funds"
-                    >
-                      Add Funds
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Compliance Health Card */}
               <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
                 <CardContent className="p-6">
