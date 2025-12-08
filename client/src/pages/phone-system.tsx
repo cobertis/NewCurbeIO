@@ -181,7 +181,8 @@ export default function PhoneSystem() {
   const walletBalance = walletData?.balance || "0";
   const walletCurrency = walletData?.currency || "USD";
   const numbersCount = numbersData?.numbers?.length || 0;
-  const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || false;
+  const isE911Loading = isLoadingNumbers || !numbersData;
+  const hasE911Issues = !isE911Loading && (numbersData?.numbers?.some(n => !n.emergency_enabled) || numbersCount === 0);
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8">
@@ -290,15 +291,24 @@ export default function PhoneSystem() {
                 data-testid="button-configure-e911-compliance"
               >
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                  isE911Loading ? 'bg-slate-100 dark:bg-slate-800' :
                   hasE911Issues ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'
                 }`}>
-                  <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  {isE911Loading ? (
+                    <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />
+                  ) : (
+                    <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911</p>
                   <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">Emergency address</p>
                 </div>
-                {hasE911Issues ? (
+                {isE911Loading ? (
+                  <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full shrink-0">
+                    Loading
+                  </span>
+                ) : hasE911Issues ? (
                   <span className="text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full shrink-0">
                     Pending
                   </span>
