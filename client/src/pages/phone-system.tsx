@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Phone, 
   Settings2, 
@@ -16,20 +19,21 @@ import {
   PhoneCall,
   MessageSquare,
   Shield,
-  Building2,
-  Mail,
-  Calendar,
   Wallet,
-  CreditCard,
-  Key,
   RefreshCw,
   Plus,
-  Globe,
-  Hash,
   Clock,
-  DollarSign,
   Copy,
-  ExternalLink
+  ChevronDown,
+  ChevronRight,
+  Users,
+  Mic,
+  ShieldCheck,
+  FileText,
+  TrendingUp,
+  AlertTriangle,
+  Zap,
+  MapPin
 } from "lucide-react";
 import { format } from "date-fns";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
@@ -67,12 +71,32 @@ interface NumberInfo {
   status: string;
   phone_number_type?: string;
   created_at?: string;
+  id?: string;
+  emergency_enabled?: boolean;
+}
+
+function formatPhoneDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) {
+    const areaCode = digits.slice(1, 4);
+    const prefix = digits.slice(4, 7);
+    const line = digits.slice(7);
+    return `(${areaCode}) ${prefix}-${line}`;
+  }
+  if (digits.length === 10) {
+    const areaCode = digits.slice(0, 3);
+    const prefix = digits.slice(3, 6);
+    const line = digits.slice(6);
+    return `(${areaCode}) ${prefix}-${line}`;
+  }
+  return phone;
 }
 
 export default function PhoneSystem() {
   const { toast } = useToast();
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showBuyNumber, setShowBuyNumber] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -142,428 +166,568 @@ export default function PhoneSystem() {
     }).format(parseFloat(amount || "0"));
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "MMM dd, yyyy 'at' h:mm a");
-    } catch {
-      return dateString;
-    }
-  };
+  const balance = accountDetails?.balance;
+  const currentBalance = balance ? parseFloat(balance.balance) : 0;
+  const numbersCount = numbersData?.numbers?.length || 0;
+  const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || false;
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-screen">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground" data-testid="text-page-title">Phone System</h1>
-          <p className="text-muted-foreground">Manage your business phone numbers and calling features</p>
-        </div>
-        {hasAccount && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="gap-2"
-              data-testid="button-refresh-status"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setShowBuyNumber(true)}
-              className="gap-2"
-              data-testid="button-buy-number"
-            >
-              <Plus className="h-4 w-4" />
-              Buy Number
-            </Button>
+    <div className="min-h-screen bg-slate-50 dark:bg-background">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-foreground" data-testid="text-page-title">
+              Phone System
+            </h1>
+            <p className="text-slate-500 dark:text-muted-foreground mt-1">
+              Manage your business phone lines
+            </p>
           </div>
-        )}
-      </div>
+          {hasAccount && (
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  refetch();
+                  refetchNumbers();
+                }}
+                className="gap-2 bg-white dark:bg-card"
+                data-testid="button-refresh-status"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Sync
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setShowBuyNumber(true)}
+                className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                data-testid="button-buy-number"
+              >
+                <Plus className="h-4 w-4" />
+                Add Line
+              </Button>
+            </div>
+          )}
+        </div>
 
-      {!hasAccount ? (
-        <div className="flex-1 flex items-center justify-center py-12">
-          <Card className="max-w-2xl w-full border-0 shadow-lg bg-gradient-to-br from-card via-card to-muted/20">
-            <CardHeader className="text-center pb-6 pt-10">
-              <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-6 shadow-inner">
-                <Phone className="h-10 w-10 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-bold">Setup Your Phone System</CardTitle>
-              <CardDescription className="text-base mt-2 max-w-md mx-auto">
-                Get a dedicated business phone number with voice, SMS, and emergency calling capabilities.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8 pb-10">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="group relative overflow-hidden rounded-xl border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-4">
-                      <PhoneCall className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        {!hasAccount ? (
+          /* Setup Card - Clean onboarding */
+          <div className="flex-1 flex items-center justify-center py-16">
+            <Card className="max-w-xl w-full border-0 shadow-xl rounded-2xl bg-white dark:bg-card">
+              <CardHeader className="text-center pb-4 pt-10">
+                <div className="mx-auto w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mb-4">
+                  <Phone className="h-8 w-8 text-indigo-600" />
+                </div>
+                <CardTitle className="text-xl font-semibold">Activate Your Phone System</CardTitle>
+                <CardDescription className="text-base mt-2">
+                  Get started with professional business calling
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 pb-8 px-8">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mx-auto mb-3">
+                      <PhoneCall className="h-5 w-5 text-blue-600" />
                     </div>
-                    <h3 className="font-semibold text-foreground mb-1">Voice Calls</h3>
-                    <p className="text-sm text-muted-foreground">Make and receive HD quality business calls</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">HD Voice</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center mx-auto mb-3">
+                      <MessageSquare className="h-5 w-5 text-green-600" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">SMS/MMS</p>
+                  </div>
+                  <div className="p-4">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mx-auto mb-3">
+                      <Shield className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">E911 Ready</p>
                   </div>
                 </div>
-                <div className="group relative overflow-hidden rounded-xl border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-4">
-                      <MessageSquare className="h-6 w-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-1">SMS & MMS</h3>
-                    <p className="text-sm text-muted-foreground">Send text messages and media to customers</p>
-                  </div>
-                </div>
-                <div className="group relative overflow-hidden rounded-xl border bg-card p-6 transition-all hover:shadow-md hover:border-primary/20">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4">
-                      <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-1">E911 Ready</h3>
-                    <p className="text-sm text-muted-foreground">Emergency services with location dispatch</p>
-                  </div>
-                </div>
-              </div>
 
-              <div className="flex flex-col items-center gap-4 pt-4">
                 <Button 
                   size="lg"
                   onClick={() => setupMutation.mutate()}
                   disabled={isSettingUp}
-                  className="gap-2 px-8 h-12 text-base shadow-lg hover:shadow-xl transition-shadow"
+                  className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl"
                   data-testid="button-setup-phone"
                 >
                   {isSettingUp ? (
                     <>
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
                       Activating...
                     </>
                   ) : (
                     <>
-                      <Settings2 className="h-5 w-5" />
-                      Activate Phone System
+                      <Zap className="h-5 w-5 mr-2" />
+                      Activate Now
                     </>
                   )}
                 </Button>
-                <p className="text-xs text-muted-foreground text-center max-w-sm">
-                  Your phone system will be ready in seconds. No additional configuration required.
+                <p className="text-xs text-slate-400 text-center">
+                  Ready in seconds. No additional setup required.
                 </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Account Overview Card */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">Phone System Active</CardTitle>
-                    <CardDescription>Business Phone Account</CardDescription>
-                  </div>
-                </div>
-                <Badge variant="default" className="bg-green-600">
-                  Active
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Account Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Organization */}
-                {accountDetails?.organization_name && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Organization</p>
-                      <p className="font-medium truncate" data-testid="text-organization">{accountDetails.organization_name}</p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* KPI Cards Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Wallet Card */}
+              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-muted-foreground flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        Account Balance
+                      </p>
+                      <p className="text-3xl font-bold text-slate-900 dark:text-foreground mt-2" data-testid="text-balance">
+                        {formatCurrency(balance?.balance || "0", balance?.currency || "USD")}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Credit: {formatCurrency(balance?.available_credit || "0", balance?.currency || "USD")}
+                      </p>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${currentBalance > 10 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
+                      {currentBalance > 10 ? (
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      )}
                     </div>
                   </div>
-                )}
-
-                {/* Email */}
-                {accountDetails?.email && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Account Email</p>
-                      <p className="font-medium truncate" data-testid="text-email">{accountDetails.email}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Account ID */}
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <Hash className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Account ID</p>
+                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-border">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 rounded-lg bg-white dark:bg-background"
+                      onClick={() => toast({ title: "Add Funds", description: "Balance management will be available in a future update." })}
+                      data-testid="button-add-funds"
+                    >
+                      Add Funds
+                    </Button>
                     <div className="flex items-center gap-2">
-                      <p className="font-mono text-xs truncate" data-testid="text-account-id">{accountId}</p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 flex-shrink-0"
-                        onClick={() => copyToClipboard(accountId || "", "Account ID")}
+                      <Switch 
+                        id="auto-reload" 
+                        onCheckedChange={(checked) => toast({ title: checked ? "Auto-Reload Enabled" : "Auto-Reload Disabled", description: "Auto-reload settings will be available in a future update." })}
+                        data-testid="switch-auto-reload"
+                      />
+                      <label htmlFor="auto-reload" className="text-xs text-slate-500 dark:text-muted-foreground">Auto</label>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Compliance Health Card */}
+              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-muted-foreground flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        Compliance Status
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          {hasE911Issues ? (
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          ) : (
+                            <span className="w-2 h-2 rounded-full bg-green-500" />
+                          )}
+                          <span className="text-sm text-slate-700 dark:text-foreground">E911 Emergency</span>
+                          {hasE911Issues && (
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+                              Action Required
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-slate-300" />
+                          <span className="text-sm text-slate-500 dark:text-muted-foreground">A2P 10DLC</span>
+                          <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasE911Issues ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+                      {hasE911Issues ? (
+                        <AlertCircle className="h-5 w-5 text-amber-600" />
+                      ) : (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      )}
+                    </div>
+                  </div>
+                  {hasE911Issues && (
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-border">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full rounded-lg text-amber-600 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                        onClick={() => toast({ title: "E911 Configuration", description: "E911 configuration will be available in a future update." })}
+                        data-testid="button-configure-e911-compliance"
                       >
-                        <Copy className="h-3 w-3" />
+                        Configure E911
                       </Button>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                {/* Created Date */}
-                {accountDetails?.created_at && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Created</p>
-                      <p className="font-medium text-sm" data-testid="text-created-at">{formatDate(accountDetails.created_at)}</p>
+              {/* Lines Active Card */}
+              <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-muted-foreground flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        Active Lines
+                      </p>
+                      <p className="text-3xl font-bold text-slate-900 dark:text-foreground mt-2" data-testid="text-lines-count">
+                        {numbersCount}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {numbersCount === 1 ? 'Phone number' : 'Phone numbers'} active
+                      </p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                      <Phone className="h-5 w-5 text-indigo-600" />
                     </div>
                   </div>
-                )}
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-border">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full rounded-lg bg-white dark:bg-background"
+                      onClick={() => setShowBuyNumber(true)}
+                      data-testid="button-add-line"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New Line
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-                {/* Last Updated */}
-                {accountDetails?.updated_at && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Last Updated</p>
-                      <p className="font-medium text-sm" data-testid="text-updated-at">{formatDate(accountDetails.updated_at)}</p>
+            {/* Phone Numbers Section */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-foreground">Your Phone Lines</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refetchNumbers()}
+                  disabled={isLoadingNumbers}
+                  className="gap-2 text-slate-500"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+
+              {isLoadingNumbers ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                </div>
+              ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
+                <div className="space-y-4">
+                  {numbersData.numbers.map((number, index) => (
+                    <PhoneNumberCard 
+                      key={number.phone_number} 
+                      number={number} 
+                      index={index}
+                      onConfigureE911={(phone, id) => {
+                        toast({ 
+                          title: "E911 Configuration", 
+                          description: `E911 configuration for ${formatPhoneDisplay(phone)} will be available in a future update.` 
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
+                  <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-muted flex items-center justify-center mb-4">
+                      <Phone className="h-8 w-8 text-slate-400" />
                     </div>
-                  </div>
-                )}
-
-                {/* Custom Pricing */}
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground">Custom Pricing</p>
-                    <Badge variant={accountDetails?.managed_account_allow_custom_pricing ? "default" : "secondary"} className="mt-1">
-                      {accountDetails?.managed_account_allow_custom_pricing ? "Enabled" : "Disabled"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Balance Section */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />
-                  Account Balance
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg border bg-card">
-                    <p className="text-xs text-muted-foreground mb-1">Current Balance</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-balance">
-                      {accountDetails?.balance ? formatCurrency(accountDetails.balance.balance, accountDetails.balance.currency) : "$0.00"}
+                    <h3 className="font-semibold text-lg text-slate-900 dark:text-foreground mb-1">No Phone Lines Yet</h3>
+                    <p className="text-slate-500 dark:text-muted-foreground text-sm mb-6 max-w-sm">
+                      Get your first business phone number to start making calls and sending messages.
                     </p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-card">
-                    <p className="text-xs text-muted-foreground mb-1">Credit Limit</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-credit-limit">
-                      {accountDetails?.balance ? formatCurrency(accountDetails.balance.credit_limit, accountDetails.balance.currency) : "$0.00"}
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-card">
-                    <p className="text-xs text-muted-foreground mb-1">Available Credit</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-available-credit">
-                      {accountDetails?.balance ? formatCurrency(accountDetails.balance.available_credit, accountDetails.balance.currency) : "$0.00"}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                    <Button 
+                      onClick={() => setShowBuyNumber(true)} 
+                      className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Get Your First Number
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
-              {/* API Credentials Section */}
-              {accountDetails?.api_key && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <Key className="h-4 w-4" />
-                      API Credentials
-                    </h3>
-                    <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">API Key (V2)</p>
+            {/* Advanced Settings Collapsible */}
+            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between text-slate-500 hover:text-slate-700 dark:hover:text-foreground">
+                  <span className="flex items-center gap-2">
+                    <Settings2 className="h-4 w-4" />
+                    Advanced Settings
+                  </span>
+                  {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                        <p className="text-xs text-slate-500 dark:text-muted-foreground mb-1">Account ID</p>
                         <div className="flex items-center gap-2">
-                          <code className="text-xs bg-background px-2 py-1 rounded border flex-1 truncate">
-                            {accountDetails.api_key.substring(0, 20)}...
-                          </code>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyToClipboard(accountDetails.api_key || "", "API Key")}
-                            className="gap-1"
-                          >
+                          <code className="text-xs text-slate-700 dark:text-foreground truncate flex-1">{accountId}</code>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(accountId || "", "Account ID")}>
                             <Copy className="h-3 w-3" />
-                            Copy
                           </Button>
                         </div>
                       </div>
-                      {accountDetails.api_token && (
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">API Token (V1)</p>
+                      <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                        <p className="text-xs text-slate-500 dark:text-muted-foreground mb-1">Organization</p>
+                        <p className="text-sm text-slate-700 dark:text-foreground truncate">{accountDetails?.organization_name || '-'}</p>
+                      </div>
+                      {accountDetails?.api_key && (
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50 md:col-span-2">
+                          <p className="text-xs text-slate-500 dark:text-muted-foreground mb-1">API Key</p>
                           <div className="flex items-center gap-2">
-                            <code className="text-xs bg-background px-2 py-1 rounded border flex-1 truncate">
-                              {accountDetails.api_token}
+                            <code className="text-xs text-slate-700 dark:text-foreground truncate flex-1">
+                              {accountDetails.api_key.substring(0, 30)}...
                             </code>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => copyToClipboard(accountDetails.api_token || "", "API Token")}
-                              className="gap-1"
-                            >
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(accountDetails.api_key || "", "API Key")}>
                               <Copy className="h-3 w-3" />
-                              Copy
                             </Button>
                           </div>
                         </div>
                       )}
                     </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Phone Numbers Card */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Phone className="h-5 w-5" />
-                    Phone Numbers
-                  </CardTitle>
-                  <CardDescription>Phone numbers assigned to your account</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => refetchNumbers()}
-                    disabled={isLoadingNumbers}
-                    className="gap-2"
-                    data-testid="button-refresh-numbers"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isLoadingNumbers ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowBuyNumber(true)}
-                    className="gap-2"
-                    data-testid="button-buy-number-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Buy Number
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingNumbers ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : numbersData?.numbers && numbersData.numbers.length > 0 ? (
-                <div className="space-y-2">
-                  {numbersData.numbers.map((number) => (
-                    <div 
-                      key={number.phone_number}
-                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                      data-testid={`card-number-${number.phone_number}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                          <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-lg">{number.phone_number}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {number.phone_number_type && (
-                              <span className="capitalize">{number.phone_number_type.replace(/_/g, ' ')}</span>
-                            )}
-                            {number.connection_name && (
-                              <>
-                                <span>•</span>
-                                <span>{number.connection_name}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge variant={number.status === 'active' ? 'default' : 'secondary'} className={number.status === 'active' ? 'bg-green-600' : ''}>
-                        {number.status}
-                      </Badge>
+                    <div className="flex items-center gap-4 pt-2 text-xs text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Created: {accountDetails?.created_at ? format(new Date(accountDetails.created_at), "MMM dd, yyyy") : '-'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <RefreshCw className="h-3 w-3" />
+                        Updated: {accountDetails?.updated_at ? format(new Date(accountDetails.updated_at), "MMM dd, yyyy") : '-'}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-1">No Phone Numbers Yet</h3>
-                  <p className="text-muted-foreground text-sm mb-4 max-w-sm">
-                    Purchase your first phone number to start making calls and sending messages.
-                  </p>
-                  <Button onClick={() => setShowBuyNumber(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Buy Your First Number
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        )}
 
-          {/* Quick Actions Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setShowBuyNumber(true)}>
-                  <Phone className="h-5 w-5" />
-                  <span className="text-xs">Manage Numbers</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setShowBuyNumber(true)}>
-                  <Plus className="h-5 w-5" />
-                  <span className="text-xs">Buy Number</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => refetch()}>
-                  <RefreshCw className="h-5 w-5" />
-                  <span className="text-xs">Sync Account</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => refetchNumbers()}>
-                  <Settings2 className="h-5 w-5" />
-                  <span className="text-xs">Settings</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Buy Number Modal */}
-      <BuyNumbersDialog
-        open={showBuyNumber}
-        onOpenChange={setShowBuyNumber}
-        onNumberPurchased={() => {
-          refetchNumbers();
-        }}
-      />
+        {/* Buy Number Modal */}
+        <BuyNumbersDialog
+          open={showBuyNumber}
+          onOpenChange={setShowBuyNumber}
+          onNumberPurchased={() => {
+            refetchNumbers();
+          }}
+        />
+      </div>
     </div>
+  );
+}
+
+/* Smart Phone Number Card Component */
+interface PhoneNumberCardProps {
+  number: NumberInfo;
+  index: number;
+  onConfigureE911?: (phoneNumber: string, phoneNumberId: string) => void;
+}
+
+function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProps) {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("routing");
+  const [callRecording, setCallRecording] = useState(false);
+  const [spamProtection, setSpamProtection] = useState(true);
+  const [cnamLookup, setCnamLookup] = useState(false);
+  
+  const handleFeatureToggle = (feature: string, enabled: boolean) => {
+    toast({
+      title: enabled ? `${feature} Enabled` : `${feature} Disabled`,
+      description: "Feature settings will be available in a future update.",
+    });
+  };
+
+  return (
+    <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card overflow-hidden" data-testid={`card-number-${number.phone_number}`}>
+      {/* Card Header */}
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+              <Phone className="h-6 w-6 text-indigo-600" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <p className="text-xl font-semibold text-slate-900 dark:text-foreground">
+                  {formatPhoneDisplay(number.phone_number)}
+                </p>
+                <Badge variant="outline" className="text-xs">
+                  US
+                </Badge>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-muted-foreground">
+                {number.phone_number_type ? number.phone_number_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Local'}
+              </p>
+            </div>
+          </div>
+          <Badge 
+            variant={number.status === 'active' ? 'default' : 'secondary'} 
+            className={number.status === 'active' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400' : ''}
+          >
+            {number.status === 'active' ? 'Active' : number.status}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Tabs Content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="px-6 border-b border-slate-100 dark:border-border">
+          <TabsList className="bg-transparent h-12 p-0 gap-6">
+            <TabsTrigger 
+              value="routing" 
+              className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 text-slate-500 data-[state=active]:text-indigo-600"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Routing
+            </TabsTrigger>
+            <TabsTrigger 
+              value="features"
+              className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 text-slate-500 data-[state=active]:text-indigo-600"
+            >
+              <Settings2 className="h-4 w-4 mr-2" />
+              Features
+            </TabsTrigger>
+            <TabsTrigger 
+              value="logs"
+              className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 text-slate-500 data-[state=active]:text-indigo-600"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Logs
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="routing" className="p-6 m-0">
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-foreground mb-2 block">
+                Who answers calls to this number?
+              </label>
+              <Select defaultValue="app" onValueChange={(value) => toast({ title: "Routing Updated", description: "Routing settings will be available in a future update." })}>
+                <SelectTrigger className="w-full max-w-md bg-white dark:bg-background" data-testid={`select-routing-${number.phone_number}`}>
+                  <SelectValue placeholder="Select destination" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="app">Web Phone App</SelectItem>
+                  <SelectItem value="user">Forward to User</SelectItem>
+                  <SelectItem value="group">Ring Group</SelectItem>
+                  <SelectItem value="ivr">IVR Menu</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400 dark:text-muted-foreground mt-2">
+                Incoming calls will be routed to the selected destination
+              </p>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="features" className="p-6 m-0">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+              <div className="flex items-center gap-3">
+                <Mic className="h-5 w-5 text-slate-500" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Recording</p>
+                  <p className="text-xs text-slate-400">Record all calls for quality assurance</p>
+                </div>
+              </div>
+              <Switch 
+                checked={callRecording} 
+                onCheckedChange={(checked) => { setCallRecording(checked); handleFeatureToggle("Call Recording", checked); }}
+                data-testid={`switch-recording-${number.phone_number}`}
+              />
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-slate-500" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Spam Protection</p>
+                  <p className="text-xs text-slate-400">Block robocalls and spam numbers</p>
+                </div>
+              </div>
+              <Switch 
+                checked={spamProtection} 
+                onCheckedChange={(checked) => { setSpamProtection(checked); handleFeatureToggle("Spam Protection", checked); }}
+                data-testid={`switch-spam-${number.phone_number}`}
+              />
+            </div>
+            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+              <div className="flex items-center gap-3">
+                <Users className="h-5 w-5 text-slate-500" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Caller ID Lookup (CNAM)</p>
+                  <p className="text-xs text-slate-400">Show caller names • Additional cost applies</p>
+                </div>
+              </div>
+              <Switch 
+                checked={cnamLookup} 
+                onCheckedChange={(checked) => { setCnamLookup(checked); handleFeatureToggle("CNAM Lookup", checked); }}
+                data-testid={`switch-cnam-${number.phone_number}`}
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="logs" className="p-6 m-0">
+          <div className="text-center py-8">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-muted flex items-center justify-center mx-auto mb-3">
+              <FileText className="h-6 w-6 text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-500 dark:text-muted-foreground">No recent calls</p>
+            <p className="text-xs text-slate-400 mt-1">Call logs will appear here</p>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Card Footer */}
+      <div className="px-6 py-3 bg-slate-50 dark:bg-muted/30 border-t border-slate-100 dark:border-border flex items-center justify-between">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="text-slate-500 hover:text-slate-700 gap-2"
+          onClick={() => onConfigureE911?.(number.phone_number, number.id || "")}
+          data-testid={`button-e911-${number.phone_number}`}
+        >
+          <MapPin className="h-4 w-4" />
+          Configure E911
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="text-slate-500 hover:text-slate-700 gap-2"
+          onClick={() => toast({ title: "Call Logs", description: "Detailed call logs will be available in a future update." })}
+          data-testid={`button-logs-${number.phone_number}`}
+        >
+          View Full Logs
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </Card>
   );
 }
