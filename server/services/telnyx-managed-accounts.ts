@@ -445,3 +445,54 @@ export async function recreateCompanyManagedAccount(companyId: string, newEmail:
     };
   }
 }
+
+/**
+ * Clears all Telnyx configuration for a company when the managed account is disabled/deleted in Telnyx.
+ * This resets the phone system to initial setup state.
+ */
+export async function clearCompanyTelnyxConfig(companyId: string): Promise<void> {
+  try {
+    console.log(`[Telnyx Managed] Clearing Telnyx config for company ${companyId}`);
+
+    // Clear wallet Telnyx fields
+    const [existingWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+
+    if (existingWallet) {
+      await db
+        .update(wallets)
+        .set({
+          telnyxAccountId: null,
+          telnyxApiToken: null,
+          telnyxOutboundProfileId: null,
+          telnyxMessagingProfileId: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.id, existingWallet.id));
+      console.log(`[Telnyx Managed] Cleared wallet Telnyx fields for company ${companyId}`);
+    }
+
+    // Clear phone numbers from telnyx_phone_numbers table
+    try {
+      await db.execute(`DELETE FROM telnyx_phone_numbers WHERE company_id = '${companyId}'`);
+      console.log(`[Telnyx Managed] Cleared phone numbers for company ${companyId}`);
+    } catch (e) {
+      console.log(`[Telnyx Managed] No phone numbers table or already empty`);
+    }
+
+    // Clear E911 addresses from telnyx_e911_addresses table
+    try {
+      await db.execute(`DELETE FROM telnyx_e911_addresses WHERE company_id = '${companyId}'`);
+      console.log(`[Telnyx Managed] Cleared E911 addresses for company ${companyId}`);
+    } catch (e) {
+      console.log(`[Telnyx Managed] No E911 addresses table or already empty`);
+    }
+
+    console.log(`[Telnyx Managed] Successfully cleared all Telnyx config for company ${companyId}`);
+  } catch (error) {
+    console.error(`[Telnyx Managed] Error clearing config for company ${companyId}:`, error);
+    throw error;
+  }
+}

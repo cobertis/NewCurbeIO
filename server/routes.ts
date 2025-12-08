@@ -27158,7 +27158,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
       
-      const { getCompanyManagedAccountId, getManagedAccount } = await import("./services/telnyx-managed-accounts");
+      const { getCompanyManagedAccountId, getManagedAccount, clearCompanyTelnyxConfig } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(user.companyId);
 
       if (!managedAccountId) {
@@ -27171,10 +27171,31 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get account details from Telnyx
       const accountDetails = await getManagedAccount(managedAccountId);
 
+      // If account doesn't exist in Telnyx (disabled/deleted), clear local config and reset
+      if (!accountDetails.success || !accountDetails.managedAccount) {
+        console.log(`[Telnyx Managed] Account ${managedAccountId} not found in Telnyx, clearing local config for company ${user.companyId}`);
+        await clearCompanyTelnyxConfig(user.companyId);
+        return res.json({ 
+          configured: false, 
+          message: "Phone system account was disabled. Please set up again." 
+        });
+      }
+
+      // Check if account is disabled in Telnyx
+      const account = accountDetails.managedAccount as any;
+      if (account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
+        console.log(`[Telnyx Managed] Account ${managedAccountId} is ${account.status}, clearing local config for company ${user.companyId}`);
+        await clearCompanyTelnyxConfig(user.companyId);
+        return res.json({ 
+          configured: false, 
+          message: `Phone system account was ${account.status}. Please set up again.` 
+        });
+      }
+
       res.json({ 
         configured: true, 
         managedAccountId,
-        accountDetails: accountDetails.success ? accountDetails.managedAccount : null
+        accountDetails: account
       });
     } catch (error: any) {
       console.error("[Telnyx Managed] Status error:", error);
