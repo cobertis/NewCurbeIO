@@ -82,6 +82,10 @@ class CloudflareService {
   private async getCredentials(): Promise<{ apiToken: string; zoneId: string }> {
     const { apiToken, zoneId } = await credentialProvider.getCloudflare();
     
+    console.log("[Cloudflare] Debug - apiToken length:", apiToken?.length || 0);
+    console.log("[Cloudflare] Debug - zoneId length:", zoneId?.length || 0);
+    console.log("[Cloudflare] Debug - apiToken first 10 chars:", apiToken?.substring(0, 10) || "null");
+    
     if (!apiToken) {
       throw new Error("Cloudflare API token not configured. Please add it in System Settings.");
     }
