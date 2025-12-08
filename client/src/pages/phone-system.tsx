@@ -110,6 +110,18 @@ export default function PhoneSystem() {
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
+  const { data: walletData, refetch: refetchWallet } = useQuery<{
+    id: string;
+    balance: string;
+    currency: string;
+    autoRecharge: boolean;
+    autoRechargeThreshold: string | null;
+    autoRechargeAmount: string | null;
+  }>({
+    queryKey: ["/api/wallet"],
+    enabled: statusData?.configured === true || statusData?.hasAccount === true,
+  });
+
   const setupMutation = useMutation({
     mutationFn: async () => {
       setIsSettingUp(true);
@@ -166,7 +178,8 @@ export default function PhoneSystem() {
     }).format(parseFloat(amount || "0"));
   };
 
-  const currentBalance = 0;
+  const walletBalance = walletData?.balance || "0";
+  const walletCurrency = walletData?.currency || "USD";
   const numbersCount = numbersData?.numbers?.length || 0;
   const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || false;
 
@@ -184,10 +197,14 @@ export default function PhoneSystem() {
           </div>
           {hasAccount && (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-card border border-slate-200 dark:border-border">
-                <Wallet className="h-4 w-4 text-green-600" />
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
+                parseFloat(walletBalance) > 5 
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                  : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+              }`}>
+                <Wallet className={`h-4 w-4 ${parseFloat(walletBalance) > 5 ? 'text-green-600' : 'text-amber-600'}`} />
                 <span className="text-sm font-semibold text-slate-900 dark:text-foreground" data-testid="text-balance">
-                  {formatCurrency("0", "USD")}
+                  {formatCurrency(walletBalance, walletCurrency)}
                 </span>
               </div>
               <Button 
