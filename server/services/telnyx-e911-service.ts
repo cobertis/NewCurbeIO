@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { wallets, telnyxPhoneNumbers } from "@shared/schema";
+import { wallets, telnyxPhoneNumbers, telephonySettings, companies } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { secretsService } from "../services/secrets-service";
 
@@ -62,10 +62,10 @@ function buildHeaders(config: ManagedAccountConfig): Record<string, string> {
   };
 }
 
-async function getPhoneNumberFromTelnyx(
+async function getPhoneNumberDetails(
   config: ManagedAccountConfig,
   phoneNumberId: string
-): Promise<{ success: boolean; phoneNumber?: string; error?: string }> {
+): Promise<{ success: boolean; phoneNumber?: string; connectionId?: string; error?: string }> {
   try {
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "GET",
@@ -82,6 +82,7 @@ async function getPhoneNumberFromTelnyx(
     return {
       success: true,
       phoneNumber: result.data?.phone_number,
+      connectionId: result.data?.connection_id,
     };
   } catch (error) {
     console.error("[E911] Get phone number error:", error);
@@ -90,6 +91,212 @@ async function getPhoneNumberFromTelnyx(
       error: error instanceof Error ? error.message : "Failed to get phone number",
     };
   }
+}
+
+async function getOrCreateOutboundVoiceProfile(
+  config: ManagedAccountConfig,
+  companyId: string
+): Promise<{ success: boolean; profileId?: string; error?: string }> {
+  const [settings] = await db
+    .select({ outboundVoiceProfileId: telephonySettings.outboundVoiceProfileId })
+    .from(telephonySettings)
+    .where(eq(telephonySettings.companyId, companyId));
+
+  if (settings?.outboundVoiceProfileId) {
+    console.log(`[E911] Using existing outbound voice profile: ${settings.outboundVoiceProfileId}`);
+    return { success: true, profileId: settings.outboundVoiceProfileId };
+  }
+
+  const [company] = await db
+    .select({ name: companies.name })
+    .from(companies)
+    .where(eq(companies.id, companyId));
+
+  const companyName = company?.name || "Company";
+
+  console.log(`[E911] Creating outbound voice profile for ${companyName}...`);
+
+  try {
+    const response = await fetch(`${TELNYX_API_BASE}/outbound_voice_profiles`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        name: `${companyName} - Outbound Profile`,
+        service_plan: "us",
+        traffic_type: "conversational",
+        concurrent_call_limit: 10,
+        daily_spend_limit: "25.00",
+        daily_spend_limit_enabled: true,
+        enabled: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[E911] Failed to create outbound voice profile: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to create voice profile: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const profileId = data.data?.id;
+
+    console.log(`[E911] Outbound voice profile created: ${profileId}`);
+
+    const [existing] = await db
+      .select({ id: telephonySettings.id })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (existing) {
+      await db.update(telephonySettings)
+        .set({ outboundVoiceProfileId: profileId, updatedAt: new Date() })
+        .where(eq(telephonySettings.companyId, companyId));
+    } else {
+      await db.insert(telephonySettings).values({
+        companyId,
+        outboundVoiceProfileId: profileId,
+        provisioningStatus: "provisioning" as const,
+      });
+    }
+
+    return { success: true, profileId };
+  } catch (error) {
+    console.error("[E911] Create outbound voice profile error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to create voice profile" };
+  }
+}
+
+async function getOrCreateCredentialConnection(
+  config: ManagedAccountConfig,
+  companyId: string,
+  outboundVoiceProfileId: string
+): Promise<{ success: boolean; connectionId?: string; error?: string }> {
+  const [settings] = await db
+    .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+    .from(telephonySettings)
+    .where(eq(telephonySettings.companyId, companyId));
+
+  if (settings?.credentialConnectionId) {
+    console.log(`[E911] Using existing credential connection: ${settings.credentialConnectionId}`);
+    return { success: true, connectionId: settings.credentialConnectionId };
+  }
+
+  const [company] = await db
+    .select({ name: companies.name })
+    .from(companies)
+    .where(eq(companies.id, companyId));
+
+  const companyName = company?.name || "Company";
+
+  console.log(`[E911] Creating credential connection for ${companyName}...`);
+
+  try {
+    const response = await fetch(`${TELNYX_API_BASE}/credential_connections`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        connection_name: `${companyName} - WebRTC`,
+        active: true,
+        anchorsite_override: "Latency",
+        outbound: {
+          outbound_voice_profile_id: outboundVoiceProfileId,
+          channel_limit: 10,
+        },
+        inbound: {
+          channel_limit: 10,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[E911] Failed to create credential connection: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to create connection: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const connectionId = data.data?.id;
+
+    console.log(`[E911] Credential connection created: ${connectionId}`);
+
+    await db.update(telephonySettings)
+      .set({ 
+        credentialConnectionId: connectionId, 
+        provisioningStatus: "completed",
+        provisionedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(telephonySettings.companyId, companyId));
+
+    return { success: true, connectionId };
+  } catch (error) {
+    console.error("[E911] Create credential connection error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to create connection" };
+  }
+}
+
+async function assignConnectionToPhoneNumber(
+  config: ManagedAccountConfig,
+  phoneNumberId: string,
+  connectionId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[E911] Assigning connection ${connectionId} to phone number ${phoneNumberId}...`);
+
+  try {
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "PATCH",
+      headers: buildHeaders(config),
+      body: JSON.stringify({ connection_id: connectionId }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[E911] Failed to assign connection: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to assign connection: ${response.status}` };
+    }
+
+    console.log(`[E911] Connection assigned successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error("[E911] Assign connection error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to assign connection" };
+  }
+}
+
+async function ensurePhoneNumberHasConnection(
+  config: ManagedAccountConfig,
+  companyId: string,
+  phoneNumberId: string
+): Promise<{ success: boolean; error?: string }> {
+  const phoneDetails = await getPhoneNumberDetails(config, phoneNumberId);
+  
+  if (!phoneDetails.success) {
+    return { success: false, error: phoneDetails.error };
+  }
+
+  if (phoneDetails.connectionId) {
+    console.log(`[E911] Phone number already has connection: ${phoneDetails.connectionId}`);
+    return { success: true };
+  }
+
+  console.log(`[E911] Phone number has no connection, creating infrastructure...`);
+
+  const ovpResult = await getOrCreateOutboundVoiceProfile(config, companyId);
+  if (!ovpResult.success || !ovpResult.profileId) {
+    return { success: false, error: ovpResult.error };
+  }
+
+  const connResult = await getOrCreateCredentialConnection(config, companyId, ovpResult.profileId);
+  if (!connResult.success || !connResult.connectionId) {
+    return { success: false, error: connResult.error };
+  }
+
+  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, connResult.connectionId);
+  if (!assignResult.success) {
+    return { success: false, error: assignResult.error };
+  }
+
+  return { success: true };
 }
 
 interface TelnyxSuggestion {
@@ -291,15 +498,20 @@ export async function registerE911ForNumber(
     return { success: false, error: "Phone system not configured for this company" };
   }
 
-  const phoneResult = await getPhoneNumberFromTelnyx(config, phoneNumberId);
+  const phoneDetails = await getPhoneNumberDetails(config, phoneNumberId);
   
-  if (!phoneResult.success || !phoneResult.phoneNumber) {
-    return { success: false, error: phoneResult.error || "Phone number not found" };
+  if (!phoneDetails.success || !phoneDetails.phoneNumber) {
+    return { success: false, error: phoneDetails.error || "Phone number not found" };
   }
 
-  console.log(`[E911] Registering E911 for phone: ${phoneResult.phoneNumber}`);
+  console.log(`[E911] Registering E911 for phone: ${phoneDetails.phoneNumber}`);
 
-  const addressResult = await createEmergencyAddress(companyId, addressData, phoneResult.phoneNumber);
+  const connectionResult = await ensurePhoneNumberHasConnection(config, companyId, phoneNumberId);
+  if (!connectionResult.success) {
+    return { success: false, error: connectionResult.error };
+  }
+
+  const addressResult = await createEmergencyAddress(companyId, addressData, phoneDetails.phoneNumber);
   
   if (!addressResult.success || !addressResult.addressId) {
     return { success: false, error: addressResult.error || "Failed to create emergency address" };
@@ -324,7 +536,7 @@ export async function registerE911ForNumber(
     console.log(`[E911] Note: Could not update local DB record (may not exist)`);
   }
 
-  console.log(`[E911] E911 fully configured for phone ${phoneResult.phoneNumber}`);
+  console.log(`[E911] E911 fully configured for phone ${phoneDetails.phoneNumber}`);
 
   return {
     success: true,
