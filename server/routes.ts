@@ -27180,10 +27180,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
 
-      // Check if account is disabled in Telnyx (no api_key means disabled)
+      // Check if account is disabled in Telnyx (only check explicit status)
       const account = accountDetails.managedAccount as any;
-      if (!account.api_key || account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
-        console.log(`[Telnyx Managed] Account ${managedAccountId} is disabled (api_key: ${!!account.api_key}, status: ${account.status}), clearing local config for company ${user.companyId}`);
+      if (account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
+        console.log(`[Telnyx Managed] Account ${managedAccountId} is disabled (status: ${account.status}), clearing local config for company ${user.companyId}`);
         await clearCompanyTelnyxConfig(user.companyId);
         return res.json({ 
           configured: false, 

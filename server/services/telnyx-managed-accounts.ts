@@ -352,55 +352,19 @@ export async function setupCompanyManagedAccount(companyId: string): Promise<{
       if (matchingAccount) {
         console.log(`[Telnyx Managed] Found existing account ${matchingAccount.id} with email ${expectedEmail}`);
         
-        // Enable the account if it's disabled (no api_key means disabled)
-        if (!matchingAccount.api_key) {
-          console.log(`[Telnyx Managed] Account appears disabled, enabling...`);
-          await enableManagedAccount(matchingAccount.id);
-          
-          // Poll for API key after enabling
-          let apiKey: string | undefined;
-          for (let attempt = 1; attempt <= 5; attempt++) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            const accountDetails = await getManagedAccount(matchingAccount.id);
-            if (accountDetails.success && accountDetails.managedAccount?.api_key) {
-              apiKey = accountDetails.managedAccount.api_key;
-              console.log(`[Telnyx Managed] API key obtained after enabling`);
-              break;
-            }
-          }
-          
-          // Save to wallet
-          if (existingWallet) {
-            await db.update(wallets).set({
-              telnyxAccountId: matchingAccount.id,
-              telnyxApiToken: apiKey || null,
-              updatedAt: new Date(),
-            }).where(eq(wallets.id, existingWallet.id));
-          } else {
-            await db.insert(wallets).values({
-              companyId: companyId,
-              telnyxAccountId: matchingAccount.id,
-              telnyxApiToken: apiKey || null,
-              balance: "0.0000",
-              currency: "USD",
-            });
-          }
-
-          return { success: true, managedAccountId: matchingAccount.id };
-        }
-
-        // Account already enabled, just link it
+        // Link the account - we use the Manager API key with x-managed-account-id header
+        // so we don't need individual API keys for managed accounts anymore (Telnyx 2024 change)
         if (existingWallet) {
           await db.update(wallets).set({
             telnyxAccountId: matchingAccount.id,
-            telnyxApiToken: matchingAccount.api_key || null,
+            telnyxApiToken: null, // Not needed - we use Manager API key + header
             updatedAt: new Date(),
           }).where(eq(wallets.id, existingWallet.id));
         } else {
           await db.insert(wallets).values({
             companyId: companyId,
             telnyxAccountId: matchingAccount.id,
-            telnyxApiToken: matchingAccount.api_key || null,
+            telnyxApiToken: null,
             balance: "0.0000",
             currency: "USD",
           });
