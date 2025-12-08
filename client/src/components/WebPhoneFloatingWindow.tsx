@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -260,6 +260,8 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col p-0 gap-0">
+        <DialogTitle className="sr-only">Buy Phone Number</DialogTitle>
+        <DialogDescription className="sr-only">Search and purchase a phone number from Telnyx</DialogDescription>
         {/* Header */}
         <div className="px-6 py-4 border-b border-border flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
