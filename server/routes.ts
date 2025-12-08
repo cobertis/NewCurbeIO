@@ -8033,7 +8033,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { getPaymentMethods } = await import("./stripe");
       const stripePaymentMethods = await getPaymentMethods(subscription.stripeCustomerId);
       // Get customer to find default payment method
-      const customer = await getStripeClient().customers.retrieve(subscription.stripeCustomerId) as any;
+      const { getStripeClient: getAsyncStripeClient } = await import("./stripe");
+      const stripeClientPM = await getAsyncStripeClient();
+      if (!stripeClientPM) {
+        return res.status(500).json({ message: "Stripe is not configured" });
+      }
+      const customer = await stripeClientPM.customers.retrieve(subscription.stripeCustomerId) as any;
       const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
       // Transform Stripe payment methods to match frontend interface
       const paymentMethods = stripePaymentMethods.map((pm: any) => ({
@@ -8068,7 +8073,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No active subscription found" });
       }
       // Create a SetupIntent for this customer
-      const setupIntent = await getStripeClient().setupIntents.create({
+      const { getStripeClient: getStripeClientAsync } = await import("./stripe");
+      const stripeClient = await getStripeClientAsync();
+      if (!stripeClient) {
+        return res.status(500).json({ message: "Stripe is not configured" });
+      }
+      const setupIntent = await stripeClient.setupIntents.create({
         customer: subscription.stripeCustomerId,
         payment_method_types: ['card'],
         usage: 'off_session', // Save for future use
@@ -8110,14 +8120,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No active subscription found" });
       }
       // Set this payment method as the default for the customer
-      await getStripeClient().customers.update(subscription.stripeCustomerId, {
+      const { getStripeClient: getStripeClientAsync2 } = await import("./stripe");
+      const stripeClient2 = await getStripeClientAsync2();
+      if (!stripeClient2) {
+        return res.status(500).json({ message: "Stripe is not configured" });
+      }
+      await stripeClient2.customers.update(subscription.stripeCustomerId, {
         invoice_settings: {
           default_payment_method: paymentMethodId,
         },
       });
       // If the subscription exists, update its default payment method
       if (subscription.stripeSubscriptionId) {
-        await getStripeClient().subscriptions.update(subscription.stripeSubscriptionId, {
+        await stripeClient2.subscriptions.update(subscription.stripeSubscriptionId, {
           default_payment_method: paymentMethodId,
         });
       }
