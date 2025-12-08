@@ -448,13 +448,12 @@ export default function Settings() {
   // Determine active tab from URL (must be defined before use)
   const getCurrentTab = () => {
     if (location === "/settings/automations") return "automations";
-    if (location === "/settings" || location === "/settings/profile") return "profile";
-    if (location === "/settings/company") return "company";
+    if (location === "/settings" || location === "/settings/profile" || location === "/settings/overview" || location === "/settings/company") return "overview";
     if (location === "/settings/security") return "security";
     if (location === "/settings/notifications") return "notifications";
     if (location === "/settings/team") return "team";
     if (location === "/settings/webphone") return "webphone";
-    return "profile"; // default
+    return "overview"; // default
   };
 
   // CRITICAL: Ensure company data is loaded before rendering (prevents race conditions)
@@ -472,9 +471,9 @@ export default function Settings() {
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
-    const baseTabs = ["profile", "security", "notifications", "automations", "webphone"];
+    const baseTabs = ["overview", "security", "notifications", "automations", "webphone"];
     if (isAdmin) {
-      return ["profile", "company", "team", "security", "notifications", "automations", "webphone"];
+      return ["overview", "team", "security", "notifications", "automations", "webphone"];
     }
     return baseTabs;
   }, [isAdmin]);
@@ -1400,16 +1399,10 @@ export default function Settings() {
         <div className="lg:col-span-8 xl:col-span-9">
           <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setLocation(`/settings/${value}`); }} className="space-y-6">
             <TabsList className="inline-flex h-auto flex-wrap w-full lg:w-auto">
-              <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
+              <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
                 <UserIcon className="h-4 w-4" />
-                Profile
+                Overview
               </TabsTrigger>
-              {isAdmin && (
-                <TabsTrigger value="company" className="gap-2" data-testid="tab-company">
-                  <Building2 className="h-4 w-4" />
-                  Company
-                </TabsTrigger>
-              )}
               <TabsTrigger value="automations" className="gap-2" data-testid="tab-automations">
                 <Zap className="h-4 w-4" />
                 Automations
@@ -1431,8 +1424,8 @@ export default function Settings() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Profile Tab */}
-            <TabsContent value="profile" className="space-y-4">
+            {/* Overview Tab - Profile + Company */}
+            <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Profile Information Card */}
                 <Card>
@@ -1676,6 +1669,404 @@ export default function Settings() {
                 </CardContent>
               </Card>
             </div>
+
+              {/* Company Information - Admin Only */}
+              {isAdmin && (
+                <>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                    <div className="space-y-1">
+                      <CardTitle>Company Information</CardTitle>
+                      <CardDescription>
+                        Basic company details and contact information
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      onClick={handleSaveCompanyInformation}
+                      disabled={updateCompanyMutation.isPending && savingSection === "companyInfo"}
+                      data-testid="button-save-company-information"
+                    >
+                      {updateCompanyMutation.isPending && savingSection === "companyInfo" ? "Saving..." : "Save"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="companyName">Company Name</Label>
+                        <Input
+                          id="companyName"
+                          ref={companyNameRef}
+                          defaultValue={companyData?.company?.name || ""}
+                          data-testid="input-company-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="slug">Company Slug</Label>
+                        <Input
+                          id="slug"
+                          ref={slugRef}
+                          defaultValue={companyData?.company?.slug || ""}
+                          data-testid="input-slug"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="businessCategory">Business Category</Label>
+                        <Popover open={openCategory} onOpenChange={setOpenCategory}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="businessCategory"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openCategory}
+                              className="w-full justify-between"
+                              data-testid="select-business-category"
+                            >
+                              {selectedCategory || "Select a category"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search category..." />
+                              <CommandEmpty>No category found.</CommandEmpty>
+                              <CommandGroup className="max-h-64 overflow-auto">
+                                {categories.map((category) => (
+                                  <CommandItem
+                                    key={category}
+                                    value={category}
+                                    onSelect={(currentValue) => {
+                                      const originalCategory = categories.find(
+                                        cat => cat.toLowerCase() === currentValue.toLowerCase()
+                                      ) || "";
+                                      const newValue = originalCategory === selectedCategory ? "" : originalCategory;
+                                      setSelectedCategory(newValue);
+                                      setSelectedNiche("");
+                                      if (businessCategoryRef.current) {
+                                        businessCategoryRef.current.value = newValue;
+                                      }
+                                      if (businessNicheRef.current) {
+                                        businessNicheRef.current.value = "";
+                                      }
+                                      setOpenCategory(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedCategory === category ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {category}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <input
+                          ref={businessCategoryRef}
+                          type="hidden"
+                          value={selectedCategory}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="businessNiche">Business Niche</Label>
+                        <Popover open={openNiche} onOpenChange={setOpenNiche}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="businessNiche"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openNiche}
+                              className="w-full justify-between"
+                              data-testid="select-business-niche"
+                            >
+                              {selectedNiche || "Select a niche"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search niche..." />
+                              <CommandEmpty>No niche found.</CommandEmpty>
+                              <CommandGroup className="max-h-64 overflow-auto">
+                                {niches
+                                  .filter((niche) => !selectedCategory || niche.category === selectedCategory)
+                                  .map((niche) => (
+                                    <CommandItem
+                                      key={niche.value}
+                                      value={niche.value}
+                                      onSelect={(currentValue) => {
+                                        const originalNiche = niches.find(
+                                          n => n.value.toLowerCase() === currentValue.toLowerCase()
+                                        );
+                                        const newValue = originalNiche && originalNiche.value === selectedNiche ? "" : (originalNiche?.value || "");
+                                        setSelectedNiche(newValue);
+                                        if (businessNicheRef.current) {
+                                          businessNicheRef.current.value = newValue;
+                                        }
+                                        setOpenNiche(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          selectedNiche === niche.value ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {niche.label}
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <input
+                          ref={businessNicheRef}
+                          type="hidden"
+                          value={selectedNiche}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="companyEmail">Company Email</Label>
+                        <Input
+                          id="companyEmail"
+                          ref={companyEmailRef}
+                          type="email"
+                          defaultValue={companyData?.company?.email || ""}
+                          data-testid="input-company-email"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="companyPhone">Company Phone</Label>
+                        <Input
+                          id="companyPhone"
+                          ref={companyPhoneRef}
+                          type="tel"
+                          defaultValue={companyData?.company?.phone || ""}
+                          data-testid="input-company-phone"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                          id="website"
+                          ref={websiteRef}
+                          type="url"
+                          placeholder="https://example.com"
+                          defaultValue={companyData?.company?.website || ""}
+                          data-testid="input-website"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="platformLanguage">Platform Language</Label>
+                        <Input
+                          id="platformLanguage"
+                          ref={platformLanguageRef}
+                          defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
+                          data-testid="input-platform-language"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="timezone">Your Timezone</Label>
+                          {selectedTimezone && (
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {currentTime.toLocaleTimeString('en-US', {
+                                timeZone: selectedTimezone,
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                              {' '}
+                              {selectedTimezone.includes('New_York') ? 'EST'
+                                : selectedTimezone.includes('Chicago') ? 'CST'
+                                : selectedTimezone.includes('Denver') ? 'MST'
+                                : selectedTimezone.includes('Los_Angeles') ? 'PST'
+                                : selectedTimezone.includes('London') ? 'GMT'
+                                : selectedTimezone.includes('Paris') ? 'CET'
+                                : selectedTimezone.includes('Tokyo') ? 'JST'
+                                : selectedTimezone.includes('Sydney') ? 'AEST'
+                                : selectedTimezone.includes('Dubai') ? 'GST'
+                                : selectedTimezone.includes('Singapore') ? 'SGT'
+                                : selectedTimezone.includes('Hong_Kong') ? 'HKT'
+                                : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'}
+                            </span>
+                          )}
+                        </div>
+                        <Select
+                          value={selectedTimezone}
+                          onValueChange={(value) => {
+                            setSelectedTimezone(value);
+                            handleTimezoneUpdate(value);
+                          }}
+                        >
+                          <SelectTrigger id="timezone" data-testid="select-timezone">
+                            <SelectValue placeholder="Select timezone" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">America - USA</div>
+                            <SelectItem value="America/New_York">(UTC-05:00) EST, New York, Toronto</SelectItem>
+                            <SelectItem value="America/Chicago">(UTC-06:00) CST, Chicago, Mexico City</SelectItem>
+                            <SelectItem value="America/Denver">(UTC-07:00) MST, Denver, Phoenix</SelectItem>
+                            <SelectItem value="America/Los_Angeles">(UTC-08:00) PST, Los Angeles, Vancouver</SelectItem>
+                            <SelectItem value="America/Anchorage">(UTC-09:00) AKST, Anchorage</SelectItem>
+                            <SelectItem value="Pacific/Honolulu">(UTC-10:00) HST, Honolulu</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Central and South America</div>
+                            <SelectItem value="America/Argentina/Buenos_Aires">(UTC-03:00) ART, Buenos Aires</SelectItem>
+                            <SelectItem value="America/Sao_Paulo">(UTC-03:00) BRT, São Paulo, Rio de Janeiro</SelectItem>
+                            <SelectItem value="America/Santiago">(UTC-03:00) CLT, Santiago</SelectItem>
+                            <SelectItem value="America/Bogota">(UTC-05:00) COT, Bogotá</SelectItem>
+                            <SelectItem value="America/Lima">(UTC-05:00) PET, Lima</SelectItem>
+                            <SelectItem value="America/Caracas">(UTC-04:00) AST, Caracas</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Europe</div>
+                            <SelectItem value="Europe/London">(UTC+00:00) GMT, London, Dublin</SelectItem>
+                            <SelectItem value="Europe/Paris">(UTC+01:00) CET, Paris, Madrid, Berlin</SelectItem>
+                            <SelectItem value="Europe/Istanbul">(UTC+02:00) EET, Istanbul, Athens, Cairo</SelectItem>
+                            <SelectItem value="Europe/Moscow">(UTC+03:00) MSK, Moscow, Saint Petersburg</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Africa</div>
+                            <SelectItem value="Africa/Lagos">(UTC+01:00) WAT, Lagos, Kinshasa</SelectItem>
+                            <SelectItem value="Africa/Johannesburg">(UTC+02:00) SAST, Johannesburg, Cape Town</SelectItem>
+                            <SelectItem value="Africa/Nairobi">(UTC+03:00) EAT, Nairobi, Addis Ababa</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Asia</div>
+                            <SelectItem value="Asia/Kolkata">(UTC+05:30) IST, Kolkata, New Delhi, Mumbai</SelectItem>
+                            <SelectItem value="Asia/Jakarta">(UTC+07:00) WIB, Jakarta, Bangkok</SelectItem>
+                            <SelectItem value="Asia/Shanghai">(UTC+08:00) CST, Shanghai, Beijing, Hong Kong</SelectItem>
+                            <SelectItem value="Asia/Hong_Kong">(UTC+08:00) HKT, Hong Kong</SelectItem>
+                            <SelectItem value="Asia/Singapore">(UTC+08:00) SGT, Singapore</SelectItem>
+                            <SelectItem value="Asia/Tokyo">(UTC+09:00) JST, Tokyo, Osaka</SelectItem>
+                            <SelectItem value="Asia/Seoul">(UTC+09:00) KST, Seoul</SelectItem>
+                            <SelectItem value="Asia/Manila">(UTC+08:00) PHT, Manila</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Australia and Pacific</div>
+                            <SelectItem value="Australia/Adelaide">(UTC+09:30) ACST, Adelaide, Darwin</SelectItem>
+                            <SelectItem value="Australia/Sydney">(UTC+10:00) AEST, Sydney, Melbourne</SelectItem>
+                            <SelectItem value="Pacific/Auckland">(UTC+12:00) NZST, Auckland, Wellington</SelectItem>
+                            <SelectItem value="Pacific/Chatham">(UTC+12:45) Chatham Islands</SelectItem>
+                            <SelectItem value="Pacific/Apia">(UTC+13:00) Samoa, Apia</SelectItem>
+                            <SelectItem value="Pacific/Kiritimati">(UTC+14:00) Line Islands, Kiritimati</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Middle East</div>
+                            <SelectItem value="Asia/Riyadh">(UTC+03:00) AST, Riyadh, Kuwait, Baghdad</SelectItem>
+                            <SelectItem value="Asia/Dubai">(UTC+04:00) GST, Dubai, Abu Dhabi</SelectItem>
+                            
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">UTC (Coordinated Universal Time)</div>
+                            <SelectItem value="UTC">(UTC+00:00) UTC, Greenwich</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Physical Address */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                    <div className="space-y-1">
+                      <CardTitle>Physical Address</CardTitle>
+                      <CardDescription>
+                        Company address and location details
+                      </CardDescription>
+                    </div>
+                    <Button 
+                      onClick={handleSavePhysicalAddress}
+                      disabled={updateCompanyMutation.isPending && savingSection === "physicalAddress"}
+                      data-testid="button-save-physical-address"
+                    >
+                      {updateCompanyMutation.isPending && savingSection === "physicalAddress" ? "Saving..." : "Save"}
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <GooglePlacesAddressAutocomplete
+                      value={addressValue}
+                      onChange={(value) => {
+                        setAddressValue(value);
+                        if (addressRef.current) {
+                          addressRef.current.value = value;
+                        }
+                      }}
+                      onAddressSelect={(address) => {
+                        setAddressValue(address.street);
+                        if (addressRef.current) addressRef.current.value = address.street;
+                        if (cityRef.current) cityRef.current.value = address.city;
+                        if (stateRef.current) stateRef.current.value = address.state;
+                        if (postalCodeRef.current) postalCodeRef.current.value = address.postalCode;
+                        if (countryRef.current) countryRef.current.value = address.country;
+                      }}
+                      label="Street Address"
+                      placeholder="Start typing your address..."
+                      testId="input-address"
+                    />
+                    
+                    <input
+                      ref={addressRef}
+                      type="hidden"
+                      value={addressValue}
+                    />
+
+                    <div className="space-y-2">
+                      <Label htmlFor="addressLine2">Address Line 2</Label>
+                      <Input
+                        id="addressLine2"
+                        ref={addressLine2Ref}
+                        placeholder="Suite, Apt, Unit, etc."
+                        defaultValue={companyData?.company?.addressLine2 || ""}
+                        data-testid="input-address-line-2"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                          id="city"
+                          ref={cityRef}
+                          defaultValue={companyData?.company?.city || ""}
+                          data-testid="input-city"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="state">State / Province</Label>
+                        <Input
+                          id="state"
+                          ref={stateRef}
+                          defaultValue={companyData?.company?.state || ""}
+                          data-testid="input-state"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Input
+                          id="postalCode"
+                          ref={postalCodeRef}
+                          defaultValue={companyData?.company?.postalCode || ""}
+                          data-testid="input-postal-code"
+                        />
+                      </div>
+                    </div>
+
+                    <input
+                      ref={countryRef}
+                      type="hidden"
+                      defaultValue={companyData?.company?.country || "United States"}
+                    />
+                  </CardContent>
+                </Card>
+                </>
+              )}
           </TabsContent>
 
             {/* Security Tab */}
@@ -1921,410 +2312,6 @@ export default function Settings() {
               {/* Session Activity - moved from separate tab */}
               <SessionActivityTab />
             </TabsContent>
-
-            {/* Company Settings Tab */}
-            {isAdmin && (
-              <TabsContent value="company" className="space-y-4">
-                {/* Company Information */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Company Information</CardTitle>
-                      <CardDescription>
-                        Basic company details and contact information
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSaveCompanyInformation}
-                      disabled={updateCompanyMutation.isPending && savingSection === "companyInfo"}
-                      data-testid="button-save-company-information"
-                    >
-                      {updateCompanyMutation.isPending && savingSection === "companyInfo" ? "Saving..." : "Save"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="companyName">Company Name</Label>
-                        <Input
-                          id="companyName"
-                          ref={companyNameRef}
-                          defaultValue={companyData?.company?.name || ""}
-                          data-testid="input-company-name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="slug">Company Slug</Label>
-                        <Input
-                          id="slug"
-                          ref={slugRef}
-                          defaultValue={companyData?.company?.slug || ""}
-                          data-testid="input-slug"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="businessCategory">Business Category</Label>
-                        <Popover open={openCategory} onOpenChange={setOpenCategory}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              id="businessCategory"
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={openCategory}
-                              className="w-full justify-between"
-                              data-testid="select-business-category"
-                            >
-                              {selectedCategory || "Select a category"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-full p-0">
-                            <Command>
-                              <CommandInput placeholder="Search category..." />
-                              <CommandEmpty>No category found.</CommandEmpty>
-                              <CommandGroup className="max-h-64 overflow-auto">
-                                {categories.map((category) => (
-                                  <CommandItem
-                                    key={category}
-                                    value={category}
-                                    onSelect={(currentValue) => {
-                                      // Find the original category value (CommandItem lowercases it)
-                                      const originalCategory = categories.find(
-                                        cat => cat.toLowerCase() === currentValue.toLowerCase()
-                                      ) || "";
-                                      const newValue = originalCategory === selectedCategory ? "" : originalCategory;
-                                      setSelectedCategory(newValue);
-                                      setSelectedNiche("");
-                                      if (businessCategoryRef.current) {
-                                        businessCategoryRef.current.value = newValue;
-                                      }
-                                      if (businessNicheRef.current) {
-                                        businessNicheRef.current.value = "";
-                                      }
-                                      setOpenCategory(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        selectedCategory === category ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    {category}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <input
-                          ref={businessCategoryRef}
-                          type="hidden"
-                          value={selectedCategory}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="businessNiche">Business Niche</Label>
-                        <Popover open={openNiche} onOpenChange={setOpenNiche}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              id="businessNiche"
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={openNiche}
-                              className="w-full justify-between"
-                              data-testid="select-business-niche"
-                            >
-                              {selectedNiche || "Select a niche"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-full p-0">
-                            <Command>
-                              <CommandInput placeholder="Search niche..." />
-                              <CommandEmpty>No niche found.</CommandEmpty>
-                              <CommandGroup className="max-h-64 overflow-auto">
-                                {niches
-                                  .filter((niche) => !selectedCategory || niche.category === selectedCategory)
-                                  .map((niche) => (
-                                    <CommandItem
-                                      key={niche.value}
-                                      value={niche.value}
-                                      onSelect={(currentValue) => {
-                                        // Find the original niche value (CommandItem lowercases it)
-                                        const originalNiche = niches.find(
-                                          n => n.value.toLowerCase() === currentValue.toLowerCase()
-                                        );
-                                        const newValue = originalNiche && originalNiche.value === selectedNiche ? "" : (originalNiche?.value || "");
-                                        setSelectedNiche(newValue);
-                                        if (businessNicheRef.current) {
-                                          businessNicheRef.current.value = newValue;
-                                        }
-                                        setOpenNiche(false);
-                                      }}
-                                    >
-                                      <Check
-                                        className={cn(
-                                          "mr-2 h-4 w-4",
-                                          selectedNiche === niche.value ? "opacity-100" : "opacity-0"
-                                        )}
-                                      />
-                                      {niche.label}
-                                    </CommandItem>
-                                  ))}
-                              </CommandGroup>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <input
-                          ref={businessNicheRef}
-                          type="hidden"
-                          value={selectedNiche}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="companyEmail">Company Email</Label>
-                        <Input
-                          id="companyEmail"
-                          ref={companyEmailRef}
-                          type="email"
-                          defaultValue={companyData?.company?.email || ""}
-                          data-testid="input-company-email"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="companyPhone">Company Phone</Label>
-                        <Input
-                          id="companyPhone"
-                          ref={companyPhoneRef}
-                          type="tel"
-                          defaultValue={companyData?.company?.phone || ""}
-                          data-testid="input-company-phone"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="website">Website</Label>
-                        <Input
-                          id="website"
-                          ref={websiteRef}
-                          type="url"
-                          placeholder="https://example.com"
-                          defaultValue={companyData?.company?.website || ""}
-                          data-testid="input-website"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="platformLanguage">Platform Language</Label>
-                        <Input
-                          id="platformLanguage"
-                          ref={platformLanguageRef}
-                          defaultValue={companyData?.company?.platformLanguage || "English (United States)"}
-                          data-testid="input-platform-language"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="timezone">Your Timezone</Label>
-                          {selectedTimezone && (
-                            <span className="text-sm font-medium text-muted-foreground">
-                              {currentTime.toLocaleTimeString('en-US', {
-                                timeZone: selectedTimezone,
-                                hour: 'numeric',
-                                minute: '2-digit',
-                                hour12: true
-                              })}
-                              {' '}
-                              {selectedTimezone.includes('New_York') ? 'EST'
-                                : selectedTimezone.includes('Chicago') ? 'CST'
-                                : selectedTimezone.includes('Denver') ? 'MST'
-                                : selectedTimezone.includes('Los_Angeles') ? 'PST'
-                                : selectedTimezone.includes('London') ? 'GMT'
-                                : selectedTimezone.includes('Paris') ? 'CET'
-                                : selectedTimezone.includes('Tokyo') ? 'JST'
-                                : selectedTimezone.includes('Sydney') ? 'AEST'
-                                : selectedTimezone.includes('Dubai') ? 'GST'
-                                : selectedTimezone.includes('Singapore') ? 'SGT'
-                                : selectedTimezone.includes('Hong_Kong') ? 'HKT'
-                                : selectedTimezone.split('/')[1]?.replace('_', ' ') || 'UTC'}
-                            </span>
-                          )}
-                        </div>
-                        <Select
-                          value={selectedTimezone}
-                          onValueChange={(value) => {
-                            setSelectedTimezone(value);
-                            // Auto-save timezone on change
-                            handleTimezoneUpdate(value);
-                          }}
-                        >
-                          <SelectTrigger id="timezone" data-testid="select-timezone">
-                            <SelectValue placeholder="Select timezone" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[300px]">
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">America - USA</div>
-                            <SelectItem value="America/New_York">(UTC-05:00) EST, New York, Toronto</SelectItem>
-                            <SelectItem value="America/Chicago">(UTC-06:00) CST, Chicago, Mexico City</SelectItem>
-                            <SelectItem value="America/Denver">(UTC-07:00) MST, Denver, Phoenix</SelectItem>
-                            <SelectItem value="America/Los_Angeles">(UTC-08:00) PST, Los Angeles, Vancouver</SelectItem>
-                            <SelectItem value="America/Anchorage">(UTC-09:00) AKST, Anchorage</SelectItem>
-                            <SelectItem value="Pacific/Honolulu">(UTC-10:00) HST, Honolulu</SelectItem>
-                            
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Central and South America</div>
-                            <SelectItem value="America/Argentina/Buenos_Aires">(UTC-03:00) ART, Buenos Aires</SelectItem>
-                            <SelectItem value="America/Sao_Paulo">(UTC-03:00) BRT, São Paulo, Rio de Janeiro</SelectItem>
-                            <SelectItem value="America/Santiago">(UTC-03:00) CLT, Santiago</SelectItem>
-                            <SelectItem value="America/Bogota">(UTC-05:00) COT, Bogotá</SelectItem>
-                            <SelectItem value="America/Lima">(UTC-05:00) PET, Lima</SelectItem>
-                            <SelectItem value="America/Caracas">(UTC-04:00) AST, Caracas</SelectItem>
-                            
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Europe</div>
-                            <SelectItem value="Europe/London">(UTC+00:00) GMT, London, Dublin</SelectItem>
-                            <SelectItem value="Europe/Paris">(UTC+01:00) CET, Paris, Madrid, Berlin</SelectItem>
-                            <SelectItem value="Europe/Istanbul">(UTC+02:00) EET, Istanbul, Athens, Cairo</SelectItem>
-                            <SelectItem value="Europe/Moscow">(UTC+03:00) MSK, Moscow, Saint Petersburg</SelectItem>
-                            
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Africa</div>
-                            <SelectItem value="Africa/Lagos">(UTC+01:00) WAT, Lagos, Kinshasa</SelectItem>
-                            <SelectItem value="Africa/Johannesburg">(UTC+02:00) SAST, Johannesburg, Cape Town</SelectItem>
-                            <SelectItem value="Africa/Nairobi">(UTC+03:00) EAT, Nairobi, Addis Ababa</SelectItem>
-                            
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Asia</div>
-                            <SelectItem value="Asia/Kolkata">(UTC+05:30) IST, Kolkata, New Delhi, Mumbai</SelectItem>
-                            <SelectItem value="Asia/Jakarta">(UTC+07:00) WIB, Jakarta, Bangkok</SelectItem>
-                            <SelectItem value="Asia/Shanghai">(UTC+08:00) CST, Shanghai, Beijing, Hong Kong</SelectItem>
-                            <SelectItem value="Asia/Hong_Kong">(UTC+08:00) HKT, Hong Kong</SelectItem>
-                            <SelectItem value="Asia/Singapore">(UTC+08:00) SGT, Singapore</SelectItem>
-                            <SelectItem value="Asia/Tokyo">(UTC+09:00) JST, Tokyo, Osaka</SelectItem>
-                            <SelectItem value="Asia/Seoul">(UTC+09:00) KST, Seoul</SelectItem>
-                            <SelectItem value="Asia/Manila">(UTC+08:00) PHT, Manila</SelectItem>
-                            
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Australia and Pacific</div>
-                            <SelectItem value="Australia/Adelaide">(UTC+09:30) ACST, Adelaide, Darwin</SelectItem>
-                            <SelectItem value="Australia/Sydney">(UTC+10:00) AEST, Sydney, Melbourne</SelectItem>
-                            <SelectItem value="Pacific/Auckland">(UTC+12:00) NZST, Auckland, Wellington</SelectItem>
-                            <SelectItem value="Pacific/Chatham">(UTC+12:45) Chatham Islands</SelectItem>
-                            <SelectItem value="Pacific/Apia">(UTC+13:00) Samoa, Apia</SelectItem>
-                            <SelectItem value="Pacific/Kiritimati">(UTC+14:00) Line Islands, Kiritimati</SelectItem>
-                            
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">Middle East</div>
-                            <SelectItem value="Asia/Riyadh">(UTC+03:00) AST, Riyadh, Kuwait, Baghdad</SelectItem>
-                            <SelectItem value="Asia/Dubai">(UTC+04:00) GST, Dubai, Abu Dhabi</SelectItem>
-                            
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">UTC (Coordinated Universal Time)</div>
-                            <SelectItem value="UTC">(UTC+00:00) UTC, Greenwich</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Physical Address */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Physical Address</CardTitle>
-                      <CardDescription>
-                        Company address and location details
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSavePhysicalAddress}
-                      disabled={updateCompanyMutation.isPending && savingSection === "physicalAddress"}
-                      data-testid="button-save-physical-address"
-                    >
-                      {updateCompanyMutation.isPending && savingSection === "physicalAddress" ? "Saving..." : "Save"}
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <GooglePlacesAddressAutocomplete
-                      value={addressValue}
-                      onChange={(value) => {
-                        setAddressValue(value);
-                        if (addressRef.current) {
-                          addressRef.current.value = value;
-                        }
-                      }}
-                      onAddressSelect={(address) => {
-                        setAddressValue(address.street);
-                        if (addressRef.current) addressRef.current.value = address.street;
-                        if (cityRef.current) cityRef.current.value = address.city;
-                        if (stateRef.current) stateRef.current.value = address.state;
-                        if (postalCodeRef.current) postalCodeRef.current.value = address.postalCode;
-                        if (countryRef.current) countryRef.current.value = address.country;
-                      }}
-                      label="Street Address"
-                      placeholder="Start typing your address..."
-                      testId="input-address"
-                    />
-                    
-                    {/* Hidden ref to maintain compatibility with save handler */}
-                    <input
-                      ref={addressRef}
-                      type="hidden"
-                      value={addressValue}
-                    />
-
-                    <div className="space-y-2">
-                      <Label htmlFor="addressLine2">Address Line 2</Label>
-                      <Input
-                        id="addressLine2"
-                        ref={addressLine2Ref}
-                        placeholder="Suite, Apt, Unit, etc."
-                        defaultValue={companyData?.company?.addressLine2 || ""}
-                        data-testid="input-address-line-2"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
-                        <Input
-                          id="city"
-                          ref={cityRef}
-                          defaultValue={companyData?.company?.city || ""}
-                          data-testid="input-city"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="state">State / Province</Label>
-                        <Input
-                          id="state"
-                          ref={stateRef}
-                          defaultValue={companyData?.company?.state || ""}
-                          data-testid="input-state"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="postalCode">Postal Code</Label>
-                        <Input
-                          id="postalCode"
-                          ref={postalCodeRef}
-                          defaultValue={companyData?.company?.postalCode || ""}
-                          data-testid="input-postal-code"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Hidden country field - keeps the ref but field is not visible */}
-                    <input
-                      ref={countryRef}
-                      type="hidden"
-                      defaultValue={companyData?.company?.country || "United States"}
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
 
             {/* Notifications Tab */}
             <TabsContent value="webphone" className="space-y-4">
