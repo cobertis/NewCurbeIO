@@ -75,6 +75,7 @@ import EmailMarketingPage from "@/pages/email-marketing";
 import IntegrationsPage from "@/pages/integrations";
 import Leads from "@/pages/leads";
 import Tasks from "@/pages/tasks";
+import PhoneSystem from "@/pages/phone-system";
 import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
@@ -463,6 +464,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         { title: "Customers", url: "/customers" },
         { title: "Leads", url: "/leads" },
         { title: "Tasks", url: "/tasks" },
+        { title: "Phone System", url: "/phone-system" },
       ];
 
   const circularButtonClass = "h-10 w-10 rounded-full bg-white/90 dark:bg-gray-800/70 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-all duration-200";
@@ -1424,6 +1426,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Tasks />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/phone-system">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <PhoneSystem />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
