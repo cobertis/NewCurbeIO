@@ -1,13 +1,15 @@
 import { db } from "../db";
 import { wallets, companies } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { SecretsService } from "./secrets-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
+const secretsService = new SecretsService();
 
-function getTelnyxMasterApiKey(): string {
-  const apiKey = process.env.TELNYX_API_KEY;
+async function getTelnyxMasterApiKey(): Promise<string> {
+  const apiKey = await secretsService.getCredential("telnyx", "api_key");
   if (!apiKey) {
-    throw new Error("TELNYX_API_KEY environment variable is not set");
+    throw new Error("Telnyx API key not configured. Please add it in Settings > API Keys.");
   }
   return apiKey;
 }
@@ -48,7 +50,7 @@ export interface SearchNumbersResult {
 
 export async function searchAvailableNumbers(params: SearchNumbersParams): Promise<SearchNumbersResult> {
   try {
-    const apiKey = getTelnyxMasterApiKey();
+    const apiKey = await getTelnyxMasterApiKey();
     
     const queryParams = new URLSearchParams();
     
@@ -134,7 +136,7 @@ export async function purchasePhoneNumber(
   companyId: string
 ): Promise<PurchaseNumberResult> {
   try {
-    const apiKey = getTelnyxMasterApiKey();
+    const apiKey = await getTelnyxMasterApiKey();
 
     const [wallet] = await db
       .select()
@@ -196,7 +198,7 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
   error?: string;
 }> {
   try {
-    const apiKey = getTelnyxMasterApiKey();
+    const apiKey = await getTelnyxMasterApiKey();
 
     const [wallet] = await db
       .select()
