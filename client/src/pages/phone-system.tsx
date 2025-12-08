@@ -196,32 +196,25 @@ export default function PhoneSystem() {
             </p>
           </div>
           {hasAccount && (
-            <div className="flex items-center gap-3">
-              {/* Balance Card */}
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 px-5 py-3 shadow-lg">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent" />
-                <div className="relative flex items-center gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 backdrop-blur-sm">
-                    <Wallet className="h-5 w-5 text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Balance</p>
-                    <p className="text-xl font-bold text-white tracking-tight" data-testid="text-balance">
-                      {formatCurrency(walletBalance, walletCurrency)}
-                    </p>
-                  </div>
-                </div>
+            <div 
+              className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              style={{ borderLeft: '4px solid hsl(215, 50%, 55%)' }}
+              onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
+              data-testid="button-add-funds"
+            >
+              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </div>
-              {/* Add Funds Button - Subtle */}
-              <Button 
-                variant="outline"
-                size="sm" 
-                className="h-10 px-3 rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
-                onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
-                data-testid="button-add-funds"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex-1">
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-medium">Balance</p>
+                <p className="text-lg font-semibold text-slate-900 dark:text-white" data-testid="text-balance">
+                  {formatCurrency(walletBalance, walletCurrency)}
+                </p>
+              </div>
+              <span className="text-xs text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors flex items-center gap-1">
+                <Plus className="h-3 w-3" />
+                Add
+              </span>
             </div>
           )}
         </div>
