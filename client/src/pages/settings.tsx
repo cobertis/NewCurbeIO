@@ -2041,71 +2041,68 @@ export default function Settings() {
                               Go to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.) and add a <strong>CNAME record</strong> with these values:
                             </p>
                             
-                            <div className="space-y-3">
+                            <div className="grid grid-cols-3 gap-3">
                               <div className="bg-white dark:bg-blue-900 p-3 rounded border">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Record Type</span>
+                                <div className="flex flex-col h-full">
+                                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Type</span>
+                                  <div className="flex items-center justify-between mt-1">
                                     <p className="font-mono font-semibold">CNAME</p>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText("CNAME");
+                                        toast({ title: "Copied!", description: "Record type copied" });
+                                      }}
+                                      data-testid="button-copy-record-type"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText("CNAME");
-                                      toast({ title: "Copied!", description: "Record type copied to clipboard" });
-                                    }}
-                                    data-testid="button-copy-record-type"
-                                  >
-                                    <Copy className="h-4 w-4" />
-                                  </Button>
                                 </div>
                               </div>
                               
                               <div className="bg-white dark:bg-blue-900 p-3 rounded border">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Host / Name</span>
+                                <div className="flex flex-col h-full">
+                                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Host</span>
+                                  <div className="flex items-center justify-between mt-1">
                                     <p className="font-mono font-semibold">{customDomainData.domain?.split('.')[0] || '@'}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      This is the subdomain part (e.g., "crm" for crm.yourdomain.com)
-                                    </p>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => {
+                                        const host = customDomainData.domain?.split('.')[0] || '@';
+                                        navigator.clipboard.writeText(host);
+                                        toast({ title: "Copied!", description: "Host value copied" });
+                                      }}
+                                      data-testid="button-copy-host"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const host = customDomainData.domain?.split('.')[0] || '@';
-                                      navigator.clipboard.writeText(host);
-                                      toast({ title: "Copied!", description: "Host value copied to clipboard" });
-                                    }}
-                                    data-testid="button-copy-host"
-                                  >
-                                    <Copy className="h-4 w-4" />
-                                  </Button>
                                 </div>
                               </div>
                               
                               <div className="bg-white dark:bg-blue-900 p-3 rounded border">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Value / Target / Points to</span>
-                                    <p className="font-mono font-semibold">app.curbe.io</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      This is where your domain will redirect to
-                                    </p>
+                                <div className="flex flex-col h-full">
+                                  <span className="text-xs text-muted-foreground uppercase tracking-wide">Value</span>
+                                  <div className="flex items-center justify-between mt-1">
+                                    <p className="font-mono font-semibold text-sm">app.curbe.io</p>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText("app.curbe.io");
+                                        toast({ title: "Copied!", description: "Target value copied" });
+                                      }}
+                                      data-testid="button-copy-target"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText("app.curbe.io");
-                                      toast({ title: "Copied!", description: "Target value copied to clipboard" });
-                                    }}
-                                    data-testid="button-copy-target"
-                                  >
-                                    <Copy className="h-4 w-4" />
-                                  </Button>
                                 </div>
                               </div>
                             </div>
