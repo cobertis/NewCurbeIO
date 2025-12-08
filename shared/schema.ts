@@ -4692,6 +4692,68 @@ export type WalletTransaction = typeof walletTransactions.$inferSelect;
 export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
 
 // =====================================================
+// TELNYX PHONE NUMBERS (Company VoIP Lines)
+// =====================================================
+
+export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  phoneNumber: text("phone_number").notNull(), // E.164 format (+1XXXXXXXXXX)
+  telnyxPhoneNumberId: text("telnyx_phone_number_id").notNull(), // Telnyx resource ID
+  displayName: text("display_name"), // Friendly name for UI
+  status: text("status").notNull().default("active").$type<"active" | "suspended" | "pending" | "cancelled">(),
+  capabilities: text("capabilities").array().default([]), // ["voice", "sms", "mms"]
+  monthlyFee: numeric("monthly_fee", { precision: 10, scale: 4 }).default("2.00"),
+  e911Enabled: boolean("e911_enabled").notNull().default(false),
+  e911AddressId: text("e911_address_id"), // Telnyx emergency address ID
+  e911MonthlyFee: numeric("e911_monthly_fee", { precision: 10, scale: 4 }).default("1.50"),
+  messagingProfileId: text("messaging_profile_id"), // For SMS routing
+  outboundVoiceProfileId: text("outbound_voice_profile_id"), // For voice routing
+  connectionId: text("connection_id"), // TeXML App connection ID
+  callerIdName: text("caller_id_name"), // CNAM for outbound calls
+  purchasedAt: timestamp("purchased_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("telnyx_phone_numbers_company_id_idx").on(table.companyId),
+  phoneNumberIdx: index("telnyx_phone_numbers_phone_number_idx").on(table.phoneNumber),
+  telnyxIdIdx: index("telnyx_phone_numbers_telnyx_id_idx").on(table.telnyxPhoneNumberId),
+}));
+
+// Telnyx E911 Addresses (Emergency Service Registration)
+export const telnyxE911Addresses = pgTable("telnyx_e911_addresses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  telnyxAddressId: text("telnyx_address_id").notNull(), // Telnyx address resource ID
+  streetAddress: text("street_address").notNull(),
+  extendedAddress: text("extended_address"), // Apt/Suite
+  locality: text("locality").notNull(), // City
+  administrativeArea: text("administrative_area").notNull(), // State (2-letter)
+  postalCode: text("postal_code").notNull(),
+  countryCode: text("country_code").notNull().default("US"),
+  callerName: text("caller_name").notNull(), // What 911 sees
+  isVerified: boolean("is_verified").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("telnyx_e911_addresses_company_id_idx").on(table.companyId),
+}));
+
+// Telnyx Phone Number Insert Schemas
+export const insertTelnyxPhoneNumberSchema = createInsertSchema(telnyxPhoneNumbers).omit({ 
+  id: true, createdAt: true, updatedAt: true, purchasedAt: true 
+});
+export const insertTelnyxE911AddressSchema = createInsertSchema(telnyxE911Addresses).omit({ 
+  id: true, createdAt: true, updatedAt: true 
+});
+
+// Telnyx Types
+export type TelnyxPhoneNumber = typeof telnyxPhoneNumbers.$inferSelect;
+export type InsertTelnyxPhoneNumber = z.infer<typeof insertTelnyxPhoneNumberSchema>;
+export type TelnyxE911Address = typeof telnyxE911Addresses.$inferSelect;
+export type InsertTelnyxE911Address = z.infer<typeof insertTelnyxE911AddressSchema>;
+
+// =====================================================
 // CAMPAIGN WIZARD COMPREHENSIVE PAYLOAD SCHEMA
 // =====================================================
 

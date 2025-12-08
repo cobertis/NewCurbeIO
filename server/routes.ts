@@ -27254,4 +27254,127 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   return httpServer;
+
+  // =====================================================
+  // E911 EMERGENCY ADDRESS ENDPOINTS
+  // =====================================================
+
+  // POST /api/e911/validate - Validate an emergency address
+  app.post("/api/e911/validate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { streetAddress, extendedAddress, locality, administrativeArea, postalCode, countryCode, callerName } = req.body;
+
+      if (!streetAddress || !locality || !administrativeArea || !postalCode) {
+        return res.status(400).json({ message: "Missing required address fields" });
+      }
+
+      const { validateEmergencyAddress } = await import("./services/telnyx-e911-service");
+      
+      const result = await validateEmergencyAddress(user.companyId, {
+        streetAddress,
+        extendedAddress: extendedAddress || "",
+        locality,
+        administrativeArea,
+        postalCode,
+        countryCode: countryCode || "US",
+        callerName: callerName || user.name || "Business Line",
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ 
+          valid: false,
+          error: result.error,
+          suggestions: result.suggestions,
+        });
+      }
+
+      res.json({
+        valid: result.valid,
+        normalizedAddress: result.normalizedAddress,
+        suggestions: result.suggestions,
+      });
+    } catch (error: any) {
+      console.error("[E911] Validate error:", error);
+      res.status(500).json({ message: "Failed to validate address" });
+    }
+  });
+
+  // POST /api/e911/register - Register E911 address and enable on phone number
+  app.post("/api/e911/register", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { phoneNumberId, streetAddress, extendedAddress, locality, administrativeArea, postalCode, countryCode, callerName } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!streetAddress || !locality || !administrativeArea || !postalCode || !callerName) {
+        return res.status(400).json({ message: "Missing required address fields" });
+      }
+
+      const { registerE911ForNumber } = await import("./services/telnyx-e911-service");
+      
+      const result = await registerE911ForNumber(user.companyId, phoneNumberId, {
+        streetAddress,
+        extendedAddress: extendedAddress || "",
+        locality,
+        administrativeArea,
+        postalCode,
+        countryCode: countryCode || "US",
+        callerName,
+      });
+
+      if (!result.success) {
+        return res.status(400).json({ 
+          success: false,
+          error: result.error,
+        });
+      }
+
+      res.json({
+        success: true,
+        addressId: result.addressId,
+        message: "E911 address registered and enabled on phone number",
+      });
+    } catch (error: any) {
+      console.error("[E911] Register error:", error);
+      res.status(500).json({ message: "Failed to register E911 address" });
+    }
+  });
+
+  // GET /api/e911/addresses - Get company's E911 addresses
+  app.get("/api/e911/addresses", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getEmergencyAddresses } = await import("./services/telnyx-e911-service");
+      const result = await getEmergencyAddresses(user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ addresses: result.addresses || [] });
+    } catch (error: any) {
+      console.error("[E911] Get addresses error:", error);
+      res.status(500).json({ message: "Failed to get emergency addresses" });
+    }
+  });
+
 }

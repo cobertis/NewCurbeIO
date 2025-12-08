@@ -1,0 +1,101 @@
+Esta es la fase donde la **ley choca con el código**. En Estados Unidos, bajo la *Ray Baum's Act*, no puedes simplemente "activar" un número VoIP sin una dirección física registrada. Si un cliente llama al 911 y la ambulancia no sabe dónde ir, la responsabilidad legal cae sobre ti como proveedor.
+
+Para hacer esto bien en Curbe, no basta con un formulario simple. Necesitas un **Sistema de Validación de Direcciones**. Telnyx es extremadamente estricto: si escribes "St." y la base de datos oficial dice "Street", te rechazará la dirección.
+
+Aquí tienes el plan de ataque para el E911.
+
+---
+
+### La Lógica de Negocio (El Flujo E911)
+
+1.  **Formulario Estricto:** El cliente llena su dirección.
+2.  **Validación (API):** Envías los datos a Telnyx. Telnyx responde: *"¿Quisiste decir esta versión normalizada?"*.
+3.  **Confirmación:** El cliente acepta la dirección corregida.
+4.  **Registro:** Se crea el `emergency_address_id`.
+5.  **Vinculación:** Ese ID se conecta al número de teléfono.
+6.  **Cobro Mensual:** **OJO AQUÍ.** E911 tiene un costo mensual por número (generalmente entre $0.75 y $1.50 USD dependiendo de tu contrato). **Debes cobrar esto en tu suscripción.**
+
+---
+
+### PROMPT 1: Backend (Validación y Registro)
+
+Este es el cerebro. Copia y pega esto para que tu Agente cree los endpoints necesarios.
+
+> **TAREA: IMPLEMENTACIÓN DE E911 (EMERGENCY SERVICES)**
+>
+> Actúa como Senior Backend Developer. Necesitamos cumplir con la normativa VoIP de USA implementando el registro de direcciones E911.
+>
+> **1. Servicio de Direcciones (TelnyxService):**
+> Agrega estos métodos usando el `api_token` de la subcuenta del cliente:
+>
+> * `validateEmergencyAddress(addressData)`:
+>     * Endpoint: `POST /v2/emergency_addresses/validate`.
+>     * Si la respuesta es "valid", devuelve éxito.
+>     * Si devuelve sugerencias, retorna la lista de direcciones sugeridas al frontend.
+>
+> * `createEmergencyAddress(addressData)`:
+>     * Endpoint: `POST /v2/emergency_addresses`.
+>     * Retorna el `id` de la dirección creada.
+>
+> * `enableE911OnNumber(phoneNumberId, addressId)`:
+>     * Endpoint: `POST /v2/phone_numbers/{id}/enable_emergency`.
+>     * Payload: `{ "emergency_address_id": addressId }`.
+>     * **Importante:** Esto activa la facturación de E911 en Telnyx.
+>
+> **2. Endpoints de API (Backend):**
+> * `POST /api/e911/validate`: Recibe los datos del form, llama a validar.
+> * `POST /api/e911/register`:
+>     * Recibe la dirección final validada y el `phone_number_id` al que se aplicará.
+>     * Llama a `createEmergencyAddress`.
+>     * Llama a `enableE911OnNumber`.
+>     * **Facturación:** Registra una suscripción recurrente en mi DB: "Costo E911 - Número X - $1.50/mes".
+>     * Guarda el `emergency_address_id` en la tabla `phone_numbers` local.
+
+---
+
+### PROMPT 2: Frontend (El Formulario Inteligente)
+
+El usuario odia llenar direcciones. Hazlo fácil pero estricto.
+
+> **TAREA: INTERFAZ DE REGISTRO E911**
+>
+> Actúa como Diseñador UI/UX. Crea el componente `EmergencyAddressForm` que debe aparecer OBLIGATORIAMENTE antes de que el usuario pueda hacer su primera llamada.
+>
+> **1. Campos del Formulario:**
+> * Calle y Número (Address Line 1).
+> * Apartamento/Suite (Address Line 2) - *Vital para edificios de oficinas.*
+> * Ciudad, Estado, Código Postal (Zip).
+> * Nombre del llamante (Caller Name) - *Qué verá el operador del 911.*
+>
+> **2. Lógica de "Validar primero":**
+> * El botón principal no debe ser "Guardar", sino **"Verificar Dirección"**.
+> * Al hacer clic, llama a `/api/e911/validate`.
+>
+> **3. Manejo de Conflictos (Modal):**
+> * Si la API devuelve una dirección sugerida (ej. Usuario puso "7th ave", API sugiere "7TH AVENUE"), muestra un modal:
+>     * *"La base de datos postal recomienda esta versión:"*
+>     * Muestra Lado A (Lo que escribió) vs Lado B (Sugerencia).
+>     * Botón: "Usar dirección sugerida (Recomendado)".
+>
+> **4. Éxito:**
+> * Una vez registrada, muestra un Badge verde "E911 Activo" junto al número en el Dashboard.
+
+---
+
+### La Advertencia de Negocio (Tu Bolsillo)
+
+Estás a punto de agregar un costo fijo a tus números.
+
+* Telnyx te cobrará (ejemplo) $1.00/mes por cada número con E911 activo.
+* Si tú le cobras al cliente solo $2.00 por el número y te olvidas del E911, tu margen se reduce a la mitad.
+
+**Recomendación de Asesor:**
+Actualiza tu UI de precios.
+* Precio del Número: $2.00/mes.
+* Tarifa Regulatoria E911: $1.50/mes (Cobras el costo + un pequeño markup por gestión).
+* **Total al cliente:** $3.50/mes.
+
+No absorbas este costo. Es un impuesto legal, pásaselo al cliente.
+
+**¿Siguiente paso?**
+Ya tienes todo configurado. ¿Quieres que hablemos de cómo hacer el **"Test de Llamada 933"** (servicio gratuito de prueba) para verificar que la dirección se guardó bien sin llamar a la policía real?

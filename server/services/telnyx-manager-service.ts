@@ -45,6 +45,9 @@ interface CreateSubAccountResult {
   accountId?: string;
   apiToken?: string;
   outboundVoiceProfileId?: string;
+  messagingProfileId?: string;
+  texmlApplicationId?: string;
+  connectionId?: string;
   error?: string;
 }
 
@@ -114,6 +117,128 @@ async function createOutboundVoiceProfile(
 }
 
 /**
+ * Creates a Messaging Profile for SMS/MMS handling
+ * - Connects incoming messages to our webhook
+ * - Enables sticky sender for consistent number assignment
+ * - Optimizes for toll-free and long code delivery
+ */
+async function createMessagingProfile(
+  accountApiToken: string,
+  organizationName: string,
+  webhookUrl: string
+): Promise<{ success: boolean; profileId?: string; error?: string }> {
+  try {
+    console.log(`[Telnyx] Creating Messaging Profile for: ${organizationName}`);
+
+    const response = await fetch(`${TELNYX_API_BASE}/messaging_profiles`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accountApiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: `Curbe SMS Profile (${organizationName})`,
+        enabled: true,
+        webhook_url: webhookUrl,
+        webhook_failover_url: null,
+        webhook_api_version: "2",
+        number_pool_settings: {
+          toll_free_weight: 10, // Prefer toll-free for better deliverability
+          long_code_weight: 1,
+          skip_unhealthy: true, // Skip numbers with delivery issues
+          sticky_sender: true, // Keep same sender for conversation
+          geomatch: false, // We're US only, no need for geo matching
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx] Messaging Profile Error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to create messaging profile: ${response.status} - ${errorText}`,
+      };
+    }
+
+    const result = await response.json();
+    console.log(`[Telnyx] Messaging Profile created: ${result.data.id}`);
+
+    return {
+      success: true,
+      profileId: result.data.id,
+    };
+  } catch (error) {
+    console.error("[Telnyx] Error creating Messaging Profile:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create messaging profile",
+    };
+  }
+}
+
+/**
+ * Creates a TeXML Application for voice call handling
+ * - Routes incoming calls to our webhook
+ * - Enables outbound calling
+ * - Links to the outbound voice profile for restrictions
+ */
+async function createTeXMLApplication(
+  accountApiToken: string,
+  organizationName: string,
+  webhookUrl: string,
+  outboundVoiceProfileId?: string
+): Promise<{ success: boolean; applicationId?: string; connectionId?: string; error?: string }> {
+  try {
+    console.log(`[Telnyx] Creating TeXML Application for: ${organizationName}`);
+
+    const response = await fetch(`${TELNYX_API_BASE}/texml_applications`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accountApiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        friendly_name: `Curbe Voice App (${organizationName})`,
+        active: true,
+        voice_url: webhookUrl,
+        voice_method: "POST",
+        voice_fallback_url: null,
+        status_callback: webhookUrl,
+        status_callback_method: "POST",
+        outbound_voice_profile_id: outboundVoiceProfileId || null,
+        first_command_timeout_secs: 30,
+        dtmf_type: "inband",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx] TeXML Application Error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to create TeXML application: ${response.status} - ${errorText}`,
+      };
+    }
+
+    const result = await response.json();
+    console.log(`[Telnyx] TeXML Application created: ${result.data.id}`);
+
+    return {
+      success: true,
+      applicationId: result.data.id,
+      connectionId: result.data.connection_id,
+    };
+  } catch (error) {
+    console.error("[Telnyx] Error creating TeXML Application:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create TeXML application",
+    };
+  }
+}
+
+/**
  * Creates a Telnyx Managed Account with:
  * - rollup_billing: true (all charges go to master account)
  * - Masked email for white-label privacy
@@ -121,6 +246,8 @@ async function createOutboundVoiceProfile(
  * 
  * After account creation, also creates:
  * - Restrictive Outbound Voice Profile (USA only, $25 cap)
+ * - Messaging Profile (for SMS/MMS)
+ * - TeXML Application (for voice calls)
  */
 export async function createSubAccount(
   organizationName: string,
@@ -167,24 +294,55 @@ export async function createSubAccount(
 
     console.log(`[Telnyx] Managed account created: ${accountId}`);
 
-    // Step 2: Create restrictive Outbound Voice Profile
+    // Get webhook base URL from environment
+    const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "https://api.curbe.io"; // Production fallback
+    
+    const smsWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/messages`;
+    const voiceWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/voice`;
+
+    // Step 2: Create restrictive Outbound Voice Profile (US only, $25 cap)
     const voiceProfileResult = await createOutboundVoiceProfile(apiToken, organizationName);
     
     if (!voiceProfileResult.success) {
-      console.warn(`[Telnyx] Warning: Account created but voice profile failed: ${voiceProfileResult.error}`);
-      // Still return success for account, but log the warning
-    } else {
-      console.log(`[Telnyx] Full setup complete for ${organizationName}:`);
-      console.log(`[Telnyx] - Account ID: ${accountId}`);
-      console.log(`[Telnyx] - Voice Profile ID: ${voiceProfileResult.profileId}`);
-      console.log(`[Telnyx] - Restrictions: US only, $${SAFETY_CAP_AMOUNT} safety cap`);
+      console.warn(`[Telnyx] Warning: Voice profile creation failed: ${voiceProfileResult.error}`);
     }
+
+    // Step 3: Create Messaging Profile (for SMS/MMS)
+    const messagingProfileResult = await createMessagingProfile(apiToken, organizationName, smsWebhookUrl);
+    
+    if (!messagingProfileResult.success) {
+      console.warn(`[Telnyx] Warning: Messaging profile creation failed: ${messagingProfileResult.error}`);
+    }
+
+    // Step 4: Create TeXML Application (for voice calls)
+    const texmlResult = await createTeXMLApplication(
+      apiToken, 
+      organizationName, 
+      voiceWebhookUrl,
+      voiceProfileResult.profileId
+    );
+    
+    if (!texmlResult.success) {
+      console.warn(`[Telnyx] Warning: TeXML application creation failed: ${texmlResult.error}`);
+    }
+
+    console.log(`[Telnyx] Full account setup complete for ${organizationName}:`);
+    console.log(`[Telnyx] - Account ID: ${accountId}`);
+    console.log(`[Telnyx] - Voice Profile ID: ${voiceProfileResult.profileId || "FAILED"}`);
+    console.log(`[Telnyx] - Messaging Profile ID: ${messagingProfileResult.profileId || "FAILED"}`);
+    console.log(`[Telnyx] - TeXML App ID: ${texmlResult.applicationId || "FAILED"}`);
+    console.log(`[Telnyx] - Restrictions: US only, $${SAFETY_CAP_AMOUNT} safety cap`);
 
     return {
       success: true,
       accountId: accountId,
       apiToken: apiToken,
       outboundVoiceProfileId: voiceProfileResult.profileId,
+      messagingProfileId: messagingProfileResult.profileId,
+      texmlApplicationId: texmlResult.applicationId,
+      connectionId: texmlResult.connectionId,
     };
   } catch (error) {
     console.error("[Telnyx] Error creating sub-account:", error);
