@@ -1460,13 +1460,21 @@ export function WebPhoneFloatingWindow() {
             {hasPhoneCapability ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-foreground font-medium text-xs sm:text-sm">
-                  {sipExtension ? `Ext: ${sipExtension}` : telnyxCallerIdNumber ? formatCallerNumber(telnyxCallerIdNumber) : 'WebPhone'}
+                  {effectiveCall 
+                    ? formatCallerNumber(effectiveCall.phoneNumber)
+                    : sipExtension 
+                      ? `Ext: ${sipExtension}` 
+                      : telnyxCallerIdNumber 
+                        ? formatCallerNumber(telnyxCallerIdNumber) 
+                        : 'WebPhone'}
                 </span>
                 <div className={cn(
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
-                  hasTelnyxNumber 
-                    ? (telnyxConnectionStatus === 'connected' ? "bg-green-500" : telnyxConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500")
-                    : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
+                  effectiveCall
+                    ? (effectiveCall.status === 'answered' ? "bg-green-500 animate-pulse" : "bg-yellow-500 animate-pulse")
+                    : hasTelnyxNumber 
+                      ? (telnyxConnectionStatus === 'connected' ? "bg-green-500" : telnyxConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500")
+                      : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
                 )} />
               </div>
             ) : (
