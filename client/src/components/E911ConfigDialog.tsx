@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, AlertTriangle, Loader2, CheckCircle } from "lucide-react";
 
@@ -168,6 +169,18 @@ export function E911ConfigDialog({
     registerMutation.mutate(data);
   };
 
+  const handleAddressSelect = (address: {
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+  }) => {
+    form.setValue("streetAddress", address.street);
+    form.setValue("locality", address.city);
+    form.setValue("administrativeArea", address.state);
+    form.setValue("postalCode", address.postalCode);
+  };
+
   const formatPhoneDisplay = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
     if (cleaned.length === 11 && cleaned.startsWith("1")) {
@@ -243,10 +256,13 @@ export function E911ConfigDialog({
                     <FormItem>
                       <FormLabel>Street Address</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="123 Main Street" 
-                          {...field}
-                          data-testid="input-e911-street"
+                        <GooglePlacesAddressAutocomplete
+                          value={field.value}
+                          onChange={field.onChange}
+                          onAddressSelect={handleAddressSelect}
+                          label=""
+                          placeholder="Start typing your address..."
+                          testId="input-e911-street"
                         />
                       </FormControl>
                       <FormMessage />
