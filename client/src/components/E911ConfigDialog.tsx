@@ -193,7 +193,7 @@ export function E911ConfigDialog({
         countryCode: "US",
         callerName: data.callerName,
       });
-      return response.json();
+      return response;
     },
     onSuccess: () => {
       setStep("success");
