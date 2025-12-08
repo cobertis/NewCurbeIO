@@ -281,16 +281,32 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
     purchaseMutation.mutate(firstNumber);
   };
 
-  const getCapabilityIcon = (features: Array<{ name: string }>) => {
-    const hasVoice = features.some(f => f.name === 'voice');
-    const hasSms = features.some(f => f.name === 'sms');
-    const hasMms = features.some(f => f.name === 'mms');
+  const getCapabilityBadges = (features: Array<{ name: string }>) => {
+    const featureLabels: Record<string, string> = {
+      'sms': 'SMS',
+      'mms': 'MMS',
+      'voice': 'Voice',
+      'fax': 'Fax',
+      'emergency': 'E911',
+      'e911': 'E911',
+      'local_calling': 'Local',
+      'hd_voice': 'HD Voice',
+      'international_sms': 'Intl SMS',
+    };
     
     return (
-      <div className="flex items-center gap-2">
-        {hasVoice && <Phone className="h-4 w-4 text-muted-foreground" />}
-        {hasSms && <MessageSquare className="h-4 w-4 text-muted-foreground" />}
-        {hasMms && <MessageSquare className="h-4 w-4 text-blue-500" />}
+      <div className="flex flex-wrap gap-1">
+        {features.map((feature, idx) => {
+          const label = featureLabels[feature.name] || feature.name.replace(/_/g, ' ');
+          return (
+            <span
+              key={idx}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border"
+            >
+              {label}
+            </span>
+          );
+        })}
       </div>
     );
   };
@@ -496,7 +512,7 @@ function BuyNumbersDialog({ open, onOpenChange }: BuyNumbersDialogProps) {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {getCapabilityIcon(number.features)}
+                        {getCapabilityBadges(number.features)}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm capitalize">{number.record_type?.replace('_', ' ') || 'Local'}</span>
