@@ -360,23 +360,12 @@ async function assignConnectionToPhoneNumber(
   }
 }
 
-async function ensurePhoneNumberHasConnection(
+async function ensurePhoneNumberHasCredentialConnection(
   config: ManagedAccountConfig,
   companyId: string,
   phoneNumberId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const phoneDetails = await getPhoneNumberDetails(config, phoneNumberId);
-  
-  if (!phoneDetails.success) {
-    return { success: false, error: phoneDetails.error };
-  }
-
-  if (phoneDetails.connectionId) {
-    console.log(`[E911] Phone number already has connection: ${phoneDetails.connectionId}`);
-    return { success: true };
-  }
-
-  console.log(`[E911] Phone number has no connection, creating infrastructure...`);
+  console.log(`[E911] Ensuring phone number has CREDENTIAL CONNECTION (required for E911)...`);
 
   const ovpResult = await getOrCreateOutboundVoiceProfile(config, companyId);
   if (!ovpResult.success || !ovpResult.profileId) {
@@ -387,6 +376,18 @@ async function ensurePhoneNumberHasConnection(
   if (!connResult.success || !connResult.connectionId) {
     return { success: false, error: connResult.error };
   }
+
+  const phoneDetails = await getPhoneNumberDetails(config, phoneNumberId);
+  if (!phoneDetails.success) {
+    return { success: false, error: phoneDetails.error };
+  }
+
+  if (phoneDetails.connectionId === connResult.connectionId) {
+    console.log(`[E911] Phone number already has correct credential connection: ${phoneDetails.connectionId}`);
+    return { success: true };
+  }
+
+  console.log(`[E911] Phone number has connection ${phoneDetails.connectionId || 'NONE'}, replacing with credential connection ${connResult.connectionId}...`);
 
   const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, connResult.connectionId);
   if (!assignResult.success) {
@@ -603,7 +604,7 @@ export async function registerE911ForNumber(
 
   console.log(`[E911] Registering E911 for phone: ${phoneDetails.phoneNumber}`);
 
-  const connectionResult = await ensurePhoneNumberHasConnection(config, companyId, phoneNumberId);
+  const connectionResult = await ensurePhoneNumberHasCredentialConnection(config, companyId, phoneNumberId);
   if (!connectionResult.success) {
     return { success: false, error: connectionResult.error };
   }
