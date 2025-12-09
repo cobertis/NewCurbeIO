@@ -1572,17 +1572,13 @@ export function WebPhoneFloatingWindow() {
             {hasPhoneCapability ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-foreground font-medium text-xs sm:text-sm">
-                  {sipExtension 
-                    ? `Ext: ${sipExtension}` 
-                    : telnyxCallerIdNumber 
-                      ? formatCallerNumber(telnyxCallerIdNumber) 
-                      : 'WebPhone'}
+                  {telnyxCallerIdNumber 
+                    ? formatCallerNumber(telnyxCallerIdNumber) 
+                    : 'WebPhone'}
                 </span>
                 <div className={cn(
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
-                  hasTelnyxNumber 
-                    ? (telnyxConnectionStatus === 'connected' ? "bg-green-500" : telnyxConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500")
-                    : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
+                  telnyxConnectionStatus === 'connected' ? "bg-green-500" : telnyxConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500"
                 )} />
               </div>
             ) : (
@@ -2266,10 +2262,10 @@ export function WebPhoneFloatingWindow() {
                         <div></div>
                         <button
                           onClick={handleCall}
-                          disabled={!dialNumber || (hasTelnyxNumber ? telnyxConnectionStatus !== 'connected' : connectionStatus !== 'connected')}
+                          disabled={!dialNumber || telnyxConnectionStatus !== 'connected'}
                           className={cn(
                             "w-14 h-14 sm:w-20 sm:h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
-                            dialNumber && (hasTelnyxNumber ? telnyxConnectionStatus === 'connected' : connectionStatus === 'connected')
+                            dialNumber && telnyxConnectionStatus === 'connected'
                               ? "bg-green-500 hover:bg-green-600" 
                               : "bg-green-500/40 cursor-not-allowed"
                           )}
