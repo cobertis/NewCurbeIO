@@ -27512,105 +27512,59 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Phone system not configured. Please set up your phone system first." });
       }
       
-      // Get all phone numbers for this company
-      const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
-      const numbersResult = await getCompanyPhoneNumbers(user.companyId);
-      
-      if (!numbersResult.success || !numbersResult.numbers || numbersResult.numbers.length === 0) {
-        // Still save the settings even if no numbers yet
-        const [existing] = await db
-          .select({ id: telephonySettings.id })
-          .from(telephonySettings)
-          .where(eq(telephonySettings.companyId, user.companyId));
-        
-        if (existing) {
-          await db.update(telephonySettings)
-            .set({
-              noiseSuppressionEnabled: enabled,
-              noiseSuppressionDirection: direction || 'outbound',
-              updatedAt: new Date(),
-            })
-            .where(eq(telephonySettings.companyId, user.companyId));
-        } else {
-          await db.insert(telephonySettings).values({
-            companyId: user.companyId,
-            noiseSuppressionEnabled: enabled,
-            noiseSuppressionDirection: direction || 'outbound',
-            provisioningStatus: 'pending' as const,
-          });
-        }
-        
-        return res.json({
-          success: true,
-          enabled,
-          direction: direction || 'outbound',
-          message: "Settings saved. Will apply when phone numbers are added.",
-        });
-      }
-      
-      // Update each phone number in Telnyx
-      const errors: string[] = [];
-      const TELNYX_API_BASE = "https://api.telnyx.com/v2";
-      
-      for (const number of numbersResult.numbers) {
-        if (!number.id) {
-          console.warn(`[Noise Suppression] Skipping number without ID: ${number.phone_number}`);
-          continue;
-        }
-        
-        try {
-          const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${number.id}`, {
-            method: "PATCH",
-            headers: buildHeaders(config),
-            body: JSON.stringify({
-              noise_suppression: enabled ? {
-                direction: direction || 'outbound',
-              } : null,
-            }),
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[Noise Suppression] Failed to update ${number.phone_number}: ${response.status} - ${errorText}`);
-            errors.push(`Failed to update ${number.phone_number}`);
-          } else {
-            console.log(`[Noise Suppression] Updated ${number.phone_number} - enabled: ${enabled}, direction: ${direction}`);
-          }
-        } catch (err) {
-          console.error(`[Noise Suppression] Error updating ${number.phone_number}:`, err);
-          errors.push(`Error updating ${number.phone_number}`);
-        }
-      }
-      
-      // Save settings to database
-      const [existing] = await db
-        .select({ id: telephonySettings.id })
+      // Get credential connection ID from telephony settings
+      const [settings] = await db
+        .select({
+          credentialConnectionId: telephonySettings.credentialConnectionId,
+        })
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, user.companyId));
       
-      if (existing) {
-        await db.update(telephonySettings)
-          .set({
-            noiseSuppressionEnabled: enabled,
-            noiseSuppressionDirection: direction || 'outbound',
-            updatedAt: new Date(),
-          })
-          .where(eq(telephonySettings.companyId, user.companyId));
-      } else {
-        await db.insert(telephonySettings).values({
-          companyId: user.companyId,
-          noiseSuppressionEnabled: enabled,
-          noiseSuppressionDirection: direction || 'outbound',
-          provisioningStatus: 'pending' as const,
+      if (!settings?.credentialConnectionId) {
+        return res.status(400).json({ message: "No credential connection configured. Please complete phone system setup first." });
+      }
+      
+      // Determine the noise_suppression_configuration value for Telnyx API
+      // Options: "disabled", "inbound", "outbound", "both"
+      const noiseSuppressionConfig = enabled ? (direction || 'outbound') : 'disabled';
+      
+      const TELNYX_API_BASE = "https://api.telnyx.com/v2";
+      
+      // PATCH the credential connection with noise_suppression_configuration
+      const response = await fetch(`${TELNYX_API_BASE}/credential_connections/${settings.credentialConnectionId}`, {
+        method: "PATCH",
+        headers: buildHeaders(config),
+        body: JSON.stringify({
+          noise_suppression_configuration: noiseSuppressionConfig,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Noise Suppression] Failed to update credential connection: ${response.status} - ${errorText}`);
+        return res.status(500).json({ 
+          message: "Failed to update noise suppression in Telnyx",
+          details: errorText 
         });
       }
+      
+      const responseData = await response.json();
+      console.log(`[Noise Suppression] Updated credential connection ${settings.credentialConnectionId} - config: ${noiseSuppressionConfig}`);
+      
+      // Save settings to database
+      await db.update(telephonySettings)
+        .set({
+          noiseSuppressionEnabled: enabled,
+          noiseSuppressionDirection: direction || 'outbound',
+          updatedAt: new Date(),
+        })
+        .where(eq(telephonySettings.companyId, user.companyId));
       
       res.json({
         success: true,
         enabled,
         direction: direction || 'outbound',
-        updatedNumbers: numbersResult.numbers.length - errors.length,
-        errors: errors.length > 0 ? errors : undefined,
+        telnyxConfig: noiseSuppressionConfig,
       });
     } catch (error: any) {
       console.error("[Noise Suppression] Update error:", error);
