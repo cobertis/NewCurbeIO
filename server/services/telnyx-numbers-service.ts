@@ -442,11 +442,31 @@ export async function updateCnamListing(
     console.log(`[Telnyx CNAM] Trying V2 API as fallback...`);
     
     // V2 API fallback - PATCH /v2/phone_numbers/{id}
-    const v2Response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+    // Try WITHOUT the x-managed-account-id header first (Master Account might have access)
+    const v2HeadersNoManaged: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    console.log(`[Telnyx CNAM] Trying V2 API WITHOUT managed account header...`);
+    let v2Response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "PATCH",
-      headers,
+      headers: v2HeadersNoManaged,
       body: JSON.stringify(payload),
     });
+    
+    // If that fails (likely 404 or 401), try WITH the managed account header
+    if (!v2Response.ok) {
+      const noManagedErrorText = await v2Response.text();
+      console.warn(`[Telnyx CNAM V2 no-managed] Failed: ${v2Response.status} - ${noManagedErrorText}`);
+      console.log(`[Telnyx CNAM] Trying V2 API WITH managed account header...`);
+      
+      v2Response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    }
     
     if (!v2Response.ok) {
       const v2ErrorText = await v2Response.text();
