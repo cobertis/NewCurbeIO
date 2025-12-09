@@ -25,10 +25,26 @@ export const WebPhone = () => {
   const [dialNumber, setDialNumber] = useState('');
   const [view, setView] = useState<'dialpad' | 'transfer' | 'dtmf'>('dialpad');
   const [callDuration, setCallDuration] = useState(0);
+  const [isAnswering, setIsAnswering] = useState(false);
 
   useEffect(() => {
     if (incomingCall || activeCall) setIsOpen(true);
   }, [incomingCall, activeCall]);
+
+  // Reset isAnswering when call becomes active or ends
+  useEffect(() => {
+    if (activeCall) {
+      setIsAnswering(false);
+    }
+    if (!incomingCall && !activeCall) {
+      setIsAnswering(false);
+    }
+  }, [activeCall, incomingCall]);
+
+  const handleAnswer = () => {
+    setIsAnswering(true);
+    answerCall();
+  };
 
   useEffect(() => {
     let interval: any;
@@ -113,25 +129,38 @@ export const WebPhone = () => {
         {/* INCOMING CALL OVERLAY */}
         {incomingCall && !activeCall && (
           <div className="absolute inset-0 bg-gray-900/95 z-20 flex flex-col items-center justify-center text-white backdrop-blur-sm p-6 rounded-b-3xl" data-testid="webphone-incoming-overlay">
-            <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mb-4 animate-pulse">
+            <div className={`w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mb-4 ${isAnswering ? '' : 'animate-pulse'}`}>
               <User size={48} className="text-gray-300" />
             </div>
             <h3 className="text-xl font-bold mb-1">{getCallerName()}</h3>
-            <p className="text-gray-400 mb-8 font-mono">{getRemoteNumber()}</p>
-            <div className="flex gap-8 w-full justify-center">
-              <button onClick={rejectCall} className="flex flex-col items-center gap-2 group" data-testid="webphone-reject">
-                <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center shadow-lg group-hover:bg-red-600 transition-all group-active:scale-95">
-                  <X size={28} />
+            <p className="text-gray-400 mb-2 font-mono">{getRemoteNumber()}</p>
+            
+            {isAnswering ? (
+              /* Show connecting state after user clicks Answer */
+              <div className="flex flex-col items-center gap-4 mt-4">
+                <div className="flex items-center gap-2 text-green-400">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium">Connecting...</span>
                 </div>
-                <span className="text-xs font-medium">Reject</span>
-              </button>
-              <button onClick={answerCall} className="flex flex-col items-center gap-2 group" data-testid="webphone-answer">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg group-hover:bg-green-600 transition-all group-active:scale-95 animate-bounce">
-                  <Phone size={28} />
-                </div>
-                <span className="text-xs font-medium">Answer</span>
-              </button>
-            </div>
+                <p className="text-xs text-gray-500">Please wait while call connects</p>
+              </div>
+            ) : (
+              /* Show Answer/Reject buttons */
+              <div className="flex gap-8 w-full justify-center mt-6">
+                <button onClick={rejectCall} className="flex flex-col items-center gap-2 group" data-testid="webphone-reject">
+                  <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center shadow-lg group-hover:bg-red-600 transition-all group-active:scale-95">
+                    <X size={28} />
+                  </div>
+                  <span className="text-xs font-medium">Reject</span>
+                </button>
+                <button onClick={handleAnswer} className="flex flex-col items-center gap-2 group" data-testid="webphone-answer">
+                  <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg group-hover:bg-green-600 transition-all group-active:scale-95 animate-bounce">
+                    <Phone size={28} />
+                  </div>
+                  <span className="text-xs font-medium">Answer</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 

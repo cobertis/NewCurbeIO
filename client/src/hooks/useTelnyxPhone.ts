@@ -28,7 +28,8 @@ const getOrCreateRemoteAudio = (): HTMLAudioElement => {
 export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
   const weInitiatedCallRef = useRef(false);
-  const micStreamRef = useRef<MediaStream | null>(null);
+  const micPrewarmedRef = useRef(false);
+  const pendingAnswerRef = useRef<Call | null>(null);
   
   const [state, setState] = useState<TelnyxPhoneState>({
     sessionStatus: 'disconnected',
@@ -38,6 +39,43 @@ export const useTelnyxPhone = () => {
     isOnHold: false,
     callerIdNumber: '',
   });
+
+  // Pre-warm microphone permission - call once when client is ready
+  const prewarmMicrophone = useCallback(async () => {
+    if (micPrewarmedRef.current) return;
+    
+    try {
+      console.log('[TelnyxPhone] Pre-warming microphone on client ready...');
+      const startTime = Date.now();
+      
+      // Request microphone permission early - this ensures the browser has permission
+      // cached so subsequent getUserMedia calls are nearly instant
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      
+      const elapsed = Date.now() - startTime;
+      console.log('[TelnyxPhone] Microphone pre-warmed in', elapsed, 'ms');
+      
+      // Stop the tracks - we just needed to get permission
+      stream.getTracks().forEach(track => track.stop());
+      
+      micPrewarmedRef.current = true;
+      
+      // Also enable microphone on the Telnyx client for good measure
+      if (clientRef.current) {
+        clientRef.current.enableMicrophone();
+        console.log('[TelnyxPhone] Called client.enableMicrophone()');
+      }
+      
+    } catch (error) {
+      console.error('[TelnyxPhone] Failed to pre-warm microphone:', error);
+    }
+  }, []);
 
   const initClient = useCallback(async () => {
     try {
@@ -89,6 +127,10 @@ export const useTelnyxPhone = () => {
       client.on('telnyx.ready', () => {
         console.log('[TelnyxPhone] telnyx.ready - registered');
         setState(prev => ({ ...prev, sessionStatus: 'registered' }));
+        
+        // CRITICAL: Pre-warm microphone as soon as client is ready
+        // This ensures getUserMedia is fast when answering calls
+        prewarmMicrophone();
       });
 
       client.on('telnyx.error', (error: any) => {
@@ -120,9 +162,15 @@ export const useTelnyxPhone = () => {
               console.log('[TelnyxPhone] Incoming call detected');
               setState(prev => ({ ...prev, incomingCall: call }));
             }
+          } else if (call.state === 'answering') {
+            // Call is being answered but not yet active
+            console.log('[TelnyxPhone] Call state: answering');
           } else if (call.state === 'active') {
-            console.log('[TelnyxPhone] Call is now active');
+            // CRITICAL: Only set activeCall when SDK confirms call is active
+            // This is the ONLY place where we should transition to activeCall
+            console.log('[TelnyxPhone] Call is now ACTIVE - transitioning state');
             weInitiatedCallRef.current = false;
+            pendingAnswerRef.current = null;
             setState(prev => ({ 
               ...prev, 
               activeCall: call, 
@@ -132,6 +180,7 @@ export const useTelnyxPhone = () => {
             console.log('[TelnyxPhone] Call ended:', call.state, 
               'cause:', callAny.cause, 'causeCode:', callAny.causeCode);
             weInitiatedCallRef.current = false;
+            pendingAnswerRef.current = null;
             setState(prev => ({ 
               ...prev, 
               activeCall: null, 
@@ -155,16 +204,12 @@ export const useTelnyxPhone = () => {
       console.error('[TelnyxPhone] Init error:', error);
       setState(prev => ({ ...prev, sessionStatus: 'error' }));
     }
-  }, []);
+  }, [prewarmMicrophone]);
 
   useEffect(() => {
     initClient();
     
     return () => {
-      if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach(track => track.stop());
-        micStreamRef.current = null;
-      }
       if (clientRef.current) {
         clientRef.current.disconnect();
         clientRef.current = null;
@@ -189,64 +234,23 @@ export const useTelnyxPhone = () => {
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
 
-  // CRITICAL FIX: Actually wait for microphone to be ready using native getUserMedia
-  // The SDK's enableMicrophone() returns immediately without waiting
-  const answerCall = useCallback(async () => {
+  // FIXED: Just call answer() - let the SDK handle media acquisition
+  // The callUpdate handler will transition to activeCall when ready
+  // Since we pre-warmed the microphone, getUserMedia should be fast
+  const answerCall = useCallback(() => {
     if (!state.incomingCall || !clientRef.current) return;
     
     const call = state.incomingCall;
+    pendingAnswerRef.current = call;
     
-    try {
-      console.log('[TelnyxPhone] Step 1: Getting microphone with getUserMedia...');
-      const startTime = Date.now();
-      
-      // CRITICAL: Use native getUserMedia and ACTUALLY wait for it
-      // This ensures the audio track is ready before we send SIP 200 OK
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
-      
-      const micTime = Date.now() - startTime;
-      console.log('[TelnyxPhone] Step 2: Microphone ready in', micTime, 'ms');
-      
-      // Store the stream for cleanup
-      micStreamRef.current = stream;
-      
-      // CRITICAL: Set the stream on the client before answering
-      // This ensures Telnyx uses our pre-obtained stream
-      if (clientRef.current.localElement) {
-        (clientRef.current.localElement as HTMLMediaElement).srcObject = stream;
-      }
-      
-      console.log('[TelnyxPhone] Step 3: Calling answer()...');
-      
-      // CRITICAL: Immediately move call to activeCall state
-      // This changes UI from Reject to Hangup button
-      setState(prev => ({ 
-        ...prev, 
-        activeCall: call, 
-        incomingCall: null 
-      }));
-      
-      // Now answer - the microphone is actually ready
-      call.answer();
-      
-      console.log('[TelnyxPhone] Step 4: Answer completed');
-      
-    } catch (error) {
-      console.error('[TelnyxPhone] Error getting microphone:', error);
-      // Fallback: answer anyway but expect delay
-      call.answer();
-      setState(prev => ({ 
-        ...prev, 
-        activeCall: call, 
-        incomingCall: null 
-      }));
-    }
+    console.log('[TelnyxPhone] Answering call (microphone pre-warmed:', micPrewarmedRef.current, ')');
+    
+    // Just call answer() - the SDK will handle getUserMedia internally
+    // Since we pre-warmed the mic on telnyx.ready, it should be fast
+    // DO NOT change state here - wait for callUpdate: active
+    call.answer();
+    
+    console.log('[TelnyxPhone] answer() called, waiting for active state...');
   }, [state.incomingCall]);
 
   const rejectCall = useCallback(() => {
@@ -263,9 +267,15 @@ export const useTelnyxPhone = () => {
   }, [state.incomingCall]);
 
   const hangupCall = useCallback(() => {
+    // Only allow hangup if we have an active call (confirmed by SDK)
     if (state.activeCall) {
       console.log('[TelnyxPhone] Hanging up active call');
       state.activeCall.hangup();
+    } else if (pendingAnswerRef.current) {
+      // If we're in the answering phase, this is still technically a reject
+      console.log('[TelnyxPhone] Canceling pending answer (call not yet active)');
+      pendingAnswerRef.current.hangup();
+      pendingAnswerRef.current = null;
     }
   }, [state.activeCall]);
 
@@ -312,6 +322,7 @@ export const useTelnyxPhone = () => {
 
   const reconnect = useCallback(() => {
     console.log('[TelnyxPhone] Reconnecting...');
+    micPrewarmedRef.current = false; // Reset so we re-warm on reconnect
     initClient();
   }, [initClient]);
 
