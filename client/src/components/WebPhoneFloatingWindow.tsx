@@ -1313,13 +1313,8 @@ export function WebPhoneFloatingWindow() {
         if (!response.ok) {
           if (data.error === 'INSUFFICIENT_BALANCE') {
             console.error('[WebPhone] BLOCKED - Insufficient wallet balance:', data.message);
-            setConnectionStatus('error');
             telnyxInitRef.current = false; // Allow retry after adding funds
-            toast({
-              title: "Insufficient Balance",
-              description: data.message || "You need to add funds to your wallet to make calls.",
-              variant: "destructive",
-            });
+            // Note: Toast shown in error handler below
             return; // Don't throw, just stop initialization
           }
           telnyxInitRef.current = false; // Allow retry on other errors
