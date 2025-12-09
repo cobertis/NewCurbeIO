@@ -3,25 +3,42 @@ import { create } from 'zustand';
 
 type TelnyxCall = ReturnType<TelnyxRTC['newCall']>;
 
+// Network quality metrics for call quality monitoring
+interface NetworkQualityMetrics {
+  mos: number; // Mean Opinion Score (1-5)
+  jitter: number; // Jitter in ms
+  packetLoss: number; // Packet loss percentage
+  rtt: number; // Round trip time in ms
+  qualityLevel: 'excellent' | 'good' | 'poor';
+}
+
 interface TelnyxWebRTCState {
   isConnected: boolean;
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
   connectionError?: string;
   currentCall?: TelnyxCall;
   incomingCall?: TelnyxCall;
+  consultCall?: TelnyxCall; // Second call for attended transfer
   isCallActive: boolean;
   isMuted: boolean;
   isOnHold: boolean;
+  isConsulting: boolean; // True when in attended transfer consultation
   callerIdNumber?: string;
   sipUsername?: string;
+  networkQuality?: NetworkQualityMetrics;
+  callDuration: number; // Duration in seconds
   
   setConnectionStatus: (status: TelnyxWebRTCState['connectionStatus'], error?: string) => void;
   setCurrentCall: (call?: TelnyxCall) => void;
   setIncomingCall: (call?: TelnyxCall) => void;
+  setConsultCall: (call?: TelnyxCall) => void;
   setMuted: (muted: boolean) => void;
   setOnHold: (hold: boolean) => void;
+  setConsulting: (consulting: boolean) => void;
   setCallerIdNumber: (number: string) => void;
   setSipUsername: (username: string) => void;
+  setNetworkQuality: (metrics?: NetworkQualityMetrics) => void;
+  setCallDuration: (duration: number) => void;
 }
 
 export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
@@ -30,6 +47,8 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   isCallActive: false,
   isMuted: false,
   isOnHold: false,
+  isConsulting: false,
+  callDuration: 0,
   
   setConnectionStatus: (status, error) => set({ 
     connectionStatus: status, 
@@ -38,11 +57,17 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   }),
   setCurrentCall: (call) => set({ currentCall: call, isCallActive: !!call }),
   setIncomingCall: (call) => set({ incomingCall: call }),
+  setConsultCall: (call) => set({ consultCall: call }),
   setMuted: (muted) => set({ isMuted: muted }),
   setOnHold: (hold) => set({ isOnHold: hold }),
+  setConsulting: (consulting) => set({ isConsulting: consulting }),
   setCallerIdNumber: (number) => set({ callerIdNumber: number }),
   setSipUsername: (username) => set({ sipUsername: username }),
+  setNetworkQuality: (metrics) => set({ networkQuality: metrics }),
+  setCallDuration: (duration) => set({ callDuration: duration }),
 }));
+
+export type { NetworkQualityMetrics };
 
 class TelnyxWebRTCManager {
   private static instance: TelnyxWebRTCManager;
@@ -428,6 +453,182 @@ class TelnyxWebRTCManager {
     }
   }
   
+  // Blind Transfer - immediately transfers call to destination
+  public blindTransfer(destinationNumber: string): boolean {
+    const store = useTelnyxStore.getState();
+    const currentCall = store.currentCall;
+    
+    if (!currentCall) {
+      console.error('[Telnyx WebRTC] No active call to transfer');
+      return false;
+    }
+    
+    try {
+      console.log('[Telnyx WebRTC] Blind transfer to:', destinationNumber);
+      currentCall.transfer(destinationNumber);
+      store.setCurrentCall(undefined);
+      store.setMuted(false);
+      store.setOnHold(false);
+      return true;
+    } catch (error) {
+      console.error('[Telnyx WebRTC] Blind transfer failed:', error);
+      return false;
+    }
+  }
+  
+  // Attended Transfer - Start consultation call
+  public async startAttendedTransfer(consultNumber: string): Promise<boolean> {
+    if (!this.client) {
+      console.error('[Telnyx WebRTC] Client not initialized');
+      return false;
+    }
+    
+    const store = useTelnyxStore.getState();
+    const currentCall = store.currentCall;
+    
+    if (!currentCall) {
+      console.error('[Telnyx WebRTC] No active call for attended transfer');
+      return false;
+    }
+    
+    try {
+      console.log('[Telnyx WebRTC] Starting attended transfer - putting current call on hold');
+      
+      // Put current call on hold
+      currentCall.hold();
+      store.setOnHold(true);
+      store.setConsulting(true);
+      
+      // Start consultation call
+      const consultCall = this.client.newCall({
+        destinationNumber: consultNumber,
+        callerNumber: store.callerIdNumber,
+        callerName: 'Curbe',
+      });
+      
+      store.setConsultCall(consultCall);
+      return true;
+    } catch (error) {
+      console.error('[Telnyx WebRTC] Start attended transfer failed:', error);
+      // Resume original call on failure
+      currentCall.unhold();
+      store.setOnHold(false);
+      store.setConsulting(false);
+      return false;
+    }
+  }
+  
+  // Complete the attended transfer
+  public completeAttendedTransfer(consultNumber: string): boolean {
+    const store = useTelnyxStore.getState();
+    const currentCall = store.currentCall;
+    const consultCall = store.consultCall;
+    
+    if (!currentCall) {
+      console.error('[Telnyx WebRTC] No primary call for transfer completion');
+      return false;
+    }
+    
+    try {
+      console.log('[Telnyx WebRTC] Completing attended transfer');
+      
+      // Hangup consult call first
+      if (consultCall) {
+        consultCall.hangup();
+      }
+      
+      // Transfer original call to the consultant number
+      currentCall.transfer(consultNumber);
+      
+      // Clean up state
+      store.setConsultCall(undefined);
+      store.setCurrentCall(undefined);
+      store.setConsulting(false);
+      store.setOnHold(false);
+      store.setMuted(false);
+      
+      return true;
+    } catch (error) {
+      console.error('[Telnyx WebRTC] Complete attended transfer failed:', error);
+      return false;
+    }
+  }
+  
+  // Cancel attended transfer - resume original call
+  public cancelAttendedTransfer(): boolean {
+    const store = useTelnyxStore.getState();
+    const currentCall = store.currentCall;
+    const consultCall = store.consultCall;
+    
+    if (!currentCall) {
+      console.error('[Telnyx WebRTC] No primary call to resume');
+      return false;
+    }
+    
+    try {
+      console.log('[Telnyx WebRTC] Canceling attended transfer - resuming original call');
+      
+      // Hangup consult call
+      if (consultCall) {
+        consultCall.hangup();
+      }
+      
+      // Resume original call
+      currentCall.unhold();
+      
+      // Clean up state
+      store.setConsultCall(undefined);
+      store.setConsulting(false);
+      store.setOnHold(false);
+      
+      return true;
+    } catch (error) {
+      console.error('[Telnyx WebRTC] Cancel attended transfer failed:', error);
+      return false;
+    }
+  }
+  
+  // Get current call quality metrics (called periodically)
+  public getCallQuality(): void {
+    const store = useTelnyxStore.getState();
+    const currentCall = store.currentCall;
+    
+    if (!currentCall) {
+      store.setNetworkQuality(undefined);
+      return;
+    }
+    
+    try {
+      // Try to get RTC stats from the call
+      const options = (currentCall as any).options || {};
+      const stats = options.stats || {};
+      
+      // Parse quality metrics (these may vary based on Telnyx SDK version)
+      const mos = stats.mos || stats.quality?.mos || 4.0;
+      const jitter = stats.jitter || stats.audio?.jitter || 0;
+      const packetLoss = stats.packetLoss || stats.audio?.packetsLost || 0;
+      const rtt = stats.rtt || stats.roundTripTime || 0;
+      
+      // Calculate quality level
+      let qualityLevel: 'excellent' | 'good' | 'poor' = 'excellent';
+      if (mos < 3.0 || packetLoss > 5) {
+        qualityLevel = 'poor';
+      } else if (mos < 4.0 || packetLoss > 1) {
+        qualityLevel = 'good';
+      }
+      
+      store.setNetworkQuality({
+        mos,
+        jitter,
+        packetLoss,
+        rtt,
+        qualityLevel,
+      });
+    } catch (error) {
+      console.error('[Telnyx WebRTC] Failed to get call quality:', error);
+    }
+  }
+  
   public disconnect(): void {
     if (this.client) {
       this.client.disconnect();
@@ -438,10 +639,17 @@ class TelnyxWebRTCManager {
     store.setConnectionStatus('disconnected');
     store.setCurrentCall(undefined);
     store.setIncomingCall(undefined);
+    store.setConsultCall(undefined);
+    store.setConsulting(false);
+    store.setNetworkQuality(undefined);
   }
   
   public isInitialized(): boolean {
     return this.client !== null;
+  }
+  
+  public getClient(): TelnyxRTC | null {
+    return this.client;
   }
 }
 

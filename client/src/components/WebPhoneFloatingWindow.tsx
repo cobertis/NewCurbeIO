@@ -15,6 +15,141 @@ import { format } from 'date-fns';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { NetworkQualityMetrics } from '@/services/telnyx-webrtc';
+
+// DTMF Keypad Component for in-call digit sending
+interface DtmfKeypadProps {
+  onSendDigit: (digit: string) => void;
+  onClose: () => void;
+}
+
+function DtmfKeypad({ onSendDigit, onClose }: DtmfKeypadProps) {
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
+  
+  const keys = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['*', '0', '#'],
+  ];
+  
+  const handleKeyPress = (key: string) => {
+    setPressedKey(key);
+    onSendDigit(key);
+    
+    // Play DTMF tone feedback
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      // DTMF frequency pairs
+      const dtmfFreqs: Record<string, [number, number]> = {
+        '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+        '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+        '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+        '*': [941, 1209], '0': [941, 1336], '#': [941, 1477],
+      };
+      
+      const [low, high] = dtmfFreqs[key] || [697, 1209];
+      oscillator.type = 'sine';
+      oscillator.frequency.value = (low + high) / 2;
+      gainNode.gain.value = 0.1;
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.1);
+    } catch (e) {
+      // Silently fail if audio context not available
+    }
+    
+    setTimeout(() => setPressedKey(null), 150);
+  };
+  
+  return (
+    <div className="bg-card rounded-lg p-4 shadow-lg border border-border">
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-sm font-medium text-foreground">Keypad</span>
+        <button
+          onClick={onClose}
+          className="p-1 hover:bg-muted rounded-full transition-colors"
+          data-testid="button-close-dtmf"
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {keys.flat().map((key) => (
+          <button
+            key={key}
+            onClick={() => handleKeyPress(key)}
+            className={cn(
+              "w-14 h-14 sm:w-16 sm:h-16 rounded-full text-xl sm:text-2xl font-medium transition-all",
+              "bg-muted hover:bg-muted/80 text-foreground shadow-sm",
+              pressedKey === key && "scale-95 bg-primary text-primary-foreground"
+            )}
+            data-testid={`button-dtmf-${key === '*' ? 'star' : key === '#' ? 'hash' : key}`}
+          >
+            {key}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Network Quality Indicator Component (Traffic Light)
+interface NetworkQualityIndicatorProps {
+  quality?: NetworkQualityMetrics;
+}
+
+function NetworkQualityIndicator({ quality }: NetworkQualityIndicatorProps) {
+  if (!quality) return null;
+  
+  const getQualityColor = () => {
+    switch (quality.qualityLevel) {
+      case 'excellent': return 'bg-green-500';
+      case 'good': return 'bg-yellow-500';
+      case 'poor': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+  
+  const getQualityLabel = () => {
+    switch (quality.qualityLevel) {
+      case 'excellent': return 'Excellent';
+      case 'good': return 'Fair';
+      case 'poor': return 'Poor';
+      default: return 'Unknown';
+    }
+  };
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div 
+            className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted/50 cursor-help"
+            data-testid="network-quality-indicator"
+          >
+            <div className={cn("w-2.5 h-2.5 rounded-full animate-pulse", getQualityColor())} />
+            <span className="text-[10px] text-muted-foreground">{getQualityLabel()}</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          <div className="space-y-1">
+            <p>MOS: {quality.mos.toFixed(1)}</p>
+            <p>Jitter: {quality.jitter.toFixed(0)}ms</p>
+            <p>Packet Loss: {quality.packetLoss.toFixed(1)}%</p>
+            {quality.rtt > 0 && <p>Latency: {quality.rtt.toFixed(0)}ms</p>}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 function formatCallerNumber(phoneNumber: string): string {
   const digits = phoneNumber.replace(/\D/g, '');
@@ -967,6 +1102,9 @@ export function WebPhoneFloatingWindow() {
   const [selectedCallIds, setSelectedCallIds] = useState<Set<string>>(new Set());
   const [callFilter, setCallFilter] = useState<'all' | 'missed' | 'answered'>('all');
   const [showBuyNumbers, setShowBuyNumbers] = useState(false);
+  const [showInCallKeypad, setShowInCallKeypad] = useState(false);
+  const [transferTab, setTransferTab] = useState<'blind' | 'attended'>('blind');
+  const [attendedTransferNumber, setAttendedTransferNumber] = useState('');
   const windowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>();
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
@@ -1016,6 +1154,8 @@ export function WebPhoneFloatingWindow() {
   const telnyxIncomingCall = useTelnyxStore(state => state.incomingCall);
   const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
   const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
+  const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
+  const telnyxNetworkQuality = useTelnyxStore(state => state.networkQuality);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
@@ -1075,6 +1215,24 @@ export function WebPhoneFloatingWindow() {
       if (telnyxTimerRef.current) clearInterval(telnyxTimerRef.current);
     };
   }, [telnyxCurrentCall]);
+  
+  // Network quality metrics polling for Telnyx calls
+  useEffect(() => {
+    if (telnyxCurrentCall && (telnyxCurrentCall as any).state === 'active') {
+      const qualityInterval = setInterval(() => {
+        telnyxWebRTC.getCallQuality();
+      }, 5000); // Poll every 5 seconds
+      
+      return () => clearInterval(qualityInterval);
+    }
+  }, [telnyxCurrentCall]);
+  
+  // Reset in-call keypad when call ends
+  useEffect(() => {
+    if (!effectiveCall) {
+      setShowInCallKeypad(false);
+    }
+  }, [effectiveCall]);
   
   // Unified call handlers
   const handleMuteToggle = useCallback(() => {
@@ -1559,6 +1717,19 @@ export function WebPhoneFloatingWindow() {
                       {effectiveCall.status === 'ringing' && effectiveCall.direction === 'outbound' && 'Calling...'}
                       {effectiveCall.status === 'answered' && formatDuration(effectiveCallDuration)}
                     </p>
+                    
+                    {/* Network Quality Indicator & MUTED Badge */}
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                      {effectiveCall.status === 'answered' && effectiveCall.isTelnyx && (
+                        <NetworkQualityIndicator quality={telnyxNetworkQuality} />
+                      )}
+                      {effectiveMuted && (
+                        <Badge variant="destructive" className="text-xs animate-pulse" data-testid="badge-muted">
+                          <MicOff className="h-3 w-3 mr-1" />
+                          MUTED
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Waiting Call Banner */}
@@ -1713,54 +1884,80 @@ export function WebPhoneFloatingWindow() {
                           </button>
                         </div>
                       </>
+                    ) : showInCallKeypad ? (
+                      /* DTMF Keypad Overlay */
+                      <div className="px-2 sm:px-4 flex justify-center">
+                        <DtmfKeypad
+                          onSendDigit={(digit) => {
+                            if (effectiveCall.isTelnyx) {
+                              telnyxWebRTC.sendDTMF(digit);
+                            } else {
+                              webPhone.sendDTMF(digit);
+                            }
+                          }}
+                          onClose={() => setShowInCallKeypad(false)}
+                        />
+                      </div>
                     ) : (
-                      /* Normal Call Controls - 3 buttons */
-                      <div className="grid grid-cols-3 gap-3 sm:gap-6 px-2 sm:px-4">
+                      /* Normal Call Controls - 4 buttons */
+                      <div className="grid grid-cols-4 gap-2 sm:gap-4 px-2 sm:px-4">
                         <button
                           onClick={handleMuteToggle}
-                          className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                          className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
                           data-testid="button-mute-call"
                         >
                           <div className={cn(
-                            "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
-                            effectiveMuted ? "bg-foreground" : "bg-muted/80"
+                            "w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-md",
+                            effectiveMuted ? "bg-red-500" : "bg-muted/80"
                           )}>
                             {effectiveMuted ? (
-                              <MicOff className="h-5 w-5 sm:h-7 sm:w-7 text-background" />
+                              <MicOff className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                             ) : (
-                              <Mic className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
+                              <Mic className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
                             )}
                           </div>
-                          <span className="text-[10px] sm:text-xs text-muted-foreground">mute</span>
+                          <span className={cn(
+                            "text-[9px] sm:text-[10px]",
+                            effectiveMuted ? "text-red-500 font-medium" : "text-muted-foreground"
+                          )}>
+                            {effectiveMuted ? 'muted' : 'mute'}
+                          </span>
                         </button>
                         
                         <button
-                          onClick={() => !effectiveCall.isTelnyx && setShowTransferDialog(true)}
-                          className={cn(
-                            "flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity",
-                            effectiveCall.isTelnyx ? "opacity-30 cursor-not-allowed" : "hover:opacity-80"
-                          )}
-                          data-testid="button-transfer"
-                          disabled={effectiveCall.isTelnyx}
+                          onClick={() => setShowInCallKeypad(true)}
+                          className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
+                          data-testid="button-keypad-incall"
                         >
-                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
-                            <PhoneForwarded className="h-5 w-5 sm:h-7 sm:w-7 text-foreground" />
+                          <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                            <Grid3x3 className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
                           </div>
-                          <span className="text-[10px] sm:text-xs text-muted-foreground">transfer</span>
+                          <span className="text-[9px] sm:text-[10px] text-muted-foreground">keypad</span>
+                        </button>
+                        
+                        <button
+                          onClick={() => setShowTransferDialog(true)}
+                          className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
+                          data-testid="button-transfer"
+                        >
+                          <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                            <PhoneForwarded className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+                          </div>
+                          <span className="text-[9px] sm:text-[10px] text-muted-foreground">transfer</span>
                         </button>
                         
                         <button
                           onClick={handleHoldToggle}
-                          className="flex flex-col items-center gap-1.5 sm:gap-2 transition-opacity hover:opacity-80"
+                          className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
                           data-testid="button-hold-call"
                         >
                           <div className={cn(
-                            "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center shadow-md",
+                            "w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-md",
                             effectiveOnHold ? "bg-foreground" : "bg-muted/80"
                           )}>
-                            <Pause className={cn("h-5 w-5 sm:h-7 sm:w-7", effectiveOnHold ? "text-background" : "text-foreground")} />
+                            <Pause className={cn("h-5 w-5 sm:h-6 sm:w-6", effectiveOnHold ? "text-background" : "text-foreground")} />
                           </div>
-                          <span className="text-[10px] sm:text-xs text-muted-foreground">hold</span>
+                          <span className="text-[9px] sm:text-[10px] text-muted-foreground">hold</span>
                         </button>
                       </div>
                     )}
@@ -1779,53 +1976,104 @@ export function WebPhoneFloatingWindow() {
                     )}
                   </div>
                   
-                  {/* Transfer Dialog */}
-                  {showTransferDialog && effectiveCall && !effectiveCall.isTelnyx && (
-                    <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+                  {/* Transfer Dialog with Tabs */}
+                  {showTransferDialog && effectiveCall && (
+                    <Dialog open={showTransferDialog} onOpenChange={(open) => {
+                      setShowTransferDialog(open);
+                      if (!open) {
+                        setTransferNumber('');
+                        setAttendedTransferNumber('');
+                        setTransferTab('blind');
+                      }
+                    }}>
                       <DialogContent className="sm:max-w-md">
-                        <div className="space-y-4">
-                          <div>
-                            <h3 className="text-lg font-semibold mb-2">Transfer Call</h3>
-                            <p className="text-sm text-muted-foreground">Enter the number to transfer to</p>
-                          </div>
-                          
-                          <input
-                            type="tel"
-                            value={transferNumber}
-                            onChange={(e) => setTransferNumber(e.target.value)}
-                            placeholder="Enter phone number"
-                            className="w-full px-4 py-2 border rounded-lg"
-                            data-testid="input-transfer-number"
-                          />
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => {
-                                webPhone.blindTransfer(transferNumber);
-                                setShowTransferDialog(false);
-                                setTransferNumber('');
-                              }}
-                              disabled={!transferNumber}
-                              className="flex-1"
-                              data-testid="button-blind-transfer"
-                            >
+                        <DialogTitle className="text-lg font-semibold">Transfer Call</DialogTitle>
+                        <DialogDescription className="text-sm text-muted-foreground">
+                          Choose a transfer method
+                        </DialogDescription>
+                        
+                        <Tabs value={transferTab} onValueChange={(v) => setTransferTab(v as 'blind' | 'attended')} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="blind" data-testid="tab-blind-transfer">
                               Blind Transfer
-                            </Button>
+                            </TabsTrigger>
+                            <TabsTrigger value="attended" data-testid="tab-attended-transfer">
+                              Attended Transfer
+                            </TabsTrigger>
+                          </TabsList>
+                          
+                          <TabsContent value="blind" className="space-y-4 mt-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                Transfer immediately without announcement
+                              </p>
+                              <Input
+                                type="tel"
+                                value={transferNumber}
+                                onChange={(e) => setTransferNumber(e.target.value)}
+                                placeholder="Enter destination number"
+                                className="w-full"
+                                data-testid="input-blind-transfer-number"
+                              />
+                            </div>
+                            
                             <Button
                               onClick={() => {
-                                webPhone.attendedTransfer(transferNumber);
+                                if (effectiveCall.isTelnyx) {
+                                  telnyxWebRTC.blindTransfer(transferNumber);
+                                } else {
+                                  webPhone.blindTransfer(transferNumber);
+                                }
                                 setShowTransferDialog(false);
                                 setTransferNumber('');
                               }}
                               disabled={!transferNumber}
-                              variant="outline"
-                              className="flex-1"
-                              data-testid="button-attended-transfer"
+                              className="w-full"
+                              data-testid="button-execute-blind-transfer"
                             >
-                              Attended Transfer
+                              <PhoneForwarded className="h-4 w-4 mr-2" />
+                              Transfer Now
                             </Button>
-                          </div>
-                        </div>
+                          </TabsContent>
+                          
+                          <TabsContent value="attended" className="space-y-4 mt-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                Consult with recipient before transferring
+                              </p>
+                              <Input
+                                type="tel"
+                                value={attendedTransferNumber}
+                                onChange={(e) => setAttendedTransferNumber(e.target.value)}
+                                placeholder="Enter consultant number"
+                                className="w-full"
+                                data-testid="input-attended-transfer-number"
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Button
+                                onClick={async () => {
+                                  if (effectiveCall.isTelnyx) {
+                                    await telnyxWebRTC.startAttendedTransfer(attendedTransferNumber);
+                                  } else {
+                                    webPhone.attendedTransfer(attendedTransferNumber);
+                                  }
+                                  setShowTransferDialog(false);
+                                }}
+                                disabled={!attendedTransferNumber}
+                                className="w-full"
+                                data-testid="button-start-consultation"
+                              >
+                                <Phone className="h-4 w-4 mr-2" />
+                                Start Consultation
+                              </Button>
+                              <p className="text-xs text-muted-foreground text-center">
+                                The current call will be placed on hold while you consult
+                              </p>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                       </DialogContent>
                     </Dialog>
                   )}
@@ -1943,7 +2191,7 @@ export function WebPhoneFloatingWindow() {
                           <div className="divide-y divide-border">
                             {filteredCallHistory.map((call) => {
                               const initials = call.callerName 
-                                ? call.callerName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                                ? call.callerName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
                                 : '';
                               const timeStr = format(new Date(call.startedAt), 'h:mma');
                               const statusStyle = getCallStatusStyle(call.status);
