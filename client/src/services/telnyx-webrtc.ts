@@ -563,9 +563,14 @@ class TelnyxWebRTCManager {
     const incomingCall = store.incomingCall;
     
     if (incomingCall) {
-      console.log('[Telnyx WebRTC] Rejecting call');
+      console.log('[Telnyx WebRTC] Rejecting call with NORMAL_CLEARING');
       this.stopRingtone(); // Stop ringtone when rejecting
-      incomingCall.hangup();
+      // Use NORMAL_CLEARING cause to avoid busy tone
+      try {
+        (incomingCall as any).hangup({ cause: 'NORMAL_CLEARING', causeCode: 16 });
+      } catch (e) {
+        incomingCall.hangup();
+      }
       store.setIncomingCall(undefined);
     }
   }
@@ -573,33 +578,50 @@ class TelnyxWebRTCManager {
   public hangup(): void {
     const store = useTelnyxStore.getState();
     const currentCall = store.currentCall;
+    const incomingCall = store.incomingCall;
     
+    // Stop tones first
+    this.stopRingback();
+    this.stopRingtone();
+    
+    // Stop audio
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.srcObject = null;
+    }
+    
+    // Handle active call hangup with NORMAL_CLEARING cause to avoid "User Busy"
     if (currentCall) {
-      console.log('[Telnyx WebRTC] Hanging up call');
-      
-      // Stop tones
-      this.stopRingback();
-      this.stopRingtone();
-      
-      // Stop audio
-      if (this.audioElement) {
-        this.audioElement.pause();
-        this.audioElement.srcObject = null;
-      }
-      
-      // Simple hangup - SDK handles all SIP signaling
+      console.log('[Telnyx WebRTC] Hanging up active call with NORMAL_CLEARING');
       try {
-        currentCall.hangup();
+        // Pass cause parameter to signal normal call termination
+        // This prevents SDK from sending "user_busy" which triggers busy tone
+        (currentCall as any).hangup({ cause: 'NORMAL_CLEARING', causeCode: 16 });
       } catch (e) {
         console.error('[Telnyx WebRTC] Hangup error:', e);
+        // Fallback to simple hangup
+        try { currentCall.hangup(); } catch {}
       }
-      
-      // Clean up state immediately for responsive UI
-      store.setCurrentCall(undefined);
-      store.setIncomingCall(undefined);
-      store.setMuted(false);
-      store.setOnHold(false);
     }
+    
+    // Handle incoming call rejection - also use NORMAL_CLEARING
+    if (incomingCall && incomingCall !== currentCall) {
+      console.log('[Telnyx WebRTC] Rejecting incoming call with NORMAL_CLEARING');
+      try {
+        (incomingCall as any).hangup({ cause: 'NORMAL_CLEARING', causeCode: 16 });
+      } catch (e) {
+        try { incomingCall.hangup(); } catch {}
+      }
+    }
+    
+    // Reset outbound flag
+    this.isOutboundCallInProgress = false;
+    
+    // Clean up state immediately for responsive UI
+    store.setCurrentCall(undefined);
+    store.setIncomingCall(undefined);
+    store.setMuted(false);
+    store.setOnHold(false);
   }
   
   public toggleMute(): void {
