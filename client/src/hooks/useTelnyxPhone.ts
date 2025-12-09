@@ -12,6 +12,10 @@ interface TelnyxPhoneState {
 
 export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const oscillatorRef = useRef<OscillatorNode | null>(null);
+  const ringIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [state, setState] = useState<TelnyxPhoneState>({
     sessionStatus: 'disconnected',
     activeCall: null,
@@ -20,6 +24,69 @@ export const useTelnyxPhone = () => {
     isOnHold: false,
     callerIdNumber: '',
   });
+
+  // Play ringtone for incoming calls
+  const playRingtone = useCallback(() => {
+    try {
+      // Clean up previous audio if any
+      if (oscillatorRef.current) {
+        try { oscillatorRef.current.stop(); } catch (e) {}
+      }
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch (e) {}
+      }
+      if (ringIntervalRef.current) {
+        clearInterval(ringIntervalRef.current);
+      }
+
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 440;
+      oscillator.type = 'sine';
+      gainNode.gain.value = 0.3;
+      
+      oscillator.start();
+      
+      audioContextRef.current = audioContext;
+      oscillatorRef.current = oscillator;
+      
+      // Ring pattern: toggle every second
+      let isOn = true;
+      ringIntervalRef.current = setInterval(() => {
+        isOn = !isOn;
+        gainNode.gain.value = isOn ? 0.3 : 0;
+      }, 500);
+      
+      console.log('[TelnyxPhone] Ringtone started');
+    } catch (e) {
+      console.error('[TelnyxPhone] playRingtone error:', e);
+    }
+  }, []);
+
+  const stopRingtone = useCallback(() => {
+    try {
+      if (ringIntervalRef.current) {
+        clearInterval(ringIntervalRef.current);
+        ringIntervalRef.current = null;
+      }
+      if (oscillatorRef.current) {
+        try { oscillatorRef.current.stop(); } catch (e) {}
+        oscillatorRef.current = null;
+      }
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch (e) {}
+        audioContextRef.current = null;
+      }
+      console.log('[TelnyxPhone] Ringtone stopped');
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   const initClient = useCallback(async () => {
     try {
@@ -40,7 +107,6 @@ export const useTelnyxPhone = () => {
         throw new Error(data.error || 'Failed to get credentials');
       }
 
-      // Must have either token OR SIP credentials
       if (!data.token && !data.sipUsername) {
         throw new Error('No valid credentials received');
       }
@@ -49,11 +115,7 @@ export const useTelnyxPhone = () => {
         clientRef.current.disconnect();
       }
 
-      // Build client config - prefer token, fallback to SIP credentials
-      const clientConfig: any = {
-        ringtoneFile: '/ring.mp3',
-        ringbackFile: '/ringback.mp3',
-      };
+      const clientConfig: any = {};
 
       if (data.token) {
         clientConfig.login_token = data.token;
@@ -85,15 +147,20 @@ export const useTelnyxPhone = () => {
         const call = notification.call as Call;
         
         if (notification.type === 'callUpdate') {
-          console.log('[TelnyxPhone] Call update:', call.state, call.direction);
+          const direction = call.direction || (call as any).options?.direction;
+          console.log('[TelnyxPhone] Call update:', call.state, direction);
           
           switch (call.state) {
             case 'ringing':
-              if (call.direction === 'inbound') {
+              // Check if this is an inbound call
+              if (direction === 'inbound' || !direction) {
+                console.log('[TelnyxPhone] Incoming call detected!');
+                playRingtone();
                 setState(prev => ({ ...prev, incomingCall: call }));
               }
               break;
             case 'active':
+              stopRingtone();
               setState(prev => ({ 
                 ...prev, 
                 activeCall: call, 
@@ -102,6 +169,7 @@ export const useTelnyxPhone = () => {
               break;
             case 'hangup':
             case 'destroy':
+              stopRingtone();
               setState(prev => ({ 
                 ...prev, 
                 activeCall: null, 
@@ -126,18 +194,19 @@ export const useTelnyxPhone = () => {
       console.error('[TelnyxPhone] Init error:', error);
       setState(prev => ({ ...prev, sessionStatus: 'error' }));
     }
-  }, []);
+  }, [playRingtone, stopRingtone]);
 
   useEffect(() => {
     initClient();
     
     return () => {
+      stopRingtone();
       if (clientRef.current) {
         clientRef.current.disconnect();
         clientRef.current = null;
       }
     };
-  }, [initClient]);
+  }, [initClient, stopRingtone]);
 
   const makeCall = useCallback((destination: string) => {
     if (!clientRef.current || state.sessionStatus !== 'registered') {
@@ -156,16 +225,18 @@ export const useTelnyxPhone = () => {
 
   const answerCall = useCallback(() => {
     if (state.incomingCall) {
+      stopRingtone();
       state.incomingCall.answer();
     }
-  }, [state.incomingCall]);
+  }, [state.incomingCall, stopRingtone]);
 
   const rejectCall = useCallback(() => {
     if (state.incomingCall) {
+      stopRingtone();
       state.incomingCall.hangup();
       setState(prev => ({ ...prev, incomingCall: null }));
     }
-  }, [state.incomingCall]);
+  }, [state.incomingCall, stopRingtone]);
 
   const hangupCall = useCallback(() => {
     if (state.activeCall) {
