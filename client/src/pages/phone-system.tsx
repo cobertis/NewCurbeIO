@@ -445,7 +445,7 @@ export default function PhoneSystem() {
                 {walletData?.wallet?.autoRecharge && (
                   <p className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1" data-testid="text-auto-recharge-status">
                     <RefreshCw className="h-2.5 w-2.5" />
-                    Auto: +${walletData.wallet.autoRechargeAmount} when &lt;${walletData.wallet.autoRechargeThreshold}
+                    Auto: +${Math.round(parseFloat(walletData.wallet.autoRechargeAmount || "0"))} when &lt;${Math.round(parseFloat(walletData.wallet.autoRechargeThreshold || "0"))}
                   </p>
                 )}
               </div>
