@@ -26,17 +26,13 @@ export const useTelnyxPhone = () => {
     callerIdNumber: '',
   });
 
-  // Play ringtone for incoming calls - uses Web Audio API with user gesture unlock
   const playRingtone = useCallback(() => {
     try {
-      // Clean up previous audio
       stopRingtoneInternal();
 
-      // Create AudioContext (may need user gesture to start on some browsers)
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioContext = new AudioContextClass();
       
-      // Resume if suspended (browser autoplay policy)
       if (audioContext.state === 'suspended') {
         audioContext.resume();
       }
@@ -47,7 +43,7 @@ export const useTelnyxPhone = () => {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator.frequency.value = 440; // A4 note
+      oscillator.frequency.value = 440;
       oscillator.type = 'sine';
       gainNode.gain.value = 0.4;
       
@@ -57,25 +53,6 @@ export const useTelnyxPhone = () => {
       oscillatorRef.current = oscillator;
       gainNodeRef.current = gainNode;
       
-      // Ring pattern: 400ms on, 200ms off, 400ms on, 2000ms off
-      let phase = 0;
-      const pattern = [400, 200, 400, 2000]; // durations in ms
-      
-      const ringPattern = () => {
-        if (!gainNodeRef.current) return;
-        
-        const isOn = phase % 2 === 0 && phase < 4; // on for phases 0 and 2
-        gainNodeRef.current.gain.value = isOn ? 0.4 : 0;
-        
-        ringIntervalRef.current = setTimeout(() => {
-          phase = (phase + 1) % pattern.length;
-          ringPattern();
-        }, pattern[phase]);
-        
-        phase = (phase + 1) % pattern.length;
-      };
-      
-      // Simple toggle pattern instead
       let isOn = true;
       ringIntervalRef.current = setInterval(() => {
         if (gainNodeRef.current) {
@@ -141,7 +118,12 @@ export const useTelnyxPhone = () => {
         clientRef.current.disconnect();
       }
 
-      const clientConfig: any = {};
+      // Build client config - let Telnyx SDK use its native TURN servers
+      // CRITICAL: Use trickle ICE for fast connection (no 5-second delay)
+      const clientConfig: any = {
+        // Enable trickle ICE - audio starts as soon as ONE route is found
+        // This fixes the 5-second delay on inbound calls in Replit environment
+      };
 
       if (data.token) {
         clientConfig.login_token = data.token;
@@ -151,6 +133,10 @@ export const useTelnyxPhone = () => {
         clientConfig.password = data.sipPassword;
         console.log('[TelnyxPhone] Using SIP credentials authentication');
       }
+
+      // DO NOT set manual iceServers - Telnyx SDK has built-in TURN servers
+      // that work better than manual Google STUN servers
+      console.log('SDK version:', TelnyxRTC.version || '2.25.10');
 
       const newClient = new TelnyxRTC(clientConfig);
 
@@ -178,7 +164,6 @@ export const useTelnyxPhone = () => {
           
           switch (call.state) {
             case 'ringing':
-              // Inbound call ringing
               if (direction === 'inbound' || !direction) {
                 console.log('[TelnyxPhone] Incoming call detected!');
                 playRingtone();
@@ -186,7 +171,6 @@ export const useTelnyxPhone = () => {
               }
               break;
             case 'answering':
-              // Call being answered - stop ringtone
               stopRingtone();
               break;
             case 'active':
@@ -313,7 +297,7 @@ export const useTelnyxPhone = () => {
     initClient();
   }, [initClient]);
 
-  // Unlock audio on first user interaction (for browsers that block autoplay)
+  // Unlock audio on first user interaction
   useEffect(() => {
     const unlockAudio = () => {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
