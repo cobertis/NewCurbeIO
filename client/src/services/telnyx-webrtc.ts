@@ -49,7 +49,9 @@ class TelnyxWebRTCManager {
   private client: TelnyxRTC | null = null;
   private audioElement: HTMLAudioElement | null = null;
   private ringbackAudio: HTMLAudioElement | null = null;
+  private ringtoneAudio: HTMLAudioElement | null = null;
   private isPlayingRingback: boolean = false;
+  private isPlayingRingtone: boolean = false;
   
   private constructor() {
     // Create ringback audio element for outbound calls
@@ -57,6 +59,11 @@ class TelnyxWebRTCManager {
     this.ringbackAudio.loop = true;
     // US ringback tone pattern: 440Hz + 480Hz, 2s on, 4s off
     this.createRingbackTone();
+    
+    // Create ringtone audio element for inbound calls
+    this.ringtoneAudio = new Audio();
+    this.ringtoneAudio.loop = true;
+    this.createRingtone();
   }
   
   private createRingbackTone(): void {
@@ -161,6 +168,62 @@ class TelnyxWebRTCManager {
     }
   }
   
+  private createRingtone(): void {
+    // Create a ringtone for incoming calls using Web Audio API
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const sampleRate = audioContext.sampleRate;
+      const duration = 3; // 1s ring, 2s silence
+      const bufferSize = sampleRate * duration;
+      const buffer = audioContext.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+      
+      // Generate classic phone ring: 440Hz + 480Hz alternating with silence
+      for (let i = 0; i < bufferSize; i++) {
+        const t = i / sampleRate;
+        if (t < 1) {
+          // Ring tone (1 second) - classic phone ring frequencies
+          const envelope = Math.sin(Math.PI * t / 1) * 0.5; // Fade in/out
+          data[i] = envelope * (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t));
+        } else {
+          // Silence (2 seconds)
+          data[i] = 0;
+        }
+      }
+      
+      // Convert to WAV and create blob URL
+      const wavBlob = this.audioBufferToWav(buffer);
+      const url = URL.createObjectURL(wavBlob);
+      if (this.ringtoneAudio) {
+        this.ringtoneAudio.src = url;
+      }
+      
+      audioContext.close();
+    } catch (error) {
+      console.error('[Telnyx WebRTC] Failed to create ringtone:', error);
+    }
+  }
+  
+  private startRingtone(): void {
+    if (this.ringtoneAudio && !this.isPlayingRingtone) {
+      console.log('[Telnyx WebRTC] Starting ringtone for incoming call');
+      this.isPlayingRingtone = true;
+      this.ringtoneAudio.currentTime = 0;
+      this.ringtoneAudio.play().catch(err => {
+        console.error('[Telnyx WebRTC] Failed to play ringtone:', err);
+      });
+    }
+  }
+  
+  private stopRingtone(): void {
+    if (this.ringtoneAudio && this.isPlayingRingtone) {
+      console.log('[Telnyx WebRTC] Stopping ringtone');
+      this.isPlayingRingtone = false;
+      this.ringtoneAudio.pause();
+      this.ringtoneAudio.currentTime = 0;
+    }
+  }
+  
   public static getInstance(): TelnyxWebRTCManager {
     if (!TelnyxWebRTCManager.instance) {
       TelnyxWebRTCManager.instance = new TelnyxWebRTCManager();
@@ -220,6 +283,7 @@ class TelnyxWebRTCManager {
           if (call.state === 'ringing' && call.direction === 'inbound') {
             console.log('[Telnyx WebRTC] Incoming call from:', call.options?.remoteCallerNumber);
             store.setIncomingCall(call);
+            this.startRingtone(); // Play ringtone for incoming calls
           } else if (call.state === 'trying' || call.state === 'early' || call.state === 'ringing') {
             // Outbound call is connecting - play ringback tone
             if (call.direction === 'outbound') {
@@ -237,6 +301,7 @@ class TelnyxWebRTCManager {
           } else if (call.state === 'active') {
             console.log('[Telnyx WebRTC] Call active');
             this.stopRingback(); // Stop ringback when call is answered
+            this.stopRingtone(); // Stop ringtone when call is answered
             store.setCurrentCall(call);
             store.setIncomingCall(undefined);
             
@@ -247,6 +312,7 @@ class TelnyxWebRTCManager {
           } else if (call.state === 'hangup' || call.state === 'destroy') {
             console.log('[Telnyx WebRTC] Call ended');
             this.stopRingback(); // Stop ringback if call ends before answer
+            this.stopRingtone(); // Stop ringtone if call ends
             store.setCurrentCall(undefined);
             store.setIncomingCall(undefined);
             store.setMuted(false);
@@ -297,6 +363,7 @@ class TelnyxWebRTCManager {
     
     if (incomingCall) {
       console.log('[Telnyx WebRTC] Answering call');
+      this.stopRingtone(); // Stop ringtone when answering
       incomingCall.answer();
     }
   }
@@ -307,6 +374,7 @@ class TelnyxWebRTCManager {
     
     if (incomingCall) {
       console.log('[Telnyx WebRTC] Rejecting call');
+      this.stopRingtone(); // Stop ringtone when rejecting
       incomingCall.hangup();
       store.setIncomingCall(undefined);
     }
