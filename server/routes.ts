@@ -27759,6 +27759,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/sync-numbers - Sync existing phone numbers to credential connection for incoming calls
+  app.post("/api/telnyx/sync-numbers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { syncPhoneNumbersToCredentialConnection } = await import("./services/telnyx-numbers-service");
+      const result = await syncPhoneNumbersToCredentialConnection(user.companyId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: `${result.syncedCount} phone number(s) synced for incoming calls`,
+          syncedCount: result.syncedCount
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Sync failed" 
+        });
+      }
+    } catch (error: any) {
+      console.error("[Telnyx Numbers] Sync error:", error);
+      res.status(500).json({ message: "Failed to sync phone numbers" });
+    }
+  });
+
+
   // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {
