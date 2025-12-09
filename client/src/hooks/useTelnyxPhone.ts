@@ -25,23 +25,6 @@ const getOrCreateRemoteAudio = (): HTMLAudioElement => {
   return remoteAudioElement;
 };
 
-// Attach remote stream to audio element
-const attachRemoteStream = (call: Call) => {
-  const audioElement = getOrCreateRemoteAudio();
-  const stream = call.remoteStream;
-  
-  if (stream) {
-    console.log('[TelnyxPhone] Attaching remoteStream to audio element');
-    console.log('[TelnyxPhone] Stream tracks:', stream.getTracks().length);
-    audioElement.srcObject = stream;
-    audioElement.play()
-      .then(() => console.log('[TelnyxPhone] Remote audio playing'))
-      .catch(e => console.error('[TelnyxPhone] Audio play error:', e));
-  } else {
-    console.log('[TelnyxPhone] No remoteStream available yet');
-  }
-};
-
 export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
   
@@ -58,8 +41,8 @@ export const useTelnyxPhone = () => {
     try {
       setState(prev => ({ ...prev, sessionStatus: 'connecting' }));
       
-      // Create remote audio element
-      getOrCreateRemoteAudio();
+      // Create remote audio element BEFORE anything else
+      const audioElement = getOrCreateRemoteAudio();
       
       // Per Telnyx docs: Request microphone permission BEFORE connecting
       try {
@@ -104,13 +87,13 @@ export const useTelnyxPhone = () => {
         console.log('[TelnyxPhone] Using SIP credentials authentication');
       }
 
-      console.log('SDK version:', TelnyxRTC.version || '2.25.10');
+      console.log('[TelnyxPhone] SDK version:', TelnyxRTC.version || '2.25.10');
 
       const newClient = new TelnyxRTC(clientConfig);
       
-      // Set remoteElement on client
-      newClient.remoteElement = getOrCreateRemoteAudio();
-      console.log('[TelnyxPhone] Set client.remoteElement');
+      // CRITICAL: Set remoteElement so SDK auto-attaches audio for BOTH inbound and outbound calls
+      newClient.remoteElement = audioElement;
+      console.log('[TelnyxPhone] Set client.remoteElement for auto audio binding');
 
       newClient.on('telnyx.ready', () => {
         console.log('[TelnyxPhone] Client ready and registered');
@@ -137,14 +120,19 @@ export const useTelnyxPhone = () => {
           switch (call.state) {
             case 'ringing':
               if (direction === 'inbound') {
-                console.log('[TelnyxPhone] Incoming call detected!');
+                console.log('[TelnyxPhone] Incoming call detected from:', (call as any).options?.callerNumber || 'unknown');
                 setState(prev => ({ ...prev, incomingCall: call }));
               }
               break;
             case 'active':
               console.log('[TelnyxPhone] Call is now active');
-              // Attach remote stream when call becomes active
-              attachRemoteStream(call);
+              // Debug: Log remote stream info (SDK handles attachment via remoteElement)
+              if (call.remoteStream) {
+                const tracks = call.remoteStream.getTracks();
+                console.log('[TelnyxPhone] Remote stream tracks:', tracks.length, tracks.map(t => `${t.kind}:${t.enabled}`));
+              } else {
+                console.log('[TelnyxPhone] No remoteStream yet, SDK will attach via remoteElement');
+              }
               setState(prev => ({ 
                 ...prev, 
                 activeCall: call, 
@@ -153,7 +141,8 @@ export const useTelnyxPhone = () => {
               break;
             case 'hangup':
             case 'destroy':
-              // Clear audio
+              console.log('[TelnyxPhone] Call ended:', call.state);
+              // Clear audio element
               const audioEl = getOrCreateRemoteAudio();
               audioEl.srcObject = null;
               setState(prev => ({ 
@@ -199,6 +188,8 @@ export const useTelnyxPhone = () => {
       return;
     }
     
+    console.log('[TelnyxPhone] Making call to:', destination);
+    
     const call = clientRef.current.newCall({
       destinationNumber: destination,
       callerName: 'Curbe Agent',
@@ -209,25 +200,22 @@ export const useTelnyxPhone = () => {
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
 
-  // Per Telnyx docs: answer with audio: true
+  // CRITICAL FIX: Answer WITHOUT options - let SDK handle media negotiation
   const answerCall = useCallback(() => {
     if (state.incomingCall) {
       const call = state.incomingCall;
       
-      console.log('[TelnyxPhone] Answering call with audio: true');
+      console.log('[TelnyxPhone] Answering incoming call (no options - SDK default)');
       
-      // Answer with audio enabled per documentation
-      call.answer({ audio: true } as any);
-      
-      // Attach stream after small delay (within same user gesture context)
-      setTimeout(() => {
-        attachRemoteStream(call);
-      }, 300);
+      // Per Telnyx SDK docs: call.answer() with NO arguments
+      // The SDK will use client.remoteElement to auto-attach audio
+      call.answer();
     }
   }, [state.incomingCall]);
 
   const rejectCall = useCallback(() => {
     if (state.incomingCall) {
+      console.log('[TelnyxPhone] Rejecting call');
       state.incomingCall.hangup();
       setState(prev => ({ ...prev, incomingCall: null }));
     }
@@ -235,6 +223,7 @@ export const useTelnyxPhone = () => {
 
   const hangupCall = useCallback(() => {
     if (state.activeCall) {
+      console.log('[TelnyxPhone] Hanging up call');
       state.activeCall.hangup();
     }
   }, [state.activeCall]);
@@ -243,8 +232,10 @@ export const useTelnyxPhone = () => {
     if (state.activeCall) {
       if (state.isMuted) {
         state.activeCall.unmuteAudio();
+        console.log('[TelnyxPhone] Unmuted');
       } else {
         state.activeCall.muteAudio();
+        console.log('[TelnyxPhone] Muted');
       }
       setState(prev => ({ ...prev, isMuted: !prev.isMuted }));
     }
@@ -254,8 +245,10 @@ export const useTelnyxPhone = () => {
     if (state.activeCall) {
       if (state.isOnHold) {
         state.activeCall.unhold();
+        console.log('[TelnyxPhone] Unhold');
       } else {
         state.activeCall.hold();
+        console.log('[TelnyxPhone] Hold');
       }
       setState(prev => ({ ...prev, isOnHold: !prev.isOnHold }));
     }
@@ -263,18 +256,21 @@ export const useTelnyxPhone = () => {
 
   const sendDTMF = useCallback((digit: string) => {
     if (state.activeCall) {
+      console.log('[TelnyxPhone] Sending DTMF:', digit);
       state.activeCall.dtmf(digit);
     }
   }, [state.activeCall]);
 
   const transferCall = useCallback((target: string) => {
     if (state.activeCall) {
+      console.log('[TelnyxPhone] Transferring to:', target);
       (state.activeCall as any).transfer?.(target) || 
       (state.activeCall as any).blindTransfer?.(target);
     }
   }, [state.activeCall]);
 
   const reconnect = useCallback(() => {
+    console.log('[TelnyxPhone] Reconnecting...');
     initClient();
   }, [initClient]);
 
