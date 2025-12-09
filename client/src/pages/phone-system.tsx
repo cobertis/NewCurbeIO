@@ -783,6 +783,30 @@ export default function PhoneSystem() {
           </Card>
         )}
 
+        {/* Phone Numbers Section with CNAM Settings */}
+        {statusData?.configured && numbersData?.numbers && numbersData.numbers.length > 0 && (
+          <Card className="shadow-sm border-slate-200 dark:border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Phone className="h-4 w-4 text-primary" />
+                Phone Number Settings
+              </CardTitle>
+              <CardDescription>
+                Configure individual settings for each phone number including CNAM
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {numbersData.numbers.map((number, index) => (
+                <PhoneNumberCard 
+                  key={number.id || index} 
+                  number={number} 
+                  index={index}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Call History Section */}
         {statusData?.configured && (
           <Card className="shadow-sm border-slate-200 dark:border-border">
