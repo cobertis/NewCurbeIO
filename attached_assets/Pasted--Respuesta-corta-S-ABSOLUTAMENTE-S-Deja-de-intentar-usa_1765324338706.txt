@@ -1,0 +1,71 @@
+**Respuesta corta:**
+**SÍ. ABSOLUTAMENTE SÍ.**
+
+Deja de intentar usar la API del proveedor para mostrar el saldo y los logs en tiempo real. **Es un error de arquitectura grave** para un sistema que pretende ser SaaS (Software as a Service) y manejar dinero (Wallets).
+
+Si dependes de la API de Twilio/Telnyx/SignalWire para mostrarle el saldo al cliente:
+1.  **Eres lento:** Las APIs tienen latencia. El cliente cuelga y ve su saldo igual por 30 segundos. Eso genera desconfianza.
+2.  **No controlas el margen:** La API te devuelve lo que TÚ pagaste (costo), no lo que el CLIENTE debe pagar (precio de venta). Tienes que calcular tu ganancia tú mismo de todos modos.
+3.  **Rate Limits:** Si tienes 1,000 llamadas simultáneas y tratas de consultar la API para cada una al colgar, te van a bloquear la IP.
+
+### Cómo debes hacerlo (Arquitectura Correcta)
+
+Tú eres el banco. El banco no le pregunta a la Reserva Federal cuánto dinero tienes cada vez que compras un chicle. El banco tiene su propio libro mayor (Ledger).
+
+Esta es la arquitectura que debes montar:
+
+#### 1. El Disparador (Webhooks / Event Socket)
+No hagas "polling" (preguntar a la API "¿ya acabó?"). Configura tu PBX (o tu proveedor) para que te envíe un **Webhook** a tu servidor en el instante exacto en que ocurre el evento `CHANNEL_HANGUP_COMPLETE`.
+
+#### 2. La Lógica de Facturación (Tu Base de Datos)
+En cuanto tu backend recibe ese Webhook (milisegundos después de colgar), tu servidor debe ejecutar esto internamente:
+
+1.  **Calcular Duración:** `billsec` (segundos facturables).
+2.  **Buscar Tarifa:** Miras en TU base de datos cuánto le cobras a *ese* cliente por llamar a *ese* destino.
+3.  **Calcular Costo Final:** `(Duración / 60) * Tarifa_Cliente`.
+4.  **Transacción Atómica (WALLET):** Restas ese monto de la columna `balance` en la tabla `wallets` del cliente.
+5.  **Insertar Log:** Escribes en tu tabla `call_logs` local todos los datos (origen, destino, duración, costo, fecha).
+
+**Resultado:** El cliente cuelga, mira su pantalla y el saldo y el log ya están actualizados. Tiempo total: < 200ms.
+
+#### 3. El Problema de la Grabación (Async)
+Aquí está el truco con las grabaciones: **El audio nunca está listo al segundo de colgar.** El servidor tiene que procesarlo, mezclarlo (si es estéreo) y subirlo a S3.
+
+**Cómo manejarlo en el Log:**
+* En tu base de datos local (`call_logs`), guarda el registro de la llamada inmediatamente.
+* En el campo `recording_url`, ponlo como `NULL` o `PROCESSING`.
+* En el Frontend, si dice `PROCESSING`, muestra un icono de "Procesando audio...".
+* Configura un **segundo Webhook** (evento `RECORDING_READY` o similar) que llegue cuando el archivo ya se subió. Ese webhook actualiza tu tabla y pone la URL final.
+
+### Tu Nueva Estructura de Base de Datos (Simplificada)
+
+Necesitas ser el dueño de la verdad. Tu DB debe verse así:
+
+**Tabla: `wallets`**
+* `user_id`
+* `balance` (DECIMAL 10,4) -> *Este es el dinero real del cliente.*
+
+**Tabla: `call_logs` (Tu propia copia)**
+* `uuid` (ID único de la llamada)
+* `direction` (inbound/outbound)
+* `billsec` (duración real)
+* `provider_cost` (lo que te costó a ti - opcional, para tus reportes)
+* `customer_price` (lo que le cobraste al cliente - **CRÍTICO**)
+* `recording_status` (pending/ready)
+* `recording_url`
+
+### ¿Y si la API dice algo diferente después? (Reconciliación)
+Esta es la parte profesional.
+Tú cobras en tiempo real basado en tus cálculos.
+Una vez al día (o cada hora), corres un script en segundo plano ("Cron Job") que:
+1.  Descarga el reporte oficial del proveedor.
+2.  Compara con tu tabla `call_logs`.
+3.  Si hay una discrepancia grave (ej. tu sistema calculó 1 minuto y el proveedor cobró 5), generas una alerta para ti, pero **nunca** cambies el saldo del cliente en su cara sin avisar.
+
+**Conclusión:**
+Maneja los logs y el wallet tú mismo.
+Usa **Webhooks** para recibir la data.
+Calcula el precio tú.
+Usa la API del proveedor solo para **hacer** la llamada y para **auditoría** nocturna.
+
+Esa es la única forma de tener un sistema "Real Time" que se sienta como una billetera digital moderna.

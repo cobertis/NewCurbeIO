@@ -12,15 +12,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Phone, 
   PhoneIncoming,
   PhoneOutgoing,
-  PhoneForwarded,
   Settings2, 
   CheckCircle2, 
-  AlertCircle, 
   Loader2,
   PhoneCall,
   MessageSquare,
@@ -30,16 +27,13 @@ import {
   Plus,
   Clock,
   Copy,
-  ChevronDown,
-  ChevronRight,
-  Users,
   Mic,
-  ShieldCheck,
-  FileText,
-  TrendingUp,
-  AlertTriangle,
+  MapPin,
+  History,
   Zap,
-  MapPin
+  DollarSign,
+  TrendingUp,
+  Volume2
 } from "lucide-react";
 import { format } from "date-fns";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
@@ -85,16 +79,10 @@ interface NumberInfo {
 function formatPhoneDisplay(phone: string): string {
   const digits = phone.replace(/\D/g, '');
   if (digits.length === 11 && digits.startsWith('1')) {
-    const areaCode = digits.slice(1, 4);
-    const prefix = digits.slice(4, 7);
-    const line = digits.slice(7);
-    return `(${areaCode}) ${prefix}-${line}`;
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
   }
   if (digits.length === 10) {
-    const areaCode = digits.slice(0, 3);
-    const prefix = digits.slice(3, 6);
-    const line = digits.slice(6);
-    return `(${areaCode}) ${prefix}-${line}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
   return phone;
 }
@@ -105,13 +93,13 @@ export default function PhoneSystem() {
   const [showBuyNumber, setShowBuyNumber] = useState(false);
   const [showE911Dialog, setShowE911Dialog] = useState(false);
   const [selectedNumberForE911, setSelectedNumberForE911] = useState<{ phoneNumber: string; phoneNumberId: string } | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState<string>("50");
   const [showCustomAmount, setShowCustomAmount] = useState(false);
   const [autoRechargeEnabled, setAutoRechargeEnabled] = useState(false);
   const [autoRechargeThreshold, setAutoRechargeThreshold] = useState<string>("10");
   const [autoRechargeAmount, setAutoRechargeAmount] = useState<string>("50");
+  const [activeTab, setActiveTab] = useState("overview");
   const isInitialLoadRef = useRef(true);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef({ enabled: false, threshold: "10", amount: "50" });
@@ -141,124 +129,63 @@ export default function PhoneSystem() {
     queryKey: ["/api/wallet"],
   });
 
-  // Sync auto-recharge state with wallet data
   useEffect(() => {
     if (walletData?.wallet) {
       const enabled = walletData.wallet.autoRecharge || false;
       const threshold = String(parseFloat(walletData.wallet.autoRechargeThreshold || "10"));
       const amount = String(parseFloat(walletData.wallet.autoRechargeAmount || "50"));
-      
       setAutoRechargeEnabled(enabled);
       setAutoRechargeThreshold(threshold);
       setAutoRechargeAmount(amount);
-      
-      // Update saved state reference
       lastSavedStateRef.current = { enabled, threshold, amount };
-      
-      // Mark initial load as complete after syncing from API
-      setTimeout(() => {
-        isInitialLoadRef.current = false;
-      }, 100);
+      setTimeout(() => { isInitialLoadRef.current = false; }, 100);
     }
   }, [walletData]);
 
-  // Handle switch toggle - save immediately by calling mutation directly
   const handleAutoRechargeToggle = (enabled: boolean) => {
     setAutoRechargeEnabled(enabled);
-    
-    // Skip if still in initial load
     if (isInitialLoadRef.current) return;
-    
     const thresholdNum = parseFloat(autoRechargeThreshold) || 10;
     const amountNum = parseFloat(autoRechargeAmount) || 50;
-    
-    // Call mutation directly - no debounce for toggle
-    autoRechargeMutation.mutate({ 
-      enabled, 
-      threshold: thresholdNum, 
-      amount: amountNum 
-    });
+    autoRechargeMutation.mutate({ enabled, threshold: thresholdNum, amount: amountNum });
   };
 
-  // Auto-save threshold/amount changes with debounce
   useEffect(() => {
-    // Skip during initial load or if disabled
     if (isInitialLoadRef.current || !autoRechargeEnabled) return;
-    
-    // Clear any existing debounce timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    
-    // Debounce the save for input changes
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       const thresholdNum = parseFloat(autoRechargeThreshold);
       const amountNum = parseFloat(autoRechargeAmount);
-      
-      // Validate before saving
       if (isNaN(thresholdNum) || thresholdNum < 5 || thresholdNum > 100) return;
       if (isNaN(amountNum) || amountNum < 10 || amountNum > 500) return;
-      
-      // Check if values changed from last saved
       const last = lastSavedStateRef.current;
       if (last.threshold === autoRechargeThreshold && last.amount === autoRechargeAmount) return;
-      
-      // Save to backend
-      autoRechargeMutation.mutate({ 
-        enabled: autoRechargeEnabled, 
-        threshold: thresholdNum, 
-        amount: amountNum 
-      });
+      autoRechargeMutation.mutate({ enabled: autoRechargeEnabled, threshold: thresholdNum, amount: amountNum });
     }, 800);
-    
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
+    return () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current); };
   }, [autoRechargeThreshold, autoRechargeAmount]);
 
-  // Call history query
-
-  const { data: callLogsData, isLoading: isLoadingCallLogs, refetch: refetchCallLogs } = useQuery<{
-
+  const { data: callLogsData, isLoading: isLoadingCallLogs } = useQuery<{
     logs: Array<{
-
       id: string;
-
       fromNumber: string;
-
       toNumber: string;
-
       direction: string;
-
       status: string;
-
       duration: number;
-
       billedDuration?: number;
-
       cost?: string;
-
       costCurrency?: string;
-
       callerName?: string;
-
       recordingUrl?: string;
-
       startedAt: string;
-
       endedAt?: string;
-
     }>;
-
   }>({
-
     queryKey: ["/api/call-logs"],
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
-  // Noise suppression settings query
   const { data: noiseSuppressionData, refetch: refetchNoiseSuppression } = useQuery<{
     enabled: boolean;
     direction: 'inbound' | 'outbound' | 'both';
@@ -267,855 +194,639 @@ export default function PhoneSystem() {
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
-  // Sync call history from Telnyx CDRs
   const syncCallsMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/call-logs/sync");
-    },
-    onSuccess: (data: { success: boolean; synced: number; errors?: string[] }) => {
+    mutationFn: async () => apiRequest("POST", "/api/call-logs/sync"),
+    onSuccess: (data: { success: boolean; synced: number }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
-      if (data.synced > 0) {
-        toast({
-          title: "Calls Synced",
-          description: `Synced ${data.synced} call records from phone system.`,
-        });
-      } else {
-        toast({
-          title: "No New Calls",
-          description: "No new call records found to sync.",
-        });
-      }
+      toast({
+        title: data.synced > 0 ? "Calls Synced" : "No New Calls",
+        description: data.synced > 0 ? `Synced ${data.synced} call records.` : "No new call records found.",
+      });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Sync Failed",
-        description: error.message || "Failed to sync call history",
-        variant: "destructive",
-      });
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
     },
   });
 
   const setupMutation = useMutation({
     mutationFn: async () => {
       setIsSettingUp(true);
-      const data = await apiRequest("POST", "/api/telnyx/managed-accounts/setup");
-      return data;
+      return await apiRequest("POST", "/api/telnyx/managed-accounts/setup");
     },
     onSuccess: (data) => {
       setIsSettingUp(false);
       if (data.success) {
-        toast({
-          title: "Phone System Activated",
-          description: "Your phone system has been set up successfully.",
-        });
+        toast({ title: "Phone System Activated", description: "Your phone system is ready." });
         queryClient.invalidateQueries({ queryKey: ["/api/telnyx/managed-accounts/status"] });
         refetch();
       } else {
-        toast({
-          title: "Setup Failed",
-          description: data.error || "Failed to setup phone system",
-          variant: "destructive",
-        });
+        toast({ title: "Setup Failed", description: data.error, variant: "destructive" });
       }
     },
     onError: (error: Error) => {
       setIsSettingUp(false);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to setup phone system",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const topUpMutation = useMutation({
-    mutationFn: async (amount: number) => {
-      const data = await apiRequest("POST", "/api/wallet/top-up", { amount });
-      return data;
-    },
+    mutationFn: async (amount: number) => apiRequest("POST", "/api/wallet/top-up", { amount }),
     onSuccess: (data: { success: boolean; newBalance: string; amount: number }) => {
       setShowAddFunds(false);
-      setTopUpAmount("25");
+      setTopUpAmount("50");
       toast({
         title: "Funds Added",
-        description: `$${data.amount.toFixed(2)} has been added to your wallet. New balance: $${parseFloat(data.newBalance).toFixed(2)}`,
+        description: `$${data.amount.toFixed(2)} added. New balance: $${parseFloat(data.newBalance).toFixed(2)}`,
       });
       refetchWallet();
     },
     onError: (error: Error) => {
-      toast({
-        title: "Top-Up Failed",
-        description: error.message || "Failed to add funds to wallet",
-        variant: "destructive",
-      });
+      toast({ title: "Top-Up Failed", description: error.message, variant: "destructive" });
     },
   });
-
-  const handleTopUp = () => {
-    const amount = parseFloat(topUpAmount);
-    if (isNaN(amount) || amount < 5 || amount > 500) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter an amount between $5 and $500",
-        variant: "destructive",
-      });
-      return;
-    }
-    topUpMutation.mutate(amount);
-  };
 
   const autoRechargeMutation = useMutation({
     mutationFn: async (data: { enabled: boolean; threshold: number; amount: number }) => {
       return await apiRequest("POST", "/api/wallet/auto-recharge", data);
     },
     onSuccess: (_, variables) => {
-      // Update saved state ONLY after successful save
-      lastSavedStateRef.current = { 
-        enabled: variables.enabled, 
-        threshold: String(variables.threshold), 
-        amount: String(variables.amount) 
-      };
+      lastSavedStateRef.current = { enabled: variables.enabled, threshold: String(variables.threshold), amount: String(variables.amount) };
       toast({
         title: variables.enabled ? "Auto-Recharge Enabled" : "Auto-Recharge Disabled",
-        description: variables.enabled 
-          ? `Will add $${variables.amount} when balance falls below $${variables.threshold}`
-          : "Auto-recharge has been turned off",
+        description: variables.enabled ? `Will add $${variables.amount} when balance falls below $${variables.threshold}` : "Auto-recharge turned off",
       });
       refetchWallet();
     },
     onError: (error: Error) => {
-      // Revert UI state on error
-      if (walletData?.wallet) {
-        setAutoRechargeEnabled(walletData.wallet.autoRecharge || false);
-      }
-      toast({
-        title: "Failed to Update",
-        description: error.message || "Could not update auto-recharge settings",
-        variant: "destructive",
-      });
+      if (walletData?.wallet) setAutoRechargeEnabled(walletData.wallet.autoRecharge || false);
+      toast({ title: "Failed to Update", description: error.message, variant: "destructive" });
     },
   });
 
-
-  // Noise suppression mutation
   const noiseSuppressionMutation = useMutation({
     mutationFn: async (data: { enabled: boolean; direction: string }) => {
       return await apiRequest("POST", "/api/telnyx/noise-suppression", data);
     },
-    onSuccess: (response: { success: boolean; enabled: boolean; direction: string; updatedNumbers?: number; errors?: string[] }) => {
+    onSuccess: (response: { success: boolean; enabled: boolean; direction: string; updatedNumbers?: number }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/noise-suppression"] });
       refetchNoiseSuppression();
       toast({
         title: response.enabled ? "Noise Suppression Enabled" : "Noise Suppression Disabled",
-        description: response.enabled 
-          ? `Active on ${response.updatedNumbers || 0} phone number(s). Direction: ${response.direction}`
-          : "Noise suppression has been turned off for all numbers",
+        description: response.enabled ? `Active on ${response.updatedNumbers || 0} numbers` : "Noise suppression turned off",
       });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to Update",
-        description: error.message || "Could not update noise suppression settings",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to Update", description: error.message, variant: "destructive" });
     },
   });
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied",
-      description: `${label} copied to clipboard`,
-    });
+    toast({ title: "Copied", description: `${label} copied to clipboard` });
   };
 
   if (isLoadingStatus) {
-    return <LoadingSpinner fullScreen message="Loading phone system status..." />;
+    return <LoadingSpinner fullScreen message="Loading phone system..." />;
   }
 
   const hasAccount = statusData?.configured || statusData?.hasAccount;
   const accountDetails = statusData?.accountDetails;
   const accountId = statusData?.managedAccountId;
-
-  const formatCurrency = (amount: string, currency: string = "USD") => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(parseFloat(amount || "0"));
-  };
-
   const walletBalance = walletData?.wallet?.balance || "0";
   const walletCurrency = walletData?.wallet?.currency || "USD";
   const numbersCount = numbersData?.numbers?.length || 0;
-  const isE911Loading = isLoadingNumbers || !numbersData;
-  const hasE911Issues = !isE911Loading && (numbersData?.numbers?.some(n => !n.emergency_enabled) || numbersCount === 0);
+  const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || numbersCount === 0;
+
+  const formatCurrency = (amount: string, currency: string = "USD") => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(parseFloat(amount || "0"));
+  };
+
+  if (!hasAccount) {
+    return (
+      <div className="flex flex-col gap-6 p-6 lg:p-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-foreground">Phone System</h1>
+          <p className="text-slate-500 dark:text-muted-foreground mt-1">Professional business phone lines</p>
+        </div>
+        <div className="flex-1 flex items-center justify-center py-16">
+          <Card className="max-w-xl w-full border-0 shadow-xl rounded-2xl">
+            <CardHeader className="text-center pb-4 pt-10">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mb-4">
+                <Phone className="h-8 w-8 text-indigo-600" />
+              </div>
+              <CardTitle className="text-xl font-semibold">Activate Your Phone System</CardTitle>
+              <CardDescription className="text-base mt-2">Get started with professional business calling</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pb-8 px-8">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="p-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mx-auto mb-3">
+                    <PhoneCall className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">HD Voice</p>
+                </div>
+                <div className="p-4">
+                  <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center mx-auto mb-3">
+                    <MessageSquare className="h-5 w-5 text-green-600" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">SMS/MMS</p>
+                </div>
+                <div className="p-4">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mx-auto mb-3">
+                    <Shield className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">E911 Ready</p>
+                </div>
+              </div>
+              <Button 
+                size="lg"
+                onClick={() => setupMutation.mutate()}
+                disabled={isSettingUp}
+                className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl"
+                data-testid="button-setup-phone"
+              >
+                {isSettingUp ? <><Loader2 className="h-5 w-5 animate-spin mr-2" />Activating...</> : <><Zap className="h-5 w-5 mr-2" />Activate Now</>}
+              </Button>
+              <p className="text-xs text-slate-400 text-center">Ready in seconds. No additional setup required.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8">
-        {/* Header */}
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="border-b border-slate-200 dark:border-border bg-white dark:bg-card px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-foreground" data-testid="text-page-title">
-              Phone System
-            </h1>
-            <p className="text-slate-500 dark:text-muted-foreground mt-1">
-              Manage your business phone lines
-            </p>
+            <h1 className="text-xl font-semibold text-slate-900 dark:text-foreground" data-testid="text-page-title">Phone System</h1>
+            <p className="text-sm text-slate-500 dark:text-muted-foreground">Manage your business phone lines</p>
           </div>
-          {hasAccount && (
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => setShowBuyNumber(true)} data-testid="button-buy-number">
+              <Plus className="h-4 w-4 mr-1" />
+              Buy Number
+            </Button>
             <div 
-              className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-              style={{ borderLeft: '4px solid hsl(215, 50%, 55%)' }}
+              className="flex items-center gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               onClick={() => setShowAddFunds(true)}
               data-testid="button-add-funds"
             >
-              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <Wallet className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+              <Wallet className="h-4 w-4 text-slate-500" />
+              <div>
+                <p className="text-xs text-slate-500">Balance</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white" data-testid="text-balance">{formatCurrency(walletBalance, walletCurrency)}</p>
               </div>
-              <div className="flex-1">
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-medium">Balance</p>
-                <p className="text-lg font-semibold text-slate-900 dark:text-white" data-testid="text-balance">
-                  {formatCurrency(walletBalance, walletCurrency)}
-                </p>
-                {walletData?.wallet?.autoRecharge && (
-                  <p className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1" data-testid="text-auto-recharge-status">
-                    <RefreshCw className="h-2.5 w-2.5" />
-                    Auto: +${Math.round(parseFloat(walletData.wallet.autoRechargeAmount || "0"))} when &lt;${Math.round(parseFloat(walletData.wallet.autoRechargeThreshold || "0"))}
-                  </p>
-                )}
-              </div>
-              <span className="text-xs text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors flex items-center gap-1">
-                <Plus className="h-3 w-3" />
-                Add
-              </span>
+              <Plus className="h-3 w-3 text-slate-400" />
             </div>
-          )}
-        </div>
-
-        {!hasAccount ? (
-          /* Setup Card - Clean onboarding */
-          <div className="flex-1 flex items-center justify-center py-16">
-            <Card className="max-w-xl w-full border-0 shadow-xl rounded-2xl bg-white dark:bg-card">
-              <CardHeader className="text-center pb-4 pt-10">
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mb-4">
-                  <Phone className="h-8 w-8 text-indigo-600" />
-                </div>
-                <CardTitle className="text-xl font-semibold">Activate Your Phone System</CardTitle>
-                <CardDescription className="text-base mt-2">
-                  Get started with professional business calling
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 pb-8 px-8">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="p-4">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mx-auto mb-3">
-                      <PhoneCall className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">HD Voice</p>
-                  </div>
-                  <div className="p-4">
-                    <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center mx-auto mb-3">
-                      <MessageSquare className="h-5 w-5 text-green-600" />
-                    </div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">SMS/MMS</p>
-                  </div>
-                  <div className="p-4">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mx-auto mb-3">
-                      <Shield className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">E911 Ready</p>
-                  </div>
-                </div>
-
-                <Button 
-                  size="lg"
-                  onClick={() => setupMutation.mutate()}
-                  disabled={isSettingUp}
-                  className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl"
-                  data-testid="button-setup-phone"
-                >
-                  {isSettingUp ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      Activating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-5 w-5 mr-2" />
-                      Activate Now
-                    </>
-                  )}
-                </Button>
-                <p className="text-xs text-slate-400 text-center">
-                  Ready in seconds. No additional setup required.
-                </p>
-              </CardContent>
-            </Card>
           </div>
-        ) : (
-          <div className="space-y-5">
-            {/* 3 Status Cards - Same Style */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* E911 Card */}
-              <div 
-                className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card cursor-pointer transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
-                onClick={() => {
-                  if (numbersData?.numbers?.[0]) {
-                    setSelectedNumberForE911({
-                      phoneNumber: numbersData.numbers[0].phone_number,
-                      phoneNumberId: numbersData.numbers[0].id || "",
-                    });
-                    setShowE911Dialog(true);
-                  } else {
-                    toast({ title: "No Phone Number", description: "Please purchase a phone number first before configuring E911." });
-                  }
-                }}
-                data-testid="button-configure-e911-compliance"
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  isE911Loading ? 'bg-slate-100 dark:bg-slate-800' :
-                  hasE911Issues ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'
-                }`}>
-                  {isE911Loading ? (
-                    <Loader2 className="h-5 w-5 text-slate-400 animate-spin" />
-                  ) : (
-                    <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911</p>
-                  <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">Emergency address</p>
-                </div>
-                {isE911Loading ? (
-                  <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full shrink-0">
-                    Loading
-                  </span>
-                ) : hasE911Issues ? (
-                  <span className="text-[10px] font-medium text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full shrink-0">
-                    Pending
-                  </span>
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                )}
-              </div>
+        </div>
+      </div>
 
-              {/* A2P 10DLC Card */}
-              <div className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card opacity-50 cursor-not-allowed">
-                <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                  <MessageSquare className="h-5 w-5 text-slate-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">A2P 10DLC</p>
-                  <p className="text-xs text-slate-400 dark:text-muted-foreground truncate">Coming soon</p>
-                </div>
-                <Clock className="h-4 w-4 text-slate-300 shrink-0" />
-              </div>
+      {/* Main Content with Tabs */}
+      <div className="flex-1 overflow-auto">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+          <div className="border-b border-slate-200 dark:border-border bg-white dark:bg-card px-6">
+            <TabsList className="bg-transparent h-12 p-0 gap-1">
+              <TabsTrigger value="overview" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+                <TrendingUp className="h-4 w-4 mr-2" />Overview
+              </TabsTrigger>
+              <TabsTrigger value="numbers" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+                <Phone className="h-4 w-4 mr-2" />Numbers
+              </TabsTrigger>
+              <TabsTrigger value="calls" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+                <History className="h-4 w-4 mr-2" />Call History
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+                <Settings2 className="h-4 w-4 mr-2" />Settings
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-              {/* My Numbers Card */}
-              {numbersCount > 0 && numbersData?.numbers?.[0] ? (
-                <div 
-                  className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card"
-                  data-testid="card-my-number"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                    <Phone className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-foreground">
-                      {formatPhoneDisplay(numbersData.numbers[0].phone_number)}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">My Number</p>
-                  </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                    numbersData.numbers[0].status === 'active' 
-                      ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' 
-                      : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
-                  }`}>
-                    {numbersData.numbers[0].status === 'active' ? 'Active' : numbersData.numbers[0].status}
-                  </span>
-                </div>
-              ) : (
-                <div 
-                  className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card cursor-pointer transition-all hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600"
-                  onClick={() => setShowBuyNumber(true)}
-                  data-testid="button-add-line"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                    <Phone className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-foreground">My Numbers</p>
-                    <p className="text-xs text-slate-500 dark:text-muted-foreground truncate">Get a number</p>
-                  </div>
-                  <Plus className="h-4 w-4 text-indigo-500 shrink-0" />
-                </div>
-              )}
-            </div>
-
-            {/* Advanced Settings Collapsible */}
-            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between text-slate-500 hover:text-slate-700 dark:hover:text-foreground">
-                  <span className="flex items-center gap-2">
-                    <Settings2 className="h-4 w-4" />
-                    Advanced Settings
-                  </span>
-                  {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card">
-                  <CardContent className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
-                        <p className="text-xs text-slate-500 dark:text-muted-foreground mb-1">Account ID</p>
-                        <div className="flex items-center gap-2">
-                          <code className="text-xs text-slate-700 dark:text-foreground truncate flex-1">{accountId}</code>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(accountId || "", "Account ID")}>
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="p-6 m-0">
+            <div className="grid gap-6">
+              {/* Quick Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-slate-200 dark:border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <Phone className="h-5 w-5 text-indigo-600" />
                       </div>
-                      <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
-                        <p className="text-xs text-slate-500 dark:text-muted-foreground mb-1">Organization</p>
-                        <p className="text-sm text-slate-700 dark:text-foreground truncate">{accountDetails?.organization_name || '-'}</p>
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{numbersCount}</p>
+                        <p className="text-xs text-slate-500">Phone Numbers</p>
                       </div>
-                      {accountDetails?.api_key && (
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50 md:col-span-2">
-                          <p className="text-xs text-slate-500 dark:text-muted-foreground mb-1">API Key</p>
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs text-slate-700 dark:text-foreground truncate flex-1">
-                              {accountDetails.api_key.substring(0, 30)}...
-                            </code>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(accountDetails.api_key || "", "API Key")}>
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 pt-2 text-xs text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Created: {accountDetails?.created_at ? format(new Date(accountDetails.created_at), "MMM dd, yyyy") : '-'}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <RefreshCw className="h-3 w-3" />
-                        Updated: {accountDetails?.updated_at ? format(new Date(accountDetails.updated_at), "MMM dd, yyyy") : '-'}
-                      </span>
                     </div>
                   </CardContent>
                 </Card>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        )}
-
-        {/* Audio Features Section */}
-        {statusData?.configured && (
-          <Card className="shadow-sm border-slate-200 dark:border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Mic className="h-4 w-4 text-primary" />
-                Audio Features
-              </CardTitle>
-              <CardDescription>
-                Configure audio settings for all your phone numbers
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
-                    <Mic className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
-                    <p className="text-sm text-muted-foreground">Reduces background noise during calls. Applies to all phone numbers.</p>
-                  </div>
-                </div>
-                <Switch
-                  checked={noiseSuppressionData?.enabled || false}
-                  onCheckedChange={(checked) => {
-                    noiseSuppressionMutation.mutate({
-                      enabled: checked,
-                      direction: noiseSuppressionData?.direction || 'outbound',
-                    });
-                  }}
-                  disabled={noiseSuppressionMutation.isPending}
-                  data-testid="switch-noise-suppression"
-                />
-              </div>
-              
-              {noiseSuppressionData?.enabled && (
-                <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <div>
-                    <Label className="text-slate-700 dark:text-foreground">Direction</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">Which side of the call to apply noise reduction</p>
-                  </div>
-                  <Select
-                    value={noiseSuppressionData?.direction || 'outbound'}
-                    onValueChange={(value: 'inbound' | 'outbound' | 'both') => {
-                      noiseSuppressionMutation.mutate({
-                        enabled: true,
-                        direction: value,
-                      });
-                    }}
-                    disabled={noiseSuppressionMutation.isPending}
-                  >
-                    <SelectTrigger className="w-[180px]" data-testid="select-noise-direction">
-                      <SelectValue placeholder="Select direction" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="outbound">Outbound Only</SelectItem>
-                      <SelectItem value="inbound">Inbound Only</SelectItem>
-                      <SelectItem value="both">Both Directions</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {noiseSuppressionMutation.isPending && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Updating noise suppression settings...
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Phone Numbers Section with CNAM Settings */}
-        {statusData?.configured && numbersData?.numbers && numbersData.numbers.length > 0 && (
-          <Card className="shadow-sm border-slate-200 dark:border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Phone className="h-4 w-4 text-primary" />
-                Phone Number Settings
-              </CardTitle>
-              <CardDescription>
-                Configure individual settings for each phone number including CNAM
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {numbersData.numbers.map((number, index) => (
-                <PhoneNumberCard 
-                  key={number.id || index} 
-                  number={number} 
-                  index={index}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Call History Section */}
-        {statusData?.configured && (
-          <Card className="shadow-sm border-slate-200 dark:border-border">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-primary" />
-                  Call History
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => syncCallsMutation.mutate()}
-                  disabled={syncCallsMutation.isPending}
-                  className="h-8"
-                  data-testid="button-refresh-call-logs"
-                >
-                  <RefreshCw className={`h-3 w-3 mr-1 ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
-                  {syncCallsMutation.isPending ? 'Syncing...' : 'Refresh'}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {isLoadingCallLogs ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : !callLogsData?.logs || callLogsData.logs.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No calls yet</p>
-                  <p className="text-xs mt-1">Your call history will appear here</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {callLogsData.logs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors"
-                      data-testid={`row-call-${log.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${
-                          log.direction === 'inbound' 
-                            ? 'bg-blue-100 dark:bg-blue-900/30' 
-                            : 'bg-green-100 dark:bg-green-900/30'
-                        }`}>
-                          {log.direction === 'inbound' ? (
-                            <PhoneIncoming className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          ) : (
-                            <PhoneOutgoing className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-slate-700 dark:text-foreground truncate">
-                              {log.direction === 'inbound' ? log.fromNumber : log.toNumber}
-                            </p>
-                            {log.callerName && (
-                              <span className="text-xs text-muted-foreground">({log.callerName})</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{format(new Date(log.startedAt), "MMM dd, h:mm a")}</span>
-                            <span className="text-slate-400">•</span>
-                            <span className={`capitalize ${
-                              log.status === 'completed' ? 'text-green-600 dark:text-green-400' :
-                              log.status === 'failed' || log.status === 'busy' || log.status === 'no-answer' ? 'text-red-500' :
-                              'text-amber-600 dark:text-amber-400'
-                            }`}>
-                              {log.status}
-                            </span>
-                          </div>
-                        </div>
+                <Card className="border-slate-200 dark:border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-green-600" />
                       </div>
-                      <div className="flex items-center gap-4 text-right">
-                        <div>
-                          {log.duration > 0 && (
-                            <p className="text-sm text-slate-700 dark:text-foreground">
-                              {Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}
-                            </p>
-                          )}
-                          {log.cost && parseFloat(log.cost) > 0 && (
-                            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                              ${parseFloat(log.cost).toFixed(4)} {log.costCurrency || 'USD'}
-                            </p>
-                          )}
-                        </div>
-                        {log.recordingUrl && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => window.open(log.recordingUrl, '_blank')}
-                            data-testid={`button-play-recording-${log.id}`}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-primary">
-                              <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
-                            </svg>
-                          </Button>
-                        )}
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{formatCurrency(walletBalance)}</p>
+                        <p className="text-xs text-slate-500">Wallet Balance</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Buy Number Modal */}
-        <BuyNumbersDialog
-          open={showBuyNumber}
-          onOpenChange={setShowBuyNumber}
-          onNumberPurchased={() => {
-            refetchNumbers();
-          }}
-        />
-
-        {selectedNumberForE911 && (
-          <E911ConfigDialog
-            open={showE911Dialog}
-            onOpenChange={setShowE911Dialog}
-            phoneNumber={selectedNumberForE911.phoneNumber}
-            phoneNumberId={selectedNumberForE911.phoneNumberId}
-            onSuccess={() => {
-              refetchNumbers();
-              setSelectedNumberForE911(null);
-            }}
-          />
-        )}
-
-        {/* Add Funds Dialog */}
-        <Dialog open={showAddFunds} onOpenChange={(open) => {
-          setShowAddFunds(open);
-          if (!open) setShowCustomAmount(false);
-        }}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add Funds to Wallet</DialogTitle>
-              <DialogDescription>
-                Add funds using your saved payment method.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
-              {/* Amount Selection */}
-              <div className="space-y-3">
-                <Label>Select Amount</Label>
-                <div className="grid grid-cols-5 gap-2">
-                  {[10, 20, 50, 100].map((amt) => (
-                    <Button
-                      key={amt}
-                      type="button"
-                      variant={!showCustomAmount && topUpAmount === String(amt) ? "default" : "outline"}
-                      size="sm"
+                  </CardContent>
+                </Card>
+                <Card className="border-slate-200 dark:border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <PhoneCall className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{callLogsData?.logs?.length || 0}</p>
+                        <p className="text-xs text-slate-500">Total Calls</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className={`border-slate-200 dark:border-border ${hasE911Issues ? 'border-amber-300 dark:border-amber-700' : ''}`}>
+                  <CardContent className="p-4">
+                    <div 
+                      className="flex items-center gap-3 cursor-pointer"
                       onClick={() => {
-                        setTopUpAmount(String(amt));
-                        setShowCustomAmount(false);
+                        if (numbersData?.numbers?.[0]) {
+                          setSelectedNumberForE911({ phoneNumber: numbersData.numbers[0].phone_number, phoneNumberId: numbersData.numbers[0].id || "" });
+                          setShowE911Dialog(true);
+                        }
                       }}
-                      className="h-12"
-                      data-testid={`button-preset-${amt}`}
                     >
-                      ${amt}
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasE911Issues ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
+                        <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911 Status</p>
+                        <p className={`text-xs ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {hasE911Issues ? 'Action Required' : 'Configured'}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Recent Activity */}
+              <Card className="border-slate-200 dark:border-border">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Recent Calls</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("calls")}>View All</Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingCallLogs ? (
+                    <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+                  ) : !callLogsData?.logs?.length ? (
+                    <div className="text-center py-8 text-slate-400">
+                      <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No calls yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {callLogsData.logs.slice(0, 5).map((log) => (
+                        <div key={log.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                              {log.direction === 'inbound' ? <PhoneIncoming className="h-4 w-4 text-blue-600" /> : <PhoneOutgoing className="h-4 w-4 text-green-600" />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">
+                                {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
+                              </p>
+                              <p className="text-xs text-slate-400">{format(new Date(log.startedAt), "MMM dd, h:mm a")}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {log.duration > 0 && <p className="text-sm text-slate-600 dark:text-slate-300">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>}
+                            <Badge variant="outline" className={`text-xs ${log.status === 'answered' ? 'text-green-600 border-green-200' : 'text-slate-500'}`}>
+                              {log.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Numbers Tab */}
+          <TabsContent value="numbers" className="p-6 m-0">
+            <div className="space-y-4">
+              {isLoadingNumbers ? (
+                <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
+              ) : !numbersData?.numbers?.length ? (
+                <Card className="border-dashed border-2 border-slate-300 dark:border-slate-600">
+                  <CardContent className="py-12 text-center">
+                    <Phone className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                    <h3 className="text-lg font-medium text-slate-700 dark:text-foreground mb-2">No Phone Numbers</h3>
+                    <p className="text-sm text-slate-500 mb-4">Purchase a phone number to start making and receiving calls.</p>
+                    <Button onClick={() => setShowBuyNumber(true)} data-testid="button-add-first-number">
+                      <Plus className="h-4 w-4 mr-2" />Get a Number
                     </Button>
-                  ))}
-                  <Button
-                    type="button"
-                    variant={showCustomAmount ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setShowCustomAmount(true);
-                      setTopUpAmount("");
+                  </CardContent>
+                </Card>
+              ) : (
+                numbersData.numbers.map((number, idx) => (
+                  <PhoneNumberCard 
+                    key={number.id || idx} 
+                    number={number} 
+                    onConfigureE911={() => {
+                      setSelectedNumberForE911({ phoneNumber: number.phone_number, phoneNumberId: number.id || "" });
+                      setShowE911Dialog(true);
                     }}
-                    className="h-12"
-                    data-testid="button-preset-other"
-                  >
-                    Other
+                  />
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Call History Tab */}
+          <TabsContent value="calls" className="p-6 m-0">
+            <Card className="border-slate-200 dark:border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <History className="h-4 w-4" />Call History
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => syncCallsMutation.mutate()} disabled={syncCallsMutation.isPending}>
+                    <RefreshCw className={`h-3 w-3 mr-1 ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
+                    {syncCallsMutation.isPending ? 'Syncing...' : 'Sync'}
                   </Button>
                 </div>
-                {showCustomAmount && (
-                  <div className="relative mt-2">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
-                    <Input
-                      type="number"
-                      min="5"
-                      max="500"
-                      step="1"
-                      value={topUpAmount}
-                      onChange={(e) => setTopUpAmount(e.target.value)}
-                      className="pl-8 text-lg h-12"
-                      placeholder="Enter amount"
-                      autoFocus
-                      data-testid="input-topup-amount"
-                    />
-                    <p className="text-xs text-slate-500 mt-1">Minimum $5, maximum $500</p>
+              </CardHeader>
+              <CardContent>
+                {isLoadingCallLogs ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+                ) : !callLogsData?.logs?.length ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <Phone className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">No calls yet</p>
+                    <p className="text-sm mt-1">Your call history will appear here</p>
                   </div>
-                )}
-              </div>
-
-              {/* Auto-Recharge Section */}
-              <div className="border-t pt-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm font-medium">Auto-Recharge</Label>
-                    <p className="text-xs text-slate-500">Automatically add funds when balance is low</p>
-                  </div>
-                  <Switch
-                    checked={autoRechargeEnabled}
-                    onCheckedChange={handleAutoRechargeToggle}
-                    data-testid="switch-auto-recharge"
-                  />
-                </div>
-                
-                {autoRechargeEnabled && (
-                  <div className="grid grid-cols-2 gap-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                    <div className="space-y-1">
-                      <Label className="text-xs">When balance falls below</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                        <Input
-                          type="number"
-                          min="5"
-                          max="100"
-                          value={autoRechargeThreshold}
-                          onChange={(e) => setAutoRechargeThreshold(e.target.value)}
-                          className="pl-7"
-                          data-testid="input-auto-recharge-threshold"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Add this amount</Label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                        <Input
-                          type="number"
-                          min="10"
-                          max="500"
-                          value={autoRechargeAmount}
-                          onChange={(e) => setAutoRechargeAmount(e.target.value)}
-                          className="pl-7"
-                          data-testid="input-auto-recharge-amount"
-                        />
-                      </div>
-                    </div>
-                    {autoRechargeMutation.isPending && (
-                      <div className="col-span-2 flex items-center justify-center text-xs text-slate-500">
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" /> Saving...
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowAddFunds(false)}
-                disabled={topUpMutation.isPending}
-                data-testid="button-cancel-topup"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleTopUp}
-                disabled={topUpMutation.isPending || !topUpAmount || parseFloat(topUpAmount) < 5}
-                data-testid="button-confirm-topup"
-              >
-                {topUpMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Processing...
-                  </>
                 ) : (
-                  `Add $${topUpAmount || '0'}`
+                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                    {callLogsData.logs.map((log) => (
+                      <div key={log.id} className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2.5 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                            {log.direction === 'inbound' ? <PhoneIncoming className="h-5 w-5 text-blue-600" /> : <PhoneOutgoing className="h-5 w-5 text-green-600" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-slate-800 dark:text-foreground">
+                                {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
+                              </p>
+                              {log.callerName && <span className="text-sm text-slate-500">({log.callerName})</span>}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-slate-500">
+                              <span>{format(new Date(log.startedAt), "MMM dd, yyyy 'at' h:mm a")}</span>
+                              <span className="text-slate-300">|</span>
+                              <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
+                                {log.status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6 text-right">
+                          {log.duration > 0 && (
+                            <div>
+                              <p className="font-medium text-slate-700 dark:text-foreground">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
+                              <p className="text-xs text-slate-400">duration</p>
+                            </div>
+                          )}
+                          {log.cost && parseFloat(log.cost) > 0 && (
+                            <div>
+                              <p className="font-medium text-amber-600">${parseFloat(log.cost).toFixed(4)}</p>
+                              <p className="text-xs text-slate-400">cost</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="p-6 m-0">
+            <div className="grid gap-6 max-w-3xl">
+              {/* Audio Settings */}
+              <Card className="border-slate-200 dark:border-border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Volume2 className="h-4 w-4" />Audio Settings
+                  </CardTitle>
+                  <CardDescription>Configure audio settings for all phone numbers</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                        <Mic className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
+                        <p className="text-sm text-slate-500">Reduces background noise during calls</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={noiseSuppressionData?.enabled || false}
+                      onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
+                      disabled={noiseSuppressionMutation.isPending}
+                    />
+                  </div>
+                  {noiseSuppressionData?.enabled && (
+                    <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div>
+                        <Label>Direction</Label>
+                        <p className="text-xs text-slate-500 mt-0.5">Which side of the call to apply</p>
+                      </div>
+                      <Select
+                        value={noiseSuppressionData?.direction || 'outbound'}
+                        onValueChange={(value: 'inbound' | 'outbound' | 'both') => noiseSuppressionMutation.mutate({ enabled: true, direction: value })}
+                      >
+                        <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="outbound">Outbound Only</SelectItem>
+                          <SelectItem value="inbound">Inbound Only</SelectItem>
+                          <SelectItem value="both">Both</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Billing Settings */}
+              <Card className="border-slate-200 dark:border-border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Wallet className="h-4 w-4" />Billing & Wallet
+                  </CardTitle>
+                  <CardDescription>Manage your wallet and auto-recharge settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+                    <div>
+                      <p className="font-medium text-slate-700 dark:text-foreground">Current Balance</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
+                    </div>
+                    <Button onClick={() => setShowAddFunds(true)}>
+                      <Plus className="h-4 w-4 mr-2" />Add Funds
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div>
+                      <p className="font-medium text-slate-700 dark:text-foreground">Auto-Recharge</p>
+                      <p className="text-sm text-slate-500">Automatically add funds when balance is low</p>
+                    </div>
+                    <Switch checked={autoRechargeEnabled} onCheckedChange={handleAutoRechargeToggle} />
+                  </div>
+                  {autoRechargeEnabled && (
+                    <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <div>
+                        <Label className="text-xs">When balance falls below</Label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                          <Input type="number" min="5" max="100" value={autoRechargeThreshold} onChange={(e) => setAutoRechargeThreshold(e.target.value)} className="pl-7" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Add this amount</Label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                          <Input type="number" min="10" max="500" value={autoRechargeAmount} onChange={(e) => setAutoRechargeAmount(e.target.value)} className="pl-7" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Account Info */}
+              <Card className="border-slate-200 dark:border-border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Settings2 className="h-4 w-4" />Account Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                      <p className="text-xs text-slate-500 mb-1">Account ID</p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs text-slate-700 dark:text-foreground truncate flex-1">{accountId}</code>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(accountId || "", "Account ID")}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                      <p className="text-xs text-slate-500 mb-1">Organization</p>
+                      <p className="text-sm text-slate-700 dark:text-foreground">{accountDetails?.organization_name || '-'}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                      <p className="text-xs text-slate-500 mb-1">Created</p>
+                      <p className="text-sm text-slate-700 dark:text-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {accountDetails?.created_at ? format(new Date(accountDetails.created_at), "MMM dd, yyyy") : '-'}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                      <p className="text-xs text-slate-500 mb-1">Last Updated</p>
+                      <p className="text-sm text-slate-700 dark:text-foreground flex items-center gap-1">
+                        <RefreshCw className="h-3 w-3" />
+                        {accountDetails?.updated_at ? format(new Date(accountDetails.updated_at), "MMM dd, yyyy") : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Dialogs */}
+      <BuyNumbersDialog open={showBuyNumber} onOpenChange={setShowBuyNumber} onNumberPurchased={() => refetchNumbers()} />
+      
+      {selectedNumberForE911 && (
+        <E911ConfigDialog
+          open={showE911Dialog}
+          onOpenChange={setShowE911Dialog}
+          phoneNumber={selectedNumberForE911.phoneNumber}
+          phoneNumberId={selectedNumberForE911.phoneNumberId}
+          onSuccess={() => { refetchNumbers(); setSelectedNumberForE911(null); }}
+        />
+      )}
+
+      {/* Add Funds Dialog */}
+      <Dialog open={showAddFunds} onOpenChange={(open) => { setShowAddFunds(open); if (!open) setShowCustomAmount(false); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Funds</DialogTitle>
+            <DialogDescription>Add funds to your wallet using your saved payment method.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-4 gap-2">
+              {[10, 25, 50, 100].map((amt) => (
+                <Button
+                  key={amt}
+                  type="button"
+                  variant={!showCustomAmount && topUpAmount === String(amt) ? "default" : "outline"}
+                  onClick={() => { setTopUpAmount(String(amt)); setShowCustomAmount(false); }}
+                  className="h-12"
+                >
+                  ${amt}
+                </Button>
+              ))}
+            </div>
+            <Button variant="ghost" size="sm" className="w-full" onClick={() => { setShowCustomAmount(true); setTopUpAmount(""); }}>
+              Custom Amount
+            </Button>
+            {showCustomAmount && (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+                <Input type="number" min="5" max="500" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} className="pl-8 h-12 text-lg" placeholder="Enter amount" autoFocus />
+                <p className="text-xs text-slate-500 mt-1">Min $5, Max $500</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddFunds(false)} disabled={topUpMutation.isPending}>Cancel</Button>
+            <Button onClick={() => { const amt = parseFloat(topUpAmount); if (amt >= 5 && amt <= 500) topUpMutation.mutate(amt); }} disabled={topUpMutation.isPending || !topUpAmount || parseFloat(topUpAmount) < 5}>
+              {topUpMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing...</> : `Add $${topUpAmount || '0'}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-/* Smart Phone Number Card Component */
+/* Phone Number Card Component */
 interface PhoneNumberCardProps {
   number: NumberInfo;
-  index: number;
-  onConfigureE911?: (phoneNumber: string, phoneNumberId: string) => void;
+  onConfigureE911?: () => void;
 }
-function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProps) {
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("routing");
-  const [callRecording, setCallRecording] = useState(false);
-  const [recordingFormat, setRecordingFormat] = useState<"wav" | "mp3">("wav");
-  const [recordingChannels, setRecordingChannels] = useState<"single" | "dual">("single");
-  const [callScreeningEnabled, setCallScreeningEnabled] = useState(false);
-  const [callScreeningMode, setCallScreeningMode] = useState<"flag_calls" | "reject_calls">("reject_calls");
-  const [callForwardingEnabled, setCallForwardingEnabled] = useState(false);
-  const [callForwardingNumber, setCallForwardingNumber] = useState("");
-  const [voicemailEnabled, setVoicemailEnabled] = useState(false);
-  const [voicemailPin, setVoicemailPin] = useState("");
-  const [cnamLookup, setCnamLookup] = useState(false);
-  const [cnamName, setCnamName] = useState("");
-  const [cnamEnabled, setCnamEnabled] = useState(false);
-  const [isEditingCnam, setIsEditingCnam] = useState(false);
 
-  // Query all voice settings for this number
+function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("voice");
+
   const voiceSettingsQuery = useQuery<{
     success: boolean;
     cnamListing?: { enabled: boolean; details: string };
@@ -1127,721 +838,165 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
     queryKey: ["/api/telnyx/voice-settings", number.id],
     queryFn: async () => {
       const res = await fetch(`/api/telnyx/voice-settings/${number.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch voice settings");
+      if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
     enabled: !!number.id,
   });
 
-  // Update local state when voice settings load
-  useEffect(() => {
-    if (voiceSettingsQuery.data?.success) {
-      const data = voiceSettingsQuery.data;
-      setCnamName(data.cnamListing?.details || "");
-      setCnamEnabled(data.cnamListing?.enabled || false);
-      setCallRecording(data.callRecording?.inboundEnabled || false);
-      // Recording format and channels
-      const format = data.callRecording?.format || "wav";
-      setRecordingFormat(format === "mp3" ? "mp3" : "wav");
-      const channels = data.callRecording?.channels || "single";
-      setRecordingChannels(channels === "dual" ? "dual" : "single");
-      // Call screening
-      const screening = data.inboundCallScreening || "disabled";
-      setCallScreeningEnabled(screening !== "disabled");
-      if (screening === "flag_calls" || screening === "reject_calls") {
-        setCallScreeningMode(screening);
-      }
-      // Call forwarding
-      setCallForwardingEnabled(data.callForwarding?.enabled || false);
-      setCallForwardingNumber(data.callForwarding?.destination || "");
-      setCnamLookup(data.callerIdNameEnabled || false);
-    }
-  }, [voiceSettingsQuery.data]);
-
-  // Query CNAM settings for this number (fallback)
-  const cnamQuery = useQuery<{ cnamEnabled: boolean; cnamName: string }>({
-    queryKey: ["/api/telnyx/cnam", number.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/telnyx/cnam/${number.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch CNAM settings");
-      return res.json();
-    },
-    enabled: !!number.id && !voiceSettingsQuery.data,
-  });
-
-  // Update local state when CNAM data loads
-  useEffect(() => {
-    if (cnamQuery.data && !voiceSettingsQuery.data) {
-      setCnamName(cnamQuery.data.cnamName || "");
-      setCnamEnabled(cnamQuery.data.cnamEnabled || false);
-    }
-  }, [cnamQuery.data, voiceSettingsQuery.data]);
-
-  // Mutation to update CNAM
   const cnamMutation = useMutation({
-    mutationFn: async (data: { enabled: boolean; cnamName?: string }) => {
-      return await apiRequest("POST", `/api/telnyx/cnam/${number.id}`, data);
-    },
+    mutationFn: async (data: { enabled: boolean; cnamName?: string }) => apiRequest("POST", `/api/telnyx/cnam/${number.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/cnam", number.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
-      setIsEditingCnam(false);
-      toast({
-        title: "CNAM Updated",
-        description: "Caller ID name settings updated. Changes may take 12-72 hours to propagate.",
-      });
+      toast({ title: "CNAM Updated", description: "Changes may take 12-72 hours to propagate." });
     },
-    onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "Could not update CNAM settings",
-      });
-    },
+    onError: (error: any) => toast({ variant: "destructive", title: "Update Failed", description: error.message }),
   });
 
-  // Mutation for call recording
   const callRecordingMutation = useMutation({
-    mutationFn: async ({ enabled, format, channels }: { enabled: boolean; format: "wav" | "mp3"; channels: "single" | "dual" }) => {
-      return await apiRequest("POST", `/api/telnyx/call-recording/${number.id}`, { enabled, format, channels });
-    },
-    onSuccess: (_, { enabled }) => {
+    mutationFn: async (data: { enabled: boolean; format?: string; channels?: string }) => apiRequest("POST", `/api/telnyx/call-recording/${number.id}`, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
-      toast({
-        title: enabled ? "Call Recording Enabled" : "Call Recording Disabled",
-        description: "Call recording settings updated successfully.",
-      });
+      toast({ title: "Recording Settings Updated" });
     },
-    onError: (error: any) => {
-      setCallRecording(!callRecording);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "Could not update call recording settings",
-      });
-    },
+    onError: (error: any) => toast({ variant: "destructive", title: "Update Failed", description: error.message }),
   });
 
-  // Mutation for call screening
   const callScreeningMutation = useMutation({
-    mutationFn: async ({ enabled, mode }: { enabled: boolean; mode: "flag_calls" | "reject_calls" }) => {
-      return await apiRequest("POST", `/api/telnyx/spam-protection/${number.id}`, { 
-        mode: enabled ? mode : "disabled" 
-      });
-    },
-    onSuccess: (_, { enabled }) => {
+    mutationFn: async (data: { mode: string }) => apiRequest("POST", `/api/telnyx/spam-protection/${number.id}`, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
-      toast({
-        title: enabled ? "Call Screening Enabled" : "Call Screening Disabled",
-        description: enabled ? `Spam calls will be ${callScreeningMode === "reject_calls" ? "rejected" : "flagged"}.` : "All calls will be allowed.",
-      });
+      toast({ title: "Call Screening Updated" });
     },
-    onError: (error: any) => {
-      setCallScreeningEnabled(!callScreeningEnabled);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "Could not update call screening settings",
-      });
-    },
+    onError: (error: any) => toast({ variant: "destructive", title: "Update Failed", description: error.message }),
   });
 
-  // Mutation for call forwarding
-  const callForwardingMutation = useMutation({
-    mutationFn: async ({ enabled, destination }: { enabled: boolean; destination?: string }) => {
-      return await apiRequest("POST", `/api/telnyx/call-forwarding/${number.id}`, { 
-        enabled, 
-        destination,
-        keepCallerId: true 
-      });
-    },
-    onSuccess: (_, { enabled }) => {
+  const cnamLookupMutation = useMutation({
+    mutationFn: async (enabled: boolean) => apiRequest("POST", `/api/telnyx/caller-id-lookup/${number.id}`, { enabled }),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
-      toast({
-        title: enabled ? "Call Forwarding Enabled" : "Call Forwarding Disabled",
-        description: enabled ? `Calls will be forwarded to ${callForwardingNumber}` : "Calls will ring normally.",
-      });
+      toast({ title: "Caller ID Lookup Updated" });
     },
-    onError: (error: any) => {
-      setCallForwardingEnabled(!callForwardingEnabled);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "Could not update call forwarding settings",
-      });
-    },
+    onError: (error: any) => toast({ variant: "destructive", title: "Update Failed", description: error.message }),
   });
 
-  // Mutation for caller ID lookup
-  const callerIdLookupMutation = useMutation({
-    mutationFn: async (enabled: boolean) => {
-      return await apiRequest("POST", `/api/telnyx/caller-id-lookup/${number.id}`, { enabled });
-    },
-    onSuccess: (_, enabled) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
-      toast({
-        title: enabled ? "Caller ID Lookup Enabled" : "Caller ID Lookup Disabled",
-        description: "Inbound caller ID settings updated. Cost: $0.40/month per number.",
-      });
-    },
-    onError: (error: any) => {
-      setCnamLookup(!cnamLookup);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "This feature may need to be configured in the Telnyx Portal.",
-      });
-    },
-  });
-
-  // Query for voicemail settings
-  const voicemailQuery = useQuery<{ success: boolean; enabled?: boolean; pin?: string }>({
-    queryKey: ["/api/telnyx/voicemail", number.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/telnyx/voicemail/${number.id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch voicemail settings");
-      return res.json();
-    },
-    enabled: !!number.id,
-  });
-
-  // Update voicemail state when query loads
-  useEffect(() => {
-    if (voicemailQuery.data?.success) {
-      setVoicemailEnabled(voicemailQuery.data.enabled || false);
-      setVoicemailPin(voicemailQuery.data.pin || "");
-    }
-  }, [voicemailQuery.data]);
-
-  // Mutation for voicemail
-  const voicemailMutation = useMutation({
-    mutationFn: async ({ enabled, pin }: { enabled: boolean; pin: string }) => {
-      return await apiRequest("POST", `/api/telnyx/voicemail/${number.id}`, { enabled, pin });
-    },
-    onSuccess: (_, { enabled }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voicemail", number.id] });
-      toast({
-        title: enabled ? "Voicemail Enabled" : "Voicemail Disabled",
-        description: enabled ? "Voicemail is now active. Dial *98 to check messages." : "Voicemail has been disabled.",
-      });
-    },
-    onError: (error: any) => {
-      setVoicemailEnabled(!voicemailEnabled);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "Could not update voicemail settings",
-      });
-    },
-  });
-  
-  const handleCallRecordingToggle = (enabled: boolean) => {
-    setCallRecording(enabled);
-    callRecordingMutation.mutate({ enabled, format: recordingFormat, channels: recordingChannels });
-  };
-
-  const handleRecordingFormatChange = (format: "wav" | "mp3") => {
-    setRecordingFormat(format);
-    if (callRecording) {
-      callRecordingMutation.mutate({ enabled: true, format, channels: recordingChannels });
-    }
-  };
-
-  const handleRecordingChannelsChange = (channels: "single" | "dual") => {
-    setRecordingChannels(channels);
-    if (callRecording) {
-      callRecordingMutation.mutate({ enabled: true, format: recordingFormat, channels });
-    }
-  };
-
-  const handleCallScreeningToggle = (enabled: boolean) => {
-    setCallScreeningEnabled(enabled);
-    callScreeningMutation.mutate({ enabled, mode: callScreeningMode });
-  };
-
-  const handleCallScreeningModeChange = (mode: "flag_calls" | "reject_calls") => {
-    setCallScreeningMode(mode);
-    if (callScreeningEnabled) {
-      callScreeningMutation.mutate({ enabled: true, mode });
-    }
-  };
-
-  const handleCallForwardingToggle = (enabled: boolean) => {
-    if (enabled && !callForwardingNumber) {
-      toast({
-        variant: "destructive",
-        title: "Phone Number Required",
-        description: "Please enter a forwarding phone number first.",
-      });
-      return;
-    }
-    setCallForwardingEnabled(enabled);
-    callForwardingMutation.mutate({ enabled, destination: callForwardingNumber });
-  };
-
-  const handleCallForwardingNumberSave = () => {
-    if (!callForwardingNumber) {
-      toast({
-        variant: "destructive",
-        title: "Phone Number Required",
-        description: "Please enter a valid US phone number.",
-      });
-      return;
-    }
-    callForwardingMutation.mutate({ enabled: callForwardingEnabled, destination: callForwardingNumber });
-  };
-
-  const handleCallerIdLookupToggle = (enabled: boolean) => {
-    setCnamLookup(enabled);
-    callerIdLookupMutation.mutate(enabled);
-  };
-
-  const handleVoicemailToggle = (enabled: boolean) => {
-    if (enabled && (!voicemailPin || voicemailPin.length !== 4)) {
-      toast({
-        variant: "destructive",
-        title: "PIN Required",
-        description: "Please enter a 4-digit PIN first.",
-      });
-      return;
-    }
-    setVoicemailEnabled(enabled);
-    voicemailMutation.mutate({ enabled, pin: voicemailPin });
-  };
-
-  const handleVoicemailPinSave = () => {
-    if (!voicemailPin || !/^\d{4}$/.test(voicemailPin)) {
-      toast({
-        variant: "destructive",
-        title: "Invalid PIN",
-        description: "PIN must be exactly 4 digits.",
-      });
-      return;
-    }
-    voicemailMutation.mutate({ enabled: voicemailEnabled, pin: voicemailPin });
-  };
+  const settings = voiceSettingsQuery.data;
+  const isLoading = voiceSettingsQuery.isLoading;
 
   return (
-    <Card className="border-0 shadow-sm rounded-xl bg-white dark:bg-card overflow-hidden" data-testid={`card-number-${number.phone_number}`}>
-      {/* Card Header */}
-      <div className="px-6 py-4 border-b border-slate-100 dark:border-border">
+    <Card className="border-slate-200 dark:border-border overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 dark:border-border bg-slate-50 dark:bg-muted/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center">
               <Phone className="h-6 w-6 text-indigo-600" />
             </div>
             <div>
-              <div className="flex items-center gap-3">
-                <p className="text-xl font-semibold text-slate-900 dark:text-foreground">
-                  {formatPhoneDisplay(number.phone_number)}
-                </p>
-                <Badge variant="outline" className="text-xs">
-                  US
-                </Badge>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-muted-foreground">
-                {number.phone_number_type ? number.phone_number_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Local'}
-              </p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-foreground">{formatPhoneDisplay(number.phone_number)}</p>
+              <p className="text-sm text-slate-500">{number.phone_number_type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Local'}</p>
             </div>
           </div>
-          <Badge 
-            variant={number.status === 'active' ? 'default' : 'secondary'} 
-            className={number.status === 'active' ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400' : ''}
-          >
-            {number.status === 'active' ? 'Active' : number.status}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Badge variant={number.status === 'active' ? 'default' : 'secondary'} className={number.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' : ''}>
+              {number.status === 'active' ? 'Active' : number.status}
+            </Badge>
+            {!number.emergency_enabled && onConfigureE911 && (
+              <Button variant="outline" size="sm" onClick={onConfigureE911} className="text-amber-600 border-amber-300 hover:bg-amber-50">
+                <MapPin className="h-3 w-3 mr-1" />E911
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Tabs Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="px-6 border-b border-slate-100 dark:border-border">
-          <TabsList className="bg-transparent h-12 p-0 gap-6">
-            <TabsTrigger 
-              value="routing" 
-              className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 text-slate-500 data-[state=active]:text-indigo-600"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Routing
+          <TabsList className="bg-transparent h-10 p-0 gap-4">
+            <TabsTrigger value="voice" className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-sm">
+              Voice Settings
             </TabsTrigger>
-            <TabsTrigger 
-              value="features"
-              className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 text-slate-500 data-[state=active]:text-indigo-600"
-            >
-              <Settings2 className="h-4 w-4 mr-2" />
-              Features
-            </TabsTrigger>
-            <TabsTrigger 
-              value="logs"
-              className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-3 text-slate-500 data-[state=active]:text-indigo-600"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Logs
+            <TabsTrigger value="caller-id" className="bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-sm">
+              Caller ID
             </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="routing" className="p-6 m-0">
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-foreground mb-2 block">
-                Who answers calls to this number?
-              </label>
-              <Select defaultValue="app" onValueChange={(value) => toast({ title: "Routing Updated", description: "Routing settings will be available in a future update." })}>
-                <SelectTrigger className="w-full max-w-md bg-white dark:bg-background" data-testid={`select-routing-${number.phone_number}`}>
-                  <SelectValue placeholder="Select destination" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="app">Web Phone App</SelectItem>
-                  <SelectItem value="user">Forward to User</SelectItem>
-                  <SelectItem value="group">Ring Group</SelectItem>
-                  <SelectItem value="ivr">IVR Menu</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-400 dark:text-muted-foreground mt-2">
-                Incoming calls will be routed to the selected destination
-              </p>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="features" className="p-6 m-0">
-          <div className="space-y-4">
-            {/* Call Recording */}
-            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Mic className="h-5 w-5 text-slate-500" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Record Inbound Calls</p>
-                    <p className="text-xs text-slate-400">Record all calls for quality assurance</p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={callRecording} 
-                  onCheckedChange={handleCallRecordingToggle}
-                  disabled={callRecordingMutation.isPending}
-                  data-testid={`switch-recording-${number.phone_number}`}
-                />
-              </div>
-              {callRecording && (
-                <div className="pt-2 border-t border-slate-200 dark:border-border space-y-3">
-                  {/* Audio File Format */}
-                  <div>
-                    <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-2 block">
-                      Audio File Format
-                    </Label>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant={recordingFormat === "wav" ? "default" : "outline"}
-                        onClick={() => handleRecordingFormatChange("wav")}
-                        disabled={callRecordingMutation.isPending}
-                        className="flex-1"
-                        data-testid={`button-format-wav-${number.phone_number}`}
-                      >
-                        .WAV
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={recordingFormat === "mp3" ? "default" : "outline"}
-                        onClick={() => handleRecordingFormatChange("mp3")}
-                        disabled={callRecordingMutation.isPending}
-                        className="flex-1"
-                        data-testid={`button-format-mp3-${number.phone_number}`}
-                      >
-                        .MP3
-                      </Button>
-                    </div>
-                  </div>
-                  {/* Audio File Channel Type */}
-                  <div>
-                    <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-2 block">
-                      Audio File Channel Type
-                    </Label>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant={recordingChannels === "single" ? "default" : "outline"}
-                        onClick={() => handleRecordingChannelsChange("single")}
-                        disabled={callRecordingMutation.isPending}
-                        className="flex-1"
-                        data-testid={`button-channel-single-${number.phone_number}`}
-                      >
-                        Single Channel
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={recordingChannels === "dual" ? "default" : "outline"}
-                        onClick={() => handleRecordingChannelsChange("dual")}
-                        disabled={callRecordingMutation.isPending}
-                        className="flex-1"
-                        data-testid={`button-channel-dual-${number.phone_number}`}
-                      >
-                        Dual Channel
-                      </Button>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-2">
-                      Single channel records both parties together. Dual channel records each party separately.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* Inbound Call Screening */}
-            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-slate-500" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Inbound Call Screening</p>
-                    <p className="text-xs text-slate-400">Block or flag robocalls and spam numbers</p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={callScreeningEnabled} 
-                  onCheckedChange={handleCallScreeningToggle}
-                  disabled={callScreeningMutation.isPending}
-                  data-testid={`switch-call-screening-${number.phone_number}`}
-                />
-              </div>
-              {callScreeningEnabled && (
-                <div className="pt-2 border-t border-slate-200 dark:border-border">
-                  <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-2 block">
-                    Screening Mode
-                  </Label>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={callScreeningMode === "flag_calls" ? "default" : "outline"}
-                      onClick={() => handleCallScreeningModeChange("flag_calls")}
-                      disabled={callScreeningMutation.isPending}
-                      className="flex-1"
-                      data-testid={`button-flag-calls-${number.phone_number}`}
-                    >
-                      Flag Calls
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={callScreeningMode === "reject_calls" ? "default" : "outline"}
-                      onClick={() => handleCallScreeningModeChange("reject_calls")}
-                      disabled={callScreeningMutation.isPending}
-                      className="flex-1"
-                      data-testid={`button-reject-calls-${number.phone_number}`}
-                    >
-                      Reject Calls
-                    </Button>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-2">
-                    {callScreeningMode === "flag_calls" 
-                      ? "Spam calls will be allowed but marked as potential spam" 
-                      : "Spam calls will be automatically rejected"}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Call Forwarding */}
-            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <PhoneForwarded className="h-5 w-5 text-slate-500" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Forwarding</p>
-                    <p className="text-xs text-slate-400">Forward calls to another US phone number</p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={callForwardingEnabled} 
-                  onCheckedChange={handleCallForwardingToggle}
-                  disabled={callForwardingMutation.isPending}
-                  data-testid={`switch-call-forwarding-${number.phone_number}`}
-                />
-              </div>
-              <div className="pt-2 border-t border-slate-200 dark:border-border">
-                <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-1 block">
-                  Forward To (US Number)
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={callForwardingNumber}
-                    onChange={(e) => setCallForwardingNumber(e.target.value.replace(/[^\d+()-\s]/g, ''))}
-                    placeholder="+1 (555) 123-4567"
-                    className="flex-1 h-9 bg-white dark:bg-background"
-                    data-testid={`input-forwarding-number-${number.phone_number}`}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleCallForwardingNumberSave}
-                    disabled={callForwardingMutation.isPending || !callForwardingNumber}
-                    data-testid={`button-save-forwarding-${number.phone_number}`}
-                  >
-                    {callForwardingMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {callForwardingEnabled ? "Calls will be forwarded to this number" : "Enter a number and enable to start forwarding"}
-                </p>
-              </div>
-            </div>
-
-            {/* Voicemail */}
-            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="h-5 w-5 text-slate-500" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Voicemail</p>
-                    <p className="text-xs text-slate-400">Enable voicemail for missed calls. Dial *98 to check messages.</p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={voicemailEnabled} 
-                  onCheckedChange={handleVoicemailToggle}
-                  disabled={voicemailMutation.isPending}
-                  data-testid={`switch-voicemail-${number.phone_number}`}
-                />
-              </div>
-              <div className="pt-2 border-t border-slate-200 dark:border-border">
-                <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-1 block">
-                  Access PIN (4 digits)
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={voicemailPin}
-                    onChange={(e) => setVoicemailPin(e.target.value.replace(/\D/g, '').substring(0, 4))}
-                    placeholder="1234"
-                    maxLength={4}
-                    className="flex-1 h-9 bg-white dark:bg-background font-mono tracking-widest"
-                    data-testid={`input-voicemail-pin-${number.phone_number}`}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={handleVoicemailPinSave}
-                    disabled={voicemailMutation.isPending || voicemailPin.length !== 4}
-                    data-testid={`button-save-voicemail-${number.phone_number}`}
-                  >
-                    {voicemailMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {voicemailEnabled ? "Voicemail is active. Use your PIN to access messages." : "Set a PIN and enable to activate voicemail"}
-                </p>
-              </div>
-            </div>
-            {/* CNAM Listing (Outbound Caller ID Name) */}
-            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-slate-500" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Caller ID Name (CNAM Listing)</p>
-                    <p className="text-xs text-slate-400">Display your company name when making outbound calls</p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={cnamEnabled}
-                  disabled={cnamMutation.isPending}
-                  onCheckedChange={(checked) => {
-                    setCnamEnabled(checked); // Optimistic update
-                    if (checked && !cnamName) {
-                      setIsEditingCnam(true);
-                    } else {
-                      cnamMutation.mutate({ enabled: checked, cnamName: cnamName || undefined });
-                    }
-                  }}
-                  data-testid={`switch-cnam-listing-${number.phone_number}`}
-                />
-              </div>
-              
-              {(cnamEnabled || isEditingCnam) && (
-                <div className="pt-2 border-t border-slate-200 dark:border-border space-y-3">
-                  <div>
-                    <Label htmlFor={`cnam-name-${number.id}`} className="text-xs text-slate-600 dark:text-muted-foreground">
-                      Display Name (max 15 characters, letters/numbers/spaces only)
-                    </Label>
-                    <div className="flex gap-2 mt-1">
-                      <Input
-                        id={`cnam-name-${number.id}`}
-                        value={cnamName}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 15);
-                          setCnamName(value);
-                        }}
-                        placeholder="Company Name"
-                        maxLength={15}
-                        className="flex-1 h-9 bg-white dark:bg-background"
-                        data-testid={`input-cnam-name-${number.phone_number}`}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => cnamMutation.mutate({ enabled: true, cnamName })}
-                        disabled={cnamMutation.isPending || !cnamName.trim()}
-                        data-testid={`button-save-cnam-${number.phone_number}`}
-                      >
-                        {cnamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {cnamName.length}/15 characters • Changes take 12-72 hours to propagate
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Inbound CNAM Lookup */}
-            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-slate-500" />
+        <TabsContent value="voice" className="p-6 m-0">
+          {isLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+          ) : (
+            <div className="grid gap-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
                 <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Caller ID Lookup (Inbound)</p>
-                  <p className="text-xs text-slate-400">Show caller names on incoming calls • Additional cost applies</p>
+                  <p className="font-medium text-slate-700 dark:text-foreground">Call Recording</p>
+                  <p className="text-sm text-slate-500">Record inbound calls</p>
                 </div>
+                <Switch
+                  checked={settings?.callRecording?.inboundEnabled || false}
+                  onCheckedChange={(checked) => callRecordingMutation.mutate({ enabled: checked })}
+                  disabled={callRecordingMutation.isPending}
+                />
               </div>
-              <Switch 
-                checked={cnamLookup} 
-                onCheckedChange={handleCallerIdLookupToggle}
-                data-testid={`switch-cnam-lookup-${number.phone_number}`}
-              />
+              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+                <div>
+                  <p className="font-medium text-slate-700 dark:text-foreground">Spam Call Screening</p>
+                  <p className="text-sm text-slate-500">Block suspected spam calls</p>
+                </div>
+                <Switch
+                  checked={settings?.inboundCallScreening !== 'disabled' && !!settings?.inboundCallScreening}
+                  onCheckedChange={(checked) => callScreeningMutation.mutate({ mode: checked ? 'reject_calls' : 'disabled' })}
+                  disabled={callScreeningMutation.isPending}
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+                <div>
+                  <p className="font-medium text-slate-700 dark:text-foreground">Caller ID Lookup</p>
+                  <p className="text-sm text-slate-500">Show caller names ($0.40/mo)</p>
+                </div>
+                <Switch
+                  checked={settings?.callerIdNameEnabled || false}
+                  onCheckedChange={(checked) => cnamLookupMutation.mutate(checked)}
+                  disabled={cnamLookupMutation.isPending}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="logs" className="p-6 m-0">
-          <div className="text-center py-8">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-muted flex items-center justify-center mx-auto mb-3">
-              <FileText className="h-6 w-6 text-slate-400" />
+        <TabsContent value="caller-id" className="p-6 m-0">
+          {isLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+                <div>
+                  <p className="font-medium text-slate-700 dark:text-foreground">CNAM Listing</p>
+                  <p className="text-sm text-slate-500">Display your business name on outgoing calls</p>
+                </div>
+                <Switch
+                  checked={settings?.cnamListing?.enabled || false}
+                  onCheckedChange={(checked) => cnamMutation.mutate({ enabled: checked, cnamName: settings?.cnamListing?.details })}
+                  disabled={cnamMutation.isPending}
+                />
+              </div>
+              {settings?.cnamListing?.enabled && (
+                <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <Label className="text-sm">Business Name (max 15 chars)</Label>
+                  <div className="flex gap-2 mt-2">
+                    <Input
+                      maxLength={15}
+                      defaultValue={settings?.cnamListing?.details || ''}
+                      placeholder="Your Business"
+                      onBlur={(e) => cnamMutation.mutate({ enabled: true, cnamName: e.target.value })}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">Changes take 12-72 hours to propagate to all carriers.</p>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-slate-500 dark:text-muted-foreground">No recent calls</p>
-            <p className="text-xs text-slate-400 mt-1">Call logs will appear here</p>
-          </div>
+          )}
         </TabsContent>
       </Tabs>
-
-      {/* Card Footer */}
-      <div className="px-6 py-3 bg-slate-50 dark:bg-muted/30 border-t border-slate-100 dark:border-border flex items-center justify-between">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-slate-500 hover:text-slate-700 gap-2"
-          onClick={() => onConfigureE911?.(number.phone_number, number.id || "")}
-          data-testid={`button-e911-${number.phone_number}`}
-        >
-          <MapPin className="h-4 w-4" />
-          Configure E911
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="text-slate-500 hover:text-slate-700 gap-2"
-          onClick={() => toast({ title: "Call Logs", description: "Detailed call logs will be available in a future update." })}
-          data-testid={`button-logs-${number.phone_number}`}
-        >
-          View Full Logs
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
     </Card>
   );
 }
