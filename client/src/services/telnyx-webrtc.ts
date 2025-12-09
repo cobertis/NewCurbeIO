@@ -405,24 +405,42 @@ class TelnyxWebRTCManager {
       
       this.client.on('telnyx.notification', (notification: any) => {
         const call = notification.call;
+        
+        // Infer direction: if we have remoteCallerNumber and it's different from our callerIdNumber, it's inbound
+        const callerIdNumber = store.callerIdNumber;
+        const remoteNumber = call?.options?.remoteCallerNumber;
+        const destinationNumber = call?.options?.destinationNumber;
+        
+        // Direction inference: 
+        // - If remoteCallerNumber exists and is NOT our number -> inbound
+        // - If we initiated the call (destinationNumber is set by us) -> outbound
+        let inferredDirection = call?.direction;
+        if (!inferredDirection && remoteNumber && destinationNumber) {
+          // Normalize numbers for comparison (remove + and country code variations)
+          const normalizeNum = (n: string) => n?.replace(/\D/g, '').slice(-10) || '';
+          const isInbound = normalizeNum(destinationNumber) === normalizeNum(callerIdNumber);
+          inferredDirection = isInbound ? 'inbound' : 'outbound';
+        }
+        
         console.log('[Telnyx WebRTC] Notification:', notification.type, {
           state: call?.state,
           direction: call?.direction,
-          remoteCallerNumber: call?.options?.remoteCallerNumber,
-          destinationNumber: call?.options?.destinationNumber,
+          inferredDirection,
+          remoteCallerNumber: remoteNumber,
+          destinationNumber: destinationNumber,
+          ourCallerIdNumber: callerIdNumber,
           callId: call?.id,
         });
         
         if (notification.type === 'callUpdate') {
-          // Handle incoming calls - check for ringing state with inbound direction
-          // Also handle 'new' state which may come before 'ringing' for inbound calls
-          if ((call.state === 'ringing' || call.state === 'new') && call.direction === 'inbound') {
-            console.log('[Telnyx WebRTC] 📞 INCOMING CALL from:', call.options?.remoteCallerNumber);
+          // Handle incoming calls - use inferredDirection since SDK may not provide direction
+          if ((call.state === 'ringing' || call.state === 'new') && inferredDirection === 'inbound') {
+            console.log('[Telnyx WebRTC] 📞 INCOMING CALL from:', remoteNumber);
             store.setIncomingCall(call);
             this.startRingtone(); // Play ringtone for incoming calls
           } else if (call.state === 'trying' || call.state === 'early' || call.state === 'ringing') {
             // Outbound call is connecting - play ringback tone
-            if (call.direction === 'outbound') {
+            if (inferredDirection === 'outbound') {
               console.log('[Telnyx WebRTC] Outbound call connecting, starting ringback');
               this.startRingback();
               
