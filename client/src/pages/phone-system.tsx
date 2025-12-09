@@ -161,40 +161,22 @@ export default function PhoneSystem() {
     }
   }, [walletData]);
 
-  // Auto-save function
-  const saveAutoRechargeSettings = (enabled: boolean, threshold: string, amount: string) => {
-    const thresholdNum = parseFloat(threshold);
-    const amountNum = parseFloat(amount);
-    
-    // Validate before saving
-    if (enabled) {
-      if (isNaN(thresholdNum) || thresholdNum < 5 || thresholdNum > 100) return;
-      if (isNaN(amountNum) || amountNum < 10 || amountNum > 500) return;
-    }
-    
-    // Check if values actually changed
-    const last = lastSavedStateRef.current;
-    if (last.enabled === enabled && last.threshold === threshold && last.amount === amount) {
-      return; // No change, skip save
-    }
-    
-    // Update saved state
-    lastSavedStateRef.current = { enabled, threshold, amount };
-    
-    // Save to backend
-    autoRechargeMutation.mutate({ 
-      enabled, 
-      threshold: isNaN(thresholdNum) ? 10 : thresholdNum, 
-      amount: isNaN(amountNum) ? 50 : amountNum 
-    });
-  };
-
-  // Handle switch toggle - save immediately
+  // Handle switch toggle - save immediately by calling mutation directly
   const handleAutoRechargeToggle = (enabled: boolean) => {
     setAutoRechargeEnabled(enabled);
-    if (!isInitialLoadRef.current) {
-      saveAutoRechargeSettings(enabled, autoRechargeThreshold, autoRechargeAmount);
-    }
+    
+    // Skip if still in initial load
+    if (isInitialLoadRef.current) return;
+    
+    const thresholdNum = parseFloat(autoRechargeThreshold) || 10;
+    const amountNum = parseFloat(autoRechargeAmount) || 50;
+    
+    // Call mutation directly - no debounce for toggle
+    autoRechargeMutation.mutate({ 
+      enabled, 
+      threshold: thresholdNum, 
+      amount: amountNum 
+    });
   };
 
   // Auto-save threshold/amount changes with debounce
@@ -209,7 +191,23 @@ export default function PhoneSystem() {
     
     // Debounce the save for input changes
     debounceTimerRef.current = setTimeout(() => {
-      saveAutoRechargeSettings(autoRechargeEnabled, autoRechargeThreshold, autoRechargeAmount);
+      const thresholdNum = parseFloat(autoRechargeThreshold);
+      const amountNum = parseFloat(autoRechargeAmount);
+      
+      // Validate before saving
+      if (isNaN(thresholdNum) || thresholdNum < 5 || thresholdNum > 100) return;
+      if (isNaN(amountNum) || amountNum < 10 || amountNum > 500) return;
+      
+      // Check if values changed from last saved
+      const last = lastSavedStateRef.current;
+      if (last.threshold === autoRechargeThreshold && last.amount === autoRechargeAmount) return;
+      
+      // Save to backend
+      autoRechargeMutation.mutate({ 
+        enabled: autoRechargeEnabled, 
+        threshold: thresholdNum, 
+        amount: amountNum 
+      });
     }, 800);
     
     return () => {
@@ -360,11 +358,26 @@ export default function PhoneSystem() {
     mutationFn: async (data: { enabled: boolean; threshold: number; amount: number }) => {
       return await apiRequest("POST", "/api/wallet/auto-recharge", data);
     },
-    onSuccess: () => {
-      // Silent save - no toast for auto-save, just refresh data
+    onSuccess: (_, variables) => {
+      // Update saved state ONLY after successful save
+      lastSavedStateRef.current = { 
+        enabled: variables.enabled, 
+        threshold: String(variables.threshold), 
+        amount: String(variables.amount) 
+      };
+      toast({
+        title: variables.enabled ? "Auto-Recharge Enabled" : "Auto-Recharge Disabled",
+        description: variables.enabled 
+          ? `Will add $${variables.amount} when balance falls below $${variables.threshold}`
+          : "Auto-recharge has been turned off",
+      });
       refetchWallet();
     },
     onError: (error: Error) => {
+      // Revert UI state on error
+      if (walletData?.wallet) {
+        setAutoRechargeEnabled(walletData.wallet.autoRecharge || false);
+      }
       toast({
         title: "Failed to Update",
         description: error.message || "Could not update auto-recharge settings",
