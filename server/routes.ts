@@ -27627,8 +27627,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Determine the noise_suppression value for Telnyx Voice API
-      // CORRECT Options: "disabled", "low", "medium", "high", "aggressive"
-      // Map our direction values to Telnyx noise suppression levels
+      // CORRECT Options for Credential Connections: "disabled", "inbound", "outbound", "both"
+      // Use direction value directly for Credential Connections
       let noiseSuppressionLevel = "disabled";
       if (enabled) {
         // Map direction to level: outbound/inbound -> medium, both -> high
