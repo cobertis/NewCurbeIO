@@ -305,8 +305,9 @@ async function getOrCreateCredentialConnection(
         },
         inbound: {
           channel_limit: 10,
-          // WebRTC codec priority: OPUS first (HD voice), then G722, G711
-          codecs: ["OPUS", "G722", "G711U", "G711A"],
+          // Codec priority: G.711 first for PSTN compatibility, OPUS last for SIP-to-SIP
+          // G711U = µ-law (US/Japan), G711A = A-law (Europe), G722 = wideband, OPUS = HD
+          codecs: ["G711U", "G711A", "G722", "OPUS"],
           generate_ringback_tone: true,
           // Enable SHAKEN/STIR for caller ID verification
           shaken_stir_enabled: true,
@@ -1001,8 +1002,8 @@ export async function updateCredentialConnectionForWebRTC(
           report_frequency_secs: 10,
         },
         inbound: {
-          // WebRTC codec priority: OPUS first (HD voice), then G722, G711
-          codecs: ["OPUS", "G722", "G711U", "G711A"],
+          // Codec priority: G.711 first for PSTN compatibility, OPUS last for SIP-to-SIP
+          codecs: ["G711U", "G711A", "G722", "OPUS"],
           generate_ringback_tone: true,
           // Enable SHAKEN/STIR for caller ID verification
           shaken_stir_enabled: true,
