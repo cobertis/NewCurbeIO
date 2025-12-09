@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -28590,6 +28590,90 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // =====================================================
   // CALL LOGS (Call History for WebPhone)
   // =====================================================
+
+
+  // GET /api/caller-lookup/:phoneNumber - Lookup caller by phone number in quotes/policies/contacts
+  app.get("/api/caller-lookup/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumber } = req.params;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Normalize phone number (keep only last 10 digits)
+      const normalizedPhone = phoneNumber.replace(/\D/g, '').slice(-10);
+      
+      if (normalizedPhone.length < 10) {
+        return res.json({ found: false });
+      }
+      
+      // Search in quotes first (most common source for client data)
+      const matchedQuote = await db.query.quotes.findFirst({
+        where: and(
+          eq(quotes.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${quotes.clientPhone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
+        )
+      });
+      
+      if (matchedQuote) {
+        return res.json({
+          found: true,
+          source: 'quote',
+          clientFirstName: matchedQuote.clientFirstName,
+          clientLastName: matchedQuote.clientLastName,
+          clientPhone: matchedQuote.clientPhone
+        });
+      }
+      
+      // Search in policies
+      const matchedPolicy = await db.query.policies.findFirst({
+        where: and(
+          eq(policies.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${policies.clientPhone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
+        )
+      });
+      
+      if (matchedPolicy) {
+        return res.json({
+          found: true,
+          source: 'policy',
+          clientFirstName: matchedPolicy.clientFirstName,
+          clientLastName: matchedPolicy.clientLastName,
+          clientPhone: matchedPolicy.clientPhone
+        });
+      }
+      
+      // Search in contacts table
+      const matchedContact = await db.query.contacts.findFirst({
+        where: and(
+          eq(contacts.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
+        )
+      });
+      
+      if (matchedContact) {
+        return res.json({
+          found: true,
+          source: 'contact',
+          clientFirstName: matchedContact.firstName,
+          clientLastName: matchedContact.lastName,
+          clientPhone: matchedContact.phone
+        });
+      }
+      
+      // Not found
+      res.json({ found: false });
+    } catch (error: any) {
+      console.error("[Caller Lookup] Error:", error);
+      res.status(500).json({ message: "Failed to lookup caller" });
+    }
+  });
 
   // GET /api/call-logs - Get call history for company
   app.get("/api/call-logs", requireAuth, async (req: Request, res: Response) => {

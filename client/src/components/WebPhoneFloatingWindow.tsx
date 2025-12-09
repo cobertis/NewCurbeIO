@@ -1192,6 +1192,13 @@ export function WebPhoneFloatingWindow() {
   const isTelnyxCall = hasTelnyxNumber && (telnyxCurrentCall || telnyxIncomingCall);
   
   // Build effective call object for UI rendering
+  // Filter out default SDK caller names that aren't useful
+  const isValidCallerName = (name: string | undefined | null): boolean => {
+    if (!name) return false;
+    const invalidNames = ['Outbound Call', 'Unknown Caller', 'Unknown', 'Curbe', ''];
+    return !invalidNames.includes(name.trim());
+  };
+  
   const effectiveCall = useMemo(() => {
     if (telnyxCurrentCall) {
       const callState = (telnyxCurrentCall as any).state;
@@ -1201,11 +1208,13 @@ export function WebPhoneFloatingWindow() {
       const otherPartyNumber = callDirection === 'inbound'
         ? (telnyxCurrentCall as any).options?.remoteCallerNumber || 'Unknown'
         : (telnyxCurrentCall as any).options?.destinationNumber || 'Unknown';
-      // Priority for display name: 1) Database lookup, 2) Telnyx CNAM, 3) Unknown
+      // Priority for display name: 1) Database lookup, 2) Valid Telnyx CNAM, 3) null (fallback to "Unknown Caller")
       const sdkCallerName = (telnyxCurrentCall as any).options?.callerName || 
                             (telnyxCurrentCall as any).options?.callerIdName || 
                             (telnyxCurrentCall as any).options?.cnam_caller_id_name;
-      const displayName = telnyxCallerName || sdkCallerName || null;
+      // Only use sdkCallerName if it's a valid/useful name
+      const validSdkName = isValidCallerName(sdkCallerName) ? sdkCallerName : null;
+      const displayName = telnyxCallerName || validSdkName || null;
       return {
         phoneNumber: otherPartyNumber,
         displayName,
@@ -1215,11 +1224,13 @@ export function WebPhoneFloatingWindow() {
       };
     }
     if (telnyxIncomingCall) {
-      // Priority for display name: 1) Database lookup, 2) Telnyx CNAM, 3) Unknown
+      // Priority for display name: 1) Database lookup, 2) Valid Telnyx CNAM, 3) null (fallback to "Unknown Caller")
       const sdkCallerName = (telnyxIncomingCall as any).options?.callerName || 
                             (telnyxIncomingCall as any).options?.callerIdName || 
                             (telnyxIncomingCall as any).options?.cnam_caller_id_name;
-      const displayName = telnyxCallerName || sdkCallerName || null;
+      // Only use sdkCallerName if it's a valid/useful name
+      const validSdkName = isValidCallerName(sdkCallerName) ? sdkCallerName : null;
+      const displayName = telnyxCallerName || validSdkName || null;
       return {
         phoneNumber: (telnyxIncomingCall as any).options?.remoteCallerNumber || 'Unknown',
         displayName,
