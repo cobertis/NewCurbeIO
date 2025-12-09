@@ -27631,11 +27631,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Use direction value directly for Credential Connections
       let noiseSuppressionLevel = "disabled";
       if (enabled) {
-        // Map direction to level: outbound/inbound -> medium, both -> high
+        // Use direction value directly: disabled, inbound, outbound, both
         if (direction === "both") {
-          noiseSuppressionLevel = "high";
+          noiseSuppressionLevel = "both";
         } else {
-          noiseSuppressionLevel = "medium";
+          noiseSuppressionLevel = direction;
         }
       }
       
