@@ -333,7 +333,9 @@ class TelnyxWebRTCManager {
       });
       
       this.client.on('telnyx.notification', (notification: any) => {
-        console.log('[Telnyx WebRTC] Notification:', notification.type, 'call state:', notification.call?.state, 'direction:', notification.call?.direction);
+        // Resolve direction from payload (most reliable) or fall back to call object
+        const resolvedDirection = notification.payload?.direction ?? notification.call?.direction ?? notification.call?.options?.direction;
+        console.log('[Telnyx WebRTC] Notification:', notification.type, 'call state:', notification.call?.state, 'direction:', resolvedDirection);
         
         if (notification.type === 'callUpdate') {
           const call = notification.call;
@@ -342,18 +344,18 @@ class TelnyxWebRTCManager {
           if (call.state === 'ringing' || call.state === 'new') {
             console.log('[Telnyx WebRTC] Call details:', {
               state: call.state,
-              direction: call.direction,
+              direction: resolvedDirection,
+              payloadDirection: notification.payload?.direction,
+              callDirection: call.direction,
               remoteCallerNumber: call.options?.remoteCallerNumber,
-              callerIdNumber: call.options?.callerIdNumber,
               destinationNumber: call.options?.destinationNumber,
               id: call.id
             });
           }
           
-          // Handle incoming calls - detect by remoteCallerNumber presence when direction is null/undefined
-          // Telnyx SDK sometimes returns null for direction on inbound calls
-          const isInboundCall = call.direction === 'inbound' || 
-            (call.direction == null && call.options?.remoteCallerNumber && !this.isOutboundCallInProgress);
+          // Handle incoming calls - check payload.direction first, then fall back to remoteCallerNumber detection
+          const isInboundCall = resolvedDirection === 'inbound' || 
+            (!resolvedDirection && call.options?.remoteCallerNumber && !this.isOutboundCallInProgress);
           
           if ((call.state === 'ringing' || call.state === 'new') && isInboundCall) {
             console.log('[Telnyx WebRTC] Incoming call from:', call.options?.remoteCallerNumber);
@@ -380,25 +382,37 @@ class TelnyxWebRTCManager {
             store.setCurrentCall(call);
             store.setIncomingCall(undefined);
             
+            // Determine direction using resolved value or inference
+            const callDirection = resolvedDirection || 
+              (call.options?.remoteCallerNumber ? 'inbound' : 'outbound');
+            
             // Record call start time and info for logging
             this.currentCallStartTime = new Date();
-            const fromNum = call.direction === 'inbound' 
+            const fromNum = callDirection === 'inbound' 
               ? (call.options?.remoteCallerNumber || 'Unknown')
               : (store.callerIdNumber || 'Unknown');
-            const toNum = call.direction === 'inbound'
+            const toNum = callDirection === 'inbound'
               ? (store.callerIdNumber || 'Unknown')
               : call.options?.destinationNumber || 'Unknown';
             this.currentCallInfo = {
               callId: call.id || `webrtc-${Date.now()}`,
               fromNumber: fromNum,
               toNumber: toNum,
-              direction: call.direction as 'inbound' | 'outbound',
+              direction: callDirection as 'inbound' | 'outbound',
             };
             this.logCallToServer('active');
             
+            // Connect remote audio stream
+            console.log('[Telnyx WebRTC] Setting up audio, audioElement:', !!this.audioElement, 'remoteStream:', !!call.remoteStream);
             if (this.audioElement && call.remoteStream) {
               this.audioElement.srcObject = call.remoteStream;
-              this.audioElement.play().catch(console.error);
+              this.audioElement.volume = 1.0;
+              this.audioElement.muted = false;
+              this.audioElement.play()
+                .then(() => console.log('[Telnyx WebRTC] Audio playback started successfully'))
+                .catch(err => console.error('[Telnyx WebRTC] Audio playback error:', err));
+            } else {
+              console.warn('[Telnyx WebRTC] Missing audioElement or remoteStream for audio playback');
             }
           } else if (call.state === 'hangup' || call.state === 'destroy') {
             console.log('[Telnyx WebRTC] Call ended');
