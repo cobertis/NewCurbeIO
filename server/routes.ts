@@ -27788,6 +27788,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/update-webrtc-config - Update existing credential connection for WebRTC
+  app.post("/api/telnyx/update-webrtc-config", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      // Only admins can update WebRTC configuration
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only admins can update WebRTC configuration" });
+      }
+
+      const { updateCredentialConnectionForWebRTC } = await import("./services/telnyx-e911-service");
+      const result = await updateCredentialConnectionForWebRTC(user.companyId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: "WebRTC configuration updated successfully. Codecs: OPUS, G722, G711U, G711A. Encryption: SRTP enabled." 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Failed to update WebRTC configuration" 
+        });
+      }
+    } catch (error: any) {
+      console.error("[WebRTC Config] Update error:", error);
+      res.status(500).json({ message: "Failed to update WebRTC configuration" });
+    }
+  });
+
+
   // =====================================================
   // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================

@@ -287,12 +287,30 @@ async function getOrCreateCredentialConnection(
         password: sipPassword,
         active: true,
         anchorsite_override: "Latency",
+        // WebRTC requires SRTP encryption
+        encrypted_media: "SRTP",
+        // DTMF type for WebRTC compatibility
+        dtmf_type: "RFC 2833",
+        // Enable comfort noise when call is on hold
+        default_on_hold_comfort_noise_enabled: true,
+        // RTCP settings for call quality monitoring
+        rtcp_settings: {
+          port: "rtcp-mux",
+          capture_enabled: true,
+          report_frequency_secs: 10,
+        },
         outbound: {
           outbound_voice_profile_id: outboundVoiceProfileId,
           channel_limit: 10,
+          generate_ringback_tone: true,
         },
         inbound: {
           channel_limit: 10,
+          // WebRTC codec priority: OPUS first (HD voice), then G722, G711
+          codecs: ["OPUS", "G722", "G711U", "G711A"],
+          generate_ringback_tone: true,
+          // Enable SHAKEN/STIR for caller ID verification
+          shaken_stir_enabled: true,
         },
       }),
     });
@@ -939,5 +957,73 @@ export async function generateWebRTCToken(
   } catch (error) {
     console.error("[WebRTC] Generate token error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to generate token" };
+  }
+}
+
+/**
+ * Update an existing credential connection to enable WebRTC-optimized settings
+ * including OPUS codec, SRTP encryption, and other optimizations
+ */
+export async function updateCredentialConnectionForWebRTC(
+  companyId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Managed account not configured" };
+    }
+
+    const [settings] = await db
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (!settings?.credentialConnectionId) {
+      return { success: false, error: "No credential connection found" };
+    }
+
+    const connectionId = settings.credentialConnectionId;
+    console.log(`[E911] Updating credential connection ${connectionId} for WebRTC...`);
+
+    const response = await fetch(`${TELNYX_API_BASE}/credential_connections/${connectionId}`, {
+      method: "PATCH",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        // WebRTC requires SRTP encryption
+        encrypted_media: "SRTP",
+        // DTMF type for WebRTC compatibility
+        dtmf_type: "RFC 2833",
+        // Enable comfort noise when call is on hold
+        default_on_hold_comfort_noise_enabled: true,
+        // RTCP settings for call quality monitoring
+        rtcp_settings: {
+          port: "rtcp-mux",
+          capture_enabled: true,
+          report_frequency_secs: 10,
+        },
+        inbound: {
+          // WebRTC codec priority: OPUS first (HD voice), then G722, G711
+          codecs: ["OPUS", "G722", "G711U", "G711A"],
+          generate_ringback_tone: true,
+          // Enable SHAKEN/STIR for caller ID verification
+          shaken_stir_enabled: true,
+        },
+        outbound: {
+          generate_ringback_tone: true,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[E911] Failed to update credential connection: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to update connection: ${response.status} - ${errorText}` };
+    }
+
+    console.log(`[E911] Credential connection ${connectionId} updated for WebRTC successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error("[E911] Update credential connection error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update connection" };
   }
 }
