@@ -431,13 +431,21 @@ class TelnyxWebRTCManager {
             this.stopRingback(); // Stop ringback when call is answered
             this.stopRingtone(); // Stop ringtone when call is answered
             
-            // CRITICAL: Explicitly unmute audio to ensure local track is transmitting immediately
-            // Browsers may start tracks muted by default, causing 5-second audio delay
+            // CRITICAL: Unmute and unhold to ensure RTP audio starts transmitting immediately
+            // The 5-second audio delay occurs because the call may start in a held/muted state
             try {
+              // First unmute local audio
               call.unmuteAudio();
               console.log('[Telnyx WebRTC] Audio explicitly unmuted on call active');
+              
+              // CRITICAL: Call unhold() to start RTP transmission immediately
+              // Without this, audio may be blocked waiting for server ACK
+              if (typeof call.unhold === 'function') {
+                call.unhold();
+                console.log('[Telnyx WebRTC] Call unhold() called to start RTP transmission');
+              }
             } catch (e) {
-              console.warn('[Telnyx WebRTC] Could not unmute audio:', e);
+              console.warn('[Telnyx WebRTC] Could not unmute/unhold audio:', e);
             }
             
             // DEBUG: Log detailed stream information to diagnose audio issues
@@ -574,10 +582,11 @@ class TelnyxWebRTCManager {
   public hangup(): void {
     const store = useTelnyxStore.getState();
     const currentCall = store.currentCall;
+    const callDirection = store.currentCallDirection;
     
     if (currentCall) {
       const callState = currentCall.state;
-      console.log('[Telnyx WebRTC] Hanging up, call state:', callState);
+      console.log('[Telnyx WebRTC] Hanging up, call state:', callState, 'direction:', callDirection);
       
       // Stop tones immediately for better UX
       this.stopRingback();
@@ -589,11 +598,34 @@ class TelnyxWebRTCManager {
         this.audioElement.srcObject = null;
       }
       
-      // CRITICAL: Call hangup() FIRST, then let the notification handler clean up state
-      // The notification handler at 'hangup'/'destroy' state already clears the store
-      // Clearing state before hangup() causes the SDK to lose the call reference
+      // CRITICAL: For inbound active calls, use disconnect() instead of hangup()
+      // hangup() on inbound active calls causes SIP 486 "User Busy" error
+      // because it sends CANCEL instead of proper BYE sequence
       if (callState !== 'hangup' && callState !== 'destroy' && callState !== 'purge') {
-        currentCall.hangup();
+        try {
+          if (callDirection === 'inbound' && callState === 'active') {
+            // For answered inbound calls, use disconnect() to properly terminate
+            if (typeof (currentCall as any).disconnect === 'function') {
+              console.log('[Telnyx WebRTC] Using disconnect() for inbound active call');
+              (currentCall as any).disconnect();
+            } else {
+              // Fallback to hangup if disconnect not available
+              console.log('[Telnyx WebRTC] disconnect() not available, using hangup()');
+              currentCall.hangup();
+            }
+          } else {
+            // For outbound calls or early-state calls, use hangup()
+            console.log('[Telnyx WebRTC] Using hangup() for', callDirection, 'call in state', callState);
+            currentCall.hangup();
+          }
+        } catch (e) {
+          console.error('[Telnyx WebRTC] Error terminating call:', e);
+          // Force cleanup on error
+          store.setCurrentCall(undefined);
+          store.setIncomingCall(undefined);
+          store.setMuted(false);
+          store.setOnHold(false);
+        }
         // State cleanup will happen in the notification handler when call reaches 'hangup' state
       } else {
         // Call already ended by remote party, just clean up state
