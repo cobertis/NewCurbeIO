@@ -406,20 +406,34 @@ class TelnyxWebRTCManager {
       this.client.on('telnyx.notification', (notification: any) => {
         const call = notification.call;
         
-        // Infer direction: if we have remoteCallerNumber and it's different from our callerIdNumber, it's inbound
-        const callerIdNumber = store.callerIdNumber;
+        // CRITICAL: Get fresh store state for each notification (not cached from initialize)
+        const currentStore = useTelnyxStore.getState();
+        const callerIdNumber = currentStore.callerIdNumber;
         const remoteNumber = call?.options?.remoteCallerNumber;
         const destinationNumber = call?.options?.destinationNumber;
         
         // Direction inference: 
-        // - If remoteCallerNumber exists and is NOT our number -> inbound
-        // - If we initiated the call (destinationNumber is set by us) -> outbound
+        // - If destinationNumber matches our callerIdNumber -> inbound (someone calling us)
+        // - Otherwise -> outbound (we're calling someone)
         let inferredDirection = call?.direction;
-        if (!inferredDirection && remoteNumber && destinationNumber) {
-          // Normalize numbers for comparison (remove + and country code variations)
-          const normalizeNum = (n: string) => n?.replace(/\D/g, '').slice(-10) || '';
-          const isInbound = normalizeNum(destinationNumber) === normalizeNum(callerIdNumber);
+        if (!inferredDirection && destinationNumber) {
+          // Normalize numbers for comparison (remove + and non-digits, take last 10 digits)
+          const normalizeNum = (n: string) => (n || '').replace(/\D/g, '').slice(-10);
+          const normalizedDestination = normalizeNum(destinationNumber);
+          const normalizedCallerIdNumber = normalizeNum(callerIdNumber || '');
+          
+          // If destination matches our number, it's an inbound call
+          const isInbound = normalizedDestination === normalizedCallerIdNumber && normalizedCallerIdNumber.length > 0;
           inferredDirection = isInbound ? 'inbound' : 'outbound';
+          
+          console.log('[Telnyx WebRTC] Direction inference:', {
+            destinationNumber,
+            callerIdNumber,
+            normalizedDestination,
+            normalizedCallerIdNumber,
+            isInbound,
+            inferredDirection,
+          });
         }
         
         console.log('[Telnyx WebRTC] Notification:', notification.type, {
