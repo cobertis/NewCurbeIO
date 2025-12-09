@@ -356,13 +356,10 @@ class TelnyxWebRTCManager {
         // Continue - user can still receive audio
       }
       
+      // CRITICAL: Do NOT override iceServers - the SDK automatically includes 
+      // TURN credentials from Telnyx which are required for reliable NAT traversal.
+      // Passing custom iceServers with only STUN causes 5+ second audio delay.
       this.client = new TelnyxRTC({
-        // ICE servers for better NAT traversal
-        iceServers: [
-          { urls: "stun:stun.telnyx.com:3478" },
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:stun1.l.google.com:19302" },
-        ],
         login: sipUsername,
         password: sipPassword,
         ringtoneFile: undefined,
@@ -584,17 +581,32 @@ class TelnyxWebRTCManager {
     const currentCall = store.currentCall;
     
     if (currentCall) {
-      // CRITICAL: Only call hangup() if the call is still in a hangupable state
-      // If the remote party already hung up (state is 'hangup' or 'destroy'), 
-      // calling hangup() will send a 486 Busy response instead of accepting the BYE
+      // CRITICAL: Clear store state and stop audio BEFORE calling hangup()
+      // This prevents the SDK from sending a 486 Busy response when
+      // the notification handler sees the hangup event while state is still "active"
       const callState = currentCall.state;
-      if (callState === 'hangup' || callState === 'destroy' || callState === 'purge') {
-        console.log('[Telnyx WebRTC] Call already ended by remote party, just clearing state');
-      } else {
-        console.log('[Telnyx WebRTC] Hanging up, call state:', callState);
+      console.log('[Telnyx WebRTC] Hanging up, call state:', callState);
+      
+      // Clear state FIRST to prevent re-entry issues
+      store.setCurrentCall(undefined);
+      store.setIncomingCall(undefined);
+      store.setMuted(false);
+      store.setOnHold(false);
+      this.stopRingback();
+      this.stopRingtone();
+      
+      // Stop audio playback
+      if (this.audioElement) {
+        this.audioElement.pause();
+        this.audioElement.srcObject = null;
+      }
+      
+      // Only call hangup() if the call is still in a hangupable state
+      // If the remote party already hung up (state is 'hangup' or 'destroy'), 
+      // calling hangup() will send a 486 Busy response
+      if (callState !== 'hangup' && callState !== 'destroy' && callState !== 'purge') {
         currentCall.hangup();
       }
-      store.setCurrentCall(undefined);
     }
   }
   

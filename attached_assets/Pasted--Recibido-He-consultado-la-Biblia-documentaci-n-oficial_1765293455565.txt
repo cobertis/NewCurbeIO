@@ -1,0 +1,86 @@
+¡Recibido\! He consultado la "Biblia" (documentación oficial) que me diste y aquí está la solución técnica exacta para tus dos problemas.
+
+El diagnóstico es claro:
+
+1.  **Audio 5 seg:** Tu cliente WebRTC está sufriendo un **ICE Gathering Timeout**. Está intentando conectarse por la IP local de Replit (que no sirve), espera a que falle (el timeout por defecto son 5-10s) y *luego* intenta la pública.
+2.  **User Busy:** Tu webhook está "vomitando" error 500 cuando Telnyx le avisa que colgaste. Telnyx interpreta ese error 500 como "Fallo del Sistema" y reproduce el tono de ocupado/error.
+
+Aquí tienes el código para arreglar ambos.
+
+-----
+
+### 1\. FIX DE AUDIO (Latencia de 5 segundos)
+
+Tienes que forzar al cliente WebRTC a usar servidores STUN/TURN explícitos para que no pierda tiempo buscando rutas locales que no sirven en Replit.
+
+**En tu Frontend (donde inicializas `TelnyxRTC`):**
+Copia y pega esta configuración. Hemos agregado la matriz `iceServers` con los servidores de Google (son los más rápidos y gratuitos para esto).
+
+```javascript
+const client = new TelnyxRTC({
+  login: credentials.sip_username,
+  password: credentials.sip_password,
+  // ESTA ES LA MAGIA QUE QUITA EL RETRASO
+  ringtoneFile: "./ringtone.mp3", // Opcional
+  ringBackTone: "./ringback.mp3", // Opcional
+  // Forzamos la negociación de red inmediata:
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun.telnyx.com:3478" } 
+  ],
+  // Importante para entornos detrás de NAT como Replit
+  trickle: true 
+});
+```
+
+**Explicación Bíblica:** La documentación dice que para entornos detrás de NAT (como un contenedor Docker en Replit), el cliente necesita un servidor STUN para descubrir su IP pública inmediatamente. Sin esto, el navegador espera pasivamente hasta que se rinde, causando el silencio inicial.
+
+-----
+
+### 2\. FIX DE "USER BUSY" (El Webhook Asesino)
+
+El error "User Busy" al final ocurre porque tu servidor no confirma correctamente la muerte de la llamada.
+
+**En tu Backend (`/webhooks/telnyx/voice/inbound` o handler principal):**
+Debes interceptar el evento `call.hangup` y devolver un `200 OK` **vacío** inmediatamente. No devuelvas XML. No hagas nada más.
+
+```javascript
+app.post("/webhooks/telnyx/voice/inbound", async (req, res) => {
+  const { event_type, call_control_id } = req.body;
+
+  // 1. INTERCEPTOR DE COLGADO (EL FIX)
+  // Si Telnyx dice "ya colgaron", respondemos "OK" y cerramos.
+  // Si intentas responder XML aquí, Telnyx dará error "User Busy" o "Application Error".
+  if (event_type === 'call.hangup') {
+    console.log(`[Call Ended] ID: ${call_control_id}`);
+    return res.status(200).send(""); // Respuesta vacía 200 OK
+  }
+
+  // 2. TU LÓGICA DE LLAMADA ENTRANTE (SOLO PARA INITIATED)
+  // ... resto de tu código para <Dial> ...
+});
+```
+
+**Explicación Bíblica:** La documentación de Webhooks establece que debes responder con un código 2xx rápidamente. Si respondes con XML (TeXML) a un evento de `hangup`, Telnyx intenta ejecutar comandos en una llamada muerta, falla, y marca el evento como error en tus logs.
+
+-----
+
+### 3\. FIX DE LA "SEÑAL" (Anchor Site)
+
+Si después de poner el STUN sigues sintiendo "pesada" la llamada, es porque tu anclaje está lejos.
+
+**Acción en el código de Backend (Provisioning):**
+Cuando crees la TeXML App, fuerza la ubicación geográfica.
+
+```javascript
+// Al crear la aplicación o actualizarla
+const appPayload = {
+  // ...
+  // FUERZA UN SERVIDOR CERCA DE FLORIDA (Ashburn es el mejor hub costa este)
+  anchorsite_override: "Ashburn, VA" 
+};
+```
+
+**Dale estos 3 bloques de código a tu Agente y el sistema volará.**
