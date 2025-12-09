@@ -1,0 +1,187 @@
+root@ubuntu:/var/www/curbe# cd /var/www/curbe
+root@ubuntu:/var/www/curbe# pm2 stop curbe-admin
+[PM2] Applying action stopProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ fork    │ 0        │ 0      │ 55   │ stopped   │ 0%       │ 0b       │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@ubuntu:/var/www/curbe# npm ci
+npm run build
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm warn deprecated querystring@0.2.0: The querystring API is considered Legacy. new code should use the URLSearchParams API instead.
+npm warn deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+
+added 882 packages, and audited 883 packages in 9s
+
+134 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (3 low, 5 moderate, 10 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.21 building for production...
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 4193 modules transformed.
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/client/src/hooks/use-toast.ts is dynamically imported by /var/www/curbe/client/src/services/webphone.ts, /var/www/curbe/client/src/services/webphone.ts but also statically imported by /var/www/curbe/client/src/App.tsx, /var/www/curbe/client/src/components/E911ConfigDialog.tsx, /var/www/curbe/client/src/components/EmergencyAddressForm.tsx, /var/www/curbe/client/src/components/PolicyRenewalComparison.tsx, /var/www/curbe/client/src/components/WebPhoneFloatingWindow.tsx, /var/www/curbe/client/src/components/appointment-booking-inline.tsx, /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/components/campaigns/campaign-form-dialog.tsx, /var/www/curbe/client/src/components/chat/number-provision-modal.tsx, /var/www/curbe/client/src/components/chat/phone-settings-modal.tsx, /var/www/curbe/client/src/components/company-billing-tab.tsx, /var/www/curbe/client/src/components/email-templates-manager.tsx, /var/www/curbe/client/src/components/manage-payment-methods-dialog.tsx, /var/www/curbe/client/src/components/new-event-dialog.tsx, /var/www/curbe/client/src/components/public-block-renderer.tsx, /var/www/curbe/client/src/components/ui/toaster.tsx, /var/www/curbe/client/src/components/upload-avatar-dialog.tsx, /var/www/curbe/client/src/lib/status-editor.ts, /var/www/curbe/client/src/pages/activate-account.tsx, /var/www/curbe/client/src/pages/appointment-settings.tsx, /var/www/curbe/client/src/pages/audit-logs.tsx, /var/www/curbe/client/src/pages/billing.tsx, /var/www/curbe/client/src/pages/birthday-images.tsx, /var/www/curbe/client/src/pages/blacklist.tsx, /var/www/curbe/client/src/pages/campaigns.tsx, /var/www/curbe/client/src/pages/companies.tsx, /var/www/curbe/client/src/pages/company-detail.tsx, /var/www/curbe/client/src/pages/contacts.tsx, /var/www/curbe/client/src/pages/features.tsx, /var/www/curbe/client/src/pages/forgot-password.tsx, /var/www/curbe/client/src/pages/imessage-campaign-detail.tsx, /var/www/curbe/client/src/pages/imessage-campaigns.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/incoming-sms.tsx, /var/www/curbe/client/src/pages/landing-page.tsx, /var/www/curbe/client/src/pages/leads.tsx, /var/www/curbe/client/src/pages/login.tsx, /var/www/curbe/client/src/pages/marketplace-plans.tsx, /var/www/curbe/client/src/pages/notifications.tsx, /var/www/curbe/client/src/pages/phone-system.tsx, /var/www/curbe/client/src/pages/plan-selection.tsx, /var/www/curbe/client/src/pages/plans.tsx, /var/www/curbe/client/src/pages/policies.tsx, /var/www/curbe/client/src/pages/public-consent.tsx, /var/www/curbe/client/src/pages/public-landing-page.tsx, /var/www/curbe/client/src/pages/quotes.tsx, /var/www/curbe/client/src/pages/register.tsx, /var/www/curbe/client/src/pages/reset-password.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/sms-mms.tsx, /var/www/curbe/client/src/pages/system-alerts.tsx, /var/www/curbe/client/src/pages/system-settings.tsx, /var/www/curbe/client/src/pages/tasks.tsx, /var/www/curbe/client/src/pages/tickets.tsx, /var/www/curbe/client/src/pages/user-detail.tsx, /var/www/curbe/client/src/pages/users.tsx, /var/www/curbe/client/src/pages/verify-otp.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/react/dist/module.js is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/data/sets/15/native.json is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+../dist/public/index.html                                                 2.10 kB │ gzip:     0.82 kB
+../dist/public/assets/logo no fondo_1760457183587-BR-LiXG_.png           45.10 kB
+../dist/public/assets/Generic_user_avatar_icon_55b842ef-BGsZDgwn.png    456.74 kB
+../dist/public/assets/index-xrCW_ppc.css                                189.04 kB │ gzip:    28.12 kB
+../dist/public/assets/index-cDGBcKnU.js                               4,701.23 kB │ gzip: 1,142.99 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 17.36s
+▲ [WARNING] Duplicate member "markConversationAsRead" in class body [duplicate-class-member]
+
+    server/storage.ts:10718:8:
+      10718 │   async markConversationAsRead(conversationId: string): Promise<void> {
+            ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+  The original member "markConversationAsRead" is here:
+
+    server/storage.ts:2953:8:
+      2953 │   async markConversationAsRead(phoneNumber: string, companyId?: string): Promise<void> {
+           ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+1 warning
+
+  dist/index.js  1.9mb ⚠️
+
+⚡ Done in 90ms
+root@ubuntu:/var/www/curbe# ls -la dist/public/
+total 1208
+drwxr-xr-x 3 root root    4096 Dec  9 02:16 .
+drwxr-xr-x 3 root root    4096 Dec  4 16:45 ..
+drwxr-xr-x 2 root root    4096 Dec  9 02:16 assets
+-rw-r--r-- 1 root root    2103 Dec  9 02:16 index.html
+-rw-r--r-- 1 root root 1203108 Dec  9 02:16 ringback.mp3
+-rw-r--r-- 1 root root   12727 Dec  9 02:16 ringtone.mp3
+root@ubuntu:/var/www/curbe# pm2 start curbe-admin --update-env && pm2 logs curbe-admin
+[PM2] Applying action restartProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+[PM2] Process successfully started
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ fork    │ 1358492  │ 0s     │ 55   │ online    │ 0%       │ 3.3mb    │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[TAILING] Tailing last 15 lines for [curbe-admin] process (change the value with --lines option)
+/root/.pm2/logs/curbe-admin-error.log last 15 lines:
+0|curbe-ad |     at async Promise.all (index 1)
+0|curbe-ad |     at async CredentialProvider.getImapBounce (file:///var/www/curbe/dist/index.js:12055:51)
+0|curbe-ad |     at async processBouncedEmails (file:///var/www/curbe/dist/index.js:46262:23)
+0|curbe-ad |     at async Timeout._onTimeout (file:///var/www/curbe/dist/index.js:46387:7)
+0|curbe-ad | 2:13:50 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=INJCujFtw7GsXtXx5fKUU (resolved id: /src/main.tsx?v=INJCujFtw7GsXtXx5fKUU). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:13:59 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=KiGv-vGSEG_Ao47h151bO (resolved id: /src/main.tsx?v=KiGv-vGSEG_Ao47h151bO). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:14:03 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=IM2EuUKlw8k0HajzusQ4p (resolved id: /src/main.tsx?v=IM2EuUKlw8k0HajzusQ4p). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+
+/root/.pm2/logs/curbe-admin-out.log last 15 lines:
+0|curbe-ad | [EMAIL] Email service connected successfully on startup
+0|curbe-ad | [2025-12-09 02:14:05] DEBUG [gfgBUaFfgQ] S: 221 2.0.0 Bye
+0|curbe-ad | [2025-12-09 02:14:05] DEBUG [gfgBUaFfgQ] Closing connection to the server using "end"
+0|curbe-ad | [2025-12-09 02:14:05] INFO  [gfgBUaFfgQ] Connection closed
+0|curbe-ad | [ContactRegistry] Skipping auto-backfill for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 (Cobertis Insurance) - 66 contacts, 83 policies (ratio 1.3:1)
+0|curbe-ad | [ContactRegistry] Auto-backfill check complete
+0|curbe-ad | [BOUNCE PROCESSOR] Running initial check...
+0|curbe-ad | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-ad | [BOUNCE PROCESSOR] IMAP connection established
+0|curbe-ad | [BOUNCE PROCESSOR] INBOX opened, 0 total messages
+0|curbe-ad | [BOUNCE PROCESSOR] No unseen messages found
+0|curbe-ad | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-ad | [BOUNCE PROCESSOR] IMAP connection established
+0|curbe-ad | [BOUNCE PROCESSOR] INBOX opened, 0 total messages
+0|curbe-ad | [BOUNCE PROCESSOR] No unseen messages found
+
+0|curbe-admin  | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-admin  | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-admin  | 2:16:42 AM [express] serving on port 5000
+0|curbe-admin  | [Campaign Studio] Running data backfill...
+0|curbe-admin  | [REMINDER SCHEDULER] Starting scheduler...
+0|curbe-admin  | [REMINDER SCHEDULER] Scheduler started successfully
+0|curbe-admin  | [BIRTHDAY SCHEDULER] Starting scheduler...
+0|curbe-admin  | [BIRTHDAY SCHEDULER] Scheduler started successfully (runs hourly at :00)
+0|curbe-admin  | [CAMPAIGN PROCESSOR] Starting processor...
+0|curbe-admin  | [CAMPAIGN PROCESSOR] Processor started (runs every 10 seconds)
+0|curbe-admin  | [BOUNCE PROCESSOR] Starting scheduler...
+0|curbe-admin  | [BOUNCE PROCESSOR] Scheduler started (runs every 5 minutes)
+0|curbe-admin  | [ContactRegistry] Checking if auto-backfill is needed...
+0|curbe-admin  | [Campaign Studio] Fixed 0 system templates
+0|curbe-admin  | [Campaign Studio] Fixed 0 system categories
+0|curbe-admin  | [2025-12-09 02:16:42] DEBUG Creating transport: nodemailer (7.0.10; +https://nodemailer.com/; SMTP/7.0.10[client:7.0.10])
+0|curbe-admin  | Email service initialized successfully
+0|curbe-admin  | [Campaign Studio] Fixed 0 system placeholders
+0|curbe-admin  | [Campaign Studio] System data already exists, skipping seed
+0|curbe-admin  | [2025-12-09 02:16:42] DEBUG [fwYiv7I5xVg] Resolved mail.auth.curbe.io as 74.208.235.84 [cache miss]
+0|curbe-admin  | [2025-12-09 02:16:42] INFO  [fwYiv7I5xVg] Connection established to 74.208.235.84:587
+0|curbe-admin  | [ContactRegistry] Skipping auto-backfill for company 9872cf84-5a8a-4616-aa9c-2cd7e43fbacd (The UPS Store) - 0 contacts, 0 policies (ratio 0.0:1)
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 220 server.curbe.io ESMTP Postfix (Ubuntu)
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] C: EHLO [127.0.0.1]
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-server.curbe.io
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-PIPELINING
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-SIZE 10240000
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-ETRN
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-STARTTLS
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-ENHANCEDSTATUSCODES
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-8BITMIME
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-DSN
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250 CHUNKING
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] C: STARTTLS
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 220 2.0.0 Ready to start TLS
+0|curbe-admin  | [ContactRegistry] Skipping auto-backfill for company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7 (DLS Insurance Group) - 3 contacts, 2 policies (ratio 0.7:1)
+0|curbe-admin  | [2025-12-09 02:16:43] INFO  [fwYiv7I5xVg] Connection upgraded with STARTTLS
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] C: EHLO [127.0.0.1]
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-server.curbe.io
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-PIPELINING
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-SIZE 10240000
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-ETRN
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-AUTH DIGEST-MD5 CRAM-MD5 PLAIN LOGIN
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-ENHANCEDSTATUSCODES
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-8BITMIME
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250-DSN
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 250 CHUNKING
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] SMTP handshake finished
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] C: AUTH PLAIN AG5vLXJlcGx5QGF1dGguY3VyYmUuaW8ALyogc2VjcmV0ICov
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 235 2.7.0 Authentication successful
+0|curbe-admin  | [2025-12-09 02:16:43] INFO  [fwYiv7I5xVg] User "no-reply@auth.curbe.io" authenticated
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] C: QUIT
+0|curbe-admin  | SMTP connection verified successfully
+0|curbe-admin  | [EMAIL] Email service connected successfully on startup
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] S: 221 2.0.0 Bye
+0|curbe-admin  | [2025-12-09 02:16:43] DEBUG [fwYiv7I5xVg] Closing connection to the server using "end"
+0|curbe-admin  | [2025-12-09 02:16:43] INFO  [fwYiv7I5xVg] Connection closed
+0|curbe-admin  | [ContactRegistry] Skipping auto-backfill for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 (Cobertis Insurance) - 66 contacts, 83 policies (ratio 1.3:1)
+0|curbe-admin  | [ContactRegistry] Auto-backfill check complete
+
