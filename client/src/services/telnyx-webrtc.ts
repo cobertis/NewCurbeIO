@@ -3,15 +3,6 @@ import { create } from 'zustand';
 
 type TelnyxCall = ReturnType<TelnyxRTC['newCall']>;
 
-// Network quality metrics for call quality monitoring
-interface NetworkQualityMetrics {
-  mos: number; // Mean Opinion Score (1-5)
-  jitter: number; // Jitter in ms
-  packetLoss: number; // Packet loss percentage
-  rtt: number; // Round trip time in ms
-  qualityLevel: 'excellent' | 'good' | 'poor';
-}
-
 interface TelnyxWebRTCState {
   isConnected: boolean;
   connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -26,7 +17,6 @@ interface TelnyxWebRTCState {
   isConsulting: boolean; // True when in attended transfer consultation
   callerIdNumber?: string;
   sipUsername?: string;
-  networkQuality?: NetworkQualityMetrics;
   callDuration: number; // Duration in seconds
   
   setConnectionStatus: (status: TelnyxWebRTCState['connectionStatus'], error?: string) => void;
@@ -38,7 +28,6 @@ interface TelnyxWebRTCState {
   setConsulting: (consulting: boolean) => void;
   setCallerIdNumber: (number: string) => void;
   setSipUsername: (username: string) => void;
-  setNetworkQuality: (metrics?: NetworkQualityMetrics) => void;
   setCallDuration: (duration: number) => void;
 }
 
@@ -68,11 +57,8 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setConsulting: (consulting) => set({ isConsulting: consulting }),
   setCallerIdNumber: (number) => set({ callerIdNumber: number }),
   setSipUsername: (username) => set({ sipUsername: username }),
-  setNetworkQuality: (metrics) => set({ networkQuality: metrics }),
   setCallDuration: (duration) => set({ callDuration: duration }),
 }));
-
-export type { NetworkQualityMetrics };
 
 class TelnyxWebRTCManager {
   private static instance: TelnyxWebRTCManager;
@@ -782,47 +768,6 @@ class TelnyxWebRTCManager {
     }
   }
   
-  // Get current call quality metrics (called periodically)
-  public getCallQuality(): void {
-    const store = useTelnyxStore.getState();
-    const currentCall = store.currentCall;
-    
-    if (!currentCall) {
-      store.setNetworkQuality(undefined);
-      return;
-    }
-    
-    try {
-      // Try to get RTC stats from the call
-      const options = (currentCall as any).options || {};
-      const stats = options.stats || {};
-      
-      // Parse quality metrics (these may vary based on Telnyx SDK version)
-      const mos = stats.mos || stats.quality?.mos || 4.0;
-      const jitter = stats.jitter || stats.audio?.jitter || 0;
-      const packetLoss = stats.packetLoss || stats.audio?.packetsLost || 0;
-      const rtt = stats.rtt || stats.roundTripTime || 0;
-      
-      // Calculate quality level
-      let qualityLevel: 'excellent' | 'good' | 'poor' = 'excellent';
-      if (mos < 3.0 || packetLoss > 5) {
-        qualityLevel = 'poor';
-      } else if (mos < 4.0 || packetLoss > 1) {
-        qualityLevel = 'good';
-      }
-      
-      store.setNetworkQuality({
-        mos,
-        jitter,
-        packetLoss,
-        rtt,
-        qualityLevel,
-      });
-    } catch (error) {
-      console.error('[Telnyx WebRTC] Failed to get call quality:', error);
-    }
-  }
-  
   public disconnect(): void {
     if (this.client) {
       this.client.disconnect();
@@ -835,7 +780,6 @@ class TelnyxWebRTCManager {
     store.setIncomingCall(undefined);
     store.setConsultCall(undefined);
     store.setConsulting(false);
-    store.setNetworkQuality(undefined);
   }
   
   public isInitialized(): boolean {

@@ -17,7 +17,6 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { NetworkQualityMetrics } from '@/services/telnyx-webrtc';
 
 // DTMF Keypad Component for in-call digit sending
 interface DtmfKeypadProps {
@@ -97,57 +96,6 @@ function DtmfKeypad({ onSendDigit, onClose }: DtmfKeypadProps) {
         ))}
       </div>
     </div>
-  );
-}
-
-// Network Quality Indicator Component (Traffic Light)
-interface NetworkQualityIndicatorProps {
-  quality?: NetworkQualityMetrics;
-}
-
-function NetworkQualityIndicator({ quality }: NetworkQualityIndicatorProps) {
-  if (!quality) return null;
-  
-  const getQualityColor = () => {
-    switch (quality.qualityLevel) {
-      case 'excellent': return 'bg-green-500';
-      case 'good': return 'bg-yellow-500';
-      case 'poor': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-  
-  const getQualityLabel = () => {
-    switch (quality.qualityLevel) {
-      case 'excellent': return 'Excellent';
-      case 'good': return 'Fair';
-      case 'poor': return 'Poor';
-      default: return 'Unknown';
-    }
-  };
-  
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div 
-            className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted/50 cursor-help"
-            data-testid="network-quality-indicator"
-          >
-            <div className={cn("w-2.5 h-2.5 rounded-full animate-pulse", getQualityColor())} />
-            <span className="text-[10px] text-muted-foreground">{getQualityLabel()}</span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
-          <div className="space-y-1">
-            <p>MOS: {quality.mos.toFixed(1)}</p>
-            <p>Jitter: {quality.jitter.toFixed(0)}ms</p>
-            <p>Packet Loss: {quality.packetLoss.toFixed(1)}%</p>
-            {quality.rtt > 0 && <p>Latency: {quality.rtt.toFixed(0)}ms</p>}
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   );
 }
 
@@ -1179,7 +1127,6 @@ export function WebPhoneFloatingWindow() {
   const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
   const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
   const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
-  const telnyxNetworkQuality = useTelnyxStore(state => state.networkQuality);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
@@ -1247,17 +1194,6 @@ export function WebPhoneFloatingWindow() {
     return () => {
       if (telnyxTimerRef.current) clearInterval(telnyxTimerRef.current);
     };
-  }, [telnyxCurrentCall]);
-  
-  // Network quality metrics polling for Telnyx calls
-  useEffect(() => {
-    if (telnyxCurrentCall && (telnyxCurrentCall as any).state === 'active') {
-      const qualityInterval = setInterval(() => {
-        telnyxWebRTC.getCallQuality();
-      }, 5000); // Poll every 5 seconds
-      
-      return () => clearInterval(qualityInterval);
-    }
   }, [telnyxCurrentCall]);
   
   // Reset in-call keypad when call ends
@@ -1794,18 +1730,15 @@ export function WebPhoneFloatingWindow() {
                       {effectiveCall.status === 'answered' && formatDuration(effectiveCallDuration)}
                     </p>
                     
-                    {/* Network Quality Indicator & MUTED Badge */}
-                    <div className="flex items-center justify-center gap-2 mt-2">
-                      {effectiveCall.status === 'answered' && effectiveCall.isTelnyx && (
-                        <NetworkQualityIndicator quality={telnyxNetworkQuality} />
-                      )}
-                      {effectiveMuted && (
+                    {/* MUTED Badge */}
+                    {effectiveMuted && (
+                      <div className="flex items-center justify-center mt-2">
                         <Badge variant="destructive" className="text-xs animate-pulse" data-testid="badge-muted">
                           <MicOff className="h-3 w-3 mr-1" />
                           MUTED
                         </Badge>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Waiting Call Banner */}
