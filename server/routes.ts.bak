@@ -26385,90 +26385,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // POST /webhooks/telnyx/voice/inbound - Handle inbound voice calls (TeXML)
-  // CRITICAL: Must respond in <200ms to avoid call setup delays
   app.post("/webhooks/telnyx/voice/inbound", async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const { from, to, call_control_id, direction } = req.body;
-    
-    // Log asynchronously to not block response
-    setImmediate(() => {
-      console.log("[Telnyx Voice Inbound] Call:", { from, to, direction, call_control_id, responseTime: Date.now() - startTime });
-    });
-
     try {
-      // Normalize phone number for lookup (Telnyx sends with +1 prefix)
-      const normalizedTo = to?.replace(/[^\d+]/g, '') || '';
-      
-      // Fast path: lookup phone number -> company -> SIP credentials
-      // Using indexed queries for speed
-      const phoneNumber = await db
-        .select({ companyId: telnyxPhoneNumbers.companyId })
-        .from(telnyxPhoneNumbers)
-        .where(eq(telnyxPhoneNumbers.phoneNumber, normalizedTo))
-        .limit(1)
-        .then(rows => rows[0]);
-      
-      if (!phoneNumber) {
-        // Phone number not found - respond with error message
-        const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Joanna">This number is not configured. Please contact support.</Say>
-  <Hangup />
-</Response>`;
-        res.set("Content-Type", "application/xml");
-        return res.status(200).send(texmlResponse);
-      }
-      
-      // Get SIP credentials for this company (use first active credential)
-      const credential = await db
-        .select({ sipUsername: telephonyCredentials.sipUsername })
-        .from(telephonyCredentials)
-        .where(and(
-          eq(telephonyCredentials.companyId, phoneNumber.companyId),
-          eq(telephonyCredentials.isActive, true)
-        ))
-        .limit(1)
-        .then(rows => rows[0]);
-      
-      if (!credential?.sipUsername) {
-        // No active SIP credentials - cannot route call
-        const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Joanna">This line is not available. Please try again later.</Say>
-  <Hangup />
-</Response>`;
-        res.set("Content-Type", "application/xml");
-        return res.status(200).send(texmlResponse);
-      }
-      
-      // SUCCESS: Route call to WebRTC client via <Dial><Client>
+      console.log("[Telnyx Voice Inbound] Received call:", {
+        callControlId: req.body.call_control_id,
+        from: req.body.from,
+        to: req.body.to,
+        direction: req.body.direction,
+      });
+
+      // Basic TeXML response - reject with message since WebRTC browser client handles calls
       const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="30" callerId="${from}">
-    <Client>${credential.sipUsername}</Client>
-  </Dial>
-</Response>`;
-      
-      res.set("Content-Type", "application/xml");
-      res.status(200).send(texmlResponse);
-      
-      // Log call routing asynchronously
-      setImmediate(() => {
-        console.log(`[Telnyx Voice Inbound] Routed ${from} -> ${credential.sipUsername} in ${Date.now() - startTime}ms`);
-      });
-      
-    } catch (error: any) {
-      console.error("[Telnyx Voice Inbound] Error:", error.message);
-      // Always return valid XML - never 5xx which causes "User Busy"
-      const fallbackResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Joanna">We are experiencing technical difficulties. Please try again.</Say>
+  <Say voice="Polly.Joanna">Thank you for calling. This number only accepts outbound calls. Please contact us through our website.</Say>
   <Hangup />
 </Response>`;
+
       res.set("Content-Type", "application/xml");
-      res.status(200).send(fallbackResponse);
+      res.status(200).send(texmlResponse);
+    } catch (error: any) {
+      console.error("[Telnyx Voice Inbound] Error:", error);
+      res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
     }
   });
+
   // POST /webhooks/telnyx/voice/status - Handle voice call status callbacks
   app.post("/webhooks/telnyx/voice/status", async (req: Request, res: Response) => {
     try {

@@ -357,6 +357,12 @@ class TelnyxWebRTCManager {
       }
       
       this.client = new TelnyxRTC({
+        // ICE servers for better NAT traversal
+        iceServers: [
+          { urls: "stun:stun.telnyx.com:3478" },
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+        ],
         login: sipUsername,
         password: sipPassword,
         ringtoneFile: undefined,
