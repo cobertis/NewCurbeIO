@@ -14,6 +14,7 @@ export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const ringIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const [state, setState] = useState<TelnyxPhoneState>({
@@ -25,41 +26,62 @@ export const useTelnyxPhone = () => {
     callerIdNumber: '',
   });
 
-  // Play ringtone for incoming calls
+  // Play ringtone for incoming calls - uses Web Audio API with user gesture unlock
   const playRingtone = useCallback(() => {
     try {
-      // Clean up previous audio if any
-      if (oscillatorRef.current) {
-        try { oscillatorRef.current.stop(); } catch (e) {}
-      }
-      if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch (e) {}
-      }
-      if (ringIntervalRef.current) {
-        clearInterval(ringIntervalRef.current);
+      // Clean up previous audio
+      stopRingtoneInternal();
+
+      // Create AudioContext (may need user gesture to start on some browsers)
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      
+      // Resume if suspended (browser autoplay policy)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
       }
 
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      oscillator.frequency.value = 440;
+      oscillator.frequency.value = 440; // A4 note
       oscillator.type = 'sine';
-      gainNode.gain.value = 0.3;
+      gainNode.gain.value = 0.4;
       
       oscillator.start();
       
       audioContextRef.current = audioContext;
       oscillatorRef.current = oscillator;
+      gainNodeRef.current = gainNode;
       
-      // Ring pattern: toggle every second
+      // Ring pattern: 400ms on, 200ms off, 400ms on, 2000ms off
+      let phase = 0;
+      const pattern = [400, 200, 400, 2000]; // durations in ms
+      
+      const ringPattern = () => {
+        if (!gainNodeRef.current) return;
+        
+        const isOn = phase % 2 === 0 && phase < 4; // on for phases 0 and 2
+        gainNodeRef.current.gain.value = isOn ? 0.4 : 0;
+        
+        ringIntervalRef.current = setTimeout(() => {
+          phase = (phase + 1) % pattern.length;
+          ringPattern();
+        }, pattern[phase]);
+        
+        phase = (phase + 1) % pattern.length;
+      };
+      
+      // Simple toggle pattern instead
       let isOn = true;
       ringIntervalRef.current = setInterval(() => {
-        isOn = !isOn;
-        gainNode.gain.value = isOn ? 0.3 : 0;
+        if (gainNodeRef.current) {
+          isOn = !isOn;
+          gainNodeRef.current.gain.value = isOn ? 0.4 : 0;
+        }
       }, 500);
       
       console.log('[TelnyxPhone] Ringtone started');
@@ -68,24 +90,28 @@ export const useTelnyxPhone = () => {
     }
   }, []);
 
-  const stopRingtone = useCallback(() => {
-    try {
-      if (ringIntervalRef.current) {
-        clearInterval(ringIntervalRef.current);
-        ringIntervalRef.current = null;
-      }
-      if (oscillatorRef.current) {
-        try { oscillatorRef.current.stop(); } catch (e) {}
-        oscillatorRef.current = null;
-      }
-      if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch (e) {}
-        audioContextRef.current = null;
-      }
-      console.log('[TelnyxPhone] Ringtone stopped');
-    } catch (e) {
-      // ignore
+  const stopRingtoneInternal = () => {
+    if (ringIntervalRef.current) {
+      clearInterval(ringIntervalRef.current);
+      clearTimeout(ringIntervalRef.current);
+      ringIntervalRef.current = null;
     }
+    if (oscillatorRef.current) {
+      try { oscillatorRef.current.stop(); } catch (e) {}
+      oscillatorRef.current = null;
+    }
+    if (gainNodeRef.current) {
+      gainNodeRef.current = null;
+    }
+    if (audioContextRef.current) {
+      try { audioContextRef.current.close(); } catch (e) {}
+      audioContextRef.current = null;
+    }
+  };
+
+  const stopRingtone = useCallback(() => {
+    stopRingtoneInternal();
+    console.log('[TelnyxPhone] Ringtone stopped');
   }, []);
 
   const initClient = useCallback(async () => {
@@ -152,12 +178,16 @@ export const useTelnyxPhone = () => {
           
           switch (call.state) {
             case 'ringing':
-              // Check if this is an inbound call
+              // Inbound call ringing
               if (direction === 'inbound' || !direction) {
                 console.log('[TelnyxPhone] Incoming call detected!');
                 playRingtone();
                 setState(prev => ({ ...prev, incomingCall: call }));
               }
+              break;
+            case 'answering':
+              // Call being answered - stop ringtone
+              stopRingtone();
               break;
             case 'active':
               stopRingtone();
@@ -282,6 +312,28 @@ export const useTelnyxPhone = () => {
   const reconnect = useCallback(() => {
     initClient();
   }, [initClient]);
+
+  // Unlock audio on first user interaction (for browsers that block autoplay)
+  useEffect(() => {
+    const unlockAudio = () => {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      ctx.resume().then(() => {
+        ctx.close();
+        console.log('[TelnyxPhone] Audio unlocked');
+      });
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+    
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+    
+    return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
 
   return {
     ...state,
