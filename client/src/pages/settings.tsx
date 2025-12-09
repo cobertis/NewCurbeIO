@@ -30,6 +30,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { EmailTemplatesManager } from "@/components/email-templates-manager";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
+import WebPhone from "@/components/WebPhone";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useTabsState } from "@/hooks/use-tabs-state";
@@ -2437,29 +2438,22 @@ export default function Settings() {
   );
 }
 
-// WebPhone Tab Component - Placeholder during migration
+// WebPhone Tab Component - Shows the WebPhone component
 function WebPhoneTab() {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Telnyx WebPhone</CardTitle>
-        <CardDescription>
-          Telnyx calling is being rebuilt. Once the new service is ready this tab will expose configuration and diagnostics.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30 p-6 text-sm text-muted-foreground">
-          <p data-testid="text-webphone-placeholder">
-            We are migrating to the new Telnyx WebRTC stack (answer, hangup, mute, hold, DTMF, blind and attended transfer).
-            Admins will regain full control here once the rollout reaches the UI phase.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <div className="h-2 w-2 rounded-full bg-yellow-500" />
-          <span data-testid="status-webphone-migration">Migration status: in progress</span>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center gap-6">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Telnyx WebPhone</CardTitle>
+          <CardDescription>
+            Make and receive calls directly from your browser using the WebPhone below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <WebPhone />
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

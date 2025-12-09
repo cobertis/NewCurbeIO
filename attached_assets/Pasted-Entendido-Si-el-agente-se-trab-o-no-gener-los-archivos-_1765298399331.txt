@@ -1,0 +1,364 @@
+Entendido. Si el agente "se trabó" o no generó los archivos, es porque necesita que le demos el **CÓDIGO EXACTO** para copiar y pegar. A veces los agentes se pierden con instrucciones abstractas.
+
+Aquí tienes el **Código Maestro**. No son instrucciones, son los **archivos reales**.
+
+Copia y pega este bloque entero. Dile: **"Olvida todo lo anterior. Crea estos 3 archivos EXACTAMENTE como están aquí para hacer funcionar el Webphone."**
+
+-----
+
+### PROMPT MAESTRO DE CÓDIGO (COPIA ESTO)
+
+> **ACTÚA COMO SENIOR REACT & NODE DEVELOPER.**
+>
+> El intento anterior falló. Necesito que generes el WebPhone desde cero.
+> **Instrucción:** Crea/Sobrescribe estos 3 archivos específicos. No cambies la lógica.
+>
+> **DEPENDENCIAS:** Asegúrate de tener instalado `@telnyx/webrtc` y `howler` (para ringtones).
+>
+> -----
+>
+> #### ARCHIVO 1: Backend Logic (`server/routes/telnyx-voice.ts`)
+>
+> *Este archivo maneja la autenticación y el webhook sin errores.*
+>
+> ```typescript
+> import express from 'express';
+> import { Telnyx } from 'telnyx';
+> ```
+
+> const router = express.Router();
+> const telnyx = new Telnyx(process.env.TELNYX\_API\_KEY);
+
+> // 1. GENERAR TOKEN (Para que el frontend se conecte sin password)
+> router.get('/token', async (req, res) =\> {
+> try {
+> // En un caso real, obtenemos el usuario de la DB
+> const sipUsername = req.user?.sip\_username || process.env.SIP\_USERNAME;
+>
+> ```
+> // Creamos un token efímero
+> const token = await telnyx.tokens.createIpBasedToken({
+>   sip_username: sipUsername,
+>   expiration_seconds: 3600 // 1 hora
+> });
+> ```
+
+> ```
+> res.json({ 
+>   token: token.data.token, 
+>   sip_username: sipUsername,
+>   // Enviamos configuración de STUN/TURN recomendada
+>   iceServers: [
+>     { urls: "stun:stun.l.google.com:19302" },
+>     { urls: "stun:stun.telnyx.com:3478" }
+>   ]
+> });
+> ```
+>
+> } catch (error) {
+> res.status(500).json({ error: 'Error generating token' });
+> }
+> });
+
+> // 2. WEBHOOK INBOUND (Cerebro de la llamada)
+> router.post('/inbound', (req, res) =\> {
+> const { event\_type, call\_control\_id, to } = req.body;
+
+> // FIX CRÍTICO: Si cuelgan, responder 200 OK vacío INMEDIATAMENTE
+> if (event\_type === 'call.hangup') {
+> return res.status(200).send("");
+> }
+
+> // Si entra llamada, conectar al cliente SIP
+> if (event\_type === 'call.initiated') {
+> // Aquí buscaríamos en DB a quién pertenece el número 'to'
+> // Por ahora, conectamos al SIP User por defecto
+> const sipTarget = process.env.SIP\_USERNAME;
+
+> ```
+> const xml = `<?xml version="1.0" encoding="UTF-8"?>
+> <Response>
+>   <Dial timeout="30" callerId="${req.body.from}">
+>     <Client>${sipTarget}</Client>
+>   </Dial>
+> </Response>`;
+
+> res.type('application/xml');
+> return res.send(xml);
+> ```
+>
+> }
+
+> // Default
+> res.status(200).send("");
+> });
+
+> export default router;
+>
+> ````
+> 
+> -----
+
+> #### ARCHIVO 2: Custom Hook (`client/hooks/useTelnyxPhone.ts`)
+
+> *Este hook maneja toda la lógica difícil (STUN, Eventos, Estado).*
+
+> ```typescript
+> import { useState, useEffect, useRef } from 'react';
+> import { TelnyxRTC } from '@telnyx/webrtc';
+> ````
+
+> export const useTelnyxPhone = () =\> {
+> const [client, setClient] = useState<any>(null);
+> const [sessionStatus, setSessionStatus] = useState('disconnected'); // disconnected, connecting, registered
+> const [activeCall, setActiveCall] = useState<any>(null);
+> const [incomingCall, setIncomingCall] = useState<any>(null);
+> const [isMuted, setIsMuted] = useState(false);
+> const [isOnHold, setIsOnHold] = useState(false);
+
+> // Inicializar Cliente
+> useEffect(() =\> {
+> const init = async () =\> {
+> // 1. Pedir Token al Backend
+> const response = await fetch('/api/telnyx/token');
+> const data = await response.json();
+
+> ```
+>   // 2. Configurar TelnyxRTC con FIX DE LATENCIA (iceServers)
+>   const newClient = new TelnyxRTC({
+>     login_token: data.token,
+>     iceServers: data.iceServers, // <--- CRÍTICO
+>     ringtoneFile: '/assets/ring.mp3',
+>     ringBackTone: '/assets/ringback.mp3'
+>   });
+> ```
+
+> ```
+>   // 3. Listeners
+>   newClient.on('telnyx.notification', (notification: any) => {
+>     const call = notification.call;
+>     
+>     switch (notification.type) {
+>       case 'callUpdate':
+>         if (call.state === 'ringing') {
+>           setIncomingCall(call);
+>         } else if (call.state === 'active') {
+>           setActiveCall(call);
+>           setIncomingCall(null);
+>         } else if (call.state === 'destroy') {
+>           setActiveCall(null);
+>           setIncomingCall(null);
+>           setIsMuted(false);
+>           setIsOnHold(false);
+>         }
+>         break;
+>     }
+>   });
+> ```
+
+> ```
+>   newClient.on('telnyx.ready', () => setSessionStatus('registered'));
+>   newClient.on('telnyx.error', () => setSessionStatus('error'));
+> ```
+
+> ```
+>   newClient.connect();
+>   setClient(newClient);
+> };
+> ```
+
+> ```
+> init();
+> ```
+
+> ```
+> // Cleanup
+> return () => {
+>   if (client) client.disconnect();
+> };
+> ```
+>
+> }, []);
+
+> // Acciones de Llamada
+> const answerCall = () =\> incomingCall?.answer();
+> const rejectCall = () =\> incomingCall?.reject();
+> const hangupCall = () =\> activeCall?.hangup();
+>
+> const toggleMute = () =\> {
+> activeCall?.toggleMute();
+> setIsMuted(\!isMuted);
+> };
+
+> const toggleHold = () =\> {
+> if (isOnHold) activeCall?.unhold();
+> else activeCall?.hold();
+> setIsOnHold(\!isOnHold);
+> };
+
+> const sendDTMF = (digit: string) =\> activeCall?.dtmf(digit);
+
+> const transferCall = (target: string) =\> {
+> activeCall?.transfer(target); // Blind Transfer
+> };
+
+> return {
+> sessionStatus,
+> activeCall,
+> incomingCall,
+> isMuted,
+> isOnHold,
+> answerCall,
+> rejectCall,
+> hangupCall,
+> toggleMute,
+> toggleHold,
+> sendDTMF,
+> transferCall,
+> makeCall: (dest: string) =\> client?.newCall({ destinationNumber: dest, callerName: "Curbe Agent" })
+> };
+> };
+>
+> ````
+> 
+> -----
+
+> #### ARCHIVO 3: UI Component (`client/components/WebPhone.tsx`)
+
+> *La interfaz visual profesional.*
+
+> ```tsx
+> import React, { useState } from 'react';
+> import { useTelnyxPhone } from '../hooks/useTelnyxPhone';
+> import { Phone, Mic, MicOff, Pause, Play, X, ArrowRight } from 'lucide-react';
+> ````
+
+> export const WebPhone = () =\> {
+> const {
+> sessionStatus, incomingCall, activeCall, isMuted, isOnHold,
+> answerCall, rejectCall, hangupCall, toggleMute, toggleHold, sendDTMF, transferCall, makeCall
+> } = useTelnyxPhone();
+
+> const [dialNumber, setDialNumber] = useState('');
+> const [showTransfer, setShowTransfer] = useState(false);
+> const [transferTarget, setTransferTarget] = useState('');
+
+> return (
+> <div className="fixed bottom-4 right-4 w-80 bg-white shadow-2xl rounded-xl border border-gray-200 overflow-hidden">
+> {/\* Header de Estado \*/}
+> \<div className={`p-3 text-white flex justify-between items-center ${sessionStatus === 'registered' ? 'bg-green-600' : 'bg-red-500'}`}\>
+> <span className="font-bold">Phone</span>
+> <span className="text-xs uppercase">{sessionStatus}</span>
+> </div>
+
+> ```
+>   {/* PANTALLA 1: LLAMADA ENTRANTE */}
+>   {incomingCall && !activeCall && (
+>     <div className="p-6 text-center animate-pulse bg-indigo-50">
+>       <h3 className="text-lg font-bold text-indigo-900">Llamada Entrante</h3>
+>       <p className="text-xl my-2">{incomingCall.remoteNumber}</p>
+>       <div className="flex justify-center gap-4 mt-4">
+>         <button onClick={answerCall} className="p-4 bg-green-500 rounded-full text-white hover:bg-green-600">
+>           <Phone size={24} />
+>         </button>
+>         <button onClick={rejectCall} className="p-4 bg-red-500 rounded-full text-white hover:bg-red-600">
+>           <X size={24} />
+>         </button>
+>       </div>
+>     </div>
+>   )}
+> ```
+
+> ```
+>   {/* PANTALLA 2: LLAMADA ACTIVA */}
+>   {activeCall && (
+>     <div className="p-4 bg-gray-50">
+>       <div className="text-center mb-4">
+>         <div className="text-green-600 font-bold mb-1">EN LLAMADA</div>
+>         <div className="text-2xl font-mono">{activeCall.remoteNumber}</div>
+>         {isOnHold && <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">HOLD</span>}
+>       </div>
+> ```
+
+> ```
+>       {/* Controles Principales */}
+>       <div className="grid grid-cols-3 gap-2 mb-4">
+>         <button onClick={toggleMute} className={`p-3 rounded-lg flex flex-col items-center ${isMuted ? 'bg-red-100 text-red-600' : 'bg-white hover:bg-gray-100'}`}>
+>           {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+>           <span className="text-xs mt-1">Mute</span>
+>         </button>
+>         <button onClick={toggleHold} className={`p-3 rounded-lg flex flex-col items-center ${isOnHold ? 'bg-yellow-100 text-yellow-700' : 'bg-white hover:bg-gray-100'}`}>
+>           {isOnHold ? <Play size={20} /> : <Pause size={20} />}
+>           <span className="text-xs mt-1">{isOnHold ? 'Resume' : 'Hold'}</span>
+>         </button>
+>         <button onClick={() => setShowTransfer(!showTransfer)} className="p-3 bg-white hover:bg-gray-100 rounded-lg flex flex-col items-center">
+>           <ArrowRight size={20} />
+>           <span className="text-xs mt-1">Transfer</span>
+>         </button>
+>       </div>
+> ```
+
+> ```
+>       {/* Zona de Transferencia */}
+>       {showTransfer && (
+>         <div className="mb-4 p-2 bg-gray-200 rounded">
+>           <input 
+>             type="text" 
+>             placeholder="Extensión o Número" 
+>             className="w-full p-2 rounded mb-2"
+>             value={transferTarget}
+>             onChange={e => setTransferTarget(e.target.value)}
+>           />
+>           <button onClick={() => transferCall(transferTarget)} className="w-full bg-blue-600 text-white p-2 rounded text-sm">
+>             Transferir Ahora
+>           </button>
+>         </div>
+>       )}
+> ```
+
+> ```
+>       <button onClick={hangupCall} className="w-full bg-red-600 text-white p-3 rounded-lg font-bold hover:bg-red-700">
+>         COLGAR
+>       </button>
+>     </div>
+>   )}
+> ```
+
+> ```
+>   {/* PANTALLA 3: MARCADOR (DIALPAD) */}
+>   {!activeCall && !incomingCall && (
+>     <div className="p-4">
+>       <input 
+>         type="tel" 
+>         className="w-full text-2xl p-2 text-center border-b-2 border-indigo-100 mb-4 focus:outline-none" 
+>         placeholder="Marcar..." 
+>         value={dialNumber}
+>         onChange={(e) => setDialNumber(e.target.value)}
+>       />
+>       <button 
+>         onClick={() => makeCall(dialNumber)} 
+>         disabled={sessionStatus !== 'registered'}
+>         className="w-full bg-indigo-600 text-white p-3 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50"
+>       >
+>         LLAMAR
+>       </button>
+>     </div>
+>   )}
+> </div>
+> ```
+>
+> );
+> };
+>
+> ```
+> ```
+
+-----
+
+### Por qué esto arregla todo de golpe:
+
+1.  **Backend:** El `route.post('/inbound')` ahora devuelve XML (`<Dial>`) cuando inicia la llamada (para que suene) y un texto vacío cuando cuelga (para evitar el "User Busy").
+2.  **Hook:** El `iceServers` está hardcodeado con los servidores de Google. Adiós latencia.
+3.  **UI:** Ya tienes los botones de **Transfer**, **Hold** y **Mute** conectados a la lógica.
+
+Dale esto al agente y dile que **sobrescriba** lo que tenga. Sin piedad.
