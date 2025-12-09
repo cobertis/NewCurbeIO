@@ -49,7 +49,10 @@ import {
   Pencil,
   MapPin,
   Plus,
-  Phone
+  Phone,
+  Wallet,
+  ArrowUpCircle,
+  ArrowDownCircle
 } from "lucide-react";
 import { formatDate } from "@/lib/date-formatter";
 import type { BulkvsPhoneNumber } from "@shared/schema";
@@ -354,6 +357,23 @@ export default function Billing() {
   const { data: bulkvsPhoneNumbers, isLoading: isLoadingBulkvsNumbers } = useQuery<BulkvsPhoneNumberWithDisplay[]>({
     queryKey: ["/api/bulkvs/numbers"],
   });
+
+  // Fetch wallet transactions
+  const { data: walletTransactionsData, isLoading: isLoadingWalletTransactions } = useQuery<{
+    transactions: Array<{
+      id: string;
+      amount: string;
+      type: string;
+      description: string | null;
+      externalReferenceId: string | null;
+      balanceAfter: string;
+      createdAt: string;
+    }>;
+  }>({
+    queryKey: ["/api/wallet/transactions"],
+  });
+
+  const walletTransactions = walletTransactionsData?.transactions || [];
 
   const activeDiscount = discountData?.discount;
 
@@ -1316,6 +1336,72 @@ export default function Billing() {
                   <h3 className="text-lg font-semibold mb-2">No Invoices Yet</h3>
                   <p className="text-sm text-muted-foreground">
                     Invoices will appear here once you start your subscription.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Wallet Transactions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5" />
+                Wallet Transactions
+              </CardTitle>
+              <CardDescription>Phone system top-ups and usage charges</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingWalletTransactions ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
+                </div>
+              ) : walletTransactions.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {walletTransactions.map((tx) => (
+                        <TableRow key={tx.id} data-testid={`wallet-tx-row-${tx.id}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {tx.type === 'deposit' ? (
+                                <ArrowUpCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <ArrowDownCircle className="h-4 w-4 text-red-500" />
+                              )}
+                              <span className="capitalize">{tx.type}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {tx.description || '-'}
+                          </TableCell>
+                          <TableCell>{formatDate(new Date(tx.createdAt))}</TableCell>
+                          <TableCell className={`text-right font-medium ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
+                            {tx.type === 'deposit' ? '+' : '-'}${Math.abs(parseFloat(tx.amount)).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            ${parseFloat(tx.balanceAfter).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Wallet Transactions Yet</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Wallet top-ups and phone usage charges will appear here.
                   </p>
                 </div>
               )}
