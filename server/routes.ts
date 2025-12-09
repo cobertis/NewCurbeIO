@@ -113,6 +113,7 @@ import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
 import { evolutionApi } from "./services/evolution-api";
+import { getManagedAccountConfig } from "./services/telnyx-e911-service";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -28004,40 +28005,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      // Get managed account config inline
-      const [wallet] = await db
-        .select({ telnyxAccountId: wallets.telnyxAccountId })
-        .from(wallets)
-        .where(eq(wallets.companyId, user.companyId));
+      const config = await getManagedAccountConfig(user.companyId);
       
-      if (!wallet?.telnyxAccountId) {
+      if (!config) {
         return res.status(400).json({ message: "Phone system not configured for this company" });
       }
-      
-      // Get the master Telnyx API key from secrets
-      let apiKey = process.env.TELNYX_API_KEY;
-      if (!apiKey) {
-        const [cred] = await db
-          .select({ value: systemApiCredentials.value })
-          .from(systemApiCredentials)
-          .where(and(
-            eq(systemApiCredentials.provider, "telnyx"),
-            eq(systemApiCredentials.keyName, "api_key")
-          ));
-        apiKey = cred?.value;
-      }
-      
-      if (!apiKey) {
-        return res.status(500).json({ message: "Telnyx API key not configured" });
-      }
-      
-      const config = {
-        apiKey: apiKey.trim().replace(/[\r\n\t]/g, ""),
-        managedAccountId: wallet.telnyxAccountId
-      };
-      
-      // Fetch CDRs from Telnyx using the correct detail_records endpoint
-      // Query both call-control and webrtc record types
+
       const recordTypes = ['call-control', 'webrtc'];
       let totalSynced = 0;
       let totalRecords = 0;

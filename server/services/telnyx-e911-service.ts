@@ -24,7 +24,7 @@ interface E911CreateResult {
   error?: string;
 }
 
-interface ManagedAccountConfig {
+export interface ManagedAccountConfig {
   apiKey: string;
   managedAccountId: string;
 }
@@ -38,7 +38,7 @@ async function getTelnyxMasterApiKey(): Promise<string> {
   return apiKey;
 }
 
-async function getManagedAccountConfig(companyId: string): Promise<ManagedAccountConfig | null> {
+export async function getManagedAccountConfig(companyId: string): Promise<ManagedAccountConfig | null> {
   const [wallet] = await db
     .select({ telnyxAccountId: wallets.telnyxAccountId })
     .from(wallets)
