@@ -1,0 +1,76 @@
+No lo logras porque seguramente estás cometiendo el error de **sincronización**.
+
+Te apuesto dinero a que tu código está intentando activar la supresión de ruido **antes** de que la llamada esté realmente conectada y con audio fluyendo. Si envías el comando `suppression_start` mientras el teléfono está sonando (`ringing`) o iniciando (`initiating`), la API de Telnyx te va a devolver un error porque **no hay audio que limpiar todavía**.
+
+Aquí están las 3 razones por las que tu código falla y cómo arreglarlas ya.
+
+### 1\. El Error de "Disparo Prematuro" (Timing)
+
+La API de supresión de ruido **SOLO** funciona cuando la llamada está en estado **`answered`** (contestada).
+
+  * **Tu error:** Probablemente disparas la petición justo después de `client.newCall()`.
+  * **La realidad:** En ese milisegundo, la llamada ni siquiera ha salido de tu navegador. Telnyx no tiene "media" que procesar.
+  * **La solución:** Tienes que esperar al evento.
+      * Si usas **Webhooks** (Backend): Escucha el evento `call.answered`.
+      * Si usas **Frontend SDK**: Escucha el estado `active`.
+
+### 2\. El ID Incorrecto (La trampa de Telnyx)
+
+Telnyx tiene como tres IDs diferentes y es fácil cagarla aquí.
+
+  * `call_session_id`: NO SIRVE para esto.
+  * `call_leg_id`: NO SIRVE.
+  * **`call_control_id`**: ESTE es el único que funciona. Es un string largo y feo.
+
+Asegúrate de que tu frontend esté enviando explícitamente `call.callControlId` (o `call.id` dependiendo de la versión del SDK) a tu backend. Imprímelo en consola antes de enviarlo. Si llega `undefined`, ahí está tu problema.
+
+### 3\. El Código que SÍ funciona (Backend con Webhooks)
+
+Deja de intentar hacerlo "a ciegas". La forma robusta es dejar que Telnyx te avise cuando está listo.
+
+**Tu flujo debe ser así:**
+
+1.  Tu CRM inicia la llamada.
+2.  Telnyx conecta la llamada.
+3.  Telnyx envía un **Webhook** a tu servidor diciendo: "Hey, evento `call.answered` ocurrió".
+4.  Tu servidor recibe ese webhook, lee el `call_control_id` del payload, y **AHÍ** dispara la supresión.
+
+**Copia este flujo lógico para tu servidor (Node.js/Express):**
+
+```javascript
+// Este es tu endpoint que recibe los Webhooks de Telnyx
+app.post('/webhooks/telnyx', async (req, res) => {
+  const event = req.body.data;
+  
+  // Respondemos rápido a Telnyx para que no reintente
+  res.sendStatus(200);
+
+  // SOLO actuamos cuando la llamada se contesta
+  if (event.event_type === 'call.answered') {
+    const callId = event.payload.call_control_id;
+    console.log(`Llamada contestada ${callId}. Activando supresión...`);
+
+    try {
+      // AQUI es el momento seguro para activar el ruido
+      await axios.post(
+        `https://api.telnyx.com/v2/calls/${callId}/actions/suppression_start`,
+        { direction: "outbound" }, // Outbound para limpiar TU micrófono
+        { headers: { 'Authorization': `Bearer ${process.env.TELNYX_API_KEY}` }}
+      );
+      console.log("Supresión activada con éxito.");
+    } catch (error) {
+      console.error("Fallo al activar supresión:", error.response?.data || error.message);
+    }
+  }
+});
+```
+
+### Diagnóstico Rápido
+
+Mira la respuesta de error que te da Telnyx. El código HTTP te dice qué hiciste mal:
+
+  * **404 Not Found:** El `call_control_id` está mal o la llamada ya terminó.
+  * **422 Unprocessable Entity:** Lo estás enviando demasiado pronto (la llamada no está en estado `answered`) o el JSON está mal formado.
+  * **401 Unauthorized:** Tu API Key está mal o no tiene permisos de Call Control.
+
+¿Qué código de error te está devolviendo la consola? Si no lo sabes, es que no estás depurando, estás adivinando.

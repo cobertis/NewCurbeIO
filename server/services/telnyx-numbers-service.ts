@@ -364,7 +364,7 @@ export async function updateCnamListing(
       "x-managed-account-id": wallet.telnyxAccountId,
     };
     
-    // Get the actual cnam_listing_details value
+    // Get the actual CNAM name value
     let cnamDetails: string | undefined;
     if (enabled) {
       // If no name provided, try to get company name as fallback
@@ -382,25 +382,24 @@ export async function updateCnamListing(
         cnamDetails = validation.sanitized;
       }
       
-      // Telnyx requires BOTH fields when enabling CNAM
+      // Telnyx requires CNAM name when enabling
       if (!cnamDetails) {
         return { success: false, error: "CNAM name is required when enabling CNAM listing" };
       }
     }
     
-    // Build the update payload - Telnyx requires BOTH fields together
+    // Build the update payload using correct Telnyx format
+    // Per Telnyx docs: use cnam_listing object with cnam and enable fields
     const payload: Record<string, any> = {
-      cnam_listing_enabled: enabled,
+      cnam_listing: {
+        enable: enabled,
+        cnam: enabled && cnamDetails ? cnamDetails : undefined,
+      },
     };
     
-    // Always include cnam_listing_details when enabling (required by Telnyx)
-    if (enabled && cnamDetails) {
-      payload.cnam_listing_details = cnamDetails;
-    }
+    console.log(\`[Telnyx CNAM] Updating CNAM for number \${phoneNumberId}: enabled=\${enabled}, name="\${cnamDetails || 'N/A'}", payload:\`, JSON.stringify(payload));
     
-    console.log(`[Telnyx CNAM] Updating CNAM for number ${phoneNumberId}: enabled=${enabled}, name="${cnamDetails || 'N/A'}", payload:`, JSON.stringify(payload));
-    
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+    const response = await fetch(\`\${TELNYX_API_BASE}/phone_numbers/\${phoneNumberId}\`, {
       method: "PATCH",
       headers,
       body: JSON.stringify(payload),
@@ -408,20 +407,20 @@ export async function updateCnamListing(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Telnyx CNAM] Update error: ${response.status} - ${errorText}`);
+      console.error(\`[Telnyx CNAM] Update error: \${response.status} - \${errorText}\`);
       return {
         success: false,
-        error: `Failed to update CNAM: ${response.status}`,
+        error: \`Failed to update CNAM: \${response.status}\`,
       };
     }
     
     const result = await response.json();
-    console.log(`[Telnyx CNAM] Update successful:`, JSON.stringify(result.data, null, 2));
+    console.log(\`[Telnyx CNAM] Update successful:\`, JSON.stringify(result.data, null, 2));
     
     return {
       success: true,
-      cnamEnabled: result.data?.cnam_listing_enabled,
-      cnamName: result.data?.cnam_listing_details,
+      cnamEnabled: result.data?.cnam_listing?.enable || result.data?.cnam_listing_enabled,
+      cnamName: result.data?.cnam_listing?.cnam || result.data?.cnam_listing_details,
     };
   } catch (error) {
     console.error("[Telnyx CNAM] Update error:", error);
@@ -432,9 +431,6 @@ export async function updateCnamListing(
   }
 }
 
-/**
- * Get CNAM settings for a phone number
- */
 export async function getCnamSettings(
   phoneNumberId: string,
   companyId: string

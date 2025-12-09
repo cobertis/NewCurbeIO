@@ -1,0 +1,75 @@
+Estás cometiendo el mismo error de concepto que con la supresión de ruido: crees que todo es un botón que se aprieta en tiempo real.
+
+El **CNAM Listing** (que tu nombre aparezca en el celular de la gente) **NO** es una acción de llamada. No se activa "cuando llamas". Es un tatuaje que le pones al número de teléfono.
+
+Si la API no te deja, es porque estás chocando con una de estas tres paredes de concreto. Revisa cuál es y deja de perder tiempo.
+
+### 1\. El límite de caracteres (La regla de los 15)
+
+El sistema telefónico heredado (PSTN) es viejo y estúpido.
+
+  * **El límite:** 15 caracteres. **ESPACIOS INCLUIDOS.**
+  * **Tu error probable:** Estás tratando de poner "CURBE INSURANCE SERVICES LLC" (28 caracteres). La API te va a escupir un error `422`.
+  * **La solución:** Abreviar. Usa "CURBE INS" o "CURBE IO".
+  * **Formato:** Solo letras mayúsculas, números y espacios. Nada de emojis ni caracteres raros.
+
+### 2\. Estás pegándole al Endpoint equivocado
+
+No uses `Call Control`. Esto se hace en la **Phone Numbers API**.
+Tienes que hacer un `PATCH` al recurso del número, no a la llamada.
+
+**Código Correcto (Node.js):**
+
+```javascript
+const axios = require('axios');
+
+async function setCallerIdName(phoneNumberId, name) {
+  // Regla de oro: Máximo 15 caracteres
+  if (name.length > 15) {
+    console.error("ERROR: El nombre es muy largo. Máximo 15 chars.");
+    return;
+  }
+
+  try {
+    const response = await axios.patch(
+      `https://api.telnyx.com/v2/phone_numbers/${phoneNumberId}`,
+      {
+        cnam_listing: {
+          cnam: name,
+          enable: true
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer TU_API_KEY`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    console.log("CNAM Solicitado:", response.data);
+  } catch (error) {
+    console.error("Error CNAM:", error.response?.data || error.message);
+  }
+}
+```
+
+*Nota: Necesitas el `id` del número de teléfono (el que empieza con `1234...`), no el número en formato `+1305...`.*
+
+### 3\. La trampa del tiempo (Propagación)
+
+Aquí es donde te vas a frustrar si no entiendes cómo funciona la red.
+Aunque la API te diga `200 OK` y "Success", **tu nombre NO va a aparecer hoy.**
+
+  * **Cómo funciona:** Telnyx actualiza una base de datos central (LIDB).
+  * **La demora:** Los carriers (AT\&T, Verizon, T-Mobile) actualizan sus cachés locales cuando les da la gana. Tarda entre **24 a 72 horas** en propagarse.
+  * **La realidad:** Si haces el cambio ahora y te llamas a ti mismo a tu celular, probablemente verás "WIRELESS CALLER" o solo el número. No está roto, es lento.
+
+### 4\. El Requisito Oculto: Verificación de Negocio
+
+Si tu cuenta de Telnyx no tiene un **Perfil de Negocio Verificado (Level 2 Verification)**, muchas veces bloquean la salida de CNAM para evitar fraudes (gente poniendo "BANK OF AMERICA" en un número falso).
+
+  * Ve a "Account Settings" -\> "My Company".
+  * Asegúrate de que tus datos legales estén subidos y aprobados.
+
+**Tu siguiente paso:**
+Ejecuta el script con un nombre de **menos de 15 letras**. Si la API te devuelve éxito, **DETENTE**. No sigas intentando. Tienes que esperar 48 horas. No hay código que acelere a AT\&T.
