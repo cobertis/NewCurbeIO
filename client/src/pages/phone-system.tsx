@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -111,6 +111,8 @@ export default function PhoneSystem() {
   const [autoRechargeEnabled, setAutoRechargeEnabled] = useState(false);
   const [autoRechargeThreshold, setAutoRechargeThreshold] = useState<string>("10");
   const [autoRechargeAmount, setAutoRechargeAmount] = useState<string>("50");
+  const isInitialLoadRef = useRef(true);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -141,10 +143,50 @@ export default function PhoneSystem() {
   useEffect(() => {
     if (walletData?.wallet) {
       setAutoRechargeEnabled(walletData.wallet.autoRecharge || false);
-      setAutoRechargeThreshold(walletData.wallet.autoRechargeThreshold || "10");
-      setAutoRechargeAmount(walletData.wallet.autoRechargeAmount || "50");
+      setAutoRechargeThreshold(String(parseFloat(walletData.wallet.autoRechargeThreshold || "10")));
+      setAutoRechargeAmount(String(parseFloat(walletData.wallet.autoRechargeAmount || "50")));
+      // Mark initial load as complete after syncing from API
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 100);
     }
   }, [walletData]);
+
+  // Auto-save auto-recharge settings with debounce
+  useEffect(() => {
+    // Skip during initial load
+    if (isInitialLoadRef.current) return;
+    
+    // Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Debounce the save
+    debounceTimerRef.current = setTimeout(() => {
+      const threshold = parseFloat(autoRechargeThreshold);
+      const amount = parseFloat(autoRechargeAmount);
+      
+      // Validate before saving
+      if (autoRechargeEnabled) {
+        if (isNaN(threshold) || threshold < 5 || threshold > 100) return;
+        if (isNaN(amount) || amount < 10 || amount > 500) return;
+      }
+      
+      // Save to backend
+      autoRechargeMutation.mutate({ 
+        enabled: autoRechargeEnabled, 
+        threshold: isNaN(threshold) ? 10 : threshold, 
+        amount: isNaN(amount) ? 50 : amount 
+      });
+    }, 500);
+    
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [autoRechargeEnabled, autoRechargeThreshold, autoRechargeAmount]);
 
   // Call history query
 
@@ -288,12 +330,7 @@ export default function PhoneSystem() {
       return await apiRequest("POST", "/api/wallet/auto-recharge", data);
     },
     onSuccess: () => {
-      toast({
-        title: "Auto-Recharge Updated",
-        description: autoRechargeEnabled 
-          ? `Auto-recharge enabled: Add $${autoRechargeAmount} when balance falls below $${autoRechargeThreshold}`
-          : "Auto-recharge has been disabled",
-      });
+      // Silent save - no toast for auto-save, just refresh data
       refetchWallet();
     },
     onError: (error: Error) => {
@@ -304,22 +341,6 @@ export default function PhoneSystem() {
       });
     },
   });
-
-  const handleSaveAutoRecharge = () => {
-    const threshold = parseFloat(autoRechargeThreshold);
-    const amount = parseFloat(autoRechargeAmount);
-    
-    if (autoRechargeEnabled && (isNaN(threshold) || threshold < 5 || threshold > 100)) {
-      toast({ title: "Invalid Threshold", description: "Threshold must be between $5 and $100", variant: "destructive" });
-      return;
-    }
-    if (autoRechargeEnabled && (isNaN(amount) || amount < 10 || amount > 500)) {
-      toast({ title: "Invalid Amount", description: "Recharge amount must be between $10 and $500", variant: "destructive" });
-      return;
-    }
-    
-    autoRechargeMutation.mutate({ enabled: autoRechargeEnabled, threshold, amount });
-  };
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -856,23 +877,11 @@ export default function PhoneSystem() {
                         />
                       </div>
                     </div>
-                    <div className="col-span-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSaveAutoRecharge}
-                        disabled={autoRechargeMutation.isPending}
-                        className="w-full"
-                        data-testid="button-save-auto-recharge"
-                      >
-                        {autoRechargeMutation.isPending ? (
-                          <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Saving...</>
-                        ) : (
-                          "Save Auto-Recharge Settings"
-                        )}
-                      </Button>
-                    </div>
+                    {autoRechargeMutation.isPending && (
+                      <div className="col-span-2 flex items-center justify-center text-xs text-slate-500">
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" /> Saving...
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
