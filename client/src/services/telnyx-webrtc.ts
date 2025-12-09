@@ -404,13 +404,20 @@ class TelnyxWebRTCManager {
       });
       
       this.client.on('telnyx.notification', (notification: any) => {
-        console.log('[Telnyx WebRTC] Notification:', notification.type, 'call state:', notification.call?.state);
+        const call = notification.call;
+        console.log('[Telnyx WebRTC] Notification:', notification.type, {
+          state: call?.state,
+          direction: call?.direction,
+          remoteCallerNumber: call?.options?.remoteCallerNumber,
+          destinationNumber: call?.options?.destinationNumber,
+          callId: call?.id,
+        });
         
         if (notification.type === 'callUpdate') {
-          const call = notification.call;
-          
-          if (call.state === 'ringing' && call.direction === 'inbound') {
-            console.log('[Telnyx WebRTC] Incoming call from:', call.options?.remoteCallerNumber);
+          // Handle incoming calls - check for ringing state with inbound direction
+          // Also handle 'new' state which may come before 'ringing' for inbound calls
+          if ((call.state === 'ringing' || call.state === 'new') && call.direction === 'inbound') {
+            console.log('[Telnyx WebRTC] 📞 INCOMING CALL from:', call.options?.remoteCallerNumber);
             store.setIncomingCall(call);
             this.startRingtone(); // Play ringtone for incoming calls
           } else if (call.state === 'trying' || call.state === 'early' || call.state === 'ringing') {
