@@ -150,7 +150,7 @@ export class TelephonyProvisioningService {
       console.log(`[TelephonyProvisioning] SIP Credentials created: ${sipCredentials.username}`);
 
       console.log(`[TelephonyProvisioning] Step 5/5: Updating existing phone numbers...`);
-      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, credentialConnectionId);
+      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, texmlAppId, credentialConnectionId);
       
       if (!phoneUpdateResult.success && phoneUpdateResult.failedCount > 0) {
         console.error(`[TelephonyProvisioning] Phone number updates failed: ${phoneUpdateResult.errors.join(", ")}`);
@@ -366,8 +366,13 @@ export class TelephonyProvisioningService {
   private async updateExistingPhoneNumbers(
     managedAccountId: string,
     companyId: string,
-    connectionId: string
+    texmlAppId: string,
+    credentialConnectionId: string
   ): Promise<{ success: boolean; updatedCount: number; failedCount: number; errors: string[] }> {
+    // ARCHITECTURE FIX: Numbers must point to TeXML Application (not Credential Connection)
+    // This ensures inbound calls trigger the webhook for routing, IVR, recording, etc.
+    // The Credential Connection is only used for SIP/WebRTC registration
+    
     const phoneNumbers = await db
       .select()
       .from(telnyxPhoneNumbers)
@@ -383,13 +388,15 @@ export class TelephonyProvisioningService {
 
     for (const phoneNumber of phoneNumbers) {
       try {
-        console.log(`[TelephonyProvisioning] Updating phone number ${phoneNumber.phoneNumber} with connection ${connectionId}`);
+        console.log(`[TelephonyProvisioning] Updating phone number ${phoneNumber.phoneNumber} with TeXML App ${texmlAppId}`);
         
+        // CRITICAL: Use TeXML Application ID for voice routing
+        // This makes inbound calls trigger the webhook before connecting
         const response = await this.makeApiRequest(
           managedAccountId,
           `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
           "PATCH",
-          { connection_id: connectionId }
+          { texml_application_id: texmlAppId }
         );
 
         if (!response.ok) {
@@ -401,12 +408,17 @@ export class TelephonyProvisioningService {
           continue;
         }
 
+        // Store both IDs in our database for reference
         await db
           .update(telnyxPhoneNumbers)
-          .set({ connectionId, updatedAt: new Date() })
+          .set({ 
+            connectionId: credentialConnectionId,  // For SIP registration reference
+            texmlAppId: texmlAppId,                // For voice routing
+            updatedAt: new Date() 
+          })
           .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
 
-        console.log(`[TelephonyProvisioning] Phone number ${phoneNumber.phoneNumber} updated successfully`);
+        console.log(`[TelephonyProvisioning] Phone number ${phoneNumber.phoneNumber} updated with TeXML App successfully`);
         updatedCount++;
       } catch (error) {
         const errorMsg = `Error updating ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`;
@@ -423,7 +435,6 @@ export class TelephonyProvisioningService {
       errors,
     };
   }
-
   private async rollbackOutboundProfile(managedAccountId: string, profileId: string): Promise<void> {
     try {
       console.log(`[TelephonyProvisioning] Rolling back Outbound Voice Profile: ${profileId}`);

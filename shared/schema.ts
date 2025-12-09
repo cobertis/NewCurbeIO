@@ -4710,6 +4710,8 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   messagingProfileId: text("messaging_profile_id"), // For SMS routing
   outboundVoiceProfileId: text("outbound_voice_profile_id"), // For voice routing
   connectionId: text("connection_id"), // TeXML App connection ID
+  texmlAppId: text("texml_app_id"), // TeXML Application ID for voice routing
+  assignedUserId: varchar("assigned_user_id").references(() => users.id, { onDelete: "set null" }), // User assigned to receive calls on this number
   callerIdName: text("caller_id_name"), // CNAM for outbound calls
   purchasedAt: timestamp("purchased_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

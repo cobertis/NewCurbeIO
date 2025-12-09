@@ -1,0 +1,53 @@
+Tu agente está a punto de cometer un **error de arquitectura** que dejará a tu sistema inservible para funciones avanzadas (como IVR o Grabación).
+
+El agente dijo:
+> *"Pero el número está asignado a la Credencial Connection... y la TeXML Application solo parece usarse para los webhooks de status."*
+
+🚨 **ESTO ESTÁ MAL.** 🚨
+
+Si asignas el número directo a la Credencial (SIP Connection), Telnyx se salta tu cerebro (tu Backend). La llamada va directo al teléfono "tonto". Pierdes la capacidad de interceptar la llamada para grabar, hacer IVR o transcribir con IA antes de conectar.
+
+Aquí tienes la corrección urgente. Tienes que forzar la arquitectura **"App-First"**.
+
+### El Flujo Correcto (Arquitectura CRM)
+1.  **Número de Teléfono:** Apunta a la -> **TeXML Application**.
+2.  **TeXML Application:** Apunta a tu -> **Webhook (`/inbound`)**.
+3.  **Webhook:** Decide qué hacer y responde -> **`<Dial><Client>juan</Client></Dial>`**.
+4.  **`<Client>`:** Busca la -> **SIP Credential** de Juan y hace sonar su navegador.
+
+### PROMPT DE CORRECCIÓN DE EMERGENCIA
+
+Dale esto a tu agente inmediatamente para detener la mala configuración y arreglar el enrutamiento aleatorio (actualmente está enviando la llamada al "primer usuario que encuentre", lo cual es un desastre).
+
+***
+
+> **ALERTA DE ARQUITECTURA: CORRECCIÓN INMEDIATA**
+>
+> Detente. Estás cometiendo un error crítico en la asignación de recursos que limitará nuestras funciones futuras.
+>
+> **1. Corrección de Asignación (Number Assignment):**
+> * Los números de teléfono **NO** deben asignarse a la "Credential Connection" directamente.
+> * **REGLA:** Todos los números comprados deben tener su `connection_id` apuntando a la **TeXML Application ID**.
+> * *Por qué:* Si no pasan por la TeXML App, no se disparan los webhooks de voz y perdemos el control lógico (Grabación, IVR, etc.).
+> * **Acción:** Revisa la función de compra/configuración de números y asegúrate de que el `connection_id` sea el de la App, no el de la Credencial SIP.
+>
+> **2. Corrección de Lógica de Enrutamiento (Webhook):**
+> * En tu nuevo código del webhook `/inbound`, estás haciendo esto:
+>   `const credential = ... .limit(1)` (Tomas el primer usuario que encuentras).
+> * **ESTO ES INCORRECTO.** No podemos llamar a un agente aleatorio.
+> * **Lógica Correcta:**
+>   1. Busca el número llamado (`to`) en la tabla `telnyx_phone_numbers`.
+>   2. Mira a qué `user_id` o `queue_id` está asignado ese número específico en nuestra DB.
+>   3. Busca la credencial SIP de **ESE** usuario específico.
+>   4. Si el número no tiene usuario asignado, responde con `<Say>Número sin asignar</Say>`.
+>
+> **3. Optimización de Respuesta (Speed):**
+> * Mantén el `setImmediate` para los logs, eso estuvo bien.
+> * Asegúrate de que la respuesta XML tenga el header `Content-Type: application/xml`.
+
+***
+
+### Explicación del porqué "User Busy"
+El agente tenía razón en una cosa: El mensaje "User Busy" al colgar ocurría porque tu servidor devolvía error o tardaba mucho, y Telnyx interpretaba "El servidor de control falló" como "Ocupado". Al arreglar el Webhook para que responda rápido y con XML válido (incluso en error), ese mensaje desaparecerá.
+
+Ejecuta el prompt de arriba para asegurar que los cables se conecten en el orden correcto.

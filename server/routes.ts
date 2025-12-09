@@ -26392,17 +26392,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     
     // Log asynchronously to not block response
     setImmediate(() => {
-      console.log("[Telnyx Voice Inbound] Call:", { from, to, direction, call_control_id, responseTime: Date.now() - startTime });
+      console.log("[Telnyx Voice Inbound] Call:", { from, to, direction, call_control_id });
     });
 
     try {
       // Normalize phone number for lookup (Telnyx sends with +1 prefix)
       const normalizedTo = to?.replace(/[^\d+]/g, '') || '';
       
-      // Fast path: lookup phone number -> company -> SIP credentials
-      // Using indexed queries for speed
+      // ARCHITECTURE: Look up the specific phone number and its assigned user
+      // This enables per-number routing (each number can ring a different user)
       const phoneNumber = await db
-        .select({ companyId: telnyxPhoneNumbers.companyId })
+        .select({ 
+          companyId: telnyxPhoneNumbers.companyId,
+          assignedUserId: telnyxPhoneNumbers.assignedUserId,
+          displayName: telnyxPhoneNumbers.displayName
+        })
         .from(telnyxPhoneNumbers)
         .where(eq(telnyxPhoneNumbers.phoneNumber, normalizedTo))
         .limit(1)
@@ -26419,19 +26423,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(200).send(texmlResponse);
       }
       
-      // Get SIP credentials for this company (use first active credential)
-      const credential = await db
-        .select({ sipUsername: telephonyCredentials.sipUsername })
-        .from(telephonyCredentials)
-        .where(and(
-          eq(telephonyCredentials.companyId, phoneNumber.companyId),
-          eq(telephonyCredentials.isActive, true)
-        ))
-        .limit(1)
-        .then(rows => rows[0]);
+      // ROUTING LOGIC:
+      // 1. If number has assigned user, route to that specific user
+      // 2. If no assigned user, fall back to any active credential for the company
+      let credential: { sipUsername: string } | undefined;
+      
+      if (phoneNumber.assignedUserId) {
+        // Route to specifically assigned user
+        credential = await db
+          .select({ sipUsername: telephonyCredentials.sipUsername })
+          .from(telephonyCredentials)
+          .where(and(
+            eq(telephonyCredentials.userId, phoneNumber.assignedUserId),
+            eq(telephonyCredentials.companyId, phoneNumber.companyId),
+            eq(telephonyCredentials.isActive, true)
+          ))
+          .limit(1)
+          .then(rows => rows[0]);
+          
+        if (!credential) {
+          // Assigned user has no active SIP credentials
+          console.warn(`[Telnyx Voice Inbound] Assigned user ${phoneNumber.assignedUserId} has no active SIP credentials`);
+        }
+      }
+      
+      // Fallback: If no assigned user or assigned user has no credentials, use any active credential
+      if (!credential) {
+        credential = await db
+          .select({ sipUsername: telephonyCredentials.sipUsername })
+          .from(telephonyCredentials)
+          .where(and(
+            eq(telephonyCredentials.companyId, phoneNumber.companyId),
+            eq(telephonyCredentials.isActive, true)
+          ))
+          .limit(1)
+          .then(rows => rows[0]);
+      }
       
       if (!credential?.sipUsername) {
-        // No active SIP credentials - cannot route call
+        // No active SIP credentials available
         const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Joanna">This line is not available. Please try again later.</Say>
@@ -26454,7 +26484,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Log call routing asynchronously
       setImmediate(() => {
-        console.log(`[Telnyx Voice Inbound] Routed ${from} -> ${credential.sipUsername} in ${Date.now() - startTime}ms`);
+        const routingType = phoneNumber.assignedUserId ? 'assigned' : 'fallback';
+        console.log(`[Telnyx Voice Inbound] Routed ${from} -> ${credential.sipUsername} (${routingType}) in ${Date.now() - startTime}ms`);
       });
       
     } catch (error: any) {
