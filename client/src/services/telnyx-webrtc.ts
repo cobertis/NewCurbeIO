@@ -442,6 +442,16 @@ class TelnyxWebRTCManager {
             this.stopRingback(); // Stop ringback when call is answered
             this.stopRingtone(); // Stop ringtone when call is answered
             
+            // DEBUG: Log detailed stream information to diagnose audio issues
+            console.log('[Telnyx WebRTC] DIAGNOSTIC - Call streams:', {
+              hasLocalStream: !!call.localStream,
+              hasRemoteStream: !!call.remoteStream,
+              localTracks: call.localStream?.getTracks?.()?.map((t: any) => ({ kind: t.kind, enabled: t.enabled, muted: t.muted, readyState: t.readyState })) || [],
+              remoteTracks: call.remoteStream?.getTracks?.()?.map((t: any) => ({ kind: t.kind, enabled: t.enabled, muted: t.muted, readyState: t.readyState })) || [],
+              peerConnectionState: call.peer?.pc?.connectionState,
+              iceConnectionState: call.peer?.pc?.iceConnectionState,
+            });
+            
             // Determine direction using resolved value or inference
             const callDirection = resolvedDirection || 
               (call.options?.remoteCallerNumber ? 'inbound' : 'outbound');
