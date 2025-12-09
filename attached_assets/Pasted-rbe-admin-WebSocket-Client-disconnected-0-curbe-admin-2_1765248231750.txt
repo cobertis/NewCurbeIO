@@ -1,0 +1,36 @@
+rbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | 2:43:00 AM [express] GET /api/session 200 in 30ms :: {"user":{"id":"7494d718-e807-46c5-b42b-bb629d60…
+0|curbe-admin  | 2:43:00 AM [express] GET /api/voicemails 400 in 19ms :: {"message":"No company associated with user"}
+0|curbe-admin  | 2:43:00 AM [express] GET /api/call-logs 400 in 26ms :: {"message":"No company associated with user"}
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 2:43:00 AM [express] GET /api/notifications 304 in 28ms :: {"notifications":[{"id":"d8ba2a31-cb87-49…
+0|curbe-admin  | 2:43:00 AM [express] GET /api/telnyx/my-numbers 304 in 28ms :: {"numbers":[]}
+0|curbe-admin  | 2:43:00 AM [express] GET /api/session 304 in 58ms :: {"user":{"id":"7494d718-e807-46c5-b42b-bb629d60…
+0|curbe-admin  | 2:43:00 AM [express] GET /api/system/credentials/providers 304 in 18ms :: {"providers":[{"provider":…
+0|curbe-admin  | 2:43:00 AM [express] GET /api/system/credentials 304 in 22ms :: {"credentials":[{"id":"ec5ba208-4ebe…
+0|curbe-admin  | 2:43:00 AM [express] GET /api/whatsapp/unread-count 400 in 22ms :: {"message":"No company associated…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | 2:43:02 AM [express] GET /api/admin/deploy/status 304 in 16ms :: {"jobs":[{"id":3,"triggeredBy":"hel…
+0|curbe-admin  | [DEPLOY] Manual deployment triggered by: hello@curbe.io
+0|curbe-admin  | [DEPLOY] Job 4 started at 2025-12-09T02:43:04.272Z
+0|curbe-admin  | 2:43:04 AM [express] POST /api/admin/deploy 200 in 17ms :: {"message":"Deployment started","jobId":4…
+0|curbe-admin  | [DEPLOY] Environment: PRODUCTION
+0|curbe-admin  | [DEPLOY] Step 1/4: Pulling latest code from GitHub...
+0|curbe-admin  | [DEPLOY] Updating d3f985f08..b500406e6
+0|curbe-admin  | Fast-forward
+0|curbe-admin  |  client/src/pages/register.tsx | 2 +-
+0|curbe-admin  |  1 file changed, 1 insertion(+), 1 deletion(-)
+0|curbe-admin  | From github.com:cobertis/NewCurbeIO
+0|curbe-admin  |  * branch                main       -> FETCH_HEAD
+0|curbe-admin  |    d3f985f08..b500406e6  main       -> origin/main
+0|curbe-admin  | [DEPLOY] Step 2/4: Installing dependencies...
+0|curbe-admin  | [DEPLOY] Dependencies installed successfully
+0|curbe-admin  | [DEPLOY] Step 3/4: Building application...
+0|curbe-admin  | [DEPLOY] Job 4 failed: Error: Command failed with code 127: sh: 1: vite: not found
+0|curbe-admin  |     at ChildProcess.<anonymous> (file:///var/www/curbe/dist/index.js:45476:22)
+0|curbe-admin  |     at ChildProcess.emit (node:events:524:28)
+0|curbe-admin  |     at maybeClose (node:internal/child_process:1104:16)
+0|curbe-admin  |     at ChildProcess._handle.onexit (node:internal/child_process:304:5)

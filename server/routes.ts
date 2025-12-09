@@ -28355,7 +28355,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const runCommand = (cmd: string, args: string[], cwd: string): Promise<string> => {
         return new Promise((resolve, reject) => {
-          const proc = spawn(cmd, args, { cwd, shell: true });
+          const env = { ...process.env, PATH: `${cwd}/node_modules/.bin:${process.env.PATH}` };
+          const proc = spawn(cmd, args, { cwd, shell: true, env });
           let output = "";
           let errorOutput = "";
           
