@@ -27633,9 +27633,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const TELNYX_API_BASE = "https://api.telnyx.com/v2";
       
-      // PATCH the credential connection with inbound.noise_suppression (correct Telnyx API structure)
+      // PATCH the credential connection with voice.noise_suppression (correct Telnyx API structure)
       const payload = {
-        inbound: {
+        voice: {
           noise_suppression: noiseSuppressionConfig,
         },
       };
