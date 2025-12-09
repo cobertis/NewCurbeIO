@@ -7466,12 +7466,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Unauthorized access to company subscription" });
     }
     try {
+      // Dynamic import to get Stripe client with credentials from database
+      const { getStripeClient: getStripeClientAsync } = await import("./stripe");
+      const stripeClient = await getStripeClientAsync();
+      if (!stripeClient) {
+        return res.status(500).json({ message: "Stripe is not configured" });
+      }
+      
       const subscription = await storage.getSubscriptionByCompany(companyId);
       if (!subscription || !subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
         return res.status(404).json({ message: "No active subscription found" });
       }
       // Step 1: Check if customer has a payment method
-      const paymentMethods = await getStripeClient().paymentMethods.list({
+      const paymentMethods = await stripeClient.paymentMethods.list({
         customer: subscription.stripeCustomerId,
         type: 'card',
       });
@@ -7481,10 +7488,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       // Get the default payment method
-      const customer = await getStripeClient().customers.retrieve(subscription.stripeCustomerId) as any;
+      const customer = await stripeClient.customers.retrieve(subscription.stripeCustomerId) as any;
       const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method || paymentMethods.data[0].id;
       // Step 2: Get the subscription to find the price
-      const stripeSubscription = await getStripeClient().subscriptions.retrieve(subscription.stripeSubscriptionId);
+      const stripeSubscription = await stripeClient.subscriptions.retrieve(subscription.stripeSubscriptionId);
       if (!stripeSubscription.items.data || stripeSubscription.items.data.length === 0) {
         return res.status(400).json({ message: "Invalid subscription configuration" });
       }
@@ -7494,7 +7501,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log('[SKIP-TRIAL] Creating pre-authorization for subscription amount');
       try {
         // Create a PaymentIntent with manual capture
-        const paymentIntent = await getStripeClient().paymentIntents.create({
+        const paymentIntent = await stripeClient.paymentIntents.create({
           amount: amount,
           currency: currency,
           customer: subscription.stripeCustomerId,
@@ -7513,11 +7520,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         // CAPTURE the payment immediately (converts pre-auth to actual charge)
         console.log('[SKIP-TRIAL] Capturing payment for subscription');
-        const capturedPayment = await getStripeClient().paymentIntents.capture(paymentIntent.id);
+        const capturedPayment = await stripeClient.paymentIntents.capture(paymentIntent.id);
         console.log('[SKIP-TRIAL] Payment captured successfully:', capturedPayment.id);
         // End trial WITHOUT creating another invoice (prevent double-billing)
         console.log('[SKIP-TRIAL] Ending trial without creating new invoice');
-        const updatedSubscription = await getStripeClient().subscriptions.update(
+        const updatedSubscription = await stripeClient.subscriptions.update(
           subscription.stripeSubscriptionId,
           {
             trial_end: 'now', // End trial immediately
