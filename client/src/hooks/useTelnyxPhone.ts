@@ -18,7 +18,6 @@ const getOrCreateRemoteAudio = (): HTMLAudioElement => {
     remoteAudioElement = document.createElement('audio');
     remoteAudioElement.id = 'remoteMedia';
     remoteAudioElement.autoplay = true;
-    // Per SDK docs: Ensure autoplay works
     remoteAudioElement.setAttribute('autoplay', 'true');
     remoteAudioElement.setAttribute('playsinline', 'true');
     document.body.appendChild(remoteAudioElement);
@@ -44,7 +43,6 @@ const getOpusCodec = (): RTCRtpCodecCapability | undefined => {
 
 export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
-  // Track if we initiated a call (for distinguishing outbound from inbound)
   const weInitiatedCallRef = useRef(false);
   
   const [state, setState] = useState<TelnyxPhoneState>({
@@ -60,16 +58,8 @@ export const useTelnyxPhone = () => {
     try {
       setState(prev => ({ ...prev, sessionStatus: 'connecting' }));
       
-      // Per SDK docs: Create audio element
+      // Per SDK docs: Create audio element first
       const audioElement = getOrCreateRemoteAudio();
-      
-      // Request microphone permission
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('[TelnyxPhone] Microphone permission granted');
-      } catch (e) {
-        console.error('[TelnyxPhone] Microphone permission denied:', e);
-      }
       
       // Get credentials from backend
       const response = await fetch('/api/webrtc/token', {
@@ -115,6 +105,19 @@ export const useTelnyxPhone = () => {
       client.remoteElement = audioElement;
       console.log('[TelnyxPhone] Set client.remoteElement');
 
+      // Per SDK docs: Enable microphone BEFORE connect() to avoid audio delay
+      // This is critical for incoming calls
+      console.log('[TelnyxPhone] Enabling microphone BEFORE connect...');
+      client.enableMicrophone();
+      
+      // Per SDK docs: checkPermissions(audio, video) - request mic permission upfront
+      try {
+        await client.checkPermissions(true, false);
+        console.log('[TelnyxPhone] Microphone permissions checked');
+      } catch (e) {
+        console.log('[TelnyxPhone] Could not check permissions:', e);
+      }
+
       // Per SDK docs: Attach event listeners
       client.on('telnyx.ready', () => {
         console.log('[TelnyxPhone] telnyx.ready - ready to call');
@@ -135,13 +138,18 @@ export const useTelnyxPhone = () => {
       client.on('telnyx.notification', (notification: any) => {
         console.log('[TelnyxPhone] telnyx.notification type:', notification.type);
         
+        // Handle microphone errors per SDK docs
+        if (notification.type === 'userMediaError') {
+          console.error('[TelnyxPhone] userMediaError:', notification.error);
+          return;
+        }
+        
         if (notification.type === 'callUpdate') {
           const call = notification.call as Call;
           console.log('[TelnyxPhone] callUpdate state:', call.state);
           
           // Per SDK docs: Check call.state === 'ringing' for incoming calls
           if (call.state === 'ringing') {
-            // If we didn't initiate this call, it's incoming
             if (!weInitiatedCallRef.current) {
               console.log('[TelnyxPhone] Incoming call detected - showing UI');
               setState(prev => ({ ...prev, incomingCall: call }));
@@ -155,9 +163,8 @@ export const useTelnyxPhone = () => {
               incomingCall: null 
             }));
           } else if (call.state === 'hangup' || call.state === 'destroy') {
-            console.log('[TelnyxPhone] Call ended:', call.state);
+            console.log('[TelnyxPhone] Call ended:', call.state, 'cause:', (call as any).cause);
             weInitiatedCallRef.current = false;
-            // Reset state
             setState(prev => ({ 
               ...prev, 
               activeCall: null, 
@@ -169,7 +176,7 @@ export const useTelnyxPhone = () => {
         }
       });
 
-      // Per SDK docs: Connect and login
+      // Per SDK docs: Connect AFTER enabling microphone
       await client.connect();
       clientRef.current = client;
       
@@ -205,7 +212,6 @@ export const useTelnyxPhone = () => {
     console.log('[TelnyxPhone] Making outbound call to:', destination);
     weInitiatedCallRef.current = true;
     
-    // Per SDK docs: Use OPUS codec for lower latency
     const opusCodec = getOpusCodec();
     const callOptions: any = {
       destinationNumber: destination,
@@ -231,24 +237,33 @@ export const useTelnyxPhone = () => {
     }
   }, [state.incomingCall]);
 
-  // Per SDK docs: Hangup or reject an incoming call - call.hangup()
+  // Per SDK docs (v1.0.8+): Use call.reject() for incoming calls to properly reject
+  // This prevents "User Busy" tone - uses proper rejection signaling
   const rejectCall = useCallback(() => {
     if (state.incomingCall) {
-      console.log('[TelnyxPhone] Rejecting call');
-      state.incomingCall.hangup();
+      console.log('[TelnyxPhone] Rejecting incoming call');
+      // Per SDK docs: Use reject() for incoming calls (available since v1.0.8)
+      const call = state.incomingCall as any;
+      if (typeof call.reject === 'function') {
+        call.reject();
+      } else {
+        // Fallback to hangup if reject not available
+        state.incomingCall.hangup();
+      }
       setState(prev => ({ ...prev, incomingCall: null }));
     }
   }, [state.incomingCall]);
 
-  // Per SDK docs: Hangup or reject an incoming call - call.hangup()
+  // Per SDK docs: hangup() on an ACTIVE call sends NORMAL_CLEARING
+  // hangup() on a RINGING call sends USER_BUSY - use reject() instead
   const hangupCall = useCallback(() => {
     if (state.activeCall) {
-      console.log('[TelnyxPhone] Hanging up call');
+      console.log('[TelnyxPhone] Hanging up active call - should send NORMAL_CLEARING');
       state.activeCall.hangup();
     }
   }, [state.activeCall]);
 
-  // Per SDK docs: Call states that can be toggled - call.muteAudio()
+  // Per SDK docs: call.muteAudio() / call.unmuteAudio()
   const toggleMute = useCallback(() => {
     if (state.activeCall) {
       if (state.isMuted) {
@@ -262,7 +277,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall, state.isMuted]);
 
-  // Per SDK docs: Call states that can be toggled - call.hold()
+  // Per SDK docs: call.hold() / call.unhold()
   const toggleHold = useCallback(() => {
     if (state.activeCall) {
       if (state.isOnHold) {
@@ -276,7 +291,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall, state.isOnHold]);
 
-  // Per SDK docs: Send digits and keypresses - call.dtmf('1234')
+  // Per SDK docs: call.dtmf('1234')
   const sendDTMF = useCallback((digit: string) => {
     if (state.activeCall) {
       console.log('[TelnyxPhone] Sending DTMF:', digit);
