@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,15 @@ export default function PhoneSystem() {
   }>({
     queryKey: ["/api/wallet"],
   });
+
+  // Sync auto-recharge state with wallet data
+  useEffect(() => {
+    if (walletData?.wallet) {
+      setAutoRechargeEnabled(walletData.wallet.autoRecharge || false);
+      setAutoRechargeThreshold(walletData.wallet.autoRechargeThreshold || "10");
+      setAutoRechargeAmount(walletData.wallet.autoRechargeAmount || "50");
+    }
+  }, [walletData]);
 
   // Call history query
 
