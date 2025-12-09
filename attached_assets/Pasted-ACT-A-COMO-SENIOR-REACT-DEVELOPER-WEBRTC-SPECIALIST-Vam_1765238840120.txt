@@ -1,0 +1,81 @@
+ACTÚA COMO SENIOR REACT DEVELOPER & WEBRTC SPECIALIST.
+
+Vamos a actualizar el componente ActiveCall (la pantalla cuando hay una llamada en curso) para agregar funcionalidades de nivel Enterprise.
+
+Librería: @telnyx/webrtc Contexto: Tenemos un objeto call (la llamada activa) disponible en el estado.
+
+Implementa las siguientes 4 características técnicas:
+
+1. Teclado DTMF (In-Call Keypad)
+
+Crea un sub-componente DtmfKeypad.
+
+Debe renderizar una grilla de botones: 1, 2, 3, 4, 5, 6, 7, 8, 9, *, 0, #.
+
+Lógica: Al hacer clic en un botón, ejecuta call.dtmf(key).
+
+UX: Agrega feedback visual (efecto 'active') al presionar. Reproduce un sonido de tono corto localmente si es posible (opcional).
+
+Agrega un botón "Cerrar Teclado" para volver a los controles principales.
+
+2. Botón Mute con Estado Visual (Toggle)
+
+Usa un estado local: const [isMuted, setIsMuted] = useState(false).
+
+Lógica:
+
+Al hacer clic: call.toggleMute().
+
+Inmediatamente invierte el estado: setIsMuted(!isMuted).
+
+UI:
+
+Si !isMuted: Icono de Micrófono gris/blanco (Normal).
+
+Si isMuted: Icono de Micrófono rojo tachado (Alerta) + Texto "MUTED" visible.
+
+3. Módulo de Transferencias (Blind & Attended)
+
+Crea un botón "Transferir" que abra un Modal con dos pestañas (Tabs):
+
+Tab A: Transferencia Ciega (Blind Transfer)
+
+Input: Número de destino.
+
+Botón "Transferir Ahora".
+
+Acción: Ejecuta call.transfer(destinationNumber). Cierra el modal y la llamada local termina.
+
+Tab B: Transferencia Consultiva (Attended/Warm Transfer)
+
+Flujo Lógico:
+
+Botón "Consultar": Pone la llamada actual en Hold (call.hold()).
+
+Inicia una segunda llamada (newCall) al consultor.
+
+Muestra controles para esta segunda llamada (Colgar Consultor / Completar Transferencia).
+
+Acción "Completar": Si el consultor acepta, cuelga la segunda llamada y ejecuta originalCall.transfer(consultantNumber).
+
+Acción "Cancelar": Cuelga la segunda llamada y ejecuta originalCall.unhold() para volver con el cliente.
+
+4. Monitor de Calidad de Red (Network Stats)
+
+Crea un componente pequeño NetworkQualityIndicator en la esquina del webphone.
+
+Listener: Escucha el evento telnyx.notification en el cliente. Filtra donde notification.type === 'callUpdate'.
+
+Data: Inspecciona call.options.stats (si está disponible) o el objeto notification.call. Busca métricas de mos (Mean Opinion Score) o packet loss.
+
+Visualización (Semáforo):
+
+Si MOS > 4.0 o Packet Loss < 1%: Icono Verde (Excelente).
+
+Si MOS > 3.0 o Packet Loss < 5%: Icono Amarillo (Advertencia).
+
+Si MOS < 3.0 o Packet Loss > 5%: Icono Rojo (Mala calidad).
+
+Tooltip: Al pasar el mouse, muestra: "Jitter: Xms, Packet Loss: Y%".
+
+Nota de Estilo: Usa Tailwind CSS. Los botones deben ser grandes y fáciles de tocar (touch-friendly). El indicador de red debe ser sutil pero visible.
