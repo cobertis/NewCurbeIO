@@ -25986,7 +25986,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/wallet/transactions - Get wallet transactions
+  // GET /api/wallet/transactions - Get wallet transactions with Stripe receipt URLs
   app.get("/api/wallet/transactions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -26005,7 +26005,27 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const transactions = await getWalletTransactions(wallet.id, limit, offset);
-      res.json({ transactions });
+      
+      // Enrich deposit transactions with Stripe receipt URLs
+      const { stripe } = await import("./stripe");
+      const enrichedTransactions = await Promise.all(
+        transactions.map(async (tx) => {
+          if (tx.type === 'deposit' && tx.externalReferenceId && stripe) {
+            try {
+              const paymentIntent = await stripe.paymentIntents.retrieve(tx.externalReferenceId);
+              if (paymentIntent.latest_charge) {
+                const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+                return { ...tx, receiptUrl: charge.receipt_url };
+              }
+            } catch (e) {
+              // If we cant get receipt, return without it
+            }
+          }
+          return tx;
+        })
+      );
+      
+      res.json({ transactions: enrichedTransactions });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });
@@ -26486,7 +26506,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/wallet/transactions - Get wallet transactions
+  // GET /api/wallet/transactions - Get wallet transactions with Stripe receipt URLs
   app.get("/api/wallet/transactions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -26505,7 +26525,27 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const transactions = await getWalletTransactions(wallet.id, limit, offset);
-      res.json({ transactions });
+      
+      // Enrich deposit transactions with Stripe receipt URLs
+      const { stripe } = await import("./stripe");
+      const enrichedTransactions = await Promise.all(
+        transactions.map(async (tx) => {
+          if (tx.type === 'deposit' && tx.externalReferenceId && stripe) {
+            try {
+              const paymentIntent = await stripe.paymentIntents.retrieve(tx.externalReferenceId);
+              if (paymentIntent.latest_charge) {
+                const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+                return { ...tx, receiptUrl: charge.receipt_url };
+              }
+            } catch (e) {
+              // If we cant get receipt, return without it
+            }
+          }
+          return tx;
+        })
+      );
+      
+      res.json({ transactions: enrichedTransactions });
     } catch (error: any) {
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });

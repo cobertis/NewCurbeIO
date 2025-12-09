@@ -1261,150 +1261,143 @@ export default function Billing() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Invoice History
+                Transaction History
               </CardTitle>
-              <CardDescription>Complete history of all your invoices</CardDescription>
+              <CardDescription>Complete history of all your invoices and wallet top-ups</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingInvoices ? (
+              {(isLoadingInvoices || isLoadingWalletTransactions) ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
                 </div>
-              ) : invoices.filter(inv => inv.status !== 'void' && inv.total !== 0).length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices
-                        .filter(inv => inv.status !== 'void' && inv.total !== 0)
-                        .map((invoice) => (
-                        <TableRow key={invoice.id} data-testid={`invoice-row-${invoice.id}`}>
-                          <TableCell className="font-medium">
-                            {invoice.invoiceNumber}
-                          </TableCell>
-                          <TableCell>{formatDate(new Date(invoice.invoiceDate))}</TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={invoice.status === 'paid' ? 'default' : invoice.status === 'open' ? 'secondary' : 'outline'}
-                            >
-                              {invoice.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(invoice.total, invoice.currency)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {invoice.stripeHostedInvoiceUrl && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => window.open(invoice.stripeHostedInvoiceUrl, '_blank')}
-                                  data-testid={`button-view-invoice-${invoice.id}`}
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {invoice.stripeInvoicePdf && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => window.open(invoice.stripeInvoicePdf, '_blank')}
-                                  data-testid={`button-download-invoice-${invoice.id}`}
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Invoices Yet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Invoices will appear here once you start your subscription.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              ) : (() => {
+                // Combine invoices and wallet transactions into unified list
+                const unifiedTransactions: Array<{
+                  id: string;
+                  type: 'invoice' | 'wallet';
+                  description: string;
+                  date: Date;
+                  amount: number;
+                  currency: string;
+                  status: string;
+                  receiptUrl?: string | null;
+                  pdfUrl?: string | null;
+                }> = [];
 
-          {/* Wallet Transactions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wallet className="h-5 w-5" />
-                Wallet Transactions
-              </CardTitle>
-              <CardDescription>Phone system top-ups and usage charges</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingWalletTransactions ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
-                </div>
-              ) : walletTransactions.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">Balance</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {walletTransactions.map((tx) => (
-                        <TableRow key={tx.id} data-testid={`wallet-tx-row-${tx.id}`}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {tx.type === 'deposit' ? (
-                                <ArrowUpCircle className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <ArrowDownCircle className="h-4 w-4 text-red-500" />
-                              )}
-                              <span className="capitalize">{tx.type}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {tx.description || '-'}
-                          </TableCell>
-                          <TableCell>{formatDate(new Date(tx.createdAt))}</TableCell>
-                          <TableCell className={`text-right font-medium ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                            {tx.type === 'deposit' ? '+' : '-'}${Math.abs(parseFloat(tx.amount)).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            ${parseFloat(tx.balanceAfter).toFixed(2)}
-                          </TableCell>
+                // Add invoices
+                invoices
+                  .filter(inv => inv.status !== 'void' && inv.total !== 0)
+                  .forEach(inv => {
+                    unifiedTransactions.push({
+                      id: `inv-${inv.id}`,
+                      type: 'invoice',
+                      description: inv.invoiceNumber || 'Subscription Invoice',
+                      date: new Date(inv.invoiceDate),
+                      amount: inv.total,
+                      currency: inv.currency,
+                      status: inv.status,
+                      receiptUrl: inv.stripeHostedInvoiceUrl,
+                      pdfUrl: inv.stripeInvoicePdf,
+                    });
+                  });
+
+                // Add wallet deposits
+                walletTransactions
+                  .filter(tx => tx.type === 'deposit')
+                  .forEach(tx => {
+                    unifiedTransactions.push({
+                      id: `wallet-${tx.id}`,
+                      type: 'wallet',
+                      description: tx.description || 'Wallet Top-up',
+                      date: new Date(tx.createdAt),
+                      amount: parseFloat(tx.amount),
+                      currency: 'usd',
+                      status: 'paid',
+                      receiptUrl: (tx as any).receiptUrl || null,
+                      pdfUrl: null,
+                    });
+                  });
+
+                // Sort by date descending
+                unifiedTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+                return unifiedTransactions.length > 0 ? (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Wallet Transactions Yet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Wallet top-ups and phone usage charges will appear here.
-                  </p>
-                </div>
-              )}
+                      </TableHeader>
+                      <TableBody>
+                        {unifiedTransactions.map((tx) => (
+                          <TableRow key={tx.id} data-testid={`tx-row-${tx.id}`}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {tx.type === 'invoice' ? (
+                                  <FileText className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Wallet className="h-4 w-4 text-green-500" />
+                                )}
+                                <span className="capitalize">{tx.type === 'invoice' ? 'Subscription' : 'Wallet Top-up'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {tx.description}
+                            </TableCell>
+                            <TableCell>{formatDate(tx.date)}</TableCell>
+                            <TableCell>
+                              <Badge variant={tx.status === 'paid' ? 'default' : tx.status === 'open' ? 'secondary' : 'outline'}>
+                                {tx.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(tx.amount, tx.currency)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {tx.receiptUrl && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(tx.receiptUrl!, '_blank')}
+                                    data-testid={`button-view-receipt-${tx.id}`}
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {tx.pdfUrl && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => window.open(tx.pdfUrl!, '_blank')}
+                                    data-testid={`button-download-pdf-${tx.id}`}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Invoices and wallet top-ups will appear here.
+                    </p>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
