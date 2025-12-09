@@ -1,0 +1,78 @@
+# Interpreting WebRTC Voice SDKs Debug Data
+
+<Callout type="warning">
+  This is a beta feature with limited availability by SDK type. Data schema and/or presentation may change without notification.
+</Callout>
+
+To make full use of this guide, the reader is encouraged to complete the following steps in order to have a real world example to follow along.
+
+1. Initiates an outbound call from a [properly configured](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/demo-app) `https://webrtc.telnyx.com/` with debug enabled and data sent over socket.
+2. [Locate](https://developers.telnyx.com/docs/voice/webrtc/troubleshooting/debug-logs#locating-the-debug-data) the debug data.
+3. Upload the data to `https://webrtc-debug.telnyx.com/`.
+
+## Peer Configuration
+
+<img src="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/peer-configuration.png?fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=9a5293c1fde1cfd535db2b81da5614ed" alt="" data-og-width="1350" width="1350" data-og-height="726" height="726" data-path="img/peer-configuration.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/peer-configuration.png?w=280&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=e751b49479a786227550ccd952126a6a 280w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/peer-configuration.png?w=560&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=97c399f8f2c78bbb355e0f68510e910e 560w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/peer-configuration.png?w=840&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=e8aa5d78dff802626b19f1b285e6f62f 840w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/peer-configuration.png?w=1100&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=485229b5e1cb420bcf2274c68c935101 1100w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/peer-configuration.png?w=1650&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=addb6a043b231a8df3d35e5c8feaea64 1650w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/peer-configuration.png?w=2500&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=5e4c264289888e81446e0c8269c5944e 2500w" />
+
+This section provides data on the configuration of the [RTCPeerConnection](https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection).
+
+If [`prefetchIceCandidates`](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions#prefetchicecandidates) is disabled, the pool size is set to 0. Otherwise, it's set to 255.
+
+If [`forceRelayCandidate`](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions#forcerelaycandidate) is enabled, then transport policy will be set to `relay`.
+
+Lastly, by default, Telnyx SDKs use the following endpoints to gather ICE candidates.
+
+* `stun.l.google.com`
+* `stun.telnyx.com`
+* `turn.telnyx.com`
+
+## ICE Candidates & Candidate Pair
+
+<img src="https://mintcdn.com/telnyx/tKcWw-YZ6CuwkRsC/img/ice-candidates.png?fit=max&auto=format&n=tKcWw-YZ6CuwkRsC&q=85&s=fa324ecb78937c11c40c2e48196a16dd" alt="" data-og-width="2686" width="2686" data-og-height="826" height="826" data-path="img/ice-candidates.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/tKcWw-YZ6CuwkRsC/img/ice-candidates.png?w=280&fit=max&auto=format&n=tKcWw-YZ6CuwkRsC&q=85&s=4a7ea88f800e0cc6d3fa22c086a6650e 280w, https://mintcdn.com/telnyx/tKcWw-YZ6CuwkRsC/img/ice-candidates.png?w=560&fit=max&auto=format&n=tKcWw-YZ6CuwkRsC&q=85&s=b025d8100c3207e7f53e9d786e42277d 560w, https://mintcdn.com/telnyx/tKcWw-YZ6CuwkRsC/img/ice-candidates.png?w=840&fit=max&auto=format&n=tKcWw-YZ6CuwkRsC&q=85&s=77c82df6726630f0e0fd7c10eacb81d2 840w, https://mintcdn.com/telnyx/tKcWw-YZ6CuwkRsC/img/ice-candidates.png?w=1100&fit=max&auto=format&n=tKcWw-YZ6CuwkRsC&q=85&s=a58b5ed76b385af2998e5c9d5c3cf175 1100w, https://mintcdn.com/telnyx/tKcWw-YZ6CuwkRsC/img/ice-candidates.png?w=1650&fit=max&auto=format&n=tKcWw-YZ6CuwkRsC&q=85&s=043c01483a23811c2d8cc7070af0c560 1650w, https://mintcdn.com/telnyx/tKcWw-YZ6CuwkRsC/img/ice-candidates.png?w=2500&fit=max&auto=format&n=tKcWw-YZ6CuwkRsC&q=85&s=cc09e31207acc96300bbeff2a9dd46f5 2500w" />
+
+This section lists out all the [ICE candidates](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceCandidate) gathered prior to a call is established.
+
+There will always be one `remote-candidate` of `host` type offered. This represents the Telnyx's end of the peer connection.
+
+There will always be multiple `local-candidate` offered unless `relay` candidate was configured to be used.
+
+For a call to be successfully established, at least one `local-candidate` of the following type must be present:
+
+* `prflx`
+* `srflx`
+* `relay`
+
+`host` candidate type cannot be used to establish peer connection over the internet.
+
+If no viable `local-candidate` are present, it's highly likely that the SDK client is located on a very restrictive network where all UDP traffic is blocked and access to certain endpoints (turn.telnyx.com) are not allowed.
+
+Barring that, there will be one pair of ICE candidates used for this call.
+
+<img src="https://mintcdn.com/telnyx/33ANQJ-HKUTIlR5u/img/candidate-pair.png?fit=max&auto=format&n=33ANQJ-HKUTIlR5u&q=85&s=8e4d8815fe0b1d42bae1745d965e55a5" alt="" data-og-width="1350" width="1350" data-og-height="522" height="522" data-path="img/candidate-pair.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/33ANQJ-HKUTIlR5u/img/candidate-pair.png?w=280&fit=max&auto=format&n=33ANQJ-HKUTIlR5u&q=85&s=377f9b07560aa70a9c516ab42f5d7fb0 280w, https://mintcdn.com/telnyx/33ANQJ-HKUTIlR5u/img/candidate-pair.png?w=560&fit=max&auto=format&n=33ANQJ-HKUTIlR5u&q=85&s=a92b80869b80a9f87531161bf9ce4ba8 560w, https://mintcdn.com/telnyx/33ANQJ-HKUTIlR5u/img/candidate-pair.png?w=840&fit=max&auto=format&n=33ANQJ-HKUTIlR5u&q=85&s=3a3231be9ebd40637fab4447263d6262 840w, https://mintcdn.com/telnyx/33ANQJ-HKUTIlR5u/img/candidate-pair.png?w=1100&fit=max&auto=format&n=33ANQJ-HKUTIlR5u&q=85&s=1301faf4a7f96b3e0ac58ef595394a28 1100w, https://mintcdn.com/telnyx/33ANQJ-HKUTIlR5u/img/candidate-pair.png?w=1650&fit=max&auto=format&n=33ANQJ-HKUTIlR5u&q=85&s=1bc6be9c9cfb6c9d8dd008bc4e4aaa18 1650w, https://mintcdn.com/telnyx/33ANQJ-HKUTIlR5u/img/candidate-pair.png?w=2500&fit=max&auto=format&n=33ANQJ-HKUTIlR5u&q=85&s=646f9d342be95fdc4e458fc131112a77 2500w" />
+
+## RTT
+
+<img src="https://mintcdn.com/telnyx/piPv--L_2q5NFR4U/img/rtt.png?fit=max&auto=format&n=piPv--L_2q5NFR4U&q=85&s=80cb406cd6da8af778296190a81dcec9" alt="" data-og-width="1348" width="1348" data-og-height="1046" height="1046" data-path="img/rtt.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/piPv--L_2q5NFR4U/img/rtt.png?w=280&fit=max&auto=format&n=piPv--L_2q5NFR4U&q=85&s=b5c424f836334020145428d16e5e6fc9 280w, https://mintcdn.com/telnyx/piPv--L_2q5NFR4U/img/rtt.png?w=560&fit=max&auto=format&n=piPv--L_2q5NFR4U&q=85&s=1173eec17d1bce3a280a9f3e3322b60e 560w, https://mintcdn.com/telnyx/piPv--L_2q5NFR4U/img/rtt.png?w=840&fit=max&auto=format&n=piPv--L_2q5NFR4U&q=85&s=424a1c62e9c114dc0a1ccb9cb9a3878d 840w, https://mintcdn.com/telnyx/piPv--L_2q5NFR4U/img/rtt.png?w=1100&fit=max&auto=format&n=piPv--L_2q5NFR4U&q=85&s=1363d21439dedd73166f791f3f39770c 1100w, https://mintcdn.com/telnyx/piPv--L_2q5NFR4U/img/rtt.png?w=1650&fit=max&auto=format&n=piPv--L_2q5NFR4U&q=85&s=cd996fc55a2bd89c5be5ed85e60ada91 1650w, https://mintcdn.com/telnyx/piPv--L_2q5NFR4U/img/rtt.png?w=2500&fit=max&auto=format&n=piPv--L_2q5NFR4U&q=85&s=aebc606c6a33319e1ce46f547edcaafc 2500w" />
+
+A high RTT value provides clues to voice delay.
+
+## Packets Lost
+
+A high packet lost value provides clues to skipped audio.
+
+<img src="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/packet-lost.png?fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=1463ad63f357a37f4624bf8936fe16bd" alt="" data-og-width="1338" width="1338" data-og-height="1048" height="1048" data-path="img/packet-lost.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/packet-lost.png?w=280&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=9a1b0dd24e65fb1230e402ed4f23f98c 280w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/packet-lost.png?w=560&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=7662ee4a19d0f7c009e71682332769cd 560w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/packet-lost.png?w=840&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=152a782eec29e4f6367bf9786a411311 840w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/packet-lost.png?w=1100&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=51fe7b6227b10f09cfac3da0b1386885 1100w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/packet-lost.png?w=1650&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=6f4486e124b1035d86165a4ec739198f 1650w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/packet-lost.png?w=2500&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=05e5d5c1a20e6a983918b87655e9c389 2500w" />
+
+## Jitter
+
+A high jitter value provides clues to inconsistent audio quality throughout the call.
+
+<img src="https://mintcdn.com/telnyx/JbAKfH7SbyeZcDpH/img/jitter.png?fit=max&auto=format&n=JbAKfH7SbyeZcDpH&q=85&s=9d115a85a32d1fb5cacb536048a485b6" alt="" data-og-width="1342" width="1342" data-og-height="1042" height="1042" data-path="img/jitter.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/JbAKfH7SbyeZcDpH/img/jitter.png?w=280&fit=max&auto=format&n=JbAKfH7SbyeZcDpH&q=85&s=86483e2bb5d881ad26041320228325b2 280w, https://mintcdn.com/telnyx/JbAKfH7SbyeZcDpH/img/jitter.png?w=560&fit=max&auto=format&n=JbAKfH7SbyeZcDpH&q=85&s=4d7d1b306f2e4678ba2d9a6848c6ec7e 560w, https://mintcdn.com/telnyx/JbAKfH7SbyeZcDpH/img/jitter.png?w=840&fit=max&auto=format&n=JbAKfH7SbyeZcDpH&q=85&s=00c7df8737dddcba5087809f49803ec5 840w, https://mintcdn.com/telnyx/JbAKfH7SbyeZcDpH/img/jitter.png?w=1100&fit=max&auto=format&n=JbAKfH7SbyeZcDpH&q=85&s=4371d468812072c8bc1bd7f7ada8144a 1100w, https://mintcdn.com/telnyx/JbAKfH7SbyeZcDpH/img/jitter.png?w=1650&fit=max&auto=format&n=JbAKfH7SbyeZcDpH&q=85&s=ffd072210dba60b0c249b64ba521053a 1650w, https://mintcdn.com/telnyx/JbAKfH7SbyeZcDpH/img/jitter.png?w=2500&fit=max&auto=format&n=JbAKfH7SbyeZcDpH&q=85&s=0c669c6f978f02eb14aa3b1c0372efb2 2500w" />
+
+## Other Useful Data
+
+If the user is experiencing one way audio, it's worth checking inbound and outbound audio level to corroborate the user's claim.
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://developers.telnyx.com/llms.txt
