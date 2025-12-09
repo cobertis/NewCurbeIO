@@ -1175,6 +1175,7 @@ export function WebPhoneFloatingWindow() {
   const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
   const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
   const telnyxIncomingCall = useTelnyxStore(state => state.incomingCall);
+  const telnyxCurrentCallDirection = useTelnyxStore(state => state.currentCallDirection);
   const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
   const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
   const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
@@ -1194,12 +1195,12 @@ export function WebPhoneFloatingWindow() {
     if (telnyxCurrentCall) {
       const callState = (telnyxCurrentCall as any).state;
       const callOptions = (telnyxCurrentCall as any).options || {};
-      // Detect direction: if remoteCallerNumber exists, it's an inbound call
-      // because outbound calls have destinationNumber as the remote party
+      // Use direction from store (most reliable), fall back to call object, then inference
       const hasRemoteCaller = !!callOptions.remoteCallerNumber;
       const explicitDirection = (telnyxCurrentCall as any).direction;
       const inferredDirection = hasRemoteCaller ? 'inbound' : 'outbound';
-      const direction = explicitDirection || inferredDirection;
+      // Priority: store direction > explicit direction > inferred direction
+      const direction = telnyxCurrentCallDirection || explicitDirection || inferredDirection;
       
       return {
         phoneNumber: direction === 'inbound' 
@@ -1224,7 +1225,7 @@ export function WebPhoneFloatingWindow() {
       return { ...currentCall, isTelnyx: false };
     }
     return null;
-  }, [telnyxCurrentCall, telnyxIncomingCall, currentCall]);
+  }, [telnyxCurrentCall, telnyxIncomingCall, currentCall, telnyxCurrentCallDirection]);
   
   // Effective mute/hold state
   const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;

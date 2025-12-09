@@ -19,6 +19,7 @@ interface TelnyxWebRTCState {
   currentCall?: TelnyxCall;
   incomingCall?: TelnyxCall;
   consultCall?: TelnyxCall; // Second call for attended transfer
+  currentCallDirection?: 'inbound' | 'outbound'; // Track direction for UI display
   isCallActive: boolean;
   isMuted: boolean;
   isOnHold: boolean;
@@ -29,7 +30,7 @@ interface TelnyxWebRTCState {
   callDuration: number; // Duration in seconds
   
   setConnectionStatus: (status: TelnyxWebRTCState['connectionStatus'], error?: string) => void;
-  setCurrentCall: (call?: TelnyxCall) => void;
+  setCurrentCall: (call?: TelnyxCall, direction?: 'inbound' | 'outbound') => void;
   setIncomingCall: (call?: TelnyxCall) => void;
   setConsultCall: (call?: TelnyxCall) => void;
   setMuted: (muted: boolean) => void;
@@ -55,7 +56,11 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
     connectionError: error,
     isConnected: status === 'connected'
   }),
-  setCurrentCall: (call) => set({ currentCall: call, isCallActive: !!call }),
+  setCurrentCall: (call, direction) => set({ 
+    currentCall: call, 
+    isCallActive: !!call,
+    currentCallDirection: call ? direction : undefined
+  }),
   setIncomingCall: (call) => set({ incomingCall: call }),
   setConsultCall: (call) => set({ consultCall: call }),
   setMuted: (muted) => set({ isMuted: muted }),
@@ -227,24 +232,35 @@ class TelnyxWebRTCManager {
   }
   
   private createRingtone(): void {
-    // Create a ringtone for incoming calls using Web Audio API
+    // Create a distinctive ringtone for incoming calls using Web Audio API
+    // Using higher frequencies and double-pulse pattern to distinguish from outbound ringback
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const sampleRate = audioContext.sampleRate;
-      const duration = 3; // 1s ring, 2s silence
+      const duration = 3; // Total pattern duration
       const bufferSize = sampleRate * duration;
       const buffer = audioContext.createBuffer(1, bufferSize, sampleRate);
       const data = buffer.getChannelData(0);
       
-      // Generate classic phone ring: 440Hz + 480Hz alternating with silence
+      // Generate distinctive double-pulse ring pattern: 
+      // Two short bursts (0.4s each) with brief pause, then longer silence
+      // Using 750Hz + 850Hz for a brighter, more attention-grabbing sound
       for (let i = 0; i < bufferSize; i++) {
         const t = i / sampleRate;
-        if (t < 1) {
-          // Ring tone (1 second) - classic phone ring frequencies
-          const envelope = Math.sin(Math.PI * t / 1) * 0.5; // Fade in/out
-          data[i] = envelope * (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t));
+        if (t < 0.4) {
+          // First ring pulse (0.4 seconds)
+          const envelope = Math.sin(Math.PI * t / 0.4) * 0.6;
+          data[i] = envelope * (Math.sin(2 * Math.PI * 750 * t) + Math.sin(2 * Math.PI * 850 * t));
+        } else if (t < 0.5) {
+          // Brief pause (0.1 seconds)
+          data[i] = 0;
+        } else if (t < 0.9) {
+          // Second ring pulse (0.4 seconds)
+          const localT = t - 0.5;
+          const envelope = Math.sin(Math.PI * localT / 0.4) * 0.6;
+          data[i] = envelope * (Math.sin(2 * Math.PI * 750 * t) + Math.sin(2 * Math.PI * 850 * t));
         } else {
-          // Silence (2 seconds)
+          // Silence (rest of the pattern)
           data[i] = 0;
         }
       }
@@ -379,12 +395,13 @@ class TelnyxWebRTCManager {
             console.log('[Telnyx WebRTC] Call active');
             this.stopRingback(); // Stop ringback when call is answered
             this.stopRingtone(); // Stop ringtone when call is answered
-            store.setCurrentCall(call);
-            store.setIncomingCall(undefined);
             
             // Determine direction using resolved value or inference
             const callDirection = resolvedDirection || 
               (call.options?.remoteCallerNumber ? 'inbound' : 'outbound');
+            
+            store.setCurrentCall(call, callDirection as 'inbound' | 'outbound');
+            store.setIncomingCall(undefined);
             
             // Record call start time and info for logging
             this.currentCallStartTime = new Date();
