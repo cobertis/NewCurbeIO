@@ -19,19 +19,14 @@ const getOrCreateRemoteAudio = (): HTMLAudioElement => {
     remoteAudioElement.id = 'telnyx-remote-audio';
     remoteAudioElement.autoplay = true;
     remoteAudioElement.playsInline = true;
-    // Must be in DOM for SDK to use it
     document.body.appendChild(remoteAudioElement);
-    console.log('[TelnyxPhone] Created remote audio element with id:', remoteAudioElement.id);
+    console.log('[TelnyxPhone] Created remote audio element');
   }
   return remoteAudioElement;
 };
 
 export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const oscillatorRef = useRef<OscillatorNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const ringIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const [state, setState] = useState<TelnyxPhoneState>({
     sessionStatus: 'disconnected',
@@ -42,76 +37,11 @@ export const useTelnyxPhone = () => {
     callerIdNumber: '',
   });
 
-  const playRingtone = useCallback(() => {
-    try {
-      stopRingtoneInternal();
-
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const audioContext = new AudioContextClass();
-      
-      if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
-
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 440;
-      oscillator.type = 'sine';
-      gainNode.gain.value = 0.4;
-      
-      oscillator.start();
-      
-      audioContextRef.current = audioContext;
-      oscillatorRef.current = oscillator;
-      gainNodeRef.current = gainNode;
-      
-      let isOn = true;
-      ringIntervalRef.current = setInterval(() => {
-        if (gainNodeRef.current) {
-          isOn = !isOn;
-          gainNodeRef.current.gain.value = isOn ? 0.4 : 0;
-        }
-      }, 500);
-      
-      console.log('[TelnyxPhone] Ringtone started');
-    } catch (e) {
-      console.error('[TelnyxPhone] playRingtone error:', e);
-    }
-  }, []);
-
-  const stopRingtoneInternal = () => {
-    if (ringIntervalRef.current) {
-      clearInterval(ringIntervalRef.current);
-      clearTimeout(ringIntervalRef.current);
-      ringIntervalRef.current = null;
-    }
-    if (oscillatorRef.current) {
-      try { oscillatorRef.current.stop(); } catch (e) {}
-      oscillatorRef.current = null;
-    }
-    if (gainNodeRef.current) {
-      gainNodeRef.current = null;
-    }
-    if (audioContextRef.current) {
-      try { audioContextRef.current.close(); } catch (e) {}
-      audioContextRef.current = null;
-    }
-  };
-
-  const stopRingtone = useCallback(() => {
-    stopRingtoneInternal();
-    console.log('[TelnyxPhone] Ringtone stopped');
-  }, []);
-
   const initClient = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, sessionStatus: 'connecting' }));
       
-      // Create and prepare the remote audio element BEFORE client initialization
+      // Create remote audio element BEFORE client initialization
       const remoteAudio = getOrCreateRemoteAudio();
       
       const response = await fetch('/api/webrtc/token', {
@@ -137,7 +67,7 @@ export const useTelnyxPhone = () => {
         clientRef.current.disconnect();
       }
 
-      // Build client config with credentials
+      // Build client config per IClientOptions documentation
       const clientConfig: any = {};
 
       if (data.token) {
@@ -153,10 +83,10 @@ export const useTelnyxPhone = () => {
 
       const newClient = new TelnyxRTC(clientConfig);
       
-      // SET remoteElement on client as per Telnyx documentation
+      // Set remoteElement on client per documentation:
       // "To hear/view calls in the browser, you'll need to specify an HTML media element"
       newClient.remoteElement = remoteAudio;
-      console.log('[TelnyxPhone] Set client.remoteElement to audio element');
+      console.log('[TelnyxPhone] Set client.remoteElement');
 
       newClient.on('telnyx.ready', () => {
         console.log('[TelnyxPhone] Client ready and registered');
@@ -184,16 +114,17 @@ export const useTelnyxPhone = () => {
             case 'ringing':
               if (direction === 'inbound' || !direction) {
                 console.log('[TelnyxPhone] Incoming call detected!');
-                playRingtone();
                 setState(prev => ({ ...prev, incomingCall: call }));
               }
               break;
-            case 'answering':
-              stopRingtone();
-              break;
             case 'active':
-              stopRingtone();
               console.log('[TelnyxPhone] Call is now active');
+              // Log remoteStream availability
+              const stream = call.remoteStream;
+              console.log('[TelnyxPhone] remoteStream available:', !!stream);
+              if (stream) {
+                console.log('[TelnyxPhone] remoteStream tracks:', stream.getTracks().length);
+              }
               setState(prev => ({ 
                 ...prev, 
                 activeCall: call, 
@@ -202,7 +133,6 @@ export const useTelnyxPhone = () => {
               break;
             case 'hangup':
             case 'destroy':
-              stopRingtone();
               setState(prev => ({ 
                 ...prev, 
                 activeCall: null, 
@@ -227,19 +157,18 @@ export const useTelnyxPhone = () => {
       console.error('[TelnyxPhone] Init error:', error);
       setState(prev => ({ ...prev, sessionStatus: 'error' }));
     }
-  }, [playRingtone, stopRingtone]);
+  }, []);
 
   useEffect(() => {
     initClient();
     
     return () => {
-      stopRingtone();
       if (clientRef.current) {
         clientRef.current.disconnect();
         clientRef.current = null;
       }
     };
-  }, [initClient, stopRingtone]);
+  }, [initClient]);
 
   const makeCall = useCallback((destination: string) => {
     if (!clientRef.current || state.sessionStatus !== 'registered') {
@@ -247,29 +176,53 @@ export const useTelnyxPhone = () => {
       return;
     }
     
+    const remoteAudio = getOrCreateRemoteAudio();
+    
     const call = clientRef.current.newCall({
       destinationNumber: destination,
       callerName: 'Curbe Agent',
       callerNumber: state.callerIdNumber,
+      remoteElement: remoteAudio, // Pass remoteElement per ICallOptions
     });
     
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
 
+  // CRITICAL: Answer with remoteElement AND manually attach stream per architect analysis
   const answerCall = useCallback(() => {
     if (state.incomingCall) {
-      stopRingtone();
-      state.incomingCall.answer();
+      const remoteAudio = getOrCreateRemoteAudio();
+      
+      console.log('[TelnyxPhone] Answering call with remoteElement');
+      
+      // Pass remoteElement in answer options per ICallOptions documentation
+      state.incomingCall.answer({
+        remoteElement: remoteAudio,
+      } as any);
+      
+      // Also manually attach the stream after answering (in same click handler for autoplay)
+      // Small delay to allow stream to be available
+      setTimeout(() => {
+        if (state.incomingCall) {
+          const stream = state.incomingCall.remoteStream;
+          console.log('[TelnyxPhone] After answer - remoteStream:', !!stream);
+          if (stream) {
+            remoteAudio.srcObject = stream;
+            remoteAudio.play()
+              .then(() => console.log('[TelnyxPhone] Remote audio playing'))
+              .catch(e => console.error('[TelnyxPhone] Audio play failed:', e));
+          }
+        }
+      }, 500);
     }
-  }, [state.incomingCall, stopRingtone]);
+  }, [state.incomingCall]);
 
   const rejectCall = useCallback(() => {
     if (state.incomingCall) {
-      stopRingtone();
       state.incomingCall.hangup();
       setState(prev => ({ ...prev, incomingCall: null }));
     }
-  }, [state.incomingCall, stopRingtone]);
+  }, [state.incomingCall]);
 
   const hangupCall = useCallback(() => {
     if (state.activeCall) {
@@ -319,7 +272,6 @@ export const useTelnyxPhone = () => {
   // Unlock audio on first user interaction
   useEffect(() => {
     const unlockAudio = () => {
-      // Unlock AudioContext
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioContextClass();
       ctx.resume().then(() => {
@@ -327,7 +279,6 @@ export const useTelnyxPhone = () => {
         console.log('[TelnyxPhone] Audio unlocked');
       });
       
-      // Also trigger play on remote audio element to unlock it
       const remoteAudio = getOrCreateRemoteAudio();
       remoteAudio.play().catch(() => {});
       
