@@ -28,6 +28,7 @@ const getOrCreateRemoteAudio = (): HTMLAudioElement => {
 export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
   const weInitiatedCallRef = useRef(false);
+  const micStreamRef = useRef<MediaStream | null>(null);
   
   const [state, setState] = useState<TelnyxPhoneState>({
     sessionStatus: 'disconnected',
@@ -78,7 +79,7 @@ export const useTelnyxPhone = () => {
         console.log('[TelnyxPhone] Using SIP credentials');
       }
 
-      console.log('[TelnyxPhone] SDK version:', TelnyxRTC.version || '2.25.10');
+      console.log('[TelnyxPhone] SDK version:', (TelnyxRTC as any).version || '2.25.10');
 
       const client = new TelnyxRTC(clientConfig);
       
@@ -160,6 +161,10 @@ export const useTelnyxPhone = () => {
     initClient();
     
     return () => {
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
       if (clientRef.current) {
         clientRef.current.disconnect();
         clientRef.current = null;
@@ -184,28 +189,63 @@ export const useTelnyxPhone = () => {
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
 
-  // CRITICAL FIX: According to Telnyx docs, must call enableMicrophone() 
-  // IMMEDIATELY BEFORE answer() to eliminate audio delay
+  // CRITICAL FIX: Actually wait for microphone to be ready using native getUserMedia
+  // The SDK's enableMicrophone() returns immediately without waiting
   const answerCall = useCallback(async () => {
     if (!state.incomingCall || !clientRef.current) return;
     
+    const call = state.incomingCall;
+    
     try {
-      console.log('[TelnyxPhone] Step 1: Enabling microphone BEFORE answer...');
+      console.log('[TelnyxPhone] Step 1: Getting microphone with getUserMedia...');
+      const startTime = Date.now();
       
-      // Per Telnyx docs: await enableMicrophone() BEFORE answer()
-      // This ensures getUserMedia completes before SIP 200 OK is sent
-      await clientRef.current.enableMicrophone();
+      // CRITICAL: Use native getUserMedia and ACTUALLY wait for it
+      // This ensures the audio track is ready before we send SIP 200 OK
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
       
-      console.log('[TelnyxPhone] Step 2: Microphone ready, now answering...');
+      const micTime = Date.now() - startTime;
+      console.log('[TelnyxPhone] Step 2: Microphone ready in', micTime, 'ms');
       
-      // Now answer - the local audio track is already initialized
-      state.incomingCall.answer();
+      // Store the stream for cleanup
+      micStreamRef.current = stream;
       
-      console.log('[TelnyxPhone] Step 3: Answer called');
+      // CRITICAL: Set the stream on the client before answering
+      // This ensures Telnyx uses our pre-obtained stream
+      if (clientRef.current.localElement) {
+        (clientRef.current.localElement as HTMLMediaElement).srcObject = stream;
+      }
+      
+      console.log('[TelnyxPhone] Step 3: Calling answer()...');
+      
+      // CRITICAL: Immediately move call to activeCall state
+      // This changes UI from Reject to Hangup button
+      setState(prev => ({ 
+        ...prev, 
+        activeCall: call, 
+        incomingCall: null 
+      }));
+      
+      // Now answer - the microphone is actually ready
+      call.answer();
+      
+      console.log('[TelnyxPhone] Step 4: Answer completed');
+      
     } catch (error) {
-      console.error('[TelnyxPhone] Error answering call:', error);
-      // Fallback: try to answer anyway
-      state.incomingCall.answer();
+      console.error('[TelnyxPhone] Error getting microphone:', error);
+      // Fallback: answer anyway but expect delay
+      call.answer();
+      setState(prev => ({ 
+        ...prev, 
+        activeCall: call, 
+        incomingCall: null 
+      }));
     }
   }, [state.incomingCall]);
 
