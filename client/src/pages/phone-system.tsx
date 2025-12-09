@@ -166,6 +166,34 @@ export default function PhoneSystem() {
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
+  // Sync call history from Telnyx CDRs
+  const syncCallsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/call-logs/sync");
+    },
+    onSuccess: (data: { success: boolean; synced: number; errors?: string[] }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
+      if (data.synced > 0) {
+        toast({
+          title: "Calls Synced",
+          description: `Synced ${data.synced} call records from phone system.`,
+        });
+      } else {
+        toast({
+          title: "No New Calls",
+          description: "No new call records found to sync.",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Sync Failed",
+        description: error.message || "Failed to sync call history",
+        variant: "destructive",
+      });
+    },
+  });
+
   const setupMutation = useMutation({
     mutationFn: async () => {
       setIsSettingUp(true);
@@ -495,12 +523,13 @@ export default function PhoneSystem() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => refetchCallLogs()}
+                  onClick={() => syncCallsMutation.mutate()}
+                  disabled={syncCallsMutation.isPending}
                   className="h-8"
                   data-testid="button-refresh-call-logs"
                 >
-                  <RefreshCw className={`h-3 w-3 mr-1 ${isLoadingCallLogs ? 'animate-spin' : ''}`} />
-                  Refresh
+                  <RefreshCw className={`h-3 w-3 mr-1 ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
+                  {syncCallsMutation.isPending ? 'Syncing...' : 'Refresh'}
                 </Button>
               </div>
             </CardHeader>

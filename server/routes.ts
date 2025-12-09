@@ -28041,6 +28041,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[Call Logs Sync] Got ${records.length} ${recordType} records`);
           
           for (const record of records) {
+          // Log first record structure for debugging
+          if (records.length > 0) {
+            console.log("[Call Logs Sync] Sample record:", JSON.stringify(records[0], null, 2).substring(0, 500));
+          }
             // Access fields directly or via attributes (Telnyx CDR structure varies)
             const cdr = record.attributes || record;
             // Use telnyx_session_id or id as unique identifier
