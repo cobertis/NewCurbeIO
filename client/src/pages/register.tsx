@@ -838,7 +838,7 @@ export default function Register() {
                             className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer"
                             onClick={() => field.onChange(!field.value)}
                           >
-                            I agree to receive SMS messages from Curbe for account security and updates. Message frequency varies. Message & Data rates may apply. Reply STOP to cancel.
+                            By providing your phone number, you agree to receive SMS promotional offers and marketing updates from {form.watch("company.name") || "our company"}. Message frequency may vary. Standard Message and Data Rates may apply. Reply STOP to opt out. Reply HELP for help. We will not share mobile information with third parties for promotional or marketing purposes.
                           </label>
                           <FormMessage />
                         </div>
