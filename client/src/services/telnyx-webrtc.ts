@@ -492,7 +492,16 @@ class TelnyxWebRTCManager {
             // CRITICAL: Connect remote audio stream for bidirectional audio
             this.connectRemoteAudio(call);
           } else if (call.state === 'hangup' || call.state === 'destroy') {
-            console.log('[Telnyx WebRTC] Call ended');
+            // Log detailed hangup information for debugging
+            console.log('[Telnyx WebRTC] Call ended with details:', {
+              state: call.state,
+              cause: call.cause,
+              causeCode: call.causeCode,
+              sipCode: call.sipCode,
+              sipReason: call.sipReason,
+              direction: call.direction,
+              hangupReason: call.options?.hangupReason,
+            });
             this.stopRingback(); // Stop ringback if call ends before answer
             this.stopRingtone(); // Stop ringtone if call ends
             
