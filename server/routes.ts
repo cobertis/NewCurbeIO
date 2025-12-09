@@ -28618,7 +28618,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const matchedContact = await db.query.contacts.findFirst({
         where: and(
           eq(contacts.companyId, user.companyId),
-          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedTo}`
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE ${'%' + normalizedTo + '%'}`
         )
       });
 
