@@ -431,6 +431,15 @@ class TelnyxWebRTCManager {
             this.stopRingback(); // Stop ringback when call is answered
             this.stopRingtone(); // Stop ringtone when call is answered
             
+            // CRITICAL: Explicitly unmute audio to ensure local track is transmitting immediately
+            // Browsers may start tracks muted by default, causing 5-second audio delay
+            try {
+              call.unmuteAudio();
+              console.log('[Telnyx WebRTC] Audio explicitly unmuted on call active');
+            } catch (e) {
+              console.warn('[Telnyx WebRTC] Could not unmute audio:', e);
+            }
+            
             // DEBUG: Log detailed stream information to diagnose audio issues
             console.log('[Telnyx WebRTC] DIAGNOSTIC - Call streams:', {
               hasLocalStream: !!call.localStream,
@@ -567,17 +576,10 @@ class TelnyxWebRTCManager {
     const currentCall = store.currentCall;
     
     if (currentCall) {
-      // CRITICAL: Clear store state and stop audio BEFORE calling hangup()
-      // This prevents the SDK from sending a 486 Busy response when
-      // the notification handler sees the hangup event while state is still "active"
       const callState = currentCall.state;
       console.log('[Telnyx WebRTC] Hanging up, call state:', callState);
       
-      // Clear state FIRST to prevent re-entry issues
-      store.setCurrentCall(undefined);
-      store.setIncomingCall(undefined);
-      store.setMuted(false);
-      store.setOnHold(false);
+      // Stop tones immediately for better UX
       this.stopRingback();
       this.stopRingtone();
       
@@ -587,11 +589,18 @@ class TelnyxWebRTCManager {
         this.audioElement.srcObject = null;
       }
       
-      // Only call hangup() if the call is still in a hangupable state
-      // If the remote party already hung up (state is 'hangup' or 'destroy'), 
-      // calling hangup() will send a 486 Busy response
+      // CRITICAL: Call hangup() FIRST, then let the notification handler clean up state
+      // The notification handler at 'hangup'/'destroy' state already clears the store
+      // Clearing state before hangup() causes the SDK to lose the call reference
       if (callState !== 'hangup' && callState !== 'destroy' && callState !== 'purge') {
         currentCall.hangup();
+        // State cleanup will happen in the notification handler when call reaches 'hangup' state
+      } else {
+        // Call already ended by remote party, just clean up state
+        store.setCurrentCall(undefined);
+        store.setIncomingCall(undefined);
+        store.setMuted(false);
+        store.setOnHold(false);
       }
     }
   }
