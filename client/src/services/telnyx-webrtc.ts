@@ -18,6 +18,7 @@ interface TelnyxWebRTCState {
   callerIdNumber?: string;
   sipUsername?: string;
   callDuration: number; // Duration in seconds
+  dialpadVisible: boolean; // UI state for dialpad visibility
   
   setConnectionStatus: (status: TelnyxWebRTCState['connectionStatus'], error?: string) => void;
   setCurrentCall: (call?: TelnyxCall, direction?: 'inbound' | 'outbound') => void;
@@ -29,6 +30,8 @@ interface TelnyxWebRTCState {
   setCallerIdNumber: (number: string) => void;
   setSipUsername: (username: string) => void;
   setCallDuration: (duration: number) => void;
+  toggleDialpad: () => void;
+  setDialpadVisible: (visible: boolean) => void;
 }
 
 export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
@@ -39,6 +42,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   isOnHold: false,
   isConsulting: false,
   callDuration: 0,
+  dialpadVisible: false,
   
   setConnectionStatus: (status, error) => set({ 
     connectionStatus: status, 
@@ -58,6 +62,8 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setCallerIdNumber: (number) => set({ callerIdNumber: number }),
   setSipUsername: (username) => set({ sipUsername: username }),
   setCallDuration: (duration) => set({ callDuration: duration }),
+  toggleDialpad: () => set((state) => ({ dialpadVisible: !state.dialpadVisible })),
+  setDialpadVisible: (visible) => set({ dialpadVisible: visible }),
 }));
 
 class TelnyxWebRTCManager {

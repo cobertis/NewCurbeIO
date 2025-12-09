@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, type LucideIcon } from 'lucide-react';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
-import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { telnyxWebRTC, useTelnyxStore } from '@/services/telnyx-webrtc';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1061,21 +1060,17 @@ export function WebPhoneFloatingWindow() {
   const localAudioRef = useRef<HTMLAudioElement>(null);
   const dialInputRef = useRef<HTMLInputElement>(null);
   
-  const isVisible = useWebPhoneStore(state => state.dialpadVisible);
-  const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
-  const currentCall = useWebPhoneStore(state => state.currentCall);
-  const waitingCall = useWebPhoneStore(state => state.waitingCall);
-  const consultationCall = useWebPhoneStore(state => state.consultationCall);
-  const callerInfo = useWebPhoneStore(state => state.callerInfo);
-  const isMuted = useWebPhoneStore(state => state.isMuted);
-  const isOnHold = useWebPhoneStore(state => state.isOnHold);
-  const isRecording = useWebPhoneStore(state => state.isRecording);
-  const sipExtension = useWebPhoneStore(state => state.sipExtension);
-  const callHistory = useWebPhoneStore(state => state.callHistory);
-  const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
-  const setAudioElements = useWebPhoneStore(state => state.setAudioElements);
-  const clearCallHistory = useWebPhoneStore(state => state.clearCallHistory);
-  const deleteCallsFromHistory = useWebPhoneStore(state => state.deleteCallsFromHistory);
+  // Use Telnyx store exclusively for all WebRTC state
+  const isVisible = useTelnyxStore(state => state.dialpadVisible);
+  const toggleDialpad = useTelnyxStore(state => state.toggleDialpad);
+  const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
+  const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
+  const telnyxIncomingCall = useTelnyxStore(state => state.incomingCall);
+  const telnyxCurrentCallDirection = useTelnyxStore(state => state.currentCallDirection);
+  const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
+  const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
+  const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
+  const telnyxConsultCall = useTelnyxStore(state => state.consultCall);
   
   // Mutation to sync call history from Telnyx CDRs
   const syncCallsMutation = useMutation({
@@ -1119,23 +1114,15 @@ export function WebPhoneFloatingWindow() {
   const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
   const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   
-  // Telnyx WebRTC state
-  const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
-  const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
-  const telnyxIncomingCall = useTelnyxStore(state => state.incomingCall);
-  const telnyxCurrentCallDirection = useTelnyxStore(state => state.currentCallDirection);
-  const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
-  const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
-  const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
   
-  // Check if phone is available (either SIP extension or Telnyx number)
-  const hasPhoneCapability = !!sipExtension || hasTelnyxNumber;
+  // Check if phone is available (Telnyx number required)
+  const hasPhoneCapability = hasTelnyxNumber;
   
-  // Unified call state - prioritize Telnyx when using Telnyx numbers
-  const isTelnyxCall = hasTelnyxNumber && (telnyxCurrentCall || telnyxIncomingCall);
+  // All calls are Telnyx calls now
+  const isTelnyxCall = telnyxCurrentCall || telnyxIncomingCall;
   
   // Build effective call object for UI rendering
   const effectiveCall = useMemo(() => {
@@ -1168,15 +1155,12 @@ export function WebPhoneFloatingWindow() {
         isTelnyx: true,
       };
     }
-    if (currentCall) {
-      return { ...currentCall, isTelnyx: false };
-    }
     return null;
-  }, [telnyxCurrentCall, telnyxIncomingCall, currentCall, telnyxCurrentCallDirection]);
+  }, [telnyxCurrentCall, telnyxIncomingCall, telnyxCurrentCallDirection]);
   
-  // Effective mute/hold state
-  const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;
-  const effectiveOnHold = isTelnyxCall ? telnyxIsOnHold : isOnHold;
+  // Mute/hold state from Telnyx
+  const effectiveMuted = telnyxIsMuted;
+  const effectiveOnHold = telnyxIsOnHold;
   
   // Timer for Telnyx calls
   useEffect(() => {
@@ -1203,57 +1187,33 @@ export function WebPhoneFloatingWindow() {
     }
   }, [effectiveCall]);
   
-  // Unified call handlers
+  // Call handlers - Telnyx only
   const handleMuteToggle = useCallback(() => {
-    if (isTelnyxCall) {
-      telnyxWebRTC.toggleMute();
-    } else {
-      isMuted ? webPhone.unmuteCall() : webPhone.muteCall();
-    }
-  }, [isTelnyxCall, isMuted]);
+    telnyxWebRTC.toggleMute();
+  }, []);
   
   const handleHoldToggle = useCallback(() => {
-    if (isTelnyxCall) {
-      telnyxWebRTC.toggleHold();
-    } else {
-      isOnHold ? webPhone.unholdCall() : webPhone.holdCall();
-    }
-  }, [isTelnyxCall, isOnHold]);
+    telnyxWebRTC.toggleHold();
+  }, []);
   
   const handleHangup = useCallback(() => {
-    if (isTelnyxCall) {
-      telnyxWebRTC.hangup();
-    } else {
-      webPhone.hangupCall();
-    }
-  }, [isTelnyxCall]);
+    telnyxWebRTC.hangup();
+  }, []);
   
   const handleAnswerCall = useCallback(() => {
-    if (telnyxIncomingCall) {
-      telnyxWebRTC.answerCall();
-    } else {
-      webPhone.answerCall();
-    }
-  }, [telnyxIncomingCall]);
+    telnyxWebRTC.answerCall();
+  }, []);
   
   const handleRejectCall = useCallback(() => {
-    if (telnyxIncomingCall) {
-      telnyxWebRTC.rejectCall();
-    } else {
-      webPhone.rejectCall();
-    }
-  }, [telnyxIncomingCall]);
+    telnyxWebRTC.rejectCall();
+  }, []);
   
   const handleSendDTMF = useCallback((digit: string) => {
-    if (isTelnyxCall) {
-      telnyxWebRTC.sendDTMF(digit);
-    } else {
-      webPhone.sendDTMF(digit);
-    }
-  }, [isTelnyxCall]);
+    telnyxWebRTC.sendDTMF(digit);
+  }, []);
   
   // Get effective call duration
-  const effectiveCallDuration = isTelnyxCall ? telnyxCallDuration : callDuration;
+  const effectiveCallDuration = telnyxCallDuration;
 
   // Initialize Telnyx WebRTC when phone number is available
   const telnyxInitRef = useRef(false);
@@ -1335,60 +1295,27 @@ export function WebPhoneFloatingWindow() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // FIX PROBLEM 1: Re-register audio elements EVERY time component becomes visible
-  // This ensures audio refs are NEVER lost after reload or when dialpad is toggled
+  // Telnyx manages audio internally - no need for external audio element registration
   useEffect(() => {
-    if (isVisible && remoteAudioRef.current && localAudioRef.current) {
-      console.log('[WebPhone FloatingWindow] ✅ Registering audio elements on mount/visibility');
-      setAudioElements(localAudioRef.current, remoteAudioRef.current);
-    } else if (isVisible) {
-      console.warn('[WebPhone FloatingWindow] ⚠️ Audio refs not ready:', {
-        remote: !!remoteAudioRef.current,
-        local: !!localAudioRef.current
-      });
+    if (isVisible) {
+      console.log('[WebPhone FloatingWindow] ✅ Dialpad visible - Telnyx handles audio internally');
     }
-  }, [isVisible, setAudioElements]);
+  }, [isVisible]);
   
-  // Debug callerInfo changes
+  // Debug call changes
   useEffect(() => {
-    console.log('[WebPhone UI] CallerInfo changed:', callerInfo);
-    console.log('[WebPhone UI] Current call:', currentCall);
-    if (currentCall) {
-      console.log('[WebPhone UI] Current call displayName:', currentCall.displayName);
-      console.log('[WebPhone UI] Current call phoneNumber:', currentCall.phoneNumber);
-    }
-  }, [callerInfo, currentCall]);
+    console.log('[WebPhone UI] Effective call:', effectiveCall);
+    console.log('[WebPhone UI] Telnyx current call:', telnyxCurrentCall);
+    console.log('[WebPhone UI] Telnyx incoming call:', telnyxIncomingCall);
+  }, [effectiveCall, telnyxCurrentCall, telnyxIncomingCall]);
   
-  // Auto-open window when incoming call arrives (SIP.js or Telnyx)
+  // Auto-open window when incoming Telnyx call arrives
   useEffect(() => {
-    const hasIncomingCall = 
-      (currentCall && currentCall.status === 'ringing' && currentCall.direction === 'inbound') ||
-      telnyxIncomingCall;
-    
-    if (hasIncomingCall && !isVisible) {
-      console.log('[WebPhone UI] Auto-opening for incoming call');
+    if (telnyxIncomingCall && !isVisible) {
+      console.log('[WebPhone UI] Auto-opening for incoming Telnyx call');
       toggleDialpad();
     }
-  }, [currentCall, telnyxIncomingCall, isVisible, toggleDialpad]);
-  
-  // Call timer
-  useEffect(() => {
-    if (currentCall && currentCall.status === 'answered') {
-      timerRef.current = setInterval(() => {
-        const duration = Math.floor((new Date().getTime() - currentCall!.startTime.getTime()) / 1000);
-        setCallDuration(duration);
-      }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        setCallDuration(0);
-      }
-    }
-    
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [currentCall?.status]);
+  }, [telnyxIncomingCall, isVisible, toggleDialpad]);
   
   // Return to keypad when call ends and clear dial number
   useEffect(() => {
@@ -1534,8 +1461,6 @@ export function WebPhoneFloatingWindow() {
         console.log('[WebPhone] Making call via Telnyx WebRTC to:', digits);
         const formattedNumber = digits.startsWith('+') ? digits : `+1${digits}`;
         await telnyxWebRTC.makeCall(formattedNumber);
-      } else {
-        await webPhone.makeCall(digits);
       }
       setDialNumber('');
     } catch (error) {
@@ -1787,8 +1712,8 @@ export function WebPhoneFloatingWindow() {
                           <span className="text-sm sm:text-base text-foreground font-medium">Reject</span>
                         </button>
                       </div>
-                    ) : consultationCall ? (
-                      /* Consultation Call Active - Show Complete/Cancel Transfer Buttons */
+                    ) : telnyxIsConsulting && telnyxConsultCall ? (
+                      /* Consultation Call Active - Show Complete/Cancel Transfer Buttons (Telnyx) */
                       <>
                         {/* Info Banner */}
                         <div className="px-2 sm:px-4">
@@ -1796,7 +1721,7 @@ export function WebPhoneFloatingWindow() {
                             <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 text-center">
                               <span className="font-semibold">Consultation Call Active</span>
                               <br />
-                              Talking to: {consultationCall.displayName}
+                              Talking to: {(telnyxConsultCall as any).options?.destinationNumber || 'Unknown'}
                             </p>
                           </div>
                         </div>
@@ -1804,7 +1729,7 @@ export function WebPhoneFloatingWindow() {
                         {/* Transfer Action Buttons */}
                         <div className="grid grid-cols-2 gap-3 px-2 sm:px-4">
                           <Button
-                            onClick={() => webPhone.completeAttendedTransfer()}
+                            onClick={() => telnyxWebRTC.completeAttendedTransfer()}
                             className="bg-green-600 hover:bg-green-700 text-white h-12"
                             data-testid="button-complete-transfer"
                           >
@@ -1813,7 +1738,7 @@ export function WebPhoneFloatingWindow() {
                           </Button>
                           
                           <Button
-                            onClick={() => webPhone.cancelAttendedTransfer()}
+                            onClick={() => telnyxWebRTC.cancelAttendedTransfer()}
                             variant="outline"
                             className="h-12 border-2"
                             data-testid="button-cancel-transfer"
@@ -1823,30 +1748,9 @@ export function WebPhoneFloatingWindow() {
                           </Button>
                         </div>
                       </>
-                    ) : waitingCall && !effectiveCall.isTelnyx ? (
-                      /* Call Waiting Active - Show Swap/Answer Buttons (SIP.js only) */
+                    ) : (
+                      /* Active Call Controls */
                       <>
-                        {/* Waiting Call Action Buttons */}
-                        <div className="grid grid-cols-2 gap-3 px-2 sm:px-4">
-                          <Button
-                            onClick={() => webPhone.swapCalls()}
-                            className="bg-blue-600 hover:bg-blue-700 text-white h-12"
-                            data-testid="button-swap-calls"
-                          >
-                            <Users className="h-5 w-5 mr-2" />
-                            Swap Calls
-                          </Button>
-                          
-                          <Button
-                            onClick={() => webPhone.answerWaitingCall()}
-                            className="bg-green-600 hover:bg-green-700 text-white h-12"
-                            data-testid="button-answer-waiting"
-                          >
-                            <PhoneIncoming className="h-5 w-5 mr-2" />
-                            Answer
-                          </Button>
-                        </div>
-                        
                         {/* Basic Controls Row */}
                         <div className="grid grid-cols-3 gap-3 sm:gap-6 px-2 sm:px-4">
                           <button
@@ -1892,23 +1796,37 @@ export function WebPhoneFloatingWindow() {
                             <span className="text-[10px] sm:text-xs text-muted-foreground">hold</span>
                           </button>
                         </div>
+                        
+                        {/* In-Call DTMF Keypad */}
+                        {showInCallKeypad && (
+                          <div className="px-2 sm:px-4 flex justify-center">
+                            <DtmfKeypad
+                              onSendDigit={(digit) => {
+                                telnyxWebRTC.sendDTMF(digit);
+                              }}
+                              onClose={() => setShowInCallKeypad(false)}
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Keypad Toggle Button */}
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => setShowInCallKeypad(!showInCallKeypad)}
+                            className="flex flex-col items-center gap-1 sm:gap-1.5 transition-opacity hover:opacity-80"
+                            data-testid="button-keypad-toggle"
+                          >
+                            <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-muted/80 flex items-center justify-center shadow-md">
+                              <Grid3x3 className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+                            </div>
+                            <span className="text-[9px] sm:text-[10px] text-muted-foreground">keypad</span>
+                          </button>
+                        </div>
                       </>
-                    ) : showInCallKeypad ? (
-                      /* DTMF Keypad Overlay */
-                      <div className="px-2 sm:px-4 flex justify-center">
-                        <DtmfKeypad
-                          onSendDigit={(digit) => {
-                            if (effectiveCall.isTelnyx) {
-                              telnyxWebRTC.sendDTMF(digit);
-                            } else {
-                              webPhone.sendDTMF(digit);
-                            }
-                          }}
-                          onClose={() => setShowInCallKeypad(false)}
-                        />
-                      </div>
-                    ) : (
-                      /* Normal Call Controls - 4 buttons */
+                    )}
+                    
+                    {/* Normal Call Controls when there's an active call - 4 buttons (legacy, hidden) */}
+                    {false && (
                       <div className="grid grid-cols-4 gap-2 sm:gap-4 px-2 sm:px-4">
                         <button
                           onClick={handleMuteToggle}
@@ -2028,11 +1946,7 @@ export function WebPhoneFloatingWindow() {
                             
                             <Button
                               onClick={() => {
-                                if (effectiveCall.isTelnyx) {
-                                  telnyxWebRTC.blindTransfer(transferNumber);
-                                } else {
-                                  webPhone.blindTransfer(transferNumber);
-                                }
+                                telnyxWebRTC.blindTransfer(transferNumber);
                                 setShowTransferDialog(false);
                                 setTransferNumber('');
                               }}
@@ -2063,11 +1977,7 @@ export function WebPhoneFloatingWindow() {
                             <div className="space-y-2">
                               <Button
                                 onClick={async () => {
-                                  if (effectiveCall.isTelnyx) {
-                                    await telnyxWebRTC.startAttendedTransfer(attendedTransferNumber);
-                                  } else {
-                                    webPhone.attendedTransfer(attendedTransferNumber);
-                                  }
+                                  await telnyxWebRTC.startAttendedTransfer(attendedTransferNumber);
                                   setShowTransferDialog(false);
                                 }}
                                 disabled={!attendedTransferNumber}
