@@ -1,0 +1,56 @@
+──┘
+root@ubuntu:/var/www/curbe# pm2 logs curbe-admin --lines 50 --err
+[TAILING] Tailing last 50 lines for [curbe-admin] process (change the value with --lines option)
+/root/.pm2/logs/curbe-admin-error.log last 50 lines:
+0|curbe-ad | Failed to get credential from DB: imap_bounce/port Error: Unsupported state or unable to authenticate data
+0|curbe-ad |     at Decipheriv.final (node:internal/crypto/cipher:193:29)
+0|curbe-ad |     at SecretsService.decrypt (file:///var/www/curbe/dist/index.js:11778:31)
+0|curbe-ad |     at SecretsService.getCredential (file:///var/www/curbe/dist/index.js:11843:21)
+0|curbe-ad |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+0|curbe-ad |     at async CredentialProvider.get (file:///var/www/curbe/dist/index.js:11975:27)
+0|curbe-ad |     at async Promise.all (index 1)
+0|curbe-ad |     at async CredentialProvider.getImapBounce (file:///var/www/curbe/dist/index.js:12055:51)
+0|curbe-ad |     at async processBouncedEmails (file:///var/www/curbe/dist/index.js:46262:23)
+0|curbe-ad |     at async Timeout._onTimeout (file:///var/www/curbe/dist/index.js:46387:7)
+0|curbe-ad | 2:13:50 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=INJCujFtw7GsXtXx5fKUU (resolved id: /src/main.tsx?v=INJCujFtw7GsXtXx5fKUU). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:13:59 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=KiGv-vGSEG_Ao47h151bO (resolved id: /src/main.tsx?v=KiGv-vGSEG_Ao47h151bO). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:14:03 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=IM2EuUKlw8k0HajzusQ4p (resolved id: /src/main.tsx?v=IM2EuUKlw8k0HajzusQ4p). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:16:59 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=PRaFJdlsmZAlIQ-oC_otO (resolved id: /src/main.tsx?v=PRaFJdlsmZAlIQ-oC_otO). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:18:03 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=oh1rhiDG7ZkYIMJDxfISy (resolved id: /src/main.tsx?v=oh1rhiDG7ZkYIMJDxfISy). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:19:18 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=2HsWYdJYiRqBrkQ1KXAX6 (resolved id: /src/main.tsx?v=2HsWYdJYiRqBrkQ1KXAX6). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:19:23 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=Kxu8k9zVmej5RXhUUC13i (resolved id: /src/main.tsx?v=Kxu8k9zVmej5RXhUUC13i). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:19:46 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=hpkRGq4q1WcW3zu8YBizw (resolved id: /src/main.tsx?v=hpkRGq4q1WcW3zu8YBizw). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | Error: DATABASE_URL environment variable is not set
+0|curbe-ad |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at file:///var/www/curbe/dist/index.js:18979:1
+0|curbe-ad |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|curbe-ad |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+
+
