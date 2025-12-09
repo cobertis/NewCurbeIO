@@ -1,0 +1,275 @@
+import { db } from "../db";
+import { callRates, wallets, walletTransactions, callLogs } from "@shared/schema";
+import { eq, and, desc, sql, isNull, or } from "drizzle-orm";
+import Decimal from "decimal.js";
+
+Decimal.set({ precision: 10, rounding: Decimal.ROUND_HALF_UP });
+
+export interface RateLookupResult {
+  ratePerMinute: Decimal;
+  connectionFee: Decimal;
+  minBillableSeconds: number;
+  billingIncrement: number;
+  prefix: string;
+  description: string | null;
+}
+
+export interface CallCostResult {
+  billableSeconds: number;
+  billableMinutes: Decimal;
+  ratePerMinute: Decimal;
+  connectionFee: Decimal;
+  totalCost: Decimal;
+  prefix: string;
+  description: string | null;
+}
+
+export interface ChargeCallResult {
+  success: boolean;
+  callLogId?: string;
+  transactionId?: string;
+  amountCharged?: string;
+  newBalance?: string;
+  error?: string;
+}
+
+const DEFAULT_RATE: RateLookupResult = {
+  ratePerMinute: new Decimal("0.0200"),
+  connectionFee: new Decimal("0.0000"),
+  minBillableSeconds: 6,
+  billingIncrement: 6,
+  prefix: "default",
+  description: "Default Rate"
+};
+
+export async function findRateByPrefix(destinationNumber: string, companyId?: string): Promise<RateLookupResult> {
+  const cleanNumber = destinationNumber.replace(/\D/g, '');
+  
+  const prefixesToCheck: string[] = [];
+  for (let i = cleanNumber.length; i >= 1; i--) {
+    prefixesToCheck.push(cleanNumber.substring(0, i));
+  }
+  
+  if (prefixesToCheck.length === 0) {
+    console.log("[PricingService] No valid prefix to check, using default rate");
+    return DEFAULT_RATE;
+  }
+
+  const rates = await db
+    .select()
+    .from(callRates)
+    .where(
+      and(
+        sql`${callRates.prefix} IN (${sql.join(prefixesToCheck.map(p => sql`${p}`), sql`, `)})`,
+        eq(callRates.isActive, true),
+        companyId 
+          ? or(eq(callRates.companyId, companyId), isNull(callRates.companyId))
+          : isNull(callRates.companyId)
+      )
+    )
+    .orderBy(desc(sql`LENGTH(${callRates.prefix})`));
+
+  if (rates.length === 0) {
+    console.log(`[PricingService] No rate found for ${cleanNumber}, using default`);
+    return DEFAULT_RATE;
+  }
+
+  const companyRate = rates.find(r => r.companyId === companyId);
+  const rate = companyRate || rates[0];
+
+  console.log(`[PricingService] Found rate: prefix=${rate.prefix}, rate=${rate.ratePerMinute}/min`);
+  
+  return {
+    ratePerMinute: new Decimal(rate.ratePerMinute),
+    connectionFee: new Decimal(rate.connectionFee),
+    minBillableSeconds: rate.minBillableSeconds,
+    billingIncrement: rate.billingIncrement,
+    prefix: rate.prefix,
+    description: rate.description
+  };
+}
+
+export function calculateCallCost(durationSeconds: number, rate: RateLookupResult): CallCostResult {
+  const actualDuration = Math.max(0, durationSeconds);
+  
+  let billableSeconds = 0;
+  if (actualDuration > 0) {
+    billableSeconds = Math.max(actualDuration, rate.minBillableSeconds);
+    const remainder = billableSeconds % rate.billingIncrement;
+    if (remainder > 0) {
+      billableSeconds += rate.billingIncrement - remainder;
+    }
+  }
+  
+  const billableMinutes = new Decimal(billableSeconds).dividedBy(60);
+  const callCost = billableMinutes.times(rate.ratePerMinute);
+  const totalCost = callCost.plus(rate.connectionFee);
+
+  console.log(`[PricingService] Cost calculation: ${actualDuration}s -> ${billableSeconds}s billable, ${totalCost.toFixed(4)} USD`);
+
+  return {
+    billableSeconds,
+    billableMinutes,
+    ratePerMinute: rate.ratePerMinute,
+    connectionFee: rate.connectionFee,
+    totalCost,
+    prefix: rate.prefix,
+    description: rate.description
+  };
+}
+
+export async function chargeCallToWallet(
+  companyId: string,
+  callData: {
+    telnyxCallId: string;
+    fromNumber: string;
+    toNumber: string;
+    direction: "inbound" | "outbound";
+    durationSeconds: number;
+    status: string;
+    startedAt: Date;
+    endedAt?: Date;
+    providerCost?: number;
+    userId?: string;
+    contactId?: string;
+    callerName?: string;
+  }
+): Promise<ChargeCallResult> {
+  const startTime = Date.now();
+  
+  try {
+    const rate = await findRateByPrefix(callData.toNumber, companyId);
+    const costResult = calculateCallCost(callData.durationSeconds, rate);
+    
+    const result = await db.transaction(async (tx) => {
+      const [wallet] = await tx
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId))
+        .for("update");
+      
+      if (!wallet) {
+        throw new Error(`Wallet not found for company ${companyId}`);
+      }
+      
+      const currentBalance = new Decimal(wallet.balance);
+      const newBalance = currentBalance.minus(costResult.totalCost);
+      
+      await tx
+        .update(wallets)
+        .set({ 
+          balance: newBalance.toFixed(4),
+          updatedAt: new Date()
+        })
+        .where(eq(wallets.id, wallet.id));
+      
+      const [callLog] = await tx
+        .insert(callLogs)
+        .values({
+          companyId,
+          userId: callData.userId,
+          telnyxCallId: callData.telnyxCallId,
+          fromNumber: callData.fromNumber,
+          toNumber: callData.toNumber,
+          direction: callData.direction,
+          status: callData.status as any,
+          duration: callData.durationSeconds,
+          billedDuration: costResult.billableSeconds,
+          cost: costResult.totalCost.toFixed(4),
+          costCurrency: "USD",
+          contactId: callData.contactId,
+          callerName: callData.callerName,
+          startedAt: callData.startedAt,
+          endedAt: callData.endedAt || new Date(),
+        })
+        .returning();
+      
+      const [transaction] = await tx
+        .insert(walletTransactions)
+        .values({
+          walletId: wallet.id,
+          amount: costResult.totalCost.negated().toFixed(4),
+          type: "CALL_COST",
+          description: `Call to ${callData.toNumber} (${costResult.billableSeconds}s @ $${rate.ratePerMinute.toFixed(4)}/min)`,
+          externalReferenceId: callLog.id,
+          balanceAfter: newBalance.toFixed(4),
+        })
+        .returning();
+      
+      return {
+        callLogId: callLog.id,
+        transactionId: transaction.id,
+        amountCharged: costResult.totalCost.toFixed(4),
+        newBalance: newBalance.toFixed(4)
+      };
+    });
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[PricingService] Call charged in ${elapsed}ms: $${result.amountCharged}, new balance: $${result.newBalance}`);
+    
+    return {
+      success: true,
+      ...result
+    };
+    
+  } catch (error: any) {
+    console.error("[PricingService] Failed to charge call:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+export async function updateCallRecording(telnyxCallId: string, recordingUrl: string): Promise<boolean> {
+  try {
+    await db
+      .update(callLogs)
+      .set({ recordingUrl })
+      .where(eq(callLogs.telnyxCallId, telnyxCallId));
+    
+    console.log(`[PricingService] Updated recording URL for call ${telnyxCallId}`);
+    return true;
+  } catch (error) {
+    console.error("[PricingService] Failed to update recording:", error);
+    return false;
+  }
+}
+
+export async function seedDefaultRates(): Promise<void> {
+  const existingRates = await db.select().from(callRates).limit(1);
+  
+  if (existingRates.length > 0) {
+    console.log("[PricingService] Rates already exist, skipping seed");
+    return;
+  }
+  
+  const defaultRates = [
+    { prefix: "1", ratePerMinute: "0.0200", description: "USA/Canada", country: "US" },
+    { prefix: "1800", ratePerMinute: "0.0000", description: "USA Toll-Free", country: "US" },
+    { prefix: "1888", ratePerMinute: "0.0000", description: "USA Toll-Free", country: "US" },
+    { prefix: "1877", ratePerMinute: "0.0000", description: "USA Toll-Free", country: "US" },
+    { prefix: "1866", ratePerMinute: "0.0000", description: "USA Toll-Free", country: "US" },
+    { prefix: "52", ratePerMinute: "0.0350", description: "Mexico Landline", country: "MX" },
+    { prefix: "521", ratePerMinute: "0.0450", description: "Mexico Mobile", country: "MX" },
+    { prefix: "44", ratePerMinute: "0.0150", description: "United Kingdom", country: "GB" },
+    { prefix: "34", ratePerMinute: "0.0250", description: "Spain", country: "ES" },
+    { prefix: "49", ratePerMinute: "0.0200", description: "Germany", country: "DE" },
+    { prefix: "33", ratePerMinute: "0.0200", description: "France", country: "FR" },
+  ];
+  
+  for (const rate of defaultRates) {
+    await db.insert(callRates).values({
+      prefix: rate.prefix,
+      ratePerMinute: rate.ratePerMinute,
+      connectionFee: "0.0000",
+      minBillableSeconds: 6,
+      billingIncrement: 6,
+      description: rate.description,
+      country: rate.country,
+      isActive: true,
+    });
+  }
+  
+  console.log(`[PricingService] Seeded ${defaultRates.length} default rates`);
+}

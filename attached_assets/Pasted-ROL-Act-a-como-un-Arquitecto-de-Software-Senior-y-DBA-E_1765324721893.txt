@@ -1,0 +1,183 @@
+ROL: Actúa como un Arquitecto de Software Senior y DBA Experto en Sistemas Financieros. Tu tarea es construir el backend crítico (Node.js/PostgreSQL) para el manejo de facturación (Billing), logs de llamadas (Call Logs) y billetera digital (Wallets) para el SaaS "Curbe.io".
+
+OBJETIVO DEL PROYECTO: Debemos construir un sistema interno que reciba Webhooks del proveedor de telefonía (Twilio/Telnyx/SignalWire), calcule el costo en tiempo real usando nuestras propias tarifas, descuente el dinero de la base de datos local y guarde el log, todo en menos de 200ms tras colgar. No podemos depender de la API del proveedor para ver saldos ni logs.
+
+REGLAS DE ORO (MANDAMIENTOS):
+
+Cero Alucinaciones: Usa librerías estándar (pg o Prisma para DB, express para server).
+
+Matemática Financiera: NUNCA uses float para dinero. Usa DECIMAL(10,4) en SQL. En JavaScript, maneja centavos (enteros) o usa librerías de precisión arbitraria para evitar errores de redondeo.
+
+Atomicidad (ACID): Las operaciones de restar saldo deben ser TRANSACCIONES SQL. Si falla el log, no se cobra. Si falla el cobro, no se guarda el log.
+
+Seguridad: Debes validar que los Webhooks vengan realmente del proveedor (Firma Digital).
+
+Race Conditions: Debes usar bloqueo de filas (FOR UPDATE) para evitar saldos negativos por concurrencia.
+
+FASE 1: DISEÑO DE BASE DE DATOS (SCHEMA - PostgreSQL)
+Genera el código SQL o Schema Prisma para estas tablas exactas. Son obligatorias:
+
+1. Tabla wallets
+id: UUID, Primary Key.
+
+user_id: UUID (Foreign Key al usuario).
+
+balance: DECIMAL(10, 4) DEFAULT 0.0000. (Nota: 4 decimales son vitales para el costeo por minuto).
+
+currency: VARCHAR(3) DEFAULT 'USD'.
+
+updated_at: TIMESTAMP.
+
+2. Tabla call_rates (Tarifas)
+Define cuánto cobramos nosotros al cliente.
+
+id: UUID.
+
+prefix: VARCHAR (ej: '1' para USA, '52' para México).
+
+rate_per_minute: DECIMAL(10, 4).
+
+connection_fee: DECIMAL(10, 4) DEFAULT 0.0000.
+
+3. Tabla call_logs (Nuestra Fuente de la Verdad)
+id: UUID.
+
+external_call_id: VARCHAR (INDEXADO - Ej: CallSid).
+
+user_id: UUID.
+
+direction: ENUM ('inbound', 'outbound').
+
+from_number: VARCHAR.
+
+to_number: VARCHAR.
+
+start_time: TIMESTAMP.
+
+end_time: TIMESTAMP.
+
+duration_seconds: INTEGER (Duración real).
+
+billable_minutes: DECIMAL(10, 2) (Duración redondeada para cobro).
+
+provider_cost: DECIMAL(10, 4) (Costo interno).
+
+customer_price: DECIMAL(10, 4) (Precio cobrado al usuario).
+
+recording_url: TEXT (Default NULL).
+
+recording_status: ENUM ('processing', 'completed', 'failed', 'none').
+
+status: VARCHAR.
+
+4. Tabla wallet_transactions (Auditoría)
+Registro inmutable de movimientos.
+
+id: UUID.
+
+wallet_id: UUID.
+
+amount: DECIMAL(10, 4) (Negativo = gasto, Positivo = recarga).
+
+type: ENUM ('call_charge', 'refill', 'subscription', 'refund').
+
+reference_id: UUID (Link a call_logs.id).
+
+created_at: TIMESTAMP.
+
+FASE 2: PREVENCIÓN DE FRAUDE (PRE-FLIGHT CHECK)
+Necesito un endpoint que se ejecutará ANTES de que la llamada salga para verificar fondos.
+
+Endpoint: POST /api/webhooks/voice-request Lógica:
+
+Recibe la petición de llamada (From, To).
+
+Busca la wallet del usuario.
+
+CONDICIÓN: Si balance < minimum_threshold (ej. $1.00):
+
+Devuelve respuesta XML/JSON rechazando la llamada y (opcional) reproduciendo audio: "Saldo insuficiente".
+
+CONDICIÓN: Si balance >= minimum_threshold:
+
+Devuelve respuesta XML/JSON autorizando la llamada (Dial).
+
+FASE 3: LÓGICA DE COBRO (WEBHOOK HANDLER PRINCIPAL)
+Este es el núcleo del sistema. Endpoint: POST /api/webhooks/voice-events (Maneja hangup y recording).
+
+A. Seguridad (Middleware)
+Antes de procesar nada, VALIDA LA FIRMA DEL WEBHOOK.
+
+Verifica el header de seguridad del proveedor (ej. X-Twilio-Signature o equivalente).
+
+Usa el AUTH_TOKEN del entorno.
+
+Si la firma no coincide, devuelve 403 Forbidden. No omitas esto.
+
+B. Lógica de call.hangup (El cliente colgó)
+Ejecuta esto secuencialmente:
+
+Extracción: Obtén CallSid, Duration, To, From.
+
+Identificación: Encuentra al user_id dueño de la llamada.
+
+Cotización:
+
+Busca en call_rates el rate_per_minute basado en el prefijo del To.
+
+Calcula: Costo = (Math.ceil(Duration / 60) * Rate) + ConnectionFee.
+
+TRANSACCIÓN ATÓMICA (CRÍTICO):
+
+Inicia transacción SQL (BEGIN).
+
+SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE; (Bloqueo de fila para evitar race conditions).
+
+UPDATE wallets SET balance = balance - Costo.
+
+INSERT INTO call_logs (con todos los datos y customer_price).
+
+INSERT INTO wallet_transactions.
+
+Confirma transacción (COMMIT).
+
+Notificación Real-Time (Socket.io):
+
+Emite evento: io.to(userId).emit('balance_update', { newBalance }).
+
+Emite evento: io.to(userId).emit('new_log', { logData }).
+
+C. Lógica de recording.completed (Grabación lista)
+A veces llega después.
+
+Busca el log por external_call_id.
+
+Haz un UPDATE call_logs poniendo la recording_url y cambiando el status a completed.
+
+Emite evento Socket.io para que aparezca el botón de "Play" en el frontend sin recargar.
+
+FASE 4: API DEL FRONTEND (CONSUMO)
+Crea endpoints REST rápidos para que el frontend consuma NUESTRA data, no la del proveedor.
+
+GET /api/logs:
+
+Lee de la tabla call_logs.
+
+Incluye paginación (limit, offset) y filtros por fecha.
+
+GET /api/wallet/balance:
+
+Devuelve el saldo actual de la tabla wallets.
+
+INSTRUCCIONES DE IMPLEMENTACIÓN
+Empieza creando las tablas (Migrations).
+
+Crea un archivo PricingService.js para la lógica de tarifas.
+
+Crea el WebhookController.js con la lógica transaccional.
+
+Asegúrate de manejar errores: Si la duración es 0 o null, el costo es 0.
+
+Usa console.log estructurados para depurar cada paso del webhook.
+
+QUIERO VER EL CÓDIGO AHORA.
