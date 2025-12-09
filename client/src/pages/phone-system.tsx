@@ -113,6 +113,7 @@ export default function PhoneSystem() {
   const [autoRechargeAmount, setAutoRechargeAmount] = useState<string>("50");
   const isInitialLoadRef = useRef(true);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedStateRef = useRef({ enabled: false, threshold: "10", amount: "50" });
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -142,9 +143,17 @@ export default function PhoneSystem() {
   // Sync auto-recharge state with wallet data
   useEffect(() => {
     if (walletData?.wallet) {
-      setAutoRechargeEnabled(walletData.wallet.autoRecharge || false);
-      setAutoRechargeThreshold(String(parseFloat(walletData.wallet.autoRechargeThreshold || "10")));
-      setAutoRechargeAmount(String(parseFloat(walletData.wallet.autoRechargeAmount || "50")));
+      const enabled = walletData.wallet.autoRecharge || false;
+      const threshold = String(parseFloat(walletData.wallet.autoRechargeThreshold || "10"));
+      const amount = String(parseFloat(walletData.wallet.autoRechargeAmount || "50"));
+      
+      setAutoRechargeEnabled(enabled);
+      setAutoRechargeThreshold(threshold);
+      setAutoRechargeAmount(amount);
+      
+      // Update saved state reference
+      lastSavedStateRef.current = { enabled, threshold, amount };
+      
       // Mark initial load as complete after syncing from API
       setTimeout(() => {
         isInitialLoadRef.current = false;
@@ -152,41 +161,63 @@ export default function PhoneSystem() {
     }
   }, [walletData]);
 
-  // Auto-save auto-recharge settings with debounce
+  // Auto-save function
+  const saveAutoRechargeSettings = (enabled: boolean, threshold: string, amount: string) => {
+    const thresholdNum = parseFloat(threshold);
+    const amountNum = parseFloat(amount);
+    
+    // Validate before saving
+    if (enabled) {
+      if (isNaN(thresholdNum) || thresholdNum < 5 || thresholdNum > 100) return;
+      if (isNaN(amountNum) || amountNum < 10 || amountNum > 500) return;
+    }
+    
+    // Check if values actually changed
+    const last = lastSavedStateRef.current;
+    if (last.enabled === enabled && last.threshold === threshold && last.amount === amount) {
+      return; // No change, skip save
+    }
+    
+    // Update saved state
+    lastSavedStateRef.current = { enabled, threshold, amount };
+    
+    // Save to backend
+    autoRechargeMutation.mutate({ 
+      enabled, 
+      threshold: isNaN(thresholdNum) ? 10 : thresholdNum, 
+      amount: isNaN(amountNum) ? 50 : amountNum 
+    });
+  };
+
+  // Handle switch toggle - save immediately
+  const handleAutoRechargeToggle = (enabled: boolean) => {
+    setAutoRechargeEnabled(enabled);
+    if (!isInitialLoadRef.current) {
+      saveAutoRechargeSettings(enabled, autoRechargeThreshold, autoRechargeAmount);
+    }
+  };
+
+  // Auto-save threshold/amount changes with debounce
   useEffect(() => {
-    // Skip during initial load
-    if (isInitialLoadRef.current) return;
+    // Skip during initial load or if disabled
+    if (isInitialLoadRef.current || !autoRechargeEnabled) return;
     
     // Clear any existing debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     
-    // Debounce the save
+    // Debounce the save for input changes
     debounceTimerRef.current = setTimeout(() => {
-      const threshold = parseFloat(autoRechargeThreshold);
-      const amount = parseFloat(autoRechargeAmount);
-      
-      // Validate before saving
-      if (autoRechargeEnabled) {
-        if (isNaN(threshold) || threshold < 5 || threshold > 100) return;
-        if (isNaN(amount) || amount < 10 || amount > 500) return;
-      }
-      
-      // Save to backend
-      autoRechargeMutation.mutate({ 
-        enabled: autoRechargeEnabled, 
-        threshold: isNaN(threshold) ? 10 : threshold, 
-        amount: isNaN(amount) ? 50 : amount 
-      });
-    }, 500);
+      saveAutoRechargeSettings(autoRechargeEnabled, autoRechargeThreshold, autoRechargeAmount);
+    }, 800);
     
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [autoRechargeEnabled, autoRechargeThreshold, autoRechargeAmount]);
+  }, [autoRechargeThreshold, autoRechargeAmount]);
 
   // Call history query
 
@@ -840,7 +871,7 @@ export default function PhoneSystem() {
                   </div>
                   <Switch
                     checked={autoRechargeEnabled}
-                    onCheckedChange={setAutoRechargeEnabled}
+                    onCheckedChange={handleAutoRechargeToggle}
                     data-testid="switch-auto-recharge"
                   />
                 </div>
