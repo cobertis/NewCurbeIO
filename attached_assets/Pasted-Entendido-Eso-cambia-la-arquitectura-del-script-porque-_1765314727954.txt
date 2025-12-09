@@ -1,0 +1,43 @@
+Entendido. Eso cambia la arquitectura del script porque ahora es una operación **asíncrona** extra (ir a la DB a buscar la llave) antes de hablar con Telnyx.
+
+Si tienes un CRM multi-tenant (varios clientes, cada uno con su propia llave) o simplemente prefieres gestionarlo así, está bien. Pero **cuidado con la latencia**: consultar la base de datos tarda milisegundos valiosos. Si tu base de datos es lenta, la supresión de ruido tardará en activarse.
+
+Aquí tienes el **Prompt Actualizado para tu Agente de Replit**, ajustado explícitamente para que sepa que **NO** debe buscar variables de entorno, sino consultar tu base de datos.
+
+---
+
+### **PROMPT TÉCNICO (Versión: API Keys en Database)**
+
+**Contexto:** Estamos construyendo un CRM con telefonía VoIP. Las credenciales de Telnyx (API Keys) están almacenadas en nuestra Base de Datos, NO en variables de entorno. Necesito implementar la lógica de Supresión de Ruido y CNAM respetando esta arquitectura de datos.
+
+**Instrucciones de Implementación:**
+
+#### **1. Feature: AI Noise Suppression (Webhook Handler)**
+**Flujo Crítico:**
+1.  Recibir webhook `call.answered`.
+2.  **DB Lookup:** Usar el `connection_id` o metadatos de la llamada (`client_state`) para consultar en la Base de Datos y obtener la `TELNYX_API_KEY` correspondiente a ese usuario/cuenta.
+3.  Solo cuando tengas la Key, ejecutar la petición a Telnyx.
+
+**Especificaciones:**
+* **Trigger:** `event_type === 'call.answered'`
+* **Acción de Base de Datos:** `await getApiKeyFromDB(event.payload)` (Implementar lógica de búsqueda).
+* **Acción API:** `POST https://api.telnyx.com/v2/calls/{call_control_id}/actions/suppression_start`
+* **Headers Dinámicos:**
+    * `Authorization: Bearer {apiKey_from_db}` (Variable recuperada de la DB)
+* **Payload:** `{"direction": "outbound"}`
+
+#### **2. Feature: CNAM Listing (Configuración)**
+Esta función se ejecuta bajo demanda (ej. cuando un usuario configura su número en el dashboard).
+
+**Flujo:**
+1.  Recibir solicitud de configurar CNAM para un `phoneNumberId`.
+2.  **DB Lookup:** Buscar la API Key del propietario de ese número en la Base de Datos.
+3.  **Validación:** Asegurar que el string `cnam` tenga máximo 15 caracteres (Alphanumeric + Spaces).
+4.  **Acción API:** `PATCH https://api.telnyx.com/v2/phone_numbers/{phoneNumberId}`
+5.  **Headers Dinámicos:**
+    * `Authorization: Bearer {apiKey_from_db}`
+
+**Requerimientos Obligatorios:**
+* **CERO `process.env` para credenciales:** El agente debe asumir que la Key viene de una función asíncrona de base de datos.
+* **Manejo de Errores DB:** Si la base de datos falla o no encuentra la Key, el código debe abortar la petición a Telnyx y loguear el error sin romper el servidor.
+* **Seguridad:** Asegurar que la API Key no se exponga en logs, solo usarla en el Header.
