@@ -190,7 +190,14 @@ export async function processTransaction(params: ProcessTransactionParams): Prom
   }
 }
 
-export async function getOrCreateWallet(companyId: string): Promise<{ id: string; balance: string; currency: string }> {
+export async function getOrCreateWallet(companyId: string): Promise<{ 
+  id: string; 
+  balance: string; 
+  currency: string;
+  autoRecharge: boolean;
+  autoRechargeThreshold: string | null;
+  autoRechargeAmount: string | null;
+}> {
   const [existingWallet] = await db
     .select()
     .from(wallets)
@@ -201,6 +208,9 @@ export async function getOrCreateWallet(companyId: string): Promise<{ id: string
       id: existingWallet.id,
       balance: existingWallet.balance,
       currency: existingWallet.currency,
+      autoRecharge: existingWallet.autoRecharge ?? false,
+      autoRechargeThreshold: existingWallet.autoRechargeThreshold,
+      autoRechargeAmount: existingWallet.autoRechargeAmount,
     };
   }
 
@@ -213,6 +223,9 @@ export async function getOrCreateWallet(companyId: string): Promise<{ id: string
     id: newWallet.id,
     balance: newWallet.balance,
     currency: newWallet.currency,
+    autoRecharge: newWallet.autoRecharge ?? false,
+    autoRechargeThreshold: newWallet.autoRechargeThreshold,
+    autoRechargeAmount: newWallet.autoRechargeAmount,
   };
 }
 
