@@ -27626,19 +27626,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No credential connection configured. Please complete phone system setup first." });
       }
       
-      // Determine the noise_suppression_configuration value for Telnyx API
+      // Determine the noise_suppression value for Telnyx API
       // Options: "disabled", "inbound", "outbound", "both"
+      // Per Telnyx docs: Must be inside the "inbound" object
       const noiseSuppressionConfig = enabled ? (direction || 'outbound') : 'disabled';
       
       const TELNYX_API_BASE = "https://api.telnyx.com/v2";
       
-      // PATCH the credential connection with noise_suppression_configuration
+      // PATCH the credential connection with inbound.noise_suppression (correct Telnyx API structure)
+      const payload = {
+        inbound: {
+          noise_suppression: noiseSuppressionConfig,
+        },
+      };
+      
+      console.log(`[Noise Suppression] Sending PATCH to credential_connections/${settings.credentialConnectionId}:`, JSON.stringify(payload));
+      
       const response = await fetch(`${TELNYX_API_BASE}/credential_connections/${settings.credentialConnectionId}`, {
         method: "PATCH",
         headers: buildHeaders(config),
-        body: JSON.stringify({
-          noise_suppression_configuration: noiseSuppressionConfig,
-        }),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {
