@@ -7497,41 +7497,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const amount = stripeSubscription.items.data[0].price.unit_amount || 0;
       const currency = stripeSubscription.items.data[0].price.currency || 'usd';
-      // Step 3: Create and capture payment in ONE transaction
-      console.log('[SKIP-TRIAL] Creating pre-authorization for subscription amount');
+      // Step 3: End trial and let Stripe handle the invoice automatically
+      // IMPORTANT: We do NOT create a separate PaymentIntent - Stripe will charge via the subscription invoice
+      console.log('[SKIP-TRIAL] Ending trial - Stripe will create and charge the subscription invoice');
       try {
-        // Create a PaymentIntent with manual capture
-        const paymentIntent = await stripeClient.paymentIntents.create({
-          amount: amount,
-          currency: currency,
-          customer: subscription.stripeCustomerId,
-          payment_method: defaultPaymentMethodId,
-          off_session: true,
-          confirm: true,
-          capture_method: 'manual', // Pre-authorize first
-          description: 'Subscription update',
+        // Ensure payment method is set as default for invoices
+        await stripeClient.customers.update(subscription.stripeCustomerId, {
+          invoice_settings: {
+            default_payment_method: defaultPaymentMethodId,
+          },
         });
-        if (paymentIntent.status !== 'requires_capture') {
-          console.log('[SKIP-TRIAL] Pre-authorization failed, status:', paymentIntent.status);
-          return res.status(402).json({ 
-            message: "Payment declined. Please update your payment method and try again." 
-          });
-        }
-
-        // CAPTURE the payment immediately (converts pre-auth to actual charge)
-        console.log('[SKIP-TRIAL] Capturing payment for subscription');
-        const capturedPayment = await stripeClient.paymentIntents.capture(paymentIntent.id);
-        console.log('[SKIP-TRIAL] Payment captured successfully:', capturedPayment.id);
-        // End trial WITHOUT creating another invoice (prevent double-billing)
-        console.log('[SKIP-TRIAL] Ending trial without creating new invoice');
+        
+        // End trial - Stripe will automatically create and finalize an invoice
         const updatedSubscription = await stripeClient.subscriptions.update(
           subscription.stripeSubscriptionId,
           {
-            trial_end: 'now', // End trial immediately
-            proration_behavior: 'none', // CRITICAL: Don't create new charges/invoices
+            trial_end: 'now', // End trial immediately - Stripe creates invoice automatically
           }
-
         );
+        
+        console.log('[SKIP-TRIAL] Trial ended, subscription status:', updatedSubscription.status);
         // Helper to safely convert Stripe timestamps
         const toDate = (timestamp: number | null | undefined): Date | undefined => {
           if (typeof timestamp === 'number' && timestamp > 0) {
