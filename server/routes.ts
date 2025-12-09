@@ -26010,7 +26010,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { stripe } = await import("./stripe");
       const enrichedTransactions = await Promise.all(
         transactions.map(async (tx) => {
-          if (tx.type === 'deposit' && tx.externalReferenceId && stripe) {
+          if (tx.type.toLowerCase() === 'deposit' && tx.externalReferenceId && stripe) {
             try {
               const paymentIntent = await stripe.paymentIntents.retrieve(tx.externalReferenceId);
               if (paymentIntent.latest_charge) {
@@ -26530,7 +26530,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { stripe } = await import("./stripe");
       const enrichedTransactions = await Promise.all(
         transactions.map(async (tx) => {
-          if (tx.type === 'deposit' && tx.externalReferenceId && stripe) {
+          if (tx.type.toLowerCase() === 'deposit' && tx.externalReferenceId && stripe) {
             try {
               const paymentIntent = await stripe.paymentIntents.retrieve(tx.externalReferenceId);
               if (paymentIntent.latest_charge) {
