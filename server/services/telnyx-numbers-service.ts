@@ -750,29 +750,79 @@ export async function updateCallForwarding(
       normalizedDest = cleanNumber.startsWith("1") ? `+${cleanNumber}` : `+1${cleanNumber}`;
     }
     
-    // Store settings in local database (TeXML webhook will read these)
-    const [updated] = await db
-      .update(telnyxPhoneNumbers)
-      .set({
-        callForwardingEnabled: enabled,
-        callForwardingDestination: normalizedDest,
-        callForwardingKeepCallerId: keepCallerId,
-        updatedAt: new Date(),
-      })
+    // Check if record exists in local database
+    const [existing] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
       .where(
         and(
           eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
           eq(telnyxPhoneNumbers.companyId, companyId)
         )
-      )
-      .returning();
+      );
     
-    if (!updated) {
-      console.error(`[Call Forwarding] Phone number not found: ${phoneNumberId}`);
-      return { success: false, error: "Phone number not found" };
+    if (existing) {
+      // Update existing record
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({
+          callForwardingEnabled: enabled,
+          callForwardingDestination: normalizedDest,
+          callForwardingKeepCallerId: keepCallerId,
+          updatedAt: new Date(),
+        })
+        .where(eq(telnyxPhoneNumbers.id, existing.id));
+      
+      console.log(`[Call Forwarding] Settings updated. Number: ${existing.phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
+    } else {
+      // Need to fetch phone number details from Telnyx to create local record
+      const apiKey = await getTelnyxMasterApiKey();
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId));
+      
+      if (!wallet?.telnyxAccountId) {
+        return { success: false, error: "Company wallet or Telnyx account not found" };
+      }
+      
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json",
+        "x-managed-account-id": wallet.telnyxAccountId,
+      };
+      
+      // Fetch the phone number details from Telnyx
+      const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+        method: "GET",
+        headers,
+      });
+      
+      if (!response.ok) {
+        console.error(`[Call Forwarding] Failed to fetch phone number from Telnyx: ${response.status}`);
+        return { success: false, error: "Failed to fetch phone number details" };
+      }
+      
+      const result = await response.json();
+      const phoneNumber = result.data?.phone_number;
+      
+      if (!phoneNumber) {
+        return { success: false, error: "Phone number not found in Telnyx" };
+      }
+      
+      // Create local record with call forwarding settings
+      await db.insert(telnyxPhoneNumbers).values({
+        companyId,
+        phoneNumber,
+        telnyxPhoneNumberId: phoneNumberId,
+        status: "active",
+        callForwardingEnabled: enabled,
+        callForwardingDestination: normalizedDest,
+        callForwardingKeepCallerId: keepCallerId,
+      });
+      
+      console.log(`[Call Forwarding] Created local record and saved settings. Number: ${phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     }
-    
-    console.log(`[Call Forwarding] Settings saved locally. Number: ${updated.phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     
     return { success: true };
   } catch (error) {
