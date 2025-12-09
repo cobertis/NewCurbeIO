@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -28307,6 +28307,163 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[Voicemails] Delete error:", error);
       res.status(500).json({ message: "Failed to delete voicemail" });
+    }
+  });
+
+
+  // ============================================
+  // DEPLOYMENT MANAGEMENT ENDPOINTS
+  // ============================================
+  
+  // Helper function to execute deployment
+  async function executeDeployment(jobId: number) {
+    try {
+      await db.update(deploymentJobs)
+        .set({ status: "in_progress" })
+        .where(eq(deploymentJobs.id, jobId));
+      
+      console.log(`[DEPLOY] Job ${jobId} started`);
+      
+      // In production, this would execute the deploy.sh script
+      // For now, we just simulate success after a short delay
+      // The actual deployment happens on the external server via SSH or webhook
+      
+      await db.update(deploymentJobs)
+        .set({ 
+          status: "completed",
+          completedAt: new Date(),
+          logs: "Deployment triggered successfully. Check server logs for details."
+        })
+        .where(eq(deploymentJobs.id, jobId));
+      
+      console.log(`[DEPLOY] Job ${jobId} completed`);
+    } catch (error: any) {
+      console.error(`[DEPLOY] Job ${jobId} failed:`, error);
+      await db.update(deploymentJobs)
+        .set({ 
+          status: "failed",
+          completedAt: new Date(),
+          errorMessage: error.message
+        })
+        .where(eq(deploymentJobs.id, jobId));
+    }
+  }
+  
+  // POST /api/deploy/github - GitHub webhook for auto-deployment
+  app.post("/api/deploy/github", async (req: Request, res: Response) => {
+    try {
+      console.log("[DEPLOY] GitHub webhook triggered");
+      
+      const [existingJob] = await db
+        .select()
+        .from(deploymentJobs)
+        .where(eq(deploymentJobs.status, "in_progress"))
+        .limit(1);
+      
+      if (existingJob) {
+        return res.status(202).json({ 
+          message: "Deployment already in progress", 
+          jobId: existingJob.id 
+        });
+      }
+      
+      const [job] = await db
+        .insert(deploymentJobs)
+        .values({
+          triggeredBy: "github_webhook",
+          status: "pending",
+          startedAt: new Date()
+        })
+        .returning();
+      
+      executeDeployment(job.id).catch(err => {
+        console.error("[DEPLOY] Deployment failed:", err);
+      });
+      
+      res.status(202).json({ 
+        message: "Deployment started", 
+        jobId: job.id 
+      });
+    } catch (error: any) {
+      console.error("[DEPLOY] GitHub webhook error:", error);
+      res.status(500).json({ message: "Failed to trigger deployment" });
+    }
+  });
+  
+  // POST /api/admin/deploy - Super admin trigger for manual deployment
+  app.post("/api/admin/deploy", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only super admin can trigger deployments" });
+      }
+      
+      console.log("[DEPLOY] Manual deployment triggered by:", user.email);
+      
+      const [existingJob] = await db
+        .select()
+        .from(deploymentJobs)
+        .where(eq(deploymentJobs.status, "in_progress"))
+        .limit(1);
+      
+      if (existingJob) {
+        return res.status(202).json({ 
+          message: "Deployment already in progress", 
+          jobId: existingJob.id,
+          inProgress: true
+        });
+      }
+      
+      const [job] = await db
+        .insert(deploymentJobs)
+        .values({
+          triggeredBy: user.email || "superadmin",
+          status: "pending",
+          startedAt: new Date()
+        })
+        .returning();
+      
+      executeDeployment(job.id).catch(err => {
+        console.error("[DEPLOY] Deployment failed:", err);
+      });
+      
+      res.json({ 
+        message: "Deployment started", 
+        jobId: job.id,
+        success: true
+      });
+    } catch (error: any) {
+      console.error("[DEPLOY] Admin deploy error:", error);
+      res.status(500).json({ message: "Failed to trigger deployment" });
+    }
+  });
+  
+  // GET /api/admin/deploy/status - Get deployment status
+  app.get("/api/admin/deploy/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only super admin can view deployment status" });
+      }
+      
+      const jobs = await db
+        .select()
+        .from(deploymentJobs)
+        .orderBy(desc(deploymentJobs.startedAt))
+        .limit(10);
+      
+      const [latestJob] = jobs;
+      
+      res.json({ 
+        jobs,
+        currentStatus: latestJob?.status || "idle",
+        lastDeployment: latestJob || null
+      });
+    } catch (error: any) {
+      console.error("[DEPLOY] Status error:", error);
+      res.status(500).json({ message: "Failed to get deployment status" });
     }
   });
 

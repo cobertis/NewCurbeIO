@@ -5150,3 +5150,24 @@ export const updateSystemConfigSchema = z.object({
 export type SystemConfig = typeof systemConfig.$inferSelect;
 export type InsertSystemConfig = z.infer<typeof insertSystemConfigSchema>;
 export type UpdateSystemConfig = z.infer<typeof updateSystemConfigSchema>;
+
+// Deployment Jobs table - Track automated deployments
+export const deploymentJobs = pgTable("deployment_jobs", {
+  id: serial("id").primaryKey(),
+  triggeredBy: text("triggered_by").notNull(),
+  status: text("status").notNull().default("pending"),
+  logs: text("logs"),
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  gitCommit: text("git_commit"),
+  gitBranch: text("git_branch").default("main"),
+});
+
+export type DeploymentJob = typeof deploymentJobs.$inferSelect;
+export type InsertDeploymentJob = typeof deploymentJobs.$inferInsert;
+
+export const insertDeploymentJobSchema = createInsertSchema(deploymentJobs).omit({
+  id: true,
+  completedAt: true,
+});

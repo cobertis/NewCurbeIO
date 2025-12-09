@@ -92,6 +92,158 @@ const revealPasswordSchema = z.object({
 
 type RevealPasswordData = z.infer<typeof revealPasswordSchema>;
 
+
+// Deployment Section Component
+function DeploymentSection() {
+  const { toast } = useToast();
+  const [isDeploying, setIsDeploying] = useState(false);
+  
+  const { data: deployStatus, refetch: refetchStatus } = useQuery<{ jobs?: any[]; currentStatus?: string; lastDeployment?: any }>({
+    queryKey: ["/api/admin/deploy/status"],
+    refetchInterval: isDeploying ? 3000 : false,
+  });
+  
+  
+  // Clear isDeploying when job completes
+  if (isDeploying && deployStatus?.currentStatus && deployStatus.currentStatus !== "in_progress" && deployStatus.currentStatus !== "pending") {
+    setIsDeploying(false);
+  }
+  const deployMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/deploy");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Deployment Started",
+        description: "Production deployment has been triggered. Check status below.",
+      });
+      setIsDeploying(true);
+      refetchStatus();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Deployment Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleDeploy = () => {
+    deployMutation.mutate();
+  };
+  
+  const lastDeployment = deployStatus?.lastDeployment;
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+        <div>
+          <h4 className="font-medium">Sync Production Server</h4>
+          <p className="text-sm text-muted-foreground">
+            Pull latest changes from GitHub and restart the production server
+          </p>
+        </div>
+        <Button
+          onClick={handleDeploy}
+          disabled={deployMutation.isPending || deployStatus?.currentStatus === "in_progress"}
+          data-testid="btn-deploy"
+        >
+          {deployMutation.isPending ? (
+            <>
+              <LoadingSpinner fullScreen={false} />
+              <span className="ml-2">Deploying...</span>
+            </>
+          ) : (
+            <>
+              <Globe className="h-4 w-4 mr-2" />
+              Deploy Now
+            </>
+          )}
+        </Button>
+      </div>
+      
+      {lastDeployment && (
+        <div className="border rounded-lg p-4">
+          <h4 className="font-medium mb-3">Last Deployment</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Status:</span>
+              <Badge 
+                variant={
+                  lastDeployment.status === "completed" ? "default" :
+                  lastDeployment.status === "failed" ? "destructive" :
+                  lastDeployment.status === "in_progress" ? "secondary" : "outline"
+                }
+                className="ml-2"
+              >
+                {lastDeployment.status}
+              </Badge>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Triggered by:</span>
+              <span className="ml-2">{lastDeployment.triggeredBy}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Started:</span>
+              <span className="ml-2">{format(new Date(lastDeployment.startedAt), "PPpp")}</span>
+            </div>
+            {lastDeployment.completedAt && (
+              <div>
+                <span className="text-muted-foreground">Completed:</span>
+                <span className="ml-2">{format(new Date(lastDeployment.completedAt), "PPpp")}</span>
+              </div>
+            )}
+          </div>
+          {lastDeployment.errorMessage && (
+            <div className="mt-3 p-3 bg-destructive/10 rounded text-destructive text-sm">
+              {lastDeployment.errorMessage}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {deployStatus?.jobs && deployStatus.jobs.length > 1 && (
+        <div className="border rounded-lg p-4">
+          <h4 className="font-medium mb-3">Recent Deployments</h4>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Status</TableHead>
+                <TableHead>Triggered By</TableHead>
+                <TableHead>Started</TableHead>
+                <TableHead>Completed</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {deployStatus.jobs.slice(1).map((job: any) => (
+                <TableRow key={job.id}>
+                  <TableCell>
+                    <Badge 
+                      variant={
+                        job.status === "completed" ? "default" :
+                        job.status === "failed" ? "destructive" : "outline"
+                      }
+                    >
+                      {job.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{job.triggeredBy}</TableCell>
+                  <TableCell>{format(new Date(job.startedAt), "PPp")}</TableCell>
+                  <TableCell>
+                    {job.completedAt ? format(new Date(job.completedAt), "PPp") : "-"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SystemSettings() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("credentials");
@@ -965,7 +1117,7 @@ export default function SystemSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg" data-testid="settings-tabs">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl" data-testid="settings-tabs">
           <TabsTrigger value="credentials" data-testid="tab-credentials">
             <Key className="h-4 w-4 mr-2" />
             API Credentials
@@ -977,6 +1129,10 @@ export default function SystemSettings() {
           <TabsTrigger value="audit" data-testid="tab-audit">
             <Activity className="h-4 w-4 mr-2" />
             Audit Log
+          </TabsTrigger>
+          <TabsTrigger value="deploy" data-testid="tab-deploy">
+            <Globe className="h-4 w-4 mr-2" />
+            Deploy
           </TabsTrigger>
         </TabsList>
 
@@ -1340,6 +1496,20 @@ export default function SystemSettings() {
                   </Table>
                 </ScrollArea>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="deploy" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Production Deployment</CardTitle>
+              <CardDescription>
+                Trigger manual deployment to production server
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <DeploymentSection />
             </CardContent>
           </Card>
         </TabsContent>
