@@ -18,10 +18,28 @@ const getOrCreateRemoteAudio = (): HTMLAudioElement => {
     remoteAudioElement = document.createElement('audio');
     remoteAudioElement.id = 'remoteMedia';
     remoteAudioElement.autoplay = true;
+    // Per SDK docs: Ensure autoplay works
+    remoteAudioElement.setAttribute('autoplay', 'true');
+    remoteAudioElement.setAttribute('playsinline', 'true');
     document.body.appendChild(remoteAudioElement);
     console.log('[TelnyxPhone] Created audio element with id="remoteMedia"');
   }
   return remoteAudioElement;
+};
+
+// Per SDK docs: Get OPUS codec for lower latency
+const getOpusCodec = (): RTCRtpCodecCapability | undefined => {
+  try {
+    const capabilities = RTCRtpReceiver.getCapabilities?.('audio');
+    if (capabilities?.codecs) {
+      return capabilities.codecs.find(c => 
+        c.mimeType.toLowerCase().includes('opus')
+      );
+    }
+  } catch (e) {
+    console.log('[TelnyxPhone] Could not get OPUS codec:', e);
+  }
+  return undefined;
 };
 
 export const useTelnyxPhone = () => {
@@ -114,8 +132,6 @@ export const useTelnyxPhone = () => {
       });
 
       // Per SDK docs: Events are fired on both session and call updates
-      // ex: when the session has been established
-      // ex: when there's an incoming call
       client.on('telnyx.notification', (notification: any) => {
         console.log('[TelnyxPhone] telnyx.notification type:', notification.type);
         
@@ -141,8 +157,7 @@ export const useTelnyxPhone = () => {
           } else if (call.state === 'hangup' || call.state === 'destroy') {
             console.log('[TelnyxPhone] Call ended:', call.state);
             weInitiatedCallRef.current = false;
-            const audioEl = getOrCreateRemoteAudio();
-            audioEl.srcObject = null;
+            // Reset state
             setState(prev => ({ 
               ...prev, 
               activeCall: null, 
@@ -190,10 +205,20 @@ export const useTelnyxPhone = () => {
     console.log('[TelnyxPhone] Making outbound call to:', destination);
     weInitiatedCallRef.current = true;
     
-    const call = clientRef.current.newCall({
+    // Per SDK docs: Use OPUS codec for lower latency
+    const opusCodec = getOpusCodec();
+    const callOptions: any = {
       destinationNumber: destination,
       callerNumber: state.callerIdNumber,
-    });
+      audio: true,
+    };
+    
+    if (opusCodec) {
+      callOptions.preferred_codecs = [opusCodec];
+      console.log('[TelnyxPhone] Using OPUS codec for lower latency');
+    }
+    
+    const call = clientRef.current.newCall(callOptions);
     
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
