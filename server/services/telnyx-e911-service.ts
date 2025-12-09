@@ -302,7 +302,6 @@ async function getOrCreateCredentialConnection(
         outbound: {
           outbound_voice_profile_id: outboundVoiceProfileId,
           channel_limit: 10,
-          generate_ringback_tone: true,
         },
         inbound: {
           channel_limit: 10,
@@ -1007,9 +1006,6 @@ export async function updateCredentialConnectionForWebRTC(
           generate_ringback_tone: true,
           // Enable SHAKEN/STIR for caller ID verification
           shaken_stir_enabled: true,
-        },
-        outbound: {
-          generate_ringback_tone: true,
         },
       }),
     });
