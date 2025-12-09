@@ -79,6 +79,7 @@ class TelnyxWebRTCManager {
   private isPlayingRingtone: boolean = false;
   private currentCallStartTime: Date | null = null;
   private currentCallInfo: { callId: string; fromNumber: string; toNumber: string; direction: 'inbound' | 'outbound' } | null = null;
+  private isOutboundCallInProgress: boolean = false;
   
   private constructor() {
     // Create ringback audio element for outbound calls
@@ -349,8 +350,12 @@ class TelnyxWebRTCManager {
             });
           }
           
-          // Handle incoming calls - check for 'new' state as well since direction might be set there
-          if ((call.state === 'ringing' || call.state === 'new') && call.direction === 'inbound') {
+          // Handle incoming calls - detect by remoteCallerNumber presence when direction is null/undefined
+          // Telnyx SDK sometimes returns null for direction on inbound calls
+          const isInboundCall = call.direction === 'inbound' || 
+            (call.direction == null && call.options?.remoteCallerNumber && !this.isOutboundCallInProgress);
+          
+          if ((call.state === 'ringing' || call.state === 'new') && isInboundCall) {
             console.log('[Telnyx WebRTC] Incoming call from:', call.options?.remoteCallerNumber);
             store.setIncomingCall(call);
             this.startRingtone(); // Play ringtone for incoming calls
@@ -399,6 +404,7 @@ class TelnyxWebRTCManager {
             console.log('[Telnyx WebRTC] Call ended');
             this.stopRingback(); // Stop ringback if call ends before answer
             this.stopRingtone(); // Stop ringtone if call ends
+            this.isOutboundCallInProgress = false; // Reset outbound flag
             
             // Log call completion
             if (this.currentCallInfo) {
@@ -437,6 +443,9 @@ class TelnyxWebRTCManager {
     console.log('[Telnyx WebRTC] Making call to:', destinationNumber, 'from:', callerIdNumber);
     
     try {
+      // Mark that we're making an outbound call to distinguish from incoming calls
+      this.isOutboundCallInProgress = true;
+      
       const call = this.client.newCall({
         destinationNumber,
         callerNumber: callerIdNumber,
