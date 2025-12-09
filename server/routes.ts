@@ -27995,7 +27995,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/call-logs/sync - Sync call history from Telnyx API
+  // POST /api/call-logs/sync - Sync call history from Telnyx CDR API (detail_records)
   app.post("/api/call-logs/sync", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -28006,71 +28006,121 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const config = await getManagedAccountConfig(user.companyId);
       
-      // Get call logs from Telnyx CDR API
-      const response = await fetch("https://api.telnyx.com/v2/call_events?filter[event_type]=call.hangup\&page[size]=50", {
-        headers: {
-          "Authorization": `Bearer ${config.apiKey}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[Call Logs Sync] Telnyx API error:", response.status, errorText);
-        return res.status(500).json({ message: "Failed to fetch call history from Telnyx" });
-      }
-
-      const data = await response.json();
-      const events = data.data || [];
+      // Fetch CDRs from Telnyx using the correct detail_records endpoint
+      // Query both call-control and webrtc record types
+      const recordTypes = ['call-control', 'webrtc'];
+      let totalSynced = 0;
+      let totalRecords = 0;
+      const errors: string[] = [];
       
-      let synced = 0;
-      for (const event of events) {
-        const payload = event.payload || {};
-        
-        // Skip if we already have this call
-        const [existing] = await db
-          .select({ id: callLogs.id })
-          .from(callLogs)
-          .where(eq(callLogs.telnyxCallId, payload.call_control_id || event.id))
-          .limit(1);
-        
-        if (existing) continue;
-        
-        // Determine direction and numbers
-        const direction = payload.direction === 'incoming' ? 'inbound' : 'outbound';
-        const fromNumber = payload.from || '';
-        const toNumber = payload.to || '';
-        
-        // Determine status
-        let status: string = 'answered';
-        if (payload.hangup_cause === 'normal_clearing') {
-          status = 'answered';
-        } else if (payload.hangup_cause === 'originator_cancel' || payload.hangup_cause === 'no_answer') {
-          status = direction === 'inbound' ? 'missed' : 'no_answer';
-        } else if (payload.hangup_cause === 'user_busy') {
-          status = 'busy';
+      for (const recordType of recordTypes) {
+        try {
+          // Use date_range=last_30_days for reasonable history
+          const url = `https://api.telnyx.com/v2/detail_records?filter[record_type]=${recordType}&filter[date_range]=last_30_days&sort=-finished_at&page[size]=100`;
+          
+          console.log(`[Call Logs Sync] Fetching ${recordType} CDRs from Telnyx...`);
+          
+          const response = await fetch(url, {
+            headers: {
+              "Authorization": `Bearer ${config.apiKey}`,
+              "Accept": "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[Call Logs Sync] Telnyx API error for ${recordType}:`, response.status, errorText);
+            errors.push(`Failed to fetch ${recordType}: ${response.status}`);
+            continue;
+          }
+
+          const data = await response.json();
+          const records = data.data || [];
+          totalRecords += records.length;
+          
+          console.log(`[Call Logs Sync] Got ${records.length} ${recordType} records`);
+          
+          for (const record of records) {
+            // Access fields directly or via attributes (Telnyx CDR structure varies)
+            const cdr = record.attributes || record;
+            // Use telnyx_session_id or id as unique identifier
+            const callId = record.id || cdr.telnyx_session_id || cdr.call_id;
+            
+            if (!callId) continue;
+            
+            // Check if we already have this call (upsert logic)
+            const [existing] = await db
+              .select({ id: callLogs.id, cost: callLogs.cost })
+              .from(callLogs)
+              .where(eq(callLogs.telnyxCallId, callId))
+              .limit(1);
+            
+            // Direction mapping
+            const direction = cdr.direction === 'inbound' ? 'inbound' : 'outbound';
+            
+            // Status mapping based on call_sec (if call lasted, it was answered)
+            let status: string = 'answered';
+            if (cdr.call_sec === 0 || cdr.call_sec === null) {
+              status = direction === 'inbound' ? 'missed' : 'no_answer';
+            }
+            
+            // Phone numbers from CDR
+            const fromNumber = cdr.cli || '';
+            const toNumber = cdr.cld || cdr.dest_number || '';
+            
+            // Parse finished_at as the end time
+            const endedAt = cdr.finished_at ? new Date(cdr.finished_at) : new Date();
+            const startedAt = new Date(endedAt.getTime() - (cdr.call_sec || 0) * 1000);
+            
+            if (existing) {
+              // Update existing record with latest cost (Telnyx calculates final cost later)
+              if (cdr.cost && cdr.cost !== existing.cost) {
+                await db.update(callLogs)
+                  .set({
+                    cost: cdr.cost,
+                    costCurrency: cdr.currency || 'USD',
+                    billedDuration: cdr.billed_sec || cdr.call_sec || 0,
+                    duration: cdr.call_sec || 0,
+                  })
+                  .where(eq(callLogs.id, existing.id));
+                console.log(`[Call Logs Sync] Updated cost for call ${callId}: $${cdr.cost}`);
+              }
+            } else {
+              // Insert new record
+              await db.insert(callLogs).values({
+                companyId: user.companyId,
+                userId: user.id,
+                telnyxCallId: callId,
+                telnyxSessionId: cdr.telnyx_session_id,
+                fromNumber,
+                toNumber,
+                direction: direction as any,
+                status: status as any,
+                duration: cdr.call_sec || 0,
+                billedDuration: cdr.billed_sec || cdr.call_sec || 0,
+                cost: cdr.cost || null,
+                costCurrency: cdr.currency || 'USD',
+                startedAt,
+                endedAt,
+                callerName: cdr.caller_name || null,
+              });
+              totalSynced++;
+            }
+          }
+        } catch (typeError: any) {
+          console.error(`[Call Logs Sync] Error processing ${recordType}:`, typeError);
+          errors.push(`Error processing ${recordType}: ${typeError.message}`);
         }
-        
-        await db.insert(callLogs).values({
-          companyId: user.companyId,
-          userId: user.id,
-          telnyxCallId: payload.call_control_id || event.id,
-          telnyxSessionId: payload.call_session_id,
-          fromNumber,
-          toNumber,
-          direction: direction as any,
-          status: status as any,
-          duration: payload.duration_secs || 0,
-          billedDuration: payload.billable_secs || payload.duration_secs || 0,
-          cost: payload.cost?.amount,
-          costCurrency: payload.cost?.currency || 'USD',
-          startedAt: new Date(payload.start_time || event.occurred_at),
-          endedAt: new Date(payload.end_time || event.occurred_at),
-        });
-        synced++;
       }
 
-      res.json({ success: true, synced, total: events.length });
+      console.log(`[Call Logs Sync] Complete: synced ${totalSynced} new records from ${totalRecords} total`);
+      
+      res.json({ 
+        success: true, 
+        synced: totalSynced, 
+        total: totalRecords,
+        errors: errors.length > 0 ? errors : undefined 
+      });
     } catch (error: any) {
       console.error("[Call Logs Sync] Error:", error);
       res.status(500).json({ message: "Failed to sync call history" });

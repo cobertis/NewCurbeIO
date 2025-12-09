@@ -1067,6 +1067,8 @@ function BottomNavigation({ viewMode, setViewMode, missedCallsCount }: BottomNav
 }
 
 export function WebPhoneFloatingWindow() {
+  const { toast } = useToast();
+  
   // Helper function to calculate responsive dimensions
   const calculateDimensions = () => {
     const width = Math.min(360, window.innerWidth * 0.9);
@@ -1126,6 +1128,27 @@ export function WebPhoneFloatingWindow() {
   const setAudioElements = useWebPhoneStore(state => state.setAudioElements);
   const clearCallHistory = useWebPhoneStore(state => state.clearCallHistory);
   const deleteCallsFromHistory = useWebPhoneStore(state => state.deleteCallsFromHistory);
+  
+  // Mutation to sync call history from Telnyx CDRs
+  const syncCallsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/call-logs/sync");
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
+      toast({ 
+        title: "Sync Complete", 
+        description: `Synced ${data.synced || 0} new call records from provider.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Sync Failed", 
+        description: error.message || "Failed to sync call history",
+        variant: "destructive" 
+      });
+    },
+  });
 
   // Query for Telnyx phone numbers
   const { data: telnyxNumbersData } = useQuery<{ numbers: any[] }>({
@@ -2139,7 +2162,18 @@ export function WebPhoneFloatingWindow() {
                         >
                           {isEditMode ? 'Done' : 'Edit'}
                         </button>
-                        <h2 className="text-base sm:text-lg font-semibold text-foreground">Recents</h2>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base sm:text-lg font-semibold text-foreground">Recents</h2>
+                          <button
+                            onClick={() => syncCallsMutation.mutate()}
+                            disabled={syncCallsMutation.isPending}
+                            className="p-1 hover:bg-muted rounded-full transition-colors"
+                            title="Sync call history"
+                            data-testid="button-sync-calls"
+                          >
+                            <RefreshCw className={`h-4 w-4 text-muted-foreground ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
                         {isEditMode ? (
                           <button 
                             onClick={handleClearAll}
