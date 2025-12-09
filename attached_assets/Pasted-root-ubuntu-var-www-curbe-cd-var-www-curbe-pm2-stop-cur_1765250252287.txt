@@ -1,0 +1,88 @@
+root@ubuntu:/var/www/curbe# cd /var/www/curbe
+pm2 stop curbe-admin
+git pull origin main
+npm ci
+PATH="$PWD/node_modules/.bin:$PATH" npm run build
+pm2 start /var/www/curbe/ecosystem.config.cjs
+[PM2] Applying action stopProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ 1.0.0   │ fork    │ 0        │ 0      │ 0    │ stopped   │ 0%       │ 0b       │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+From github.com:cobertis/NewCurbeIO
+ * branch                main       -> FETCH_HEAD
+Already up to date.
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm warn deprecated querystring@0.2.0: The querystring API is considered Legacy. new code should use the URLSearchParams API instead.
+npm warn deprecated fluent-ffmpeg@2.1.3: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+
+added 882 packages, and audited 883 packages in 9s
+
+134 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (3 low, 5 moderate, 10 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.21 building for production...
+transforming (4) src/App.tsx
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 4193 modules transformed.
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/client/src/hooks/use-toast.ts is dynamically imported by /var/www/curbe/client/src/services/webphone.ts, /var/www/curbe/client/src/services/webphone.ts but also statically imported by /var/www/curbe/client/src/App.tsx, /var/www/curbe/client/src/components/E911ConfigDialog.tsx, /var/www/curbe/client/src/components/EmergencyAddressForm.tsx, /var/www/curbe/client/src/components/PolicyRenewalComparison.tsx, /var/www/curbe/client/src/components/WebPhoneFloatingWindow.tsx, /var/www/curbe/client/src/components/appointment-booking-inline.tsx, /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/components/campaigns/campaign-form-dialog.tsx, /var/www/curbe/client/src/components/chat/number-provision-modal.tsx, /var/www/curbe/client/src/components/chat/phone-settings-modal.tsx, /var/www/curbe/client/src/components/company-billing-tab.tsx, /var/www/curbe/client/src/components/email-templates-manager.tsx, /var/www/curbe/client/src/components/manage-payment-methods-dialog.tsx, /var/www/curbe/client/src/components/new-event-dialog.tsx, /var/www/curbe/client/src/components/public-block-renderer.tsx, /var/www/curbe/client/src/components/ui/toaster.tsx, /var/www/curbe/client/src/components/upload-avatar-dialog.tsx, /var/www/curbe/client/src/lib/status-editor.ts, /var/www/curbe/client/src/pages/activate-account.tsx, /var/www/curbe/client/src/pages/appointment-settings.tsx, /var/www/curbe/client/src/pages/audit-logs.tsx, /var/www/curbe/client/src/pages/billing.tsx, /var/www/curbe/client/src/pages/birthday-images.tsx, /var/www/curbe/client/src/pages/blacklist.tsx, /var/www/curbe/client/src/pages/campaigns.tsx, /var/www/curbe/client/src/pages/companies.tsx, /var/www/curbe/client/src/pages/company-detail.tsx, /var/www/curbe/client/src/pages/contacts.tsx, /var/www/curbe/client/src/pages/features.tsx, /var/www/curbe/client/src/pages/forgot-password.tsx, /var/www/curbe/client/src/pages/imessage-campaign-detail.tsx, /var/www/curbe/client/src/pages/imessage-campaigns.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/incoming-sms.tsx, /var/www/curbe/client/src/pages/landing-page.tsx, /var/www/curbe/client/src/pages/leads.tsx, /var/www/curbe/client/src/pages/login.tsx, /var/www/curbe/client/src/pages/marketplace-plans.tsx, /var/www/curbe/client/src/pages/notifications.tsx, /var/www/curbe/client/src/pages/phone-system.tsx, /var/www/curbe/client/src/pages/plan-selection.tsx, /var/www/curbe/client/src/pages/plans.tsx, /var/www/curbe/client/src/pages/policies.tsx, /var/www/curbe/client/src/pages/public-consent.tsx, /var/www/curbe/client/src/pages/public-landing-page.tsx, /var/www/curbe/client/src/pages/quotes.tsx, /var/www/curbe/client/src/pages/register.tsx, /var/www/curbe/client/src/pages/reset-password.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/sms-mms.tsx, /var/www/curbe/client/src/pages/system-alerts.tsx, /var/www/curbe/client/src/pages/system-settings.tsx, /var/www/curbe/client/src/pages/tasks.tsx, /var/www/curbe/client/src/pages/tickets.tsx, /var/www/curbe/client/src/pages/user-detail.tsx, /var/www/curbe/client/src/pages/users.tsx, /var/www/curbe/client/src/pages/verify-otp.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/react/dist/module.js is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /var/www/curbe/node_modules/@emoji-mart/data/sets/15/native.json is dynamically imported by /var/www/curbe/client/src/components/chat/emoji-picker.tsx but also statically imported by /var/www/curbe/client/src/components/campaigns/campaign-builder-wizard.tsx, /var/www/curbe/client/src/pages/imessage.tsx, /var/www/curbe/client/src/pages/settings.tsx, /var/www/curbe/client/src/pages/whatsapp.tsx, dynamic import will not move module into another chunk.
+
+../dist/public/index.html                                                 2.10 kB │ gzip:     0.82 kB
+../dist/public/assets/logo no fondo_1760457183587-BR-LiXG_.png           45.10 kB
+../dist/public/assets/Generic_user_avatar_icon_55b842ef-BGsZDgwn.png    456.74 kB
+../dist/public/assets/index-C8q1H17z.css                                189.10 kB │ gzip:    28.12 kB
+../dist/public/assets/index-BGxzX9_b.js                               4,705.40 kB │ gzip: 1,143.84 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 17.61s
+▲ [WARNING] Duplicate member "markConversationAsRead" in class body [duplicate-class-member]
+
+    server/storage.ts:10718:8:
+      10718 │   async markConversationAsRead(conversationId: string): Promise<void> {
+            ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+  The original member "markConversationAsRead" is here:
+
+    server/storage.ts:2953:8:
+      2953 │   async markConversationAsRead(phoneNumber: string, companyId?: string): Promise<void> {
+           ╵         ~~~~~~~~~~~~~~~~~~~~~~
+
+1 warning
+
+  dist/index.js  1.9mb ⚠️
+
+⚡ Done in 94ms
+[PM2] Applying action restartProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ 1.0.0   │ fork    │ 1361997  │ 0s     │ 0    │ online    │ 0%       │ 17.0mb   │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@ubuntu:/var/www/curbe# 
