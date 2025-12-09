@@ -4691,6 +4691,33 @@ export type InsertWallet = z.infer<typeof insertWalletSchema>;
 export type WalletTransaction = typeof walletTransactions.$inferSelect;
 export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;
 
+
+// =====================================================
+// CALL RATES (Pricing per prefix)
+// =====================================================
+
+export const callRates = pgTable("call_rates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }), // null = global rate
+  prefix: text("prefix").notNull(), // E.g., "1" for USA, "52" for Mexico, "521" for Mexico Mobile
+  ratePerMinute: numeric("rate_per_minute", { precision: 10, scale: 4 }).notNull().default("0.0200"),
+  connectionFee: numeric("connection_fee", { precision: 10, scale: 4 }).notNull().default("0.0000"),
+  minBillableSeconds: integer("min_billable_seconds").notNull().default(6), // Minimum 6 seconds
+  billingIncrement: integer("billing_increment").notNull().default(6), // Bill in 6-second increments
+  description: text("description"), // E.g., "USA Mobile", "Mexico Landline"
+  country: text("country"), // ISO country code
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  prefixIdx: index("call_rates_prefix_idx").on(table.prefix),
+  companyPrefixIdx: index("call_rates_company_prefix_idx").on(table.companyId, table.prefix),
+  countryIdx: index("call_rates_country_idx").on(table.country),
+}));
+
+export const insertCallRateSchema = createInsertSchema(callRates).omit({ id: true, createdAt: true, updatedAt: true });
+export type CallRate = typeof callRates.$inferSelect;
+export type InsertCallRate = z.infer<typeof insertCallRateSchema>;
 // =====================================================
 // TELNYX PHONE NUMBERS (Company VoIP Lines)
 // =====================================================

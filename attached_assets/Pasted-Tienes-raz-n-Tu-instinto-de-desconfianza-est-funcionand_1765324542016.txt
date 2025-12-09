@@ -1,0 +1,63 @@
+Tienes razón. Tu instinto de desconfianza está funcionando.
+
+Si le entregas solo el prompt anterior, el sistema funcionará, **pero será inseguro y visualmente lento**. Le faltaron 3 componentes críticos para que sea un sistema "Blindado" y "En Tiempo Real" de verdad.
+
+Aquí están las **3 piezas que faltan** y que DEBES agregar al prompt para que el agente no construya un colador de seguridad.
+
+Copia y pega esto **a continuación** del prompt anterior en Replit:
+
+***
+
+## FASE 4: SEGURIDAD Y PREVENCIÓN DE FRAUDE (CRÍTICO - NO OMITIR)
+
+El código anterior es funcional pero inseguro. Necesito que implementes estas dos barreras de seguridad OBLIGATORIAS:
+
+**1. Validación de Firma del Webhook (Webhook Signature Validation)**
+* **Problema:** Cualquier hacker puede enviar una petición POST falsa a `/api/webhooks/voice-events` simulando que una llamada costó $0 o $1000, corrompiendo la base de datos.
+* **Solución:** Debes validar que la petición viene REALMENTE del proveedor (Twilio/Telnyx/SignalWire).
+* **Implementación:**
+    * Busca la documentación del proveedor sobre "Security" o "Signature Validation".
+    * Implementa el middleware que verifique el header `X-Signature` (o equivalente) usando nuestro `AUTH_TOKEN`.
+    * Si la firma no coincide, devuelve `403 Forbidden` inmediatamente y no proceses nada.
+
+**2. Bloqueo de Concurrencia (Race Conditions)**
+* **Problema:** Si un usuario hace 5 llamadas simultáneas y cuelga las 5 al mismo tiempo exacto, el sistema podría leer el saldo viejo 5 veces y cobrar mal.
+* **Solución:** En la transacción SQL de la FASE 2, usa **Bloqueo de Fila (Row Locking)**.
+* **Código SQL:** Cuando consultes el saldo para cobrar, usa: `SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE;`. Esto "congela" la billetera milisegundos hasta que se cobre la llamada, obligando a las otras transacciones a esperar su turno.
+
+---
+
+## FASE 5: CONTROL DE LLAMADA SALIENTE (PRE-FLIGHT CHECK)
+
+El sistema de cobro post-llamada está bien, pero ¿qué pasa si el usuario tiene $0.00 y trata de llamar? **Debemos detenerlo ANTES de que conecte.**
+
+Necesito un nuevo endpoint: `POST /api/webhooks/voice-request` (Este se configura en el proveedor como la "Voice URL" inicial).
+
+**Lógica:**
+1.  Recibe la petición de llamada.
+2.  Consulta `wallets` para ver si `balance > minimum_threshold` (ej. $1.00).
+3.  **SI TIENE SALDO:** Devuelve las instrucciones TwiML/XML para conectar la llamada (Dial).
+4.  **NO TIENE SALDO:** Devuelve TwiML/XML para rechazar la llamada y reproducir un audio: *"Su saldo es insuficiente"*.
+
+---
+
+## FASE 6: UI EN TIEMPO REAL (WEBSOCKETS)
+
+El usuario pidió que el saldo se actualice "al segundo", sin recargar la página.
+
+1.  Instala `socket.io` (o usa la capacidad de Websockets de Replit).
+2.  En el controlador del Webhook (`call.hangup`), **JUSTO DESPUÉS** de confirmar la transacción en la DB:
+    * Emite un evento a la sala privada del usuario:
+        `io.to(userId).emit('balance_updated', { newBalance: X, lastCallCost: Y });`
+    * Emite un evento de nuevo log:
+        `io.to(userId).emit('new_call_log', { logData });`
+3.  Esto asegura que el frontend vea el cambio instantáneamente sin hacer polling.
+
+***
+
+**Ahora sí está completo.**
+Con la **Fase 4** evitas que te hackeen.
+Con la **Fase 5** evitas que llamen gratis.
+Con la **Fase 6** logras el efecto visual "mágico" instantáneo.
+
+Pégalo todo junto.

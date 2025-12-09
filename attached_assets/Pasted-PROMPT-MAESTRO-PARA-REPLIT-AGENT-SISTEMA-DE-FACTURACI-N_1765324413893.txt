@@ -1,0 +1,167 @@
+PROMPT MAESTRO PARA REPLIT AGENT: SISTEMA DE FACTURACIÓN VOIP REAL-TIME (SELF-HOSTED)
+ROL: Actúa como un Arquitecto de Software Senior y DBA Experto. Tu tarea es construir el backend crítico para el manejo de facturación (Billing), logs de llamadas (Call Logs) y billetera digital (Wallets) para el SaaS "Curbe.io".
+
+CONTEXTO CRÍTICO: Actualmente, el sistema depende de APIs externas para mostrar saldos y logs, lo cual es lento e inexacto. Vamos a eliminar esa dependencia. OBJETIVO: Debemos construir un sistema interno que reciba Webhooks del proveedor de telefonía (Twilio/FreeSWITCH/Telnyx), calcule el costo en tiempo real usando nuestras propias tarifas, descuente el dinero de la base de datos local y guarde el log, todo en menos de 200ms tras colgar.
+
+REGLAS DE ORO (NO LAS ROMPAS):
+
+Cero Alucinaciones: No inventes librerías. Usa pg (node-postgres) o Prisma (si ya está instalado) para la base de datos.
+
+Matemática Financiera: NUNCA uses float para dinero. Usa DECIMAL(10,4) en SQL y librerías como decimal.js o trabaja con enteros (centavos) en JS para evitar errores de redondeo.
+
+Atomicidad: Las operaciones de restar saldo deben ser TRANSACCIONES DE BASE DE DATOS (ACID). Si falla el log, no se cobra. Si falla el cobro, no se guarda el log.
+
+Transparencia: Debemos guardar DOS precios: provider_cost (lo que nos cobran a nosotros) y customer_price (lo que le cobramos al cliente).
+
+FASE 1: DISEÑO DE BASE DE DATOS (SCHEMA)
+Necesito que generes o actualices el esquema de la base de datos (PostgreSQL) con estas tablas exactas. Si ya existen, asegúrate de que tengan estos campos obligatorios:
+
+1. Tabla wallets
+Esta tabla maneja el dinero real del usuario.
+
+id: UUID, Primary Key.
+
+user_id: Foreign Key al usuario.
+
+balance: DECIMAL(10, 4) DEFAULT 0.0000. (CRÍTICO: Permitir 4 decimales para precisión de minutos).
+
+currency: VARCHAR(3) DEFAULT 'USD'.
+
+updated_at: TIMESTAMP.
+
+2. Tabla call_rates (Tarifas)
+Aquí definimos cuánto le cobramos al cliente.
+
+id: UUID.
+
+prefix: VARCHAR (ej: '1' para USA, '52' para México).
+
+rate_per_minute: DECIMAL(10, 4).
+
+connection_fee: DECIMAL(10, 4) DEFAULT 0.
+
+description: VARCHAR (ej: "USA Mobile").
+
+3. Tabla call_logs (Nuestro Ledger)
+Esta es la fuente de la verdad, NO la API externa.
+
+id: UUID.
+
+external_call_id: VARCHAR (El UUID que manda el proveedor, ej: CallSid).
+
+user_id: UUID (Dueño de la llamada).
+
+direction: ENUM ('inbound', 'outbound').
+
+from_number: VARCHAR.
+
+to_number: VARCHAR.
+
+start_time: TIMESTAMP.
+
+end_time: TIMESTAMP.
+
+duration_seconds: INTEGER (Duración real).
+
+billable_minutes: DECIMAL(10, 2) (Duración redondeada según reglas de negocio).
+
+cost_to_us: DECIMAL(10, 4) (Costo proveedor - Opcional, puede ser null al inicio).
+
+price_charged: DECIMAL(10, 4) (Lo que le cobramos al cliente).
+
+recording_url: TEXT (Puede ser NULL al principio).
+
+recording_status: ENUM ('processing', 'completed', 'failed', 'none').
+
+status: VARCHAR (completed, busy, failed, no-answer).
+
+4. Tabla wallet_transactions (Auditoría)
+Cada vez que toques la tabla wallets, debes crear un registro aquí.
+
+id: UUID.
+
+wallet_id: UUID.
+
+amount: DECIMAL(10, 4) (Negativo para cobros, Positivo para recargas).
+
+type: ENUM ('call_charge', 'refill', 'subscription', 'refund').
+
+reference_id: UUID (Link al call_logs.id).
+
+created_at: TIMESTAMP.
+
+FASE 2: LÓGICA DE BACKEND (WEBHOOK HANDLER)
+Crea un controlador (Controller) robusto en Node.js para recibir los webhooks. Ruta sugerida: POST /api/webhooks/voice-events
+
+Paso a Paso de la Lógica del Webhook:
+ESCENARIO 1: Evento call.hangup (El cliente colgó) Este es el momento crítico. Ejecuta esta lógica secuencialmente:
+
+Extracción: Recibe el payload del proveedor. Extrae: CallSid, Duration, To, From, Status, RecordingUrl (si existe).
+
+Identificación: Busca en la DB a qué user_id pertenece esa llamada (probablemente basado en el From si es saliente, o el To si es entrante, o metadata custom que hayamos inyectado).
+
+Cálculo de Tarifa (Rate Lookup):
+
+Toma el número destino (To).
+
+Busca en la tabla call_rates el prefijo más largo que coincida. (Ej: Si llama a +521..., busca '521', luego '52', luego '5').
+
+Obtén el rate_per_minute.
+
+Matemática de Cobro:
+
+Calcula minutos: Math.ceil(duration_seconds / 60). (Siempre redondea hacia arriba el minuto completo, a menos que configuremos facturación por segundo).
+
+Calcula total: (Minutos * Rate) + ConnectionFee.
+
+TRANSACCIÓN ATÓMICA (Database Transaction):
+
+Inicio Transacción.
+
+Leer saldo actual de wallets del usuario.
+
+Verificar si saldo >= costo. (Si es prepago estricto).
+
+UPDATE wallets SET balance = balance - costo.
+
+INSERT INTO call_logs con todos los datos y price_charged = costo.
+
+INSERT INTO wallet_transactions registrando el descuento.
+
+Commit Transacción.
+
+Manejo de Error: Si la transacción falla, registra el error en un log del sistema pero devuelve 200 OK al proveedor para que no reintente el webhook infinitamente.
+
+ESCENARIO 2: Evento recording.completed (Grabación lista) A veces la grabación llega segundos después del colgado.
+
+Recibe el webhook con RecordingUrl y CallSid.
+
+UPDATE call_logs SET recording_url = URL, recording_status = 'completed' WHERE external_call_id = CallSid.
+
+IMPORTANTE: No vuelvas a cobrar. Solo actualiza el campo de grabación.
+
+FASE 3: API PARA EL FRONTEND (CLIENTE)
+Necesito endpoints para que el frontend consuma estos datos SIN llamar al proveedor.
+
+GET /api/logs:
+
+Debe leer de TU tabla call_logs.
+
+Debe incluir paginación y filtros por fecha.
+
+Debe ser rapidísimo.
+
+GET /api/wallet/balance:
+
+Devuelve el saldo actual de la tabla wallets.
+
+INSTRUCCIONES TÉCNICAS ADICIONALES
+SQL Injection: Usa parámetros preparados (Prepared Statements) siempre. $1, $2, etc.
+
+Validación de Datos: Si la duración llega como null o 0, el costo es 0. No rompas el código.
+
+Timezones: Guarda todo en UTC en la base de datos. Convierte a local solo en el frontend.
+
+Logging: Usa console.log o una librería de logger para imprimir: "Processing call [ID]: Duration [X]s, Cost [$Y]".
+
+EJECUCIÓN: Empieza creando los archivos de migración SQL para las tablas mencionadas. Luego, escribe el servicio de cálculo de costos (PricingService.js) y finalmente el controlador del webhook. Quiero ver el código ahora.
