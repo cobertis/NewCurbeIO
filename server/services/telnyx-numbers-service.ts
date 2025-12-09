@@ -388,66 +388,44 @@ export async function updateCnamListing(
       }
     }
     
-    // Build the update payload - Telnyx V1 API requires BOTH fields together
+    // Build the update payload using CORRECT field names:
+    // - cnam_listing_enabled: true/false
+    // - caller_id_name: "COMPANY NAME" (max 15 chars, ALL CAPS recommended)
     const payload: Record<string, any> = {
       cnam_listing_enabled: enabled,
     };
     
-    // Always include cnam_listing_details when enabling (required by Telnyx)
+    // Include caller_id_name when enabling CNAM (this is the LIDB display name)
     if (enabled && cnamDetails) {
-      payload.cnam_listing_details = cnamDetails;
+      payload.caller_id_name = cnamDetails.toUpperCase(); // LIDB requires uppercase
     }
     
-    // Use Telnyx API V1 for Managed Accounts - V2 silently ignores CNAM updates
-    // V1 endpoint: PUT /origination/numbers/{phone_number_id}
-    const TELNYX_V1_API = "https://api.telnyx.com/origination/numbers";
+    // Use Telnyx API V2 - the CORRECT endpoint for CNAM/LIDB updates
+    // PATCH /v2/phone_numbers/{phone_number_id}
+    console.log(`[Telnyx CNAM] Using V2 API. Number ID: ${phoneNumberId}, enabled=${enabled}, name="${cnamDetails || 'N/A'}", payload:`, JSON.stringify(payload));
     
-    console.log(`[Telnyx CNAM] Using V1 API for Managed Account. Number ID: ${phoneNumberId}, enabled=${enabled}, name="${cnamDetails || 'N/A'}", payload:`, JSON.stringify(payload));
-    
-    const response = await fetch(`${TELNYX_V1_API}/${phoneNumberId}`, {
-      method: "PUT",
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "PATCH",
       headers,
       body: JSON.stringify(payload),
     });
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Telnyx CNAM V1] Update error: ${response.status} - ${errorText}`);
-      
-      // If V1 fails, fall back to V2 (might work for non-managed accounts)
-      console.log(`[Telnyx CNAM] V1 failed, trying V2 API as fallback...`);
-      const v2Response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify(payload),
-      });
-      
-      if (!v2Response.ok) {
-        const v2ErrorText = await v2Response.text();
-        console.error(`[Telnyx CNAM V2] Fallback also failed: ${v2Response.status} - ${v2ErrorText}`);
-        return {
-          success: false,
-          error: `Failed to update CNAM: V1=${response.status}, V2=${v2Response.status}`,
-        };
-      }
-      
-      const v2Result = await v2Response.json();
-      console.log(`[Telnyx CNAM V2] Fallback successful:`, JSON.stringify(v2Result.data, null, 2));
-      
+      console.error(`[Telnyx CNAM] Update error: ${response.status} - ${errorText}`);
       return {
-        success: true,
-        cnamEnabled: v2Result.data?.cnam_listing_enabled,
-        cnamName: v2Result.data?.cnam_listing_details,
+        success: false,
+        error: `Failed to update CNAM: ${response.status} - ${errorText}`,
       };
     }
     
     const result = await response.json();
-    console.log(`[Telnyx CNAM V1] Update successful:`, JSON.stringify(result, null, 2));
+    console.log(`[Telnyx CNAM] Update successful:`, JSON.stringify(result.data, null, 2));
     
     return {
       success: true,
-      cnamEnabled: result.cnam_listing_enabled ?? enabled,
-      cnamName: result.cnam_listing_details ?? cnamDetails,
+      cnamEnabled: result.data?.cnam_listing_enabled ?? enabled,
+      cnamName: result.data?.caller_id_name ?? cnamDetails,
     };
   } catch (error) {
     console.error("[Telnyx CNAM] Update error:", error);
@@ -511,7 +489,7 @@ export async function getCnamSettings(
     return {
       success: true,
       cnamEnabled: result.data?.cnam_listing_enabled || false,
-      cnamName: result.data?.cnam_listing_details || "",
+      cnamName: result.data?.caller_id_name || "",
       phoneNumber: result.data?.phone_number,
     };
   } catch (error) {

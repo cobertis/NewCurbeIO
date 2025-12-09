@@ -1,0 +1,223 @@
+Javier, aquí sí te voy a hablar como tu espejo brutal:
+**tú quieres manejar estos 3 features EXACTAMENTE igual que Noise Suppression y CNAM por API.**
+Y sí: *se puede*, pero no como tú crees, y cada uno vive en un lugar distinto dentro del ecosistema de Telnyx.
+
+Voy a darte **la verdad completa, sin adornos** y con los **endpoints exactos** para activar:
+
+* Caller ID Lookup (INBOUND CNAM dip)
+* Call Recording
+* Spam Protection
+
+Esto es lo que necesitabas desde el principio.
+
+---
+
+# 🔥 1. CALLER ID LOOKUP (INBOUND CNAM DIP)
+
+Esto NO vive dentro de tu SIP Connection.
+
+Vive dentro del **número (DID)**, igual que CNAM Listing.
+
+### Endpoint:
+
+```
+PATCH /v2/phone_numbers/{id}
+```
+
+### Campo:
+
+```
+"inbound_caller_id_lookup": true
+```
+
+### Ejemplo:
+
+```bash
+curl -X PATCH "https://api.telnyx.com/v2/phone_numbers/PN123" \
+  -H "Authorization: Bearer KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "inbound_caller_id_lookup": true
+      }'
+```
+
+### Confirmar:
+
+```
+GET /v2/phone_numbers/PN123
+```
+
+Debe salir:
+
+```json
+"inbound_caller_id_lookup": true
+```
+
+**Esto habilita que Telnyx haga un CNAM DIP al recibir llamadas.**
+
+---
+
+# 🔥 2. CALL RECORDING (INBOUND, OUTBOUND o AMBOS)
+
+Aquí muchos ingenieros se confunden porque Telnyx tiene **3 niveles distintos** para recording:
+
+### A. Recording por Connection (global)
+
+### B. Recording por Call Control (dinámico)
+
+### C. Recording automático por número
+
+Tú quieres nivel **A** → GLOBAL, para que todo lo que entra y sale por esa conexión se grabe sin tener que usar Call Control.
+
+### Endpoint:
+
+```
+PATCH /v2/voice/connections/{connection_id}
+```
+
+### Campo:
+
+```
+"recording_enabled": true
+```
+
+Si quieres dual-channel:
+
+```
+"recording_channels": "dual"
+```
+
+Si quieres single:
+
+```
+"recording_channels": "single"
+```
+
+### Ejemplo:
+
+```bash
+curl -X PATCH "https://api.telnyx.com/v2/voice/connections/2846174477723633460" \
+  -H "Authorization: Bearer KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "recording_enabled": true,
+        "recording_channels": "dual"
+      }'
+```
+
+### Confirmación:
+
+```
+GET /v2/voice/connections/{id}
+```
+
+---
+
+# 🔥 3. SPAM PROTECTION (INBOUND)
+
+Esto vive dentro de **la configuración del número**, igual que CNAM Listing e inbound caller ID lookup.
+
+Se llama:
+
+```
+"spam_detection_enabled"
+```
+
+### Endpoint:
+
+```
+PATCH /v2/phone_numbers/{id}
+```
+
+### Body:
+
+```json
+{
+  "spam_detection_enabled": true
+}
+```
+
+### Ejemplo:
+
+```bash
+curl -X PATCH "https://api.telnyx.com/v2/phone_numbers/PN123" \
+  -H "Authorization: Bearer KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "spam_detection_enabled": true
+      }'
+```
+
+---
+
+# 🧠 PARA QUE ENTIENDAS LA LÓGICA (este es el punto que evita que te sigas frustrando)
+
+Cada feature vive donde TIENE sentido técnico:
+
+### 🔹 Features del NÚMERO (DID):
+
+* CNAM LISTING
+* Caller ID Lookup (Inbound CNAM dip)
+* SPAM Protection
+* E911
+* Messaging profile
+
+### 🔹 Features de la CONEXIÓN (SIP / WebRTC):
+
+* Noise suppression
+* Recording (global)
+* Codecs
+* DTMF
+* IP auth / credentials
+
+Si mezclas mentalmente “número” y “conexión”, siempre vas a terminar peleando con la API.
+
+---
+
+# 🎯 RESUMEN DIRECTO (para que no pierdas una hora más)
+
+## ACTIVAR "Caller ID Lookup (Inbound)"
+
+```
+PATCH /v2/phone_numbers/{id}
+{
+  "inbound_caller_id_lookup": true
+}
+```
+
+## ACTIVAR "Call Recording"
+
+```
+PATCH /v2/voice/connections/{id}
+{
+  "recording_enabled": true,
+  "recording_channels": "dual"
+}
+```
+
+## ACTIVAR "Spam Protection"
+
+```
+PATCH /v2/phone_numbers/{id}
+{
+  "spam_detection_enabled": true
+}
+```
+
+---
+
+# ⚡ Si quieres:
+
+Te genero un **módulo completo en tu CRM**, con funciones:
+
+* `enableCNAMListing(numberId)`
+* `enableCallerIdLookup(numberId)`
+* `enableSpamProtection(numberId)`
+* `enableRecording(connectionId)`
+* `setNoiseSuppression(connectionId, level)`
+* `assignNumberToConnection(numberId, connectionId)`
+* `validateNumberCapabilities(numberId)`
+
+Todo en Node.js con tu estructura actual.
+
+Dime y te lo entrego listo para pegar.
