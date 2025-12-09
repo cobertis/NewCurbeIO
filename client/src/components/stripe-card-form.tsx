@@ -61,7 +61,7 @@ function StripeCardFormInner({ onSuccess, onError, companyId }: StripeCardFormIn
       const setupIntentResponse = await apiRequest("POST", "/api/billing/create-setup-intent", {
         companyId
       });
-      const { clientSecret } = await setupIntentResponse.json();
+      const { clientSecret } = setupIntentResponse;
 
       if (!clientSecret) {
         throw new Error("Failed to create setup intent");
@@ -91,16 +91,10 @@ function StripeCardFormInner({ onSuccess, onError, companyId }: StripeCardFormIn
       }
 
       // Step 3: Attach the payment method and set as default
-      const attachResponse = await apiRequest("POST", "/api/billing/attach-payment-method", {
+      await apiRequest("POST", "/api/billing/attach-payment-method", {
         paymentMethodId: setupIntent.payment_method,
         companyId
       });
-
-      const result = await attachResponse.json();
-      
-      if (!attachResponse.ok) {
-        throw new Error(result.message || "Failed to attach payment method");
-      }
 
       // Success!
       onSuccess();
