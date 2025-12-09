@@ -125,12 +125,14 @@ export default function PhoneSystem() {
   });
 
   const { data: walletData, refetch: refetchWallet } = useQuery<{
-    id: string;
-    balance: string;
-    currency: string;
-    autoRecharge: boolean;
-    autoRechargeThreshold: string | null;
-    autoRechargeAmount: string | null;
+    wallet: {
+      id: string;
+      balance: string;
+      currency: string;
+      autoRecharge: boolean;
+      autoRechargeThreshold: string | null;
+      autoRechargeAmount: string | null;
+    };
   }>({
     queryKey: ["/api/wallet"],
   });
@@ -333,8 +335,8 @@ export default function PhoneSystem() {
     }).format(parseFloat(amount || "0"));
   };
 
-  const walletBalance = walletData?.balance || "0";
-  const walletCurrency = walletData?.currency || "USD";
+  const walletBalance = walletData?.wallet?.balance || "0";
+  const walletCurrency = walletData?.wallet?.currency || "USD";
   const numbersCount = numbersData?.numbers?.length || 0;
   const isE911Loading = isLoadingNumbers || !numbersData;
   const hasE911Issues = !isE911Loading && (numbersData?.numbers?.some(n => !n.emergency_enabled) || numbersCount === 0);
