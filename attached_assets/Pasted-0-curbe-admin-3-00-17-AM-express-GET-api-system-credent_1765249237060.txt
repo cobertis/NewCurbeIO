@@ -1,0 +1,33 @@
+0|curbe-admin  | 3:00:17 AM [express] GET /api/system/credentials/providers 304 in 18ms :: {"providers":[{"provider":…
+0|curbe-admin  | 3:00:17 AM [express] GET /api/system/credentials 304 in 19ms :: {"credentials":[{"id":"ec5ba208-4ebe…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | 3:00:19 AM [express] GET /api/admin/deploy/status 304 in 14ms :: {"jobs":[{"id":5,"triggeredBy":"hel…
+0|curbe-admin  | [DEPLOY] Manual deployment triggered by: hello@curbe.io
+0|curbe-admin  | [DEPLOY] Job 6 started at 2025-12-09T03:00:20.690Z
+0|curbe-admin  | 3:00:20 AM [express] POST /api/admin/deploy 200 in 16ms :: {"message":"Deployment started","jobId":6…
+0|curbe-admin  | [DEPLOY] Environment: PRODUCTION
+0|curbe-admin  | [DEPLOY] Step 1/4: Pulling latest code from GitHub...
+0|curbe-admin  | [DEPLOY] Updating b500406e6..02a1e8b25
+0|curbe-admin  | Fast-forward
+0|curbe-admin  |  ...-disconnected-0-curbe-admin-2_1765248231750.txt |  36 +++++++++++++++++++++
+0|curbe-admin  |  ...shot_2025-12-08_at_9.49.08_PM_1765248550866.png | Bin 0 -> 800250 bytes
+0|curbe-admin  |  client/src/components/stripe-card-form.tsx         |  10 ++----
+0|curbe-admin  |  server/routes.ts                                   |   3 +-
+0|curbe-admin  |  4 files changed, 40 insertions(+), 9 deletions(-)
+0|curbe-admin  |  create mode 100644 attached_assets/Pasted-rbe-admin-WebSocket-Client-disconnected-0-curbe-admin-2_1765248231750.txt
+0|curbe-admin  |  create mode 100644 attached_assets/Screenshot_2025-12-08_at_9.49.08_PM_1765248550866.png
+0|curbe-admin  | From github.com:cobertis/NewCurbeIO
+0|curbe-admin  |  * branch                main       -> FETCH_HEAD
+0|curbe-admin  |    b500406e6..02a1e8b25  main       -> origin/main
+0|curbe-admin  | [DEPLOY] Step 2/4: Installing dependencies...
+0|curbe-admin  | [DEPLOY] Dependencies installed successfully
+0|curbe-admin  | [DEPLOY] Step 3/4: Building application...
+0|curbe-admin  | [DEPLOY] Job 6 failed: Error: Command failed with code 127: sh: 1: vite: not found
+0|curbe-admin  |     at ChildProcess.<anonymous> (file:///var/www/curbe/dist/index.js:45476:22)
+0|curbe-admin  |     at ChildProcess.emit (node:events:524:28)
+0|curbe-admin  |     at maybeClose (node:internal/child_process:1104:16)
+0|curbe-admin  |     at ChildProcess._handle.onexit (node:internal/child_process:304:5)
+
