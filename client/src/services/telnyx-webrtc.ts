@@ -314,6 +314,9 @@ class TelnyxWebRTCManager {
         password: sipPassword,
         ringtoneFile: undefined,
         ringbackFile: undefined,
+        // Enable debugging for troubleshooting audio issues
+        debug: true,
+        debugOutput: 'socket',
       });
       
       this.client.on('telnyx.ready', () => {
