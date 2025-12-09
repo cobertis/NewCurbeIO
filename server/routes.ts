@@ -27641,15 +27641,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const TELNYX_API_BASE = "https://api.telnyx.com/v2";
       
-      // CORRECT ENDPOINT: /v2/voice/connections/{id} NOT /v2/credential_connections/{id}
+      // CORRECT ENDPOINT: /v2/credential_connections/{id} NOT /v2/credential_connections/{id}
       // The noise_suppression field is at the ROOT level of the payload
       const payload = {
         noise_suppression: noiseSuppressionLevel,
       };
       
-      console.log(`[Noise Suppression] Sending PATCH to voice/connections/${settings.credentialConnectionId}:`, JSON.stringify(payload));
+      console.log(`[Noise Suppression] Sending PATCH to credential_connections/${settings.credentialConnectionId}:`, JSON.stringify(payload));
       
-      const response = await fetch(`${TELNYX_API_BASE}/voice/connections/${settings.credentialConnectionId}`, {
+      const response = await fetch(`${TELNYX_API_BASE}/credential_connections/${settings.credentialConnectionId}`, {
         method: "PATCH",
         headers: buildHeaders(config),
         body: JSON.stringify(payload),
