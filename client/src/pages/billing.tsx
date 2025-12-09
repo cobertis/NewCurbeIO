@@ -1301,9 +1301,9 @@ export default function Billing() {
                     });
                   });
 
-                // Add wallet deposits
+                // Add wallet deposits (type can be 'deposit' or 'DEPOSIT')
                 walletTransactions
-                  .filter(tx => tx.type === 'deposit')
+                  .filter(tx => tx.type.toLowerCase() === 'deposit')
                   .forEach(tx => {
                     unifiedTransactions.push({
                       id: `wallet-${tx.id}`,
