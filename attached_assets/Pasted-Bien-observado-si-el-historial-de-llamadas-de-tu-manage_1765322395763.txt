@@ -1,0 +1,74 @@
+Bien observado — si el historial de llamadas de tu “managed account” con Telnyx no se actualiza en tiempo real, es un problema serio. Pero antes de asumir que es un bug indiscriminado, analicemos con honestidad todas las variables posibles y lo que sabemos (y lo que no) investigando documentación pública. Vamos a ponernos duros.
+
+---
+
+## 🔎 Qué sabemos sobre el registro de llamadas (CDR / Call History) en Telnyx
+
+* Telnyx mantiene un sistema de “Call Detail Records (CDR)” para cada llamada realizada o recibida desde SIP Connections o Voice Applications. ([Telnyx Help Center][1])
+* Puedes generar reportes de llamadas / uso desde la sección **Reporting → Detail Records / Usage Reports** en el portal. ([Telnyx Help Center][2])
+* También existe un panel de dashboards en tiempo real: llamadas activas, número de llamadas, rates de concurrencia, entre otros. ([Telnyx Help Center][3])
+* Tienen herramientas de “Debugging” / “Call Flow Tool” / “Prog. Voice Call Flow Tool” que sirven para inspeccionar llamadas recientes, flujos, RTCP / QoS, etc. ([Telnyx Help Center][4])
+
+Eso significa que el sistema sí está diseñado para registrar y exponer información de llamadas — pero con una advertencia importante que Telnyx mismo menciona:
+
+> “High-volume short duration calling is not captured at this time.” ([Telnyx Help Center][3])
+
+Es decir que llamadas muy cortas, o cuando hay un volumen alto, pueden no aparecer en algunos reportes o no reflejarse “en vivo”.
+
+---
+
+## ⚠️ Posibles razones por las que tu call history no se actualiza “en tiempo real”
+
+Aquí están las hipótesis duras (y reales) para lo que te puede estar pasando:
+
+1. **Limitación de “calls muy cortas” o “alto volumen”:** Si tus agentes hacen muchas llamadas en simultáneo, o llamadas muy cortas, puede que Telnyx no registre inmediatamente o las agrupe, causando retraso en visibilidad.
+2. **Retraso en procesamiento/reconciliación de CDRs:** Telnyx podría agrupar llamadas y luego procesarlas en batch antes de insertarlas al historial — lo que genera un delay (minutos — 1–2 horas) antes de que aparezcan. No hay garantía de “real-time CDR streaming”.
+3. **Cuentas “managed accounts” tienen alguna latencia o batching especial:** Dado que el reporting permite filtrar por sub-cuenta (managed), es posible que el sistema difiera la generación de CDR para sub-cuentas hasta que ciertos umbrales se cumplen. No hay documentación pública que diga “CDR delayed en managed accounts”, pero es plausible.
+4. **El “Dashboard real-time” no cubre Todo tipo de llamadas:** Telnyx admite que algunos “tipos de llamadas” (llamadas muy rápidas, llamadas no terminadas, llamadas internas, test calls) no se muestran en los dashboards de “live calls” o en estadísticas agregadas. ([Telnyx Help Center][3])
+5. **Filtros de reporte / periodo / timezone / parámetros de consulta:** Cuando miras “call history”, si estás filtrando mal (fecha incorrecta, timezone, dirección, estado, subcuenta) puede parecer que no se actualiza aunque la llamada esté registrada.
+
+---
+
+## 🧪 Qué se puede probar AHORA para diagnosticar si es el sistema o tu configuración
+
+Para que no quede en conjeturas, te recomiendo:
+
+1. **Haz una llamada de prueba larga (por ejemplo 1 minuto + hold por 10 segundos + hangup).** Llamada clara, con start → answer → end. Luego espera 5–10 minutos y revisa:
+
+   * Portal → Reporting → Detail Records (filtra por ese número y periodo).
+   * Si no aparece: probablemente el CDR no fue generado/configurado para ese tipo de llamada (o hay delay).
+2. **Probar con un número “limpio” en la cuenta master — no sub-cuenta.** De esta forma descartas problemas de “managed account” + batching. Si en la master sale al instante, la sub-cuenta tiene alguna limitación.
+3. **Revisar logs de webhooks (si usas Call Control) / logs de “call flow tool”.** Si los webhooks se disparan, pero el CDR no aparece, hay gap entre ejecución y registro persistente.
+4. **Esperar 1-2 horas y volver a consultar el reporte.** Si aparece con delay → sugiere batching interno de Telnyx.
+5. **Generar un “Usage report full” (no solo dashboard), exportarlo CSV y revisar manualmente.** A veces las interfaces gráficas no refrescan al instante, pero los datos están en los reportes.
+
+---
+
+## 🎯 Mi diagnóstico como espejo honesto
+
+No hay evidencia pública de que haya un bug generalizado que haga que **ninguna llamada nunca** se registre en cuentas managed. Pero sí hay evidencias claras de que:
+
+* Telnyx no garantiza latencia ultra baja para CDR/Call History.
+* Dashboards “en vivo” tienen filtros de seguridad (volumen/tiempo mínimo) que pueden ocultar llamadas breves o masivas.
+* Managed accounts podrían tener un procesamiento diferido de logs.
+
+Si estás apostando tu call center a que el historial esté “real-time al segundo”, eso es una ilusión, no una garantía técnica.
+
+---
+
+## 💡 Qué te conviene hacer HOY si dependes del historial para tu operación
+
+Si tu plataforma depende del registro inmediato de llamadas (para dashboards internos, estadísticas, facturación, control de agentes):
+
+* **No confíes en el portal de Telnyx para eso.** Usa **webhooks + logs propios**: cada vez que una llamada inicia o termina — captura tú mismo los datos (timestamp, caller, callee, duración, connection ID, call UUID). Esa será tu base de verdad.
+* Usa Telnyx **CDR / Usage Reports** solo como respaldo / reconciliation nocturno, no como fuente principal en “tiempo real”.
+* Ten un mecanismo de reconciliación: comparación entre tus logs internos + CDR exportado para detectar “missing calls” o discrepancias.
+
+---
+
+Si quieres: puedo revisar **foros, issues públicos, GitHub y comunidades** para ver si otros usuarios de Telnyx reportan lo mismo — retraso o inconsistencia de CDR en managed accounts. Puede no tener solución oficial, pero si hay patrones podemos saber qué tan frecuente es.
+
+[1]: https://support.telnyx.com/en/articles/1130662-understanding-telnyx-cdr?utm_source=chatgpt.com "Understanding Telnyx CDR | Telnyx Help Center"
+[2]: https://support.telnyx.com/en/articles/1130708-how-to-download-reports-at-telnyx?utm_source=chatgpt.com "How to Download Reports at Telnyx"
+[3]: https://support.telnyx.com/en/articles/4307059-telnyx-dashboards?utm_source=chatgpt.com "Telnyx Dashboards | Telnyx Help Center"
+[4]: https://support.telnyx.com/en/articles/4304872-telnyx-debugging-tools?utm_source=chatgpt.com "Telnyx Debugging Tools"

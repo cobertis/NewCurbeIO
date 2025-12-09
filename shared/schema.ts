@@ -4851,7 +4851,7 @@ export type InsertTelephonyCredentials = z.infer<typeof insertTelephonyCredentia
 export const callDirections = ["inbound", "outbound"] as const;
 export type CallDirection = typeof callDirections[number];
 
-export const callStatuses = ["answered", "missed", "busy", "failed", "voicemail", "no_answer"] as const;
+export const callStatuses = ["ringing", "answered", "missed", "busy", "failed", "voicemail", "no_answer"] as const;
 export type CallStatus = typeof callStatuses[number];
 
 export const callLogs = pgTable("call_logs", {
