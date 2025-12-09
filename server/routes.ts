@@ -26108,6 +26108,151 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/wallet/top-up - Add funds using saved payment method
+  app.post("/api/wallet/top-up", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { amount } = req.body;
+      
+      if (!amount || typeof amount !== 'number' || amount < 5 || amount > 500) {
+        return res.status(400).json({ message: "Amount must be between $5 and $500" });
+      }
+
+      // Get company's Stripe subscription to find customer ID
+      const subscription = await db.query.subscriptions.findFirst({
+        where: eq(subscriptions.companyId, user.companyId),
+      });
+
+      if (!subscription?.stripeCustomerId) {
+        return res.status(400).json({ message: "No billing account found. Please add a payment method first." });
+      }
+
+      // Get Stripe client and customer's default payment method
+      const { getStripeClient } = await import("./stripe");
+      const stripeClient = await getStripeClient();
+      
+      const customer = await stripeClient.customers.retrieve(subscription.stripeCustomerId) as any;
+      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+
+      if (!defaultPaymentMethodId) {
+        return res.status(400).json({ message: "No saved payment method found. Please add a card in Billing settings." });
+      }
+
+      // Create and confirm PaymentIntent for the top-up amount
+      const amountInCents = Math.round(amount * 100);
+      
+      const paymentIntent = await stripeClient.paymentIntents.create({
+        amount: amountInCents,
+        currency: 'usd',
+        customer: subscription.stripeCustomerId,
+        payment_method: defaultPaymentMethodId,
+        confirm: true,
+        automatic_payment_methods: {
+          enabled: true,
+          allow_redirects: 'never',
+        },
+        description: `Wallet top-up for ${user.companyId}`,
+        metadata: {
+          companyId: user.companyId,
+          type: 'wallet_top_up',
+        },
+      });
+
+      if (paymentIntent.status !== 'succeeded') {
+        console.error("[Wallet Top-Up] Payment failed:", paymentIntent.status);
+        return res.status(400).json({ message: "Payment failed. Please try again or update your payment method." });
+      }
+
+      // Add funds to wallet
+      const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      const depositResult = await deposit(
+        wallet.id, 
+        amount, 
+        `Wallet top-up via Stripe`, 
+        paymentIntent.id
+      );
+
+      if (!depositResult.success) {
+        console.error("[Wallet Top-Up] Deposit failed after payment:", depositResult.error);
+        return res.status(500).json({ message: "Payment processed but failed to add funds. Please contact support." });
+      }
+
+      console.log(`[Wallet Top-Up] Successfully added $${amount} to wallet for company ${user.companyId}`);
+      
+      res.json({ 
+        success: true,
+        newBalance: depositResult.newBalance,
+        amount: amount,
+        paymentIntentId: paymentIntent.id,
+      });
+    } catch (error: any) {
+      console.error("[Wallet Top-Up] Error:", error);
+      
+      // Handle specific Stripe errors
+      if (error.type === 'StripeCardError') {
+        return res.status(400).json({ message: error.message || "Card was declined" });
+      }
+      
+      res.status(500).json({ message: "Failed to process top-up" });
+    }
+  });
+
+  // POST /api/wallet/auto-recharge - Configure auto-recharge settings
+  app.post("/api/wallet/auto-recharge", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { enabled, threshold, amount } = req.body;
+      
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ message: "enabled must be a boolean" });
+      }
+      
+      if (enabled) {
+        if (typeof threshold !== 'number' || threshold < 5 || threshold > 100) {
+          return res.status(400).json({ message: "threshold must be between $5 and $100" });
+        }
+        if (typeof amount !== 'number' || amount < 10 || amount > 500) {
+          return res.status(400).json({ message: "amount must be between $10 and $500" });
+        }
+      }
+
+      // Update wallet auto-recharge settings
+      const { getOrCreateWallet } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(user.companyId);
+      
+      await db
+        .update(wallets)
+        .set({
+          autoRecharge: enabled,
+          autoRechargeThreshold: enabled ? threshold.toFixed(4) : null,
+          autoRechargeAmount: enabled ? amount.toFixed(4) : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(wallets.id, wallet.id));
+
+      console.log(`[Wallet] Auto-recharge ${enabled ? 'enabled' : 'disabled'} for company ${user.companyId}`);
+      
+      res.json({ 
+        success: true,
+        autoRecharge: enabled,
+        autoRechargeThreshold: enabled ? threshold.toFixed(4) : null,
+        autoRechargeAmount: enabled ? amount.toFixed(4) : null,
+      });
+    } catch (error: any) {
+      console.error("[Wallet] Error updating auto-recharge:", error);
+      res.status(500).json({ message: "Failed to update auto-recharge settings" });
+    }
+  });
+
   // ==================== TELNYX PHONE SYSTEM API ====================
   
   // POST /api/setup-phone-system - Setup Telnyx sub-account for company

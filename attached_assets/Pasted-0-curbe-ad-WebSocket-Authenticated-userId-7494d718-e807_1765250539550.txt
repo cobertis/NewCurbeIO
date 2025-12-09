@@ -1,0 +1,29 @@
+0|curbe-ad | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-ad | 3:21:50 AM [express] GET /api/admin/deploy/status 304 in 18ms :: {"jobs":[{"id":8,"triggeredBy":"hel…
+0|curbe-ad | [DEPLOY] Manual deployment triggered by: hello@curbe.io
+0|curbe-ad | [DEPLOY] Job 9 started at 2025-12-09T03:21:52.053Z
+0|curbe-ad | 3:21:52 AM [express] POST /api/admin/deploy 200 in 19ms :: {"message":"Deployment started","jobId":9…
+0|curbe-ad | [DEPLOY] Environment: PRODUCTION
+0|curbe-ad | [DEPLOY] Step 1/4: Pulling latest code from GitHub...
+0|curbe-ad | [DEPLOY] Updating fb8ce28ac..adfdf0bc2
+0|curbe-ad | Fast-forward
+0|curbe-ad |  ...cd-var-www-curbe-pm2-stop-cur_1765250252287.txt |  88 +++++++++++++++++++++
+0|curbe-ad |  ...hot_2025-12-08_at_10.14.57_PM_1765250101547.png | Bin 0 -> 108317 bytes
+0|curbe-ad |  ...hot_2025-12-08_at_10.14.57_PM_1765250101548.png | Bin 0 -> 108317 bytes
+0|curbe-ad |  3 files changed, 88 insertions(+)
+0|curbe-ad |  create mode 100644 attached_assets/Pasted-root-ubuntu-var-www-curbe-cd-var-www-curbe-pm2-stop-cur_1765250252287.txt
+0|curbe-ad |  create mode 100644 attached_assets/Screenshot_2025-12-08_at_10.14.57_PM_1765250101547.png
+0|curbe-ad |  create mode 100644 attached_assets/Screenshot_2025-12-08_at_10.14.57_PM_1765250101548.png
+0|curbe-ad | From github.com:cobertis/NewCurbeIO
+0|curbe-ad |  * branch                main       -> FETCH_HEAD
+0|curbe-ad |    fb8ce28ac..adfdf0bc2  main       -> origin/main
+0|curbe-ad | [DEPLOY] Step 2/4: Installing dependencies...
+
+0|curbe-admin  | [DEPLOY] Dependencies installed successfully
+0|curbe-admin  | [DEPLOY] Step 3/4: Building application...
+0|curbe-admin  | [DEPLOY] Job 9 failed: Error: Command failed with code 127: sh: 1: vite: not found
+0|curbe-admin  |     at ChildProcess.<anonymous> (file:///var/www/curbe/dist/index.js:45471:22)
+0|curbe-admin  |     at ChildProcess.emit (node:events:524:28)
+0|curbe-admin  |     at maybeClose (node:internal/child_process:1104:16)
+0|curbe-admin  |     at ChildProcess._handle.onexit (node:internal/child_process:304:5)
+

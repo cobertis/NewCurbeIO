@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
@@ -102,6 +105,12 @@ export default function PhoneSystem() {
   const [showE911Dialog, setShowE911Dialog] = useState(false);
   const [selectedNumberForE911, setSelectedNumberForE911] = useState<{ phoneNumber: string; phoneNumberId: string } | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAddFunds, setShowAddFunds] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState<string>("50");
+  const [showCustomAmount, setShowCustomAmount] = useState(false);
+  const [autoRechargeEnabled, setAutoRechargeEnabled] = useState(false);
+  const [autoRechargeThreshold, setAutoRechargeThreshold] = useState<string>("10");
+  const [autoRechargeAmount, setAutoRechargeAmount] = useState<string>("50");
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -227,6 +236,80 @@ export default function PhoneSystem() {
     },
   });
 
+  const topUpMutation = useMutation({
+    mutationFn: async (amount: number) => {
+      const data = await apiRequest("POST", "/api/wallet/top-up", { amount });
+      return data;
+    },
+    onSuccess: (data: { success: boolean; newBalance: string; amount: number }) => {
+      setShowAddFunds(false);
+      setTopUpAmount("25");
+      toast({
+        title: "Funds Added",
+        description: `$${data.amount.toFixed(2)} has been added to your wallet. New balance: $${parseFloat(data.newBalance).toFixed(2)}`,
+      });
+      refetchWallet();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Top-Up Failed",
+        description: error.message || "Failed to add funds to wallet",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTopUp = () => {
+    const amount = parseFloat(topUpAmount);
+    if (isNaN(amount) || amount < 5 || amount > 500) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter an amount between $5 and $500",
+        variant: "destructive",
+      });
+      return;
+    }
+    topUpMutation.mutate(amount);
+  };
+
+  const autoRechargeMutation = useMutation({
+    mutationFn: async (data: { enabled: boolean; threshold: number; amount: number }) => {
+      return await apiRequest("POST", "/api/wallet/auto-recharge", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Auto-Recharge Updated",
+        description: autoRechargeEnabled 
+          ? `Auto-recharge enabled: Add $${autoRechargeAmount} when balance falls below $${autoRechargeThreshold}`
+          : "Auto-recharge has been disabled",
+      });
+      refetchWallet();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Update",
+        description: error.message || "Could not update auto-recharge settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveAutoRecharge = () => {
+    const threshold = parseFloat(autoRechargeThreshold);
+    const amount = parseFloat(autoRechargeAmount);
+    
+    if (autoRechargeEnabled && (isNaN(threshold) || threshold < 5 || threshold > 100)) {
+      toast({ title: "Invalid Threshold", description: "Threshold must be between $5 and $100", variant: "destructive" });
+      return;
+    }
+    if (autoRechargeEnabled && (isNaN(amount) || amount < 10 || amount > 500)) {
+      toast({ title: "Invalid Amount", description: "Recharge amount must be between $10 and $500", variant: "destructive" });
+      return;
+    }
+    
+    autoRechargeMutation.mutate({ enabled: autoRechargeEnabled, threshold, amount });
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -272,7 +355,7 @@ export default function PhoneSystem() {
             <div 
               className="flex items-center gap-4 px-4 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
               style={{ borderLeft: '4px solid hsl(215, 50%, 55%)' }}
-              onClick={() => toast({ title: "Add Funds", description: "Balance management coming soon." })}
+              onClick={() => setShowAddFunds(true)}
               data-testid="button-add-funds"
             >
               <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
@@ -642,6 +725,167 @@ export default function PhoneSystem() {
             }}
           />
         )}
+
+        {/* Add Funds Dialog */}
+        <Dialog open={showAddFunds} onOpenChange={(open) => {
+          setShowAddFunds(open);
+          if (!open) setShowCustomAmount(false);
+        }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add Funds to Wallet</DialogTitle>
+              <DialogDescription>
+                Add funds using your saved payment method.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              {/* Amount Selection */}
+              <div className="space-y-3">
+                <Label>Select Amount</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {[10, 20, 50, 100].map((amt) => (
+                    <Button
+                      key={amt}
+                      type="button"
+                      variant={!showCustomAmount && topUpAmount === String(amt) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setTopUpAmount(String(amt));
+                        setShowCustomAmount(false);
+                      }}
+                      className="h-12"
+                      data-testid={`button-preset-${amt}`}
+                    >
+                      ${amt}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    variant={showCustomAmount ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setShowCustomAmount(true);
+                      setTopUpAmount("");
+                    }}
+                    className="h-12"
+                    data-testid="button-preset-other"
+                  >
+                    Other
+                  </Button>
+                </div>
+                {showCustomAmount && (
+                  <div className="relative mt-2">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">$</span>
+                    <Input
+                      type="number"
+                      min="5"
+                      max="500"
+                      step="1"
+                      value={topUpAmount}
+                      onChange={(e) => setTopUpAmount(e.target.value)}
+                      className="pl-8 text-lg h-12"
+                      placeholder="Enter amount"
+                      autoFocus
+                      data-testid="input-topup-amount"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Minimum $5, maximum $500</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Auto-Recharge Section */}
+              <div className="border-t pt-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Auto-Recharge</Label>
+                    <p className="text-xs text-slate-500">Automatically add funds when balance is low</p>
+                  </div>
+                  <Switch
+                    checked={autoRechargeEnabled}
+                    onCheckedChange={setAutoRechargeEnabled}
+                    data-testid="switch-auto-recharge"
+                  />
+                </div>
+                
+                {autoRechargeEnabled && (
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                    <div className="space-y-1">
+                      <Label className="text-xs">When balance falls below</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                        <Input
+                          type="number"
+                          min="5"
+                          max="100"
+                          value={autoRechargeThreshold}
+                          onChange={(e) => setAutoRechargeThreshold(e.target.value)}
+                          className="pl-7"
+                          data-testid="input-auto-recharge-threshold"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Add this amount</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                        <Input
+                          type="number"
+                          min="10"
+                          max="500"
+                          value={autoRechargeAmount}
+                          onChange={(e) => setAutoRechargeAmount(e.target.value)}
+                          className="pl-7"
+                          data-testid="input-auto-recharge-amount"
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSaveAutoRecharge}
+                        disabled={autoRechargeMutation.isPending}
+                        className="w-full"
+                        data-testid="button-save-auto-recharge"
+                      >
+                        {autoRechargeMutation.isPending ? (
+                          <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Saving...</>
+                        ) : (
+                          "Save Auto-Recharge Settings"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowAddFunds(false)}
+                disabled={topUpMutation.isPending}
+                data-testid="button-cancel-topup"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleTopUp}
+                disabled={topUpMutation.isPending || !topUpAmount || parseFloat(topUpAmount) < 5}
+                data-testid="button-confirm-topup"
+              >
+                {topUpMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  `Add $${topUpAmount || '0'}`
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }
