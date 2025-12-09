@@ -1102,6 +1102,8 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("routing");
   const [callRecording, setCallRecording] = useState(false);
+  const [recordingFormat, setRecordingFormat] = useState<"wav" | "mp3">("wav");
+  const [recordingChannels, setRecordingChannels] = useState<"single" | "dual">("single");
   const [callScreeningEnabled, setCallScreeningEnabled] = useState(false);
   const [callScreeningMode, setCallScreeningMode] = useState<"flag_calls" | "reject_calls">("reject_calls");
   const [callForwardingEnabled, setCallForwardingEnabled] = useState(false);
@@ -1138,6 +1140,11 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
       setCnamName(data.cnamListing?.details || "");
       setCnamEnabled(data.cnamListing?.enabled || false);
       setCallRecording(data.callRecording?.inboundEnabled || false);
+      // Recording format and channels
+      const format = data.callRecording?.format || "wav";
+      setRecordingFormat(format === "mp3" ? "mp3" : "wav");
+      const channels = data.callRecording?.channels || "single";
+      setRecordingChannels(channels === "dual" ? "dual" : "single");
       // Call screening
       const screening = data.inboundCallScreening || "disabled";
       setCallScreeningEnabled(screening !== "disabled");
@@ -1195,10 +1202,10 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
 
   // Mutation for call recording
   const callRecordingMutation = useMutation({
-    mutationFn: async (enabled: boolean) => {
-      return await apiRequest("POST", `/api/telnyx/call-recording/${number.id}`, { enabled });
+    mutationFn: async ({ enabled, format, channels }: { enabled: boolean; format: "wav" | "mp3"; channels: "single" | "dual" }) => {
+      return await apiRequest("POST", `/api/telnyx/call-recording/${number.id}`, { enabled, format, channels });
     },
-    onSuccess: (_, enabled) => {
+    onSuccess: (_, { enabled }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
       toast({
         title: enabled ? "Call Recording Enabled" : "Call Recording Disabled",
@@ -1330,7 +1337,21 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
   
   const handleCallRecordingToggle = (enabled: boolean) => {
     setCallRecording(enabled);
-    callRecordingMutation.mutate(enabled);
+    callRecordingMutation.mutate({ enabled, format: recordingFormat, channels: recordingChannels });
+  };
+
+  const handleRecordingFormatChange = (format: "wav" | "mp3") => {
+    setRecordingFormat(format);
+    if (callRecording) {
+      callRecordingMutation.mutate({ enabled: true, format, channels: recordingChannels });
+    }
+  };
+
+  const handleRecordingChannelsChange = (channels: "single" | "dual") => {
+    setRecordingChannels(channels);
+    if (callRecording) {
+      callRecordingMutation.mutate({ enabled: true, format: recordingFormat, channels });
+    }
   };
 
   const handleCallScreeningToggle = (enabled: boolean) => {
@@ -1486,19 +1507,86 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
 
         <TabsContent value="features" className="p-6 m-0">
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
-              <div className="flex items-center gap-3">
-                <Mic className="h-5 w-5 text-slate-500" />
-                <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Recording</p>
-                  <p className="text-xs text-slate-400">Record all calls for quality assurance</p>
+            {/* Call Recording */}
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Mic className="h-5 w-5 text-slate-500" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Record Inbound Calls</p>
+                    <p className="text-xs text-slate-400">Record all calls for quality assurance</p>
+                  </div>
                 </div>
+                <Switch 
+                  checked={callRecording} 
+                  onCheckedChange={handleCallRecordingToggle}
+                  disabled={callRecordingMutation.isPending}
+                  data-testid={`switch-recording-${number.phone_number}`}
+                />
               </div>
-              <Switch 
-                checked={callRecording} 
-                onCheckedChange={handleCallRecordingToggle}
-                data-testid={`switch-recording-${number.phone_number}`}
-              />
+              {callRecording && (
+                <div className="pt-2 border-t border-slate-200 dark:border-border space-y-3">
+                  {/* Audio File Format */}
+                  <div>
+                    <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-2 block">
+                      Audio File Format
+                    </Label>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={recordingFormat === "wav" ? "default" : "outline"}
+                        onClick={() => handleRecordingFormatChange("wav")}
+                        disabled={callRecordingMutation.isPending}
+                        className="flex-1"
+                        data-testid={`button-format-wav-${number.phone_number}`}
+                      >
+                        .WAV
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={recordingFormat === "mp3" ? "default" : "outline"}
+                        onClick={() => handleRecordingFormatChange("mp3")}
+                        disabled={callRecordingMutation.isPending}
+                        className="flex-1"
+                        data-testid={`button-format-mp3-${number.phone_number}`}
+                      >
+                        .MP3
+                      </Button>
+                    </div>
+                  </div>
+                  {/* Audio File Channel Type */}
+                  <div>
+                    <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-2 block">
+                      Audio File Channel Type
+                    </Label>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={recordingChannels === "single" ? "default" : "outline"}
+                        onClick={() => handleRecordingChannelsChange("single")}
+                        disabled={callRecordingMutation.isPending}
+                        className="flex-1"
+                        data-testid={`button-channel-single-${number.phone_number}`}
+                      >
+                        Single Channel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={recordingChannels === "dual" ? "default" : "outline"}
+                        onClick={() => handleRecordingChannelsChange("dual")}
+                        disabled={callRecordingMutation.isPending}
+                        className="flex-1"
+                        data-testid={`button-channel-dual-${number.phone_number}`}
+                      >
+                        Dual Channel
+                      </Button>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Single channel records both parties together. Dual channel records each party separately.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
             {/* Inbound Call Screening */}
             <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
