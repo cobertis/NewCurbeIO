@@ -27721,6 +27721,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Telnyx Caller ID Lookup] Update error:", error);
       res.status(500).json({ message: "Failed to update caller ID lookup settings" });
     }
+  });
 
   // POST /api/telnyx/call-forwarding/:phoneNumberId - Update call forwarding settings
   app.post("/api/telnyx/call-forwarding/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
@@ -27824,7 +27825,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  });
 
 
   // GET /api/telnyx/noise-suppression - Get current noise suppression settings
@@ -29360,3 +29360,4 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   return httpServer;
 }
+

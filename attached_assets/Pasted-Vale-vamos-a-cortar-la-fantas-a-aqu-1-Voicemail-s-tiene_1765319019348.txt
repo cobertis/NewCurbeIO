@@ -1,0 +1,168 @@
+Vale, vamos a cortar la fantasía aquí.
+
+### 1. Voicemail: **sí** tiene API y se activa así
+
+En Telnyx, *voicemail* cuelga de los **phone numbers**, no del SIP profile ni de la conexión.
+
+Endpoints oficiales (v2):
+
+* `GET /v2/phone_numbers/{phone_number_id}/voicemail`
+* `POST /v2/phone_numbers/{phone_number_id}/voicemail`
+* `PATCH /v2/phone_numbers/{phone_number_id}/voicemail` ([GitHub][1])
+
+Eso es exactamente lo que usa el portal cuando activas “Voicemail” en la UI (esa sección de Number Features donde también está Call Forwarding, Caller ID, etc.). ([Telnyx Help Center][2])
+
+#### Ejemplo para **crear/activar voicemail** (cuenta normal)
+
+```bash
+curl -X POST "https://api.telnyx.com/v2/phone_numbers/{PHONE_NUMBER_ID}/voicemail" \
+  -H "Authorization: Bearer $TELNYX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enabled": true,
+    "pin": "1234",
+    "play_caller_id": true
+  }'
+```
+
+Si ya existe, usas `PATCH` igual:
+
+```bash
+curl -X PATCH "https://api.telnyx.com/v2/phone_numbers/{PHONE_NUMBER_ID}/voicemail" \
+  -H "Authorization: Bearer $TELNYX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enabled": true
+  }'
+```
+
+En cuentas **managed**, añades el header:
+
+```bash
+  -H "x-managed-account-id: {SUBACCOUNT_ID}"
+```
+
+Puntos donde normalmente la cagas aquí:
+
+* Estás usando el **E.164** en vez del **ID interno** de Telnyx del número.
+* No mandas `x-managed-account-id` correcto cuando es subcuenta.
+* Estás mezclando V1 con V2; el voicemail está en **v2** (`https://api.telnyx.com/v2/...`), no en el sandbox viejo ni en `/v1/`.
+
+Conclusión: **Voicemail SÍ se activa por API**, pero en el recurso `/phone_numbers/{id}/voicemail`. Si “no te funciona”, el problema está en cómo estás identificando el número o en el header de la managed account, no en que no exista la API.
+
+---
+
+### 2. Call Forwarding: aquí viene lo que no te va a gustar
+
+Esa opción de **Call Forwarding** que ves en el portal como “feature del número” está documentada como funcionalidad en la UI, pero cuando miras el **OpenAPI oficial** de Telnyx, no hay:
+
+* Ni endpoint `/phone_numbers/{id}/forwarding`
+* Ni campo de `call_forwarding` en `UpdatePhoneNumberVoiceSettingsRequest`
+* Ni esquema con propiedades `call_forwarding_enabled`, etc. ([GitHub][1])
+
+Lo único que aparece relacionado a números y voz en la API es:
+
+* `PATCH /v2/phone_numbers/{id}/voice` → actualiza **voice settings** (connection_id, outbound_voice_profile_id, etc.) ([GitHub][1])
+* Voicemail `/phone_numbers/{phone_number_id}/voicemail` (lo de arriba).
+
+La parte de **Call Forwarding** como “feature de número” está descrita en el Help Center como algo que se configura en la Mission Control Portal bajo “Number Features” (Voicemail, Call Forwarding, Caller ID, etc.), pero NO está expuesta como endpoint de configuración directa. ([Telnyx Help Center][2])
+
+Traducción al castellano sin azúcar:
+
+> **No existe hoy un toggle directo de Call Forwarding en la API v2 como el que ves en la UI.**
+> Lo que puedes hacer por API es *emular* el forwarding usando Call Control / TeXML, pero no “encender el switch” de ese feature específico del portal.
+
+---
+
+### 3. Cómo logras el mismo efecto de Call Forwarding por API (sin el toggle mágico)
+
+Si lo que quieres es que:
+
+> Toda llamada entrante a un DID X se redirija a un número Y
+> (móvil, PBX, lo que sea)
+
+Entonces lo haces así, 100% por API:
+
+1. Configura el **connection** del número para usar:
+
+   * **Call Control** (webhooks) o
+   * **TeXML** (XML tipo Twilio)
+
+2. Lógica con **Call Control**:
+
+   * Llega el webhook `call.initiated` o `call.answered`.
+   * Tu backend responde con un comando de **transfer** al destino final:
+
+     * `/v2/calls/{call_control_id}/actions/transfer`
+
+3. Lógica con **TeXML**:
+
+   * Asocias al número una TeXML App.
+   * Tu endpoint devuelve algo como `<Dial>` al número destino.
+
+¿Molesto? Sí.
+¿Es forwarding? Efecto práctico: **sí**.
+¿Es el mismo botón “Call Forwarding” de la UI? No, pero eso da igual al usuario final.
+
+---
+
+### 4. Dónde estás chocando tú
+
+Tu frase:
+
+> “en la api lo puedo hacer revisa bien”
+
+Para **voicemail**, correcto.
+Para **Call Forwarding como feature del número**, no. Estás asumiendo que porque lo ves en el panel, tiene endpoint 1:1 y eso es falso.
+
+El **OpenAPI oficial** es la verdad dura: lo que no está ahí, no existe público. Y en ese spec sólo salen estos bloques para números/voz:
+
+* `/phone_numbers/{id}/voice` → voice settings
+* `/phone_numbers/{phone_number_id}/voicemail` → voicemail settings ([GitHub][1])
+
+Nada de `forwarding`.
+
+---
+
+### 5. Plan concreto para que dejes de pelearte con esto
+
+1. **Voicemail**
+
+   * Deja de tocar la UI.
+   * Usa `POST`/`PATCH /v2/phone_numbers/{id}/voicemail` con:
+
+     * `enabled: true`
+     * `pin` si quieres
+     * `x-managed-account-id` si es subcuenta
+   * Loguea el `response.data` y confirma que `enabled = true`.
+
+2. **Call Forwarding**
+
+   * Olvida el “feature” de portal, considéralo **no expuesto por API**.
+   * Implementa forwarding con:
+
+     * Call Control:
+
+       * Tu CRM ya controla llamadas → añade una regla: “si DID = X → transferir a Y y cortar”.
+     * TeXML (si quieres algo más estático).
+   * Documenta en tu propio CRM: “Forwarding gestionado desde Call Control, no desde Telnyx Number Features”.
+
+3. **Managed accounts**
+
+   * Todo lo que sea por número (voicemail, voice settings, etc.) tiene que salir con:
+
+     * `Authorization: Bearer {MASTER_API_KEY}`
+     * `x-managed-account-id: {ID_SUBCUENTA_REAL}`
+   * Si llamas directo con la API key de la subcuenta sin que Telnyx lo soporte como full tenant, te comes 401/ignora cambios (como ya viste con CNAM).
+
+---
+
+Resumiendo:
+
+* **Voicemail**: sí, se activa por API y ya tienes la ruta exacta.
+* **Call Forwarding (switch del portal)**: no hay toggle API público; hazlo tú con Call Control/TeXML si quieres que sea “100% API-driven”.
+
+Esto no es que Telnyx sea bonito o feo, es simplemente la realidad de lo que está en el spec vs lo que asumes que “debería existir”. Tu ventaja aquí es que puedes implementar un forwarding más inteligente en tu propio CRM que cualquier botón tonto del panel.
+
+[1]: https://raw.githubusercontent.com/team-telnyx/openapi/master/openapi/spec3.yml "raw.githubusercontent.com"
+[2]: https://support.telnyx.com/en/collections/3968222-telnyx-number-management-guide "Telnyx Number Management Guide | Telnyx Help Center"
