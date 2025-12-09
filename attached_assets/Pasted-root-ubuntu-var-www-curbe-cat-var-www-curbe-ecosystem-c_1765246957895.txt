@@ -1,0 +1,55 @@
+root@ubuntu:/var/www/curbe# cat > /var/www/curbe/ecosystem.config.js << 'EOF'
+module.exports = {
+  apps: [{
+    name: 'curbe-admin',
+    script: './dist/index.js',
+    cwd: '/var/www/curbe',
+    env: {
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgresql://curbeapp:CurbeApp2024Secure!@localhost:5432/curbe',
+      SECRETS_MASTER_KEY: 'a7259510250126be1a7e6493c5b3eebc824eee89c218661dc00cbfec8ea79f77',
+      SESSION_SECRET: '7hHH7uhM7kyo8eoDMr0tzT9EiNcHhTjNolgNHbgYpjpg9i7ALgeGKT4vr3oEr+hxL+/3+HyJRRzQZd5+1hORAw=='
+    }
+  }]
+};
+EOF
+root@ubuntu:/var/www/curbe# pm2 delete curbe-admin 2>/dev/null
+pm2 start /var/www/curbe/ecosystem.config.js
+pm2 save
+[PM2] Applying action deleteProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+└────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2][ERROR] File /var/www/curbe/ecosystem.config.js malformated
+ReferenceError: module is not defined in ES module scope
+This file is being treated as an ES module because it has a '.js' file extension and '/var/www/curbe/package.json' contains "type": "module". To treat it as a CommonJS script, rename it to use the '.cjs' file extension.
+    at file:///var/www/curbe/ecosystem.config.js:1:1
+    at ModuleJobSync.runSync (node:internal/modules/esm/module_job:437:37)
+    at ModuleLoader.importSyncForRequire (node:internal/modules/esm/loader:389:47)
+    at loadESMFromCJS (node:internal/modules/cjs/loader:1363:24)
+    at Module._compile (node:internal/modules/cjs/loader:1503:5)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+[PM2] Saving current process list...
+[PM2][WARN] PM2 is not managing any process, skipping save...
+[PM2][WARN] To force saving use: pm2 save --force
+root@ubuntu:/var/www/curbe# pm2 logs curbe-admin --lines 30
+
+[TAILING] Tailing last 30 lines for [curbe-admin] process (change the value with --lines option)
+
+
+
+
+
+
+
+
+
+
+
+
+
