@@ -576,6 +576,10 @@ export async function getVoiceSettings(
     const result = await response.json();
     const data = result.data;
     
+    // Telnyx uses forwarding_type and forwards_to at top level
+    // forwarding_type: "always" | "on_busy" | "on_no_answer" | "never"
+    const forwardingEnabled = data?.forwarding_type && data.forwarding_type !== "never";
+    
     return {
       success: true,
       cnamListing: {
@@ -590,9 +594,9 @@ export async function getVoiceSettings(
       inboundCallScreening: data?.inbound_call_screening || "disabled",
       callerIdNameEnabled: data?.caller_id_name_enabled || false,
       callForwarding: {
-        enabled: data?.call_forwarding?.call_forwarding_enabled || false,
-        destination: data?.call_forwarding?.forwarding_destination_number || "",
-        keepCallerId: data?.call_forwarding?.keep_caller_id || true,
+        enabled: forwardingEnabled,
+        destination: data?.forwards_to || "",
+        keepCallerId: true, // Not exposed in new API format
       },
     };
   } catch (error) {
@@ -718,6 +722,8 @@ export async function updateSpamProtection(
 
 /**
  * Update call forwarding settings for a phone number
+ * NOTE: Telnyx API requires forwarding_type and forwards_to fields
+ * forwarding_type: "always" | "on_busy" | "on_no_answer" | "never"
  */
 export async function updateCallForwarding(
   phoneNumberId: string,
@@ -739,6 +745,10 @@ export async function updateCallForwarding(
     }
 
     // Validate destination is E.164 US number if enabled
+    if (enabled && !destination) {
+      return { success: false, error: "Destination number is required when enabling call forwarding" };
+    }
+    
     if (enabled && destination) {
       const cleanNumber = destination.replace(/\D/g, "");
       if (!cleanNumber.match(/^1?\d{10}$/)) {
@@ -752,23 +762,29 @@ export async function updateCallForwarding(
       "x-managed-account-id": wallet.telnyxAccountId,
     };
     
-    const payload: Record<string, any> = {
-      call_forwarding: {
-        call_forwarding_enabled: enabled,
-        keep_caller_id: keepCallerId,
-      },
-    };
-
-    // Add destination if provided
-    if (destination) {
+    // Telnyx API uses forwarding_type and forwards_to at top level
+    // forwarding_type: "always" = always forward, "never" = disabled
+    let payload: Record<string, any>;
+    
+    if (enabled && destination) {
+      // Normalize destination to E.164
       let normalizedDest = destination.replace(/\D/g, "");
       if (!normalizedDest.startsWith("1") && normalizedDest.length === 10) {
         normalizedDest = "1" + normalizedDest;
       }
-      payload.call_forwarding.forwarding_destination_number = `+${normalizedDest}`;
+      
+      payload = {
+        forwarding_type: "always",
+        forwards_to: `+${normalizedDest}`,
+      };
+    } else {
+      // Disable forwarding
+      payload = {
+        forwarding_type: "never",
+      };
     }
     
-    console.log(`[Telnyx Call Forwarding] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}, destination=${destination}`);
+    console.log(`[Telnyx Call Forwarding] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}, payload:`, JSON.stringify(payload));
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
       method: "PATCH",
@@ -783,7 +799,7 @@ export async function updateCallForwarding(
     }
     
     const result = await response.json();
-    console.log(`[Telnyx Call Forwarding] Update successful:`, JSON.stringify(result.data?.call_forwarding, null, 2));
+    console.log(`[Telnyx Call Forwarding] Update successful:`, JSON.stringify(result.data, null, 2));
     
     return { success: true };
   } catch (error) {
@@ -876,12 +892,19 @@ export async function updateVoicemailSettings(
       "x-managed-account-id": wallet.telnyxAccountId,
     };
     
-    const payload = {
+    // Telnyx API expects pin as string "1234", not integer
+    // Also add play_caller_id for better UX
+    const payload: Record<string, any> = {
       enabled,
-      pin: parseInt(pin, 10),
     };
     
-    console.log(`[Telnyx Voicemail] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}`);
+    // Only include PIN when enabling voicemail
+    if (enabled && pin) {
+      payload.pin = pin; // Keep as string per Telnyx API requirements
+      payload.play_caller_id = true;
+    }
+    
+    console.log(`[Telnyx Voicemail] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}, payload:`, JSON.stringify(payload));
     
     // Try PATCH first, if 404 then POST to create
     let response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
