@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -9708,7 +9708,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     try {
       const contacts = await storage.getAllUsers();
-      res.json({ contacts });
+      res.json({ contacts, telnyxPhoneNumbers });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
     }
@@ -10079,7 +10079,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Forbidden - Superadmin only" });
     }
     try {
-      const { contacts } = req.body;
+      const { contacts, telnyxPhoneNumbers } = req.body;
       if (!Array.isArray(contacts) || contacts.length === 0) {
         return res.status(400).json({ message: "Contacts array is required" });
       }
@@ -26459,13 +26459,62 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log("[Telnyx Voice] Company webhook:", { companyId, from, to, direction, call_control_id });
       
-      const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+      // Check for call forwarding settings
+      let callForwardingEnabled = false;
+      let callForwardingDestination: string | null = null;
+      let callForwardingKeepCallerId = true;
+      
+      if (to && direction === "incoming") {
+        // Look up call forwarding settings for this number
+        const [phoneRecord] = await db
+          .select({
+            callForwardingEnabled: telnyxPhoneNumbers.callForwardingEnabled,
+            callForwardingDestination: telnyxPhoneNumbers.callForwardingDestination,
+            callForwardingKeepCallerId: telnyxPhoneNumbers.callForwardingKeepCallerId,
+          })
+          .from(telnyxPhoneNumbers)
+          .where(
+            and(
+              eq(telnyxPhoneNumbers.companyId, companyId),
+              eq(telnyxPhoneNumbers.phoneNumber, to)
+            )
+          );
+        
+        if (phoneRecord) {
+          callForwardingEnabled = phoneRecord.callForwardingEnabled || false;
+          callForwardingDestination = phoneRecord.callForwardingDestination;
+          callForwardingKeepCallerId = phoneRecord.callForwardingKeepCallerId !== false;
+          console.log("[Telnyx Voice] Call forwarding settings:", { 
+            enabled: callForwardingEnabled, 
+            destination: callForwardingDestination,
+            keepCallerId: callForwardingKeepCallerId 
+          });
+        }
+      }
+      
+      let texmlResponse: string;
+      
+      if (callForwardingEnabled && callForwardingDestination) {
+        // Forward the call to the destination number
+        const callerId = callForwardingKeepCallerId ? from : to;
+        console.log(`[Telnyx Voice] Forwarding call to ${callForwardingDestination} with caller ID: ${callerId}`);
+        
+        texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial callerId="${callerId}" timeout="30">
+    <Number>${callForwardingDestination}</Number>
+  </Dial>
+</Response>`;
+      } else {
+        // Normal behavior - ring WebRTC client
+        texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Record action="https://${process.env.REPL_SLUG}.${(process.env.REPL_OWNER || "").toLowerCase()}.repl.co/webhooks/telnyx/recordings/${companyId}" channels="dual" format="mp3" playBeep="true" />
   <Dial timeout="30">
     <Client>${companyId}</Client>
   </Dial>
 </Response>`;
+      }
       
       res.set("Content-Type", "application/xml");
       res.status(200).send(texmlResponse);
