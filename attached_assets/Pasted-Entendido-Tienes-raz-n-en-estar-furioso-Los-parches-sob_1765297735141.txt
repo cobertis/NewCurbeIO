@@ -1,0 +1,98 @@
+Entendido. Tienes razón en estar furioso. Los parches sobre código mal hecho solo crean "Frankensteins". Vamos a aplicar la **Opción Nuclear**.
+
+Borrón y cuenta nueva. Vamos a implementar la arquitectura "Golden Standard" de Telnyx, siguiendo estrictamente la documentación que me pasaste.
+
+Aquí tienes el plan de reconstrucción total.
+
+### 1\. La Arquitectura Correcta (Para que entiendas qué vamos a construir)
+
+Para que esto funcione sin latencia y sin errores, necesitamos 3 piezas limpias:
+
+1.  **Frontend (El Teléfono):** Usa `@telnyx/webrtc` con configuración explícita de servidores STUN (esto elimina el retraso de 5s).
+2.  **Backend Auth (El Token):** Un endpoint que genera un JWT temporal. Nunca pongas usuario/contraseña SIP fijos en el frontend.
+3.  **Backend Logic (El Cerebro):** Un Webhook que solo responde XML cuando inicia la llamada y devuelve "OK" vacío cuando termina (esto elimina el error "User Busy").
+
+-----
+
+### PROMPT DE RECONSTRUCCIÓN TOTAL (COPIA Y PEGA)
+
+Dale esto a tu Agente. Es una orden de demolición y reconstrucción basada en la Biblia de Telnyx.
+
+-----
+
+> **ACTÚA COMO SENIOR TELNYX ARCHITECT. MODALIDAD DE RECONSTRUCCIÓN TOTAL.**
+>
+> **ORDEN EJECUTIVA:**
+>
+> 1.  **ELIMINA** completamente el componente `WebPhone`, `ActiveCall`, y todo el código relacionado con WebRTC actual. Está corrupto.
+> 2.  **ELIMINA** la lógica actual del webhook `/webhooks/telnyx/voice/inbound`.
+> 3.  Vamos a escribir el código desde cero siguiendo la documentación oficial de Telnyx.
+>
+> **FASE 1: BACKEND - AUTENTICACIÓN Y WEBHOOKS**
+>
+> **A. Endpoint de Token (`GET /api/telnyx/token`):**
+>
+>   * No uses credenciales hardcoded en el front.
+>   * Usa el SDK de Node `telnyx.tokens.createIpBasedToken` (o `createOnDemandCredential` según versión) para generar un **Login Token** efímero para el usuario actual.
+>   * Retorna: `{ token, sip_username, sip_password }`.
+>
+> **B. Webhook Limpio (`POST /webhooks/telnyx/voice/inbound`):**
+>
+>   * **Regla de Oro:** Velocidad (\<200ms).
+>   * **Manejo de `call.hangup`:**
+>       * `if (body.event_type === 'call.hangup') { return res.status(200).send(""); }`
+>       * **CRÍTICO:** Esto soluciona el error "User Busy". Nunca respondas XML a un hangup.
+>   * **Manejo de `call.initiated`:**
+>       * Busca el destino en la DB.
+>       * Responde XML: `<Response><Dial><Client>sip_username_agente</Client></Dial></Response>`.
+>
+> **FASE 2: FRONTEND - EL NUEVO WEBPHONE (Sin Latencia)**
+>
+> Instala/Reinstala: `@telnyx/webrtc`.
+> Crea un hook `useWebPhone` que maneje la lógica:
+>
+> **Configuración CRÍTICA del Cliente (Anti-Lag):**
+> Inicializa el cliente ASÍ (Copia textual):
+>
+> ```javascript
+> const client = new TelnyxRTC({
+>   login_token: token_recibido, // O user/pass si usas credenciales SIP
+>   // ESTA SECCIÓN ELIMINA EL RETRASO DE 5 SEGUNDOS:
+>   iceServers: [
+>     { urls: "stun:stun.l.google.com:19302" },
+>     { urls: "stun:stun.telnyx.com:3478" }
+>   ],
+>   ringtoneFile: "/sounds/ring.mp3",
+>   ringBackTone: "/sounds/ringback.mp3",
+>   debug: true // Para ver los logs reales
+> });
+> ```
+>
+> **Manejo de Eventos (Event Listeners):**
+>
+>   * `telnyx.notification`: Escucha `callUpdate`.
+>   * Si `notification.call.state === 'ringing'`, dispara el modal de llamada entrante.
+>   * Si `notification.call.state === 'destroy'`, limpia el estado (cuelga visualmente).
+>
+> **FASE 3: UI DE LLAMADA (Funciones Completas)**
+>
+> Crea un componente visual limpio con estos botones conectados al SDK:
+>
+>   * **Contestar:** `call.answer()`
+>   * **Colgar:** `call.hangup()`
+>   * **Mute:** `call.toggleMute()` (con feedback visual)
+>   * **Hold:** `call.hold()` / `call.unhold()`
+>   * **Teclado:** `call.dtmf(digit)`
+>
+> **EJECUCIÓN:**
+> Borra los archivos viejos primero. No intentes "arreglarlos". Crea `components/phone/TelnyxPhone.tsx` y `server/services/telnyxAuth.ts` desde cero.
+
+-----
+
+### Por qué esto funcionará esta vez
+
+1.  **Eliminamos la Basura:** Al borrar, quitamos los bucles infinitos y configuraciones cruzadas que dejó el código anterior.
+2.  **La Configuración `iceServers`:** He incluido explícitamente los servidores STUN de Google y Telnyx en el prompt. Esto es lo que le dice al navegador: *"No busques en la red local de Replit, sal directo a internet"*. **Esto mata el lag de 5 segundos.**
+3.  **El `return res.status(200)`:** Instruí explícitamente al agente para que corte la comunicación apenas cuelgues, eliminando el mensaje de "User Busy".
+
+Dile que empiece por borrar. Si no borra, no construirá bien.

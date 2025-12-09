@@ -24,9 +24,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
-import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
-import { webPhone, useWebPhoneStore } from "@/services/webphone";
-import { useTelnyxStore } from "@/services/telnyx-webrtc";
 import type { User } from "@shared/schema";
 import defaultLogo from "@assets/logo no fondo_1760457183587.png";
 import Login from "@/pages/login";
@@ -97,26 +94,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [uploadAvatarOpen, setUploadAvatarOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>("");
   
-  // WebPhone state for floating button
-  const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
-  const dialpadVisible = useWebPhoneStore(state => state.dialpadVisible);
-  const sipConnectionStatus = useWebPhoneStore(state => state.connectionStatus);
-  const currentCall = useWebPhoneStore(state => state.currentCall);
   const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // Telnyx state
-  const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
-  const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
-  
-  // Query for Telnyx phone numbers
-  const { data: telnyxNumbersData } = useQuery<{ numbers: any[] }>({
-    queryKey: ['/api/telnyx/my-numbers'],
-  });
-  const hasTelnyxNumber = (telnyxNumbersData?.numbers?.length || 0) > 0;
-  
-  // Effective connection status - use Telnyx if available, otherwise SIP
-  const connectionStatus = hasTelnyxNumber ? telnyxConnectionStatus : sipConnectionStatus;
-  const effectiveCall = telnyxCurrentCall || currentCall;
 
   // Session query - highest priority, needed for WebPhone
   const { data: userData } = useQuery<{ user: User }>({
@@ -127,24 +105,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const user = userData?.user;
   
-  // PRIORITY 1: Initialize WebPhone FIRST when user has SIP credentials
-  useEffect(() => {
-    if (user?.sipEnabled && user?.sipExtension && user?.sipPassword) {
-      console.log('[WebPhone] Priority initialization starting...');
-      const sipServer = user.sipServer || 'wss://pbx.curbe.io:8089/ws';
-      webPhone.initialize(user.sipExtension, user.sipPassword, sipServer).catch(error => {
-        console.error('[WebPhone] Failed to initialize:', error);
-        toast({
-          title: "WebPhone Error",
-          description: "Failed to connect to phone system",
-          variant: "destructive",
-          duration: 5000,
-        });
-      });
-    } else if (!user?.sipEnabled && useWebPhoneStore.getState().isConnected) {
-      webPhone.disconnect();
-    }
-  }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
 
   const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],
@@ -541,39 +501,18 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <TooltipContent>New Policy</TooltipContent>
               </Tooltip>
 
-              {/* WebPhone Button - Always visible */}
+              {/* Phone Button - Placeholder */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={toggleDialpad}
+                    onClick={() => setLocation("/phone-system")}
                     data-testid="button-phone"
-                    className={cn(
-                      "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative",
-                      effectiveCall 
-                        ? "bg-green-500 hover:bg-green-600 text-white ring-2 ring-green-300 ring-offset-1" 
-                        : connectionStatus === 'connected'
-                          ? "bg-green-500 hover:bg-green-600 text-white"
-                          : connectionStatus === 'connecting'
-                            ? "bg-yellow-500 hover:bg-yellow-600 text-white"
-                            : "bg-gray-400 hover:bg-gray-500 text-white"
-                    )}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative bg-gray-400 hover:bg-gray-500 text-white"
                   >
                     <Phone className="h-[18px] w-[18px]" />
-                    {/* Connection status indicator */}
-                    <span className={cn(
-                      "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
-                      connectionStatus === 'connected' ? "bg-green-500" : 
-                      connectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
-                      "bg-red-400"
-                    )} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {effectiveCall ? "In Call" : 
-                   connectionStatus === 'connected' ? "Phone Ready" : 
-                   connectionStatus === 'connecting' ? "Connecting..." : 
-                   "Phone Offline"}
-                </TooltipContent>
+                <TooltipContent>Phone System</TooltipContent>
               </Tooltip>
 
               {/* Search Icon */}
@@ -776,9 +715,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 >
                   <MessageCircle className="h-[18px] w-[18px] text-[#25D366]" />
                 </button>
-                {whatsappUnread?.total > 0 && (
+                {(whatsappUnread?.total ?? 0) > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-[14px] min-w-[14px] flex items-center justify-center px-0.5 pointer-events-none">
-                    {whatsappUnread.total > 99 ? '99+' : whatsappUnread.total}
+                    {(whatsappUnread?.total ?? 0) > 99 ? '99+' : whatsappUnread?.total}
                   </span>
                 )}
               </div>
@@ -932,9 +871,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-
-      {/* WebPhone Floating Window */}
-      <WebPhoneFloatingWindow />
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>
