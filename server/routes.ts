@@ -28123,16 +28123,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ success: true, id: existingLog.id, updated: true });
       }
 
-      // Try to match contact by phone number
-      const normalizedTo = toNumber.replace(/\D/g, '').slice(-10);
-      const matchedContact = await db.query.contacts.findFirst({
-        where: and(
-          eq(contacts.companyId, user.companyId),
-          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedTo}`
-        )
-      });
-
-      // Create new call log
+      // Create new call log (skip contact matching to avoid SQL errors)
       const [newLog] = await db.insert(callLogs).values({
         companyId: user.companyId,
         userId: user.id,
@@ -28142,8 +28133,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         direction,
         status,
         duration: duration || 0,
-        contactId: matchedContact?.id || null,
-        callerName: matchedContact ? `${matchedContact.firstName || ''} ${matchedContact.lastName || ''}`.trim() : null,
+        contactId: null,
+        callerName: null,
         startedAt: startedAt ? new Date(startedAt) : new Date(),
       }).returning();
 
