@@ -21,7 +21,7 @@ const getOrCreateRemoteAudio = (): HTMLAudioElement => {
     remoteAudioElement.setAttribute('autoplay', 'true');
     remoteAudioElement.setAttribute('playsinline', 'true');
     document.body.appendChild(remoteAudioElement);
-    console.log('[TelnyxPhone] Created audio element with id="remoteMedia"');
+    console.log('[TelnyxPhone] Created audio element');
   }
   return remoteAudioElement;
 };
@@ -36,7 +36,7 @@ const getOpusCodec = (): RTCRtpCodecCapability | undefined => {
       );
     }
   } catch (e) {
-    console.log('[TelnyxPhone] Could not get OPUS codec:', e);
+    console.log('[TelnyxPhone] Could not get OPUS codec');
   }
   return undefined;
 };
@@ -44,6 +44,8 @@ const getOpusCodec = (): RTCRtpCodecCapability | undefined => {
 export const useTelnyxPhone = () => {
   const clientRef = useRef<TelnyxRTC | null>(null);
   const weInitiatedCallRef = useRef(false);
+  // CRITICAL: Store the microphone stream so we can pass it to answer()
+  const micStreamRef = useRef<MediaStream | null>(null);
   
   const [state, setState] = useState<TelnyxPhoneState>({
     sessionStatus: 'disconnected',
@@ -58,7 +60,7 @@ export const useTelnyxPhone = () => {
     try {
       setState(prev => ({ ...prev, sessionStatus: 'connecting' }));
       
-      // Per SDK docs: Create audio element first
+      // Create audio element first
       const audioElement = getOrCreateRemoteAudio();
       
       // Get credentials from backend
@@ -85,7 +87,7 @@ export const useTelnyxPhone = () => {
         clientRef.current.disconnect();
       }
 
-      // Per SDK docs: Initialize the client
+      // Initialize the client
       const clientConfig: any = {};
 
       if (data.token) {
@@ -94,33 +96,42 @@ export const useTelnyxPhone = () => {
       } else if (data.sipUsername && data.sipPassword) {
         clientConfig.login = data.sipUsername;
         clientConfig.password = data.sipPassword;
-        console.log('[TelnyxPhone] Using SIP credentials authentication');
+        console.log('[TelnyxPhone] Using SIP credentials');
       }
 
       console.log('[TelnyxPhone] SDK version:', TelnyxRTC.version || '2.25.10');
 
       const client = new TelnyxRTC(clientConfig);
       
-      // Per SDK docs: Set remoteElement to hear/view calls in the browser
+      // Set remoteElement for remote audio
       client.remoteElement = audioElement;
       console.log('[TelnyxPhone] Set client.remoteElement');
 
-      // Per SDK docs: Enable microphone BEFORE connect() to avoid audio delay
-      // This is critical for incoming calls
-      console.log('[TelnyxPhone] Enabling microphone BEFORE connect...');
-      client.enableMicrophone();
-      
-      // Per SDK docs: checkPermissions(audio, video) - request mic permission upfront
+      // CRITICAL FIX: Pre-warm the microphone stream BEFORE connect
+      // This ensures the stream is ready when we answer incoming calls
+      // Without this, answer() triggers getUserMedia which causes 4-5s delay
+      console.log('[TelnyxPhone] Pre-warming microphone stream...');
       try {
-        await client.checkPermissions(true, false);
-        console.log('[TelnyxPhone] Microphone permissions checked');
+        // Get microphone stream directly so it's ready for incoming calls
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+        micStreamRef.current = stream;
+        console.log('[TelnyxPhone] Microphone stream pre-warmed and stored');
+        
+        // Also call SDK's enableMicrophone for internal state
+        client.enableMicrophone();
       } catch (e) {
-        console.log('[TelnyxPhone] Could not check permissions:', e);
+        console.error('[TelnyxPhone] Failed to pre-warm microphone:', e);
       }
 
-      // Per SDK docs: Attach event listeners
+      // Attach event listeners
       client.on('telnyx.ready', () => {
-        console.log('[TelnyxPhone] telnyx.ready - ready to call');
+        console.log('[TelnyxPhone] telnyx.ready - registered');
         setState(prev => ({ ...prev, sessionStatus: 'registered' }));
       });
 
@@ -134,11 +145,10 @@ export const useTelnyxPhone = () => {
         setState(prev => ({ ...prev, sessionStatus: 'disconnected' }));
       });
 
-      // Per SDK docs: Events are fired on both session and call updates
+      // Handle notifications
       client.on('telnyx.notification', (notification: any) => {
-        console.log('[TelnyxPhone] telnyx.notification type:', notification.type);
+        console.log('[TelnyxPhone] notification type:', notification.type);
         
-        // Handle microphone errors per SDK docs
         if (notification.type === 'userMediaError') {
           console.error('[TelnyxPhone] userMediaError:', notification.error);
           return;
@@ -146,12 +156,13 @@ export const useTelnyxPhone = () => {
         
         if (notification.type === 'callUpdate') {
           const call = notification.call as Call;
-          console.log('[TelnyxPhone] callUpdate state:', call.state);
+          const callAny = call as any;
+          console.log('[TelnyxPhone] callUpdate state:', call.state, 
+            'cause:', callAny.cause, 'sipCode:', callAny.sipCode);
           
-          // Per SDK docs: Check call.state === 'ringing' for incoming calls
           if (call.state === 'ringing') {
             if (!weInitiatedCallRef.current) {
-              console.log('[TelnyxPhone] Incoming call detected - showing UI');
+              console.log('[TelnyxPhone] Incoming call detected');
               setState(prev => ({ ...prev, incomingCall: call }));
             }
           } else if (call.state === 'active') {
@@ -163,7 +174,9 @@ export const useTelnyxPhone = () => {
               incomingCall: null 
             }));
           } else if (call.state === 'hangup' || call.state === 'destroy') {
-            console.log('[TelnyxPhone] Call ended:', call.state, 'cause:', (call as any).cause);
+            console.log('[TelnyxPhone] Call ended:', call.state, 
+              'cause:', callAny.cause, 'causeCode:', callAny.causeCode, 
+              'sipCode:', callAny.sipCode, 'sipReason:', callAny.sipReason);
             weInitiatedCallRef.current = false;
             setState(prev => ({ 
               ...prev, 
@@ -176,7 +189,7 @@ export const useTelnyxPhone = () => {
         }
       });
 
-      // Per SDK docs: Connect AFTER enabling microphone
+      // Connect after microphone is ready
       await client.connect();
       clientRef.current = client;
       
@@ -195,6 +208,11 @@ export const useTelnyxPhone = () => {
     initClient();
     
     return () => {
+      // Cleanup microphone stream
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
       if (clientRef.current) {
         clientRef.current.disconnect();
         clientRef.current = null;
@@ -202,7 +220,7 @@ export const useTelnyxPhone = () => {
     };
   }, [initClient]);
 
-  // Per SDK docs: To initiate an outgoing call
+  // Outgoing call
   const makeCall = useCallback((destination: string) => {
     if (!clientRef.current || state.sessionStatus !== 'registered') {
       console.error('[TelnyxPhone] Cannot make call - not registered');
@@ -221,49 +239,56 @@ export const useTelnyxPhone = () => {
     
     if (opusCodec) {
       callOptions.preferred_codecs = [opusCodec];
-      console.log('[TelnyxPhone] Using OPUS codec for lower latency');
     }
     
     const call = clientRef.current.newCall(callOptions);
-    
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
 
-  // Per SDK docs: To answer an incoming call - call.answer()
+  // CRITICAL FIX: Answer with pre-warmed microphone stream
+  // This eliminates the 4-5 second audio delay
   const answerCall = useCallback(() => {
     if (state.incomingCall) {
-      console.log('[TelnyxPhone] Answering call');
-      state.incomingCall.answer();
+      console.log('[TelnyxPhone] Answering with pre-warmed mic stream');
+      
+      // Pass the pre-warmed stream to answer() to skip internal getUserMedia
+      if (micStreamRef.current) {
+        console.log('[TelnyxPhone] Using pre-warmed stream for immediate audio');
+        // The SDK's answer() accepts audio options including a stream
+        (state.incomingCall as any).answer({
+          audio: { stream: micStreamRef.current }
+        });
+      } else {
+        // Fallback: answer without stream (will have delay)
+        console.log('[TelnyxPhone] No pre-warmed stream, using default answer');
+        state.incomingCall.answer();
+      }
     }
   }, [state.incomingCall]);
 
-  // Per SDK docs (v1.0.8+): Use call.reject() for incoming calls to properly reject
-  // This prevents "User Busy" tone - uses proper rejection signaling
+  // Reject incoming call
   const rejectCall = useCallback(() => {
     if (state.incomingCall) {
       console.log('[TelnyxPhone] Rejecting incoming call');
-      // Per SDK docs: Use reject() for incoming calls (available since v1.0.8)
       const call = state.incomingCall as any;
       if (typeof call.reject === 'function') {
         call.reject();
       } else {
-        // Fallback to hangup if reject not available
         state.incomingCall.hangup();
       }
       setState(prev => ({ ...prev, incomingCall: null }));
     }
   }, [state.incomingCall]);
 
-  // Per SDK docs: hangup() on an ACTIVE call sends NORMAL_CLEARING
-  // hangup() on a RINGING call sends USER_BUSY - use reject() instead
+  // Hangup active call - sends NORMAL_CLEARING
   const hangupCall = useCallback(() => {
     if (state.activeCall) {
-      console.log('[TelnyxPhone] Hanging up active call - should send NORMAL_CLEARING');
+      console.log('[TelnyxPhone] Hanging up active call');
       state.activeCall.hangup();
     }
   }, [state.activeCall]);
 
-  // Per SDK docs: call.muteAudio() / call.unmuteAudio()
+  // Mute/unmute
   const toggleMute = useCallback(() => {
     if (state.activeCall) {
       if (state.isMuted) {
@@ -277,7 +302,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall, state.isMuted]);
 
-  // Per SDK docs: call.hold() / call.unhold()
+  // Hold/unhold
   const toggleHold = useCallback(() => {
     if (state.activeCall) {
       if (state.isOnHold) {
@@ -291,7 +316,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall, state.isOnHold]);
 
-  // Per SDK docs: call.dtmf('1234')
+  // DTMF
   const sendDTMF = useCallback((digit: string) => {
     if (state.activeCall) {
       console.log('[TelnyxPhone] Sending DTMF:', digit);
@@ -299,6 +324,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall]);
 
+  // Transfer
   const transferCall = useCallback((target: string) => {
     if (state.activeCall) {
       console.log('[TelnyxPhone] Transferring to:', target);
@@ -307,6 +333,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall]);
 
+  // Reconnect
   const reconnect = useCallback(() => {
     console.log('[TelnyxPhone] Reconnecting...');
     initClient();
