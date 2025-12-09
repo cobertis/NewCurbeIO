@@ -228,29 +228,45 @@ export async function purchasePhoneNumber(
 
     console.log(`[Telnyx Numbers] Number order created - Order ID: ${orderId}, Status: ${orderStatus}, Initial Phone Number ID: ${phoneNumberId}`);
 
-    // If order is success, try to get the actual phone number ID from phone_numbers API
+    // If order is success or pending, poll to get the actual phone number ID from phone_numbers API
     // The ID from number_order may be different from the actual phone_number ID
+    // Use retry with exponential backoff since Telnyx provisioning is async
     if (orderStatus === "success" || orderStatus === "pending") {
-      // Wait a moment for Telnyx to process the order
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const maxRetries = 5;
+      const delays = [2000, 3000, 5000, 8000, 10000]; // Exponential backoff delays
       
-      try {
-        // Search for the number in the account to get its real ID
-        const searchResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers?filter[phone_number]=${encodeURIComponent(phoneNumber)}`, {
-          method: "GET",
-          headers,
-        });
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
         
-        if (searchResponse.ok) {
-          const searchResult = await searchResponse.json();
-          const foundNumber = searchResult.data?.find((n: any) => n.phone_number === phoneNumber);
-          if (foundNumber?.id) {
-            phoneNumberId = foundNumber.id;
-            console.log(`[Telnyx Numbers] Found actual phone number ID: ${phoneNumberId}`);
+        try {
+          console.log(`[Telnyx Numbers] Attempt ${attempt + 1}/${maxRetries} to fetch phone number ID for ${phoneNumber}`);
+          
+          // Search for the number in the account to get its real ID
+          const searchResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers?filter[phone_number][eq]=${encodeURIComponent(phoneNumber)}`, {
+            method: "GET",
+            headers,
+          });
+          
+          if (searchResponse.ok) {
+            const searchResult = await searchResponse.json();
+            const foundNumber = searchResult.data?.find((n: any) => n.phone_number === phoneNumber);
+            if (foundNumber?.id) {
+              phoneNumberId = foundNumber.id;
+              console.log(`[Telnyx Numbers] Found actual phone number ID: ${phoneNumberId} on attempt ${attempt + 1}`);
+              break; // Success, exit retry loop
+            }
+          }
+          
+          // If we haven't found it and this isn't the last attempt, continue retrying
+          if (attempt < maxRetries - 1) {
+            console.log(`[Telnyx Numbers] Phone number not yet available, retrying...`);
+          }
+        } catch (searchError) {
+          console.warn(`[Telnyx Numbers] Error on attempt ${attempt + 1}:`, searchError);
+          if (attempt === maxRetries - 1) {
+            console.warn(`[Telnyx Numbers] Could not fetch phone number ID after ${maxRetries} attempts, will use order ID: ${phoneNumberId}`);
           }
         }
-      } catch (searchError) {
-        console.warn(`[Telnyx Numbers] Could not fetch phone number ID, will use order ID: ${phoneNumberId}`);
       }
     }
 
@@ -267,6 +283,196 @@ export async function purchasePhoneNumber(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to purchase number",
+    };
+  }
+}
+
+/**
+ * Validates a CNAM listing name
+ * Rules: Max 15 characters, alphanumeric + spaces only
+ */
+export function validateCnamName(name: string): { valid: boolean; error?: string; sanitized?: string } {
+  if (!name || typeof name !== 'string') {
+    return { valid: false, error: "CNAM name is required" };
+  }
+  
+  // Remove any non-alphanumeric characters except spaces
+  const sanitized = name.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+  
+  if (sanitized.length === 0) {
+    return { valid: false, error: "CNAM name must contain at least one alphanumeric character" };
+  }
+  
+  if (sanitized.length > 15) {
+    return { valid: false, error: "CNAM name cannot exceed 15 characters" };
+  }
+  
+  return { valid: true, sanitized };
+}
+
+/**
+ * Truncates company name to fit CNAM 15-character limit
+ */
+export function truncateForCnam(companyName: string): string {
+  if (!companyName) return "";
+  
+  // Remove special characters, keep only alphanumeric + spaces
+  const sanitized = companyName.replace(/[^a-zA-Z0-9 ]/g, '');
+  
+  // Trim leading/trailing spaces, then truncate to 15 characters
+  // Only trim at the start, keep natural spacing
+  const trimmedStart = sanitized.trimStart();
+  
+  // Truncate to 15 characters, then trim trailing space if at boundary
+  return trimmedStart.substring(0, 15).trimEnd();
+}
+
+export interface CnamUpdateResult {
+  success: boolean;
+  error?: string;
+  cnamEnabled?: boolean;
+  cnamName?: string;
+}
+
+/**
+ * Enable or update CNAM listing on a phone number
+ */
+export async function updateCnamListing(
+  phoneNumberId: string,
+  companyId: string,
+  enabled: boolean,
+  cnamName?: string
+): Promise<CnamUpdateResult> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return {
+        success: false,
+        error: "Company wallet or Telnyx account not found"
+      };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    // Build the update payload
+    const payload: Record<string, any> = {
+      cnam_listing_enabled: enabled,
+    };
+    
+    // Only include cnam_listing_details if enabled and name provided
+    if (enabled && cnamName) {
+      const validation = validateCnamName(cnamName);
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
+      }
+      payload.cnam_listing_details = validation.sanitized;
+    }
+    
+    console.log(`[Telnyx CNAM] Updating CNAM for number ${phoneNumberId}: enabled=${enabled}, name="${cnamName || 'N/A'}"`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx CNAM] Update error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to update CNAM: ${response.status}`,
+      };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx CNAM] Update successful:`, JSON.stringify(result.data, null, 2));
+    
+    return {
+      success: true,
+      cnamEnabled: result.data?.cnam_listing_enabled,
+      cnamName: result.data?.cnam_listing_details,
+    };
+  } catch (error) {
+    console.error("[Telnyx CNAM] Update error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update CNAM",
+    };
+  }
+}
+
+/**
+ * Get CNAM settings for a phone number
+ */
+export async function getCnamSettings(
+  phoneNumberId: string,
+  companyId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  cnamEnabled?: boolean;
+  cnamName?: string;
+  phoneNumber?: string;
+}> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return {
+        success: false,
+        error: "Company wallet or Telnyx account not found"
+      };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx CNAM] Get settings error: ${response.status} - ${errorText}`);
+      return {
+        success: false,
+        error: `Failed to get CNAM settings: ${response.status}`,
+      };
+    }
+    
+    const result = await response.json();
+    
+    return {
+      success: true,
+      cnamEnabled: result.data?.cnam_listing_enabled || false,
+      cnamName: result.data?.cnam_listing_details || "",
+      phoneNumber: result.data?.phone_number,
+    };
+  } catch (error) {
+    console.error("[Telnyx CNAM] Get settings error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get CNAM settings",
     };
   }
 }

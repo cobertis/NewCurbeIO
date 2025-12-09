@@ -1080,6 +1080,50 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
   const [callRecording, setCallRecording] = useState(false);
   const [spamProtection, setSpamProtection] = useState(true);
   const [cnamLookup, setCnamLookup] = useState(false);
+  const [cnamName, setCnamName] = useState("");
+  const [cnamEnabled, setCnamEnabled] = useState(false);
+  const [isEditingCnam, setIsEditingCnam] = useState(false);
+
+  // Query CNAM settings for this number
+  const cnamQuery = useQuery<{ cnamEnabled: boolean; cnamName: string }>({
+    queryKey: ["/api/telnyx/cnam", number.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/telnyx/cnam/${number.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch CNAM settings");
+      return res.json();
+    },
+    enabled: !!number.id,
+  });
+
+  // Update local state when CNAM data loads
+  useEffect(() => {
+    if (cnamQuery.data) {
+      setCnamName(cnamQuery.data.cnamName || "");
+      setCnamEnabled(cnamQuery.data.cnamEnabled || false);
+    }
+  }, [cnamQuery.data]);
+
+  // Mutation to update CNAM
+  const cnamMutation = useMutation({
+    mutationFn: async (data: { enabled: boolean; cnamName?: string }) => {
+      return await apiRequest("POST", `/api/telnyx/cnam/${number.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/cnam", number.id] });
+      setIsEditingCnam(false);
+      toast({
+        title: "CNAM Updated",
+        description: "Caller ID name settings updated. Changes may take 12-72 hours to propagate.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Could not update CNAM settings",
+      });
+    },
+  });
   
   const handleFeatureToggle = (feature: string, enabled: boolean) => {
     toast({
@@ -1202,18 +1246,80 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
                 data-testid={`switch-spam-${number.phone_number}`}
               />
             </div>
+            {/* CNAM Listing (Outbound Caller ID Name) */}
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-slate-500" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Caller ID Name (CNAM Listing)</p>
+                    <p className="text-xs text-slate-400">Display your company name when making outbound calls</p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={cnamEnabled}
+                  disabled={cnamMutation.isPending}
+                  onCheckedChange={(checked) => {
+                    setCnamEnabled(checked); // Optimistic update
+                    if (checked && !cnamName) {
+                      setIsEditingCnam(true);
+                    } else {
+                      cnamMutation.mutate({ enabled: checked, cnamName: cnamName || undefined });
+                    }
+                  }}
+                  data-testid={`switch-cnam-listing-${number.phone_number}`}
+                />
+              </div>
+              
+              {(cnamEnabled || isEditingCnam) && (
+                <div className="pt-2 border-t border-slate-200 dark:border-border space-y-3">
+                  <div>
+                    <Label htmlFor={`cnam-name-${number.id}`} className="text-xs text-slate-600 dark:text-muted-foreground">
+                      Display Name (max 15 characters, letters/numbers/spaces only)
+                    </Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        id={`cnam-name-${number.id}`}
+                        value={cnamName}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 15);
+                          setCnamName(value);
+                        }}
+                        placeholder="Company Name"
+                        maxLength={15}
+                        className="flex-1 h-9 bg-white dark:bg-background"
+                        data-testid={`input-cnam-name-${number.phone_number}`}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => cnamMutation.mutate({ enabled: true, cnamName })}
+                        disabled={cnamMutation.isPending || !cnamName.trim()}
+                        data-testid={`button-save-cnam-${number.phone_number}`}
+                      >
+                        {cnamMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {cnamName.length}/15 characters • Changes take 12-72 hours to propagate
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Inbound CNAM Lookup */}
             <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
               <div className="flex items-center gap-3">
                 <Users className="h-5 w-5 text-slate-500" />
                 <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Caller ID Lookup (CNAM)</p>
-                  <p className="text-xs text-slate-400">Show caller names • Additional cost applies</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Caller ID Lookup (Inbound)</p>
+                  <p className="text-xs text-slate-400">Show caller names on incoming calls • Additional cost applies</p>
                 </div>
               </div>
               <Switch 
                 checked={cnamLookup} 
                 onCheckedChange={(checked) => { setCnamLookup(checked); handleFeatureToggle("CNAM Lookup", checked); }}
-                data-testid={`switch-cnam-${number.phone_number}`}
+                data-testid={`switch-cnam-lookup-${number.phone_number}`}
               />
             </div>
           </div>

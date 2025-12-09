@@ -27377,11 +27377,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      const { purchasePhoneNumber } = await import("./services/telnyx-numbers-service");
+      const { purchasePhoneNumber, updateCnamListing, truncateForCnam } = await import("./services/telnyx-numbers-service");
       const result = await purchasePhoneNumber(phoneNumber, user.companyId);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
+      }
+
+
+      // Auto-enable CNAM listing with company name (truncated to 15 chars)
+      if (result.phoneNumberId) {
+        try {
+          const company = await storage.getCompany(user.companyId);
+          if (company?.name) {
+            const cnamName = truncateForCnam(company.name);
+            if (cnamName) {
+              console.log(`[Telnyx CNAM] Auto-enabling CNAM for ${phoneNumber} with name: "${cnamName}"`);
+              const cnamResult = await updateCnamListing(result.phoneNumberId, user.companyId, true, cnamName);
+              if (cnamResult.success) {
+                console.log(`[Telnyx CNAM] Auto-enabled CNAM successfully for ${phoneNumber}`);
+              } else {
+                console.warn(`[Telnyx CNAM] Failed to auto-enable CNAM: ${cnamResult.error}`);
+              }
+            }
+          }
+        } catch (cnamError) {
+          console.warn("[Telnyx CNAM] Error during auto-enable:", cnamError);
+          // Do not fail the purchase if CNAM fails
+        }
       }
 
       // Auto-trigger WebRTC provisioning if not already completed
@@ -27458,6 +27481,85 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get phone numbers" });
     }
   });
+
+  // GET /api/telnyx/cnam/:phoneNumberId - Get CNAM settings for a phone number
+  app.get("/api/telnyx/cnam/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getCnamSettings } = await import("./services/telnyx-numbers-service");
+      const result = await getCnamSettings(phoneNumberId, user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({
+        cnamEnabled: result.cnamEnabled,
+        cnamName: result.cnamName,
+        phoneNumber: result.phoneNumber,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx CNAM] Get settings error:", error);
+      res.status(500).json({ message: "Failed to get CNAM settings" });
+    }
+  });
+
+  // POST /api/telnyx/cnam/:phoneNumberId - Update CNAM settings for a phone number
+  app.post("/api/telnyx/cnam/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      const { enabled, cnamName } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ message: "enabled (boolean) is required" });
+      }
+
+      // Validate CNAM name before sending to API
+      if (enabled && cnamName) {
+        const { validateCnamName } = await import("./services/telnyx-numbers-service");
+        const validation = validateCnamName(cnamName);
+        if (!validation.valid) {
+          return res.status(400).json({ message: validation.error });
+        }
+      }
+
+      const { updateCnamListing } = await import("./services/telnyx-numbers-service");
+      const result = await updateCnamListing(phoneNumberId, user.companyId, enabled, cnamName);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({
+        success: true,
+        cnamEnabled: result.cnamEnabled,
+        cnamName: result.cnamName,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx CNAM] Update error:", error);
+      res.status(500).json({ message: "Failed to update CNAM settings" });
+    }
+  });
+
 
   // GET /api/telnyx/noise-suppression - Get current noise suppression settings
   app.get("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
