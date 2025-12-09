@@ -1662,24 +1662,6 @@ export function WebPhoneFloatingWindow() {
                     )}
                   </div>
                   
-                  {/* Waiting Call Banner */}
-                  {waitingCall && (
-                    <div className="px-2 sm:px-4 pb-3">
-                      <div className="bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-900 rounded-lg p-3 animate-pulse">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="text-xs sm:text-sm font-semibold text-orange-700 dark:text-orange-300">
-                              Llamada en Espera
-                            </p>
-                            <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
-                              {waitingCall.displayName || "Unknown Caller"} · {formatCallerNumber(waitingCall.phoneNumber)}
-                            </p>
-                          </div>
-                          <PhoneIncoming className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 ml-2" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   
                   {/* Call Controls */}
                   <div className="space-y-3 sm:space-y-4 pb-4 sm:pb-8">
