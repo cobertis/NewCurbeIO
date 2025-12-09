@@ -1,0 +1,108 @@
+🚀 Reiniciando proceso PM2 (curbe-admin)...
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ fork    │ 1357344  │ 0s     │ 15   │ online    │ 0%       │ 7.1mb    │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+📜 Últimos 30 logs:
+[TAILING] Tailing last 30 lines for [curbe-admin] process (change the value with --lines option)
+/root/.pm2/logs/curbe-admin-out.log last 30 lines:
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+0|curbe-ad | 
+0|curbe-ad | > rest-express@1.0.0 start
+0|curbe-ad | > NODE_ENV=production node dist/index.js
+0|curbe-ad | 
+
+/root/.pm2/logs/curbe-admin-error.log last 30 lines:
+0|curbe-ad |     at getMasterKey (file:///var/www/curbe/dist/index.js:11742:11)
+0|curbe-ad |     at new SecretsService (file:///var/www/curbe/dist/index.js:11758:26)
+0|curbe-ad |     at server/services/secrets-service.ts (file:///var/www/curbe/dist/index.js:11948:22)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at server/services/credential-provider.ts (file:///var/www/curbe/dist/index.js:11961:5)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at server/email.ts (file:///var/www/curbe/dist/index.js:12216:5)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at file:///var/www/curbe/dist/index.js:19142:1
+0|curbe-ad |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|curbe-ad | 
+0|curbe-ad | Node.js v20.19.5
+0|curbe-ad | CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY must be exactly 64 hex characters (32 bytes) for AES-256-GCM encryption. Current length: 85
+0|curbe-ad | file:///var/www/curbe/dist/index.js:11742
+0|curbe-ad |     throw new Error(errorMessage);
+0|curbe-ad |           ^
+0|curbe-ad | 
+0|curbe-ad | Error: CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY must be exactly 64 hex characters (32 bytes) for AES-256-GCM encryption. Current length: 85
+0|curbe-ad |     at getMasterKey (file:///var/www/curbe/dist/index.js:11742:11)
+0|curbe-ad |     at new SecretsService (file:///var/www/curbe/dist/index.js:11758:26)
+0|curbe-ad |     at server/services/secrets-service.ts (file:///var/www/curbe/dist/index.js:11948:22)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at server/services/credential-provider.ts (file:///var/www/curbe/dist/index.js:11961:5)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at server/email.ts (file:///var/www/curbe/dist/index.js:12216:5)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at file:///var/www/curbe/dist/index.js:19142:1
+0|curbe-ad |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|curbe-ad | 
+0|curbe-ad | Node.js v20.19.5
+
+0|curbe-admin  | CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY must be exactly 64 hex characters (32 bytes) for AES-256-GCM encryption. Current length: 85
+0|curbe-admin  | file:///var/www/curbe/dist/index.js:11742
+0|curbe-admin  |     throw new Error(errorMessage);
+0|curbe-admin  |           ^
+0|curbe-admin  | Error: CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY must be exactly 64 hex characters (32 bytes) for AES-256-GCM encryption. Current length: 85
+0|curbe-admin  |     at getMasterKey (file:///var/www/curbe/dist/index.js:11742:11)
+0|curbe-admin  |     at new SecretsService (file:///var/www/curbe/dist/index.js:11758:26)
+0|curbe-admin  |     at server/services/secrets-service.ts (file:///var/www/curbe/dist/index.js:11948:22)
+0|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-admin  |     at server/services/credential-provider.ts (file:///var/www/curbe/dist/index.js:11961:5)
+0|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-admin  |     at server/email.ts (file:///var/www/curbe/dist/index.js:12216:5)
+0|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:19142:1
+0|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|curbe-admin  | Node.js v20.19.5
+0|curbe-admin  | CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY must be exactly 64 hex characters (32 bytes) for AES-256-GCM encryption. Current length: 85
+0|curbe-admin  | file:///var/www/curbe/dist/index.js:11742
+0|curbe-admin  |     throw new Error(errorMessage);
+0|curbe-admin  |           ^
+0|curbe-admin  | Error: CRITICAL SECURITY ERROR: SECRETS_MASTER_KEY must be exactly 64 hex characters (32 bytes) for AES-256-GCM encryption. Current length: 85
+0|curbe-admin  |     at getMasterKey (file:///var/www/curbe/dist/index.js:11742:11)
+0|curbe-admin  |     at new SecretsService (file:///var/www/curbe/dist/index.js:11758:26)
+0|curbe-admin  |     at server/services/secrets-service.ts (file:///var/www/curbe/dist/index.js:11948:22)
+0|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-admin  |     at server/services/credential-provider.ts (file:///var/www/curbe/dist/index.js:11961:5)
+0|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-admin  |     at server/email.ts (file:///var/www/curbe/dist/index.js:12216:5)
+0|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-admin  |     at file:///var/www/curbe/dist/index.js:19142:1
+0|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|curbe-admin  | Node.js v20.19.5
+0
