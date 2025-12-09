@@ -257,6 +257,15 @@ export default function PhoneSystem() {
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
+  // Noise suppression settings query
+  const { data: noiseSuppressionData, refetch: refetchNoiseSuppression } = useQuery<{
+    enabled: boolean;
+    direction: 'inbound' | 'outbound' | 'both';
+  }>({
+    queryKey: ["/api/telnyx/noise-suppression"],
+    enabled: statusData?.configured === true || statusData?.hasAccount === true,
+  });
+
   // Sync call history from Telnyx CDRs
   const syncCallsMutation = useMutation({
     mutationFn: async () => {
@@ -386,6 +395,30 @@ export default function PhoneSystem() {
     },
   });
 
+
+  // Noise suppression mutation
+  const noiseSuppressionMutation = useMutation({
+    mutationFn: async (data: { enabled: boolean; direction: string }) => {
+      return await apiRequest("POST", "/api/telnyx/noise-suppression", data);
+    },
+    onSuccess: (response: { success: boolean; enabled: boolean; direction: string; updatedNumbers?: number; errors?: string[] }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/noise-suppression"] });
+      refetchNoiseSuppression();
+      toast({
+        title: response.enabled ? "Noise Suppression Enabled" : "Noise Suppression Disabled",
+        description: response.enabled 
+          ? `Active on ${response.updatedNumbers || 0} phone number(s). Direction: ${response.direction}`
+          : "Noise suppression has been turned off for all numbers",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Update",
+        description: error.message || "Could not update noise suppression settings",
+        variant: "destructive",
+      });
+    },
+  });
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -674,6 +707,80 @@ export default function PhoneSystem() {
               </CollapsibleContent>
             </Collapsible>
           </div>
+        )}
+
+        {/* Audio Features Section */}
+        {statusData?.configured && (
+          <Card className="shadow-sm border-slate-200 dark:border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mic className="h-4 w-4 text-primary" />
+                Audio Features
+              </CardTitle>
+              <CardDescription>
+                Configure audio settings for all your phone numbers
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                    <Mic className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
+                    <p className="text-sm text-muted-foreground">Reduces background noise during calls. Applies to all phone numbers.</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={noiseSuppressionData?.enabled || false}
+                  onCheckedChange={(checked) => {
+                    noiseSuppressionMutation.mutate({
+                      enabled: checked,
+                      direction: noiseSuppressionData?.direction || 'outbound',
+                    });
+                  }}
+                  disabled={noiseSuppressionMutation.isPending}
+                  data-testid="switch-noise-suppression"
+                />
+              </div>
+              
+              {noiseSuppressionData?.enabled && (
+                <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div>
+                    <Label className="text-slate-700 dark:text-foreground">Direction</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Which side of the call to apply noise reduction</p>
+                  </div>
+                  <Select
+                    value={noiseSuppressionData?.direction || 'outbound'}
+                    onValueChange={(value: 'inbound' | 'outbound' | 'both') => {
+                      noiseSuppressionMutation.mutate({
+                        enabled: true,
+                        direction: value,
+                      });
+                    }}
+                    disabled={noiseSuppressionMutation.isPending}
+                  >
+                    <SelectTrigger className="w-[180px]" data-testid="select-noise-direction">
+                      <SelectValue placeholder="Select direction" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="outbound">Outbound Only</SelectItem>
+                      <SelectItem value="inbound">Inbound Only</SelectItem>
+                      <SelectItem value="both">Both Directions</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {noiseSuppressionMutation.isPending && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Updating noise suppression settings...
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Call History Section */}

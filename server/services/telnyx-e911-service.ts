@@ -56,7 +56,7 @@ export async function getManagedAccountConfig(companyId: string): Promise<Manage
   };
 }
 
-function buildHeaders(config: ManagedAccountConfig): Record<string, string> {
+export function buildHeaders(config: ManagedAccountConfig): Record<string, string> {
   return {
     "Authorization": `Bearer ${config.apiKey}`,
     "Content-Type": "application/json",

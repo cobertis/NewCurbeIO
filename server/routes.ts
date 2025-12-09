@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -113,7 +113,7 @@ import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
 import { evolutionApi } from "./services/evolution-api";
-import { getManagedAccountConfig } from "./services/telnyx-e911-service";
+import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -27458,6 +27458,166 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get phone numbers" });
     }
   });
+
+  // GET /api/telnyx/noise-suppression - Get current noise suppression settings
+  app.get("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const [settings] = await db
+        .select({
+          noiseSuppressionEnabled: telephonySettings.noiseSuppressionEnabled,
+          noiseSuppressionDirection: telephonySettings.noiseSuppressionDirection,
+        })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      res.json({
+        enabled: settings?.noiseSuppressionEnabled || false,
+        direction: settings?.noiseSuppressionDirection || 'outbound',
+      });
+    } catch (error: any) {
+      console.error("[Noise Suppression] Get settings error:", error);
+      res.status(500).json({ message: "Failed to get noise suppression settings" });
+    }
+  });
+
+  // POST /api/telnyx/noise-suppression - Toggle noise suppression for company
+  app.post("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const { enabled, direction } = req.body;
+      
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({ message: "enabled must be a boolean" });
+      }
+      
+      const validDirections = ['inbound', 'outbound', 'both'];
+      if (direction && !validDirections.includes(direction)) {
+        return res.status(400).json({ message: "direction must be 'inbound', 'outbound', or 'both'" });
+      }
+      
+      // Get managed account config
+      const config = await getManagedAccountConfig(user.companyId);
+      if (!config) {
+        return res.status(400).json({ message: "Phone system not configured. Please set up your phone system first." });
+      }
+      
+      // Get all phone numbers for this company
+      const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
+      const numbersResult = await getCompanyPhoneNumbers(user.companyId);
+      
+      if (!numbersResult.success || !numbersResult.numbers || numbersResult.numbers.length === 0) {
+        // Still save the settings even if no numbers yet
+        const [existing] = await db
+          .select({ id: telephonySettings.id })
+          .from(telephonySettings)
+          .where(eq(telephonySettings.companyId, user.companyId));
+        
+        if (existing) {
+          await db.update(telephonySettings)
+            .set({
+              noiseSuppressionEnabled: enabled,
+              noiseSuppressionDirection: direction || 'outbound',
+              updatedAt: new Date(),
+            })
+            .where(eq(telephonySettings.companyId, user.companyId));
+        } else {
+          await db.insert(telephonySettings).values({
+            companyId: user.companyId,
+            noiseSuppressionEnabled: enabled,
+            noiseSuppressionDirection: direction || 'outbound',
+            provisioningStatus: 'pending' as const,
+          });
+        }
+        
+        return res.json({
+          success: true,
+          enabled,
+          direction: direction || 'outbound',
+          message: "Settings saved. Will apply when phone numbers are added.",
+        });
+      }
+      
+      // Update each phone number in Telnyx
+      const errors: string[] = [];
+      const TELNYX_API_BASE = "https://api.telnyx.com/v2";
+      
+      for (const number of numbersResult.numbers) {
+        if (!number.id) {
+          console.warn(`[Noise Suppression] Skipping number without ID: ${number.phone_number}`);
+          continue;
+        }
+        
+        try {
+          const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${number.id}`, {
+            method: "PATCH",
+            headers: buildHeaders(config),
+            body: JSON.stringify({
+              noise_suppression: enabled ? {
+                direction: direction || 'outbound',
+              } : null,
+            }),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[Noise Suppression] Failed to update ${number.phone_number}: ${response.status} - ${errorText}`);
+            errors.push(`Failed to update ${number.phone_number}`);
+          } else {
+            console.log(`[Noise Suppression] Updated ${number.phone_number} - enabled: ${enabled}, direction: ${direction}`);
+          }
+        } catch (err) {
+          console.error(`[Noise Suppression] Error updating ${number.phone_number}:`, err);
+          errors.push(`Error updating ${number.phone_number}`);
+        }
+      }
+      
+      // Save settings to database
+      const [existing] = await db
+        .select({ id: telephonySettings.id })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      if (existing) {
+        await db.update(telephonySettings)
+          .set({
+            noiseSuppressionEnabled: enabled,
+            noiseSuppressionDirection: direction || 'outbound',
+            updatedAt: new Date(),
+          })
+          .where(eq(telephonySettings.companyId, user.companyId));
+      } else {
+        await db.insert(telephonySettings).values({
+          companyId: user.companyId,
+          noiseSuppressionEnabled: enabled,
+          noiseSuppressionDirection: direction || 'outbound',
+          provisioningStatus: 'pending' as const,
+        });
+      }
+      
+      res.json({
+        success: true,
+        enabled,
+        direction: direction || 'outbound',
+        updatedNumbers: numbersResult.numbers.length - errors.length,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (error: any) {
+      console.error("[Noise Suppression] Update error:", error);
+      res.status(500).json({ message: "Failed to update noise suppression settings" });
+    }
+  });
+
 
   // =====================================================
   // TELNYX MANAGED ACCOUNTS ENDPOINTS

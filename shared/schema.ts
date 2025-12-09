@@ -4790,6 +4790,10 @@ export const telephonySettings = pgTable("telephony_settings", {
   monthlyUsageLimit: numeric("monthly_usage_limit", { precision: 10, scale: 2 }).default("25.00"),
   usageLimitAction: text("usage_limit_action").default("block").$type<"block" | "notify">(),
   
+  // Audio Features
+  noiseSuppressionEnabled: boolean("noise_suppression_enabled").notNull().default(false),
+  noiseSuppressionDirection: text("noise_suppression_direction").default("outbound").$type<"inbound" | "outbound" | "both">(),
+  
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
