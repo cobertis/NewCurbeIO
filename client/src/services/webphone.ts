@@ -895,16 +895,37 @@ class WebPhoneManager {
     }
     
     try {
-      // Request microphone permission before making call
-      console.log('[WebPhone] Requesting microphone permission...');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      console.log('[WebPhone] Microphone permission granted');
+      // Fetch audio processing settings from server before making call
+      let audioConstraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        autoGainControl: true,
+        noiseSuppression: false // Default off, will be enabled if configured
+      };
       
-      // Create inviter with audio constraints
+      try {
+        const nsResponse = await fetch('/api/telnyx/noise-suppression', { credentials: 'include' });
+        if (nsResponse.ok) {
+          const nsSettings = await nsResponse.json();
+          // Enable browser-side noise suppression if outbound or both directions
+          if (nsSettings.enabled && (nsSettings.direction === 'outbound' || nsSettings.direction === 'both')) {
+            audioConstraints.noiseSuppression = true;
+            console.log('[WebPhone] 🔇 Noise suppression ENABLED for outbound audio');
+          }
+        }
+      } catch (nsError) {
+        console.warn('[WebPhone] Could not fetch noise suppression settings:', nsError);
+      }
+      
+      // Request microphone permission with audio processing constraints
+      console.log('[WebPhone] Requesting microphone with constraints:', audioConstraints);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
+      console.log('[WebPhone] Microphone permission granted with noise suppression:', audioConstraints.noiseSuppression);
+      
+      // Create inviter with matching audio constraints
       const inviter = new Inviter(this.userAgent, targetURI, {
         sessionDescriptionHandlerOptions: {
           constraints: {
-            audio: true,
+            audio: audioConstraints,
             video: false
           }
         }
@@ -1004,19 +1025,40 @@ class WebPhoneManager {
     try {
       this.currentSession = session;
       
+      // Fetch audio processing settings from server for inbound calls
+      let audioConstraints: MediaTrackConstraints = {
+        echoCancellation: true,
+        autoGainControl: true,
+        noiseSuppression: false // Default off, will be enabled if configured
+      };
+      
+      try {
+        const nsResponse = await fetch('/api/telnyx/noise-suppression', { credentials: 'include' });
+        if (nsResponse.ok) {
+          const nsSettings = await nsResponse.json();
+          // Enable browser-side noise suppression if inbound or both directions
+          if (nsSettings.enabled && (nsSettings.direction === 'inbound' || nsSettings.direction === 'both')) {
+            audioConstraints.noiseSuppression = true;
+            console.log('[WebPhone] 🔇 Noise suppression ENABLED for inbound audio');
+          }
+        }
+      } catch (nsError) {
+        console.warn('[WebPhone] Could not fetch noise suppression settings:', nsError);
+      }
+      
       // Browser-Phone pattern: Just accept - the SessionDescriptionHandler-created event listener
       // already configured ontrack for instant audio when handleIncomingCall() was called
-      console.log('[WebPhone] Accepting call with instant audio...');
+      console.log('[WebPhone] Accepting call with constraints:', audioConstraints);
       await session.accept({
         sessionDescriptionHandlerOptions: {
           constraints: {
-            audio: true,
+            audio: audioConstraints,
             video: false
           }
         }
       });
       
-      console.log('[WebPhone] ✅ Call accepted - audio connected instantly via event listener');
+      console.log('[WebPhone] ✅ Call accepted with noise suppression:', audioConstraints.noiseSuppression);
     } catch (error) {
       console.error('[WebPhone] Failed to answer call:', error);
       this.endCall();
