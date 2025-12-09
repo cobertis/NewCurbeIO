@@ -1,0 +1,37 @@
+# Get Started with Telnyx SIP Trunking
+
+> Telnyx's SIP Trunking Getting Started guide provides all the information you need to get started with SIP trunking. In this guide, you'll learn how to create a Telnyx account, configure your devices, and make calls with SIP trunking.
+
+[Elastic SIP Trunking](https://telnyx.com/products/sip-trunks) from Telnyx is enabled using **SIP Connections** and **Outbound Voice Profiles**. Configure your connection as needed to set up an Elastic SIP Trunk for your PBX and start making and receiving calls globally.
+
+## SIP Connection
+
+> SIP Connections are used to configure inbound traffic and authentication for one or more phone numbers. A connection is needed to authenticate your client with our sip proxy (sip.telnyx.com).
+
+* You can choose between the following types of authentication:
+  * **Credentials** (Username & Password): Inbound and Outbound
+  * **IP address**: Inbound and Outbound
+  * **FQDN** (Inbound) + **Credentials** (Outbound)
+  * **FQDN** (Inbound) + **IP address** (Outbound)
+* Minimize latency by anchoring call media to a specific PoP in order to ensure your packets get off the internet, and onto the Telnyx private network as fast as possible. Choose your own PoP or allow us to determine the PoP with lowest latency.
+
+## Outbound Voice Profile
+
+> An outbound profile is required in order to make outbound calls through the Telnyx Network.
+
+* Assign a SIP Connection to an Outbound Voice Profile to enable full inbound and outbound connectivity.
+
+* Establish a service plan to select where you want to be able to send calls, specifying allowed destinations, max daily spends and max destination rates to keep your costs under control
+
+## Additional SIP Resources
+
+For more information on getting started with Telnyx, check out the below resources:
+
+* [https://sip.telnyx.com/](https://sip.telnyx.com/)
+* [The Beginner Guide to SIP Headers](https://telnyx.com/resources/the-beginners-guide-to-sip-headers)
+* [Most Common SIP Responses](https://telnyx.com/resources/sip-response-codes-need-know-2-minutes)
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://developers.telnyx.com/llms.txt

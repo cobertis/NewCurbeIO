@@ -1389,19 +1389,31 @@ export function WebPhoneFloatingWindow() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // FIX PROBLEM 1: Re-register audio elements EVERY time component becomes visible
-  // This ensures audio refs are NEVER lost after reload or when dialpad is toggled
+  // CRITICAL: Register audio elements UNCONDITIONALLY on mount
+  // Audio refs must be available regardless of visibility for active calls
   useEffect(() => {
-    if (isVisible && remoteAudioRef.current && localAudioRef.current) {
-      console.log('[WebPhone FloatingWindow] ✅ Registering audio elements on mount/visibility');
+    // Small delay to ensure audio elements are rendered
+    const registerAudio = () => {
+      if (remoteAudioRef.current && localAudioRef.current) {
+        console.log('[WebPhone FloatingWindow] ✅ Registering audio elements (unconditional)');
+        setAudioElements(localAudioRef.current, remoteAudioRef.current);
+        telnyxWebRTC.setAudioElement(remoteAudioRef.current);
+      } else {
+        console.warn('[WebPhone FloatingWindow] ⚠️ Audio refs not ready, retrying...');
+        // Retry after a short delay if refs aren't ready yet
+        setTimeout(registerAudio, 100);
+      }
+    };
+    
+    registerAudio();
+  }, []); // Empty deps - run once on mount
+  
+  // Also re-register when visibility changes (in case refs were updated)
+  useEffect(() => {
+    if (remoteAudioRef.current && localAudioRef.current) {
+      console.log('[WebPhone FloatingWindow] ✅ Re-registering audio elements on visibility change');
       setAudioElements(localAudioRef.current, remoteAudioRef.current);
-      // CRITICAL: Also re-register for Telnyx WebRTC
       telnyxWebRTC.setAudioElement(remoteAudioRef.current);
-    } else if (isVisible) {
-      console.warn('[WebPhone FloatingWindow] ⚠️ Audio refs not ready:', {
-        remote: !!remoteAudioRef.current,
-        local: !!localAudioRef.current
-      });
     }
   }, [isVisible, setAudioElements]);
   
@@ -1671,13 +1683,24 @@ export function WebPhoneFloatingWindow() {
     setIsEditMode(false);
   };
   
-  if (!isVisible) return null;
+  // CRITICAL: Audio elements must ALWAYS be rendered, even when dialpad is hidden
+  // This prevents audio stream destruction during active calls
+  const audioElements = (
+    <>
+      <audio ref={remoteAudioRef} autoPlay playsInline />
+      <audio ref={localAudioRef} autoPlay muted playsInline />
+    </>
+  );
+  
+  if (!isVisible) {
+    // Still render audio elements when hidden to maintain call audio
+    return audioElements;
+  }
   
   return (
     <>
-      {/* Hidden audio elements */}
-      <audio ref={remoteAudioRef} autoPlay />
-      <audio ref={localAudioRef} autoPlay muted />
+      {/* Hidden audio elements - always rendered */}
+      {audioElements}
       
       {/* iPhone-style Floating Window */}
       <div

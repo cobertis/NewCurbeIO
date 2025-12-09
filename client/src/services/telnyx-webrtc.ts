@@ -289,7 +289,76 @@ class TelnyxWebRTCManager {
   }
   
   public setAudioElement(element: HTMLAudioElement) {
+    console.log('[Telnyx WebRTC] Audio element registered:', !!element);
     this.audioElement = element;
+    
+    // If there's an active call with remoteStream, connect it now
+    const store = useTelnyxStore.getState();
+    if (store.currentCall) {
+      const call = store.currentCall as any;
+      if (call.remoteStream) {
+        console.log('[Telnyx WebRTC] Reconnecting existing call audio after element registration');
+        this.connectRemoteAudio(call);
+      }
+    }
+  }
+  
+  /**
+   * CRITICAL: Connect remote audio stream to audio element with robust retry logic
+   * This ensures bidirectional audio works even if audio element wasn't available initially
+   */
+  private connectRemoteAudio(call: any, retryCount = 0): void {
+    const maxRetries = 5;
+    const retryDelay = 200;
+    
+    console.log(`[Telnyx WebRTC] connectRemoteAudio attempt ${retryCount + 1}/${maxRetries + 1}:`, {
+      hasAudioElement: !!this.audioElement,
+      hasRemoteStream: !!call?.remoteStream,
+      remoteStreamActive: call?.remoteStream?.active,
+      audioTracks: call?.remoteStream?.getAudioTracks?.()?.length || 0,
+    });
+    
+    if (this.audioElement && call?.remoteStream) {
+      try {
+        // Set the stream as source
+        this.audioElement.srcObject = call.remoteStream;
+        this.audioElement.volume = 1.0;
+        this.audioElement.muted = false;
+        
+        // Play the audio
+        this.audioElement.play()
+          .then(() => {
+            console.log('[Telnyx WebRTC] ✅ Remote audio playing successfully!');
+            console.log('[Telnyx WebRTC] Audio element state:', {
+              paused: this.audioElement?.paused,
+              muted: this.audioElement?.muted,
+              volume: this.audioElement?.volume,
+              readyState: this.audioElement?.readyState,
+            });
+          })
+          .catch((error) => {
+            console.error('[Telnyx WebRTC] ❌ Failed to play audio:', error);
+            // Retry on autoplay issues
+            if (retryCount < maxRetries) {
+              setTimeout(() => this.connectRemoteAudio(call, retryCount + 1), retryDelay);
+            }
+          });
+      } catch (error) {
+        console.error('[Telnyx WebRTC] ❌ Error connecting audio:', error);
+        if (retryCount < maxRetries) {
+          setTimeout(() => this.connectRemoteAudio(call, retryCount + 1), retryDelay);
+        }
+      }
+    } else {
+      console.warn('[Telnyx WebRTC] ⚠️ Missing audio element or remoteStream');
+      // Retry if we haven't exceeded max retries
+      if (retryCount < maxRetries) {
+        console.log(`[Telnyx WebRTC] Retrying in ${retryDelay}ms...`);
+        setTimeout(() => this.connectRemoteAudio(call, retryCount + 1), retryDelay);
+      } else {
+        console.error('[Telnyx WebRTC] ❌ Max retries exceeded for audio connection');
+      }
+    }
   }
   
   public async initialize(sipUsername: string, sipPassword: string, callerIdNumber?: string): Promise<void> {
@@ -381,10 +450,8 @@ class TelnyxWebRTCManager {
             };
             this.logCallToServer('active');
             
-            if (this.audioElement && call.remoteStream) {
-              this.audioElement.srcObject = call.remoteStream;
-              this.audioElement.play().catch(console.error);
-            }
+            // CRITICAL: Connect remote audio stream for bidirectional audio
+            this.connectRemoteAudio(call);
           } else if (call.state === 'hangup' || call.state === 'destroy') {
             console.log('[Telnyx WebRTC] Call ended');
             this.stopRingback(); // Stop ringback if call ends before answer

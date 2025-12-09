@@ -1,0 +1,101 @@
+# Quickstart for SIP Trunking
+
+> Telnyx's Developer Portal is the best place to start if you're looking to create a voice application. In this quickstart, you'll learn how to create a new portal and configure your SIP trunking settings.
+
+In this guide, you'll learn how to get started with your Mission Control account after sign up.
+
+This article lists **four** requirements needed to set up your Telnyx Mission Control Portal account so that it's ready to be configured to your PBX phone system, softphone client, or softswitch of your choice.
+
+Before you get started, you will need to set up a Mission Control Portal account. To do this, head to <a href="https://telnyx.com/sign-up">
+telnyx.com/sign-up</a> to sign up for your free Telnyx account. It’ll give you access to our Mission Control Portal, where you can buy numbers, set up and manage messaging profiles and more.
+
+***
+
+## Step 1: Level 1 Verification
+
+In order to assign a SIP Connection/Messaging Profile to a DID or a connection to an Outbound Voice Profile, you'll need to be Level 1 verified. More information on account verification can be found <a href="https://support.telnyx.com/en/articles/1130595-account-verification">
+here</a>.
+
+## Step 2: SIP Connection Setup
+
+A connection is needed to authenticate your client with our SIP proxy (sip.telnyx.com). We have three authentication options on the portal:
+**Credentials**, **IP Address** & **FQDN**.
+
+### Initial Steps
+
+1. Navigate to the **SIP Connections** page of the Mission Control Portal.
+2. Click the "**+ Add SIP Connection**" button near the top right corner of the page.
+3. Enter the name you wish to have for your SIP Connection.
+
+You must then select one of the authentication methods that you wish to use to whitelist your server to our <a href="https://sip.telnyx.com/">
+sip.telnyx.com</a> domain.
+
+#### Option 1: *Credentials Authentication*
+
+1. Select "**Credentials**" as the "Connection Type".
+2. A username and password will automatically be generated but you change the credentials by clicking the "edit" button to the left. Please make sure you use strong credentials.
+3. Click "**Set Credentials**".
+4. Click "**Done**".
+
+> **Note** - Once your Credential Connection is created, you can display the username and password by clicking the eye icon under the "Auth Detail" column.
+
+![Credential Connection Settings](https://images.ctfassets.net/4b49ta6b3nwj/5b65oAw59Xn6XwfP1x3fQa/f8fb719654847ce997e6817c0a8a6b97/Screenshot_from_2020-04-22_18-21-51.png)
+
+#### Option 2: *IP Authentication*
+
+1. Select "**IP Address**" as the "Connection Type".
+2. Enter the IP address that your switch is behind - You can specify the port number by entering in your port number after the IP address with a colon in between. *Example: 192.76.120.10:5060*
+3. Click "**Add IP**".
+4. Click "**Done**".
+
+> **Note** - You can assign multiple IP addresses to a single IP registered Connection. You can set the routing priority and routing method implemented on the Connection.
+
+#### Option 3: *FQDN Authentication*
+
+1. Select "**FQDN**" as the "Connection Type".
+2. Enter your  fully qualified domain name in the "**INBOUND**" section and click "**Add FQDN**".
+3. In the "**OUTBOUND**" section, you can pick between Credential or IP authentication. Once the credential details or IP address has been entered select "Set Credentials" or "Add IP" depending on which authentication method you selected.
+4. Click "**Done**".
+
+> **Note** - You can assign multiple FQDN addresses on the Inbound section and multiple IP addresses on the Outbound section to a single FQDN registered SIP Connection. You can set the routing priority and routing method implemented on the SIP Connection.
+
+More details on the SIP Connection authentication types and how to set it up can be found <a href="https://support.telnyx.com/en/articles/1177115-how-to-setup-a-did-to-sip-connection">
+here</a>.
+
+> You can also do this programmatically via our **RESTful API**. Check out our documentation for [SIP Connections](/api-reference/connections/list-connections).
+
+## Step 3: DIDs
+
+A DID is required in order to receive inbound calls to your client. Once you have purchased a DID on your account, you'll have to assign the SIP Connection you wish to receive inbound calls to. More details on our number search feature can be found <a href="https://support.telnyx.com/en/articles/4380325-searching-purchasing-ordering-dids">
+here</a>. Information on assigning DIDs to a connection and DID features can be found <a href="https://support.telnyx.com/en/articles/1177115-how-to-setup-a-did-to-sip-connection">
+here</a>.
+
+> You can also do this programmatically via our **RESTful API**. Check out our documentation for Numbers.
+
+## Step 4: Outbound Voice Profile
+
+An Outbound Voice Profile is required in order to make outbound calls. More information on creating an Outbound Voice Profile and its features are explained <a href="https://support.telnyx.com/en/articles/4320411-more-about-outbound-voice-profiles">
+here</a>.
+
+> You can also do this programmatically via our **RESTful API**. Check out our documentation for [Outbound Voice Profiles](/docs/voice/outbound-voice-profiles).
+
+Additional information that may be needed for configuring your client, such as a list of our signalling and media IP's, to our SIP proxy, can be found at <a href="https://sip.telnyx.com/">
+sip.telnyx.com</a>.
+
+***
+
+**Can't find what you're looking for? Need more help setting up SIP Trunks?**
+
+Our knowledge base is currently undergoing a makeover which will include more up to date videos to match our ever growing platform!
+
+Click the chat bubble at your lower right hand corner and start a chat!
+
+**Useful Resources**
+
+* <a href="https://telnyx.com/resources/the-beginners-guide-to-sip-headers">The Beginner Guide to SIP Headers</a>
+* <a href="https://telnyx.com/resources/sip-response-codes-need-know-2-minutes">Most Common SIP Responses</a>
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://developers.telnyx.com/llms.txt
