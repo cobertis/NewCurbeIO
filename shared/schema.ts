@@ -4835,6 +4835,124 @@ export type TelephonyCredentials = typeof telephonyCredentials.$inferSelect;
 export type InsertTelephonyCredentials = z.infer<typeof insertTelephonyCredentialsSchema>;
 
 // =====================================================
+// CALL LOGS (Call History for WebPhone)
+// =====================================================
+
+export const callDirections = ["inbound", "outbound"] as const;
+export type CallDirection = typeof callDirections[number];
+
+export const callStatuses = ["answered", "missed", "busy", "failed", "voicemail", "no_answer"] as const;
+export type CallStatus = typeof callStatuses[number];
+
+export const callLogs = pgTable("call_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  
+  // Call identifiers
+  telnyxCallId: text("telnyx_call_id"), // Telnyx call control ID
+  telnyxSessionId: text("telnyx_session_id"), // Telnyx session ID
+  
+  // Phone numbers
+  fromNumber: text("from_number").notNull(),
+  toNumber: text("to_number").notNull(),
+  
+  // Call info
+  direction: text("direction").notNull().$type<CallDirection>(),
+  status: text("status").notNull().$type<CallStatus>(),
+  
+  // Duration in seconds
+  duration: integer("duration").default(0),
+  
+  // Contact info (if matched)
+  contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  callerName: text("caller_name"),
+  
+  // Recording
+  recordingUrl: text("recording_url"),
+  
+  // Timestamps
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+  answeredAt: timestamp("answered_at", { withTimezone: true }),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("call_logs_company_id_idx").on(table.companyId),
+  userIdIdx: index("call_logs_user_id_idx").on(table.userId),
+  directionIdx: index("call_logs_direction_idx").on(table.direction),
+  statusIdx: index("call_logs_status_idx").on(table.status),
+  startedAtIdx: index("call_logs_started_at_idx").on(table.startedAt),
+  telnyxCallIdIdx: index("call_logs_telnyx_call_id_idx").on(table.telnyxCallId),
+}));
+
+// Call Logs Insert Schema
+export const insertCallLogSchema = createInsertSchema(callLogs).omit({ 
+  id: true, createdAt: true 
+});
+
+// Call Logs Types
+export type CallLog = typeof callLogs.$inferSelect;
+export type InsertCallLog = z.infer<typeof insertCallLogSchema>;
+
+// =====================================================
+// VOICEMAILS (Voicemail Messages)
+// =====================================================
+
+export const voicemailStatuses = ["new", "read", "archived", "deleted"] as const;
+export type VoicemailStatus = typeof voicemailStatuses[number];
+
+export const voicemails = pgTable("voicemails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  
+  // Telnyx identifiers
+  telnyxCallSessionId: text("telnyx_call_session_id"),
+  telnyxConnectionId: text("telnyx_connection_id"),
+  
+  // Caller info
+  fromNumber: text("from_number").notNull(),
+  toNumber: text("to_number").notNull(),
+  callerName: text("caller_name"),
+  
+  // Contact match
+  contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  
+  // Recording
+  recordingUrl: text("recording_url").notNull(),
+  duration: integer("duration").default(0), // Duration in seconds
+  
+  // Transcription (if available)
+  transcription: text("transcription"),
+  
+  // Status
+  status: text("status").notNull().default("new").$type<VoicemailStatus>(),
+  
+  // Timestamps
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("voicemails_company_id_idx").on(table.companyId),
+  userIdIdx: index("voicemails_user_id_idx").on(table.userId),
+  statusIdx: index("voicemails_status_idx").on(table.status),
+  receivedAtIdx: index("voicemails_received_at_idx").on(table.receivedAt),
+  fromNumberIdx: index("voicemails_from_number_idx").on(table.fromNumber),
+}));
+
+// Voicemail Insert Schema
+export const insertVoicemailSchema = createInsertSchema(voicemails).omit({ 
+  id: true, createdAt: true, updatedAt: true 
+});
+
+// Voicemail Types
+export type Voicemail = typeof voicemails.$inferSelect;
+export type InsertVoicemail = z.infer<typeof insertVoicemailSchema>;
+
+// =====================================================
 // CAMPAIGN WIZARD COMPREHENSIVE PAYLOAD SCHEMA
 // =====================================================
 

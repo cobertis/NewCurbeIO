@@ -88,8 +88,8 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, desc, or, sql, inArray } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages } from "@shared/schema";
+import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -27755,6 +27755,240 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[E911] Get addresses error:", error);
       res.status(500).json({ message: "Failed to get emergency addresses" });
+    }
+  });
+
+
+  // =====================================================
+  // CALL LOGS (Call History for WebPhone)
+  // =====================================================
+
+  // GET /api/call-logs - Get call history for company
+  app.get("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { filter, limit = "50" } = req.query;
+      const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
+
+      const logs = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.companyId, user.companyId))
+        .orderBy(desc(callLogs.startedAt))
+        .limit(parsedLimit);
+
+      res.json({ logs });
+    } catch (error: any) {
+      console.error("[Call Logs] Get error:", error);
+      res.status(500).json({ message: "Failed to get call history" });
+    }
+  });
+
+  // POST /api/call-logs - Create a call log entry
+  app.post("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { 
+        fromNumber, 
+        toNumber, 
+        direction, 
+        status, 
+        duration,
+        callerName,
+        telnyxCallId,
+        telnyxSessionId,
+        startedAt,
+        answeredAt,
+        endedAt
+      } = req.body;
+
+      if (!fromNumber || !toNumber || !direction || !status) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const [log] = await db
+        .insert(callLogs)
+        .values({
+          companyId: user.companyId,
+          userId: user.id,
+          fromNumber,
+          toNumber,
+          direction,
+          status,
+          duration: duration || 0,
+          callerName,
+          telnyxCallId,
+          telnyxSessionId,
+          startedAt: startedAt ? new Date(startedAt) : new Date(),
+          answeredAt: answeredAt ? new Date(answeredAt) : null,
+          endedAt: endedAt ? new Date(endedAt) : null,
+        })
+        .returning();
+
+      res.json({ success: true, log });
+    } catch (error: any) {
+      console.error("[Call Logs] Create error:", error);
+      res.status(500).json({ message: "Failed to create call log" });
+    }
+  });
+
+  // DELETE /api/call-logs/:id - Delete a call log entry
+  app.delete("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      await db
+        .delete(callLogs)
+        .where(and(
+          eq(callLogs.id, id),
+          eq(callLogs.companyId, user.companyId)
+        ));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Call Logs] Delete error:", error);
+      res.status(500).json({ message: "Failed to delete call log" });
+    }
+  });
+
+  // DELETE /api/call-logs - Clear all call logs for company
+  app.delete("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      await db
+        .delete(callLogs)
+        .where(eq(callLogs.companyId, user.companyId));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Call Logs] Clear all error:", error);
+      res.status(500).json({ message: "Failed to clear call history" });
+    }
+  });
+
+  // =====================================================
+  // VOICEMAILS
+  // =====================================================
+
+  // GET /api/voicemails - Get voicemails for company
+  app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { status, limit = "50" } = req.query;
+      const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
+
+      const messages = await db
+        .select()
+        .from(voicemails)
+        .where(
+          status 
+            ? and(eq(voicemails.companyId, user.companyId), eq(voicemails.status, status as string))
+            : eq(voicemails.companyId, user.companyId)
+        )
+        .orderBy(desc(voicemails.receivedAt))
+        .limit(parsedLimit);
+
+      // Get unread count
+      const [unreadCount] = await db
+        .select({ count: count() })
+        .from(voicemails)
+        .where(and(
+          eq(voicemails.companyId, user.companyId),
+          eq(voicemails.status, "new")
+        ));
+
+      res.json({ 
+        voicemails: messages,
+        unreadCount: unreadCount?.count || 0
+      });
+    } catch (error: any) {
+      console.error("[Voicemails] Get error:", error);
+      res.status(500).json({ message: "Failed to get voicemails" });
+    }
+  });
+
+  // PATCH /api/voicemails/:id - Update voicemail (mark as read, etc.)
+  app.patch("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const updateData: any = { updatedAt: new Date() };
+      
+      if (status) {
+        updateData.status = status;
+        if (status === "read") {
+          updateData.readAt = new Date();
+        }
+      }
+
+      const [updated] = await db
+        .update(voicemails)
+        .set(updateData)
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ))
+        .returning();
+
+      res.json({ success: true, voicemail: updated });
+    } catch (error: any) {
+      console.error("[Voicemails] Update error:", error);
+      res.status(500).json({ message: "Failed to update voicemail" });
+    }
+  });
+
+  // DELETE /api/voicemails/:id - Delete a voicemail
+  app.delete("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      await db
+        .delete(voicemails)
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Voicemails] Delete error:", error);
+      res.status(500).json({ message: "Failed to delete voicemail" });
     }
   });
 

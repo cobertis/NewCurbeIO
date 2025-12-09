@@ -995,6 +995,19 @@ export function WebPhoneFloatingWindow() {
   });
   
   const hasTelnyxNumber = (telnyxNumbersData?.numbers?.length || 0) > 0;
+
+  // Query for call logs from backend
+  const { data: callLogsData, refetch: refetchCallLogs } = useQuery<{ logs: any[] }>({
+    queryKey: ['/api/call-logs'],
+  });
+  const backendCallLogs = callLogsData?.logs || [];
+
+  // Query for voicemails from backend
+  const { data: voicemailsData, refetch: refetchVoicemails } = useQuery<{ voicemails: any[], unreadCount: number }>({
+    queryKey: ['/api/voicemails'],
+  });
+  const voicemailList = voicemailsData?.voicemails || [];
+  const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
   const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   
   // Telnyx WebRTC state
@@ -1356,10 +1369,10 @@ export function WebPhoneFloatingWindow() {
     }
   };
   
-  const missedCallsCount = callHistory.filter(c => c.status === 'missed').length;
+  const missedCallsCount = backendCallLogs.filter((c: any) => c.status === 'missed').length;
   
   // Filter calls based on selected filter
-  const filteredCallHistory = callHistory.filter(call => {
+  const filteredCallHistory = backendCallLogs.filter((call: any) => {
     if (callFilter === 'all') return true;
     if (callFilter === 'missed') return call.status === 'missed';
     if (callFilter === 'answered') return call.status === 'answered' || call.status === 'ended';
@@ -1929,10 +1942,10 @@ export function WebPhoneFloatingWindow() {
                           
                           <div className="divide-y divide-border">
                             {filteredCallHistory.map((call) => {
-                              const initials = call.displayName 
-                                ? call.displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                              const initials = call.callerName 
+                                ? call.callerName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
                                 : '';
-                              const timeStr = format(new Date(call.startTime), 'h:mma');
+                              const timeStr = format(new Date(call.startedAt), 'h:mma');
                               const statusStyle = getCallStatusStyle(call.status);
                               const isSelected = selectedCallIds.has(call.id);
                               
@@ -1975,11 +1988,11 @@ export function WebPhoneFloatingWindow() {
                                         "text-sm sm:text-base font-normal truncate",
                                         call.status === 'missed' ? statusStyle.color : 'text-foreground'
                                       )}>
-                                        {call.displayName || "Unknown Caller"}
+                                        {call.callerName || "Unknown Caller"}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-                                      <span>{formatCallerNumber(call.phoneNumber)}</span>
+                                      <span>{formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}</span>
                                     </div>
                                   </div>
                                   
@@ -1990,7 +2003,7 @@ export function WebPhoneFloatingWindow() {
                                       <button
                                         onClick={() => {
                                           setViewMode('keypad');
-                                          setDialNumber(call.phoneNumber);
+                                          setDialNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber));
                                         }}
                                         className="text-blue-500 hover:opacity-80 transition-opacity"
                                         data-testid={`button-call-${call.id}`}
