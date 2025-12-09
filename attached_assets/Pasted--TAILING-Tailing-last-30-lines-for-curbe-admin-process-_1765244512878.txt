@@ -1,0 +1,245 @@
+[TAILING] Tailing last 30 lines for [curbe-admin] process (change the value with --lines option)
+/root/.pm2/logs/curbe-admin-out.log last 30 lines:
+/root/.pm2/logs/curbe-admin-error.log last 30 lines:
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/index.js
+1|curbe-admin  | file:///var/www/curbe/dist/index.js:4628
+1|curbe-admin  |       throw new Error("DATABASE_URL environment variable is not set");
+1|curbe-admin  |             ^
+1|curbe-admin  | Error: DATABASE_URL environment variable is not set
+1|curbe-admin  |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+1|curbe-admin  |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+1|curbe-admin  |     at file:///var/www/curbe/dist/index.js:18979:1
+1|curbe-admin  |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+1|curbe-admin  |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+1|curbe-admin  |     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+1|curbe-admin  | Node.js v20.19.5
+1|curbe-admin  | > rest-express@1.0.0 start
+1|curbe-admin  | > NODE_ENV=production node dist/
