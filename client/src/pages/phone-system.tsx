@@ -1106,6 +1106,8 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
   const [callScreeningMode, setCallScreeningMode] = useState<"flag_calls" | "reject_calls">("reject_calls");
   const [callForwardingEnabled, setCallForwardingEnabled] = useState(false);
   const [callForwardingNumber, setCallForwardingNumber] = useState("");
+  const [voicemailEnabled, setVoicemailEnabled] = useState(false);
+  const [voicemailPin, setVoicemailPin] = useState("");
   const [cnamLookup, setCnamLookup] = useState(false);
   const [cnamName, setCnamName] = useState("");
   const [cnamEnabled, setCnamEnabled] = useState(false);
@@ -1284,6 +1286,47 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
       });
     },
   });
+
+  // Query for voicemail settings
+  const voicemailQuery = useQuery<{ success: boolean; enabled?: boolean; pin?: string }>({
+    queryKey: ["/api/telnyx/voicemail", number.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/telnyx/voicemail/${number.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch voicemail settings");
+      return res.json();
+    },
+    enabled: !!number.id,
+  });
+
+  // Update voicemail state when query loads
+  useEffect(() => {
+    if (voicemailQuery.data?.success) {
+      setVoicemailEnabled(voicemailQuery.data.enabled || false);
+      setVoicemailPin(voicemailQuery.data.pin || "");
+    }
+  }, [voicemailQuery.data]);
+
+  // Mutation for voicemail
+  const voicemailMutation = useMutation({
+    mutationFn: async ({ enabled, pin }: { enabled: boolean; pin: string }) => {
+      return await apiRequest("POST", `/api/telnyx/voicemail/${number.id}`, { enabled, pin });
+    },
+    onSuccess: (_, { enabled }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voicemail", number.id] });
+      toast({
+        title: enabled ? "Voicemail Enabled" : "Voicemail Disabled",
+        description: enabled ? "Voicemail is now active. Dial *98 to check messages." : "Voicemail has been disabled.",
+      });
+    },
+    onError: (error: any) => {
+      setVoicemailEnabled(!voicemailEnabled);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Could not update voicemail settings",
+      });
+    },
+  });
   
   const handleCallRecordingToggle = (enabled: boolean) => {
     setCallRecording(enabled);
@@ -1330,6 +1373,31 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
   const handleCallerIdLookupToggle = (enabled: boolean) => {
     setCnamLookup(enabled);
     callerIdLookupMutation.mutate(enabled);
+  };
+
+  const handleVoicemailToggle = (enabled: boolean) => {
+    if (enabled && (!voicemailPin || voicemailPin.length !== 4)) {
+      toast({
+        variant: "destructive",
+        title: "PIN Required",
+        description: "Please enter a 4-digit PIN first.",
+      });
+      return;
+    }
+    setVoicemailEnabled(enabled);
+    voicemailMutation.mutate({ enabled, pin: voicemailPin });
+  };
+
+  const handleVoicemailPinSave = () => {
+    if (!voicemailPin || !/^\d{4}$/.test(voicemailPin)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid PIN",
+        description: "PIN must be exactly 4 digits.",
+      });
+      return;
+    }
+    voicemailMutation.mutate({ enabled: voicemailEnabled, pin: voicemailPin });
   };
 
   return (
@@ -1525,6 +1593,51 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
                   {callForwardingEnabled ? "Calls will be forwarded to this number" : "Enter a number and enable to start forwarding"}
+                </p>
+              </div>
+            </div>
+
+            {/* Voicemail */}
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="h-5 w-5 text-slate-500" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Voicemail</p>
+                    <p className="text-xs text-slate-400">Enable voicemail for missed calls. Dial *98 to check messages.</p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={voicemailEnabled} 
+                  onCheckedChange={handleVoicemailToggle}
+                  disabled={voicemailMutation.isPending}
+                  data-testid={`switch-voicemail-${number.phone_number}`}
+                />
+              </div>
+              <div className="pt-2 border-t border-slate-200 dark:border-border">
+                <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-1 block">
+                  Access PIN (4 digits)
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={voicemailPin}
+                    onChange={(e) => setVoicemailPin(e.target.value.replace(/\D/g, '').substring(0, 4))}
+                    placeholder="1234"
+                    maxLength={4}
+                    className="flex-1 h-9 bg-white dark:bg-background font-mono tracking-widest"
+                    data-testid={`input-voicemail-pin-${number.phone_number}`}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleVoicemailPinSave}
+                    disabled={voicemailMutation.isPending || voicemailPin.length !== 4}
+                    data-testid={`button-save-voicemail-${number.phone_number}`}
+                  >
+                    {voicemailMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  {voicemailEnabled ? "Voicemail is active. Use your PIN to access messages." : "Set a PIN and enable to activate voicemail"}
                 </p>
               </div>
             </div>

@@ -27759,6 +27759,71 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/telnyx/voicemail/:phoneNumberId - Get voicemail settings
+  app.get("/api/telnyx/voicemail/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getVoicemailSettings } = await import("./services/telnyx-numbers-service");
+      const result = await getVoicemailSettings(phoneNumberId, user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true, enabled: result.enabled, pin: result.pin });
+    } catch (error: any) {
+      console.error("[Telnyx Voicemail] Get settings error:", error);
+      res.status(500).json({ message: "Failed to get voicemail settings" });
+    }
+  });
+
+  // POST /api/telnyx/voicemail/:phoneNumberId - Update voicemail settings
+  app.post("/api/telnyx/voicemail/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      const { enabled, pin } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ message: "enabled (boolean) is required" });
+      }
+
+      if (enabled && (!pin || !/^\d{4}$/.test(pin))) {
+        return res.status(400).json({ message: "PIN must be exactly 4 digits when enabling voicemail" });
+      }
+
+      const { updateVoicemailSettings } = await import("./services/telnyx-numbers-service");
+      const result = await updateVoicemailSettings(phoneNumberId, user.companyId, enabled, pin);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Telnyx Voicemail] Update error:", error);
+      res.status(500).json({ message: "Failed to update voicemail settings" });
+    }
+  });
+
   });
 
 

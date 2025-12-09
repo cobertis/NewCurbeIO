@@ -792,6 +792,129 @@ export async function updateCallForwarding(
   }
 }
 
+/**
+ * Get voicemail settings for a phone number
+ */
+export async function getVoicemailSettings(
+  phoneNumberId: string,
+  companyId: string
+): Promise<{ success: boolean; enabled?: boolean; pin?: string; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!response.ok) {
+      // 404 means voicemail not configured yet - that's ok
+      if (response.status === 404) {
+        return { success: true, enabled: false, pin: "" };
+      }
+      const errorText = await response.text();
+      console.error(`[Telnyx Voicemail] Get settings error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to get voicemail settings: ${response.status}` };
+    }
+    
+    const result = await response.json();
+    return {
+      success: true,
+      enabled: result.data?.enabled || false,
+      pin: result.data?.pin?.toString() || "",
+    };
+  } catch (error) {
+    console.error("[Telnyx Voicemail] Get settings error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to get voicemail settings" };
+  }
+}
+
+/**
+ * Update voicemail settings for a phone number
+ */
+export async function updateVoicemailSettings(
+  phoneNumberId: string,
+  companyId: string,
+  enabled: boolean,
+  pin: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+
+    // Validate PIN is 4 digits
+    if (enabled && (!pin || !/^\d{4}$/.test(pin))) {
+      return { success: false, error: "PIN must be exactly 4 digits" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const payload = {
+      enabled,
+      pin: parseInt(pin, 10),
+    };
+    
+    console.log(`[Telnyx Voicemail] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}`);
+    
+    // Try PATCH first, if 404 then POST to create
+    let response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (response.status === 404) {
+      // Voicemail not created yet, use POST
+      response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+    }
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Voicemail] Update error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to update voicemail: ${response.status} - ${errorText}` };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx Voicemail] Update successful: enabled=${result.data?.enabled}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[Telnyx Voicemail] Update error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update voicemail settings" };
+  }
+}
+
 export async function getCompanyPhoneNumbers(companyId: string): Promise<{
   success: boolean;
   numbers?: any[];
