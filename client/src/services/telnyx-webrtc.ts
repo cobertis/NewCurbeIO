@@ -352,8 +352,19 @@ class TelnyxWebRTCManager {
         ringbackFile: undefined,
       });
       
-      this.client.on('telnyx.ready', () => {
+      this.client.on('telnyx.ready', async () => {
         console.log('[Telnyx WebRTC] Connected and ready');
+        
+        // CRITICAL: Enable microphone immediately so local audio track is available for calls
+        try {
+          console.log('[Telnyx WebRTC] Enabling microphone...');
+          await this.client!.enableMicrophone();
+          console.log('[Telnyx WebRTC] Microphone enabled successfully');
+        } catch (micError) {
+          console.error('[Telnyx WebRTC] Failed to enable microphone:', micError);
+          // Continue even if mic fails - user can still receive audio
+        }
+        
         store.setConnectionStatus('connected');
       });
       
@@ -515,9 +526,10 @@ class TelnyxWebRTCManager {
     const incomingCall = store.incomingCall;
     
     if (incomingCall) {
-      console.log('[Telnyx WebRTC] Answering call');
+      console.log('[Telnyx WebRTC] Answering call with audio enabled');
       this.stopRingtone(); // Stop ringtone when answering
-      incomingCall.answer();
+      // CRITICAL: Pass audio options to ensure local audio track is attached immediately
+      incomingCall.answer({ audio: true, video: false });
     }
   }
   
@@ -538,8 +550,16 @@ class TelnyxWebRTCManager {
     const currentCall = store.currentCall;
     
     if (currentCall) {
-      console.log('[Telnyx WebRTC] Hanging up');
-      currentCall.hangup();
+      // CRITICAL: Only call hangup() if the call is still in a hangupable state
+      // If the remote party already hung up (state is 'hangup' or 'destroy'), 
+      // calling hangup() will send a 486 Busy response instead of accepting the BYE
+      const callState = currentCall.state;
+      if (callState === 'hangup' || callState === 'destroy' || callState === 'purge') {
+        console.log('[Telnyx WebRTC] Call already ended by remote party, just clearing state');
+      } else {
+        console.log('[Telnyx WebRTC] Hanging up, call state:', callState);
+        currentCall.hangup();
+      }
       store.setCurrentCall(undefined);
     }
   }
