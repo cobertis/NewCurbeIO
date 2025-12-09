@@ -345,6 +345,17 @@ class TelnyxWebRTCManager {
       
       console.log('[Telnyx WebRTC] Initializing with:', { sipUsername, hasPassword: !!sipPassword });
       
+      // CRITICAL: Pre-acquire microphone permission BEFORE creating client
+      // This ensures the local audio track is ready when the first call arrives
+      console.log('[Telnyx WebRTC] Pre-acquiring microphone permission...');
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('[Telnyx WebRTC] Microphone permission granted');
+      } catch (micError) {
+        console.error('[Telnyx WebRTC] Failed to get microphone permission:', micError);
+        // Continue - user can still receive audio
+      }
+      
       this.client = new TelnyxRTC({
         login: sipUsername,
         password: sipPassword,
@@ -352,19 +363,24 @@ class TelnyxWebRTCManager {
         ringbackFile: undefined,
       });
       
-      this.client.on('telnyx.ready', async () => {
+      // CRITICAL: Assign remote audio element to SDK BEFORE connecting
+      // This allows the SDK to automatically manage remote audio playback
+      if (this.audioElement) {
+        console.log('[Telnyx WebRTC] Setting remoteElement on client');
+        this.client.remoteElement = this.audioElement;
+      }
+      
+      // CRITICAL: Enable microphone BEFORE connect() so tracks are ready for first call
+      console.log('[Telnyx WebRTC] Enabling microphone before connect...');
+      try {
+        await this.client.enableMicrophone();
+        console.log('[Telnyx WebRTC] Microphone enabled successfully');
+      } catch (micError) {
+        console.error('[Telnyx WebRTC] Failed to enable microphone:', micError);
+      }
+      
+      this.client.on('telnyx.ready', () => {
         console.log('[Telnyx WebRTC] Connected and ready');
-        
-        // CRITICAL: Enable microphone immediately so local audio track is available for calls
-        try {
-          console.log('[Telnyx WebRTC] Enabling microphone...');
-          await this.client!.enableMicrophone();
-          console.log('[Telnyx WebRTC] Microphone enabled successfully');
-        } catch (micError) {
-          console.error('[Telnyx WebRTC] Failed to enable microphone:', micError);
-          // Continue even if mic fails - user can still receive audio
-        }
-        
         store.setConnectionStatus('connected');
       });
       
@@ -511,6 +527,8 @@ class TelnyxWebRTCManager {
         destinationNumber,
         callerNumber: callerIdNumber,
         callerName: 'Curbe',
+        audio: true,  // Ensure audio is enabled for outbound calls
+        video: false,
       });
       
       store.setCurrentCall(call);
