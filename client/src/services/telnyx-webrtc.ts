@@ -87,6 +87,17 @@ class TelnyxWebRTCManager {
   private isOutboundCallInProgress: boolean = false;
   
   private constructor() {
+    // Create persistent audio element for remote audio - CRITICAL for incoming calls
+    // This element is created once and persists for the lifetime of the application
+    this.audioElement = document.createElement('audio');
+    this.audioElement.id = 'telnyx-remote-audio';
+    this.audioElement.autoplay = true;
+    this.audioElement.playsInline = true;
+    this.audioElement.volume = 1.0;
+    // Append to document body to ensure it's always in DOM
+    document.body.appendChild(this.audioElement);
+    console.log('[Telnyx WebRTC] Created persistent remote audio element');
+    
     // Create ringback audio element for outbound calls
     this.ringbackAudio = new Audio();
     this.ringbackAudio.loop = true;
@@ -306,7 +317,15 @@ class TelnyxWebRTCManager {
   }
   
   public setAudioElement(element: HTMLAudioElement) {
-    this.audioElement = element;
+    // Audio element is now created in constructor, this method is kept for backward compatibility
+    // Only log if a different element is provided (shouldn't happen normally)
+    if (element !== this.audioElement) {
+      console.log('[Telnyx WebRTC] setAudioElement called but using persistent element from constructor');
+    }
+  }
+  
+  public getAudioElement(): HTMLAudioElement | null {
+    return this.audioElement;
   }
   
   public async initialize(sipUsername: string, sipPassword: string, callerIdNumber?: string): Promise<void> {
