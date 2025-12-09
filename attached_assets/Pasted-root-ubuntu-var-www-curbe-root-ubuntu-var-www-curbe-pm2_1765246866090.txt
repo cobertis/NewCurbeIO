@@ -1,0 +1,103 @@
+root@ubuntu:/var/www/curbe# 
+root@ubuntu:/var/www/curbe# pm2 stop curbe-admin
+[PM2] Applying action stopProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ N/A     │ fork    │ 0        │ 0      │ 60   │ stopped   │ 0%       │ 0b       │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@ubuntu:/var/www/curbe# v
+v: command not found
+root@ubuntu:/var/www/curbe# pm2 delete curbe-admin
+[PM2] Applying action deleteProcessId on app [curbe-admin](ids: [ 0 ])
+[PM2] [curbe-admin](0) ✓
+┌────┬───────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name      │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+└────┴───────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@ubuntu:/var/www/curbe# pm2 delete curbe-admin
+[PM2][ERROR] Process or Namespace curbe-admin not found
+root@ubuntu:/var/www/curbe# bash /usr/local/bin/update-curbe-admin.sh^C
+root@ubuntu:/var/www/curbe# ^C
+root@ubuntu:/var/www/curbe# ^C
+root@ubuntu:/var/www/curbe# ^C
+root@ubuntu:/var/www/curbe# cd /var/www/curbe
+NODE_ENV=production pm2 start dist/index.js --name curbe-admin
+[PM2] Starting /var/www/curbe/dist/index.js in fork_mode (1 instance)
+[PM2] Done.
+┌────┬────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name           │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ curbe-admin    │ default     │ 1.0.0   │ fork    │ 1358851  │ 0s     │ 0    │ online    │ 0%       │ 16.9mb   │ root     │ disabled │
+└────┴────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@ubuntu:/var/www/curbe# pm2 save
+[PM2] Saving current process list...
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+root@ubuntu:/var/www/curbe# pm2 logs curbe-admin --lines 30
+
+[TAILING] Tailing last 30 lines for [curbe-admin] process (change the value with --lines option)
+/root/.pm2/logs/curbe-admin-out.log last 30 lines:
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-server.curbe.io
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-PIPELINING
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-SIZE 10240000
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-ETRN
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-AUTH DIGEST-MD5 CRAM-MD5 PLAIN LOGIN
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-ENHANCEDSTATUSCODES
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-8BITMIME
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250-DSN
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 250 CHUNKING
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] SMTP handshake finished
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] C: AUTH PLAIN AG5vLXJlcGx5QGF1dGguY3VyYmUuaW8ALyogc2VjcmV0ICov
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 235 2.7.0 Authentication successful
+0|curbe-ad | [2025-12-09 02:19:47] INFO  [DxjCaXXR5bc] User "no-reply@auth.curbe.io" authenticated
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] C: QUIT
+0|curbe-ad | SMTP connection verified successfully
+0|curbe-ad | [EMAIL] Email service connected successfully on startup
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] S: 221 2.0.0 Bye
+0|curbe-ad | [2025-12-09 02:19:47] DEBUG [DxjCaXXR5bc] Closing connection to the server using "end"
+0|curbe-ad | [2025-12-09 02:19:48] INFO  [DxjCaXXR5bc] Connection closed
+0|curbe-ad | [ContactRegistry] Skipping auto-backfill for company b5325600-9bf9-4eae-b34a-87d6ab2f5fb2 (Cobertis Insurance) - 66 contacts, 83 policies (ratio 1.3:1)
+0|curbe-ad | [ContactRegistry] Auto-backfill check complete
+0|curbe-ad | [BOUNCE PROCESSOR] Running initial check...
+0|curbe-ad | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-ad | [BOUNCE PROCESSOR] IMAP connection established
+0|curbe-ad | [BOUNCE PROCESSOR] INBOX opened, 0 total messages
+0|curbe-ad | [BOUNCE PROCESSOR] No unseen messages found
+0|curbe-ad | [BOUNCE PROCESSOR] Starting bounce email processing...
+0|curbe-ad | [BOUNCE PROCESSOR] IMAP connection established
+0|curbe-ad | [BOUNCE PROCESSOR] INBOX opened, 0 total messages
+0|curbe-ad | [BOUNCE PROCESSOR] No unseen messages found
+
+/root/.pm2/logs/curbe-admin-error.log last 30 lines:
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:14:03 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=IM2EuUKlw8k0HajzusQ4p (resolved id: /src/main.tsx?v=IM2EuUKlw8k0HajzusQ4p). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:16:59 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=PRaFJdlsmZAlIQ-oC_otO (resolved id: /src/main.tsx?v=PRaFJdlsmZAlIQ-oC_otO). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:18:03 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=oh1rhiDG7ZkYIMJDxfISy (resolved id: /src/main.tsx?v=oh1rhiDG7ZkYIMJDxfISy). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:19:18 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=2HsWYdJYiRqBrkQ1KXAX6 (resolved id: /src/main.tsx?v=2HsWYdJYiRqBrkQ1KXAX6). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:19:23 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=Kxu8k9zVmej5RXhUUC13i (resolved id: /src/main.tsx?v=Kxu8k9zVmej5RXhUUC13i). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | 2:19:46 AM [vite] Pre-transform error: Failed to load url /src/main.tsx?v=hpkRGq4q1WcW3zu8YBizw (resolved id: /src/main.tsx?v=hpkRGq4q1WcW3zu8YBizw). Does the file exist?
+0|curbe-ad | [FFmpeg] NOT FOUND - audio conversion will fail!
+0|curbe-ad | [FFmpeg] Install with: packager_tool install system ["ffmpeg"]
+0|curbe-ad | Error: DATABASE_URL environment variable is not set
+0|curbe-ad |     at server/db.ts (file:///var/www/curbe/dist/index.js:4628:13)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at server/storage.ts (file:///var/www/curbe/dist/index.js:4810:5)
+0|curbe-ad |     at __init (file:///var/www/curbe/dist/index.js:10:56)
+0|curbe-ad |     at file:///var/www/curbe/dist/index.js:18979:1
+0|curbe-ad |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|curbe-ad |     at async ModuleLoader.import (node:internal/modules/esm/loader:606:24)
+
+
