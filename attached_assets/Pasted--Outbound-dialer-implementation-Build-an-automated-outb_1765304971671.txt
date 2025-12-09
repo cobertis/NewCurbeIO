@@ -1,0 +1,364 @@
+# Outbound dialer implementation
+
+> Build an automated outbound dialer system using Telnyx WebRTC and Call Control API for high-volume calling campaigns.
+
+Build an automated outbound dialer system that enables agents to make high-volume outbound calls efficiently using Telnyx WebRTC and Call Control API.
+
+## Overview
+
+In building an outbound dialer solution leveraging Telnyx WebRTC, enable SIP connection credentials with Park Outbound Calls and webhook events to combine front-end WebRTC functionality with backend voice application.
+
+### Key features
+
+**Park Outbound Calls**
+
+* Combine front-end WebRTC application with backend voice application using Telnyx Voice APIs.
+* Enable advanced call flow control and routing.
+* [Learn more about Park Outbound Calls](https://support.telnyx.com/en/articles/4351104-sip-connection-settings#h_7e20c5a7f7).
+
+**Webhook events**
+
+* Monitor SIP connection events in real-time.
+* Receive notifications for call events: dialing, answering, bridging, hang-up, voicemail completion.
+* Primary/failover URL configuration for reliability.
+
+### Required components
+
+1. WebRTC Client.
+2. Backend Server Application.
+3. SIP Connection with Park Outbound Calls Enabled (select TeXML option when using the TeXML approach).
+
+## Frontend implementation
+
+In a typical front-end WebRTC application, there are many components that should be supported.
+
+**Agent status management**: The outbound dialer application should be able to display the agent's current status, such as, but not limited to, Available, Unavailable, Busy, and Offline. This type of management should not only act as an indicator for other agents but also limit agents' ability to transfer calls to unavailable agents.
+
+This status should also be correlated with the WebRTC client state. This means that when an agent's status is set to available, the WebRTC client should be fully registered and ready to place outbound calls. This should be handled at a global level, typically using state management frameworks such as [Global Context APIs](https://react.dev/reference/react/useContext) or [Redux](https://redux.js.org/).
+
+Here is an example softphone application (WebRTC client) with an option to change its current state.
+
+<img src="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-agent-status-management.png?fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=8a5e19458d05b54d86c6832a2b743851" alt="Outbound dialer agent status management interface" data-og-width="1831" width="1831" data-og-height="940" height="940" data-path="img/outbound-dialer-agent-status-management.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-agent-status-management.png?w=280&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=f88aa3f332df13f6bc5b8463bd8f7361 280w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-agent-status-management.png?w=560&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=5a9c1ce0164fa811054df5b650f737c0 560w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-agent-status-management.png?w=840&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=f3262c97d725923d5bb34ea03958950e 840w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-agent-status-management.png?w=1100&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=c246d33cf81f197f7cc90410122cb0c5 1100w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-agent-status-management.png?w=1650&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=94a55249bf961ad38ca17fca45599556 1650w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-agent-status-management.png?w=2500&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=754e0b632d542bfa28325f9c9c748f27 2500w" />
+
+**Call control toolbar**: The toolbar is a set of buttons within your WebRTC client dialer for handling calls, with options like Answer, Hangup, Mute/Unmute, Hold/Unhold, and selecting the caller ID. Here is an example of a dialer component.
+
+<img src="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-call-control-toolbar.png?fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=b3ee7a80420e746d31ce10e41a127d3d" alt="Outbound dialer call control toolbar with call handling options" data-og-width="1837" width="1837" data-og-height="820" height="820" data-path="img/outbound-dialer-call-control-toolbar.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-call-control-toolbar.png?w=280&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=b4a76b36e1c7c5f9bba88db6a4839500 280w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-call-control-toolbar.png?w=560&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=f3f2239c06962c8f711487212d8e1b3c 560w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-call-control-toolbar.png?w=840&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=aff6d180b01000fd31fba078c6bdad53 840w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-call-control-toolbar.png?w=1100&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=69d048806caecdd6de0671ad60fa15bf 1100w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-call-control-toolbar.png?w=1650&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=c8e7647971ec7d8e82dcfc3fd1123bfb 1650w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-call-control-toolbar.png?w=2500&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=64527aa8bf6de8b03fa911f64f769939 2500w" />
+
+Here are the functions written in JavaScript React which would be used to build the above options in the frontend app:
+
+## Backend implementation
+
+<Tabs>
+  <Tab title="Voice API">
+    The backend implementation is a crucial component of a successful call. The following sequence diagram covers a typical outbound call flow using [Telnyx Voice API](https://developers.telnyx.com/docs/voice/programmable-voice/sending-commands). Below the sequence diagram, I describe each step.
+
+        <img src="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=523802b99fe1d2ebb3dc7d3920e0eb2b" alt="Outbound dialer backend architecture diagram" data-og-width="2048" width="2048" data-og-height="1334" height="1334" data-path="img/outbound-dialer-backend.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=280&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=0a60618a97b511a418d315bc264992c6 280w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=560&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=40af7b546b2f882461bb857af6a28436 560w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=840&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=f2d03761f92a6d7a6e7cf7fe586d0dd1 840w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=1100&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=2a6209ae2ddaef5d5733dac15bbcae8e 1100w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=1650&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=c85c8fc1b5951e5ce37c19a50a53166b 1650w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=2500&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=f9fab0a16e66ed0267b2dc5e2eb78cb6 2500w" />
+
+    ### 1. Client Registers with Telnyx
+
+    The process starts with the WebRTC client (the Front End App) connecting to Telnyx by sending a `Client.connect (Register)` request. This is essentially the WebRTC client registering with Telnyx to initiate communications.
+
+    ```javascript  theme={null}
+    function connect() {
+      client = new TelnyxWebRTC.TelnyxRTC({
+        env: env,
+        login: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        ringtoneFile: './sounds/incoming_call.mp3',
+        // ringbackFile: './sounds/ringback_tone.mp3',
+      });
+
+      if (document.getElementById('audio').checked) {
+        client.enableMicrophone();
+      } else {
+        client.disableMicrophone();
+      }
+
+      client.on('telnyx.ready', function () {
+        btnConnect.classList.add('d-none');
+        btnDisconnect.classList.remove('d-none');
+        connectStatus.innerHTML = 'Connected';
+        startCall.disabled = false;
+      });
+
+      //Socket close, error and updating call states
+      ...
+    }
+    ```
+
+    ### 2. Initiating a Call
+
+    Once the WebRTC client is connected, it requests to initiate a call by sending a `Client.newCall(destinationNumber,callerNumber)` method to Telnyx. The request requires the destination number and the caller number. This request is routed from the front-end WebRTC client application to the back-end server application, which acts as the intermediary between the client and Telnyx for controlling call logic.
+
+    ```javascript  theme={null}
+    //Make Call
+    function makeCall() {
+      const params = {
+        callerName: 'Caller Name',
+        callerNumber: 'Caller Number',
+        destinationNumber: document.getElementById('number').value, // required!
+        audio: document.getElementById('audio').checked,
+        video: document.getElementById('video').checked
+          ? { aspectRatio: 16 / 9 }
+          : false,
+      };
+
+      currentCall = client.newCall(params);
+    }
+    ```
+
+    ### 3. Dialing PSTN (command)
+
+    The backend server then instructs Telnyx to dial the destination number in the PSTN using the `Dial PSTN with Dial Command`. This command triggers Telnyx to initiate an outbound call to the PSTN.
+
+    ```bash  theme={null}
+    curl -X POST https://api.telnyx.com/v2/calls \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_TOKEN' \
+    -d '{
+      "connection_id": "YOUR_CONNECTION_ID",
+      "to": "+E.164 PSTNNUMBER",
+      "from": "+E.164 CALLERNUMBER",
+      "webhook_url": "https://yourserver.app/telnyx-webhooks"
+    }'
+    ```
+
+    ### 4. Call Initiated (webhook)
+
+    Telnyx acknowledges the initiation of the call process by triggering a `call.initiated` webhook to the backend server. This webhook indicates that the call process has started but does not necessarily mean the call has been answered.
+
+    ```json  theme={null}
+    {
+      "data": {
+        "record_type": "event",
+        "event_type": "call.initiated",
+        "id": "uuid-of-the-event",
+        "occurred_at": "2024-03-25T14:00:00Z",
+        "payload": {
+          "call_control_id": "call_control_id_of_the_initiated_call",
+          "connection_id": "connection_id_used_in_the_call",
+          "call_leg_id": "unique_id_for_call_leg",
+          "custom_headers": [
+            {
+              "header_name": "X-Custom-Header",
+              "header_value": "CustomValue"
+            }
+          ],
+          "call_session_id": "unique_id_for_the_call_session",
+          "client_state": "optional_client_defined_state",
+          "from": "+12345678901",
+          "to": "+10987654321",
+          "direction": "outgoing",
+          "state": "parked"
+        }
+      }
+    }
+    ```
+
+    ### 5. PSTN Outbound Call
+
+    Telnyx makes the outbound call to the destination number in the PSTN network.
+
+    ### 6. PSTN Answered (webhook)
+
+    When the PSTN destination answers the call, Telnyx sends a notification back to the backend server through a `call.answered` webhook, indicating that the call had been successfully answered on the PSTN side.
+
+    ```json  theme={null}
+    {
+      "data": {
+        "record_type": "event",
+        "event_type": "call.answered",
+        "id": "uuid-of-the-event",
+        "occurred_at": "2024-03-25T13:45:00Z",
+        "payload": {
+          "call_control_id": "call_control_id_of_the_call",
+          "connection_id": "connection_id_used_in_the_call",
+          "call_leg_id": "unique_id_for_call_leg",
+          "call_session_id": "unique_id_for_the_call_session",
+          "client_state": "optional_client_defined_state",
+          "custom_headers": [
+            {
+              "header_name": "X-Header-Example",
+              "header_value": "HeaderValue"
+            }
+          ],
+          "from": "+12345678901",
+          "to": "+10987654321",
+          "state": "answered"
+        }
+      }
+    }
+    ```
+
+    ### 7. Bridging Call Legs (command)
+
+    After the call is answered, the next step is to bridge the call between the WebRTC client and the PSTN to enable two-way communication. The backend server sends a Bridge Call Legs: `call.bridge(call_control_id)` command to Telnyx, instructing it to connect the two call legs.
+
+    ```bash  theme={null}
+    curl -X POST https://api.telnyx.com/v2/calls/{call_control_id_WebRTC}/actions/bridge \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_TOKEN' \
+    -d '{
+      "call_control_id": "PSTN_CALL_CONTROL_ID"
+    }'
+    ```
+
+    ### 8. Call Bridged (webhook)
+
+    Once the call legs are successfully bridged, Telnyx triggers a `call.bridged` webhook to the backend server, indicating that the WebRTC agent and the PSTN call are now connected, and the call is in progress.
+
+    ```json  theme={null}
+    {
+      "data": {
+        "record_type": "event",
+        "event_type": "call.bridged",
+        "id": "uuid-of-the-event",
+        "occurred_at": "2024-03-25T12:34:56Z",
+        "payload": {
+          "call_control_id": "call_control_id_of_the_call",
+          "connection_id": "connection_id_used_in_the_call",
+          "call_leg_id": "unique_id_for_call_leg",
+          "call_session_id": "unique_id_for_the_call_session",
+          "client_state": "optional_client_defined_state",
+          "from": "+12345678901",
+          "to": "+10987654321",
+          "state": "bridged"
+        }
+      }
+    }
+    ```
+
+    ### 9. Call In Progress
+
+    With the bridge established, the WebRTC agent (the user on the front-end client) and the PSTN participant can now communicate. This state continues until either party terminates the call. If the call is ended, Telnyx triggers a `call.hangup` webhook. An example `call.hangup` event is provided below.
+
+    ```json  theme={null}
+    {
+      "data": {
+        "record_type": "event",
+        "event_type": "call.hangup",
+        "id": "uuid-example-1234",
+        "occurred_at": "2024-03-28T12:34:56Z",
+        "payload": {
+          "call_control_id": "call_control_id_example_5678",
+          "connection_id": "connection_id_example_9012",
+          "call_leg_id": "call_leg_id_example_3456",
+          "call_session_id": "call_session_id_example_7890",
+          "client_state": "example_state",
+          "from": "+12345678901",
+          "to": "+10987654321",
+          "start_time": "2024-03-28T12:00:00Z",
+          "state": "hangup",
+          "hangup_cause": "normal_clearing",
+          "hangup_source": "caller",
+          "sip_hangup_cause": "16"
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="TeXML">
+    The backend implementation is a crucial component of a successful call. The following sequence diagram covers a typical outbound call flow using Telnyx TeXML API. Below the sequence diagram, I describe each step.
+
+        <img src="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=523802b99fe1d2ebb3dc7d3920e0eb2b" alt="Outbound dialer backend architecture diagram" data-og-width="2048" width="2048" data-og-height="1334" height="1334" data-path="img/outbound-dialer-backend.png" data-optimize="true" data-opv="3" srcset="https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=280&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=0a60618a97b511a418d315bc264992c6 280w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=560&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=40af7b546b2f882461bb857af6a28436 560w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=840&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=f2d03761f92a6d7a6e7cf7fe586d0dd1 840w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=1100&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=2a6209ae2ddaef5d5733dac15bbcae8e 1100w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=1650&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=c85c8fc1b5951e5ce37c19a50a53166b 1650w, https://mintcdn.com/telnyx/VYiRDGy8TCRNJLEC/img/outbound-dialer-backend.png?w=2500&fit=max&auto=format&n=VYiRDGy8TCRNJLEC&q=85&s=f9fab0a16e66ed0267b2dc5e2eb78cb6 2500w" />
+
+    ### 1. Client Registers with Telnyx
+
+    The process starts with the WebRTC client (the Front End App) connecting to Telnyx by sending a `Client.connect (Register)` request. This is essentially the WebRTC client registering with Telnyx to initiate communications.
+
+    ```javascript  theme={null}
+    function connect() {
+      client = new TelnyxWebRTC.TelnyxRTC({
+        env: env,
+        login: document.getElementById('username').value,
+        password: document.getElementById('password').value,
+        ringtoneFile: './sounds/incoming_call.mp3',
+        // ringbackFile: './sounds/ringback_tone.mp3',
+      });
+
+      if (document.getElementById('audio').checked) {
+        client.enableMicrophone();
+      } else {
+        client.disableMicrophone();
+      }
+
+      client.on('telnyx.ready', function () {
+        btnConnect.classList.add('d-none');
+        btnDisconnect.classList.remove('d-none');
+        connectStatus.innerHTML = 'Connected';
+        startCall.disabled = false;
+      });
+
+      //Socket close, error and updating call states
+      ...
+    }
+    ```
+
+    ### 2. Initiating a Call
+
+    Once the WebRTC client is connected, it requests to initiate a call by sending a `Client.newCall(destinationNumber,callerNumber)` method to Telnyx. The request requires the destination number and the caller number. This request is routed from the front-end WebRTC client application to the back-end server application, which acts as the intermediary between the client and Telnyx for controlling call logic.
+
+    ```javascript  theme={null}
+    //Make Call
+    function makeCall() {
+      const params = {
+        callerName: 'Caller Name',
+        callerNumber: 'Caller Number',
+        destinationNumber: document.getElementById('number').value, // required!
+        audio: document.getElementById('audio').checked,
+        video: document.getElementById('video').checked
+          ? { aspectRatio: 16 / 9 }
+          : false,
+      };
+
+      currentCall = client.newCall(params);
+    }
+    ```
+
+    ### 3. Dialing PSTN (command)
+
+    The backend server then instructs Telnyx to dial the first destination number. This command triggers Telnyx to initiate an outbound call to the PSTN.
+
+    ```bash  theme={null}
+    curl -L 'https://api.telnyx.com/v2/texml/Accounts/:account_sid/Calls' \
+    -H 'Content-Type: application/json' \
+    -H 'Accept: application/json' \
+    -H 'Authorization: Bearer <TOKEN>' \
+    -d '{
+      "To": "+13121230000",
+      "From": "+13120001234",
+      "Url": "https://www.example.com/texml.xml",
+      "StatusCallback": "https://www.example.com/statuscallback-listener"
+    }'
+    ```
+
+    ### 4. TeXML Dial Verb
+
+    The Url parameter hits a server that then instructs Telnyx using XML to dial the second PSTN transfer B-leg. The verb triggers Telnyx to initiate an outbound call to the second PSTN leg.
+
+    ```xml  theme={null}
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+      <Dial>
+        <Number>+18771234567</Number>
+      </Dial>
+    </Response>
+    ```
+
+    <Callout type="info">
+      TeXML Dial expected callbacks can be found [here](https://developers.telnyx.com/docs/voice/programmable-voice/texml-translator#expected-callbacks).
+    </Callout>
+  </Tab>
+</Tabs>
+
+## Next steps
+
+* Review [WebRTC authentication](https://developers.telnyx.com/development/webrtc/auth/credential-connections) options.
+* Explore [Call Control API](/api-reference/call-control-applications/list-all-call-control-applications) documentation.
+* Learn more about [webhook fundamentals](https://developers.telnyx.com/development/api-fundamentals/webhooks/receiving-webhooks).
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://developers.telnyx.com/llms.txt
