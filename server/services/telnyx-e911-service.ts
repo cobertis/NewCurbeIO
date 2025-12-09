@@ -382,7 +382,7 @@ async function ensurePhoneNumberHasCredentialConnection(
   config: ManagedAccountConfig,
   companyId: string,
   phoneNumberId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; connectionId?: string; error?: string }> {
   console.log(`[E911] Ensuring phone number has CREDENTIAL CONNECTION (required for E911)...`);
 
   const ovpResult = await getOrCreateOutboundVoiceProfile(config, companyId);
@@ -402,7 +402,7 @@ async function ensurePhoneNumberHasCredentialConnection(
 
   if (phoneDetails.connectionId === connResult.connectionId) {
     console.log(`[E911] Phone number already has correct credential connection: ${phoneDetails.connectionId}`);
-    return { success: true };
+    return { success: true, connectionId: connResult.connectionId };
   }
 
   console.log(`[E911] Phone number has connection ${phoneDetails.connectionId || 'NONE'}, replacing with credential connection ${connResult.connectionId}...`);
@@ -412,7 +412,93 @@ async function ensurePhoneNumberHasCredentialConnection(
     return { success: false, error: assignResult.error };
   }
 
-  return { success: true };
+  return { success: true, connectionId: connResult.connectionId };
+}
+
+/**
+ * Public function to assign a phone number to the company's credential connection.
+ * This is required for outbound WebRTC calls to work.
+ * Call this after purchasing a phone number or to repair existing numbers.
+ */
+export async function assignPhoneNumberToCredentialConnection(
+  companyId: string,
+  phoneNumberId: string
+): Promise<{ success: boolean; connectionId?: string; error?: string }> {
+  console.log(`[Phone Assignment] Assigning phone number ${phoneNumberId} to credential connection for company ${companyId}...`);
+  
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Company has no managed account configured" };
+    }
+    
+    const result = await ensurePhoneNumberHasCredentialConnection(config, companyId, phoneNumberId);
+    
+    if (result.success && result.connectionId) {
+      // Also update our local database record
+      await db.update(telnyxPhoneNumbers)
+        .set({ 
+          connectionId: result.connectionId,
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+      
+      console.log(`[Phone Assignment] Successfully assigned phone number to credential connection ${result.connectionId}`);
+      
+      // Also update the credential connection with the ANI override (caller ID)
+      const phoneDetails = await getPhoneNumberDetails(config, phoneNumberId);
+      if (phoneDetails.success && phoneDetails.phoneNumber) {
+        const aniResult = await updateCredentialConnectionAni(config, result.connectionId, phoneDetails.phoneNumber);
+        if (aniResult.success) {
+          console.log(`[Phone Assignment] Set ANI override to ${phoneDetails.phoneNumber}`);
+        } else {
+          console.warn(`[Phone Assignment] Failed to set ANI override (non-fatal): ${aniResult.error}`);
+        }
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error("[Phone Assignment] Error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to assign phone number" };
+  }
+}
+
+/**
+ * Update a credential connection's ANI override (outbound caller ID)
+ * This is required for outbound calls to work properly
+ */
+async function updateCredentialConnectionAni(
+  config: ManagedAccountConfig,
+  connectionId: string,
+  phoneNumber: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[ANI Override] Setting outbound caller ID to ${phoneNumber} on connection ${connectionId}...`);
+  
+  try {
+    const response = await fetch(`${TELNYX_API_BASE}/credential_connections/${connectionId}`, {
+      method: "PATCH",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        outbound: {
+          ani_override: phoneNumber,
+          ani_override_type: "always",
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ANI Override] Failed to update: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to set ANI override: ${response.status}` };
+    }
+
+    console.log(`[ANI Override] Successfully set outbound caller ID to ${phoneNumber}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[ANI Override] Error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to set ANI override" };
+  }
 }
 
 interface TelnyxSuggestion {

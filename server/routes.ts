@@ -27482,6 +27482,39 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /api/telnyx/repair-phone-connection/:phoneNumberId - Repair phone number credential connection assignment
+  app.post("/api/telnyx/repair-phone-connection/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      let targetCompanyId = user.companyId;
+      if (user.role === "superadmin" && req.body.companyId) {
+        targetCompanyId = req.body.companyId;
+      }
+
+      if (!targetCompanyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { assignPhoneNumberToCredentialConnection } = await import("./services/telnyx-e911-service");
+      const result = await assignPhoneNumberToCredentialConnection(targetCompanyId, phoneNumberId);
+
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+
+      res.json({ success: true, connectionId: result.connectionId, message: "Phone number successfully assigned to credential connection" });
+    } catch (error: any) {
+      console.error("[Telnyx Repair] Error:", error);
+      res.status(500).json({ message: "Failed to repair phone number connection" });
+    }
+  });
   // GET /api/telnyx/cnam/:phoneNumberId - Get CNAM settings for a phone number
   app.get("/api/telnyx/cnam/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {

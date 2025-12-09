@@ -2,6 +2,7 @@ import { db } from "../db";
 import { wallets, companies, telnyxPhoneNumbers } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
+import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
@@ -271,6 +272,21 @@ export async function purchasePhoneNumber(
     }
 
     console.log(`[Telnyx Numbers] Number purchased successfully - Order ID: ${orderId}, Final Phone Number ID: ${phoneNumberId}`);
+
+    // Assign the phone number to the credential connection for outbound WebRTC calls
+    if (phoneNumberId) {
+      console.log(`[Telnyx Numbers] Assigning phone number to credential connection...`);
+      try {
+        const assignResult = await assignPhoneNumberToCredentialConnection(companyId, phoneNumberId);
+        if (assignResult.success) {
+          console.log(`[Telnyx Numbers] Phone number assigned to credential connection: ${assignResult.connectionId}`);
+        } else {
+          console.warn(`[Telnyx Numbers] Failed to assign credential connection (non-fatal): ${assignResult.error}`);
+        }
+      } catch (assignError) {
+        console.warn(`[Telnyx Numbers] Error assigning credential connection (non-fatal):`, assignError);
+      }
+    }
 
     return {
       success: true,
