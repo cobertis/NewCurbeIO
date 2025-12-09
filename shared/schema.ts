@@ -4870,6 +4870,12 @@ export const callLogs = pgTable("call_logs", {
   
   // Recording
   recordingUrl: text("recording_url"),
+  recordingDuration: integer("recording_duration"), // Recording duration in seconds
+  
+  // Cost
+  cost: text("cost"), // Call cost in currency
+  costCurrency: text("cost_currency").default("USD"),
+  billedDuration: integer("billed_duration"), // Billed duration in seconds
   
   // Timestamps
   startedAt: timestamp("started_at", { withTimezone: true }).notNull(),

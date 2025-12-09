@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Phone, 
+  PhoneIncoming,
+  PhoneOutgoing,
   Settings2, 
   CheckCircle2, 
   AlertCircle, 
@@ -122,6 +124,45 @@ export default function PhoneSystem() {
     autoRechargeAmount: string | null;
   }>({
     queryKey: ["/api/wallet"],
+  });
+
+  // Call history query
+
+  const { data: callLogsData, isLoading: isLoadingCallLogs, refetch: refetchCallLogs } = useQuery<{
+
+    logs: Array<{
+
+      id: string;
+
+      fromNumber: string;
+
+      toNumber: string;
+
+      direction: string;
+
+      status: string;
+
+      duration: number;
+
+      billedDuration?: number;
+
+      cost?: string;
+
+      costCurrency?: string;
+
+      callerName?: string;
+
+      recordingUrl?: string;
+
+      startedAt: string;
+
+      endedAt?: string;
+
+    }>;
+
+  }>({
+
+    queryKey: ["/api/call-logs"],
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
@@ -440,6 +481,115 @@ export default function PhoneSystem() {
               </CollapsibleContent>
             </Collapsible>
           </div>
+        )}
+
+        {/* Call History Section */}
+        {statusData?.configured && (
+          <Card className="shadow-sm border-slate-200 dark:border-border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
+                  Call History
+                </CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetchCallLogs()}
+                  className="h-8"
+                  data-testid="button-refresh-call-logs"
+                >
+                  <RefreshCw className={`h-3 w-3 mr-1 ${isLoadingCallLogs ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {isLoadingCallLogs ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !callLogsData?.logs || callLogsData.logs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No calls yet</p>
+                  <p className="text-xs mt-1">Your call history will appear here</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {callLogsData.logs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors"
+                      data-testid={`row-call-${log.id}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${
+                          log.direction === 'inbound' 
+                            ? 'bg-blue-100 dark:bg-blue-900/30' 
+                            : 'bg-green-100 dark:bg-green-900/30'
+                        }`}>
+                          {log.direction === 'inbound' ? (
+                            <PhoneIncoming className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          ) : (
+                            <PhoneOutgoing className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-slate-700 dark:text-foreground truncate">
+                              {log.direction === 'inbound' ? log.fromNumber : log.toNumber}
+                            </p>
+                            {log.callerName && (
+                              <span className="text-xs text-muted-foreground">({log.callerName})</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{format(new Date(log.startedAt), "MMM dd, h:mm a")}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className={`capitalize ${
+                              log.status === 'completed' ? 'text-green-600 dark:text-green-400' :
+                              log.status === 'failed' || log.status === 'busy' || log.status === 'no-answer' ? 'text-red-500' :
+                              'text-amber-600 dark:text-amber-400'
+                            }`}>
+                              {log.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-right">
+                        <div>
+                          {log.duration > 0 && (
+                            <p className="text-sm text-slate-700 dark:text-foreground">
+                              {Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}
+                            </p>
+                          )}
+                          {log.cost && parseFloat(log.cost) > 0 && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                              ${parseFloat(log.cost).toFixed(4)} {log.costCurrency || 'USD'}
+                            </p>
+                          )}
+                        </div>
+                        {log.recordingUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => window.open(log.recordingUrl, '_blank')}
+                            data-testid={`button-play-recording-${log.id}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-primary">
+                              <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+                            </svg>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Buy Number Modal */}
