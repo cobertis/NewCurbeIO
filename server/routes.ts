@@ -28004,7 +28004,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      const config = await getManagedAccountConfig(user.companyId);
+      // Get managed account config inline
+      const [wallet] = await db
+        .select({ telnyxAccountId: wallets.telnyxAccountId })
+        .from(wallets)
+        .where(eq(wallets.companyId, user.companyId));
+      
+      if (!wallet?.telnyxAccountId) {
+        return res.status(400).json({ message: "Phone system not configured for this company" });
+      }
+      
+      // Get the master Telnyx API key from secrets
+      let apiKey = process.env.TELNYX_API_KEY;
+      if (!apiKey) {
+        const [cred] = await db
+          .select({ value: systemApiCredentials.value })
+          .from(systemApiCredentials)
+          .where(and(
+            eq(systemApiCredentials.provider, "telnyx"),
+            eq(systemApiCredentials.keyName, "api_key")
+          ));
+        apiKey = cred?.value;
+      }
+      
+      if (!apiKey) {
+        return res.status(500).json({ message: "Telnyx API key not configured" });
+      }
+      
+      const config = {
+        apiKey: apiKey.trim().replace(/[\r\n\t]/g, ""),
+        managedAccountId: wallet.telnyxAccountId
+      };
       
       // Fetch CDRs from Telnyx using the correct detail_records endpoint
       // Query both call-control and webrtc record types
@@ -28140,7 +28170,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      const config = await getManagedAccountConfig(user.companyId);
+      // Get managed account config inline
+      const [wallet] = await db
+        .select({ telnyxAccountId: wallets.telnyxAccountId })
+        .from(wallets)
+        .where(eq(wallets.companyId, user.companyId));
+      
+      if (!wallet?.telnyxAccountId) {
+        return res.status(400).json({ message: "Phone system not configured for this company" });
+      }
+      
+      // Get the master Telnyx API key from secrets
+      let apiKey = process.env.TELNYX_API_KEY;
+      if (!apiKey) {
+        const [cred] = await db
+          .select({ value: systemApiCredentials.value })
+          .from(systemApiCredentials)
+          .where(and(
+            eq(systemApiCredentials.provider, "telnyx"),
+            eq(systemApiCredentials.keyName, "api_key")
+          ));
+        apiKey = cred?.value;
+      }
+      
+      if (!apiKey) {
+        return res.status(500).json({ message: "Telnyx API key not configured" });
+      }
+      
+      const config = {
+        apiKey: apiKey.trim().replace(/[\r\n\t]/g, ""),
+        managedAccountId: wallet.telnyxAccountId
+      };
       
       // Get CDRs from Telnyx
       const today = new Date();
