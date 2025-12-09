@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -26122,12 +26122,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Amount must be between $5 and $500" });
       }
 
-      // Get company's Stripe subscription to find customer ID
-      const subscription = await db.query.subscriptions.findFirst({
-        where: eq(subscriptions.companyId, user.companyId),
+      // Get company's Stripe customer info
+      const company = await db.query.companies.findFirst({
+        where: eq(companies.id, user.companyId),
       });
 
-      if (!subscription?.stripeCustomerId) {
+      if (!company?.stripeCustomerId) {
         return res.status(400).json({ message: "No billing account found. Please add a payment method first." });
       }
 
@@ -26135,10 +26135,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { getStripeClient } = await import("./stripe");
       const stripeClient = await getStripeClient();
       
-      const customer = await stripeClient.customers.retrieve(subscription.stripeCustomerId) as any;
-      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
+      // Use saved payment method from company or get from Stripe
+      let paymentMethodId = company.stripePaymentMethodId;
+      if (!paymentMethodId) {
+        const customer = await stripeClient.customers.retrieve(company.stripeCustomerId);
+        paymentMethodId = customer.invoice_settings?.default_payment_method;
+      }
 
-      if (!defaultPaymentMethodId) {
+      if (!paymentMethodId) {
         return res.status(400).json({ message: "No saved payment method found. Please add a card in Billing settings." });
       }
 
@@ -26148,8 +26152,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const paymentIntent = await stripeClient.paymentIntents.create({
         amount: amountInCents,
         currency: 'usd',
-        customer: subscription.stripeCustomerId,
-        payment_method: defaultPaymentMethodId,
+        customer: company.stripeCustomerId,
+        payment_method: paymentMethodId,
         confirm: true,
         automatic_payment_methods: {
           enabled: true,

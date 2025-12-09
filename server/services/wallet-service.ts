@@ -1,6 +1,105 @@
 import { db } from "../db";
-import { wallets, walletTransactions, WalletTransactionType } from "@shared/schema";
+import { wallets, walletTransactions, WalletTransactionType, companies } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
+
+// Track auto-recharge in progress to prevent duplicate charges
+const autoRechargeInProgress = new Set<string>();
+
+async function triggerAutoRecharge(wallet: typeof wallets.$inferSelect): Promise<void> {
+  if (autoRechargeInProgress.has(wallet.id)) {
+    console.log(`[Wallet Auto-Recharge] Already in progress for wallet ${wallet.id}, skipping`);
+    return;
+  }
+
+  try {
+    autoRechargeInProgress.add(wallet.id);
+    
+    const threshold = parseFloat(wallet.autoRechargeThreshold || "0");
+    const rechargeAmount = parseFloat(wallet.autoRechargeAmount || "0");
+    const currentBalance = parseFloat(wallet.balance);
+    
+    if (currentBalance >= threshold) {
+      return; // Balance is above threshold, no need to recharge
+    }
+    
+    console.log(`[Wallet Auto-Recharge] Triggering for wallet ${wallet.id}: balance $${currentBalance} < threshold $${threshold}`);
+    
+    // Get company's Stripe info
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, wallet.companyId));
+    
+    if (!company?.stripeCustomerId) {
+      console.error(`[Wallet Auto-Recharge] No Stripe customer for company ${wallet.companyId}`);
+      return;
+    }
+    
+    // Get payment method
+    let paymentMethodId = company.stripePaymentMethodId;
+    if (!paymentMethodId) {
+      const { getStripeClient } = await import("../stripe");
+      const stripeClient = await getStripeClient();
+      if (!stripeClient) {
+        console.error(`[Wallet Auto-Recharge] Stripe client not available`);
+        return;
+      }
+      const customer = await stripeClient.customers.retrieve(company.stripeCustomerId) as any;
+      paymentMethodId = customer.invoice_settings?.default_payment_method;
+    }
+    
+    if (!paymentMethodId) {
+      console.error(`[Wallet Auto-Recharge] No payment method for company ${wallet.companyId}`);
+      return;
+    }
+    
+    // Process the payment
+    const { getStripeClient } = await import("../stripe");
+    const stripeClient = await getStripeClient();
+    if (!stripeClient) {
+      console.error(`[Wallet Auto-Recharge] Stripe client not available for payment`);
+      return;
+    }
+    const amountInCents = Math.round(rechargeAmount * 100);
+    
+    const paymentIntent = await stripeClient.paymentIntents.create({
+      amount: amountInCents,
+      currency: 'usd',
+      customer: company.stripeCustomerId,
+      payment_method: paymentMethodId,
+      confirm: true,
+      automatic_payment_methods: {
+        enabled: true,
+        allow_redirects: 'never',
+      },
+      description: `Auto-recharge for wallet ${wallet.id}`,
+      metadata: {
+        companyId: wallet.companyId,
+        type: 'wallet_auto_recharge',
+        walletId: wallet.id,
+      },
+    });
+    
+    if (paymentIntent.status === 'succeeded') {
+      // Add funds to wallet
+      await processTransaction({
+        walletId: wallet.id,
+        amount: rechargeAmount,
+        type: "DEPOSIT",
+        description: `Auto-recharge: $${rechargeAmount.toFixed(2)}`,
+        externalReferenceId: paymentIntent.id,
+      });
+      
+      console.log(`[Wallet Auto-Recharge] Successfully added $${rechargeAmount} to wallet ${wallet.id}`);
+    } else {
+      console.error(`[Wallet Auto-Recharge] Payment failed with status: ${paymentIntent.status}`);
+    }
+  } catch (error) {
+    console.error(`[Wallet Auto-Recharge] Error:`, error);
+  } finally {
+    autoRechargeInProgress.delete(wallet.id);
+  }
+}
 
 export interface ProcessTransactionParams {
   walletId: string;
@@ -172,13 +271,35 @@ export async function charge(
     return { success: false, error: "Charge amount must be positive" };
   }
 
-  return processTransaction({
+  const result = await processTransaction({
     walletId,
     amount: -amount,
     type,
     description,
     externalReferenceId,
   });
+
+  // Check if auto-recharge should be triggered
+  if (result.success) {
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.id, walletId));
+    
+    if (wallet?.autoRecharge) {
+      const newBalance = parseFloat(result.newBalance || "0");
+      const threshold = parseFloat(wallet.autoRechargeThreshold || "0");
+      
+      if (newBalance < threshold) {
+        // Trigger auto-recharge asynchronously (don't block the charge response)
+        triggerAutoRecharge(wallet).catch(err => {
+          console.error("[Wallet] Auto-recharge error:", err);
+        });
+      }
+    }
+  }
+
+  return result;
 }
 
 export async function checkBalance(walletId: string): Promise<{ balance: number; hasEnough: (amount: number) => boolean }> {
