@@ -4711,6 +4711,12 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   outboundVoiceProfileId: text("outbound_voice_profile_id"), // For voice routing
   connectionId: text("connection_id"), // TeXML App connection ID
   callerIdName: text("caller_id_name"), // CNAM for outbound calls
+  
+  // Call Forwarding Settings (stored locally, applied via TeXML webhook)
+  callForwardingEnabled: boolean("call_forwarding_enabled").notNull().default(false),
+  callForwardingDestination: text("call_forwarding_destination"), // E.164 format destination
+  callForwardingKeepCallerId: boolean("call_forwarding_keep_caller_id").notNull().default(true),
+  
   purchasedAt: timestamp("purchased_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

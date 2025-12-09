@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { wallets, companies } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { wallets, companies, telnyxPhoneNumbers } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
@@ -576,9 +576,11 @@ export async function getVoiceSettings(
     const result = await response.json();
     const data = result.data;
     
-    // Telnyx uses forwarding_type and forwards_to at top level
-    // forwarding_type: "always" | "on_busy" | "on_no_answer" | "never"
-    const forwardingEnabled = data?.forwarding_type && data.forwarding_type !== "never";
+    // Get call forwarding settings from local database (not Telnyx API)
+    const [localNumber] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
     
     return {
       success: true,
@@ -594,9 +596,9 @@ export async function getVoiceSettings(
       inboundCallScreening: data?.inbound_call_screening || "disabled",
       callerIdNameEnabled: data?.caller_id_name_enabled || false,
       callForwarding: {
-        enabled: forwardingEnabled,
-        destination: data?.forwards_to || "",
-        keepCallerId: true, // Not exposed in new API format
+        enabled: localNumber?.callForwardingEnabled || false,
+        destination: localNumber?.callForwardingDestination || "",
+        keepCallerId: localNumber?.callForwardingKeepCallerId ?? true,
       },
     };
   } catch (error) {
@@ -722,8 +724,8 @@ export async function updateSpamProtection(
 
 /**
  * Update call forwarding settings for a phone number
- * NOTE: Telnyx API requires forwarding_type and forwards_to fields
- * forwarding_type: "always" | "on_busy" | "on_no_answer" | "never"
+ * NOTE: Telnyx Voice API does NOT support call forwarding directly.
+ * We store settings locally and apply them via TeXML webhook when calls come in.
  */
 export async function updateCallForwarding(
   phoneNumberId: string,
@@ -733,77 +735,48 @@ export async function updateCallForwarding(
   keepCallerId: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const apiKey = await getTelnyxMasterApiKey();
-    
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-    
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
-    }
-
     // Validate destination is E.164 US number if enabled
     if (enabled && !destination) {
       return { success: false, error: "Destination number is required when enabling call forwarding" };
     }
     
+    let normalizedDest: string | null = null;
     if (enabled && destination) {
       const cleanNumber = destination.replace(/\D/g, "");
       if (!cleanNumber.match(/^1?\d{10}$/)) {
         return { success: false, error: "Destination must be a valid US phone number" };
       }
+      // Normalize to E.164
+      normalizedDest = cleanNumber.startsWith("1") ? `+${cleanNumber}` : `+1${cleanNumber}`;
     }
     
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
-    };
+    // Store settings in local database (TeXML webhook will read these)
+    const [updated] = await db
+      .update(telnyxPhoneNumbers)
+      .set({
+        callForwardingEnabled: enabled,
+        callForwardingDestination: normalizedDest,
+        callForwardingKeepCallerId: keepCallerId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
+          eq(telnyxPhoneNumbers.companyId, companyId)
+        )
+      )
+      .returning();
     
-    // Telnyx API uses forwarding_type and forwards_to at top level
-    // forwarding_type: "always" = always forward, "never" = disabled
-    let payload: Record<string, any>;
-    
-    if (enabled && destination) {
-      // Normalize destination to E.164
-      let normalizedDest = destination.replace(/\D/g, "");
-      if (!normalizedDest.startsWith("1") && normalizedDest.length === 10) {
-        normalizedDest = "1" + normalizedDest;
-      }
-      
-      payload = {
-        forwarding_type: "always",
-        forwards_to: `+${normalizedDest}`,
-      };
-    } else {
-      // Disable forwarding
-      payload = {
-        forwarding_type: "never",
-      };
+    if (!updated) {
+      console.error(`[Call Forwarding] Phone number not found: ${phoneNumberId}`);
+      return { success: false, error: "Phone number not found" };
     }
     
-    console.log(`[Telnyx Call Forwarding] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}, payload:`, JSON.stringify(payload));
-    
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify(payload),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Telnyx Call Forwarding] Update error: ${response.status} - ${errorText}`);
-      return { success: false, error: `Failed to update call forwarding: ${response.status} - ${errorText}` };
-    }
-    
-    const result = await response.json();
-    console.log(`[Telnyx Call Forwarding] Update successful:`, JSON.stringify(result.data, null, 2));
+    console.log(`[Call Forwarding] Settings saved locally. Number: ${updated.phoneNumber}, enabled=${enabled}, destination=${normalizedDest}`);
     
     return { success: true };
   } catch (error) {
-    console.error("[Telnyx Call Forwarding] Update error:", error);
+    console.error("[Call Forwarding] Update error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update call forwarding" };
   }
 }
