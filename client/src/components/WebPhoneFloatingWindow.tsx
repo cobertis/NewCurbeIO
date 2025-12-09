@@ -1395,6 +1395,8 @@ export function WebPhoneFloatingWindow() {
     if (isVisible && remoteAudioRef.current && localAudioRef.current) {
       console.log('[WebPhone FloatingWindow] ✅ Registering audio elements on mount/visibility');
       setAudioElements(localAudioRef.current, remoteAudioRef.current);
+      // CRITICAL: Also re-register for Telnyx WebRTC
+      telnyxWebRTC.setAudioElement(remoteAudioRef.current);
     } else if (isVisible) {
       console.warn('[WebPhone FloatingWindow] ⚠️ Audio refs not ready:', {
         remote: !!remoteAudioRef.current,
