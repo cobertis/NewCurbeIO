@@ -1,0 +1,34 @@
+0|curbe-admin  | [WebSocket] Broadcasting notification_update to 0 authenticated clients
+0|curbe-admin  | ✓ Direct login for hello@curbe.io - 2FA not enabled
+0|curbe-admin  | 2:30:04 AM [express] POST /api/login 200 in 143ms :: {"success":true,"skipOTP":true,"user":{"id":"74…
+0|curbe-admin  | 2:30:04 AM [express] GET /api/session 200 in 24ms :: {"user":{"id":"7494d718-e807-46c5-b42b-bb629d60…
+0|curbe-admin  | 2:30:04 AM [express] GET /api/dashboard-monthly 200 in 24ms
+0|curbe-admin  | 2:30:04 AM [express] GET /api/dashboard-agents 200 in 25ms
+0|curbe-admin  | 2:30:04 AM [express] GET /api/voicemails 400 in 59ms :: {"message":"No company associated with user"}
+0|curbe-admin  | 2:30:04 AM [express] GET /api/policies-analytics 200 in 76ms
+0|curbe-admin  | 2:30:04 AM [express] GET /api/call-logs 400 in 80ms :: {"message":"No company associated with user"}
+0|curbe-admin  | 2:30:04 AM [express] GET /api/session 304 in 75ms :: {"user":{"id":"7494d718-e807-46c5-b42b-bb629d60…
+0|curbe-admin  | [Telnyx] API key loaded, prefix: KEY019AF6C..., length: 58, last char code: 76
+0|curbe-admin  | 2:30:04 AM [express] GET /api/dashboard-carriers 400 in 77ms :: {"message":"Company ID required"}
+0|curbe-admin  | 2:30:04 AM [express] GET /api/telnyx/my-numbers 200 in 99ms :: {"numbers":[]}
+0|curbe-admin  | [DASHBOARD] Activity logs count: 0
+0|curbe-admin  | [DASHBOARD] Auth actions found: []
+0|curbe-admin  | [DASHBOARD] Failed login attempts count: 0
+0|curbe-admin  | 2:30:04 AM [express] GET /api/dashboard-stats 200 in 128ms :: {"totalUsers":47,"adminCount":47,"memb…
+0|curbe-admin  | 2:30:04 AM [express] GET /api/notifications 200 in 124ms :: {"notifications":[{"id":"d8ba2a31-cb87-4…
+0|curbe-admin  | 2:30:04 AM [express] GET /api/whatsapp/unread-count 400 in 13ms :: {"message":"No company associated…
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/chat
+0|curbe-admin  | [WebSocket] Authenticated: userId=7494d718-e807-46c5-b42b-bb629d60413b, companyId=null, role=superadmin
+0|curbe-admin  | [WebSocket] Client disconnected
+0|curbe-admin  | 2:30:06 AM [express] GET /api/system/credentials/providers 304 in 22ms :: {"providers":[{"provider":…
+0|curbe-admin  | 2:30:06 AM [express] GET /api/system/credentials 304 in 25ms :: {"credentials":[{"id":"ec5ba208-4ebe…
+0|curbe-admin  | 2:30:07 AM [express] GET /api/admin/deploy/status 304 in 16ms :: {"jobs":[{"id":2,"triggeredBy":"hel…
+0|curbe-admin  | [DEPLOY] Manual deployment triggered by: hello@curbe.io
+0|curbe-admin  | [DEPLOY] Job 3 started
+0|curbe-admin  | 2:30:09 AM [express] POST /api/admin/deploy 200 in 21ms :: {"message":"Deployment started","jobId":3…
+0|curbe-admin  | [DEPLOY] Job 3 completed
+

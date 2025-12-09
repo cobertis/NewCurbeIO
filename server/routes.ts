@@ -28317,32 +28317,120 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   
   // Helper function to execute deployment
   async function executeDeployment(jobId: number) {
+    const isProduction = process.env.NODE_ENV === "production";
+    let logs = "";
+    
+    const appendLog = async (message: string) => {
+      logs += message + "\n";
+      console.log(`[DEPLOY] ${message}`);
+      await db.update(deploymentJobs)
+        .set({ logs })
+        .where(eq(deploymentJobs.id, jobId));
+    };
+    
     try {
       await db.update(deploymentJobs)
-        .set({ status: "in_progress" })
+        .set({ status: "in_progress", logs: "" })
         .where(eq(deploymentJobs.id, jobId));
       
-      console.log(`[DEPLOY] Job ${jobId} started`);
+      await appendLog(`Job ${jobId} started at ${new Date().toISOString()}`);
+      await appendLog(`Environment: ${isProduction ? "PRODUCTION" : "DEVELOPMENT"}`);
       
-      // In production, this would execute the deploy.sh script
-      // For now, we just simulate success after a short delay
-      // The actual deployment happens on the external server via SSH or webhook
+      if (!isProduction) {
+        await appendLog("Running in development mode - simulating deployment");
+        await appendLog("In production, this will execute: git pull, npm ci, npm run build, pm2 restart");
+        
+        await db.update(deploymentJobs)
+          .set({ 
+            status: "completed",
+            completedAt: new Date(),
+            logs: logs + "\nDeployment simulation completed (dev mode)"
+          })
+          .where(eq(deploymentJobs.id, jobId));
+        return;
+      }
+      
+      // Production deployment - execute real commands
+      const { spawn } = await import("child_process");
+      
+      const runCommand = (cmd: string, args: string[], cwd: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const proc = spawn(cmd, args, { cwd, shell: true });
+          let output = "";
+          let errorOutput = "";
+          
+          proc.stdout.on("data", (data) => {
+            output += data.toString();
+          });
+          
+          proc.stderr.on("data", (data) => {
+            errorOutput += data.toString();
+          });
+          
+          proc.on("close", (code) => {
+            if (code === 0) {
+              resolve(output + errorOutput);
+            } else {
+              reject(new Error(`Command failed with code ${code}: ${errorOutput || output}`));
+            }
+          });
+          
+          proc.on("error", (err) => {
+            reject(err);
+          });
+        });
+      };
+      
+      const appDir = "/var/www/curbe";
+      
+      // Step 1: Git pull
+      await appendLog("Step 1/4: Pulling latest code from GitHub...");
+      try {
+        const gitOutput = await runCommand("git", ["pull", "origin", "main"], appDir);
+        await appendLog(gitOutput.trim() || "Git pull completed");
+      } catch (err: any) {
+        if (err.message.includes("untracked working tree")) {
+          await appendLog("Untracked files detected, cleaning up...");
+          await runCommand("git", ["checkout", "--", "."], appDir);
+          await runCommand("git", ["clean", "-fd"], appDir);
+          const gitOutput = await runCommand("git", ["pull", "origin", "main"], appDir);
+          await appendLog(gitOutput.trim() || "Git pull completed after cleanup");
+        } else {
+          throw err;
+        }
+      }
+      
+      // Step 2: Install dependencies
+      await appendLog("Step 2/4: Installing dependencies...");
+      await runCommand("npm", ["ci"], appDir);
+      await appendLog("Dependencies installed successfully");
+      
+      // Step 3: Build
+      await appendLog("Step 3/4: Building application...");
+      await runCommand("npm", ["run", "build"], appDir);
+      await appendLog("Build completed successfully");
+      
+      // Step 4: Restart PM2
+      await appendLog("Step 4/4: Restarting application...");
+      await runCommand("pm2", ["restart", "curbe-admin", "--update-env"], appDir);
+      await appendLog("Application restarted successfully");
       
       await db.update(deploymentJobs)
         .set({ 
           status: "completed",
           completedAt: new Date(),
-          logs: "Deployment triggered successfully. Check server logs for details."
+          logs: logs + "\nDeployment completed successfully!"
         })
         .where(eq(deploymentJobs.id, jobId));
       
-      console.log(`[DEPLOY] Job ${jobId} completed`);
+      console.log(`[DEPLOY] Job ${jobId} completed successfully`);
     } catch (error: any) {
       console.error(`[DEPLOY] Job ${jobId} failed:`, error);
       await db.update(deploymentJobs)
         .set({ 
           status: "failed",
           completedAt: new Date(),
+          logs: logs + `\nError: ${error.message}`,
           errorMessage: error.message
         })
         .where(eq(deploymentJobs.id, jobId));
