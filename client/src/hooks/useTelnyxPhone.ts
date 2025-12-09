@@ -41,10 +41,10 @@ export const useTelnyxPhone = () => {
     try {
       setState(prev => ({ ...prev, sessionStatus: 'connecting' }));
       
-      // Create remote audio element BEFORE anything else
+      // Step 1: Create remote audio element BEFORE connecting (per SDK docs)
       const audioElement = getOrCreateRemoteAudio();
       
-      // Per Telnyx docs: Request microphone permission BEFORE connecting
+      // Step 2: Request microphone permission BEFORE connecting (per SDK docs)
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
         console.log('[TelnyxPhone] Microphone permission granted');
@@ -52,6 +52,7 @@ export const useTelnyxPhone = () => {
         console.error('[TelnyxPhone] Microphone permission denied:', e);
       }
       
+      // Step 3: Get credentials from backend
       const response = await fetch('/api/webrtc/token', {
         method: 'POST',
         credentials: 'include',
@@ -71,11 +72,12 @@ export const useTelnyxPhone = () => {
         throw new Error('No valid credentials received');
       }
 
+      // Cleanup existing client if any
       if (clientRef.current) {
         clientRef.current.disconnect();
       }
 
-      // Build client config per IClientOptions
+      // Step 4: Build client config per SDK documentation
       const clientConfig: any = {};
 
       if (data.token) {
@@ -89,49 +91,65 @@ export const useTelnyxPhone = () => {
 
       console.log('[TelnyxPhone] SDK version:', TelnyxRTC.version || '2.25.10');
 
+      // Step 5: Create client instance
       const newClient = new TelnyxRTC(clientConfig);
       
-      // CRITICAL: Set remoteElement so SDK auto-attaches audio for BOTH inbound and outbound calls
+      // Step 6: Set remoteElement BEFORE connect() per SDK docs
+      // SDK will automatically attach remote audio to this element
       newClient.remoteElement = audioElement;
-      console.log('[TelnyxPhone] Set client.remoteElement for auto audio binding');
+      console.log('[TelnyxPhone] Set client.remoteElement before connect');
 
+      // Event: telnyx.ready - Client is connected and registered
       newClient.on('telnyx.ready', () => {
-        console.log('[TelnyxPhone] Client ready and registered');
+        console.log('[TelnyxPhone] telnyx.ready - Client registered');
         setState(prev => ({ ...prev, sessionStatus: 'registered' }));
       });
 
+      // Event: telnyx.error - Client error
       newClient.on('telnyx.error', (error: any) => {
-        console.error('[TelnyxPhone] Client error:', error);
+        console.error('[TelnyxPhone] telnyx.error:', error);
         setState(prev => ({ ...prev, sessionStatus: 'error' }));
       });
 
+      // Event: telnyx.socket.close - Socket disconnected
       newClient.on('telnyx.socket.close', () => {
-        console.log('[TelnyxPhone] Socket closed');
+        console.log('[TelnyxPhone] telnyx.socket.close');
         setState(prev => ({ ...prev, sessionStatus: 'disconnected' }));
       });
 
+      // Event: telnyx.notification - Per SDK documentation
+      // This handles ALL notifications including incomingCall and callUpdate
       newClient.on('telnyx.notification', (notification: any) => {
+        console.log('[TelnyxPhone] telnyx.notification type:', notification.type);
+        
         const call = notification.call as Call;
         
+        // Per SDK docs: Handle 'incomingCall' notification type
+        if (notification.type === 'incomingCall') {
+          console.log('[TelnyxPhone] incomingCall notification received');
+          console.log('[TelnyxPhone] Caller:', (call as any).options?.remote_caller_id_number);
+          setState(prev => ({ ...prev, incomingCall: call }));
+          return;
+        }
+        
+        // Per SDK docs: Handle 'callUpdate' notification type
         if (notification.type === 'callUpdate') {
-          const direction = call.direction;
-          console.log('[TelnyxPhone] Call update:', call.state, 'direction:', direction);
+          console.log('[TelnyxPhone] callUpdate - state:', call.state, 'direction:', call.direction);
           
           switch (call.state) {
             case 'ringing':
-              if (direction === 'inbound') {
-                console.log('[TelnyxPhone] Incoming call detected from:', (call as any).options?.callerNumber || 'unknown');
+              // Per SDK docs: Check direction for inbound calls
+              if (call.direction === 'inbound') {
+                console.log('[TelnyxPhone] Inbound call ringing');
                 setState(prev => ({ ...prev, incomingCall: call }));
               }
               break;
+              
             case 'active':
               console.log('[TelnyxPhone] Call is now active');
-              // Debug: Log remote stream info (SDK handles attachment via remoteElement)
+              // SDK handles audio via remoteElement automatically
               if (call.remoteStream) {
-                const tracks = call.remoteStream.getTracks();
-                console.log('[TelnyxPhone] Remote stream tracks:', tracks.length, tracks.map(t => `${t.kind}:${t.enabled}`));
-              } else {
-                console.log('[TelnyxPhone] No remoteStream yet, SDK will attach via remoteElement');
+                console.log('[TelnyxPhone] Remote stream tracks:', call.remoteStream.getTracks().length);
               }
               setState(prev => ({ 
                 ...prev, 
@@ -139,6 +157,7 @@ export const useTelnyxPhone = () => {
                 incomingCall: null 
               }));
               break;
+              
             case 'hangup':
             case 'destroy':
               console.log('[TelnyxPhone] Call ended:', call.state);
@@ -157,6 +176,7 @@ export const useTelnyxPhone = () => {
         }
       });
 
+      // Step 7: Connect to Telnyx
       await newClient.connect();
       clientRef.current = newClient;
       
@@ -182,13 +202,14 @@ export const useTelnyxPhone = () => {
     };
   }, [initClient]);
 
+  // Per SDK docs: client.newCall() for outbound calls
   const makeCall = useCallback((destination: string) => {
     if (!clientRef.current || state.sessionStatus !== 'registered') {
       console.error('[TelnyxPhone] Cannot make call - not registered');
       return;
     }
     
-    console.log('[TelnyxPhone] Making call to:', destination);
+    console.log('[TelnyxPhone] Making outbound call to:', destination);
     
     const call = clientRef.current.newCall({
       destinationNumber: destination,
@@ -200,19 +221,15 @@ export const useTelnyxPhone = () => {
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
 
-  // CRITICAL FIX: Answer WITHOUT options - let SDK handle media negotiation
+  // Per SDK docs: call.answer() with NO arguments
   const answerCall = useCallback(() => {
     if (state.incomingCall) {
-      const call = state.incomingCall;
-      
-      console.log('[TelnyxPhone] Answering incoming call (no options - SDK default)');
-      
-      // Per Telnyx SDK docs: call.answer() with NO arguments
-      // The SDK will use client.remoteElement to auto-attach audio
-      call.answer();
+      console.log('[TelnyxPhone] Answering call - no arguments per SDK docs');
+      state.incomingCall.answer();
     }
   }, [state.incomingCall]);
 
+  // Per SDK docs: call.hangup() to reject
   const rejectCall = useCallback(() => {
     if (state.incomingCall) {
       console.log('[TelnyxPhone] Rejecting call');
@@ -221,13 +238,15 @@ export const useTelnyxPhone = () => {
     }
   }, [state.incomingCall]);
 
+  // Per SDK docs: call.hangup() to end active call
   const hangupCall = useCallback(() => {
     if (state.activeCall) {
-      console.log('[TelnyxPhone] Hanging up call');
+      console.log('[TelnyxPhone] Hanging up active call');
       state.activeCall.hangup();
     }
   }, [state.activeCall]);
 
+  // Per SDK docs: call.muteAudio() / call.unmuteAudio()
   const toggleMute = useCallback(() => {
     if (state.activeCall) {
       if (state.isMuted) {
@@ -241,6 +260,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall, state.isMuted]);
 
+  // Per SDK docs: call.hold() / call.unhold()
   const toggleHold = useCallback(() => {
     if (state.activeCall) {
       if (state.isOnHold) {
@@ -254,6 +274,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall, state.isOnHold]);
 
+  // Per SDK docs: call.dtmf()
   const sendDTMF = useCallback((digit: string) => {
     if (state.activeCall) {
       console.log('[TelnyxPhone] Sending DTMF:', digit);
@@ -261,6 +282,7 @@ export const useTelnyxPhone = () => {
     }
   }, [state.activeCall]);
 
+  // Transfer call
   const transferCall = useCallback((target: string) => {
     if (state.activeCall) {
       console.log('[TelnyxPhone] Transferring to:', target);
