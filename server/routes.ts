@@ -27626,28 +27626,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No credential connection configured. Please complete phone system setup first." });
       }
       
-      // Determine the noise_suppression value for Telnyx API
-      // Options: "disabled", "inbound", "outbound", "both"
-      // Per Telnyx docs: Must be inside the "inbound" object
-      const noiseSuppressionConfig = enabled ? (direction || 'outbound') : 'disabled';
+      // Determine the noise_suppression value for Telnyx Voice API
+      // CORRECT Options: "disabled", "low", "medium", "high", "aggressive"
+      // Map our direction values to Telnyx noise suppression levels
+      let noiseSuppressionLevel = "disabled";
+      if (enabled) {
+        // Map direction to level: outbound/inbound -> medium, both -> high
+        if (direction === "both") {
+          noiseSuppressionLevel = "high";
+        } else {
+          noiseSuppressionLevel = "medium";
+        }
+      }
       
       const TELNYX_API_BASE = "https://api.telnyx.com/v2";
       
-      // PATCH the credential connection with voice.noise_suppression (correct Telnyx API structure)
+      // CORRECT ENDPOINT: /v2/voice/connections/{id} NOT /v2/credential_connections/{id}
+      // The noise_suppression field is at the ROOT level of the payload
       const payload = {
-        voice: {
-          noise_suppression: noiseSuppressionConfig,
-        },
+        noise_suppression: noiseSuppressionLevel,
       };
       
-      console.log(`[Noise Suppression] Sending PATCH to credential_connections/${settings.credentialConnectionId}:`, JSON.stringify(payload));
+      console.log(`[Noise Suppression] Sending PATCH to voice/connections/${settings.credentialConnectionId}:`, JSON.stringify(payload));
       
-      const response = await fetch(`${TELNYX_API_BASE}/credential_connections/${settings.credentialConnectionId}`, {
+      const response = await fetch(`${TELNYX_API_BASE}/voice/connections/${settings.credentialConnectionId}`, {
         method: "PATCH",
         headers: buildHeaders(config),
         body: JSON.stringify(payload),
       });
-      
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[Noise Suppression] Failed to update credential connection: ${response.status} - ${errorText}`);
@@ -27658,7 +27664,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const responseData = await response.json();
-      console.log(`[Noise Suppression] Updated credential connection ${settings.credentialConnectionId} - config: ${noiseSuppressionConfig}`);
+      console.log(`[Noise Suppression] Updated credential connection ${settings.credentialConnectionId} - config: ${noiseSuppressionLevel}`);
       
       // Save settings to database
       await db.update(telephonySettings)
@@ -27673,7 +27679,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         success: true,
         enabled,
         direction: direction || 'outbound',
-        telnyxConfig: noiseSuppressionConfig,
+        telnyxConfig: noiseSuppressionLevel,
       });
     } catch (error: any) {
       console.error("[Noise Suppression] Update error:", error);
