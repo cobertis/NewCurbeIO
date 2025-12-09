@@ -1307,12 +1307,24 @@ export function WebPhoneFloatingWindow() {
           credentials: 'include',
         });
         
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch WebRTC credentials: ${response.status} ${errorText}`);
-        }
-        
         const data = await response.json();
+        
+        // CRITICAL: Handle insufficient balance error
+        if (!response.ok) {
+          if (data.error === 'INSUFFICIENT_BALANCE') {
+            console.error('[WebPhone] BLOCKED - Insufficient wallet balance:', data.message);
+            setConnectionStatus('error');
+            telnyxInitRef.current = false; // Allow retry after adding funds
+            toast({
+              title: "Insufficient Balance",
+              description: data.message || "You need to add funds to your wallet to make calls.",
+              variant: "destructive",
+            });
+            return; // Don't throw, just stop initialization
+          }
+          telnyxInitRef.current = false; // Allow retry on other errors
+          throw new Error(`Failed to fetch WebRTC credentials: ${response.status} ${JSON.stringify(data)}`);
+        }
         
         if (!data.success || !data.sipUsername || !data.sipPassword) {
           throw new Error(data.error || 'Invalid WebRTC credentials');
