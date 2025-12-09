@@ -27735,6 +27735,84 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/webrtc/call-log - Log WebRTC call events
+  app.post("/api/webrtc/call-log", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { 
+        callId,
+        fromNumber, 
+        toNumber, 
+        direction, 
+        status, 
+        duration,
+        startedAt,
+        endedAt 
+      } = req.body;
+
+      if (!fromNumber || !toNumber || !direction || !status) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Check if call already exists (update) or create new
+      const existingLog = callId ? await db.query.callLogs.findFirst({
+        where: and(
+          eq(callLogs.telnyxCallId, callId),
+          eq(callLogs.companyId, user.companyId)
+        )
+      }) : null;
+
+      if (existingLog) {
+        // Update existing call log
+        await db.update(callLogs)
+          .set({
+            status,
+            duration: duration || 0,
+            endedAt: endedAt ? new Date(endedAt) : new Date(),
+          })
+          .where(eq(callLogs.id, existingLog.id));
+        
+        console.log("[WebRTC] Updated call log:", existingLog.id, "status:", status);
+        return res.json({ success: true, id: existingLog.id, updated: true });
+      }
+
+      // Try to match contact by phone number
+      const normalizedTo = toNumber.replace(/\D/g, '').slice(-10);
+      const matchedContact = await db.query.contacts.findFirst({
+        where: and(
+          eq(contacts.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedTo}`
+        )
+      });
+
+      // Create new call log
+      const [newLog] = await db.insert(callLogs).values({
+        companyId: user.companyId,
+        userId: user.id,
+        telnyxCallId: callId || `webrtc-${Date.now()}`,
+        fromNumber,
+        toNumber,
+        direction,
+        status,
+        duration: duration || 0,
+        contactId: matchedContact?.id || null,
+        callerName: matchedContact ? `${matchedContact.firstName || ''} ${matchedContact.lastName || ''}`.trim() : null,
+        startedAt: startedAt ? new Date(startedAt) : new Date(),
+      }).returning();
+
+      console.log("[WebRTC] Created call log:", newLog.id, "direction:", direction, "to:", toNumber);
+      res.json({ success: true, id: newLog.id, created: true });
+    } catch (error: any) {
+      console.error("[WebRTC] Call log error:", error);
+      res.status(500).json({ message: "Failed to log call" });
+    }
+  });
+
   // GET /api/e911/addresses - Get company's E911 addresses
   app.get("/api/e911/addresses", requireAuth, async (req: Request, res: Response) => {
     try {

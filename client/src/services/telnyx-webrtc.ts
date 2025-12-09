@@ -77,6 +77,8 @@ class TelnyxWebRTCManager {
   private ringtoneAudio: HTMLAudioElement | null = null;
   private isPlayingRingback: boolean = false;
   private isPlayingRingtone: boolean = false;
+  private currentCallStartTime: Date | null = null;
+  private currentCallInfo: { callId: string; fromNumber: string; toNumber: string; direction: 'inbound' | 'outbound' } | null = null;
   
   private constructor() {
     // Create ringback audio element for outbound calls
@@ -171,6 +173,36 @@ class TelnyxWebRTCManager {
     }
     
     return new Blob([arrayBuffer], { type: 'audio/wav' });
+  }
+  
+  // Send call log to server
+  private async logCallToServer(status: 'active' | 'completed' | 'missed' | 'failed'): Promise<void> {
+    if (!this.currentCallInfo) return;
+    
+    try {
+      const duration = this.currentCallStartTime 
+        ? Math.floor((Date.now() - this.currentCallStartTime.getTime()) / 1000)
+        : 0;
+      
+      await fetch('/api/webrtc/call-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          callId: this.currentCallInfo.callId,
+          fromNumber: this.currentCallInfo.fromNumber,
+          toNumber: this.currentCallInfo.toNumber,
+          direction: this.currentCallInfo.direction,
+          status,
+          duration,
+          startedAt: this.currentCallStartTime?.toISOString(),
+          endedAt: status === 'completed' ? new Date().toISOString() : undefined,
+        }),
+      });
+      console.log('[Telnyx WebRTC] Call logged to server:', status);
+    } catch (error) {
+      console.error('[Telnyx WebRTC] Failed to log call:', error);
+    }
   }
   
   private startRingback(): void {
@@ -330,6 +362,22 @@ class TelnyxWebRTCManager {
             store.setCurrentCall(call);
             store.setIncomingCall(undefined);
             
+            // Record call start time and info for logging
+            this.currentCallStartTime = new Date();
+            const fromNum = call.direction === 'inbound' 
+              ? (call.options?.remoteCallerNumber || 'Unknown')
+              : (store.callerIdNumber || 'Unknown');
+            const toNum = call.direction === 'inbound'
+              ? (store.callerIdNumber || 'Unknown')
+              : call.options?.destinationNumber || 'Unknown';
+            this.currentCallInfo = {
+              callId: call.id || `webrtc-${Date.now()}`,
+              fromNumber: fromNum,
+              toNumber: toNum,
+              direction: call.direction as 'inbound' | 'outbound',
+            };
+            this.logCallToServer('active');
+            
             if (this.audioElement && call.remoteStream) {
               this.audioElement.srcObject = call.remoteStream;
               this.audioElement.play().catch(console.error);
@@ -338,6 +386,14 @@ class TelnyxWebRTCManager {
             console.log('[Telnyx WebRTC] Call ended');
             this.stopRingback(); // Stop ringback if call ends before answer
             this.stopRingtone(); // Stop ringtone if call ends
+            
+            // Log call completion
+            if (this.currentCallInfo) {
+              this.logCallToServer('completed');
+              this.currentCallInfo = null;
+              this.currentCallStartTime = null;
+            }
+            
             store.setCurrentCall(undefined);
             store.setIncomingCall(undefined);
             store.setMuted(false);
