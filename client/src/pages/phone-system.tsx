@@ -377,6 +377,12 @@ export default function PhoneSystem() {
                 <p className="text-lg font-semibold text-slate-900 dark:text-white" data-testid="text-balance">
                   {formatCurrency(walletBalance, walletCurrency)}
                 </p>
+                {walletData?.wallet?.autoRecharge && (
+                  <p className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1" data-testid="text-auto-recharge-status">
+                    <RefreshCw className="h-2.5 w-2.5" />
+                    Auto: +${walletData.wallet.autoRechargeAmount} when &lt;${walletData.wallet.autoRechargeThreshold}
+                  </p>
+                )}
               </div>
               <span className="text-xs text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors flex items-center gap-1">
                 <Plus className="h-3 w-3" />
