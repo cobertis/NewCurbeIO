@@ -7550,7 +7550,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
         if (updatedSubscription.current_period_end) {
-          updateData.currentPeriodEnd = toDate(updatedSubscription.current_period_end);
+          // For yearly billing, ensure the period end is 1 year from now, not 1 month
+          if (subscription.billingCycle === 'yearly') {
+            const oneYearFromNow = new Date();
+            oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+            updateData.currentPeriodEnd = oneYearFromNow;
+          } else {
+            updateData.currentPeriodEnd = toDate(updatedSubscription.current_period_end);
+          }
         }
 
         // Clear trial dates since trial is skipped

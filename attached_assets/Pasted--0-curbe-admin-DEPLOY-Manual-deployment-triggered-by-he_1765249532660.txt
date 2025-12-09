@@ -1,0 +1,28 @@
+
+0|curbe-admin  | [DEPLOY] Manual deployment triggered by: hello@curbe.io
+0|curbe-admin  | [DEPLOY] Job 7 started at 2025-12-09T03:05:16.548Z
+0|curbe-admin  | 3:05:16 AM [express] POST /api/admin/deploy 200 in 16ms :: {"message":"Deployment started","jobId":7…
+0|curbe-admin  | [DEPLOY] Environment: PRODUCTION
+0|curbe-admin  | [DEPLOY] Step 1/4: Pulling latest code from GitHub...
+0|curbe-admin  | [DEPLOY] Updating 58eef7149..ddf769a66
+0|curbe-admin  | Fast-forward
+0|curbe-admin  |  ...xpress-GET-api-system-credent_1765249237060.txt |  33 +++++++++++++++++++++
+0|curbe-admin  |  ...hot_2025-12-08_at_10.00.23_PM_1765249226931.png | Bin 0 -> 66913 bytes
+0|curbe-admin  |  ...hot_2025-12-08_at_10.00.23_PM_1765249226932.png | Bin 0 -> 66913 bytes
+0|curbe-admin  |  client/src/components/WebPhoneFloatingWindow.tsx   |   2 +-
+0|curbe-admin  |  4 files changed, 34 insertions(+), 1 deletion(-)
+0|curbe-admin  |  create mode 100644 attached_assets/Pasted-0-curbe-admin-3-00-17-AM-express-GET-api-system-credent_1765249237060.txt
+0|curbe-admin  |  create mode 100644 attached_assets/Screenshot_2025-12-08_at_10.00.23_PM_1765249226931.png
+0|curbe-admin  |  create mode 100644 attached_assets/Screenshot_2025-12-08_at_10.00.23_PM_1765249226932.png
+0|curbe-admin  | From github.com:cobertis/NewCurbeIO
+0|curbe-admin  |  * branch                main       -> FETCH_HEAD
+0|curbe-admin  |    58eef7149..ddf769a66  main       -> origin/main
+0|curbe-admin  | [DEPLOY] Step 2/4: Installing dependencies...
+0|curbe-admin  | [DEPLOY] Dependencies installed successfully
+0|curbe-admin  | [DEPLOY] Step 3/4: Building application...
+0|curbe-admin  | [DEPLOY] Job 7 failed: Error: Command failed with code 127: sh: 1: vite: not found
+0|curbe-admin  |     at ChildProcess.<anonymous> (file:///var/www/curbe/dist/index.js:45482:22)
+0|curbe-admin  |     at ChildProcess.emit (node:events:524:28)
+0|curbe-admin  |     at maybeClose (node:internal/child_process:1104:16)
+0|curbe-admin  |     at ChildProcess._handle.onexit (node:internal/child_process:304:5)
+
