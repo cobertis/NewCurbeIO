@@ -27561,6 +27561,169 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
 
+  // GET /api/telnyx/voice-settings/:phoneNumberId - Get all voice settings (CNAM, Recording, Spam, etc.)
+  app.get("/api/telnyx/voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getVoiceSettings } = await import("./services/telnyx-numbers-service");
+      const result = await getVoiceSettings(phoneNumberId, user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Telnyx Voice Settings] Get error:", error);
+      res.status(500).json({ message: "Failed to get voice settings" });
+    }
+  });
+
+  // POST /api/telnyx/call-recording/:phoneNumberId - Update call recording settings
+  app.post("/api/telnyx/call-recording/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      const { enabled, format = "mp3", channels = "single" } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ message: "enabled (boolean) is required" });
+      }
+
+      const { updateCallRecording } = await import("./services/telnyx-numbers-service");
+      const result = await updateCallRecording(phoneNumberId, user.companyId, enabled, format, channels);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Telnyx Call Recording] Update error:", error);
+      res.status(500).json({ message: "Failed to update call recording settings" });
+    }
+  });
+
+  // POST /api/telnyx/spam-protection/:phoneNumberId - Update spam protection settings
+  app.post("/api/telnyx/spam-protection/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      const { mode } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      if (!["disabled", "reject_calls", "flag_calls"].includes(mode)) {
+        return res.status(400).json({ message: "mode must be one of: disabled, reject_calls, flag_calls" });
+      }
+
+      const { updateSpamProtection } = await import("./services/telnyx-numbers-service");
+      const result = await updateSpamProtection(phoneNumberId, user.companyId, mode);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Telnyx Spam Protection] Update error:", error);
+      res.status(500).json({ message: "Failed to update spam protection settings" });
+    }
+  });
+
+  // POST /api/telnyx/caller-id-lookup/:phoneNumberId - Update inbound caller ID lookup (note: may be readOnly in API)
+  app.post("/api/telnyx/caller-id-lookup/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      const { enabled } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ message: "enabled (boolean) is required" });
+      }
+
+      // Try to update caller_id_name_enabled via voice settings
+      const apiKey = await (await import("./services/secrets-service")).SecretsService.prototype.getCredential.call(
+        new (await import("./services/secrets-service")).SecretsService(), "telnyx", "api_key"
+      );
+      
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, user.companyId));
+      
+      if (!wallet?.telnyxAccountId) {
+        return res.status(400).json({ message: "Company wallet or Telnyx account not found" });
+      }
+
+      const headers = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "x-managed-account-id": wallet.telnyxAccountId,
+      };
+
+      const response = await fetch(`https://api.telnyx.com/v2/phone_numbers/${phoneNumberId}/voice`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ caller_id_name_enabled: enabled }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Telnyx Caller ID Lookup] Update error:", response.status, errorText);
+        // This field may be readOnly in the API - inform user
+        if (response.status === 400 || response.status === 422) {
+          return res.status(400).json({ 
+            message: "Inbound Caller ID Lookup may need to be configured in the Telnyx Portal directly",
+            apiError: errorText 
+          });
+        }
+        return res.status(500).json({ message: `Failed to update: ${response.status}` });
+      }
+
+      const result = await response.json();
+      console.log("[Telnyx Caller ID Lookup] Update successful:", result.data?.caller_id_name_enabled);
+
+      res.json({ success: true, enabled: result.data?.caller_id_name_enabled });
+    } catch (error: any) {
+      console.error("[Telnyx Caller ID Lookup] Update error:", error);
+      res.status(500).json({ message: "Failed to update caller ID lookup settings" });
+    }
+  });
+
+
   // GET /api/telnyx/noise-suppression - Get current noise suppression settings
   app.get("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
     try {

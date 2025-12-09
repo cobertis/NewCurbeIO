@@ -518,6 +518,194 @@ export async function getCnamSettings(
   }
 }
 
+/**
+ * Get all voice settings for a phone number (CNAM, Call Recording, Spam Protection, Inbound Caller ID)
+ */
+export async function getVoiceSettings(
+  phoneNumberId: string,
+  companyId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  cnamListing?: {
+    enabled: boolean;
+    details: string;
+  };
+  callRecording?: {
+    inboundEnabled: boolean;
+    format: string;
+    channels: string;
+  };
+  inboundCallScreening?: string;
+  callerIdNameEnabled?: boolean;
+}> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Voice] Get settings error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to get voice settings: ${response.status}` };
+    }
+    
+    const result = await response.json();
+    const data = result.data;
+    
+    return {
+      success: true,
+      cnamListing: {
+        enabled: data?.cnam_listing?.cnam_listing_enabled || false,
+        details: data?.cnam_listing?.cnam_listing_details || "",
+      },
+      callRecording: {
+        inboundEnabled: data?.call_recording?.inbound_call_recording_enabled || false,
+        format: data?.call_recording?.inbound_call_recording_format || "mp3",
+        channels: data?.call_recording?.inbound_call_recording_channels || "single",
+      },
+      inboundCallScreening: data?.inbound_call_screening || "disabled",
+      callerIdNameEnabled: data?.caller_id_name_enabled || false,
+    };
+  } catch (error) {
+    console.error("[Telnyx Voice] Get settings error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to get voice settings" };
+  }
+}
+
+/**
+ * Update call recording settings for a phone number
+ */
+export async function updateCallRecording(
+  phoneNumberId: string,
+  companyId: string,
+  enabled: boolean,
+  format: "mp3" | "wav" = "mp3",
+  channels: "single" | "dual" = "single"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const payload = {
+      call_recording: {
+        inbound_call_recording_enabled: enabled,
+        inbound_call_recording_format: format,
+        inbound_call_recording_channels: channels,
+      },
+    };
+    
+    console.log(`[Telnyx Call Recording] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}, format=${format}, channels=${channels}`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Call Recording] Update error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to update call recording: ${response.status} - ${errorText}` };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx Call Recording] Update successful:`, JSON.stringify(result.data?.call_recording, null, 2));
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[Telnyx Call Recording] Update error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update call recording" };
+  }
+}
+
+/**
+ * Update spam protection (inbound call screening) settings for a phone number
+ * Values: "disabled" | "reject_calls" | "flag_calls"
+ */
+export async function updateSpamProtection(
+  phoneNumberId: string,
+  companyId: string,
+  mode: "disabled" | "reject_calls" | "flag_calls"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const payload = {
+      inbound_call_screening: mode,
+    };
+    
+    console.log(`[Telnyx Spam Protection] Updating. Number ID: ${phoneNumberId}, mode=${mode}`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Spam Protection] Update error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to update spam protection: ${response.status} - ${errorText}` };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx Spam Protection] Update successful: inbound_call_screening=${result.data?.inbound_call_screening}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[Telnyx Spam Protection] Update error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update spam protection" };
+  }
+}
+
 export async function getCompanyPhoneNumbers(companyId: string): Promise<{
   success: boolean;
   numbers?: any[];

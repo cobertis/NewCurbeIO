@@ -1097,18 +1097,46 @@ interface PhoneNumberCardProps {
   index: number;
   onConfigureE911?: (phoneNumber: string, phoneNumberId: string) => void;
 }
-
 function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("routing");
   const [callRecording, setCallRecording] = useState(false);
-  const [spamProtection, setSpamProtection] = useState(true);
+  const [spamProtection, setSpamProtection] = useState(false);
   const [cnamLookup, setCnamLookup] = useState(false);
   const [cnamName, setCnamName] = useState("");
   const [cnamEnabled, setCnamEnabled] = useState(false);
   const [isEditingCnam, setIsEditingCnam] = useState(false);
 
-  // Query CNAM settings for this number
+  // Query all voice settings for this number
+  const voiceSettingsQuery = useQuery<{
+    success: boolean;
+    cnamListing?: { enabled: boolean; details: string };
+    callRecording?: { inboundEnabled: boolean; format: string; channels: string };
+    inboundCallScreening?: string;
+    callerIdNameEnabled?: boolean;
+  }>({
+    queryKey: ["/api/telnyx/voice-settings", number.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/telnyx/voice-settings/${number.id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch voice settings");
+      return res.json();
+    },
+    enabled: !!number.id,
+  });
+
+  // Update local state when voice settings load
+  useEffect(() => {
+    if (voiceSettingsQuery.data?.success) {
+      const data = voiceSettingsQuery.data;
+      setCnamName(data.cnamListing?.details || "");
+      setCnamEnabled(data.cnamListing?.enabled || false);
+      setCallRecording(data.callRecording?.inboundEnabled || false);
+      setSpamProtection(data.inboundCallScreening !== "disabled");
+      setCnamLookup(data.callerIdNameEnabled || false);
+    }
+  }, [voiceSettingsQuery.data]);
+
+  // Query CNAM settings for this number (fallback)
   const cnamQuery = useQuery<{ cnamEnabled: boolean; cnamName: string }>({
     queryKey: ["/api/telnyx/cnam", number.id],
     queryFn: async () => {
@@ -1116,16 +1144,16 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
       if (!res.ok) throw new Error("Failed to fetch CNAM settings");
       return res.json();
     },
-    enabled: !!number.id,
+    enabled: !!number.id && !voiceSettingsQuery.data,
   });
 
   // Update local state when CNAM data loads
   useEffect(() => {
-    if (cnamQuery.data) {
+    if (cnamQuery.data && !voiceSettingsQuery.data) {
       setCnamName(cnamQuery.data.cnamName || "");
       setCnamEnabled(cnamQuery.data.cnamEnabled || false);
     }
-  }, [cnamQuery.data]);
+  }, [cnamQuery.data, voiceSettingsQuery.data]);
 
   // Mutation to update CNAM
   const cnamMutation = useMutation({
@@ -1134,6 +1162,7 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/cnam", number.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
       setIsEditingCnam(false);
       toast({
         title: "CNAM Updated",
@@ -1148,12 +1177,88 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
       });
     },
   });
+
+  // Mutation for call recording
+  const callRecordingMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return await apiRequest("POST", `/api/telnyx/call-recording/${number.id}`, { enabled });
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
+      toast({
+        title: enabled ? "Call Recording Enabled" : "Call Recording Disabled",
+        description: "Call recording settings updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      setCallRecording(!callRecording);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Could not update call recording settings",
+      });
+    },
+  });
+
+  // Mutation for spam protection
+  const spamProtectionMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return await apiRequest("POST", `/api/telnyx/spam-protection/${number.id}`, { 
+        mode: enabled ? "reject_calls" : "disabled" 
+      });
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
+      toast({
+        title: enabled ? "Spam Protection Enabled" : "Spam Protection Disabled",
+        description: enabled ? "Spam calls will be rejected." : "All calls will be allowed.",
+      });
+    },
+    onError: (error: any) => {
+      setSpamProtection(!spamProtection);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Could not update spam protection settings",
+      });
+    },
+  });
+
+  // Mutation for caller ID lookup
+  const callerIdLookupMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return await apiRequest("POST", `/api/telnyx/caller-id-lookup/${number.id}`, { enabled });
+    },
+    onSuccess: (_, enabled) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
+      toast({
+        title: enabled ? "Caller ID Lookup Enabled" : "Caller ID Lookup Disabled",
+        description: "Inbound caller ID settings updated. Cost: $0.40/month per number.",
+      });
+    },
+    onError: (error: any) => {
+      setCnamLookup(!cnamLookup);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "This feature may need to be configured in the Telnyx Portal.",
+      });
+    },
+  });
   
-  const handleFeatureToggle = (feature: string, enabled: boolean) => {
-    toast({
-      title: enabled ? `${feature} Enabled` : `${feature} Disabled`,
-      description: "Feature settings will be available in a future update.",
-    });
+  const handleCallRecordingToggle = (enabled: boolean) => {
+    setCallRecording(enabled);
+    callRecordingMutation.mutate(enabled);
+  };
+
+  const handleSpamProtectionToggle = (enabled: boolean) => {
+    setSpamProtection(enabled);
+    spamProtectionMutation.mutate(enabled);
+  };
+
+  const handleCallerIdLookupToggle = (enabled: boolean) => {
+    setCnamLookup(enabled);
+    callerIdLookupMutation.mutate(enabled);
   };
 
   return (
@@ -1252,7 +1357,7 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
               </div>
               <Switch 
                 checked={callRecording} 
-                onCheckedChange={(checked) => { setCallRecording(checked); handleFeatureToggle("Call Recording", checked); }}
+                onCheckedChange={handleCallRecordingToggle}
                 data-testid={`switch-recording-${number.phone_number}`}
               />
             </div>
@@ -1266,7 +1371,7 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
               </div>
               <Switch 
                 checked={spamProtection} 
-                onCheckedChange={(checked) => { setSpamProtection(checked); handleFeatureToggle("Spam Protection", checked); }}
+                onCheckedChange={handleSpamProtectionToggle}
                 data-testid={`switch-spam-${number.phone_number}`}
               />
             </div>
@@ -1342,7 +1447,7 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
               </div>
               <Switch 
                 checked={cnamLookup} 
-                onCheckedChange={(checked) => { setCnamLookup(checked); handleFeatureToggle("CNAM Lookup", checked); }}
+                onCheckedChange={handleCallerIdLookupToggle}
                 data-testid={`switch-cnam-lookup-${number.phone_number}`}
               />
             </div>
