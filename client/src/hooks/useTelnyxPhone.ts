@@ -188,30 +188,27 @@ export const useTelnyxPhone = () => {
     setState(prev => ({ ...prev, activeCall: call }));
   }, [state.sessionStatus, state.callerIdNumber]);
 
-  // CRITICAL: Answer with remoteElement AND manually attach stream per architect analysis
+  // Answer and manually attach stream for browser autoplay policy
   const answerCall = useCallback(() => {
     if (state.incomingCall) {
       const remoteAudio = getOrCreateRemoteAudio();
+      const call = state.incomingCall;
       
-      console.log('[TelnyxPhone] Answering call with remoteElement');
+      console.log('[TelnyxPhone] Answering call...');
       
-      // Pass remoteElement in answer options per ICallOptions documentation
-      state.incomingCall.answer({
-        remoteElement: remoteAudio,
-      } as any);
+      // Answer without options - client.remoteElement handles the default
+      call.answer();
       
-      // Also manually attach the stream after answering (in same click handler for autoplay)
-      // Small delay to allow stream to be available
+      // Manually attach stream after answering (in same click handler for autoplay)
       setTimeout(() => {
-        if (state.incomingCall) {
-          const stream = state.incomingCall.remoteStream;
-          console.log('[TelnyxPhone] After answer - remoteStream:', !!stream);
-          if (stream) {
-            remoteAudio.srcObject = stream;
-            remoteAudio.play()
-              .then(() => console.log('[TelnyxPhone] Remote audio playing'))
-              .catch(e => console.error('[TelnyxPhone] Audio play failed:', e));
-          }
+        const stream = call.remoteStream;
+        console.log('[TelnyxPhone] After answer - remoteStream:', !!stream);
+        if (stream) {
+          console.log('[TelnyxPhone] Stream tracks:', stream.getTracks().length);
+          remoteAudio.srcObject = stream;
+          remoteAudio.play()
+            .then(() => console.log('[TelnyxPhone] Remote audio playing'))
+            .catch(e => console.error('[TelnyxPhone] Audio play failed:', e));
         }
       }, 500);
     }
