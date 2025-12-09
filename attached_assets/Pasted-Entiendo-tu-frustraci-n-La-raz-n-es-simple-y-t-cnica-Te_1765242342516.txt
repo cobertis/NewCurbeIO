@@ -1,0 +1,58 @@
+Entiendo tu frustración. La razón es simple y técnica: **Telnyx no guarda los datos en TU base de datos mágicamente.**
+
+Si hiciste la llamada y "no sale", es porque tu código procesó el audio pero **se olvidó de guardar el recibo.**
+
+Para ver el historial, costos y grabaciones, tienes dos caminos. El **Camino Rápido** (consultar a Telnyx) y el **Camino Correcto** (guardar en tu DB).
+
+Aquí está la solución técnica para que le des a tu Agente y arregles esa tabla vacía.
+
+---
+
+### La Fuente de la Verdad: `Detail Records (CDRs)`
+
+Telnyx tiene un endpoint específico para facturación e historial llamado **Call Detail Records (CDRs)**. Este es el "Excel" oficial de Telnyx con costos y duraciones.
+
+* **Endpoint:** `GET /v2/detail_records`
+* **Qué te da:** ID de llamada, Duración exacta, **COSTO FINAL**, Dirección (Entrante/Saliente) y Estado.
+
+### El Problema de la Grabación
+
+Las grabaciones **NO** siempre salen en el reporte de CDR.
+* Telnyx genera el audio en un proceso separado.
+* Debes escuchar el webhook `recording.saved` y guardar esa URL en tu base de datos vinculándola al `call_control_id` o `call_leg_id`.
+
+---
+
+### PROMPT DE EMERGENCIA: SINCRONIZAR HISTORIAL
+
+Dile a tu Agente que implemente esto para "halar" la data que te falta ahora mismo y mostrarla en tu CRM.
+
+> **ACTÚA COMO BACKEND DEVELOPER.**
+>
+> Mi historial de llamadas está vacío porque no estamos guardando los logs. Necesito un endpoint para consultar el historial oficial directamente de Telnyx (CDRs) y poblar mi base de datos.
+>
+> **1. Servicio de Historial (TelnyxService):**
+> Crea una función `getCallHistory(filterDate)`:
+> * Llama a `GET /v2/detail_records`.
+> * Query Params obligatorios:
+>     * `filter[created_at][gte]`: (Fecha de inicio, ej. hace 30 días).
+>     * `sort`: `-created_at` (Más recientes primero).
+>
+> **2. Endpoint de Sincronización:**
+> * `GET /api/calls/sync`:
+> * Llama al servicio de historial.
+> * **Mapeo de Datos CRÍTICO:**
+>     * `cost`: Toma el valor `cost` del registro (viene en moneda de la cuenta).
+>     * `duration`: Toma `duration_seconds`.
+>     * `direction`: Mapea `direction` ('inbound'/'outbound').
+>     * `status`: Mapea `hangup_cause` (ej. 'normal_clearing' = Completada).
+> * **Upsert en DB:** Guarda estos registros en nuestra tabla `call_logs`. Si ya existe el ID, actualiza el costo y duración (porque Telnyx calcula el costo final unos minutos después de colgar).
+>
+> **3. Fix de Grabaciones:**
+> * Asegúrate de que el Webhook `recording.saved` esté buscando el registro en `call_logs` usando el `call_leg_id` y actualizando el campo `recording_url`.
+> * Si la grabación no aparece, crea un log de error para saber si Telnyx no la envió o si nosotros fallamos al guardarla.
+
+### Por qué no salía antes
+Tu sistema probablemente funcionaba en "tiempo real" (hacer sonar el teléfono), pero cuando la llamada terminaba (`call.hangup`), el evento se perdía en el limbo.
+
+Con este endpoint de `/sync`, podrás presionar un botón "Actualizar Historial" en tu CRM y traerá todas las llamadas que hiciste hoy, con su costo real calculado por Telnyx.

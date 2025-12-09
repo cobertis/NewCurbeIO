@@ -27699,7 +27699,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // POST /api/webrtc/token - Generate WebRTC token for current user
-  // CRITICAL: Validates wallet balance before allowing calls
+  // Note: Balance check moved to dial time - phone must always connect
   app.post("/api/webrtc/token", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -27708,25 +27708,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      // CRITICAL SECURITY: Check wallet balance before allowing calls
-      const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
-      
-      const MINIMUM_BALANCE_FOR_CALLS = 0.50; // Minimum $0.50 required to make calls
-      const currentBalance = wallet ? parseFloat(wallet.balance) : 0;
-      
-      if (currentBalance < MINIMUM_BALANCE_FOR_CALLS) {
-        console.log(`[WebRTC] BLOCKED: Company ${user.companyId} has insufficient balance: ${currentBalance.toFixed(2)} (min: ${MINIMUM_BALANCE_FOR_CALLS})`);
-        return res.status(403).json({ 
-          success: false,
-          error: "INSUFFICIENT_BALANCE",
-          message: `Insufficient balance to make calls. Current balance: ${currentBalance.toFixed(2)}. Minimum required: ${MINIMUM_BALANCE_FOR_CALLS.toFixed(2)}`,
-          currentBalance: currentBalance.toFixed(2),
-          minimumRequired: MINIMUM_BALANCE_FOR_CALLS.toFixed(2),
-        });
-      }
 
-      console.log(`[WebRTC] Balance OK for company ${user.companyId}: ${currentBalance.toFixed(2)}`);
 
       const { generateWebRTCToken } = await import("./services/telnyx-e911-service");
       
@@ -27749,15 +27731,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sipUsername: result.sipUsername,
         sipPassword: result.sipPassword,
         callerIdNumber: result.callerIdNumber,
-        currentBalance: currentBalance.toFixed(2),
-      });
+        });
     } catch (error: any) {
       console.error("[WebRTC] Token generation error:", error);
       res.status(500).json({ message: "Failed to generate WebRTC token" });
     }
   });
 
-  // POST /api/webrtc/call-log - Log WebRTC call events
+  // POST /api/webrtc/check-balance - Check if user can make calls
+  app.post("/api/webrtc/check-balance", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ canCall: false, message: "No company associated with user" });
+      }
+
+      const { getWalletByCompany } = await import("./services/wallet-service");
+      const wallet = await getWalletByCompany(user.companyId);
+      
+      const MINIMUM_BALANCE_FOR_CALLS = 0.50;
+      const currentBalance = wallet ? parseFloat(wallet.balance) : 0;
+      const canCall = currentBalance >= MINIMUM_BALANCE_FOR_CALLS;
+      
+      res.json({
+        canCall,
+        currentBalance: currentBalance.toFixed(2),
+        minimumRequired: MINIMUM_BALANCE_FOR_CALLS.toFixed(2),
+        message: canCall ? null : `Insufficient balance. Current: ${currentBalance.toFixed(2)}, Required: ${MINIMUM_BALANCE_FOR_CALLS.toFixed(2)}`,
+      });
+    } catch (error: any) {
+      console.error("[WebRTC] Balance check error:", error);
+      res.status(500).json({ canCall: false, message: "Failed to check balance" });
+    }
+  });
+
+    // POST /api/webrtc/call-log - Log WebRTC call events
   app.post("/api/webrtc/call-log", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;

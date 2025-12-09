@@ -1522,6 +1522,43 @@ export function WebPhoneFloatingWindow() {
       
       // Use Telnyx WebRTC if available, otherwise fallback to SIP.js
       if (hasTelnyxNumber) {
+        // Check balance before making call
+        try {
+          const balanceRes = await fetch('/api/webrtc/check-balance', { 
+            method: 'POST',
+            credentials: 'include'
+          });
+          
+          // Only block if we get a successful response with canCall: false
+          if (balanceRes.ok) {
+            const balanceData = await balanceRes.json();
+            
+            if (balanceData.canCall === false) {
+              console.log('[WebPhone] Insufficient balance for call:', balanceData.message);
+              // Try to play "no balance" audio notification
+              try {
+                const noBalanceAudio = new Audio('/audio/insufficient-balance.mp3');
+                await noBalanceAudio.play();
+              } catch {
+                // Audio not available - silently continue to show toast
+              }
+              // Show toast notification with balance details
+              toast({
+                title: "Insufficient Balance",
+                description: `Your wallet balance ($${balanceData.currentBalance || '0.00'}) is below the minimum required ($${balanceData.minimumRequired || '0.50'}) to make calls.`,
+                variant: "destructive",
+              });
+              return;
+            }
+          } else {
+            // Non-OK response - log and proceed with call (don't block on server errors)
+            console.warn('[WebPhone] Balance check returned non-OK status:', balanceRes.status);
+          }
+        } catch (balanceError) {
+          // Network or parse error - log and proceed with call
+          console.warn('[WebPhone] Balance check failed, proceeding with call:', balanceError);
+        }
+        
         console.log('[WebPhone] Making call via Telnyx WebRTC to:', digits);
         const formattedNumber = digits.startsWith('+') ? digits : `+1${digits}`;
         await telnyxWebRTC.makeCall(formattedNumber);
