@@ -538,6 +538,11 @@ export async function getVoiceSettings(
   };
   inboundCallScreening?: string;
   callerIdNameEnabled?: boolean;
+  callForwarding?: {
+    enabled: boolean;
+    destination: string;
+    keepCallerId: boolean;
+  };
 }> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
@@ -584,6 +589,11 @@ export async function getVoiceSettings(
       },
       inboundCallScreening: data?.inbound_call_screening || "disabled",
       callerIdNameEnabled: data?.caller_id_name_enabled || false,
+      callForwarding: {
+        enabled: data?.call_forwarding?.call_forwarding_enabled || false,
+        destination: data?.call_forwarding?.forwarding_destination_number || "",
+        keepCallerId: data?.call_forwarding?.keep_caller_id || true,
+      },
     };
   } catch (error) {
     console.error("[Telnyx Voice] Get settings error:", error);
@@ -703,6 +713,82 @@ export async function updateSpamProtection(
   } catch (error) {
     console.error("[Telnyx Spam Protection] Update error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update spam protection" };
+  }
+}
+
+/**
+ * Update call forwarding settings for a phone number
+ */
+export async function updateCallForwarding(
+  phoneNumberId: string,
+  companyId: string,
+  enabled: boolean,
+  destination?: string,
+  keepCallerId: boolean = true
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company wallet or Telnyx account not found" };
+    }
+
+    // Validate destination is E.164 US number if enabled
+    if (enabled && destination) {
+      const cleanNumber = destination.replace(/\D/g, "");
+      if (!cleanNumber.match(/^1?\d{10}$/)) {
+        return { success: false, error: "Destination must be a valid US phone number" };
+      }
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const payload: Record<string, any> = {
+      call_forwarding: {
+        call_forwarding_enabled: enabled,
+        keep_caller_id: keepCallerId,
+      },
+    };
+
+    // Add destination if provided
+    if (destination) {
+      let normalizedDest = destination.replace(/\D/g, "");
+      if (!normalizedDest.startsWith("1") && normalizedDest.length === 10) {
+        normalizedDest = "1" + normalizedDest;
+      }
+      payload.call_forwarding.forwarding_destination_number = `+${normalizedDest}`;
+    }
+    
+    console.log(`[Telnyx Call Forwarding] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}, destination=${destination}`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Call Forwarding] Update error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to update call forwarding: ${response.status} - ${errorText}` };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx Call Forwarding] Update successful:`, JSON.stringify(result.data?.call_forwarding, null, 2));
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[Telnyx Call Forwarding] Update error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update call forwarding" };
   }
 }
 

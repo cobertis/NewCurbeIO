@@ -17,6 +17,7 @@ import {
   Phone, 
   PhoneIncoming,
   PhoneOutgoing,
+  PhoneForwarded,
   Settings2, 
   CheckCircle2, 
   AlertCircle, 
@@ -1101,7 +1102,10 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("routing");
   const [callRecording, setCallRecording] = useState(false);
-  const [spamProtection, setSpamProtection] = useState(false);
+  const [callScreeningEnabled, setCallScreeningEnabled] = useState(false);
+  const [callScreeningMode, setCallScreeningMode] = useState<"flag_calls" | "reject_calls">("reject_calls");
+  const [callForwardingEnabled, setCallForwardingEnabled] = useState(false);
+  const [callForwardingNumber, setCallForwardingNumber] = useState("");
   const [cnamLookup, setCnamLookup] = useState(false);
   const [cnamName, setCnamName] = useState("");
   const [cnamEnabled, setCnamEnabled] = useState(false);
@@ -1114,6 +1118,7 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
     callRecording?: { inboundEnabled: boolean; format: string; channels: string };
     inboundCallScreening?: string;
     callerIdNameEnabled?: boolean;
+    callForwarding?: { enabled: boolean; destination: string; keepCallerId: boolean };
   }>({
     queryKey: ["/api/telnyx/voice-settings", number.id],
     queryFn: async () => {
@@ -1131,7 +1136,15 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
       setCnamName(data.cnamListing?.details || "");
       setCnamEnabled(data.cnamListing?.enabled || false);
       setCallRecording(data.callRecording?.inboundEnabled || false);
-      setSpamProtection(data.inboundCallScreening !== "disabled");
+      // Call screening
+      const screening = data.inboundCallScreening || "disabled";
+      setCallScreeningEnabled(screening !== "disabled");
+      if (screening === "flag_calls" || screening === "reject_calls") {
+        setCallScreeningMode(screening);
+      }
+      // Call forwarding
+      setCallForwardingEnabled(data.callForwarding?.enabled || false);
+      setCallForwardingNumber(data.callForwarding?.destination || "");
       setCnamLookup(data.callerIdNameEnabled || false);
     }
   }, [voiceSettingsQuery.data]);
@@ -1200,26 +1213,52 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
     },
   });
 
-  // Mutation for spam protection
-  const spamProtectionMutation = useMutation({
-    mutationFn: async (enabled: boolean) => {
+  // Mutation for call screening
+  const callScreeningMutation = useMutation({
+    mutationFn: async ({ enabled, mode }: { enabled: boolean; mode: "flag_calls" | "reject_calls" }) => {
       return await apiRequest("POST", `/api/telnyx/spam-protection/${number.id}`, { 
-        mode: enabled ? "reject_calls" : "disabled" 
+        mode: enabled ? mode : "disabled" 
       });
     },
-    onSuccess: (_, enabled) => {
+    onSuccess: (_, { enabled }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
       toast({
-        title: enabled ? "Spam Protection Enabled" : "Spam Protection Disabled",
-        description: enabled ? "Spam calls will be rejected." : "All calls will be allowed.",
+        title: enabled ? "Call Screening Enabled" : "Call Screening Disabled",
+        description: enabled ? `Spam calls will be ${callScreeningMode === "reject_calls" ? "rejected" : "flagged"}.` : "All calls will be allowed.",
       });
     },
     onError: (error: any) => {
-      setSpamProtection(!spamProtection);
+      setCallScreeningEnabled(!callScreeningEnabled);
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: error.message || "Could not update spam protection settings",
+        description: error.message || "Could not update call screening settings",
+      });
+    },
+  });
+
+  // Mutation for call forwarding
+  const callForwardingMutation = useMutation({
+    mutationFn: async ({ enabled, destination }: { enabled: boolean; destination?: string }) => {
+      return await apiRequest("POST", `/api/telnyx/call-forwarding/${number.id}`, { 
+        enabled, 
+        destination,
+        keepCallerId: true 
+      });
+    },
+    onSuccess: (_, { enabled }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
+      toast({
+        title: enabled ? "Call Forwarding Enabled" : "Call Forwarding Disabled",
+        description: enabled ? `Calls will be forwarded to ${callForwardingNumber}` : "Calls will ring normally.",
+      });
+    },
+    onError: (error: any) => {
+      setCallForwardingEnabled(!callForwardingEnabled);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message || "Could not update call forwarding settings",
       });
     },
   });
@@ -1251,9 +1290,41 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
     callRecordingMutation.mutate(enabled);
   };
 
-  const handleSpamProtectionToggle = (enabled: boolean) => {
-    setSpamProtection(enabled);
-    spamProtectionMutation.mutate(enabled);
+  const handleCallScreeningToggle = (enabled: boolean) => {
+    setCallScreeningEnabled(enabled);
+    callScreeningMutation.mutate({ enabled, mode: callScreeningMode });
+  };
+
+  const handleCallScreeningModeChange = (mode: "flag_calls" | "reject_calls") => {
+    setCallScreeningMode(mode);
+    if (callScreeningEnabled) {
+      callScreeningMutation.mutate({ enabled: true, mode });
+    }
+  };
+
+  const handleCallForwardingToggle = (enabled: boolean) => {
+    if (enabled && !callForwardingNumber) {
+      toast({
+        variant: "destructive",
+        title: "Phone Number Required",
+        description: "Please enter a forwarding phone number first.",
+      });
+      return;
+    }
+    setCallForwardingEnabled(enabled);
+    callForwardingMutation.mutate({ enabled, destination: callForwardingNumber });
+  };
+
+  const handleCallForwardingNumberSave = () => {
+    if (!callForwardingNumber) {
+      toast({
+        variant: "destructive",
+        title: "Phone Number Required",
+        description: "Please enter a valid US phone number.",
+      });
+      return;
+    }
+    callForwardingMutation.mutate({ enabled: callForwardingEnabled, destination: callForwardingNumber });
   };
 
   const handleCallerIdLookupToggle = (enabled: boolean) => {
@@ -1361,19 +1432,101 @@ function PhoneNumberCard({ number, index, onConfigureE911 }: PhoneNumberCardProp
                 data-testid={`switch-recording-${number.phone_number}`}
               />
             </div>
-            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-slate-500" />
-                <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-foreground">Spam Protection</p>
-                  <p className="text-xs text-slate-400">Block robocalls and spam numbers</p>
+            {/* Inbound Call Screening */}
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-slate-500" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Inbound Call Screening</p>
+                    <p className="text-xs text-slate-400">Block or flag robocalls and spam numbers</p>
+                  </div>
                 </div>
+                <Switch 
+                  checked={callScreeningEnabled} 
+                  onCheckedChange={handleCallScreeningToggle}
+                  disabled={callScreeningMutation.isPending}
+                  data-testid={`switch-call-screening-${number.phone_number}`}
+                />
               </div>
-              <Switch 
-                checked={spamProtection} 
-                onCheckedChange={handleSpamProtectionToggle}
-                data-testid={`switch-spam-${number.phone_number}`}
-              />
+              {callScreeningEnabled && (
+                <div className="pt-2 border-t border-slate-200 dark:border-border">
+                  <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-2 block">
+                    Screening Mode
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant={callScreeningMode === "flag_calls" ? "default" : "outline"}
+                      onClick={() => handleCallScreeningModeChange("flag_calls")}
+                      disabled={callScreeningMutation.isPending}
+                      className="flex-1"
+                      data-testid={`button-flag-calls-${number.phone_number}`}
+                    >
+                      Flag Calls
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={callScreeningMode === "reject_calls" ? "default" : "outline"}
+                      onClick={() => handleCallScreeningModeChange("reject_calls")}
+                      disabled={callScreeningMutation.isPending}
+                      className="flex-1"
+                      data-testid={`button-reject-calls-${number.phone_number}`}
+                    >
+                      Reject Calls
+                    </Button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    {callScreeningMode === "flag_calls" 
+                      ? "Spam calls will be allowed but marked as potential spam" 
+                      : "Spam calls will be automatically rejected"}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Call Forwarding */}
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <PhoneForwarded className="h-5 w-5 text-slate-500" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Forwarding</p>
+                    <p className="text-xs text-slate-400">Forward calls to another US phone number</p>
+                  </div>
+                </div>
+                <Switch 
+                  checked={callForwardingEnabled} 
+                  onCheckedChange={handleCallForwardingToggle}
+                  disabled={callForwardingMutation.isPending}
+                  data-testid={`switch-call-forwarding-${number.phone_number}`}
+                />
+              </div>
+              <div className="pt-2 border-t border-slate-200 dark:border-border">
+                <Label className="text-xs text-slate-600 dark:text-muted-foreground mb-1 block">
+                  Forward To (US Number)
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={callForwardingNumber}
+                    onChange={(e) => setCallForwardingNumber(e.target.value.replace(/[^\d+()-\s]/g, ''))}
+                    placeholder="+1 (555) 123-4567"
+                    className="flex-1 h-9 bg-white dark:bg-background"
+                    data-testid={`input-forwarding-number-${number.phone_number}`}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleCallForwardingNumberSave}
+                    disabled={callForwardingMutation.isPending || !callForwardingNumber}
+                    data-testid={`button-save-forwarding-${number.phone_number}`}
+                  >
+                    {callForwardingMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  {callForwardingEnabled ? "Calls will be forwarded to this number" : "Enter a number and enable to start forwarding"}
+                </p>
+              </div>
             </div>
             {/* CNAM Listing (Outbound Caller ID Name) */}
             <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">

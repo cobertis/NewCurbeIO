@@ -27721,6 +27721,44 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Telnyx Caller ID Lookup] Update error:", error);
       res.status(500).json({ message: "Failed to update caller ID lookup settings" });
     }
+
+  // POST /api/telnyx/call-forwarding/:phoneNumberId - Update call forwarding settings
+  app.post("/api/telnyx/call-forwarding/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+      const { enabled, destination, keepCallerId = true } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ message: "enabled (boolean) is required" });
+      }
+
+      if (enabled && !destination) {
+        return res.status(400).json({ message: "destination phone number is required when enabling call forwarding" });
+      }
+
+      const { updateCallForwarding } = await import("./services/telnyx-numbers-service");
+      const result = await updateCallForwarding(phoneNumberId, user.companyId, enabled, destination, keepCallerId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Telnyx Call Forwarding] Update error:", error);
+      res.status(500).json({ message: "Failed to update call forwarding settings" });
+    }
+  });
+
   });
 
 
