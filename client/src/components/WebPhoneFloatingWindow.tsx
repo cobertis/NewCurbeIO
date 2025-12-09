@@ -1193,12 +1193,17 @@ export function WebPhoneFloatingWindow() {
   const effectiveCall = useMemo(() => {
     if (telnyxCurrentCall) {
       const callState = (telnyxCurrentCall as any).state;
+      const callDirection = (telnyxCurrentCall as any).direction || 'outbound';
+      // For inbound calls, remoteCallerNumber is the caller (other party)
+      // For outbound calls, destinationNumber is who we're calling (other party)
+      const otherPartyNumber = callDirection === 'inbound'
+        ? (telnyxCurrentCall as any).options?.remoteCallerNumber || 'Unknown'
+        : (telnyxCurrentCall as any).options?.destinationNumber || 'Unknown';
       return {
-        phoneNumber: (telnyxCurrentCall as any).options?.destinationNumber || 
-                     (telnyxCurrentCall as any).options?.remoteCallerNumber || 'Unknown',
+        phoneNumber: otherPartyNumber,
         displayName: (telnyxCurrentCall as any).options?.callerName || 'Unknown',
         status: callState === 'active' ? 'answered' : callState === 'ringing' ? 'ringing' : callState,
-        direction: (telnyxCurrentCall as any).direction || 'outbound',
+        direction: callDirection,
         isTelnyx: true,
       };
     }
