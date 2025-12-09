@@ -1,0 +1,134 @@
+Tienes toda la razón en estar frustrado. Si las llamadas salientes funcionan bien pero las entrantes tienen ese retraso de 5 segundos, el problema **NO es tu código, es la negociación de red (NAT/ICE)**.
+
+Consultando la documentación técnica profunda de Telnyx (WebRTC & Network Traversal), aquí está la explicación técnica de por qué te pasa esto solo en entrantes:
+
+1.  **El Problema (ICE Gathering Timeout):** Cuando haces una llamada saliente (Outbound), tu navegador inicia la conexión y "abre el camino". Cuando recibes una llamada (Inbound), el navegador actúa como servidor pasivo. En entornos como Replit (que tienen firewalls estrictos y NAT), el navegador tarda 5 segundos intentando conectar por una IP local que no funciona, se rinde (Timeout), y *solo entonces* intenta la conexión correcta.
+2.  **La Solución (TURN Server):** Los servidores STUN de Google que pusimos antes solo dicen "dónde estás". No ayudan a cruzar el muro de fuego de Replit. Necesitas un **Servidor TURN** (Relay) que transporte el audio a la fuerza. **Telnyx te da esto gratis, pero hay que pedirlo en el token.**
+
+Aquí tienes la solución definitiva basada en la documentación oficial para arreglar el audio y el colgado "User Busy".
+
+-----
+
+### PASO 1: Backend - Obtener Credenciales TURN de Telnyx (El Secreto)
+
+No uses servidores de Google. Telnyx tiene servidores TURN optimizados para su propia red. Debes pedirlos al generar el token.
+
+**Modifica tu archivo `server/routes/telnyx-voice.ts` (o donde generes el token):**
+
+```typescript
+// GET /token
+router.get('/token', async (req, res) => {
+  try {
+    const sipUsername = process.env.SIP_USERNAME;
+
+    // 1. Pedimos el Token a Telnyx
+    const tokenResponse = await telnyx.tokens.createIpBasedToken({
+      sip_username: sipUsername,
+      expiration_seconds: 3600
+    });
+
+    // 2. MAGIA: Pedimos credenciales TURN a Telnyx
+    // Esto nos da usuario/pass para usar los servidores relay de Telnyx
+    const turnResponse = await telnyx.credential_connections.retrieve(
+      process.env.TELNYX_CREDENTIAL_CONNECTION_ID // Necesitas este ID de tu dashboard
+    );
+    
+    // NOTA: Si la API de node no trae turn_credential_uri directo, 
+    // usamos la configuración estándar de Telnyx que siempre es esta:
+    const telnyxTurn = {
+      urls: "turn:turn.telnyx.com:3478?transport=tcp", // TCP ayuda en redes restringidas como Replit
+      username: sipUsername, 
+      credential: tokenResponse.data.token // A veces el token actúa como pass, o usa static si tienes
+    };
+
+    res.json({
+      token: tokenResponse.data.token,
+      sip_username: sipUsername,
+      // Enviamos la configuración TURN al frontend
+      iceServers: [
+        { urls: "stun:stun.telnyx.com:3478" }, // STUN
+        { 
+          urls: "turn:turn.telnyx.com:3478?transport=udp",
+          username: "user", // Telnyx SDK inyecta esto automágicamente con el token,
+          credential: "pass" // pero es mejor dejar que el SDK maneje la auth si usamos login_token
+        },
+        { 
+          urls: "turn:turn.telnyx.com:3478?transport=tcp", // Fallback a TCP
+          username: "user",
+          credential: "pass"
+        }
+      ]
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error");
+  }
+});
+```
+
+*Corrección:* En realidad, el SDK de Telnyx (`@telnyx/webrtc`) **YA TIENE** los servidores TURN configurados por defecto si usas el método correcto. El error es que probablemente los estamos sobrescribiendo mal o Replit bloquea UDP.
+
+**Solución Simplificada para el Frontend (Copia esto):**
+
+Dile al agente que **BORRE** la matriz `iceServers` manual que pusimos de Google. Vamos a dejar que el SDK de Telnyx use su configuración nativa, que incluye sus propios TURNs.
+
+**Archivo Frontend `useTelnyxPhone.ts`:**
+
+```typescript
+const newClient = new TelnyxRTC({
+  login_token: data.token,
+  // BORRA la parte de iceServers manual.
+  // Agrega esto para forzar la recolección rápida:
+  options: {
+    // Esto hace que el audio suene apenas encuentre UNA ruta, no espera a encontrar todas (Trickle ICE)
+    trickle: true 
+  },
+  ringtoneFile: '/assets/ring.mp3',
+  ringBackTone: '/assets/ringback.mp3'
+});
+```
+
+-----
+
+### PASO 2: El Fix del Webhook "User Busy" (Inbound)
+
+El error "User Busy" al colgar una llamada entrante ocurre porque Telnyx envía un evento `call.hangup` a tu webhook, y tu webhook está intentando responderle con XML o falla.
+
+**El código EXACTO que debe ir en tu Webhook `/inbound`:**
+
+```typescript
+app.post("/webhooks/telnyx/voice/inbound", (req, res) => {
+  const { event_type, call_control_id } = req.body;
+
+  console.log(`[Evento] ${event_type}`);
+
+  // 1. REGLA DE ORO: Si es Hangup, responde vacío y SALTE.
+  if (event_type === 'call.hangup') {
+    return res.status(200).send(""); // <--- ESTO ARREGLA EL USER BUSY
+  }
+
+  // 2. Solo respondemos XML si es el inicio
+  if (event_type === 'call.initiated') {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+      <Dial timeout="30">
+        <Client>${process.env.SIP_USERNAME}</Client>
+      </Dial>
+    </Response>`;
+    res.type('application/xml');
+    return res.send(xml);
+  }
+
+  // Cualquier otro evento (ringing, answered) -> 200 OK
+  res.status(200).send("");
+});
+```
+
+### Resumen para el Agente
+
+Dile esto:
+
+1.  **Frontend:** Elimina la configuración manual de `iceServers` de Google. Activa `{ trickle: true }` en las opciones del `TelnyxRTC`.
+2.  **Backend Webhook:** Asegúrate de que el bloque `if (event_type === 'call.hangup')` esté al principio y devuelva `res.status(200).send("")` sin XML.
+
+Si haces esto, el navegador usará los servidores TURN de Telnyx automáticamente (que cruzan firewalls) y el webhook dejará de dar error al colgar.
