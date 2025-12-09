@@ -1169,7 +1169,7 @@ export function WebPhoneFloatingWindow() {
   });
   const voicemailList = voicemailsData?.voicemails || [];
   const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
-  const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
+  const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   
   // Telnyx WebRTC state
   const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
