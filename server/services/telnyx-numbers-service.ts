@@ -364,21 +364,41 @@ export async function updateCnamListing(
       "x-managed-account-id": wallet.telnyxAccountId,
     };
     
-    // Build the update payload
+    // Get the actual cnam_listing_details value
+    let cnamDetails: string | undefined;
+    if (enabled) {
+      // If no name provided, try to get company name as fallback
+      if (!cnamName) {
+        const [company] = await db
+          .select()
+          .from(companies)
+          .where(eq(companies.id, companyId));
+        cnamDetails = company?.name ? truncateForCnam(company.name) : undefined;
+      } else {
+        const validation = validateCnamName(cnamName);
+        if (!validation.valid) {
+          return { success: false, error: validation.error };
+        }
+        cnamDetails = validation.sanitized;
+      }
+      
+      // Telnyx requires BOTH fields when enabling CNAM
+      if (!cnamDetails) {
+        return { success: false, error: "CNAM name is required when enabling CNAM listing" };
+      }
+    }
+    
+    // Build the update payload - Telnyx requires BOTH fields together
     const payload: Record<string, any> = {
       cnam_listing_enabled: enabled,
     };
     
-    // Only include cnam_listing_details if enabled and name provided
-    if (enabled && cnamName) {
-      const validation = validateCnamName(cnamName);
-      if (!validation.valid) {
-        return { success: false, error: validation.error };
-      }
-      payload.cnam_listing_details = validation.sanitized;
+    // Always include cnam_listing_details when enabling (required by Telnyx)
+    if (enabled && cnamDetails) {
+      payload.cnam_listing_details = cnamDetails;
     }
     
-    console.log(`[Telnyx CNAM] Updating CNAM for number ${phoneNumberId}: enabled=${enabled}, name="${cnamName || 'N/A'}"`);
+    console.log(`[Telnyx CNAM] Updating CNAM for number ${phoneNumberId}: enabled=${enabled}, name="${cnamDetails || 'N/A'}", payload:`, JSON.stringify(payload));
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "PATCH",
