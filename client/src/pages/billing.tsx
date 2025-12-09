@@ -1302,6 +1302,7 @@ export default function Billing() {
                   });
 
                 // Add wallet deposits (type can be 'deposit' or 'DEPOSIT')
+                // Note: Wallet amounts are in dollars, but formatCurrency expects cents, so multiply by 100
                 walletTransactions
                   .filter(tx => tx.type.toLowerCase() === 'deposit')
                   .forEach(tx => {
@@ -1310,7 +1311,7 @@ export default function Billing() {
                       type: 'wallet',
                       description: tx.description || 'Wallet Top-up',
                       date: new Date(tx.createdAt),
-                      amount: parseFloat(tx.amount),
+                      amount: parseFloat(tx.amount) * 100,
                       currency: 'usd',
                       status: 'paid',
                       receiptUrl: (tx as any).receiptUrl || null,
