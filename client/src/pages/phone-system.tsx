@@ -41,7 +41,7 @@ import {
   MapPin
 } from "lucide-react";
 import { format } from "date-fns";
-import { BuyNumbersDialog } from "@/components/BuyNumbersDialog";
+import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
 
 interface ManagedAccountDetails {

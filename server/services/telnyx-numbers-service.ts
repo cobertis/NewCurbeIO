@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { wallets, companies, telephonySettings, telnyxPhoneNumbers } from "@shared/schema";
+import { wallets, companies } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 
@@ -256,52 +256,6 @@ export async function purchasePhoneNumber(
 
     console.log(`[Telnyx Numbers] Number purchased successfully - Order ID: ${orderId}, Final Phone Number ID: ${phoneNumberId}`);
 
-    // Get credential connection ID for the company to assign for incoming calls
-    const [settings] = await db
-      .select()
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
-
-    if (settings?.credentialConnectionId && phoneNumberId) {
-      // Assign the phone number to the credential connection for incoming WebRTC calls
-      console.log(`[Telnyx Numbers] Assigning number ${phoneNumber} to credential connection ${settings.credentialConnectionId}`);
-      
-      try {
-        const patchResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify({
-            connection_id: settings.credentialConnectionId,
-          }),
-        });
-
-        if (patchResponse.ok) {
-          console.log(`[Telnyx Numbers] Number ${phoneNumber} assigned to credential connection successfully`);
-        } else {
-          const patchError = await patchResponse.text();
-          console.error(`[Telnyx Numbers] Failed to assign number to connection: ${patchError}`);
-        }
-      } catch (patchErr) {
-        console.error(`[Telnyx Numbers] Error assigning number to connection:`, patchErr);
-      }
-    }
-
-    // Save the phone number to the database
-    if (phoneNumberId) {
-      try {
-        await db.insert(telnyxPhoneNumbers).values({
-          companyId,
-          phoneNumber,
-          telnyxPhoneNumberId: phoneNumberId,
-          connectionId: settings?.credentialConnectionId || null,
-          status: "active",
-        });
-        console.log(`[Telnyx Numbers] Number ${phoneNumber} saved to database`);
-      } catch (dbErr) {
-        console.error(`[Telnyx Numbers] Error saving number to database:`, dbErr);
-      }
-    }
-
     return {
       success: true,
       orderId: orderId,
@@ -372,117 +326,6 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to get phone numbers",
-    };
-  }
-}
-
-export async function syncPhoneNumbersToCredentialConnection(companyId: string): Promise<{
-  success: boolean;
-  syncedCount: number;
-  error?: string;
-}> {
-  try {
-    const apiKey = await getTelnyxMasterApiKey();
-
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, syncedCount: 0, error: "No managed account found" };
-    }
-
-    const [settings] = await db
-      .select()
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
-
-    if (!settings?.credentialConnectionId) {
-      return { success: false, syncedCount: 0, error: "No credential connection found" };
-    }
-
-    const headers: Record<string, string> = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
-    };
-
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers`, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return { success: false, syncedCount: 0, error: `Failed to get numbers: ${errorText}` };
-    }
-
-    const result = await response.json();
-    const numbers = result.data || [];
-    let syncedCount = 0;
-
-    for (const number of numbers) {
-      const phoneNumberId = number.id;
-      const phoneNumber = number.phone_number;
-      const currentConnectionId = number.connection_id;
-
-      // Skip if already assigned to correct connection
-      if (currentConnectionId === settings.credentialConnectionId) {
-        console.log(`[Telnyx Numbers] Number ${phoneNumber} already assigned to credential connection`);
-        syncedCount++;
-        continue;
-      }
-
-      // Assign to credential connection
-      console.log(`[Telnyx Numbers] Assigning ${phoneNumber} to credential connection ${settings.credentialConnectionId}`);
-      
-      const patchResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({
-          connection_id: settings.credentialConnectionId,
-        }),
-      });
-
-      if (patchResponse.ok) {
-        console.log(`[Telnyx Numbers] Number ${phoneNumber} assigned successfully`);
-        syncedCount++;
-
-        // Save to database if not exists
-        const [existing] = await db
-          .select()
-          .from(telnyxPhoneNumbers)
-          .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
-
-        if (!existing) {
-          await db.insert(telnyxPhoneNumbers).values({
-            companyId,
-            phoneNumber,
-            telnyxPhoneNumberId: phoneNumberId,
-            connectionId: settings.credentialConnectionId,
-            status: "active",
-          });
-        } else {
-          await db
-            .update(telnyxPhoneNumbers)
-            .set({ connectionId: settings.credentialConnectionId, updatedAt: new Date() })
-            .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
-        }
-      } else {
-        const patchError = await patchResponse.text();
-        console.error(`[Telnyx Numbers] Failed to assign ${phoneNumber}: ${patchError}`);
-      }
-    }
-
-    return { success: true, syncedCount };
-  } catch (error) {
-    console.error("[Telnyx Numbers] Sync error:", error);
-    return {
-      success: false,
-      syncedCount: 0,
-      error: error instanceof Error ? error.message : "Sync failed",
     };
   }
 }

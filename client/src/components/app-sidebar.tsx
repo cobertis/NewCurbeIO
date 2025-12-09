@@ -29,6 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { User } from "@shared/schema";
+import { useWebPhoneStore, webPhone } from "@/services/webphone";
 
 export function AppSidebar() {
   const [location, setLocation] = useLocation();
@@ -46,6 +47,11 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     try {
+      const { currentCall } = useWebPhoneStore.getState();
+      if (currentCall) {
+        await webPhone.hangupCall();
+      }
+      
       const response = await fetch("/api/logout", {
         method: "POST",
         credentials: "include",

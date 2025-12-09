@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telnyxPhoneNumbers, telephonyCredentials, contacts } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -26385,121 +26385,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // POST /webhooks/telnyx/voice/inbound - Handle inbound voice calls (TeXML)
-  // CRITICAL: Must respond in <200ms to avoid call setup delays
   app.post("/webhooks/telnyx/voice/inbound", async (req: Request, res: Response) => {
-    const startTime = Date.now();
-    const { from, to, call_control_id, direction } = req.body;
-    
-    // Log asynchronously to not block response
-    setImmediate(() => {
-      console.log("[Telnyx Voice Inbound] Call:", { from, to, direction, call_control_id });
-    });
-
     try {
-      // Normalize phone number for lookup (Telnyx sends with +1 prefix)
-      const normalizedTo = to?.replace(/[^\d+]/g, '') || '';
-      
-      // ARCHITECTURE: Look up the specific phone number and its assigned user
-      // This enables per-number routing (each number can ring a different user)
-      const phoneNumber = await db
-        .select({ 
-          companyId: telnyxPhoneNumbers.companyId,
-          assignedUserId: telnyxPhoneNumbers.assignedUserId,
-          displayName: telnyxPhoneNumbers.displayName
-        })
-        .from(telnyxPhoneNumbers)
-        .where(eq(telnyxPhoneNumbers.phoneNumber, normalizedTo))
-        .limit(1)
-        .then(rows => rows[0]);
-      
-      if (!phoneNumber) {
-        // Phone number not found - respond with error message
-        const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Joanna">This number is not configured. Please contact support.</Say>
-  <Hangup />
-</Response>`;
-        res.set("Content-Type", "application/xml");
-        return res.status(200).send(texmlResponse);
-      }
-      
-      // ROUTING LOGIC:
-      // 1. If number has assigned user, route to that specific user
-      // 2. If no assigned user, fall back to any active credential for the company
-      let credential: { sipUsername: string } | undefined;
-      
-      if (phoneNumber.assignedUserId) {
-        // Route to specifically assigned user
-        credential = await db
-          .select({ sipUsername: telephonyCredentials.sipUsername })
-          .from(telephonyCredentials)
-          .where(and(
-            eq(telephonyCredentials.userId, phoneNumber.assignedUserId),
-            eq(telephonyCredentials.companyId, phoneNumber.companyId),
-            eq(telephonyCredentials.isActive, true)
-          ))
-          .limit(1)
-          .then(rows => rows[0]);
-          
-        if (!credential) {
-          // Assigned user has no active SIP credentials
-          console.warn(`[Telnyx Voice Inbound] Assigned user ${phoneNumber.assignedUserId} has no active SIP credentials`);
-        }
-      }
-      
-      // Fallback: If no assigned user or assigned user has no credentials, use any active credential
-      if (!credential) {
-        credential = await db
-          .select({ sipUsername: telephonyCredentials.sipUsername })
-          .from(telephonyCredentials)
-          .where(and(
-            eq(telephonyCredentials.companyId, phoneNumber.companyId),
-            eq(telephonyCredentials.isActive, true)
-          ))
-          .limit(1)
-          .then(rows => rows[0]);
-      }
-      
-      if (!credential?.sipUsername) {
-        // No active SIP credentials available
-        const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Joanna">This line is not available. Please try again later.</Say>
-  <Hangup />
-</Response>`;
-        res.set("Content-Type", "application/xml");
-        return res.status(200).send(texmlResponse);
-      }
-      
-      // SUCCESS: Route call to WebRTC client via <Dial><Client>
+      console.log("[Telnyx Voice Inbound] Received call:", {
+        callControlId: req.body.call_control_id,
+        from: req.body.from,
+        to: req.body.to,
+        direction: req.body.direction,
+      });
+
+      // Basic TeXML response - reject with message since WebRTC browser client handles calls
       const texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="30" callerId="${from}">
-    <Client>${credential.sipUsername}</Client>
-  </Dial>
-</Response>`;
-      
-      res.set("Content-Type", "application/xml");
-      res.status(200).send(texmlResponse);
-      
-      // Log call routing asynchronously
-      setImmediate(() => {
-        const routingType = phoneNumber.assignedUserId ? 'assigned' : 'fallback';
-        console.log(`[Telnyx Voice Inbound] Routed ${from} -> ${credential.sipUsername} (${routingType}) in ${Date.now() - startTime}ms`);
-      });
-      
-    } catch (error: any) {
-      console.error("[Telnyx Voice Inbound] Error:", error.message);
-      // Always return valid XML - never 5xx which causes "User Busy"
-      const fallbackResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Joanna">We are experiencing technical difficulties. Please try again.</Say>
+  <Say voice="Polly.Joanna">Thank you for calling. This number only accepts outbound calls. Please contact us through our website.</Say>
   <Hangup />
 </Response>`;
+
       res.set("Content-Type", "application/xml");
-      res.status(200).send(fallbackResponse);
+      res.status(200).send(texmlResponse);
+    } catch (error: any) {
+      console.error("[Telnyx Voice Inbound] Error:", error);
+      res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
     }
   });
+
   // POST /webhooks/telnyx/voice/status - Handle voice call status callbacks
   app.post("/webhooks/telnyx/voice/status", async (req: Request, res: Response) => {
     try {
@@ -27850,37 +27759,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/telnyx/sync-numbers - Sync existing phone numbers to credential connection for incoming calls
-  app.post("/api/telnyx/sync-numbers", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const user = req.user!;
-      
-      if (!user.companyId) {
-        return res.status(400).json({ message: "No company associated with user" });
-      }
-
-      const { syncPhoneNumbersToCredentialConnection } = await import("./services/telnyx-numbers-service");
-      const result = await syncPhoneNumbersToCredentialConnection(user.companyId);
-
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: `${result.syncedCount} phone number(s) synced for incoming calls`,
-          syncedCount: result.syncedCount
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-          message: result.error || "Sync failed" 
-        });
-      }
-    } catch (error: any) {
-      console.error("[Telnyx Numbers] Sync error:", error);
-      res.status(500).json({ message: "Failed to sync phone numbers" });
-    }
-  });
-
-
   // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28123,7 +28001,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ success: true, id: existingLog.id, updated: true });
       }
 
-      // Create new call log (skip contact matching to avoid SQL errors)
+      // Try to match contact by phone number
+      const normalizedTo = toNumber.replace(/\D/g, '').slice(-10);
+      const matchedContact = await db.query.contacts.findFirst({
+        where: and(
+          eq(contacts.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedTo}`
+        )
+      });
+
+      // Create new call log
       const [newLog] = await db.insert(callLogs).values({
         companyId: user.companyId,
         userId: user.id,
@@ -28133,8 +28020,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         direction,
         status,
         duration: duration || 0,
-        contactId: null,
-        callerName: null,
+        contactId: matchedContact?.id || null,
+        callerName: matchedContact ? `${matchedContact.firstName || ''} ${matchedContact.lastName || ''}`.trim() : null,
         startedAt: startedAt ? new Date(startedAt) : new Date(),
       }).returning();
 
