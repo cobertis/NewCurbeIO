@@ -10,7 +10,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { UploadAvatarDialog } from "@/components/upload-avatar-dialog";
-import { WebPhoneFloatingButton } from "@/components/WebPhoneFloatingButton";
+import WebPhone from "@/components/WebPhone";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -873,8 +873,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Floating WebPhone Button */}
-      <WebPhoneFloatingButton />
+      {/* Floating WebPhone */}
+      <WebPhone />
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>

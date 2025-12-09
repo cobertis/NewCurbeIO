@@ -31,24 +31,40 @@ export const useTelnyxPhone = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to get WebRTC token');
+        throw new Error('Failed to get WebRTC credentials');
       }
       
       const data = await response.json();
       
-      if (!data.success || !data.token) {
-        throw new Error(data.error || 'No token received');
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to get credentials');
+      }
+
+      // Must have either token OR SIP credentials
+      if (!data.token && !data.sipUsername) {
+        throw new Error('No valid credentials received');
       }
 
       if (clientRef.current) {
         clientRef.current.disconnect();
       }
 
-      const newClient = new TelnyxRTC({
-        login_token: data.token,
+      // Build client config - prefer token, fallback to SIP credentials
+      const clientConfig: any = {
         ringtoneFile: '/ring.mp3',
         ringbackFile: '/ringback.mp3',
-      });
+      };
+
+      if (data.token) {
+        clientConfig.login_token = data.token;
+        console.log('[TelnyxPhone] Using login_token authentication');
+      } else if (data.sipUsername && data.sipPassword) {
+        clientConfig.login = data.sipUsername;
+        clientConfig.password = data.sipPassword;
+        console.log('[TelnyxPhone] Using SIP credentials authentication');
+      }
+
+      const newClient = new TelnyxRTC(clientConfig);
 
       newClient.on('telnyx.ready', () => {
         console.log('[TelnyxPhone] Client ready and registered');

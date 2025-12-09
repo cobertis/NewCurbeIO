@@ -1,60 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTelnyxPhone } from '../hooks/useTelnyxPhone';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, ArrowRight, RotateCcw, Hash } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { Phone, MicOff, Pause, X, ArrowRight, Grip, Minimize2, User, RotateCcw } from 'lucide-react';
 
-const dialpadButtons = [
-  ['1', '2', '3'],
-  ['4', '5', '6'],
-  ['7', '8', '9'],
-  ['*', '0', '#'],
-];
+const ControlButton = ({ icon, label, onClick, active, className = '' }: any) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all ${
+      active ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+    } ${className}`}
+    data-testid={`webphone-control-${label.toLowerCase()}`}
+  >
+    <div className="mb-1">{icon}</div>
+    <span className="text-[10px] font-medium uppercase tracking-wide">{label}</span>
+  </button>
+);
 
 export const WebPhone = () => {
   const {
-    sessionStatus,
-    incomingCall,
-    activeCall,
-    isMuted,
-    isOnHold,
-    answerCall,
-    rejectCall,
-    hangupCall,
-    toggleMute,
-    toggleHold,
-    sendDTMF,
-    transferCall,
-    makeCall,
-    reconnect,
+    sessionStatus, incomingCall, activeCall, isMuted, isOnHold,
+    answerCall, rejectCall, hangupCall, toggleMute, toggleHold, sendDTMF, transferCall, makeCall, reconnect
   } = useTelnyxPhone();
 
+  const [isOpen, setIsOpen] = useState(false);
   const [dialNumber, setDialNumber] = useState('');
-  const [showTransfer, setShowTransfer] = useState(false);
-  const [transferTarget, setTransferTarget] = useState('');
-  const [showDialpad, setShowDialpad] = useState(false);
+  const [view, setView] = useState<'dialpad' | 'transfer' | 'dtmf'>('dialpad');
+  const [callDuration, setCallDuration] = useState(0);
 
-  const handleDialpadPress = (digit: string) => {
+  useEffect(() => {
+    if (incomingCall || activeCall) setIsOpen(true);
+  }, [incomingCall, activeCall]);
+
+  useEffect(() => {
+    let interval: any;
     if (activeCall) {
-      sendDTMF(digit);
+      interval = setInterval(() => setCallDuration(prev => prev + 1), 1000);
     } else {
-      setDialNumber(prev => prev + digit);
+      setCallDuration(0);
     }
-  };
+    return () => clearInterval(interval);
+  }, [activeCall]);
 
-  const handleCall = () => {
-    if (dialNumber.length > 0) {
-      makeCall(dialNumber);
-    }
-  };
-
-  const handleTransfer = () => {
-    if (transferTarget.length > 0) {
-      transferCall(transferTarget);
-      setShowTransfer(false);
-      setTransferTarget('');
-    }
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const remainingSecs = secs % 60;
+    return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
   };
 
   const getRemoteNumber = () => {
@@ -71,211 +60,221 @@ export const WebPhone = () => {
     return '';
   };
 
-  return (
-    <div className="w-80 bg-white dark:bg-gray-900 shadow-2xl rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden" data-testid="webphone-container">
-      {/* Header */}
-      <div 
-        className={cn(
-          "p-3 text-white flex justify-between items-center",
-          sessionStatus === 'registered' ? 'bg-green-600' : 
-          sessionStatus === 'connecting' ? 'bg-yellow-500' : 
-          sessionStatus === 'error' ? 'bg-red-500' : 'bg-gray-500'
-        )}
-        data-testid="webphone-header"
+  const getCallerName = () => {
+    if (incomingCall) {
+      return (incomingCall as any).options?.callerName || 
+             (incomingCall as any).callerName || 
+             'Unknown';
+    }
+    return 'Unknown';
+  };
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 z-50 ${
+          sessionStatus === 'registered' ? 'bg-indigo-600' : 'bg-gray-400'
+        } ${incomingCall ? 'animate-bounce bg-green-500' : ''}`}
+        data-testid="webphone-fab"
       >
+        <Phone className="text-white" size={28} />
+        <span className={`absolute top-0 right-0 w-4 h-4 rounded-full border-2 border-white ${
+          sessionStatus === 'registered' ? 'bg-green-400' : 'bg-red-500'
+        }`} />
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-6 right-6 w-[340px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20 dark:border-gray-700/50 overflow-hidden z-50 flex flex-col transition-all duration-300 ease-out font-sans" data-testid="webphone-panel">
+      
+      {/* HEADER */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 flex justify-between items-center text-white shadow-lg">
         <div className="flex items-center gap-2">
-          <Phone size={18} />
-          <span className="font-bold">Phone</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs uppercase" data-testid="webphone-status">{sessionStatus}</span>
+          <div className={`w-2 h-2 rounded-full ${sessionStatus === 'registered' ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+          <span className="text-xs font-semibold tracking-wider opacity-90">
+            {sessionStatus === 'registered' ? 'CURBE VOICE' : sessionStatus === 'connecting' ? 'CONNECTING...' : 'OFFLINE'}
+          </span>
           {sessionStatus === 'error' && (
-            <button onClick={reconnect} className="p-1 hover:bg-white/20 rounded" data-testid="webphone-reconnect">
-              <RotateCcw size={14} />
+            <button onClick={reconnect} className="ml-2 p-1 hover:bg-white/20 rounded-full" data-testid="webphone-reconnect">
+              <RotateCcw size={12} />
             </button>
           )}
         </div>
+        <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1 rounded-full transition-colors" data-testid="webphone-minimize">
+          <Minimize2 size={16} />
+        </button>
       </div>
 
-      {/* Incoming Call Screen */}
-      {incomingCall && !activeCall && (
-        <div className="p-6 text-center animate-pulse bg-indigo-50 dark:bg-indigo-900/30" data-testid="webphone-incoming">
-          <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-100">Incoming Call</h3>
-          <p className="text-xl my-2 font-mono" data-testid="webphone-caller-id">{getRemoteNumber()}</p>
-          <div className="flex justify-center gap-4 mt-4">
-            <button 
-              onClick={answerCall} 
-              className="p-4 bg-green-500 rounded-full text-white hover:bg-green-600 transition-colors"
-              data-testid="webphone-answer"
-            >
-              <Phone size={24} />
-            </button>
-            <button 
-              onClick={rejectCall} 
-              className="p-4 bg-red-500 rounded-full text-white hover:bg-red-600 transition-colors"
-              data-testid="webphone-reject"
-            >
-              <X size={24} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Active Call Screen */}
-      {activeCall && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-800" data-testid="webphone-active-call">
-          <div className="text-center mb-4">
-            <div className="text-green-600 dark:text-green-400 font-bold mb-1">ON CALL</div>
-            <div className="text-2xl font-mono" data-testid="webphone-remote-number">{getRemoteNumber()}</div>
-            {isOnHold && (
-              <span className="text-xs bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 px-2 py-1 rounded mt-2 inline-block">
-                HOLD
-              </span>
-            )}
-          </div>
-
-          {/* Main Controls */}
-          <div className="grid grid-cols-4 gap-2 mb-4">
-            <button 
-              onClick={toggleMute} 
-              className={cn(
-                "p-3 rounded-lg flex flex-col items-center transition-colors",
-                isMuted ? 'bg-red-100 dark:bg-red-900/50 text-red-600' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
-              )}
-              data-testid="webphone-mute"
-            >
-              {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-              <span className="text-xs mt-1">Mute</span>
-            </button>
-            <button 
-              onClick={toggleHold} 
-              className={cn(
-                "p-3 rounded-lg flex flex-col items-center transition-colors",
-                isOnHold ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
-              )}
-              data-testid="webphone-hold"
-            >
-              {isOnHold ? <Play size={20} /> : <Pause size={20} />}
-              <span className="text-xs mt-1">{isOnHold ? 'Resume' : 'Hold'}</span>
-            </button>
-            <button 
-              onClick={() => setShowDialpad(!showDialpad)} 
-              className={cn(
-                "p-3 rounded-lg flex flex-col items-center transition-colors",
-                showDialpad ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'
-              )}
-              data-testid="webphone-dialpad-toggle"
-            >
-              <Hash size={20} />
-              <span className="text-xs mt-1">DTMF</span>
-            </button>
-            <button 
-              onClick={() => setShowTransfer(!showTransfer)} 
-              className="p-3 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg flex flex-col items-center transition-colors"
-              data-testid="webphone-transfer-toggle"
-            >
-              <ArrowRight size={20} />
-              <span className="text-xs mt-1">Transfer</span>
-            </button>
-          </div>
-
-          {/* DTMF Dialpad */}
-          {showDialpad && (
-            <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-700 rounded" data-testid="webphone-dtmf-pad">
-              <div className="grid grid-cols-3 gap-1">
-                {dialpadButtons.flat().map((digit) => (
-                  <button
-                    key={digit}
-                    onClick={() => handleDialpadPress(digit)}
-                    className="p-2 bg-white dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded text-lg font-mono transition-colors"
-                    data-testid={`webphone-dtmf-${digit}`}
-                  >
-                    {digit}
-                  </button>
-                ))}
-              </div>
+      {/* MAIN CONTENT */}
+      <div className="p-6 flex-1 bg-gray-50/50 dark:bg-gray-800/50 min-h-[400px] flex flex-col relative">
+        
+        {/* INCOMING CALL OVERLAY */}
+        {incomingCall && !activeCall && (
+          <div className="absolute inset-0 bg-gray-900/95 z-20 flex flex-col items-center justify-center text-white backdrop-blur-sm p-6 rounded-b-3xl" data-testid="webphone-incoming-overlay">
+            <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mb-4 animate-pulse">
+              <User size={48} className="text-gray-300" />
             </div>
-          )}
-
-          {/* Transfer Zone */}
-          {showTransfer && (
-            <div className="mb-4 p-2 bg-gray-200 dark:bg-gray-700 rounded" data-testid="webphone-transfer-zone">
-              <Input 
-                type="text" 
-                placeholder="Extension or Number" 
-                className="w-full mb-2"
-                value={transferTarget}
-                onChange={e => setTransferTarget(e.target.value)}
-                data-testid="webphone-transfer-input"
-              />
-              <Button 
-                onClick={handleTransfer} 
-                className="w-full"
-                disabled={!transferTarget}
-                data-testid="webphone-transfer-confirm"
-              >
-                Transfer Now
-              </Button>
-            </div>
-          )}
-
-          <button 
-            onClick={hangupCall} 
-            className="w-full bg-red-600 text-white p-3 rounded-lg font-bold hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-            data-testid="webphone-hangup"
-          >
-            <PhoneOff size={20} />
-            HANG UP
-          </button>
-        </div>
-      )}
-
-      {/* Dialpad Screen (Idle) */}
-      {!activeCall && !incomingCall && (
-        <div className="p-4" data-testid="webphone-dialpad">
-          <Input 
-            type="tel" 
-            className="w-full text-2xl p-2 text-center border-b-2 border-indigo-100 dark:border-indigo-900 mb-4 font-mono" 
-            placeholder="Enter number..." 
-            value={dialNumber}
-            onChange={(e) => setDialNumber(e.target.value)}
-            data-testid="webphone-dial-input"
-          />
-          
-          {/* Dialpad Grid */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {dialpadButtons.flat().map((digit) => (
-              <button
-                key={digit}
-                onClick={() => handleDialpadPress(digit)}
-                className="p-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-xl font-mono transition-colors"
-                data-testid={`webphone-dial-${digit}`}
-              >
-                {digit}
+            <h3 className="text-xl font-bold mb-1">{getCallerName()}</h3>
+            <p className="text-gray-400 mb-8 font-mono">{getRemoteNumber()}</p>
+            <div className="flex gap-8 w-full justify-center">
+              <button onClick={rejectCall} className="flex flex-col items-center gap-2 group" data-testid="webphone-reject">
+                <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center shadow-lg group-hover:bg-red-600 transition-all group-active:scale-95">
+                  <X size={28} />
+                </div>
+                <span className="text-xs font-medium">Reject</span>
               </button>
-            ))}
+              <button onClick={answerCall} className="flex flex-col items-center gap-2 group" data-testid="webphone-answer">
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg group-hover:bg-green-600 transition-all group-active:scale-95 animate-bounce">
+                  <Phone size={28} />
+                </div>
+                <span className="text-xs font-medium">Answer</span>
+              </button>
+            </div>
           </div>
+        )}
 
-          <div className="flex gap-2">
+        {/* ACTIVE CALL */}
+        {activeCall ? (
+          <div className="flex flex-col h-full items-center" data-testid="webphone-active-call">
+            <div className="mt-4 mb-8 text-center">
+              <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900/50 rounded-full mx-auto flex items-center justify-center mb-3 text-indigo-600 dark:text-indigo-400 shadow-inner">
+                <User size={32} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 font-mono">{getRemoteNumber()}</h3>
+              <p className="text-indigo-600 dark:text-indigo-400 font-mono text-sm bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full inline-block mt-1">
+                {formatTime(callDuration)}
+              </p>
+              {isOnHold && <span className="block text-xs text-yellow-600 font-bold mt-2 animate-pulse">ON HOLD</span>}
+            </div>
+
+            {/* CALL CONTROLS */}
+            {view === 'dialpad' && (
+              <div className="grid grid-cols-3 gap-4 w-full max-w-[240px] mb-auto">
+                <ControlButton 
+                  icon={<MicOff size={24} />} 
+                  label="Mute" 
+                  active={isMuted} 
+                  onClick={toggleMute} 
+                />
+                <ControlButton 
+                  icon={<Grip size={24} />} 
+                  label="Keypad" 
+                  onClick={() => setView('dtmf')} 
+                />
+                <ControlButton 
+                  icon={<Pause size={24} />} 
+                  label="Hold" 
+                  active={isOnHold} 
+                  onClick={toggleHold} 
+                />
+                <ControlButton 
+                  icon={<ArrowRight size={24} />} 
+                  label="Transfer" 
+                  onClick={() => setView('transfer')} 
+                  className="col-span-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                />
+              </div>
+            )}
+
+            {/* DTMF KEYPAD */}
+            {view === 'dtmf' && (
+              <div className="w-full mb-auto bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700" data-testid="webphone-dtmf-panel">
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(key => (
+                    <button 
+                      key={key}
+                      onClick={() => sendDTMF(String(key))}
+                      className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-lg font-medium text-gray-700 dark:text-gray-200 mx-auto transition-colors active:bg-gray-300"
+                      data-testid={`webphone-dtmf-${key}`}
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setView('dialpad')} className="text-sm text-gray-500 w-full hover:text-gray-800 dark:hover:text-gray-200 py-2">
+                  Back
+                </button>
+              </div>
+            )}
+
+            {/* TRANSFER VIEW */}
+            {view === 'transfer' && (
+              <div className="w-full mb-auto bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700" data-testid="webphone-transfer-panel">
+                <h4 className="text-xs font-bold text-gray-400 uppercase mb-3">Transfer to...</h4>
+                <input 
+                  autoFocus
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-lg mb-3 focus:ring-2 focus:ring-indigo-500 outline-none text-gray-800 dark:text-gray-100"
+                  placeholder="Extension or Number"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      transferCall(e.currentTarget.value);
+                      setView('dialpad');
+                    }
+                  }}
+                  data-testid="webphone-transfer-input"
+                />
+                <button onClick={() => setView('dialpad')} className="text-sm text-gray-500 w-full hover:text-gray-800 dark:hover:text-gray-200 py-2">
+                  Cancel
+                </button>
+              </div>
+            )}
+
             <button 
-              onClick={() => setDialNumber(prev => prev.slice(0, -1))}
-              className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 p-3 rounded-lg font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              data-testid="webphone-backspace"
+              onClick={hangupCall} 
+              className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-red-200 dark:shadow-red-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+              data-testid="webphone-hangup"
             >
-              ←
-            </button>
-            <button 
-              onClick={handleCall} 
-              disabled={sessionStatus !== 'registered' || !dialNumber}
-              className="flex-[2] bg-green-600 text-white p-3 rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              data-testid="webphone-call"
-            >
-              <Phone size={20} />
-              CALL
+              <Phone size={20} className="rotate-[135deg]" />
+              HANG UP
             </button>
           </div>
-        </div>
-      )}
+        ) : (
+          
+          /* DIALPAD (IDLE) */
+          <div className="flex flex-col h-full" data-testid="webphone-dialpad">
+            <input 
+              className="text-3xl font-light text-center bg-transparent border-none focus:ring-0 text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 mb-6 py-4 outline-none"
+              placeholder="Enter number..."
+              value={dialNumber}
+              onChange={(e) => setDialNumber(e.target.value)}
+              data-testid="webphone-dial-input"
+            />
+            
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {[1,2,3,4,5,6,7,8,9,'*',0,'#'].map(key => (
+                <button 
+                  key={key}
+                  onClick={() => setDialNumber(prev => prev + key)}
+                  className="h-14 w-14 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xl font-medium text-gray-700 dark:text-gray-200 mx-auto transition-colors active:bg-gray-300 dark:active:bg-gray-500"
+                  data-testid={`webphone-key-${key}`}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-center gap-4 mt-auto">
+              <button 
+                onClick={() => setDialNumber(prev => prev.slice(0, -1))}
+                className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 flex items-center justify-center transition-colors"
+                data-testid="webphone-backspace"
+              >
+                <X size={20} />
+              </button>
+              <button 
+                onClick={() => makeCall(dialNumber)} 
+                disabled={!dialNumber || sessionStatus !== 'registered'}
+                className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-200 dark:shadow-green-900/20 flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                data-testid="webphone-call"
+              >
+                <Phone size={28} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
