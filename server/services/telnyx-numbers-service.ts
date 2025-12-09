@@ -388,102 +388,46 @@ export async function updateCnamListing(
       }
     }
     
-    // First, get the phone number in E.164 format for V1 API
-    const getResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-      method: "GET",
-      headers,
-    });
+    // CORRECT ENDPOINT: /v2/phone_numbers/{id}/voice (NOT /v2/phone_numbers/{id})
+    // The phone_numbers/{id} endpoint has readOnly CNAM fields that are ignored
+    // Voice settings endpoint is where CNAM is actually configurable
     
-    let phoneNumberE164: string | null = null;
-    if (getResponse.ok) {
-      const getData = await getResponse.json();
-      phoneNumberE164 = getData.data?.phone_number;
-    }
-    
-    // Build the update payload using CORRECT field names for V1 API:
-    // - cnam_listing_enabled: true/false
-    // - cnam_listing_details: "COMPANY NAME" (max 15 chars)
-    const payload: Record<string, any> = {
-      cnam_listing_enabled: enabled,
+    // Build the payload for voice settings endpoint
+    const payload = {
+      cnam_listing: {
+        cnam_listing_enabled: enabled,
+        ...(enabled && cnamDetails ? { cnam_listing_details: cnamDetails.toUpperCase() } : {}),
+      },
     };
     
-    // Include cnam_listing_details when enabling CNAM (V1 API field name)
-    if (enabled && cnamDetails) {
-      payload.cnam_listing_details = cnamDetails.toUpperCase(); // LIDB requires uppercase
-    }
+    console.log(`[Telnyx CNAM] Using V2 Voice Settings API. Number ID: ${phoneNumberId}, enabled=${enabled}, name="${cnamDetails || 'N/A'}", payload:`, JSON.stringify(payload));
     
-    // Try V1 API first (works better with Managed Accounts for CNAM)
-    // PUT https://api.telnyx.com/origination/numbers/{phone_number_e164}
-    const V1_API_BASE = "https://api.telnyx.com/origination/numbers";
-    const numberIdentifier = phoneNumberE164 || phoneNumberId;
-    
-    console.log(`[Telnyx CNAM] Using V1 API. Number: ${numberIdentifier}, enabled=${enabled}, name="${cnamDetails || 'N/A'}", payload:`, JSON.stringify(payload));
-    
-    const v1Response = await fetch(`${V1_API_BASE}/${encodeURIComponent(numberIdentifier)}`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(payload),
-    });
-    
-    if (v1Response.ok) {
-      const v1Result = await v1Response.json();
-      console.log(`[Telnyx CNAM V1] Update successful:`, JSON.stringify(v1Result, null, 2));
-      
-      return {
-        success: true,
-        cnamEnabled: v1Result.cnam_listing_enabled ?? enabled,
-        cnamName: v1Result.cnam_listing_details ?? cnamDetails,
-      };
-    }
-    
-    // V1 failed, log error and try V2 as fallback
-    const v1ErrorText = await v1Response.text();
-    console.warn(`[Telnyx CNAM V1] Failed: ${v1Response.status} - ${v1ErrorText}`);
-    console.log(`[Telnyx CNAM] Trying V2 API as fallback...`);
-    
-    // V2 API fallback - PATCH /v2/phone_numbers/{id}
-    // Try WITHOUT the x-managed-account-id header first (Master Account might have access)
-    const v2HeadersNoManaged: Record<string, string> = {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    };
-    
-    console.log(`[Telnyx CNAM] Trying V2 API WITHOUT managed account header...`);
-    let v2Response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+    // PATCH /v2/phone_numbers/{phone_number_id}/voice
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
       method: "PATCH",
-      headers: v2HeadersNoManaged,
+      headers,
       body: JSON.stringify(payload),
     });
     
-    // If that fails (likely 404 or 401), try WITH the managed account header
-    if (!v2Response.ok) {
-      const noManagedErrorText = await v2Response.text();
-      console.warn(`[Telnyx CNAM V2 no-managed] Failed: ${v2Response.status} - ${noManagedErrorText}`);
-      console.log(`[Telnyx CNAM] Trying V2 API WITH managed account header...`);
-      
-      v2Response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify(payload),
-      });
-    }
-    
-    if (!v2Response.ok) {
-      const v2ErrorText = await v2Response.text();
-      console.error(`[Telnyx CNAM V2] Update error: ${v2Response.status} - ${v2ErrorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx CNAM Voice] Update error: ${response.status} - ${errorText}`);
       return {
         success: false,
-        error: `Failed to update CNAM: V1=${v1Response.status}, V2=${v2Response.status}`,
+        error: `Failed to update CNAM: ${response.status} - ${errorText}`,
       };
     }
     
-    const result = await v2Response.json();
-    console.log(`[Telnyx CNAM V2] Update successful:`, JSON.stringify(result.data, null, 2));
+    const result = await response.json();
+    console.log(`[Telnyx CNAM Voice] Update successful:`, JSON.stringify(result.data, null, 2));
+    
+    // Extract CNAM settings from the voice settings response
+    const cnamListing = result.data?.cnam_listing;
     
     return {
       success: true,
-      cnamEnabled: result.data?.cnam_listing_enabled ?? enabled,
-      cnamName: result.data?.cnam_listing_details ?? cnamDetails,
+      cnamEnabled: cnamListing?.cnam_listing_enabled ?? enabled,
+      cnamName: cnamListing?.cnam_listing_details ?? cnamDetails,
     };
   } catch (error) {
     console.error("[Telnyx CNAM] Update error:", error);
@@ -528,27 +472,42 @@ export async function getCnamSettings(
       "x-managed-account-id": wallet.telnyxAccountId,
     };
     
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+    // First get basic phone number info
+    const phoneResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "GET",
       headers,
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Telnyx CNAM] Get settings error: ${response.status} - ${errorText}`);
+    let phoneNumber: string | undefined;
+    if (phoneResponse.ok) {
+      const phoneData = await phoneResponse.json();
+      phoneNumber = phoneData.data?.phone_number;
+    }
+    
+    // Get voice settings (where CNAM is actually stored)
+    // CORRECT ENDPOINT: /v2/phone_numbers/{id}/voice
+    const voiceResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!voiceResponse.ok) {
+      const errorText = await voiceResponse.text();
+      console.error(`[Telnyx CNAM Voice] Get settings error: ${voiceResponse.status} - ${errorText}`);
       return {
         success: false,
-        error: `Failed to get CNAM settings: ${response.status}`,
+        error: `Failed to get CNAM settings: ${voiceResponse.status}`,
       };
     }
     
-    const result = await response.json();
+    const result = await voiceResponse.json();
+    const cnamListing = result.data?.cnam_listing;
     
     return {
       success: true,
-      cnamEnabled: result.data?.cnam_listing_enabled || false,
-      cnamName: result.data?.cnam_listing_details || "",
-      phoneNumber: result.data?.phone_number,
+      cnamEnabled: cnamListing?.cnam_listing_enabled || false,
+      cnamName: cnamListing?.cnam_listing_details || "",
+      phoneNumber,
     };
   } catch (error) {
     console.error("[Telnyx CNAM] Get settings error:", error);

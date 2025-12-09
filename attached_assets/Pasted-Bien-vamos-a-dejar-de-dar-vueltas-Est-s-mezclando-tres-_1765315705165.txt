@@ -1,0 +1,212 @@
+Bien, vamos a dejar de dar vueltas.
+
+Estás mezclando tres cosas distintas y Telnyx es medio esquizofrénico con V1/V2/Managed Accounts:
+
+* **CNAM Listing (Outbound Caller ID Name)**
+* **Caller ID Lookup (Inbound CNAM / Inbound Caller ID Name)**
+* **Call Recording**
+* **Spam Protection (Inbound Call Screening)**
+
+Te resumo la verdad incómoda primero y luego te doy los `curl`/payloads exactos para cuentas **managed**.
+
+---
+
+## 1. Por qué tus llamadas a la API “funcionan” (200) pero no cambian nada
+
+Lo que se ve en la doc:
+
+* El recurso “phone number” normal (`/v2/phone_numbers/:id`) tiene campos como `caller_id_name_enabled`, `cnam_listing_enabled`, etc. marcados como **readOnly** en el schema. ([GitHub][1])
+* Las **voice settings reales** están en otro recurso: `Phone Number Configurations → Voice` (la colección `/phone_numbers/voice` y el PATCH “Update a phone number with voice settings”). ([Telnyx][2])
+
+Traducción:
+Si tú mandas un `PATCH /v2/phone_numbers/:id` con `cnam_listing_enabled` o similares, la API te devuelve 200 (request válido), pero **ignora** esos campos. Por eso “no pasa nada”.
+
+Además:
+
+* Lo que antes se hacía en V1 (`/v1/mission-control/update-number` con `cnam_listing_enabled` y `cnam_listing_details`) está **deprecado** y documentado como tal. ([Telnyx][3])
+* Managed accounts: Telnyx añadió soporte para controlarlas con `x-managed-account-id` sobre API v2. ([Telnyx][4])
+
+Conclusión dura:
+Tu test de “V2 200 pero no cambia CNAM” casi seguro lo hiciste contra **`/v2/phone_numbers/:id`**, no contra **`/v2/phone_numbers/{id}/voice`**. Estabas peleando con el endpoint equivocado.
+
+---
+
+## 2. CNAM Listing (Outbound Caller ID Name) vía API en cuentas Managed
+
+### Endpoint correcto (V2, voice settings)
+
+El recurso de voice settings se maneja así (según la doc y el Postman oficial): ([Telnyx][2])
+
+* Listar voice settings:
+  `GET https://api.telnyx.com/v2/phone_numbers/voice`
+* Recuperar voice settings de un número:
+  `GET https://api.telnyx.com/v2/phone_numbers/{phone_number_id}/voice`
+* Actualizar voice settings (lo que tú quieres):
+  `PATCH https://api.telnyx.com/v2/phone_numbers/{phone_number_id}/voice`
+
+En el objeto devuelto se ve algo así:
+
+```json
+"cnam_listing": {
+  "cnam_listing_enabled": true,
+  "cnam_listing_details": "example"
+}
+```
+
+### Para Managed Accounts
+
+Usas **la API key de la cuenta manager** y añades el header:
+
+* `Authorization: Bearer MANAGER_API_KEY`
+* `x-managed-account-id: <ID_DE_LA_MANAGED_ACCOUNT>`
+* `Content-Type: application/json`
+
+Ejemplo `curl` para activar CNAM listing en un DID específico:
+
+```bash
+curl --location --request PATCH \
+  "https://api.telnyx.com/v2/phone_numbers/{PHONE_NUMBER_ID}/voice" \
+  -H "Authorization: Bearer $TELNYX_API_KEY" \
+  -H "x-managed-account-id: $MANAGED_ACCOUNT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cnam_listing": {
+      "cnam_listing_enabled": true,
+      "cnam_listing_details": "CURBE HEALTH"
+    }
+  }'
+```
+
+Puntos importantes que suelen joder esto:
+
+1. `PHONE_NUMBER_ID` **no es** el número en E.164; es el `id` del recurso phone_number (tipo `"1293384261075731499"`). Lo sacas de `/v2/phone_numbers` o de `/v2/phone_numbers/voice`. ([Telnyx][2])
+2. `cnam_listing_details` máx **15 caracteres**, solo alfanumérico + espacios. ([Telnyx][5])
+3. CNAM **no es instantáneo**: la propia Telnyx dice que puede tardar de 12–24h, hasta 72h en propagarse en los databases. ([Telnyx Help Center][6])
+
+Si después de esto sigues viendo que:
+
+* `GET /phone_numbers/{id}/voice` devuelve tu `cnam_listing_*` actualizado pero las llamadas no muestran el nombre → es tema de propagación/operador destino, no de API.
+* `GET` sigue devolviendo `cnam_listing_enabled: false` → ahí sí sospechamos de una limitación específica de tu cuenta (por ejemplo, números de carrier subyacente que no permiten CNAM o política diferente en managed), y toca abrir ticket con Telnyx.
+
+Pero a nivel **API**, la manera soportada en 2025 para CNAM listing es esa, no V1.
+
+---
+
+## 3. Caller ID Lookup (Inbound) – aquí viene el golpe
+
+**Inbound Caller ID Name (CNAM Incoming)** NO está expuesto claramente como campo editable en las APIs nuevas:
+
+* Doc de “Set up Inbound Caller ID Name (incoming)” dice que lo activas desde Mission Control → My Numbers → Voice → Inbound Caller ID Name. ([Telnyx Help Center][7])
+* En el schema v2, `caller_id_name_enabled` aparece como **readOnly** en `PhoneNumberDetailed`. ([GitHub][1])
+
+Traducción dura:
+
+> Hoy por hoy, Telnyx espera que habilites **Inbound CNAM** desde el portal, no desde la API. En v2 no tienes un campo documentado para cambiarlo programáticamente.
+
+Entonces:
+
+* **Outbound CNAM Listing** → sí, vía `/phone_numbers/{id}/voice` con `cnam_listing`.
+* **Inbound Caller ID Lookup** → hoy estás atado al portal / o a que Telnyx te lo habilite. No vas a “arreglarlo” solo con código; es una limitación del producto.
+
+---
+
+## 4. Call Recording – activarlo vía API (managed)
+
+Aquí sí Telnyx lo expone clarito en voice settings: el objeto `call_recording` dentro de voice settings tiene campos como `inbound_call_recording_enabled`, formato y canales. ([Telnyx][2])
+
+Ejemplo:
+
+```bash
+curl --location --request PATCH \
+  "https://api.telnyx.com/v2/phone_numbers/{PHONE_NUMBER_ID}/voice" \
+  -H "Authorization: Bearer $TELNYX_API_KEY" \
+  -H "x-managed-account-id: $MANAGED_ACCOUNT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "call_recording": {
+      "inbound_call_recording_enabled": true,
+      "inbound_call_recording_format": "mp3",
+      "inbound_call_recording_channels": "single"
+    }
+  }'
+```
+
+Valores típicos (según doc):
+
+* `inbound_call_recording_enabled`: `true` / `false`
+* `inbound_call_recording_format`: `"wav"` o `"mp3"`
+* `inbound_call_recording_channels`: `"single"` o `"dual"` ([Telnyx][2])
+
+---
+
+## 5. Spam Protection = Inbound Call Screening
+
+La “Spam Protection” que Telnyx vende es básicamente el campo `inbound_call_screening` de voice settings:
+
+* `disabled`
+* `reject_calls`
+* `flag_calls` ([Telnyx][8])
+
+Ejemplo:
+
+```bash
+curl --location --request PATCH \
+  "https://api.telnyx.com/v2/phone_numbers/{PHONE_NUMBER_ID}/voice" \
+  -H "Authorization: Bearer $TELNYX_API_KEY" \
+  -H "x-managed-account-id: $MANAGED_ACCOUNT_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inbound_call_screening": "reject_calls"
+  }'
+```
+
+o si solo quieres marcar:
+
+```json
+"inbound_call_screening": "flag_calls"
+```
+
+---
+
+## 6. Lo que deberías hacer *ya* para validar si el problema eres tú o Telnyx
+
+Sin diplomacia:
+
+1. **Verifica el endpoint** que estás usando.
+
+   * Si estás PATCH-eando `/v2/phone_numbers/:id` → estás perdiendo el tiempo. Cambia a `/v2/phone_numbers/{id}/voice`.
+2. **Valida con un número de tu cuenta principal (no managed)** primero.
+
+   * Si en la cuenta principal funciona y en la managed no, ya tienes prueba para tirarle a soporte.
+3. **Loguea el GET antes y después**:
+
+   * `GET /v2/phone_numbers/{id}/voice`
+   * Manda PATCH.
+   * Vuelve a hacer `GET /voice` al mismo ID.
+   * Si el JSON cambia, la API funciona y el resto es propagación o interop.
+4. **Si el JSON no cambia ni en cuenta principal**:
+
+   * Ahí sí: esto huele a bug o cambio silencioso de Telnyx → ticket con reproducible (`curl` + response).
+
+---
+
+### Resumen brutal
+
+* No, no es “imposible” hacerlo por API: **CNAM Listing, Recording y Spam Protection sí se activan por API**… pero en el **endpoint correcto de voice settings** y con el `x-managed-account-id` bien puesto.
+* **Inbound CNAM Lookup** es otra historia: hoy es básicamente interfaz de portal; no te la vas a inventar con un PATCH oculto porque los campos están marcados readOnly en v2.
+* Tu error hasta ahora ha sido mezclar:
+
+  * V1 (depreciado y sin bearer para managed)
+  * v2 `phone_numbers` (campos readOnly)
+  * v2 `phone_numbers/voice` (el que realmente sirve).
+
+Cuando ordenas eso, tu CRM deja de pelear con la API y tú de pelear con fantasmas.
+
+[1]: https://raw.githubusercontent.com/team-telnyx/openapi/master/openapi/spec3.yml?utm_source=chatgpt.com "https://raw.githubusercontent.com/team-telnyx/open..."
+[2]: https://telnyx.mintlify.app/api-reference/phone-number-configurations/list-phone-numbers-with-voice-settings?utm_source=chatgpt.com "Telnyx"
+[3]: https://developers.telnyx.com/api/v1/mission-control/update-number?utm_source=chatgpt.com "Update a number API V1"
+[4]: https://telnyx.com/release-notes/control-managed-accounts-via-api-key?utm_source=chatgpt.com "Ability to Control Managed Accounts via API key"
+[5]: https://developers.telnyx.com/api/v1/mission-control/get-number?utm_source=chatgpt.com "Retrieve a number API V1"
+[6]: https://support.telnyx.com/en/articles/1130720-caller-id-outbound-vs-cnam?utm_source=chatgpt.com "Caller ID Outbound vs CNAM | Telnyx Help Center"
+[7]: https://support.telnyx.com/en/collections/3968222-telnyx-number-management-guide?utm_source=chatgpt.com "Telnyx Number Management Guide"
+[8]: https://developers.telnyx.com/api/numbers/retrieve-phone-number?utm_source=chatgpt.com "Retrieve a phone number API"
