@@ -28411,6 +28411,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to repair phone number routing" });
     }
   });
+
+  // POST /api/telnyx/provisioning/repair-sip-uri - Enable SIP URI calling on existing credential connections
+  app.post("/api/telnyx/provisioning/repair-sip-uri", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: "SIP URI calling enabled successfully. Inbound calls can now reach WebRTC clients."
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Failed to enable SIP URI calling"
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] SIP URI repair error:", error);
+      res.status(500).json({ message: "Failed to repair SIP URI calling" });
+    }
+  });
   // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {

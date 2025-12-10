@@ -297,6 +297,9 @@ export class TelephonyProvisioningService {
           },
           inbound: {
             channel_limit: 10,
+            // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
+            sip_uri_calling_enabled: true,
+            sip_uri_calling_preference: "from_my_connections",
           },
           webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
         }
@@ -312,6 +315,71 @@ export class TelephonyProvisioningService {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Network error" };
     }
+  }
+
+  /**
+   * Enable SIP URI Calling on an existing credential connection
+   * This allows TeXML <Sip> dials to reach WebRTC clients registered on this connection
+   */
+  async enableSipUriCalling(
+    managedAccountId: string,
+    connectionId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Enabling SIP URI Calling on connection: ${connectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "PATCH",
+        {
+          inbound: {
+            channel_limit: 10,
+            sip_uri_calling_enabled: true,
+            sip_uri_calling_preference: "from_my_connections",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to enable SIP URI Calling: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      console.log(`[TelephonyProvisioning] SIP URI Calling enabled successfully on connection: ${connectionId}`);
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error enabling SIP URI Calling:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Repair existing credential connection to enable SIP URI calling
+   * Call this to fix companies that were provisioned before this feature was added
+   */
+  async repairSipUriCalling(companyId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Repairing SIP URI Calling for company: ${companyId}`);
+    
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (!settings || !settings.credentialConnectionId) {
+      return { success: false, error: "No credential connection found for company" };
+    }
+
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, error: "Company has no Telnyx managed account" };
+    }
+
+    return this.enableSipUriCalling(managedAccountId, settings.credentialConnectionId);
   }
 
   private async createSipCredential(
