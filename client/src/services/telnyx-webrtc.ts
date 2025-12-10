@@ -430,10 +430,9 @@ class TelnyxWebRTCManager {
       login: sipUser,
       password: sipPass,
       // Per docs: Enable debug to collect WebRTC stats for troubleshooting
-      // https://developers.telnyx.com/docs/voice/webrtc/troubleshooting/debug-logs#enabling-debug
+      // NOTE: debugOutput 'socket' is DISABLED because it causes "circular structure to JSON" errors
+      // when the SDK tries to serialize remoteElement which contains React Fiber references
       debug: true,
-      // Per docs: debugOutput 'socket' ships debug data frames to Telnyx over websocket
-      debugOutput: 'socket',
       // Per docs: prefetchIceCandidates can improve connection time
       prefetchIceCandidates: true,
     });
