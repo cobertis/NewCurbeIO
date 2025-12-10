@@ -90,6 +90,24 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Key File:** `client/src/services/telnyx-webrtc.ts`
 - **Console Logs:** `[Telnyx WebRTC] Scheduling reconnect in Xms (attempt Y/10)` and `[Telnyx WebRTC] Attempting auto-reconnect...`
 
+**CRITICAL BUG FIX: Outbound Call 488 "Not Acceptable Here" Prevention**
+- **Issue:** Outbound WebRTC calls failing with SIP 488 "Not Acceptable Here" / "INCOMPATIBLE_DESTINATION".
+- **Root Cause:** SRTP encryption mismatch - WebRTC SDK uses DTLS-SRTP automatically, but Telnyx credential_connection had SRTP enabled, causing double encryption incompatibility.
+- **Solution:** Disable SRTP on Telnyx credential_connection via API.
+- **Official Telnyx Documentation:**
+  - **OpenAPI Spec:** https://github.com/team-telnyx/openapi/blob/master/openapi/spec3.yml
+  - **Schema:** `EncryptedMedia: enum: [SRTP, null]` - ONLY these two values are valid
+  - **API Endpoint:** `PATCH /v2/credential_connections/{id}` with body `{"encrypted_media": null}`
+  - **Headers Required:** `Authorization: Bearer <master_api_key>`, `X-Managed-Account-Id: <managed_account_id>`, `Content-Type: application/json`
+- **Implementation:** `server/services/telephony-provisioning-service.ts` - `disableSrtpEncryption()` method runs automatically on server startup via `server/index.ts`
+- **Key Code:**
+  ```typescript
+  const response = await this.makeApiRequest(managedAccountId, `/credential_connections/${connectionId}`, "PATCH", {
+    encrypted_media: null, // Per OpenAPI spec - ONLY "SRTP" or null are valid
+  });
+  ```
+- **NEVER DO:** Use `"disabled"`, `""`, or any other value - only `"SRTP"` or `null` are documented values in the OpenAPI spec.
+
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized, and all message timestamps are normalized to UTC. Performance is optimized with database indexes and aggressive caching.
 

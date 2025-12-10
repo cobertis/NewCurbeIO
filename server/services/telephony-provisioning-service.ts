@@ -403,7 +403,10 @@ export class TelephonyProvisioningService {
         `/credential_connections/${connectionId}`,
         "PATCH",
         {
-          // Setting to null disables SRTP - required for WebRTC which uses DTLS-SRTP
+          // Per Telnyx OpenAPI spec (spec3.yml): enum is ["SRTP", null]
+          // Docs: https://github.com/team-telnyx/openapi/blob/master/openapi/spec3.yml
+          // Setting to null disables SRTP encryption
+          // WebRTC uses DTLS-SRTP automatically, so Telnyx SRTP must be disabled to avoid 488 errors
           encrypted_media: null,
         }
       );

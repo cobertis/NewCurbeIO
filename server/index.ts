@@ -211,5 +211,26 @@ app.use((req, res, next) => {
     }).catch((error) => {
       console.error("[EMAIL] Error importing email service:", error);
     });
+    
+    // CRITICAL: Auto-repair SRTP settings on startup for WebRTC compatibility
+    // This fixes 488 "Not Acceptable Here" errors on outbound calls
+    import("./services/telephony-provisioning-service").then(({ telephonyProvisioningService }) => {
+      import("./db").then(async ({ db }) => {
+        const { telephonySettings } = await import("@shared/schema");
+        const settings = await db.select().from(telephonySettings);
+        for (const setting of settings) {
+          if (setting.credentialConnectionId) {
+            console.log(`[SRTP Repair] Checking SRTP for company ${setting.companyId}...`);
+            telephonyProvisioningService.repairSrtpSettings(setting.companyId).then((result) => {
+              if (result.success) {
+                console.log(`[SRTP Repair] Successfully disabled SRTP for company ${setting.companyId}`);
+              } else {
+                console.log(`[SRTP Repair] Could not repair SRTP for ${setting.companyId}: ${result.error}`);
+              }
+            }).catch((err) => console.error(`[SRTP Repair] Error:`, err));
+          }
+        }
+      }).catch((err) => console.error(`[SRTP Repair] Error loading db:`, err));
+    }).catch((err) => console.error(`[SRTP Repair] Error loading service:`, err));
   });
 })();
