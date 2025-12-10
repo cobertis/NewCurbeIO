@@ -598,14 +598,34 @@ class TelnyxWebRTCManager {
       console.log('[Telnyx WebRTC] Answering call');
       this.stopRingtone(); // Stop ringtone when answering
       
-      // CRITICAL: Just call answer() - do NOT set currentCall here
-      // Wait for state === 'active' event in notification handler which will:
-      // 1. Set currentCall
-      // 2. Set callActiveTimestamp (start timer)
-      // 3. Connect audio via remoteStream property
+      // CRITICAL: Set up remoteStream listener BEFORE answer()
+      // This ensures audio is connected as soon as stream is available
+      const call = incomingCall as any;
+      
+      // Pre-connect audio element to catch the stream immediately
+      if (this.audioElement) {
+        // Listen for the stream property change
+        const checkStream = () => {
+          if (call.remoteStream) {
+            console.log('[Telnyx WebRTC] Remote stream available, connecting audio immediately');
+            this.audioElement!.srcObject = call.remoteStream;
+            this.audioElement!.volume = 1.0;
+            this.audioElement!.muted = false;
+            this.audioElement!.play().catch(e => console.error('[Telnyx WebRTC] Audio play error:', e));
+          } else {
+            // Check again in 50ms
+            setTimeout(checkStream, 50);
+          }
+        };
+        
+        // Start checking immediately after answer
+        setTimeout(checkStream, 0);
+      }
+      
+      // Now call answer() - the stream listener is already set up
       incomingCall.answer();
       
-      console.log('[Telnyx WebRTC] Answer sent, waiting for active state...');
+      console.log('[Telnyx WebRTC] Answer sent, audio listener active, waiting for active state...');
     }
   }
   

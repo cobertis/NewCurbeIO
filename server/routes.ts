@@ -26592,14 +26592,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.set("Content-Type", "application/xml");
       res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Hangup/>
+  
 </Response>`);
     } catch (error: any) {
       console.error("[Telnyx Voice] Dial complete error:", error);
       res.set("Content-Type", "application/xml");
       res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Hangup/>
+  
 </Response>`);
     }
   });
