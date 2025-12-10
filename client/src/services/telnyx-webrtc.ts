@@ -444,11 +444,12 @@ class TelnyxWebRTCManager {
       webrtcCallId 
     });
 
-    // CRITICAL: For INBOUND calls, use server-side hangup to avoid 486 Busy
-    // The WebRTC SDK's hangup() sends "USER_BUSY" code which plays "User Busy" message to PSTN caller
-    // Instead, we ask the server to terminate the PSTN leg via Telnyx Call Control API
+    // CRITICAL: For INBOUND calls, use server-side hangup first to terminate PSTN cleanly
+    // ONLY clean up WebRTC after server confirms PSTN is terminated (to avoid 486 Busy)
     if (direction === "inbound") {
       console.log("[Telnyx WebRTC] Using server-side hangup for inbound call...");
+      let serverHangupSuccess = false;
+      
       try {
         const response = await fetch("/api/webrtc/server-hangup", {
           method: "POST",
@@ -459,20 +460,29 @@ class TelnyxWebRTCManager {
         const result = await response.json();
         console.log("[Telnyx WebRTC] Server hangup result:", result);
         
-        // CRITICAL: Use disconnect() to clean up locally WITHOUT sending SIP BYE
-        // This avoids the SDK sending "USER_BUSY" (486) to the caller
-        if (typeof (activeCall as any).disconnect === 'function') {
-          (activeCall as any).disconnect();
-          console.log("[Telnyx WebRTC] Local disconnect complete");
-        }
+        // Only proceed with WebRTC cleanup if server confirmed PSTN termination
+        serverHangupSuccess = result.success === true;
       } catch (e) {
         console.error("[Telnyx WebRTC] Server hangup failed:", e);
-        // Fallback to SDK hangup if server fails
+        serverHangupSuccess = false;
+      }
+      
+      if (serverHangupSuccess) {
+        // PSTN is terminated - safe to clean up WebRTC without 486 reaching caller
         try {
+          console.log("[Telnyx WebRTC] PSTN terminated, cleaning up WebRTC...");
           activeCall.hangup();
-        } catch (err) {
-          console.error("[Telnyx WebRTC] Fallback hangup error:", err);
+          console.log("[Telnyx WebRTC] WebRTC cleanup complete");
+        } catch (e) {
+          console.error("[Telnyx WebRTC] WebRTC cleanup error:", e);
         }
+      } else {
+        // Server failed to terminate PSTN - DON'T call SDK hangup (would send 486)
+        // The call may still be active on PSTN side
+        console.error("[Telnyx WebRTC] Server hangup failed - NOT cleaning up WebRTC to avoid 486 Busy");
+        console.error("[Telnyx WebRTC] User may need to wait for remote party to hang up");
+        // Don't clean up state - let the call remain "active" until remote hangs up
+        return;
       }
     } else {
       // For OUTBOUND calls, use SDK hangup (no 486 issue because we initiated)

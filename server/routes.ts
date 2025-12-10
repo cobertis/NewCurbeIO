@@ -28959,13 +28959,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Use Telnyx Call Control API to hang up the PSTN leg
       try {
-        const telnyxApiKey = process.env.TELNYX_API_KEY;
+        // Get API key from SecretsService (stored in system_api_credentials table)
+        const { SecretsService } = await import("./services/secrets-service");
+        const secretsService = new SecretsService();
+        let telnyxApiKey = await secretsService.getCredential("telnyx", "api_key");
+        
         if (!telnyxApiKey) {
-          console.error("[WebRTC Server Hangup] TELNYX_API_KEY not configured");
-          // Still remove from map and respond success
+          console.error("[WebRTC Server Hangup] Telnyx API key not configured in system credentials");
           activeCallsMap.delete(credential.sipUsername);
-          return res.json({ success: true, message: "Call cleaned up (no API key)" });
+          return res.json({ success: false, message: "Telnyx API key not configured" });
         }
+        
+        // Clean the API key
+        telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
+        console.log("[WebRTC Server Hangup] Using API key prefix:", telnyxApiKey.substring(0, 10));
 
         const hangupResponse = await fetch(
           `https://api.telnyx.com/v2/calls/${activeCall.callSid}/actions/hangup`,
@@ -28978,23 +28985,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             body: JSON.stringify({})
           }
         );
-
         if (hangupResponse.ok) {
           console.log("[WebRTC Server Hangup] PSTN call terminated successfully:", activeCall.callSid);
+          activeCallsMap.delete(credential.sipUsername);
+          return res.json({ success: true, message: "PSTN call terminated" });
         } else {
           const errorText = await hangupResponse.text();
           console.error("[WebRTC Server Hangup] Telnyx API error:", hangupResponse.status, errorText);
-          // Even if API fails, clean up the map
+          // Keep the call in activeCallsMap for retry
+          return res.json({ success: false, message: "Telnyx API error: " + hangupResponse.status });
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
         console.error("[WebRTC Server Hangup] API call failed:", apiError);
-        // Even if API fails, clean up the map
+        return res.json({ success: false, message: "API call failed: " + (apiError.message || "Unknown error") });
       }
-
-      // Always remove from active calls map
-      activeCallsMap.delete(credential.sipUsername);
-
-      res.json({ success: true, message: "PSTN call terminated" });
     } catch (error: any) {
       console.error("[WebRTC Server Hangup] Error:", error);
       res.status(500).json({ success: false, message: error.message || "Hangup failed" });

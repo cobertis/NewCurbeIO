@@ -1,0 +1,79 @@
+Necesito que realices un análisis profundo y una implementación técnica STRICTAMENTE basada en la documentación oficial de Telnyx, sin inventar funciones, sin asumir comportamientos, sin usar información desactualizada ni suposiciones.
+
+Tu trabajo consiste en:
+
+Leer y analizar TODA la documentación oficial relevante de Telnyx, incluyendo:
+
+Telnyx WebRTC SDK
+
+Call Control API
+
+Voice API / TeXML
+
+SIP/WebRTC call flow behaviour
+
+Event payloads (call_control_id, call_leg_id, etc.)
+
+Handling of BYE, SIP codes y limitations del SDK Telnyx
+
+Basado SOLO en esa documentación, debes:
+
+Identificar comportamientos reales del SDK Telnyx, incluyendo limitaciones (por ejemplo: BYE con USER_BUSY hardcoded).
+
+Determinar cómo debe implementarse correctamente un flujo de llamadas WebRTC ↔ PSTN usando:
+
+WebRTC SDK para gestionar el leg cliente
+
+Call Control API para controlar el leg PSTN
+
+TeXML para construir el call bridge
+
+Webhooks para registrar estado de llamadas y billing
+
+Corregir el código cliente y servidor de forma consistente, asegurándote de:
+
+NO usar call.hangup() del SDK si la documentación confirma que siempre envía “Busy Here”.
+
+Implementar hangup correcto usando Call Control API con call_control_id.
+
+Construir correctamente el registro de llamadas PSTN ↔ WebRTC usando call_leg_id.
+
+Asegurar que answerOnBridge, action, timeout, y el TeXML se ajusten a la especificación.
+
+Garantizar que el flujo de estados (“ringing”, “active”, “hangup”) siga EXACTAMENTE los eventos documentados.
+
+Resolver problemas de audio como “delayed remote audio” utilizando métodos correctos documentados por Telnyx.
+
+Producir código y explicaciones 100% compatibles con:
+
+La documentación oficial
+
+Las limitaciones reales del SDK
+
+El flujo exacto de Telnyx en producción
+
+NO debes:
+
+Inventar funciones o APIs que no existan en la documentación.
+
+Sugerir soluciones no compatibles con Telnyx.
+
+Basarte en código previo si contradice lo que dice la documentación.
+
+Cambiar diseños sin justificación basada en documentación.
+
+Tu output final debe incluir:
+
+Correcciones concretas al código cliente WebRTC.
+
+Correcciones concretas al servidor (Node, Express).
+
+Implementación del sistema correcto para hangup lado servidor.
+
+Implementación correcta de TeXML para bridging WebRTC ↔ PSTN.
+
+Registro persistente de call_control_id y call_leg_id.
+
+Manejo correcto de eventos entrantes y salientes.
+
+Cualquier nota sobre limitaciones o bugs conocidos basados en documentación oficial.
