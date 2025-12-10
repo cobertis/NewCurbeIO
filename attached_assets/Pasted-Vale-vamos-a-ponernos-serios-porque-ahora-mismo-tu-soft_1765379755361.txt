@@ -1,0 +1,219 @@
+Vale, vamos a ponernos serios porque ahora mismo tu softphone es un Frankenstein.
+
+Tu síntoma **exacto**:
+
+1. Cuando cuelgas → Telnyx dice: `application error, goodbye`.
+2. La UI se queda en “user busy”.
+3. Cuando llamas → el timer empieza de una, no cuando contestas.
+
+Traducción:
+**tienes dos cosas rotas a la vez**:
+
+* Tu **aplicación de voz en Telnyx** (Call Control / TeXML) está tirando error.
+* Tu **lógica de UI / timer en el CRM** sigue disparándose en el momento equivocado.
+
+Voy a desmontar esto como lo haría un arquitecto serio.
+
+---
+
+## 1. "APPLICATION ERROR, GOODBYE" — esto NO viene del WebRTC
+
+Esa frase no la inventaste tú.
+Es el mensaje por defecto de Telnyx cuando:
+
+* La aplicación Call Control / TeXML devuelve **500**,
+* O devuelve JSON inválido,
+* O no devuelve instrucciones a tiempo,
+* O tu webhook no está respondiendo.
+
+Eso quiere decir que:
+
+* Telnyx sí establece la llamada,
+* Intenta ejecutar tu lógica de aplicación,
+* Tu backend falla,
+* Telnyx corta diciendo “application error, goodbye”.
+
+**No es el cliente.
+No es el navegador.
+Es TU servidor el que está cascando.**
+
+### Qué hacer YA:
+
+1. Ve al **Call Flow Debugger** de Telnyx (Voice → Debugging / Call Flow Tool).
+
+2. Abre una llamada de prueba que dice “application error, goodbye”.
+
+3. Te va a mostrar algo como:
+
+   * `200 OK` o `5xx` desde tu webhook
+   * Errores tipo “invalid action”, “missing instructions”, etc.
+
+4. En tu backend, loguea **TODAS** las requests que vienen de Telnyx:
+
+   * `call.initiated`
+   * `call.answered`
+   * `call.hangup`
+
+Si en `call.answered` o `call.hangup` tu server lanza excepción o no responde bien, Telnyx cuelga con ese mensaje.
+
+Hasta que no arregles eso, vas a seguir viendo “application error goodbye” **aunque el front esté perfecto**.
+
+---
+
+## 2. Timer que empieza al llamar, no al contestar
+
+Esto no es Telnyx.
+Es tu código.
+
+Ahora mismo seguramente tienes algo así (en React / frontend):
+
+```js
+useEffect(() => {
+  if (currentCall) {
+    startTimer();
+  }
+}, [currentCall]);
+```
+
+O algo similar en tu flujo:
+
+* “Si hay llamada activa” → timer
+* Pero estás marcando `currentCall` apenas haces `makeCall()`.
+
+Y además, en el servidor estás guardando la llamada en DB con `start_time = Date.now()` al hacer el dial, no al recibir `answered`.
+
+### Lo que DEBE ser:
+
+**Regla 1 — Frontend**
+
+Timer empieza ÚNICAMENTE en:
+
+```js
+call.on("stateChange", (state) => {
+  if (state === "active") {
+    startTimer();
+    setUiInCall();
+  }
+});
+```
+
+Y `currentCall` debería existir DESDE antes, sí, pero:
+
+* El timer NO debe depender de `currentCall`
+* Debe depender del estado `active`.
+
+**Regla 2 — Backend**
+
+Tu registro de llamada en DB debe tener:
+
+* `created_at` cuando haces el dial.
+* `answered_at` cuando recibes `call.answered` (o evento equivalente).
+* `ended_at` en `call.hangup`.
+
+Duración facturable = `ended_at - answered_at`.
+No “desde que apretaste el botón”.
+
+Mientras no cambies eso, tu contador va a seguir mintiendo.
+
+---
+
+## 3. Pantalla “user busy” que se queda pegada
+
+Eso pasa porque tu UI está amarrada a un estado que **nunca estás limpiando**.
+
+Probable:
+
+* Cuando recibes `busy` / `hangup`, pones `status = 'busy'`.
+* Pero no hay ningún flujo que lleve de “busy” → de vuelta a “idle” / “ready”.
+* O solo limpias estado cuando CUELGA el otro, pero no cuando hay error.
+
+Con el mensaje “application error goodbye” Telnyx está colgando en medio de tu estado “connecting/ringing”, pero tu código toma ese evento como “busy/error” y nunca resetea.
+
+### Cómo se hace bien:
+
+Tu máquina de estados en UI debería ser algo así:
+
+* `idle`
+* `dialing`
+* `ringing`
+* `in_call`
+* `ended`
+
+Y cada evento de Telnyx hace transiciones CLARAS:
+
+* `initiate` → `dialing`
+* `ringing` → `ringing`
+* `active` → `in_call`
+* `hangup` / `error` / `busy` → `ended` → luego de X segundos → `idle`
+
+Si tu UI se queda en "user busy", es porque no tienes el paso `ended → idle`.
+
+---
+
+## 4. Lo que el arquitecto te dijo (y que confirma todo esto)
+
+> * El código NO sigue la documentación - Usamos el listener global telnyx.notification en lugar del patrón documentado de call.on('stateChange', ...)
+> * El timer empieza temprano porque llamamos setCurrentCall(call) en makeCall() antes de que el estado sea 'active'
+> * El audio demora porque usamos un retry manual en lugar del listener documentado call.on('remoteStream')
+
+Traducción:
+
+* Están pegados al API viejo.
+* Están disparando UI demasiado pronto.
+* Están “adivinando” cuándo llega el audio, no escuchando el evento real.
+
+Y ahora le sumas:
+
+* Webhook de backend fallando → “application error goodbye”.
+
+No es magia, es una pila de malas decisiones técnicas.
+
+---
+
+## 5. Qué hay que hacer AHORA (no mañana)
+
+Te lo dejo como plan quirúrgico:
+
+### A. Frontend / WebRTC
+
+1. Elimina por completo cualquier uso de `telnyx.notification`.
+2. Usa solo `call.on('stateChange')`, `call.on('remoteStream')`, `call.on('hangup')`.
+3. Timer → solo en `state === 'active'`.
+4. Pantalla “in call” → solo en `state === 'active'`.
+5. Pantalla “busy/error” → en `state === 'hangup'` con cause busy/failed.
+6. Después de 2–3 segundos en busy/error → volver a `idle`.
+
+### B. Backend / Call Control
+
+1. Loguea TODO lo que entra de Telnyx.
+2. Asegúrate de que **SIEMPRE** respondes algo válido a los webhooks.
+3. Revisa en Call Flow Debug que no haya 5xx.
+4. Si no vas a hacer lógica compleja aún, responde un `200` rápido con una acción simple (o nada) en lugar de dejarlo colgado.
+
+### C. Billing / timers internos
+
+1. Deja de basar la duración en cuándo tú llamas.
+2. Usa `answered_at` y `ended_at` de los eventos.
+3. Haz que el front muestre lo mismo.
+
+---
+
+## 6. “Llama al arquitecto y resuélvelo ya”
+
+No puedo llamar a nadie, pero sí puedo comportarme como el arquitecto que te hace falta:
+
+Ahora mismo estás construyendo un sistema de voz carrier-grade
+con la mentalidad de “voy probando a ver qué pasa”.
+
+Eso es garantía de bugs raros, clientes molestos y dinero tirado.
+
+Si quieres dejar de apagar fuegos y tener:
+
+* softphone estable
+* timers correctos
+* UX limpia
+* billing confiable
+
+Entonces el siguiente paso no es “probar otra cosa a ver si pega”, es **reescribir el flujo de llamada** siguiendo UNA sola máquina de estados, basada 100% en los eventos de Telnyx.
+
+Si quieres, te diseño esa máquina de estados y te la doy en pseudocódigo + diagrama + estructura React, para que el dev de Replit no tenga que “inventar”.

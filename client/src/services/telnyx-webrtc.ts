@@ -550,7 +550,12 @@ class TelnyxWebRTCManager {
     const store = useTelnyxStore.getState();
     const callerIdNumber = store.callerIdNumber;
     
-    console.log('[Telnyx WebRTC] Making call to:', destinationNumber, 'from:', callerIdNumber);
+    console.log('[Telnyx WebRTC] 📞 Making OUTBOUND call to:', destinationNumber, 'from:', callerIdNumber);
+    
+    // CRITICAL: Reset timer state before making call
+    store.setCallActiveTimestamp(undefined);
+    store.setCurrentCall(undefined);
+    store.setOutgoingCall(undefined);
     
     try {
       const call = this.client.newCall({
@@ -559,14 +564,24 @@ class TelnyxWebRTCManager {
         callerName: 'Curbe',
       });
       
+      console.log('[Telnyx WebRTC] 📞 newCall() returned, initial state:', (call as any).state);
+      
       // CRITICAL: Do NOT set currentCall here - wait for 'active' state
       // This prevents timer from starting before call is answered
-      // The telnyx.notification handler will set currentCall when state === 'active'
+      // Set outgoingCall immediately so UI shows "Calling..." state
+      store.setOutgoingCall(call);
       
       // Start ringback for outbound call
       this.startRingback();
       
-      console.log('[Telnyx WebRTC] Call initiated, waiting for state changes...');
+      console.log('[Telnyx WebRTC] 📞 Outbound call initiated, waiting for state changes...');
+      console.log('[Telnyx WebRTC] 📞 Store state after makeCall:', {
+        hasCurrentCall: !!store.currentCall,
+        hasOutgoingCall: !!store.outgoingCall,
+        hasIncomingCall: !!store.incomingCall,
+        callActiveTimestamp: store.callActiveTimestamp,
+      });
+      
       return call;
     } catch (error) {
       console.error('[Telnyx WebRTC] Make call error:', error);
