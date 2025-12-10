@@ -28411,6 +28411,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to repair phone number routing" });
     }
   });
+  // POST /api/telnyx/provisioning/fix-webhooks - Fix TeXML webhooks to use company-specific URLs
+  app.post("/api/telnyx/provisioning/fix-webhooks", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.fixTexmlWebhooks(user.companyId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: "TeXML webhooks fixed successfully. Inbound calls will now route to WebRTC clients."
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Failed to fix TeXML webhooks"
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] Fix webhooks error:", error);
+      res.status(500).json({ message: "Failed to fix TeXML webhooks" });
+    }
+  });
+
 
   // POST /api/telnyx/provisioning/repair-sip-uri - Enable SIP URI calling on existing credential connections
   app.post("/api/telnyx/provisioning/repair-sip-uri", requireAuth, async (req: Request, res: Response) => {

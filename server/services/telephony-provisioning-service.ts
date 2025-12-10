@@ -110,7 +110,8 @@ export class TelephonyProvisioningService {
         managedAccountId,
         companyName,
         webhookBaseUrl,
-        outboundVoiceProfileId
+        outboundVoiceProfileId,
+        companyId
       );
       if (!texmlResult.success || !texmlResult.appId) {
         await this.rollbackOutboundProfile(managedAccountId, outboundVoiceProfileId);
@@ -238,7 +239,8 @@ export class TelephonyProvisioningService {
     managedAccountId: string,
     businessName: string,
     webhookBaseUrl: string,
-    outboundVoiceProfileId: string
+    outboundVoiceProfileId: string,
+    companyId: string
   ): Promise<{ success: boolean; appId?: string; error?: string }> {
     try {
       const response = await this.makeApiRequest(
@@ -249,10 +251,12 @@ export class TelephonyProvisioningService {
           friendly_name: `Curbe App - ${businessName}`,
           active: true,
           anchorsite_override: "Latency",
-          voice_url: `${webhookBaseUrl}/webhooks/telnyx/voice/inbound`,
+          // CRITICAL: Use company-specific webhook URL that routes to WebRTC client
+          // NOT the generic /inbound webhook that rejects calls
+          voice_url: `${webhookBaseUrl}/webhooks/telnyx/voice/${companyId}`,
           voice_fallback_url: `${webhookBaseUrl}/webhooks/telnyx/voice/fallback`,
           voice_method: "post",
-          status_callback: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
+          status_callback: `${webhookBaseUrl}/webhooks/telnyx/status/${companyId}`,
           status_callback_method: "post",
           outbound: {
             channel_limit: 10,
@@ -605,6 +609,54 @@ export class TelephonyProvisioningService {
   }
 
   /**
+   * FIX TeXML WEBHOOKS: Update the TeXML app to use company-specific webhook URLs
+   * This fixes the issue where calls were being rejected instead of routed to WebRTC
+   */
+  async fixTexmlWebhooks(companyId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Fixing TeXML webhooks for company: ${companyId}`);
+    
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (!settings?.texmlAppId) {
+      return { success: false, error: "No TeXML app found" };
+    }
+
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, error: "Company has no Telnyx managed account" };
+    }
+
+    const webhookBaseUrl = await getWebhookBaseUrl();
+
+    try {
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/texml_applications/${settings.texmlAppId}`,
+        "PATCH",
+        {
+          voice_url: `${webhookBaseUrl}/webhooks/telnyx/voice/${companyId}`,
+          status_callback: `${webhookBaseUrl}/webhooks/telnyx/status/${companyId}`,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      console.log(`[TelephonyProvisioning] TeXML webhooks fixed for company: ${companyId}`);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Network error" };
+    }
+  }
+
+  /**
    * REPAIR FUNCTION: Fix phone numbers that were incorrectly assigned to credential_connection
    * This reassigns them to the TeXML app to prevent dual routing conflicts
    */
@@ -651,7 +703,8 @@ export class TelephonyProvisioningService {
         managedAccountId,
         companyName,
         webhookBaseUrl,
-        settings.outboundVoiceProfileId || ""
+        settings.outboundVoiceProfileId || "",
+        companyId
       );
 
       if (!texmlResult.success || !texmlResult.appId) {

@@ -1,0 +1,179 @@
+Quiero que implementes una integración completa y profunda de Intercom Messenger dentro de mi CRM Curbe.io.
+No quiero solo “agregar el widget”; quiero una integración profesional con identificación del usuario, tracking de eventos, sincronización con mi backend y procesamiento de webhooks.
+
+Necesito que desarrolles TODO lo siguiente en mi código:
+
+1. Agrega el script de Intercom en el layout principal
+
+Inserta el snippet oficial en la plantilla global (por ejemplo en _app.tsx, app/layout.tsx o donde cargue la UI global), pero NO estático.
+Debe recibir dinámicamente los datos del usuario del CRM.
+
+2. Carga Intercom con los datos reales del usuario autenticado
+
+Cuando un usuario se loguee en Curbe.io, inicializa window.intercomSettings con estos campos:
+
+{
+  app_id: "AQUI_MI_APP_ID",
+  user_id: user.id,
+  name: user.fullName,
+  email: user.email,
+  phone: user.phone,
+  created_at: Math.floor(new Date(user.createdAt).getTime() / 1000),
+  plan: user.plan,
+  role: user.role,
+  agency_id: user.agencyId,
+  crm_user_tier: user.subscriptionTier,
+  current_page: window.location.href
+}
+
+
+Implementa un hook o provider React que:
+
+Se actualice cada vez que cambie el usuario,
+
+Reinyecte Intercom si cambia el estado de auth,
+
+Refresque atributos en cada cambio de ruta (router.events).
+
+3. Crea un módulo JS/TS con funciones utilitarias de Intercom
+
+Debe incluir:
+
+Intercom('boot', settings)
+Intercom('shutdown')
+Intercom('update', attributes)
+Intercom('trackEvent', name, metadata)
+
+
+Este módulo debe ser reusable en toda la app.
+
+4. Implementa el Tracking de Eventos desde el frontend
+
+Crea funciones para enviar eventos clave del CRM, por ejemplo:
+
+trackEvent("lead_viewed", { leadId })
+trackEvent("sms_sent", { to, messageId })
+trackEvent("iMessage_sent", { to, messageId })
+trackEvent("whatsapp_thread_started", { userId })
+trackEvent("appointment_booked", { calendarId })
+trackEvent("policy_renewed", { policyId })
+trackPageview()
+
+
+Cada evento se envía con:
+
+Intercom('trackEvent', eventName, metadata)
+
+
+Crea un archivo /utils/intercomEvents.ts.
+
+5. Backend: Endpoint para enviar eventos server-side
+
+Crea un endpoint en el backend que envíe eventos a Intercom vía API REST, ejemplo:
+
+POST /api/intercom/track
+{
+  event_name: "sms_sent",
+  user_id: "...",
+  metadata: { ... }
+}
+
+
+Implementa una función que haga POST a:
+
+https://api.intercom.io/events
+Authorization: Bearer <INTERCOM_ACCESS_TOKEN>
+
+6. Implementa Webhooks de Intercom → CRM
+
+Configura un endpoint como:
+
+POST /api/intercom/webhook
+
+
+Debe recibir eventos como:
+
+conversation.user.created
+
+conversation.user.replied
+
+conversation.admin.replied
+
+contact.created
+
+contact.tag.created
+
+Y convertirlos en acciones dentro de mi CRM:
+
+crear actividades en la tabla crm_activities
+
+adjuntar mensajes al timeline del lead
+
+notificar a agentes
+
+actualizar estado del contacto
+
+generar tareas automáticas si corresponde
+
+Incluye verificación de firma con el intercom-signature.
+
+7. Crea una vista interna en el CRM con datos de Intercom
+
+Agrega un panel dentro de Curbe.io donde pueda ver:
+
+Historial de conversaciones del usuario (usando /conversations)
+
+Datos del contacto (/contacts/{id})
+
+Eventos registrados (/events)
+
+Tags del contacto
+
+Última actividad vista (“last_seen_at”)
+
+El panel debe ser un componente React dentro del CRM.
+
+8. Auto-recarga de Intercom en cambios de ruta
+
+Instala listeners para actualizar:
+
+Intercom('update', { current_page: window.location.href })
+
+
+cada vez que el usuario navegue en la app.
+
+9. Haz todo modular, limpio, documentado y con TypeScript
+
+Estructura sugerida:
+
+/lib/intercom/
+  index.ts
+  loadIntercom.ts
+  intercomEvents.ts
+  intercomUser.ts
+
+/api/intercom/
+  track.ts
+  webhook.ts
+
+/components/intercom/
+  IntercomProvider.tsx
+  IntercomPanel.tsx
+
+10. Verifica que el widget cargue SOLO cuando el usuario esté autenticado
+
+Si user == null, no cargar Intercom.
+Evita contaminar el workspace con contactos anónimos.
+
+11. Optimiza para producción
+
+carga diferida del script de Intercom,
+
+evita doble inicialización (“boot” solo una vez),
+
+destruye Intercom al hacer logout con Intercom('shutdown').
+
+Quiero el código completo, funcional, probado, con comentarios y sin errores.
+NO improvises: sigue exactamente todos los pasos descritos arriba.
+
+Implementa todo ahora.
