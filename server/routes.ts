@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -26460,6 +26460,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log("[Telnyx Voice] Company webhook:", { companyId, from, to, direction, call_control_id });
       
+      
+      // Look up the SIP username for this company's WebRTC client
+      const [credential] = await db
+        .select({ sipUsername: telephonyCredentials.sipUsername })
+        .from(telephonyCredentials)
+        .where(
+          and(
+            eq(telephonyCredentials.companyId, companyId),
+            eq(telephonyCredentials.isActive, true)
+          )
+        )
+        .orderBy(desc(telephonyCredentials.lastUsedAt))
+        .limit(1);
+      
+      const sipUsername = credential?.sipUsername || companyId;
+      console.log("[Telnyx Voice] Using SIP username:", sipUsername);
       // Check for call forwarding settings
       let callForwardingEnabled = false;
       let callForwardingDestination: string | null = null;
@@ -26511,7 +26527,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Dial timeout="30" record="record-from-answer-dual" recordingStatusCallback="https://${process.env.REPL_SLUG}.${(process.env.REPL_OWNER || "").toLowerCase()}.repl.co/webhooks/telnyx/recordings/${companyId}">
-    <Client>${companyId}</Client>
+    <Client>${sipUsername}</Client>
   </Dial>
 </Response>`;
       }
