@@ -263,10 +263,38 @@ class TelnyxWebRTCManager {
       return;
     }
 
-    console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream to audio element");
-    this.audioElement.srcObject = call.remoteStream;
+    const stream = call.remoteStream as MediaStream;
+    const audioTracks = stream.getAudioTracks();
+    
+    console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream, audio tracks:", audioTracks.length);
+    
+    // Set up the audio element immediately
+    this.audioElement.srcObject = stream;
     this.audioElement.muted = false;
     this.audioElement.volume = 1.0;
+    
+    // Listen for track unmute - this is when audio actually starts flowing
+    audioTracks.forEach((track, idx) => {
+      console.log(`[Telnyx WebRTC] 🔊 Track ${idx}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
+      
+      if (!track.muted) {
+        // Track already unmuted, play immediately
+        this.tryPlayAudio(retryCount);
+      } else {
+        // Wait for unmute event
+        track.onunmute = () => {
+          console.log(`[Telnyx WebRTC] 🔊 Track ${idx} unmuted - attempting playback`);
+          this.tryPlayAudio(0);
+        };
+      }
+    });
+    
+    // Also try playing immediately in case tracks report wrong muted state
+    this.tryPlayAudio(retryCount);
+  }
+  
+  private tryPlayAudio(retryCount: number): void {
+    if (this.remoteStreamConnected || !this.audioElement) return;
     
     const playPromise = this.audioElement.play();
     if (playPromise) {
@@ -276,10 +304,10 @@ class TelnyxWebRTCManager {
           this.remoteStreamConnected = true;
         })
         .catch((e) => {
-          console.error("[Telnyx WebRTC] 🔊 Audio play error:", e);
+          console.error("[Telnyx WebRTC] 🔊 Audio play error:", e.message);
           // Retry on autoplay error
-          if (retryCount < 5) {
-            setTimeout(() => this.connectRemoteAudio(call, retryCount + 1), 200);
+          if (retryCount < 10) {
+            setTimeout(() => this.tryPlayAudio(retryCount + 1), 200);
           }
         });
     } else {
