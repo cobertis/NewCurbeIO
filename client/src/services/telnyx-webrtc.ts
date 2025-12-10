@@ -378,6 +378,29 @@ class TelnyxWebRTCManager {
     }
   }
 
+  /**
+   * Get preferred codecs in Telnyx order: G711U, G711A, G722, OPUS
+   * Matching this order with the SIP Connection settings reduces audio delay
+   */
+  private getPreferredCodecs(): any[] {
+    try {
+      const capabilities = RTCRtpReceiver.getCapabilities?.('audio');
+      if (!capabilities?.codecs) return [];
+      
+      const codecs = capabilities.codecs;
+      const preferredOrder = ['PCMU', 'PCMA', 'G722', 'opus'];
+      
+      return preferredOrder
+        .map(name => codecs.find(c => 
+          c.mimeType.toLowerCase().includes(name.toLowerCase())
+        ))
+        .filter(Boolean);
+    } catch (e) {
+      console.warn("[Telnyx WebRTC] Could not get codec capabilities:", e);
+      return [];
+    }
+  }
+
   public makeCall(dest: string): TelnyxCall | null {
     if (!this.client) return null;
 
@@ -390,10 +413,15 @@ class TelnyxWebRTCManager {
 
     console.log("[Telnyx WebRTC] 📞 Making call to:", dest);
 
+    // Get codecs in Telnyx order to minimize negotiation delay
+    const preferredCodecs = this.getPreferredCodecs();
+    console.log("[Telnyx WebRTC] Using preferred codecs:", preferredCodecs.map(c => c?.mimeType));
+
     const call = this.client.newCall({
       destinationNumber: dest,
       callerNumber: store.callerIdNumber,
       callerName: "Curbe",
+      preferred_codecs: preferredCodecs.length > 0 ? preferredCodecs : undefined,
     });
 
     store.setOutgoingCall(call);
@@ -573,10 +601,14 @@ class TelnyxWebRTCManager {
       store.setOnHold(true);
       store.setConsulting(true);
 
+      // Use same codec order as Telnyx connection settings
+      const preferredCodecs = this.getPreferredCodecs();
+      
       const consultCall = this.client.newCall({
         destinationNumber: consultNumber,
         callerNumber: store.callerIdNumber,
         callerName: "Curbe",
+        preferred_codecs: preferredCodecs.length > 0 ? preferredCodecs : undefined,
       });
 
       store.setConsultCall(consultCall);

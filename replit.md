@@ -67,6 +67,14 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Telnyx Docs:** `CallSid` from TeXML = `call_control_id` for Call Control API. See: https://developers.telnyx.com/api/call-control/hangup-call
 - **NEVER DO:** Call SDK `hangup()` directly for inbound calls - always use server-side termination first.
 
+**Audio Delay Prevention: Codec Order Matching**
+- **Issue:** 5-second audio delay during call establishment caused by codec negotiation mismatch between WebRTC SDK and Telnyx SIP Connection settings.
+- **Root Cause:** SDK default codec order didn't match Telnyx portal configuration, causing re-negotiation delays.
+- **Solution:** Pass `preferred_codecs` to `newCall()` in the same order as Telnyx SIP Connection: G711U (PCMU), G711A (PCMA), G722, OPUS.
+- **Implementation:** `getPreferredCodecs()` method in `telnyx-webrtc.ts` retrieves browser codecs via `RTCRtpReceiver.getCapabilities('audio')` and orders them to match Telnyx settings.
+- **Key Code Location:** `client/src/services/telnyx-webrtc.ts` - `makeCall()` and `startAttendedTransfer()` methods.
+- **Telnyx Portal:** SIP Connection → Inbound tab → Codecs section shows the priority order to match.
+
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized, and all message timestamps are normalized to UTC. Performance is optimized with database indexes and aggressive caching.
 
