@@ -26548,9 +26548,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // CRITICAL: Use action URL to handle call completion properly
         // Without action, Telnyx may send "user busy" when agent hangs up
-        const baseUrl = process.env.REPLIT_DOMAIN 
-          ? `https://${process.env.REPLIT_DOMAIN}`
-          : process.env.PUBLIC_URL || 'https://curbe.replit.app';
+        // Use request host to work correctly in both development and production
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
+        const baseUrl = `${protocol}://${host}`;
         
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
