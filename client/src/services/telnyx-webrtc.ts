@@ -535,7 +535,7 @@ class TelnyxWebRTCManager {
    * 
    * @see https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc
    */
-  private getPreferredCodecs(): RTCRtpCodecCapability[] {
+  private getPreferredCodecs(): any[] {
     try {
       const capabilities = RTCRtpReceiver.getCapabilities('audio');
       if (!capabilities?.codecs) {
@@ -548,7 +548,7 @@ class TelnyxWebRTCManager {
       // Order: PCMU -> PCMA -> G722 -> OPUS (matching Telnyx SIP Connection settings)
       const codecOrder = ['pcmu', 'pcma', 'g722', 'opus'];
       
-      const orderedCodecs: RTCRtpCodecCapability[] = [];
+      const orderedCodecs: any[] = [];
       for (const codecName of codecOrder) {
         const found = allCodecs.find(c => 
           c.mimeType.toLowerCase().includes(codecName)
@@ -562,6 +562,38 @@ class TelnyxWebRTCManager {
       return orderedCodecs;
     } catch (error) {
       console.error("[Telnyx WebRTC] Failed to get codecs:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get ONLY PCMU/PCMA codecs for outbound calls
+   * Telnyx SIP Connection only supports μ-law/A-law with SRTP
+   * Using OPUS/G722 causes 488 "Not Acceptable Here" errors
+   */
+  private getOutboundCodecs(): any[] {
+    try {
+      const capabilities = RTCRtpReceiver.getCapabilities('audio');
+      if (!capabilities) return [];
+      
+      const allCodecs = capabilities.codecs;
+      
+      // ONLY PCMU and PCMA - no OPUS, no G722
+      const codecOrder = ['pcmu', 'pcma'];
+      
+      const orderedCodecs: any[] = [];
+      for (const codecName of codecOrder) {
+        const found = allCodecs.find(c => 
+          c.mimeType.toLowerCase().includes(codecName)
+        );
+        if (found) {
+          orderedCodecs.push(found);
+        }
+      }
+      
+      return orderedCodecs;
+    } catch (error) {
+      console.error("[Telnyx WebRTC] Failed to get outbound codecs:", error);
       return [];
     }
   }
@@ -590,10 +622,16 @@ class TelnyxWebRTCManager {
     // Format destination number
     const formattedDest = dest.startsWith('+') ? dest : `+1${dest.replace(/\D/g, '')}`;
 
+    // Get ONLY PCMU/PCMA codecs (no OPUS/G722) to match Telnyx SIP Connection settings
+    // This prevents 488 "Not Acceptable Here" errors on outbound calls
+    const preferredCodecs = this.getOutboundCodecs();
+    console.log("[Telnyx WebRTC] 📞 Using codecs for outbound:", preferredCodecs.map(c => c.mimeType));
+
     const call = this.client.newCall({
       destinationNumber: formattedDest,
       callerNumber: store.callerIdNumber,
       callerName: "Curbe",
+      preferred_codecs: preferredCodecs,
     });
 
     store.setOutgoingCall(call);
