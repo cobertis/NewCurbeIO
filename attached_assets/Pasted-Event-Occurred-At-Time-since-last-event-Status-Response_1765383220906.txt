@@ -1,0 +1,328 @@
+Event	Occurred At	Time since last event	Status	Response Code	
+call_initiated	Dec 10, 2025 16:10:30.037	-0.014 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T16:10:30.037714Z",
+  "event_type": "call_initiated",
+  "id": "bcd96bf7-a9c4-4eef-af91-c01be17c13a2",
+  "payload": {
+    "call_control_id": "v3:8HSW8BPUrSOPxVmwyDFhdUa8uhE9obOTy9-okuivi-0C_86K34L3VA",
+    "call_leg_id": "bf2ebb6a-d5e2-11f0-90ca-02420aef2720",
+    "call_session_id": "bf2eb0ca-d5e2-11f0-8c99-02420aef2720",
+    "caller_id_name": "CABRERA JAVIER",
+    "calling_party_type": "pstn",
+    "client_state": null,
+    "connection_codecs": "G722,PCMA,PCMU,VP8,H264",
+    "connection_id": "2846165965526271975",
+    "custom_headers": [
+      {
+        "name": "P-Early-Media",
+        "value": "supported"
+      },
+      {
+        "name": "P-Visited-Network-ID",
+        "value": "msg.pc.t-mobile.com"
+      }
+    ],
+    "data_locality": "USA",
+    "direction": "incoming",
+    "from": "+17866302522",
+    "from_sip_uri": "+17866302522@208.54.157.146",
+    "occurred_at": "2025-12-10T16:10:29.519512Z",
+    "offered_codecs": "AMR-WB~OCTET-ALIGN=0; MODE-SET=0,16000H,AMR-WB~OCTET-ALIGN=1; MODE-SET=0,16000H,PCMU",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "start_time": "2025-12-10T16:10:29.519512Z",
+    "state": "parked",
+    "to": "+13058423033",
+    "to_sip_uri": "+13058423033@192.76.120.10:5060",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+client_state_update	Dec 10, 2025 16:10:30.051	0 seconds	Completed	-	
+{
+  "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+  "finish_timestamp": "2025-12-10T16:10:30.058984Z",
+  "request_id": "GH_mgy677ryqDFcYtzHC",
+  "request_timestamp": "2025-12-10T16:10:30.051856Z"
+}
+answer	Dec 10, 2025 16:10:30.550	0.499 seconds	Completed	-	
+{
+  "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+  "finish_timestamp": "2025-12-10T16:10:31.843069Z",
+  "request_id": "GH_mg0xs40As87ADXMfE",
+  "request_timestamp": "2025-12-10T16:10:30.550052Z",
+  "send_silence_when_idle": false
+}
+call_answered	Dec 10, 2025 16:10:30.800	0.749 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T16:10:30.800719Z",
+  "event_type": "call_answered",
+  "id": "06b5c2ad-4223-4619-9c7d-44c25c8b7ae1",
+  "payload": {
+    "call_control_id": "v3:8HSW8BPUrSOPxVmwyDFhdUa8uhE9obOTy9-okuivi-0C_86K34L3VA",
+    "call_leg_id": "bf2ebb6a-d5e2-11f0-90ca-02420aef2720",
+    "call_session_id": "bf2eb0ca-d5e2-11f0-8c99-02420aef2720",
+    "calling_party_type": "pstn",
+    "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+    "codec": "PCMU",
+    "connection_id": "2846165965526271975",
+    "custom_headers": [
+      {
+        "name": "P-Early-Media",
+        "value": "supported"
+      },
+      {
+        "name": "P-Visited-Network-ID",
+        "value": "msg.pc.t-mobile.com"
+      }
+    ],
+    "data_locality": "USA",
+    "from": "+17866302522",
+    "occurred_at": "2025-12-10T16:10:30.739516Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "sampling_rate": 8000,
+    "start_time": "2025-12-10T16:10:29.519512Z",
+    "to": "+13058423033",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+playback_start	Dec 10, 2025 16:10:31.944	1.893 seconds	Completed	-	
+{
+  "audio_url": "tone_stream://${us-ring};loops=-1",
+  "cache_audio": false,
+  "finish_timestamp": "2025-12-10T16:10:32.090137Z",
+  "loop": 1,
+  "request_id": "GH_mg5-Dc3jX9kkCXS3E",
+  "request_timestamp": "2025-12-10T16:10:31.944099Z"
+}
+dial	Dec 10, 2025 16:10:32.136	2.085 seconds	Completed	-	
+{
+  "client_state": "g3QAAAADbQAAAAdjYWxsX2lkbQAAACRiZjJlYjBjYS1kNWUyLTExZjAtOGM5OS0wMjQyMGFlZjI3MjBtAAAAC2RhdGFfY2VudGVybQAAAANzdjFtAAAACmRlcGxveW1lbnRtAAAABmNhbmFyeQ==",
+  "connection_id": "2846165965526271975",
+  "custom_headers": [],
+  "finish_timestamp": "2025-12-10T16:10:32.691273Z",
+  "from": "+17866302522",
+  "link_to": "v3:8HSW8BPUrSOPxVmwyDFhdUa8uhE9obOTy9-okuivi-0C_86K34L3VA",
+  "request_id": "GH_mg6r2xVQgXikCrXJB",
+  "request_timestamp": "2025-12-10T16:10:32.136211Z",
+  "sip_headers": [],
+  "sip_region": "US",
+  "time_limit_secs": 14400,
+  "timeout_secs": "30",
+  "to": "sip:curbeb5325600gm3h@sip.telnyx.com",
+  "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d"
+}
+call_initiated	Dec 10, 2025 16:10:32.865	2.814 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T16:10:32.865417Z",
+  "event_type": "call_initiated",
+  "id": "45c12c02-87fe-4557-bf2e-c7f195351671",
+  "payload": {
+    "call_control_id": "v3:oR0rnJvsbIMVhtrefZ2VrOZGGsZucnYVO-uSk1B35i1rGRFRMUmeGA",
+    "call_leg_id": "c0e3b136-d5e2-11f0-9ef8-02420aef9620",
+    "call_session_id": "bf2eb0ca-d5e2-11f0-8c99-02420aef2720",
+    "client_state": "g3QAAAADbQAAAAdjYWxsX2lkbQAAACRiZjJlYjBjYS1kNWUyLTExZjAtOGM5OS0wMjQyMGFlZjI3MjBtAAAAC2RhdGFfY2VudGVybQAAAANzdjFtAAAACmRlcGxveW1lbnRtAAAABmNhbmFyeQ==",
+    "connection_id": "2846165965526271975",
+    "data_locality": "USA",
+    "direction": "outgoing",
+    "from": "+17866302522",
+    "occurred_at": "2025-12-10T16:10:32.659565Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "state": "bridging",
+    "to": "sip:curbeb5325600gm3h@sip.telnyx.com",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+call_hangup	Dec 10, 2025 16:10:34.091	4.04 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T16:10:34.091878Z",
+  "event_type": "call_hangup",
+  "id": "99ad674e-609c-431f-b7ef-0c395acbb609",
+  "payload": {
+    "answered_time": null,
+    "call_control_id": "v3:oR0rnJvsbIMVhtrefZ2VrOZGGsZucnYVO-uSk1B35i1rGRFRMUmeGA",
+    "call_leg_id": "c0e3b136-d5e2-11f0-9ef8-02420aef9620",
+    "call_quality_stats": {
+      "inbound": {
+        "jitter_max_variance": "0.00",
+        "jitter_packet_count": "0",
+        "mos": "4.50",
+        "packet_count": "0",
+        "skip_packet_count": "0"
+      },
+      "outbound": {
+        "packet_count": "0",
+        "skip_packet_count": "0"
+      }
+    },
+    "call_session_id": "bf2eb0ca-d5e2-11f0-8c99-02420aef2720",
+    "client_state": "g3QAAAADbQAAAAdjYWxsX2lkbQAAACRiZjJlYjBjYS1kNWUyLTExZjAtOGM5OS0wMjQyMGFlZjI3MjBtAAAAC2RhdGFfY2VudGVybQAAAANzdjFtAAAACmRlcGxveW1lbnRtAAAABmNhbmFyeQ==",
+    "connection_id": "2846165965526271975",
+    "data_locality": "USA",
+    "end_time": "2025-12-10T16:10:33.979505Z",
+    "from": "+17866302522",
+    "hangup_cause": "normal_clearing",
+    "hangup_source": "callee",
+    "occurred_at": "2025-12-10T16:10:33.979505Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "sip_hangup_cause": "480",
+    "start_time": "2025-12-10T16:10:33.219519Z",
+    "to": "sip:curbeb5325600gm3h@sip.telnyx.com",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+playback_stop	Dec 10, 2025 16:10:34.097	4.046 seconds	Completed	-	
+{
+  "finish_timestamp": "2025-12-10T16:10:34.100468Z",
+  "request_id": "GH_mhB_irouxshwCXg7E",
+  "request_timestamp": "2025-12-10T16:10:34.097840Z"
+}
+speak	Dec 10, 2025 16:10:34.454	4.403 seconds	Completed	-	
+{
+  "finish_timestamp": "2025-12-10T16:10:34.529892Z",
+  "language": "en-US",
+  "loop": 1,
+  "payload": "We’re sorry. An application error has occurred. Goodbye!",
+  "payload_type": "text",
+  "request_id": "GH_mhDUif8foTC4ZC_IC",
+  "request_timestamp": "2025-12-10T16:10:34.454437Z",
+  "service_level": "basic",
+  "voice": "female",
+  "voice_settings": {}
+}
+speak_started	Dec 10, 2025 16:10:34.791	4.74 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T16:10:34.791965Z",
+  "event_type": "speak_started",
+  "id": "f6bd9a16-7305-41ea-aa45-d78b93f7802b",
+  "payload": {
+    "call_control_id": "v3:8HSW8BPUrSOPxVmwyDFhdUa8uhE9obOTy9-okuivi-0C_86K34L3VA",
+    "call_leg_id": "bf2ebb6a-d5e2-11f0-90ca-02420aef2720",
+    "call_session_id": "bf2eb0ca-d5e2-11f0-8c99-02420aef2720",
+    "calling_party_type": "pstn",
+    "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+    "connection_id": "2846165965526271975",
+    "data_locality": "USA",
+    "occurred_at": "2025-12-10T16:10:34.739532Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "speak_id": "3tO8Aeyguw",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+speak_ended	Dec 10, 2025 16:10:37.681	7.63 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T16:10:37.681302Z",
+  "event_type": "speak_ended",
+  "id": "b2a1339d-a11f-47ab-b172-dc1d8d753259",
+  "payload": {
+    "call_control_id": "v3:8HSW8BPUrSOPxVmwyDFhdUa8uhE9obOTy9-okuivi-0C_86K34L3VA",
+    "call_leg_id": "bf2ebb6a-d5e2-11f0-90ca-02420aef2720",
+    "call_session_id": "bf2eb0ca-d5e2-11f0-8c99-02420aef2720",
+    "calling_party_type": "pstn",
+    "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+    "connection_id": "2846165965526271975",
+    "data_locality": "USA",
+    "occurred_at": "2025-12-10T16:10:37.619509Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "speak_id": "3tO8Aeyguw",
+    "status": "call_hangup",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+call_hangup	Dec 10, 2025 16:10:37.687	7.636 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T16:10:37.687872Z",
+  "event_type": "call_hangup",
+  "id": "bdfbcc84-11c4-4fc7-8483-b85100b9e6f5",
+  "payload": {
+    "answered_time": "2025-12-10T16:10:30.739516Z",
+    "call_control_id": "v3:8HSW8BPUrSOPxVmwyDFhdUa8uhE9obOTy9-okuivi-0C_86K34L3VA",
+    "call_leg_id": "bf2ebb6a-d5e2-11f0-90ca-02420aef2720",
+    "call_quality_stats": {
+      "inbound": {
+        "jitter_max_variance": "179.17",
+        "jitter_packet_count": "0",
+        "mos": "4.50",
+        "packet_count": "300",
+        "skip_packet_count": "49"
+      },
+      "outbound": {
+        "packet_count": "238",
+        "skip_packet_count": "0"
+      }
+    },
+    "call_session_id": "bf2eb0ca-d5e2-11f0-8c99-02420aef2720",
+    "calling_party_type": "pstn",
+    "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+    "connection_id": "2846165965526271975",
+    "custom_headers": [
+      {
+        "name": "P-Early-Media",
+        "value": "supported"
+      },
+      {
+        "name": "P-Visited-Network-ID",
+        "value": "msg.pc.t-mobile.com"
+      }
+    ],
+    "data_locality": "USA",
+    "end_time": "2025-12-10T16:10:37.619509Z",
+    "from": "+17866302522",
+    "hangup_cause": "normal_clearing",
+    "hangup_source": "caller",
+    "occurred_at": "2025-12-10T16:10:37.619509Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "sip_hangup_cause": "200",
+    "start_time": "2025-12-10T16:10:29.519512Z",
+    "to": "+13058423033",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}

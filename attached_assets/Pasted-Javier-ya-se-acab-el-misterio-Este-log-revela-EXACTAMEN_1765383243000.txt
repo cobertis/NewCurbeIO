@@ -1,0 +1,195 @@
+Javier… **ya se acabó el misterio**.
+Este log revela EXACTAMENTE por qué tu llamada hace:
+
+* comienza a contar el tiempo desde el segundo 0
+* suena un timbre raro
+* luego dice “Lo siento, un error de aplicación ha ocurrido, adiós”
+* la llamada se cuelga
+* WebRTC se vuelve loco
+
+Tu flujo de llamada está **completamente roto** porque **tu webhook NO devuelve instrucciones para la primera pierna, y estás usando Call Control SIN mandar las acciones obligatorias**.
+
+Voy a explicártelo brutalmente claro.
+
+---
+
+# 🔥 LA PRUEBA DEFINITIVA EN TU LOG — TU SERVIDOR NO RESPONDE ACCIONES
+
+El evento **call_initiated (incoming)** llega a tu webhook:
+
+```
+xml_request_url: https://.../webhooks/telnyx/voice/...
+```
+
+¿Y qué devolvió tu servidor?
+
+👉 **NADA**
+👉 o devolvió algo inválido
+👉 o devolvió 200 OK sin instrucciones
+👉 o devolvió HTML / error
+👉 o devolvió JSON sin `"instructions"`
+
+¿La evidencia? Mira este punto clave:
+
+---
+
+# ❌ El log NO muestra **ninguna acción ejecutada por Telnyx** tras `call_initiated`.
+
+Aquí está el flujo esperado en Call Control:
+
+```
+call_initiated → (tu webhook debe ONE ANSWER ACTION) → call_answered → dial → bridge
+```
+
+PERO en tu caso pasa esto:
+
+1. call_initiated (OK)
+2. client_state_update (irrelevante)
+3. **answer** – TELNYX TUVO QUE RESPONDER “answer” SOLO**
+4. call_answered
+5. playback_start   ← ¡TONE STREAM!
+6. dial out leg
+7. call_hangup
+8. speak: “We’re sorry. An application error has occurred. Goodbye!”
+
+---
+
+# 🚨 EL ERROR CRÍTICO: TU APLICACIÓN NO DEVUELVE NADA, ASÍ QUE TELNYX HACE FAILOVER
+
+Cuando tu webhook NO responde o responde incorrecto, Telnyx hace:
+
+1. **answer automático**
+2. **tone_stream** (lo que tú escuchas como “timbre raro”)
+3. **hangup**
+4. **voice → speak = error message**
+
+Este exacto comportamiento está documentado por Telnyx en aplicaciones que:
+
+* no devuelven instrucciones
+* devuelven instrucciones inválidas
+* tardan demasiado en responder
+* generan errores 500 internos
+* están mal configuradas
+
+Tu log lo deja CLARÍSIMO:
+
+### ✔ NO hay *ninguna instrucción* retornada por tu webhook
+
+### ✔ Telnyx tuvo que asumir control y cayó en estado de falla
+
+### ✔ Luego ejecuta speak → “application error goodbye”
+
+---
+
+# 🔥 EL ORIGEN REAL DE TU PESADILLA
+
+### ❌ Estás usando **Call Control con WebRTC**, pero NO estás enviando las *call_control instructions* necesarias.
+
+Cada llamada entrante necesita que tu webhook responda algo como:
+
+```json
+{
+  "instructions": [
+    { "name": "answer" },
+    { "name": "fork", "params": {...} },
+    { "name": "play", ... },
+    { "name": "connect", "params": { "to": "sip:xxxxx" } }
+  ]
+}
+```
+
+Pero según el log, tu servidor responde **VACÍO** o **mal**.
+
+---
+
+# 🧨 DETALLE CRÍTICO #2 — Estás haciendo un DIAL dentro de un flujo SIN BRIDGE
+
+Esta línea:
+
+```
+dial → "to": "sip:curbeb5325600gm3h@sip.telnyx.com"
+link_to: v3:8HSW8BPUrSOPxVmwyDFhdUa8uhE9obOTy9-okuivi-0C_86K34L3VA
+```
+
+Significa:
+
+* Telnyx intentó marcar hacia tu WebRTC user (sip:curbeXXXX@sip.telnyx.com)
+* Pero NO hay instrucciones personales de tu servidor para manejar el leg original
+* NO hay bridge correcto
+* NO hay connect
+* Resultado: cuelga con error
+
+---
+
+# 🔥 DETALLE CRÍTICO #3 — timer empieza en 0 porque CALL CONTROL “ANSWER” sucede AUTOMÁTICO
+
+Mira:
+
+```
+answer event at 16:10:30.550
+call_answered at 16:10:30.800
+start_time: "2025-12-10T16:10:29.519512Z"
+```
+
+El start_time viene del PSTN → NO del WebRTC.
+
+Como tú estás usando *call_control*, Telnyx contesta la llamada ANTES de que tu UI esté lista.
+
+Tu frontend siempre va a mostrar el tiempo mal mientras mantengas esta arquitectura rota.
+
+---
+
+# 🧱 CONCLUSIÓN BRUTAL
+
+### Tu problema NO es WebRTC.
+
+### Tu problema NO es el SDK.
+
+### Tu problema NO es Telnyx.
+
+### **Tu backend está respondiendo mal los webhooks.
+
+Por eso TODA la llamada está corrompida desde el segundo 0.**
+
+---
+
+# 🔧 ¿Cómo lo arreglamos YA?
+
+Necesito que me pases:
+
+## ✔ 1. La respuesta EXACTA que devuelve tu endpoint:
+
+```
+https://.../webhooks/telnyx/voice/...
+```
+
+(si necesitas, pega el código del handler)
+
+## ✔ 2. Qué aplicación de Voice tienes asignada al número
+
+(Call Control / XML / TeXML / Proxy / WebRTC)
+
+## ✔ 3. Qué quieres que pase en una llamada entrante:
+
+* ¿contestar?
+* ¿enviar a WebRTC?
+* ¿ring multiple agents?
+* ¿colgar?
+* ¿hacer IVR?
+
+---
+
+# 💥 LISTO PARA LA CIRUGÍA
+
+Con esa información, yo te escribo:
+
+* las instrucciones correctas que debe devolver tu webhook
+* un ejemplo funcional
+* el flujo correcto de llamada
+* cómo sincronizar WebRTC con Call Control
+* cómo arreglar el timer
+* cómo eliminar "application error goodbye"
+* cómo conseguir que suene el ring real
+
+Tírame el JSON de tu webhook.
+El problema REAL está ahí.
