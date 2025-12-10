@@ -473,7 +473,14 @@ class TelnyxWebRTCManager {
 
       case "hangup":
       case "destroy":
-        console.log("[Telnyx WebRTC] 🔴 Call ended");
+        // Log detailed hangup reason for debugging
+        console.log("[Telnyx WebRTC] 🔴 Call ended", {
+          cause: call.cause,
+          causeCode: call.causeCode,
+          sipCode: call.sipCode,
+          sipReason: call.sipReason,
+          direction
+        });
         this.stopRingback();
         this.stopRingtone();
 
