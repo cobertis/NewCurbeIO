@@ -111,23 +111,23 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 **Inbound Call Audio Delay Prevention: remoteElement Configuration**
 - **Issue:** 5-second delay before caller hears audio on inbound calls.
 - **Root Cause:** `client.remoteElement` not configured before answering, causing SDK to not know where to route audio.
-- **Solution:** Set `client.remoteElement` as a **string ID** (not DOM element) IMMEDIATELY after SDK creation and BEFORE answering calls.
+- **Solution:** Set `client.remoteElement` as a **function getter** IMMEDIATELY after SDK creation and BEFORE answering calls.
 - **Official Telnyx Documentation:**
   - **npm docs:** https://www.npmjs.com/package/@telnyx/webrtc
   - **Quote:** "To hear/view calls in the browser, you'll need to specify an HTML media element: `client.remoteElement = 'remoteMedia';`"
-  - **Type:** `string | Function | HTMLMediaElement` - String ID is preferred to avoid React circular structure errors
+  - **Type:** `string | Function | HTMLMediaElement` - Function is preferred to avoid React circular structure JSON errors
 - **Implementation:**
   1. **HTML:** `<audio id="telnyx-remote-audio" autoPlay playsInline />` in `WebPhoneFloatingWindow.tsx`
-  2. `setAudioElement()` - Sets `client.remoteElement = "telnyx-remote-audio"` (string ID)
-  3. `initialize()` - After creating TelnyxRTC client, sets `client.remoteElement = "telnyx-remote-audio"`
-  4. `answerCall()` - Before calling `incoming.answer()`, ensures `client.remoteElement = "telnyx-remote-audio"`
+  2. `setAudioElement()` - Sets `client.remoteElement = () => document.getElementById("telnyx-remote-audio")`
+  3. `initialize()` - After creating TelnyxRTC client, sets `client.remoteElement = () => document.getElementById("telnyx-remote-audio")`
+  4. `answerCall()` - Before calling `incoming.answer()`, ensures `client.remoteElement` is set as function
 - **Key Code:**
   ```typescript
-  // Per Telnyx docs: use string ID, not DOM element
-  this.client.remoteElement = "telnyx-remote-audio";
+  // Per Telnyx docs: use function getter to avoid circular JSON errors
+  this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
   incoming.answer();
   ```
-- **NEVER DO:** Pass HTMLAudioElement directly (causes "Converting circular structure to JSON" error with React). Always use string ID per documentation.
+- **NEVER DO:** Pass HTMLAudioElement directly (causes "Converting circular structure to JSON" error with React). Always use function getter per documentation.
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized, and all message timestamps are normalized to UTC. Performance is optimized with database indexes and aggressive caching.

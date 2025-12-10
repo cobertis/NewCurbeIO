@@ -195,11 +195,11 @@ class TelnyxWebRTCManager {
     
     // CRITICAL: Per Telnyx docs, set client.remoteElement so SDK knows where to send audio
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
-    // "To hear/view calls in the browser, you'll need to specify an HTML media element"
-    // Per docs: client.remoteElement = 'remoteMedia' (string ID, not DOM element)
+    // Type: string | Function | HTMLMediaElement
+    // Using Function to avoid circular JSON serialization errors with React DOM elements
     if (this.client) {
-      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement = 'telnyx-remote-audio'");
-      this.client.remoteElement = "telnyx-remote-audio";
+      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as function getter");
+      this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
     }
     
     // If we already have a remoteStream waiting, connect it now
@@ -348,11 +348,11 @@ class TelnyxWebRTCManager {
 
     // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
-    // "To hear/view calls in the browser, you'll need to specify an HTML media element"
-    // Per docs: client.remoteElement = 'remoteMedia' (string ID, not DOM element)
+    // Type: string | Function | HTMLMediaElement
+    // Using Function to avoid circular JSON serialization errors with React DOM elements
     // This ensures audio routing is ready BEFORE any calls arrive
-    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement = 'telnyx-remote-audio' during init");
-    this.client.remoteElement = "telnyx-remote-audio";
+    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as function getter during init");
+    this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
 
     this.client.on("telnyx.ready", () => {
       console.log("[Telnyx WebRTC] Connected and ready");
@@ -679,12 +679,12 @@ class TelnyxWebRTCManager {
 
     // CRITICAL: Per Telnyx docs, ensure remoteElement is set BEFORE answering
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
-    // "To hear/view calls in the browser, you'll need to specify an HTML media element"
-    // Per docs: client.remoteElement = 'remoteMedia' (string ID, not DOM element)
+    // Type: string | Function | HTMLMediaElement
+    // Using Function to avoid circular JSON serialization errors with React DOM elements
     // This prevents the 5-second audio delay on inbound calls
     if (this.client) {
-      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement = 'telnyx-remote-audio' before answer");
-      this.client.remoteElement = "telnyx-remote-audio";
+      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement as function getter before answer");
+      this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
     }
 
     // Reset stream connected flag so we can reconnect if needed
