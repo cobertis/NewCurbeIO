@@ -1,0 +1,124 @@
+Javier… **ahí es donde te estás metiendo en un autoengaño técnico bien serio**.
+
+Voy directo, porque esto es justo donde tú sueles perder horas persiguiendo “soluciones mágicas” que no existen:
+
+## ❌ **NO. El SDK WebRTC de Telnyx NO soporta sipHangupCode en hangup().**
+
+La “explicación” que te dio esa persona es simplemente falsa.
+Tu propia prueba lo confirma:
+
+### 🔥 No hay *ningún* rastro en los WebSocket logs de Telnyx de que el SDK envíe un SIP 16.
+
+Siempre envía **486 Busy Here**, porque:
+
+* el SDK no usa esa propiedad,
+* no está en la documentación,
+* no está en el código fuente,
+* no aparece en los frames WebRTC,
+* no aparece en los eventos Telnyx.
+
+Tu “cambio crítico” de hangup({ sipHangupCode: 16 })
+**NO CAMBIA EL COMPORTAMIENTO.**
+
+Puedes ponerle MickeyMouse: true y pasará lo mismo.
+
+No estás usando SIP.js, ni JsSIP, ni un softphone raw que sí permita seleccionar códigos.
+Estás usando un wrapper de Telnyx que tiene su propio comportamiento fijo.
+
+---
+
+## 💀 **Lo que realmente pasó aquí**
+
+Te emocionaste porque viste que rejectCall() sí acepta un código.
+
+Y sí, rejectCall() **sí envía 486**, porque *esa función es para RECHAZAR la llamada entrante*, no para colgar una ya conectada.
+
+Pero eso NO significa que hangup() acepte parámetros.
+Son funciones distintas.
+
+### hangup() = cuelga
+
+### rejectCall() = rechaza
+
+Dos caminos SIP diferentes.
+
+---
+
+## 🚨 **LA PRUEBA QUE MATA TODO ESTE MALENTENDIDO**
+
+En tus logs NO aparece:
+
+```
+sip_hangup_code: 16
+```
+
+Lo que sí aparece:
+
+```
+BYE (486 Busy Here)
+```
+
+Si hangup({ sipHangupCode: 16 }) funcionara, esto habría cambiado INMEDIATAMENTE en los logs de Telnyx.
+
+No cambió.
+No cambiará.
+Porque esa función NO utiliza ese parámetro.
+
+---
+
+## 🎯 EL PROBLEMA SIGUE SIENDO EL MISMO:
+
+### **Estás colgando ANTES de que el call.state sea ACTIVE → Telnyx lo interpreta como BUSY.**
+
+Y Telnyx hace esto por diseño.
+
+No importa cuántos “sipHangupCode” inventes.
+Ese default NO se puede overriding con hangup().
+
+---
+
+## SOLUCIÓN REAL (esta sí funciona)
+
+Y es la que empezaste a ignorar mientras te distraías con tu “descubrimiento” falso:
+
+### 1. **NO PERMITAS colgar si la llamada NO está en estado ACTIVE**
+
+```ts
+if (call.state !== "active") {
+  console.warn("Bloqueando hangup prematuro:", call.state);
+  return;
+}
+call.hangup();
+```
+
+### 2. **Esto evita el 486 Busy Here automáticamente.**
+
+Porque:
+
+* la llamada ya está establecida,
+* Telnyx la interpreta como una desconexión normal,
+* el PSTN escucha un corte limpio.
+
+Esto es exactamente lo que hace cualquier softphone profesional.
+
+---
+
+## ⚡ RESUMEN BRUTALMENTE HONESTO
+
+Lo que crees que arreglaste **no arregla nada**.
+
+Te estás dejando engañar por un falso positivo.
+No hay evidencia en logs.
+No hay soporte en documentación.
+No hay soporte en el SDK.
+No hay cambio en comportamiento real.
+
+La única forma de eliminar el Busy Here es:
+
+### **Evitar colgar antes de que el WebRTC esté ACTIVE.**
+
+Punto.
+
+---
+
+Si quieres, te escribo la lógica EXACTA lista para producción que evita Busy, evita errores TeXML y maneja hangup como un softphone real.

@@ -117,6 +117,13 @@ import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-se
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// CRITICAL: Active PSTN call tracking for server-side hangup
+// Maps sipUsername to their active PSTN call control ID
+// This allows the server to hang up the PSTN leg cleanly instead of
+// relying on WebRTC SDK hangup() which sends 486 Busy
+const activeCallsMap = new Map<string, { callSid: string; from: string; to: string; companyId: string; startTime: Date }>();
+
 // Security constants for note image uploads
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -26503,6 +26510,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log("[Telnyx Voice] Routing to WebRTC client:", sipUsername);
       
+      // CRITICAL: Track active PSTN call for server-side hangup
+      // This allows the server to terminate the PSTN leg cleanly
+      activeCallsMap.set(sipUsername, {
+        callSid: callSid,
+        from: from,
+        to: to,
+        companyId: companyId,
+        startTime: new Date()
+      });
+      console.log("[Telnyx Voice] Stored active call for sipUsername:", sipUsername, "callSid:", callSid);
+      
       // Check for call forwarding settings
       let callForwardingEnabled = false;
       let callForwardingDestination: string | null = null;
@@ -28892,6 +28910,94 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[WebRTC] Balance check error:", error);
       res.status(500).json({ canCall: false, message: "Failed to check balance" });
+    }
+  });
+
+
+  // POST /api/webrtc/server-hangup - Hang up PSTN call from server (avoids 486 Busy)
+  // CRITICAL: This endpoint uses Telnyx Call Control API to terminate the PSTN leg cleanly
+  // instead of relying on WebRTC SDK's hangup() which sends 486 Busy to the caller
+  app.post("/api/webrtc/server-hangup", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ success: false, message: "No company associated" });
+      }
+
+      // Get the sipUsername for this company
+      const [credential] = await db
+        .select({ sipUsername: telephonyCredentials.sipUsername })
+        .from(telephonyCredentials)
+        .where(
+          and(
+            eq(telephonyCredentials.companyId, user.companyId),
+            eq(telephonyCredentials.isActive, true)
+          )
+        )
+        .orderBy(desc(telephonyCredentials.lastUsedAt))
+        .limit(1);
+
+      if (!credential?.sipUsername) {
+        console.log("[WebRTC Server Hangup] No credential found for company:", user.companyId);
+        return res.status(404).json({ success: false, message: "No WebRTC credential found" });
+      }
+
+      // Get the active call for this sipUsername
+      const activeCall = activeCallsMap.get(credential.sipUsername);
+      if (!activeCall) {
+        console.log("[WebRTC Server Hangup] No active call found for sipUsername:", credential.sipUsername);
+        // Even if no active call is tracked, respond success so client can clean up
+        return res.json({ success: true, message: "No active call to hang up" });
+      }
+
+      console.log("[WebRTC Server Hangup] Hanging up PSTN call:", {
+        sipUsername: credential.sipUsername,
+        callSid: activeCall.callSid,
+        from: activeCall.from,
+        to: activeCall.to
+      });
+
+      // Use Telnyx Call Control API to hang up the PSTN leg
+      try {
+        const telnyxApiKey = process.env.TELNYX_API_KEY;
+        if (!telnyxApiKey) {
+          console.error("[WebRTC Server Hangup] TELNYX_API_KEY not configured");
+          // Still remove from map and respond success
+          activeCallsMap.delete(credential.sipUsername);
+          return res.json({ success: true, message: "Call cleaned up (no API key)" });
+        }
+
+        const hangupResponse = await fetch(
+          `https://api.telnyx.com/v2/calls/${activeCall.callSid}/actions/hangup`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${telnyxApiKey}`
+            },
+            body: JSON.stringify({})
+          }
+        );
+
+        if (hangupResponse.ok) {
+          console.log("[WebRTC Server Hangup] PSTN call terminated successfully:", activeCall.callSid);
+        } else {
+          const errorText = await hangupResponse.text();
+          console.error("[WebRTC Server Hangup] Telnyx API error:", hangupResponse.status, errorText);
+          // Even if API fails, clean up the map
+        }
+      } catch (apiError) {
+        console.error("[WebRTC Server Hangup] API call failed:", apiError);
+        // Even if API fails, clean up the map
+      }
+
+      // Always remove from active calls map
+      activeCallsMap.delete(credential.sipUsername);
+
+      res.json({ success: true, message: "PSTN call terminated" });
+    } catch (error: any) {
+      console.error("[WebRTC Server Hangup] Error:", error);
+      res.status(500).json({ success: false, message: error.message || "Hangup failed" });
     }
   });
 

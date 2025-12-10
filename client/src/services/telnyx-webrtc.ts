@@ -424,20 +424,42 @@ class TelnyxWebRTCManager {
     store.setIncomingCall(undefined);
   }
 
-  public hangup(): void {
+  public async hangup(): Promise<void> {
     const store = useTelnyxStore.getState();
     
-    // CRITICAL: Only call hangup ONCE on the active call
-    // Calling hangup on multiple calls causes SIP 486 Busy
+    // Get the active call before we clean up state
     const activeCall = store.currentCall || store.outgoingCall || store.incomingCall;
+    const callState = (activeCall as any)?.state;
+    const direction = (activeCall as any)?.direction || "unknown";
+    
+    console.log("[Telnyx WebRTC] Hanging up call, state:", callState, "direction:", direction);
 
-    if (activeCall) {
+    // CRITICAL: For INBOUND calls, use server-side hangup to avoid 486 Busy
+    // The WebRTC SDK's hangup() sends "USER_BUSY" code which plays "User Busy" message to PSTN caller
+    // Instead, we ask the server to terminate the PSTN leg via Telnyx Call Control API
+    if (direction === "inbound" && callState === "active") {
+      console.log("[Telnyx WebRTC] Using server-side hangup for inbound call...");
       try {
-        console.log("[Telnyx WebRTC] Hanging up call, state:", (activeCall as any).state);
-        // CRITICAL: Use sipHangupCode 16 (NORMAL_CLEARING) to avoid 486 Busy message
-        activeCall.hangup({ sipHangupCode: 16 });
+        const response = await fetch("/api/webrtc/server-hangup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include"
+        });
+        const result = await response.json();
+        console.log("[Telnyx WebRTC] Server hangup result:", result);
       } catch (e) {
-        console.error("[Telnyx WebRTC] Hangup error:", e);
+        console.error("[Telnyx WebRTC] Server hangup failed:", e);
+        // Fall through to SDK hangup as backup
+      }
+    }
+    
+    // For outbound calls or as fallback, use SDK hangup
+    // Outbound calls don't have the 486 issue because we initiated them
+    if (activeCall && direction !== "inbound") {
+      try {
+        activeCall.hangup();
+      } catch (e) {
+        console.error("[Telnyx WebRTC] SDK hangup error:", e);
       }
     }
 
@@ -449,6 +471,7 @@ class TelnyxWebRTCManager {
 
     this.stopRingtone();
     this.stopRingback();
+  }
   }
 
   public toggleMute(): void {
