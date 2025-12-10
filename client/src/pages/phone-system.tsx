@@ -194,20 +194,6 @@ export default function PhoneSystem() {
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
-  const syncCallsMutation = useMutation({
-    mutationFn: async () => apiRequest("POST", "/api/call-logs/sync"),
-    onSuccess: (data: { success: boolean; synced: number }) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
-      toast({
-        title: data.synced > 0 ? "Calls Synced" : "No New Calls",
-        description: data.synced > 0 ? `Synced ${data.synced} call records.` : "No new call records found.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
-    },
-  });
-
   const setupMutation = useMutation({
     mutationFn: async () => {
       setIsSettingUp(true);
@@ -555,15 +541,9 @@ export default function PhoneSystem() {
           <TabsContent value="calls" className="p-6 m-0">
             <Card className="border-slate-200 dark:border-border">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <History className="h-4 w-4" />Call History
-                  </CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => syncCallsMutation.mutate()} disabled={syncCallsMutation.isPending}>
-                    <RefreshCw className={`h-3 w-3 mr-1 ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
-                    {syncCallsMutation.isPending ? 'Syncing...' : 'Sync'}
-                  </Button>
-                </div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <History className="h-4 w-4" />Call History
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoadingCallLogs ? (
