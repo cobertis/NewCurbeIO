@@ -1181,6 +1181,7 @@ export function WebPhoneFloatingWindow() {
   const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
   const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
   const telnyxNetworkQuality = useTelnyxStore(state => state.networkQuality);
+  const telnyxCallActiveTimestamp = useTelnyxStore(state => state.callActiveTimestamp);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
@@ -1249,12 +1250,16 @@ export function WebPhoneFloatingWindow() {
   const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;
   const effectiveOnHold = isTelnyxCall ? telnyxIsOnHold : isOnHold;
   
-  // Timer for Telnyx calls
+  // Timer for Telnyx calls - only starts when call becomes active (not during ringing)
   useEffect(() => {
-    if (telnyxCurrentCall && (telnyxCurrentCall as any).state === 'active') {
-      setTelnyxCallDuration(0);
+    if (telnyxCallActiveTimestamp) {
+      // Calculate initial duration in case we're rejoining
+      const initialDuration = Math.floor((Date.now() - telnyxCallActiveTimestamp) / 1000);
+      setTelnyxCallDuration(initialDuration);
+      
       telnyxTimerRef.current = setInterval(() => {
-        setTelnyxCallDuration(prev => prev + 1);
+        const duration = Math.floor((Date.now() - telnyxCallActiveTimestamp) / 1000);
+        setTelnyxCallDuration(duration);
       }, 1000);
     } else {
       if (telnyxTimerRef.current) {
@@ -1265,7 +1270,7 @@ export function WebPhoneFloatingWindow() {
     return () => {
       if (telnyxTimerRef.current) clearInterval(telnyxTimerRef.current);
     };
-  }, [telnyxCurrentCall]);
+  }, [telnyxCallActiveTimestamp]);
   
   // Network quality metrics polling for Telnyx calls
   useEffect(() => {

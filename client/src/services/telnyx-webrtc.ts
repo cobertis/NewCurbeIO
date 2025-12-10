@@ -27,6 +27,7 @@ interface TelnyxWebRTCState {
   sipUsername?: string;
   networkQuality?: NetworkQualityMetrics;
   callDuration: number; // Duration in seconds
+  callActiveTimestamp?: number; // Timestamp when call became active (for timer)
   
   setConnectionStatus: (status: TelnyxWebRTCState['connectionStatus'], error?: string) => void;
   setCurrentCall: (call?: TelnyxCall) => void;
@@ -39,6 +40,7 @@ interface TelnyxWebRTCState {
   setSipUsername: (username: string) => void;
   setNetworkQuality: (metrics?: NetworkQualityMetrics) => void;
   setCallDuration: (duration: number) => void;
+  setCallActiveTimestamp: (timestamp?: number) => void;
 }
 
 export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
@@ -49,6 +51,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   isOnHold: false,
   isConsulting: false,
   callDuration: 0,
+  callActiveTimestamp: undefined,
   
   setConnectionStatus: (status, error) => set({ 
     connectionStatus: status, 
@@ -65,6 +68,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setSipUsername: (username) => set({ sipUsername: username }),
   setNetworkQuality: (metrics) => set({ networkQuality: metrics }),
   setCallDuration: (duration) => set({ callDuration: duration }),
+  setCallActiveTimestamp: (timestamp) => set({ callActiveTimestamp: timestamp }),
 }));
 
 export type { NetworkQualityMetrics };
@@ -459,11 +463,12 @@ class TelnyxWebRTCManager {
               }
             }
           } else if (call.state === 'active') {
-            console.log('[Telnyx WebRTC] Call active');
+            console.log('[Telnyx WebRTC] Call active - starting timer');
             this.stopRingback(); // Stop ringback when call is answered
             this.stopRingtone(); // Stop ringtone when call is answered
             store.setCurrentCall(call);
             store.setIncomingCall(undefined);
+            store.setCallActiveTimestamp(Date.now()); // Start timer from NOW
             
             // Record call start time and info for logging
             this.currentCallStartTime = new Date();
@@ -508,6 +513,7 @@ class TelnyxWebRTCManager {
             store.setIncomingCall(undefined);
             store.setMuted(false);
             store.setOnHold(false);
+            store.setCallActiveTimestamp(undefined); // Reset timer
           }
         }
       });
