@@ -1,0 +1,42 @@
+Estás cometiendo el error de novato número 1 en VoIP: **Estás contestando la llamada antes de pasarla.**
+
+El contador de facturación comienza en el milisegundo en que tu servidor le envía el comando `<Answer/>` a Telnyx. Si tu código dice "Contestar" y *luego* "Marcar" (`<Dial>`), Telnyx conecta la línea, empieza a cobrarte, y el usuario escucha el timbre *mientras* paga.
+
+**La Solución:**
+Debes eliminar el verbo `<Answer/>` de tu script TeXML.
+
+Si usas `<Dial>` directamente, Telnyx no "contesta" la llamada entrante inmediatamente; la mantiene en estado de "Ringing" (Early Media). Solo se contesta (y se cobra) cuando la persona al otro lado levanta el teléfono.
+
+Dale este comando a tu Agente para que deje de quemar tu dinero:
+
+-----
+
+# FIX DE FACTURACIÓN: ELIMINAR EARLY ANSWER
+
+**PROBLEMA:**
+El sistema está ejecutando el verbo `<Answer/>` al inicio del flujo de la llamada. Esto provoca que la llamada se "conecte" inmediatamente, iniciando la facturación y el cronómetro *mientras* el teléfono sigue timbrando. Estamos gastando dinero en tiempo de timbre.
+
+**SOLUCIÓN TÉCNICA:**
+
+1.  Revisa el controlador que genera el TeXML/TwiML.
+2.  **ELIMINA** explícitamente cualquier uso de `<Answer/>` antes del bloque `<Dial>`.
+3.  La estructura debe ser directa:
+      * **INCORRECTO (Lo que tienes ahora):**
+        ```xml
+        <Response>
+            <Answer/> <Dial>...</Dial>
+        </Response>
+        ```
+      * **CORRECTO (Lo que necesito):**
+        ```xml
+        <Response>
+            <Dial>...</Dial> </Response>
+        ```
+
+**TAREA:**
+Busca en el código dónde generas la respuesta para llamadas entrantes y salientes. Borra la línea `.answer()` o `<Answer>`. Deja que el verbo `Dial` maneje el estado de conexión.
+
+-----
+
+**Nota técnica:**
+Al quitar el `<Answer/>`, el cliente escuchará el tono de llamada estándar de la red telefónica pública. Si en el futuro quieres poner música *mientras* timbra, ahí sí tendrías que contestar (y pagar), pero para una llamada normal, **nunca contestes antes de marcar.**

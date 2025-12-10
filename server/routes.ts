@@ -26548,7 +26548,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="30" record="record-from-answer-dual">
+  <Dial timeout="30" >
     <Client>${sipUsername}</Client>
   </Dial>
 </Response>`;
